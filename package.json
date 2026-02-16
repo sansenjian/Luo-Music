@@ -2,7 +2,7 @@
   "name": "luo-music",
   "private": true,
   "version": "1.0.0",
-  "type": "commonjs",
+  "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",

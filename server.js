@@ -1,4 +1,5 @@
-const { serveNcmApi } = require('NeteaseCloudMusicApi')
+import pkg from 'NeteaseCloudMusicApi'
+const { serveNcmApi } = pkg
 
 serveNcmApi({
   port: 3000,
