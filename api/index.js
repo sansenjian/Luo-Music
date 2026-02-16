@@ -12,6 +12,15 @@ export default async (req, res) => {
       checkVersion: true,
     })
   }
+
+  // 修复 Vercel 路径问题：去掉 /api 前缀，确保 API 路由正确匹配
+  if (req.url.startsWith('/api')) {
+    req.url = req.url.replace(/^\/api/, '')
+  }
+  // 如果替换后是空字符串（例如只请求了 /api），则补全为 /
+  if (req.url === '') {
+    req.url = '/'
+  }
   
   // 将请求转发给 Express app
   return app(req, res)
