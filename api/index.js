@@ -1,15 +1,20 @@
+import fs from 'fs'
+import os from 'os'
 import pkg from 'NeteaseCloudMusicApi'
 const { serveNcmApi } = pkg
 
-// 初始化 API 实例（在模块作用域中执行，以便复用）
-// 这样可以避免每次请求都重新创建 Express app，减少冷启动开销
-const api = serveNcmApi({
+// 确保临时目录存在
+try {
+  const tmp = os.tmpdir()
+  fs.mkdirSync(tmp, { recursive: true })
+} catch (e) {}
+
+// 初始化 Express app 一次
+const app = serveNcmApi({
   checkVersion: true,
 })
 
 // 导出 Vercel Serverless Handler
 export default (req, res) => {
-  // NeteaseCloudMusicApi 的 serveNcmApi 返回的是一个 Express app
-  // 我们需要把它转接给 Vercel 的 req/res
-  return api(req, res)
+  return app(req, res)
 }
