@@ -1,10 +1,13 @@
 <script setup>
 import { Analytics } from '@vercel/analytics/vue'
 import Home from './views/Home.vue'
+
+// 检测是否为 Electron 环境
+const isElectron = window.navigator.userAgent.indexOf('Electron') > -1
 </script>
 
 <template>
-  <Analytics />
+  <Analytics v-if="!isElectron" />
   <Home />
 </template>
 
