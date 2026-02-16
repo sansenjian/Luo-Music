@@ -1,8 +1,10 @@
 <script setup>
+import { Analytics } from '@vercel/analytics/vue'
 import Home from './views/Home.vue'
 </script>
 
 <template>
+  <Analytics />
   <Home />
 </template>
 
