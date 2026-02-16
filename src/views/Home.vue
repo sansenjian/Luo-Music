@@ -85,7 +85,7 @@ onUnmounted(() => {
   <div class="window" :class="{ 'compact-mode': playerStore.isCompact }">
     <header class="titlebar">
       <div class="title-left">
-        <h1 class="logo">LUO // MUSIC</h1>
+        <h1 class="logo">luo_music</h1>
       </div>
       
       <div class="search-bar">
