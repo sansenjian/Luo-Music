@@ -1,20 +1,18 @@
-import fs from 'fs'
-import os from 'os'
 import pkg from 'NeteaseCloudMusicApi'
 const { serveNcmApi } = pkg
 
-// 确保临时目录存在
-try {
-  const tmp = os.tmpdir()
-  fs.mkdirSync(tmp, { recursive: true })
-} catch (e) {}
-
-// 初始化 Express app 一次
-const app = serveNcmApi({
-  checkVersion: true,
-})
+// 缓存 Express app 实例，避免每次请求重复初始化
+let app
 
 // 导出 Vercel Serverless Handler
-export default (req, res) => {
+export default async (req, res) => {
+  if (!app) {
+    // serveNcmApi 返回 Promise，需要等待初始化完成
+    app = await serveNcmApi({
+      checkVersion: true,
+    })
+  }
+  
+  // 将请求转发给 Express app
   return app(req, res)
 }
