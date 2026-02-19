@@ -175,15 +175,21 @@ export const usePlayerStore = defineStore('player', {
       try {
         // 1. Get URL if missing
         if (!song.url) {
+           console.log('Fetching music URL for song:', song.id)
            const urlRes = await getMusicUrl(song.id, 'standard')
+           console.log('Music URL response:', urlRes)
            // Handle different API response formats
            // urlRes could be { data: [...] } or directly [...] depending on request interceptor
            const urlData = urlRes.data || urlRes
+           console.log('Extracted urlData:', urlData)
            if (urlData && urlData[0] && urlData[0].url) {
              song.url = urlData[0].url
+             console.log('Got playback URL:', song.url)
              // Force update song in list if needed, but object ref should work
            } else {
-             console.error('Failed to get playback URL:', urlRes)
+             console.error('Failed to get playback URL - invalid response structure:', urlRes)
+             console.error('urlData:', urlData)
+             console.error('urlData[0]:', urlData ? urlData[0] : 'undefined')
              throw new Error('Unable to get playback URL')
            }
         }
