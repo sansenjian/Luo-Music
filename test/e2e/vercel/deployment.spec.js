@@ -13,10 +13,16 @@ test.describe('Vercel Deployment Verification', () => {
   test('should load the application', async ({ page }) => {
     // 验证页面标题
     await expect(page).toHaveTitle(/LUO|MUSIC/)
-    
+
     // 验证主要元素存在
     const app = page.locator('#app')
     await expect(app).toBeVisible()
+  })
+
+  test('should initialize Vercel Web Analytics in web builds', async ({ page }) => {
+    // 确认 Vercel Web Analytics 脚本已注入
+    const analyticsScript = page.locator('script[src*="/_vercel/insights"]')
+    await expect(analyticsScript).toHaveCount(1)
   })
 
   test('should load static resources', async ({ page }) => {
