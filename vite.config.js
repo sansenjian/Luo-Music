@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
           entry: 'electron/main.js',
         },
         {
-          entry: 'electron/preload.js',
+          entry: 'electron/preload.cjs',
           onstart(options) {
             options.reload()
           },
