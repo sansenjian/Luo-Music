@@ -20,7 +20,6 @@ export function useSearch() {
     loading.value = true
     try {
       const res = await search(searchKeyword.value, 1, 20)
-      console.log('Search response:', res)
       if (res.result && res.result.songs) {
         searchResults.value = res.result.songs
         

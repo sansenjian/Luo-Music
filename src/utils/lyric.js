@@ -69,7 +69,7 @@ export function formatLyricTime(timeStr) {
 /**
  * 解析歌词到 Map，时间戳作为 key
  * @param {string} text - 歌词文本
- * @returns {Map} 时间戳(毫秒) -> 歌词内容的 Map
+ * @returns {Map} 时间戳(毫秒) -> 歌词内容数组的 Map
  */
 function parseLyricToMap(text) {
   const map = new Map()
@@ -84,7 +84,13 @@ function parseLyricToMap(text) {
     if (content) {
       // 使用整数毫秒作为 key，避免浮点数精度问题
       const timeKey = Math.round(time * 1000)
-      map.set(timeKey, content)
+      // 保留相同时间戳下的所有行，避免覆盖
+      const existing = map.get(timeKey)
+      if (existing) {
+        existing.push(content)
+      } else {
+        map.set(timeKey, [content])
+      }
     }
   })
   return map
@@ -100,6 +106,16 @@ function parseLyricToMap(text) {
 export function parseLyric(lrcText, tlyricText = null, rlyricText = null) {
   if (!lrcText) return []
 
+  // 检查是否是纯音乐 - 在解析前检查，避免继续处理
+  if (lrcText.indexOf('纯音乐') !== -1) {
+    return [{
+      time: 0,
+      lyric: "纯音乐，请欣赏",
+      tlyric: '',
+      rlyric: ''
+    }]
+  }
+
   // 使用 Map 解析所有歌词，提高匹配效率
   const originalMap = parseLyricToMap(lrcText)
   const transMap = parseLyricToMap(tlyricText)
@@ -107,30 +123,26 @@ export function parseLyric(lrcText, tlyricText = null, rlyricText = null) {
 
   const lyricArr = []
   
-  originalMap.forEach((lyric, timeKey) => {
+  originalMap.forEach((lyricList, timeKey) => {
     const time = timeKey / 1000
     
-    // 检查是否是纯音乐
-    if (lyric.indexOf('纯音乐') !== -1) {
-      lyricArr.push({
-        time: 0,
-        lyric: "纯音乐，请欣赏",
-        tlyric: '',
-        rlyric: ''
-      })
-      return
-    }
+    // 合并相同时间戳的多行歌词
+    const lyric = lyricList.join('\n')
     
     // 跳过作词作曲信息
     if (lyric.indexOf('作词') !== -1 || lyric.indexOf('作曲') !== -1) {
       return
     }
     
+    // 获取翻译和罗马音（取第一行）
+    const transList = transMap.get(timeKey)
+    const romaList = romaMap.get(timeKey)
+    
     lyricArr.push({
       time,
       lyric,
-      tlyric: transMap.get(timeKey) || '',
-      rlyric: romaMap.get(timeKey) || ''
+      tlyric: transList ? transList.join('\n') : '',
+      rlyric: romaList ? romaList.join('\n') : ''
     })
   })
 
