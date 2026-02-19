@@ -25,6 +25,12 @@ export const usePlayerStore = defineStore('player', {
     initialized: false,
     loading: false, // New loading state
     isCompact: false, // Compact mode state
+    // 错误控制和跳过逻辑状态
+    skipAttempts: 0, // 连续跳过次数
+    maxSkipAttempts: 5, // 最大连续跳过次数
+    lastSkipTime: 0, // 上次跳过时间
+    skipCooldownMs: 3000, // 跳过冷却时间（毫秒）
+    unavailableSongs: new Set(), // 记录不可用的歌曲ID
   }),
   
   getters: {
@@ -137,6 +143,8 @@ export const usePlayerStore = defineStore('player', {
     setSongList(songs) {
       this.songList = songs
       this.currentIndex = -1
+      // 切换歌单时重置跳过状态
+      this.resetSkipState()
     },
     
     addSong(song) {
@@ -233,9 +241,15 @@ export const usePlayerStore = defineStore('player', {
         if (this.songList[index]) {
           this.songList[index].unavailable = true
           this.songList[index].errorMessage = error.message
+          this.unavailableSongs.add(this.songList[index].id)
+        }
+        // 检查是否需要停止自动跳过
+        if (this.shouldStopSkipping()) {
+          console.warn('Too many failed songs, stopping auto-skip')
+          throw new Error('播放列表中可用歌曲较少，请尝试其他歌单')
         }
         // 自动尝试播放下一首
-        this.playNextSkipUnavailable()
+        await this.playNextSkipUnavailable()
         throw error 
       } finally {
         this.loading = false
@@ -309,13 +323,46 @@ export const usePlayerStore = defineStore('player', {
       }
     },
 
+    // 检查是否应该停止自动跳过（频率控制）
+    shouldStopSkipping() {
+      const now = Date.now()
+      
+      // 检查冷却时间
+      if (now - this.lastSkipTime < this.skipCooldownMs) {
+        this.skipAttempts++
+      } else {
+        // 冷却时间已过，重置计数
+        this.skipAttempts = 1
+      }
+      
+      this.lastSkipTime = now
+      
+      // 如果连续跳过次数超过阈值，停止自动跳过
+      if (this.skipAttempts >= this.maxSkipAttempts) {
+        return true
+      }
+      
+      // 如果不可用歌曲超过列表的80%，停止
+      if (this.songList.length > 0 && this.unavailableSongs.size / this.songList.length > 0.8) {
+        return true
+      }
+      
+      return false
+    },
+
     // 跳过不可用的歌曲，自动寻找下一首可播放的
     async playNextSkipUnavailable() {
       if (this.songList.length === 0) return
       
+      // 检查频率限制
+      if (this.shouldStopSkipping()) {
+        console.warn('Skip frequency limit reached or too many unavailable songs')
+        return
+      }
+      
       const startIndex = this.currentIndex
       let attempts = 0
-      const maxAttempts = this.songList.length // 最多尝试所有歌曲
+      const maxAttempts = Math.min(this.songList.length, 10) // 最多尝试10首，避免遍历过长列表
       
       while (attempts < maxAttempts) {
         let newIndex
@@ -335,9 +382,13 @@ export const usePlayerStore = defineStore('player', {
         if (!this.songList[newIndex].unavailable) {
           try {
             await this.playSongWithDetails(newIndex)
+            // 成功播放后重置跳过计数
+            this.skipAttempts = 0
             return // 成功播放
           } catch (error) {
-            // 播放失败，继续尝试下一首
+            // 播放失败，标记为不可用并继续尝试下一首
+            this.songList[newIndex].unavailable = true
+            this.unavailableSongs.add(this.songList[newIndex].id)
             attempts++
             continue
           }
@@ -347,7 +398,19 @@ export const usePlayerStore = defineStore('player', {
         this.currentIndex = newIndex // 更新索引继续查找
       }
       
-      console.error('No available songs to play')
+      console.error('No available songs to play after', maxAttempts, 'attempts')
+    },
+
+    // 重置跳过状态（当切换歌单时调用）
+    resetSkipState() {
+      this.skipAttempts = 0
+      this.lastSkipTime = 0
+      this.unavailableSongs.clear()
+      // 清除歌曲列表中的不可用标记
+      this.songList.forEach(song => {
+        song.unavailable = false
+        song.errorMessage = null
+      })
     },
     
     seek(time) {
