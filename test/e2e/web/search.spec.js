@@ -1,14 +1,18 @@
 import { test, expect } from '@playwright/test'
 
+// Helper to clear storage and reload
+async function resetPageState(page) {
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+  // Don't reload to avoid timeout issues
+}
+
 test.describe('Search Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear storage to ensure deterministic state
-    await page.goto('/')
-    await page.evaluate(() => {
-      localStorage.clear()
-      sessionStorage.clear()
-    })
-    await page.reload()
+    await resetPageState(page)
   })
 
   test('should display search input', async ({ page }) => {
@@ -18,23 +22,35 @@ test.describe('Search Functionality', () => {
   })
 
   test('should search for songs and display results', async ({ page }) => {
+    // Mock the cloudsearch API response
+    const mockResponse = {
+      code: 200,
+      result: {
+        songs: [
+          { id: 123, name: 'Test Song 1', artists: [{ name: 'Test Artist 1' }] },
+          { id: 456, name: 'Test Song 2', artists: [{ name: 'Test Artist 2' }] }
+        ],
+        songCount: 2
+      }
+    }
+
+    // Stub the API call
+    await page.route('**/cloudsearch**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockResponse)
+      })
+    })
+
     // Type search keyword
     const searchInput = page.locator('.cyber-input')
     await expect(searchInput).toBeVisible()
-    await searchInput.fill('周杰伦')
+    await searchInput.fill('test query')
 
     // Click search button
     const searchButton = page.locator('.exec-btn')
     await searchButton.click()
-
-    // Wait for API response with timeout
-    try {
-      await page.waitForResponse(response =>
-        response.url().includes('/cloudsearch') && response.status() === 200
-      , { timeout: 10000 })
-    } catch (e) {
-      // API might fail, continue to check UI state
-    }
 
     // Click playlist tab to see results
     const playlistTab = page.locator('.tab').filter({ hasText: /Playlist/i }).first()
@@ -44,39 +60,38 @@ test.describe('Search Functionality', () => {
     const playlist = page.locator('.playlist')
     await expect(playlist).toBeVisible()
 
-    // Wait for results to render or empty state to appear
+    // Assert that results are rendered
     const listItems = page.locator('.list-item')
-    const emptyState = page.locator('.playlist .empty-state')
+    await expect(listItems).toHaveCount(mockResponse.result.songs.length)
 
-    // Wait for either results or empty state
-    await Promise.race([
-      listItems.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
-      emptyState.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
-    ])
-
-    // Assert that results are rendered or empty state is shown
-    const hasResults = await listItems.count() > 0
-    const hasEmptyState = await emptyState.isVisible().catch(() => false)
-
-    // Either we have results or empty state (API might fail)
-    expect(hasResults || hasEmptyState).toBe(true)
+    // Verify first result contains song name
+    await expect(listItems.first()).toContainText(mockResponse.result.songs[0].name)
   })
 
   test('should display empty state for non-existent search', async ({ page }) => {
-    // Search for something that won't return results
+    // Mock empty response
+    const mockEmptyResponse = {
+      code: 200,
+      result: {
+        songs: [],
+        songCount: 0
+      }
+    }
+
+    // Stub the API call
+    await page.route('**/cloudsearch**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockEmptyResponse)
+      })
+    })
+
+    // Search for something
     const searchInput = page.locator('.cyber-input')
     await searchInput.fill('xyz123nonexistent')
     const searchButton = page.locator('.exec-btn')
     await searchButton.click()
-
-    // Wait for API response with timeout
-    try {
-      await page.waitForResponse(response =>
-        response.url().includes('/cloudsearch') && response.status() === 200
-      , { timeout: 10000 })
-    } catch (e) {
-      // API might fail, continue to check UI state
-    }
 
     // Click playlist tab
     const playlistTab = page.locator('.tab').filter({ hasText: /Playlist/i }).first()
@@ -125,13 +140,7 @@ test.describe('Search Functionality', () => {
 
 test.describe('Playlist Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear storage to ensure deterministic blank state
-    await page.goto('/')
-    await page.evaluate(() => {
-      localStorage.clear()
-      sessionStorage.clear()
-    })
-    await page.reload()
+    await resetPageState(page)
   })
 
   test('should display playlist tab', async ({ page }) => {
@@ -162,13 +171,7 @@ test.describe('Playlist Functionality', () => {
 
 test.describe('Lyrics Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear storage to ensure deterministic state
-    await page.goto('/')
-    await page.evaluate(() => {
-      localStorage.clear()
-      sessionStorage.clear()
-    })
-    await page.reload()
+    await resetPageState(page)
   })
 
   test('should display lyrics panel when tab is clicked', async ({ page }) => {
