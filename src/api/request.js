@@ -15,9 +15,12 @@ const getBaseURL = () => {
 
 const request = axios.create({
   baseURL: getBaseURL(),
-  timeout: 15000,
+  timeout: 30000, // 增加超时时间到 30 秒
   // Web 环境下禁用 withCredentials 避免 CORS 问题
   withCredentials: isElectron(),
+  // 添加重试配置
+  retry: 3,
+  retryDelay: 1000,
 })
 
 request.interceptors.request.use(
@@ -32,6 +35,17 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   (response) => {
+    // 处理歌曲 URL，将 HTTP 转换为 HTTPS 避免混合内容问题
+    if (response.data && response.config.url?.includes('/song/url')) {
+      const data = response.data.data || response.data
+      if (Array.isArray(data)) {
+        data.forEach(song => {
+          if (song.url && song.url.startsWith('http://')) {
+            song.url = song.url.replace('http://', 'https://')
+          }
+        })
+      }
+    }
     return response.data
   },
   (error) => {
