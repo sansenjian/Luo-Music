@@ -11,67 +11,72 @@ test.describe('Search Functionality', () => {
     await expect(searchInput).toHaveAttribute('placeholder', /Search/)
   })
 
-  test('should search for songs', async ({ page }) => {
+  test('should search for songs and display results', async ({ page }) => {
     // Type search keyword
     const searchInput = page.locator('.cyber-input')
+    await expect(searchInput).toBeVisible()
     await searchInput.fill('周杰伦')
-    
+
     // Click search button
     const searchButton = page.locator('.exec-btn')
     await searchButton.click()
-    
-    // Wait for loading to complete
-    await page.waitForTimeout(8000)
-    
+
+    // Wait for API response
+    await page.waitForResponse(response =>
+      response.url().includes('/api/cloudsearch') && response.status() === 200
+    )
+
     // Click playlist tab to see results
     const playlistTab = page.locator('.tab').filter({ hasText: /Playlist/i }).first()
     await playlistTab.click()
-    
-    // Check if playlist component is visible
+
+    // Wait for playlist to be visible
     const playlist = page.locator('.playlist')
     await expect(playlist).toBeVisible()
-    
-    // Check if we have results, empty state, or still loading
-    const hasResults = await page.locator('.list-item').count() > 0
-    const hasEmptyState = await page.locator('.empty-state').count() > 0
-    const isLoading = await page.locator('.loading').count() > 0
-    
-    // Should have one of these states
-    expect(hasResults || hasEmptyState || isLoading).toBe(true)
+
+    // Assert that results are rendered
+    const listItems = page.locator('.list-item')
+    const itemCount = await listItems.count()
+    expect(itemCount).toBeGreaterThan(0)
   })
 
-  test('should display empty state when no results', async ({ page }) => {
+  test('should display empty state for non-existent search', async ({ page }) => {
     // Search for something that won't return results
     const searchInput = page.locator('.cyber-input')
     await searchInput.fill('xyz123nonexistent')
     const searchButton = page.locator('.exec-btn')
     await searchButton.click()
-    
-    await page.waitForTimeout(8000)
-    
+
+    // Wait for API response
+    await page.waitForResponse(response =>
+      response.url().includes('/api/cloudsearch') && response.status() === 200
+    )
+
     // Click playlist tab
     const playlistTab = page.locator('.tab').filter({ hasText: /Playlist/i }).first()
     await playlistTab.click()
-    
-    // Check playlist is visible
+
+    // Wait for playlist to be visible
     const playlist = page.locator('.playlist')
     await expect(playlist).toBeVisible()
-    
-    // Check for empty state, results, or loading
-    const hasEmptyState = await page.locator('.empty-state').count() > 0
-    const hasResults = await page.locator('.list-item').count() > 0
-    const isLoading = await page.locator('.loading').count() > 0
-    
-    expect(hasEmptyState || hasResults || isLoading).toBe(true)
+
+    // Assert empty state is displayed
+    const emptyState = page.locator('.empty-state')
+    await expect(emptyState).toBeVisible()
+
+    // Assert no list items are present
+    const listItems = page.locator('.list-item')
+    const itemCount = await listItems.count()
+    expect(itemCount).toBe(0)
   })
 
   test('should handle empty search', async ({ page }) => {
     const searchButton = page.locator('.exec-btn')
     await searchButton.click()
-    
+
     // Should show toast error or stay on current page
     await page.waitForTimeout(1000)
-    
+
     // Check that page is still functional
     const searchInput = page.locator('.cyber-input')
     await expect(searchInput).toBeVisible()
@@ -79,11 +84,11 @@ test.describe('Search Functionality', () => {
 
   test('should clear search input', async ({ page }) => {
     const searchInput = page.locator('.cyber-input')
-    
+
     // Type and clear
     await searchInput.fill('test')
     await searchInput.clear()
-    
+
     // Input should be empty
     const value = await searchInput.inputValue()
     expect(value).toBe('')
@@ -100,7 +105,7 @@ test.describe('Playlist Functionality', () => {
     const playlistTab = page.locator('.tab').filter({ hasText: /Playlist/i }).first()
     await expect(playlistTab).toBeVisible()
     await playlistTab.click()
-    
+
     // Check playlist component is visible
     const playlist = page.locator('.playlist')
     await expect(playlist).toBeVisible()
@@ -110,15 +115,14 @@ test.describe('Playlist Functionality', () => {
     // Click playlist tab
     const playlistTab = page.locator('.tab').filter({ hasText: /Playlist/i }).first()
     await playlistTab.click()
-    
+
     // Check playlist is visible
     const playlist = page.locator('.playlist')
     await expect(playlist).toBeVisible()
-    
-    // Either empty state or track list should exist
-    const hasEmpty = await page.locator('.empty-state').count() > 0
-    const hasTracks = await page.locator('.track-list').count() > 0
-    expect(hasEmpty || hasTracks).toBe(true)
+
+    // Assert empty state is displayed
+    const emptyState = page.locator('.empty-state')
+    await expect(emptyState).toBeVisible()
   })
 })
 
@@ -132,10 +136,10 @@ test.describe('Lyrics Functionality', () => {
     const lyricsTab = page.locator('.tab').filter({ hasText: /Lyrics/i }).first()
     await expect(lyricsTab).toBeVisible()
     await lyricsTab.click()
-    
+
     // Lyrics component should be visible
-    await page.waitForTimeout(500)
-    expect(true).toBe(true)
+    const lyricPanel = page.locator('.right-panel')
+    await expect(lyricPanel).toBeVisible()
   })
 })
 
@@ -144,11 +148,11 @@ test.describe('Responsive Design', () => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/')
-    
+
     // Check if main elements are visible
     const searchInput = page.locator('.cyber-input')
     await expect(searchInput).toBeVisible()
-    
+
     // Check that layout adapts
     const searchButton = page.locator('.exec-btn')
     await expect(searchButton).toBeVisible()
@@ -158,10 +162,10 @@ test.describe('Responsive Design', () => {
     // Set tablet viewport
     await page.setViewportSize({ width: 768, height: 1024 })
     await page.goto('/')
-    
+
     const searchInput = page.locator('.cyber-input')
     await expect(searchInput).toBeVisible()
-    
+
     const searchButton = page.locator('.exec-btn')
     await expect(searchButton).toBeVisible()
   })
