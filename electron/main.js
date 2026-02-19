@@ -1,5 +1,9 @@
-const { app, BrowserWindow, Menu, ipcMain } = require('electron')
-const path = require('node:path')
+import { app, BrowserWindow, ipcMain } from 'electron'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // 单实例锁
 const gotTheLock = app.requestSingleInstanceLock()
