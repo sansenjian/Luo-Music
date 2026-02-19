@@ -229,6 +229,13 @@ export const usePlayerStore = defineStore('player', {
         }
       } catch (error) {
         console.error('Playback failed:', error)
+        // 标记当前歌曲为不可用，避免重复尝试
+        if (this.songList[index]) {
+          this.songList[index].unavailable = true
+          this.songList[index].errorMessage = error.message
+        }
+        // 自动尝试播放下一首
+        this.playNextSkipUnavailable()
         throw error 
       } finally {
         this.loading = false
@@ -300,6 +307,47 @@ export const usePlayerStore = defineStore('player', {
       } else {
         this.playNext()
       }
+    },
+
+    // 跳过不可用的歌曲，自动寻找下一首可播放的
+    async playNextSkipUnavailable() {
+      if (this.songList.length === 0) return
+      
+      const startIndex = this.currentIndex
+      let attempts = 0
+      const maxAttempts = this.songList.length // 最多尝试所有歌曲
+      
+      while (attempts < maxAttempts) {
+        let newIndex
+        if (this.playMode === 3) {
+          newIndex = Math.floor(Math.random() * this.songList.length)
+        } else {
+          newIndex = (this.currentIndex + 1) % this.songList.length
+        }
+        
+        // 如果回到起点，说明所有歌曲都不可用
+        if (newIndex === startIndex && attempts > 0) {
+          console.warn('All songs in playlist are unavailable')
+          break
+        }
+        
+        // 检查歌曲是否标记为不可用
+        if (!this.songList[newIndex].unavailable) {
+          try {
+            await this.playSongWithDetails(newIndex)
+            return // 成功播放
+          } catch (error) {
+            // 播放失败，继续尝试下一首
+            attempts++
+            continue
+          }
+        }
+        
+        attempts++
+        this.currentIndex = newIndex // 更新索引继续查找
+      }
+      
+      console.error('No available songs to play')
     },
     
     seek(time) {
