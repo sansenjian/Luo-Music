@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { audioManager } from '../src/utils/audioManager'
+import { audioManager } from '../../../src/utils/audioManager'
 
 describe('AudioManager', () => {
   beforeEach(() => {

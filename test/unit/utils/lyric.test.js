@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseLyric, formatLyricTime, findCurrentLyricIndex } from '../src/utils/lyric'
+import { parseLyric, formatLyricTime, findCurrentLyricIndex } from '../../../src/utils/lyric'
 
 describe('Lyric Utils', () => {
   describe('formatLyricTime', () => {

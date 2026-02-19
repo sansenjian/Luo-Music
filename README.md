@@ -186,9 +186,9 @@ vercel dev
 
 ```bash
 # API 基础 URL
-# Web 开发：http://localhost:3000
+# Web 开发：http://localhost:14532
 # Vercel 部署：/api（使用相对路径）
-VITE_API_BASE_URL=http://localhost:3000
+VITE_API_BASE_URL=http://localhost:14532
 
 # 开发服务器端口
 VITE_DEV_SERVER_PORT=5173
@@ -200,7 +200,7 @@ VITE_DEV_SERVER_PORT=5173
 
 ### 本地开发
 
-内置网易云音乐 API 服务（基于 `NeteaseCloudMusicApi`），默认运行在 `http://localhost:3000`。
+内置网易云音乐 API 服务（基于 `NeteaseCloudMusicApi`），默认运行在 `http://localhost:14532`。
 
 ### Vercel 部署
 

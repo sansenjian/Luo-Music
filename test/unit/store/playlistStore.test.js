@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { usePlaylistStore } from '../src/store/playlistStore'
-import { usePlayerStore } from '../src/store/playerStore'
+import { usePlaylistStore } from '../../../src/store/playlistStore'
+import { usePlayerStore } from '../../../src/store/playerStore'
 import { setActivePinia, createPinia } from 'pinia'
 
 describe('Playlist Store', () => {

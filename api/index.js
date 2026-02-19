@@ -23,6 +23,7 @@ export default async (req, res) => {
       if (!initPromise) {
         initPromise = serveNcmApi({
           checkVersion: false, // 禁用版本检查，避免冷启动延迟
+          port: 14533, // 使用不同端口避免冲突
         })
       }
       app = await initPromise

@@ -4,8 +4,17 @@ import axios from 'axios'
 const isElectron = () => window.navigator.userAgent.indexOf('Electron') > -1
 const isWeb = () => !isElectron()
 
+// 强制使用相对路径 /api，避免 Vercel 环境变量干扰
+const getBaseURL = () => {
+  if (isElectron()) {
+    return 'http://localhost:14532'
+  }
+  // Web 环境使用相对路径，让请求自动匹配当前域名
+  return '/api'
+}
+
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || (isWeb() ? '/api' : 'http://localhost:3000'),
+  baseURL: getBaseURL(),
   timeout: 15000,
   // Web 环境下禁用 withCredentials 避免 CORS 问题
   withCredentials: isElectron(),

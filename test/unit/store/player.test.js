@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { usePlayerStore } from '../src/store/playerStore'
+import { usePlayerStore } from '../../../src/store/playerStore'
 import { setActivePinia, createPinia } from 'pinia'
 
 describe('Player Store', () => {

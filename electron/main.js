@@ -1,8 +1,5 @@
-import { app, BrowserWindow, Menu, ipcMain } from 'electron'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const { app, BrowserWindow, Menu, ipcMain } = require('electron')
+const path = require('node:path')
 
 // 单实例锁
 const gotTheLock = app.requestSingleInstanceLock()
@@ -36,7 +33,7 @@ if (!app.isPackaged) {
 // │ ├── main.js
 // │ └── preload.js
 //
-process.env.DIST = path.join(__dirname, '../dist')
+process.env.DIST = path.join(__dirname, '../dist-electron')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(__dirname, '../public')
 
 let win
