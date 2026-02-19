@@ -53,7 +53,13 @@ export const usePlayerStore = defineStore('player', {
       this.initialized = true
       audioManager.setVolume(this.volume)
       
+      // 节流处理 timeupdate，每 100ms 更新一次
+      let lastUpdate = 0
       audioManager.on('timeupdate', () => {
+        const now = Date.now()
+        if (now - lastUpdate < 100) return
+        lastUpdate = now
+        
         this.progress = audioManager.currentTime
         this.updateLyricIndex() // Sync lyric
       })
@@ -76,26 +82,53 @@ export const usePlayerStore = defineStore('player', {
       
       audioManager.on('error', (e) => {
         console.error('Audio error:', e)
-        this.playing = false
+        this.handleAudioError(e)
       })
+    },
+    
+    async handleAudioError(error) {
+      this.playing = false
+      
+      // 尝试重新获取 URL 并重试
+      if (this.currentSong && !this.currentSong.retryCount) {
+        this.currentSong.retryCount = 1
+        try {
+          const urlRes = await getMusicUrl(this.currentSong.id, 'standard')
+          if (urlRes.data?.[0]?.url) {
+            this.currentSong.url = urlRes.data[0].url
+            await audioManager.play(this.currentSong.url)
+            this.playing = true
+            return
+          }
+        } catch (e) {
+          console.error('Retry failed:', e)
+        }
+      }
+      
+      // 重试失败或已重试过，播放下一首
+      this.playNext()
     },
     
     updateLyricIndex() {
       if (!this.lyricsArray || this.lyricsArray.length === 0) return
-      
+
       const currentTime = this.progress
-      
-      // Find the last lyric line that is <= current time
-      // This is a simple linear search. For large lyrics, binary search would be better.
+
+      // Use binary search for better performance with large lyrics
+      let left = 0
+      let right = this.lyricsArray.length - 1
       let index = -1
-      for (let i = 0; i < this.lyricsArray.length; i++) {
-        if (currentTime >= this.lyricsArray[i].time) {
-          index = i
+
+      while (left <= right) {
+        const mid = Math.floor((left + right) / 2)
+        if (this.lyricsArray[mid].time <= currentTime) {
+          index = mid
+          left = mid + 1
         } else {
-          break
+          right = mid - 1
         }
       }
-      
+
       if (this.currentLyricIndex !== index) {
         this.currentLyricIndex = index
       }
@@ -128,6 +161,8 @@ export const usePlayerStore = defineStore('player', {
         await audioManager.play(this.currentSong.url)
       } catch (error) {
         console.error('播放失败:', error)
+        this.playing = false
+        throw error
       }
     },
 
@@ -153,14 +188,39 @@ export const usePlayerStore = defineStore('player', {
         await this.playSongByIndex(index)
 
         // 3. Get Lyrics
-        const lyricRes = await getLyric(song.id)
-        if (lyricRes) {
-           this.setLyric(lyricRes)
-           const lrcText = lyricRes.lrc?.lyric || ''
-           const tlyricText = lyricRes.tlyric?.lyric || ''
-           const rlyricText = lyricRes.romalrc?.lyric || ''
-           const lyrics = parseLyric(lrcText, tlyricText, rlyricText)
-           this.setLyricsArray(lyrics)
+        try {
+          const lyricRes = await getLyric(song.id)
+          console.log('Lyric response:', lyricRes)
+          if (lyricRes) {
+            this.setLyric(lyricRes)
+            // Handle different API response formats
+            const lrcText = lyricRes.lrc?.lyric || lyricRes.lyric || ''
+            // tlyric might be an object { lyric: '...' } or a string, or null
+            let tlyricText = ''
+            if (lyricRes.tlyric) {
+              if (typeof lyricRes.tlyric === 'string') {
+                tlyricText = lyricRes.tlyric
+              } else if (lyricRes.tlyric.lyric && typeof lyricRes.tlyric.lyric === 'string') {
+                tlyricText = lyricRes.tlyric.lyric
+              }
+            }
+            // romalrc might also be an object or string
+            let rlyricText = ''
+            if (lyricRes.romalrc) {
+              if (typeof lyricRes.romalrc === 'string') {
+                rlyricText = lyricRes.romalrc
+              } else if (lyricRes.romalrc.lyric && typeof lyricRes.romalrc.lyric === 'string') {
+                rlyricText = lyricRes.romalrc.lyric
+              }
+            }
+            console.log('Parsing lyrics:', { lrcText: lrcText?.substring(0, 100), tlyricText: tlyricText?.substring(0, 100) })
+            const lyrics = parseLyric(lrcText, tlyricText, rlyricText)
+            console.log('Parsed lyrics count:', lyrics.length)
+            this.setLyricsArray(lyrics)
+          }
+        } catch (lyricError) {
+          console.error('Failed to get lyrics:', lyricError)
+          this.setLyricsArray([])
         }
       } catch (error) {
         console.error('Playback failed:', error)
@@ -276,7 +336,27 @@ export const usePlayerStore = defineStore('player', {
   
   persist: {
     storage: localStorage,
-    paths: ['volume', 'playMode', 'lyricType', 'songList', 'currentIndex', 'isCompact'],
+    paths: ['volume', 'playMode', 'lyricType', 'isCompact'],
+    // Note: songList and currentIndex are excluded to avoid stale URL issues
+    // Songs will be re-fetched when needed
+    beforeRestore: (context) => {
+      // 数据恢复前验证
+      console.log('Restoring player state...')
+    },
+    afterRestore: (context) => {
+      // 验证音量范围
+      if (context.store.volume < 0 || context.store.volume > 1) {
+        context.store.volume = 0.7
+      }
+      // 验证播放模式
+      if (context.store.playMode < 0 || context.store.playMode > 3) {
+        context.store.playMode = 0
+      }
+      // 验证歌词类型
+      if (!Array.isArray(context.store.lyricType) || context.store.lyricType.length === 0) {
+        context.store.lyricType = ['original', 'trans']
+      }
+    }
   },
 })
 

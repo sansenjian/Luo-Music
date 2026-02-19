@@ -8,6 +8,7 @@ const lyricContainer = ref(null)
 const lyricScrollArea = ref(null)
 let pauseActiveTimer = null
 let isUserScrolling = false
+let scrollRafId = null
 
 // Use store state directly
 const currentLyricIndex = computed(() => playerStore.currentLyricIndex)
@@ -24,10 +25,26 @@ function handleLyricClick(time) {
 function scrollToActiveLine() {
   if (isUserScrolling || !lyricScrollArea.value) return
   
-  const activeLine = lyricScrollArea.value.querySelector('.lyric-line.active')
-  if (activeLine) {
-    activeLine.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // 取消之前的滚动动画
+  if (scrollRafId) {
+    cancelAnimationFrame(scrollRafId)
   }
+  
+  scrollRafId = requestAnimationFrame(() => {
+    const activeLine = lyricScrollArea.value?.querySelector('.lyric-line.active')
+    if (activeLine) {
+      const container = lyricScrollArea.value
+      const lineRect = activeLine.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
+      
+      const targetScroll = container.scrollTop + lineRect.top - containerRect.top - containerRect.height / 2 + lineRect.height / 2
+      
+      container.scrollTo({
+        top: targetScroll,
+        behavior: 'smooth'
+      })
+    }
+  })
 }
 
 watch(currentLyricIndex, () => {
@@ -50,6 +67,9 @@ function handleScroll() {
 onUnmounted(() => {
   if (pauseActiveTimer) {
     clearTimeout(pauseActiveTimer)
+  }
+  if (scrollRafId) {
+    cancelAnimationFrame(scrollRafId)
   }
 })
 </script>

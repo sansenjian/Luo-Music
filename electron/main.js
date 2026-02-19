@@ -4,6 +4,22 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// 单实例锁
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+  process.exit(0)
+}
+
+// 全局错误处理
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error)
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+})
+
 // Avoid 'hit restricted' error in sandbox environment by redirecting userData
 if (!app.isPackaged) {
   const userDataPath = path.join(__dirname, '../.userData')
@@ -25,20 +41,27 @@ process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(__dirnam
 
 let win
 
+// 窗口尺寸限制
+const MIN_WIDTH = 400
+const MIN_HEIGHT = 80
+const MAX_WIDTH = 3840
+const MAX_HEIGHT = 2160
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
-    minWidth: 400, // Reduced min width for mini player
-    minHeight: 80, // Reduced min height for mini player
-    frame: false, // Frameless window for custom title bar
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
+    frame: false,
     titleBarStyle: 'hidden',
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false, // 禁用 Node.js 集成，防止 XSS 漏洞
-      contextIsolation: true, // 启用上下文隔离，配合 contextBridge 使用
-      webSecurity: false, // 仍然允许跨域，但在生产环境建议通过代理解决
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true, // 启用安全策略
+      allowRunningInsecureContent: false,
     },
   })
 
@@ -49,17 +72,13 @@ function createWindow() {
 
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL)
-    // Open devTool if the app is not packaged
     win.webContents.openDevTools()
   } else {
-    // win.loadFile('dist/index.html')
     win.loadFile(path.join(process.env.DIST, 'index.html'))
   }
 }
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
+// Quit when all windows are closed
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
@@ -68,10 +87,16 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow()
+  }
+})
+
+// 处理第二个实例启动
+app.on('second-instance', () => {
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    win.focus()
   }
 })
 
@@ -83,7 +108,13 @@ app.whenReady().then(() => {
   })
 
   ipcMain.on('resize-window', (event, { width, height }) => {
-    win?.setSize(width, height)
+    if (!win) return
+    
+    // 验证窗口尺寸
+    const validWidth = Math.max(MIN_WIDTH, Math.min(width, MAX_WIDTH))
+    const validHeight = Math.max(MIN_HEIGHT, Math.min(height, MAX_HEIGHT))
+    
+    win.setSize(validWidth, validHeight)
   })
 
   ipcMain.on('maximize-window', () => {

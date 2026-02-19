@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { usePlayerStore } from './playerStore'
 
 export const usePlaylistStore = defineStore('playlistStore', {
     state: () => {
@@ -43,32 +42,30 @@ export const usePlaylistStore = defineStore('playlistStore', {
         clearPlaylist() {
             this.songs = []
             this.currentIndex = -1
-            const playerStore = usePlayerStore()
-            playerStore.clearPlaylist()
+            // 不再直接调用 playerStore，避免循环依赖
+            // 通过事件或组件层来处理关联逻辑
         },
-        next() {
+        next(playMode = 0) {
             if (this.songs.length === 0) return null
-            const playerStore = usePlayerStore()
             let nextIndex = this.currentIndex + 1
-            if (playerStore.playMode === 2) {
+            if (playMode === 3) {
                 nextIndex = Math.floor(Math.random() * this.songs.length)
             } else {
                 if (nextIndex >= this.songs.length) {
-                    nextIndex = playerStore.playMode === 1 ? 0 : this.songs.length - 1
+                    nextIndex = playMode === 1 ? 0 : this.songs.length - 1
                 }
             }
             this.currentIndex = nextIndex
             return this.currentSong
         },
-        prev() {
+        prev(playMode = 0) {
             if (this.songs.length === 0) return null
-            const playerStore = usePlayerStore()
             let prevIndex = this.currentIndex - 1
-            if (playerStore.playMode === 2) {
+            if (playMode === 3) {
                 prevIndex = Math.floor(Math.random() * this.songs.length)
             } else {
                 if (prevIndex < 0) {
-                    prevIndex = playerStore.playMode === 1 ? this.songs.length - 1 : 0
+                    prevIndex = playMode === 1 ? this.songs.length - 1 : 0
                 }
             }
             this.currentIndex = prevIndex

@@ -28,10 +28,26 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins,
+    base: './', // 相对路径，适配 Vercel
+    build: {
+      outDir: isWeb ? 'dist' : 'dist-electron',
+      emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['vue', 'vue-router', 'pinia'],
+          }
+        }
+      }
+    },
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url))
       }
+    },
+    define: {
+      __IS_WEB__: isWeb,
+      __API_BASE__: JSON.stringify(process.env.VITE_API_BASE_URL || '/api')
     }
   }
 })

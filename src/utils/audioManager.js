@@ -3,6 +3,15 @@ class AudioManager {
     this.audio = new Audio()
     this.callbacks = {}
     this._initEvents()
+    this._setupCrossOrigin()
+  }
+
+  _setupCrossOrigin() {
+    // Web 环境下设置跨域属性
+    const isElectron = () => window.navigator.userAgent.indexOf('Electron') > -1
+    if (!isElectron()) {
+      this.audio.crossOrigin = 'anonymous'
+    }
   }
 
   _initEvents() {
@@ -20,6 +29,19 @@ class AudioManager {
     // Allow multiple callbacks per event? For now, simple override is fine based on current usage.
     // Ideally, this should support multiple listeners.
     this.callbacks[event] = callback
+  }
+
+  off(event, callback) {
+    if (this.callbacks[event] === callback) {
+      delete this.callbacks[event]
+    }
+  }
+
+  destroy() {
+    this.callbacks = {}
+    this.audio.pause()
+    this.audio.src = ''
+    this.audio.load()
   }
 
   play(url) {

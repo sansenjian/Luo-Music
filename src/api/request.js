@@ -1,9 +1,14 @@
 import axios from 'axios'
 
+// 检测运行环境
+const isElectron = () => window.navigator.userAgent.indexOf('Electron') > -1
+const isWeb = () => !isElectron()
+
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_API_BASE_URL || (isWeb() ? '/api' : 'http://localhost:3000'),
   timeout: 15000,
-  withCredentials: true,
+  // Web 环境下禁用 withCredentials 避免 CORS 问题
+  withCredentials: isElectron(),
 })
 
 request.interceptors.request.use(
