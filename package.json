@@ -5,27 +5,38 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"npm run server\" \"vite\"",
+    "dev:web": "vite",
+    "dev:electron": "node scripts/dev-electron.js",
     "build": "vite build && electron-builder",
     "build:web": "vite build --mode web",
     "preview": "vite preview",
     "server": "node server.js",
-    "start": "node server.js & vite"
+    "start": "npm run dev",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
     "axios": "^1.6.0",
     "naive-ui": "^2.43.2",
     "NeteaseCloudMusicApi": "^4.29.0",
     "pinia": "^2.1.0",
     "pinia-plugin-persistedstate": "^3.0.0",
-    "vue": "^3.4.0"
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@vitejs/plugin-vue": "^5.0.0",
+    "@vue/test-utils": "^2.4.6",
+    "concurrently": "^9.2.1",
     "electron": "^40.4.1",
     "electron-builder": "^26.7.0",
+    "jsdom": "^28.1.0",
     "vite": "^5.0.0",
     "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6"
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "vitest": "^4.0.18"
   }
 }

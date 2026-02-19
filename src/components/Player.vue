@@ -17,6 +17,18 @@ const playerStore = usePlayerStore()
 
 const currentSong = computed(() => playerStore.currentSongInfo)
 
+const defaultCover = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22%3E%3Crect fill=%22%23d1d5d8%22 width=%22300%22 height=%22300%22/%3E%3C/svg%3E'
+
+function isValidImageUrl(url) {
+  if (!url) return false
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 const progressPercent = computed(() => {
   if (!playerStore.duration) return 0
   return (playerStore.progress / playerStore.duration) * 100
@@ -68,7 +80,7 @@ function handleVolumeClick(e) {
       <div class="corner corner-bl"></div>
       <div class="corner corner-br"></div>
       <img
-        :src="currentSong?.cover || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22%3E%3Crect fill=%22%23d1d5d8%22 width=%22300%22 height=%22300%22/%3E%3C/svg%3E'"
+        :src="isValidImageUrl(currentSong?.cover) ? currentSong.cover : defaultCover"
         :alt="currentSong?.name"
         class="cover-img"
         loading="lazy"

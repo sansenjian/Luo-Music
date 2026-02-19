@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
 import { useToastStore } from '../store/toastStore'
 import { useSearch } from '../composables/useSearch'
@@ -16,6 +16,11 @@ const toastStore = useToastStore()
 const { searchKeyword, loading, handleSearch } = useSearch()
 
 const activeTab = ref('lyric')
+
+// 检测是否在 Electron 环境
+const isElectron = computed(() => {
+  return typeof window.electronAPI !== 'undefined'
+})
 
 async function onSearch() {
   const success = await handleSearch()
@@ -102,7 +107,7 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <div class="window-controls">
+      <div v-if="isElectron" class="window-controls">
         <button class="win-btn" @click="minimizeWindow" title="Minimize">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>

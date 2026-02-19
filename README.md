@@ -1,6 +1,8 @@
 # luo_music
 
-基于 Vue 3 + Pinia + Electron 的音乐播放器
+基于 Vue 3 + Pinia + Electron 的跨平台音乐播放器
+
+> ⚠️ **已知问题**：使用「沉浸式翻译」浏览器插件可能导致歌词不显示。如果遇到歌词不显示的问题，请尝试禁用该插件或将其加入白名单。
 
 ## 功能特性
 
@@ -36,6 +38,8 @@
 
 ```
 luo_music/
+├── api/              # Vercel Serverless Function
+│   └── index.js      # API 入口
 ├── electron/         # Electron 主进程代码
 │   ├── main.js       # 主进程入口
 │   └── preload.js    # 预加载脚本
@@ -48,11 +52,22 @@ luo_music/
 │   ├── assets/       # 静态资源
 │   ├── App.vue       # 根组件
 │   └── main.js       # 入口文件
-├── server.js         # 内置 API 服务入口
+├── server.js         # 本地 API 服务入口
 ├── package.json
 ├── vite.config.js
+├── vercel.json       # Vercel 部署配置
 └── index.html
 ```
+
+## 环境支持
+
+本项目支持三种运行环境：
+
+| 环境 | 适用场景 | API 服务 | 部署方式 |
+|------|----------|----------|----------|
+| **Web 开发** | 本地开发调试 | 本地 Node.js 服务 | `npm run dev` |
+| **Electron 桌面** | Windows/Mac/Linux 桌面应用 | 内置/本地服务 | `npm run electron:dev` |
+| **Vercel 线上** | 线上 Web 访问 | Vercel Serverless Function | 自动部署 |
 
 ## 快速开始
 
@@ -67,46 +82,142 @@ cd luo_music
 npm install
 ```
 
-### 启动开发环境
+---
 
-推荐同时启动 API 服务和前端开发服务器：
+## 🌐 Web 开发环境
 
+### 启动开发服务器
+
+需要同时启动 API 服务和前端开发服务器：
+
+**方式一：使用单个命令（推荐）**
 ```bash
 npm start
 ```
 
-或者分别启动：
-
+**方式二：分别启动（调试时使用）**
 ```bash
-# 终端 1：启动 API 服务 (端口 3000)
+# 终端 1：启动 API 服务 (端口 14532)
 npm run server
 
-# 终端 2：启动前端 (端口 5173)
+# 终端 2：启动前端开发服务器 (端口 5173)
 npm run dev
 ```
 
-### 构建应用
-
-构建 Electron 桌面应用（Windows/Mac/Linux）：
-
-```bash
-npm run build
-```
-
-仅构建 Web 版本：
+### 构建 Web 版本
 
 ```bash
 npm run build:web
 ```
 
-## API 说明
+构建输出目录：`dist/`
 
-本项目内置了网易云音乐 API 服务（基于 `NeteaseCloudMusicApi`），默认运行在 `http://localhost:3000`。
-前端请求会自动代理到该地址。
+---
 
-无需额外克隆或配置 API 项目。
+## 💻 Electron 桌面环境
 
-## 设计风格
+### 开发模式
+
+```bash
+# 同时启动 API 服务和 Electron 应用
+npm run electron:dev
+```
+
+### 构建桌面应用
+
+```bash
+# 构建所有平台
+npm run build
+
+# 仅构建 Windows
+npm run build:win
+
+# 仅构建 macOS
+npm run build:mac
+
+# 仅构建 Linux
+npm run build:linux
+```
+
+构建输出目录：`dist-electron/`
+
+### Electron 特性
+
+- **窗口控制**：支持最小化、最大化、关闭
+- **紧凑模式**：按 ESC 键切换迷你播放器
+- **系统托盘**：最小化到托盘
+- **全局快捷键**：支持媒体键控制
+
+---
+
+## ☁️ Vercel 线上部署
+
+### 自动部署
+
+1. Fork 本项目到 GitHub
+2. 在 Vercel 导入项目
+3. 配置环境变量（可选）：
+   - `VITE_API_BASE_URL` - API 基础 URL（默认使用 Vercel Serverless Function）
+4. 部署完成
+
+### Vercel 配置说明
+
+项目已配置好 `vercel.json`，包含：
+- API 路由重写（`/api/*` → Serverless Function）
+- CORS 跨域支持
+- 静态资源缓存策略
+- 10 秒函数执行时间限制
+
+### 本地预览 Vercel 构建
+
+```bash
+# 安装 Vercel CLI
+npm i -g vercel
+
+# 本地预览
+vercel dev
+```
+
+---
+
+## ⚙️ 环境变量配置
+
+创建 `.env` 文件（开发环境）：
+
+```bash
+# API 基础 URL
+# Web 开发：http://localhost:14532
+# Vercel 部署：/api（使用相对路径）
+VITE_API_BASE_URL=http://localhost:14532
+
+# 开发服务器端口
+VITE_DEV_SERVER_PORT=5173
+```
+
+---
+
+## 🔌 API 说明
+
+### 本地开发
+
+内置网易云音乐 API 服务（基于 `NeteaseCloudMusicApi`），默认运行在 `http://localhost:14532`。
+
+### Vercel 部署
+
+使用 Serverless Function 运行 API，路径为 `/api/*`。
+
+### 主要 API 端点
+
+| 端点 | 说明 |
+|------|------|
+| `/search` | 歌曲搜索 |
+| `/song/url` | 获取音乐 URL |
+| `/lyric` | 获取歌词 |
+| `/playlist/detail` | 歌单详情 |
+
+---
+
+## 🎨 设计风格
 
 采用工业风设计：
 - **背景色**: 米白色 (#f5f5f0)
@@ -114,19 +225,40 @@ npm run build:web
 - **边框**: 粗黑边框 (2px solid)
 - **字体**: Inter + Noto Sans SC + JetBrains Mono
 
-## 状态持久化
+---
+
+## 💾 状态持久化
 
 以下状态会自动持久化到 localStorage：
 - `volume` - 音量设置
 - `playMode` - 播放模式
 - `lyricType` - 歌词显示类型
-- `songList` - 播放列表
-- `currentIndex` - 当前播放索引
 - `isCompact` - 紧凑模式状态
 
-## 参考资料
+**注意**：播放列表和当前索引不持久化，避免 URL 过期问题。
+
+---
+
+## 🐛 常见问题
+
+### Q: 搜索提示 "Search failed. Please check your connection"
+**A**: 检查 API 服务是否启动：`npm run server`
+
+### Q: 歌词不显示
+**A**: 歌词解析支持标准 LRC 格式，包括 `[00:00.00]` 和 `[00:00:00]` 两种时间戳格式
+
+### Q: Electron 应用无法播放音乐
+**A**: 检查 `webSecurity` 设置，确保音频跨域配置正确
+
+### Q: Vercel 部署后 API 超时
+**A**: Vercel 免费版函数执行时间限制为 10 秒，部分 API 可能需要重试
+
+---
+
+## 📚 参考资料
 
 - [Hydrogen Music](https://github.com/Kaidesuyo/Hydrogen-Music) - 参考架构设计
 - [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi) - 网易云音乐 API
 - [Electron 文档](https://www.electronjs.org/)
 - [Vue 3 文档](https://vuejs.org/)
+- [Vercel 文档](https://vercel.com/docs)

@@ -15,16 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on(channel, subscription)
       return () => ipcRenderer.removeListener(channel, subscription)
     }
+    throw new Error(`Invalid channel: ${channel}`)
   }
 })
 
-window.addEventListener('DOMContentLoaded', () => {
-  const replaceText = (selector, text) => {
-    const element = document.getElementById(selector)
-    if (element) element.innerText = text
-  }
-
-  for (const dependency of ['chrome', 'node', 'electron']) {
-    replaceText(`${dependency}-version`, process.versions[dependency])
-  }
-})
+// 移除 DOMContentLoaded 中的版本信息显示，避免 process.versions 访问问题

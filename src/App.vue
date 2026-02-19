@@ -1,9 +1,13 @@
 <script setup>
-import Home from './views/Home.vue'
+import { Analytics } from '@vercel/analytics/vue'
+
+// 检测是否为 Electron 环境
+const isElectron = window.navigator.userAgent.indexOf('Electron') > -1
 </script>
 
 <template>
-  <Home />
+  <Analytics v-if="!isElectron" />
+  <router-view />
 </template>
 
 <style>
