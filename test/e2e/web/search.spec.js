@@ -2,7 +2,13 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Search Functionality', () => {
   test.beforeEach(async ({ page }) => {
+    // Clear storage to ensure deterministic state
     await page.goto('/')
+    await page.evaluate(() => {
+      localStorage.clear()
+      sessionStorage.clear()
+    })
+    await page.reload()
   })
 
   test('should display search input', async ({ page }) => {
@@ -38,12 +44,17 @@ test.describe('Search Functionality', () => {
     const playlist = page.locator('.playlist')
     await expect(playlist).toBeVisible()
 
-    // Wait a bit for results to render
-    await page.waitForTimeout(2000)
-
-    // Assert that results are rendered or empty state is shown
+    // Wait for results to render or empty state to appear
     const listItems = page.locator('.list-item')
     const emptyState = page.locator('.playlist .empty-state')
+
+    // Wait for either results or empty state
+    await Promise.race([
+      listItems.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+      emptyState.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+    ])
+
+    // Assert that results are rendered or empty state is shown
     const hasResults = await listItems.count() > 0
     const hasEmptyState = await emptyState.isVisible().catch(() => false)
 
@@ -75,12 +86,9 @@ test.describe('Search Functionality', () => {
     const playlist = page.locator('.playlist')
     await expect(playlist).toBeVisible()
 
-    // Wait a bit for UI to update
-    await page.waitForTimeout(2000)
-
-    // Assert empty state is displayed (specific to playlist)
+    // Wait for empty state to appear
     const emptyState = page.locator('.playlist .empty-state')
-    await expect(emptyState).toBeVisible()
+    await expect(emptyState).toBeVisible({ timeout: 5000 })
 
     // Assert no list items are present
     const listItems = page.locator('.list-item')
@@ -117,7 +125,13 @@ test.describe('Search Functionality', () => {
 
 test.describe('Playlist Functionality', () => {
   test.beforeEach(async ({ page }) => {
+    // Clear storage to ensure deterministic blank state
     await page.goto('/')
+    await page.evaluate(() => {
+      localStorage.clear()
+      sessionStorage.clear()
+    })
+    await page.reload()
   })
 
   test('should display playlist tab', async ({ page }) => {
@@ -148,7 +162,13 @@ test.describe('Playlist Functionality', () => {
 
 test.describe('Lyrics Functionality', () => {
   test.beforeEach(async ({ page }) => {
+    // Clear storage to ensure deterministic state
     await page.goto('/')
+    await page.evaluate(() => {
+      localStorage.clear()
+      sessionStorage.clear()
+    })
+    await page.reload()
   })
 
   test('should display lyrics panel when tab is clicked', async ({ page }) => {
