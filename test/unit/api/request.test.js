@@ -68,10 +68,10 @@ describe('API Request Configuration', () => {
       })
 
       const { default: request } = await import('../../../src/api/request.js')
-      
+
       expect(axios.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          timeout: 15000
+          timeout: 30000
         })
       )
     })
