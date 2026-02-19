@@ -127,3 +127,7 @@ release
 
 # Trae IDE
 .trae/
+
+# Playwright
+playwright-report/
+test-results/
