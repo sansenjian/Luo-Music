@@ -70,12 +70,14 @@ test.describe('Search Functionality', () => {
     expect(itemCount).toBe(0)
   })
 
-  test('should handle empty search', async ({ page }) => {
+  test('should show error toast for empty search', async ({ page }) => {
     const searchButton = page.locator('.exec-btn')
     await searchButton.click()
 
-    // Should show toast error or stay on current page
-    await page.waitForTimeout(1000)
+    // Should show toast error
+    const toastError = page.locator('.toast.error')
+    await expect(toastError).toBeVisible()
+    await expect(toastError).toContainText('Please enter a search keyword')
 
     // Check that page is still functional
     const searchInput = page.locator('.cyber-input')
@@ -131,15 +133,19 @@ test.describe('Lyrics Functionality', () => {
     await page.goto('/')
   })
 
-  test('should display lyrics tab', async ({ page }) => {
+  test('should display lyrics panel when tab is clicked', async ({ page }) => {
     // Click lyrics tab
     const lyricsTab = page.locator('.tab').filter({ hasText: /Lyrics/i }).first()
     await expect(lyricsTab).toBeVisible()
     await lyricsTab.click()
 
-    // Lyrics component should be visible
+    // Lyrics panel should be visible
     const lyricPanel = page.locator('.right-panel')
     await expect(lyricPanel).toBeVisible()
+
+    // Check for lyrics content area
+    const lyricsContent = page.locator('.lyrics, .lyric-content, [class*="lyric"]')
+    await expect(lyricsContent).toBeVisible()
   })
 })
 
