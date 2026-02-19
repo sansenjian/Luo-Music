@@ -1,0 +1,10 @@
+{
+  "files.exclude": {
+    "playwright-report/**": true,
+    "test-results/**": true
+  },
+  "search.exclude": {
+    "playwright-report/**": true,
+    "test-results/**": true
+  }
+}

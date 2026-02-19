@@ -68,12 +68,57 @@ describe('API Request Configuration', () => {
       })
 
       const { default: request } = await import('../../../src/api/request.js')
-      
+
       expect(axios.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          timeout: 15000
+          timeout: 30000
         })
       )
+    })
+
+    it('should have timeout of exactly 30000ms to prevent regression', async () => {
+      Object.defineProperty(window.navigator, 'userAgent', {
+        value: 'Mozilla/5.0 Chrome/120.0.0.0',
+        configurable: true
+      })
+
+      const { default: request } = await import('../../../src/api/request.js')
+
+      // Assert axios.create was called exactly once
+      expect(axios.create).toHaveBeenCalledTimes(1)
+
+      // Get the config passed to axios.create
+      const createCall = axios.create.mock.calls[0][0]
+
+      // Strict assertion: timeout must be exactly 30000
+      expect(createCall.timeout).toBe(30000)
+
+      // Also verify it's not a lower value that might have been accidentally set
+      expect(createCall.timeout).toBeGreaterThanOrEqual(30000)
+
+      // Verify the config object contains expected properties
+      expect(createCall).toMatchObject({
+        baseURL: expect.any(String),
+        timeout: 30000,
+        withCredentials: expect.any(Boolean)
+      })
+    })
+
+    it('should not allow timeout below 30000ms', async () => {
+      Object.defineProperty(window.navigator, 'userAgent', {
+        value: 'Mozilla/5.0 Chrome/120.0.0.0',
+        configurable: true
+      })
+
+      const { default: request } = await import('../../../src/api/request.js')
+
+      const createCall = axios.create.mock.calls[0][0]
+
+      // Ensure timeout is not set to lower values that could cause issues
+      expect(createCall.timeout).not.toBe(15000)
+      expect(createCall.timeout).not.toBe(10000)
+      expect(createCall.timeout).not.toBe(5000)
+      expect(createCall.timeout).toBe(30000)
     })
   })
 
