@@ -56,9 +56,10 @@ export function animateAlbumCover(element) {
 export function animateProgressBar(element, progress) {
   if (!element) return
 
+  // Use shorter duration to prevent animation stacking during playback
   animate(element, {
     width: `${progress}%`,
-    duration: 300,
+    duration: 100,
     ease: 'outQuad'
   })
 }
@@ -116,9 +117,8 @@ export function animateListItems(elements) {
 /**
  * 音量图标动画
  * @param {HTMLElement} element - 音量图标元素
- * @param {number} volume - 音量值 (0-1)
  */
-export function animateVolumeIcon(element, volume) {
+export function animateVolumeIcon(element) {
   if (!element) return
 
   animate(element, {
