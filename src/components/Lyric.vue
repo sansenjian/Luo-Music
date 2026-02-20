@@ -31,7 +31,7 @@ function scrollToActiveLine() {
   
   const container = lyricScrollArea.value
   
-  // Use offsetTop for stable position calculation
+  // Use offsetTop which is not affected by CSS transforms
   const lineOffsetTop = activeLine.offsetTop
   const lineHeight = activeLine.offsetHeight
   const containerHeight = container.clientHeight
@@ -42,11 +42,18 @@ function scrollToActiveLine() {
   // Cancel previous animation
   if (scrollAnim) scrollAnim.pause()
   
-  // Use anime.js for smooth scroll
-  scrollAnim = animate(container, {
-    scrollTop: targetScroll,
+  // Create a scroll animation object
+  const startScroll = container.scrollTop
+  const scrollObj = { value: startScroll }
+  
+  // Use anime.js to animate the scroll value
+  scrollAnim = animate(scrollObj, {
+    value: targetScroll,
     duration: 300,
-    ease: 'out(2)'
+    ease: 'out(2)',
+    onUpdate: () => {
+      container.scrollTop = scrollObj.value
+    }
   })
 }
 
@@ -158,8 +165,8 @@ onUnmounted(() => {
 }
 
 .lyrics-list {
+  position: relative; /* Make this the offsetParent for lyric-line */
   padding: 50vh 40px; /* Add padding to center first/last lines */
-  /* Remove transform transition as we use native scroll */
 }
 
 /* Compact mode styles for Lyric */
