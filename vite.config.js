@@ -24,6 +24,8 @@ export default defineConfig(({ mode }) => {
             const srcPath = path.resolve('electron/preload.cjs')
             const destPath = path.resolve('dist-electron/preload.cjs')
             if (fs.existsSync(srcPath)) {
+              // Ensure the destination directory exists
+              fs.mkdirSync(path.dirname(destPath), { recursive: true })
               fs.copyFileSync(srcPath, destPath)
             }
             options.reload()

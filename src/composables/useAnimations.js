@@ -86,12 +86,15 @@ export function animatePageEnter(element) {
 export function animatePageLeave(element) {
   if (!element) return Promise.resolve()
 
-  return animate(element, {
-    opacity: [1, 0],
-    translateY: [0, -20],
-    duration: 300,
-    ease: 'inCubic'
-  }).then(() => {})
+  return new Promise((resolve) => {
+    animate(element, {
+      opacity: [1, 0],
+      translateY: [0, -20],
+      duration: 300,
+      ease: 'inCubic',
+      complete: resolve
+    })
+  })
 }
 
 /**

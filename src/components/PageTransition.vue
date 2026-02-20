@@ -10,19 +10,30 @@
 </template>
 
 <script setup>
-import { animatePageEnter, animatePageLeave } from '../composables/useAnimations.js'
+import { animate } from 'animejs'
 
 function onBeforeEnter(el) {
   el.style.opacity = 0
 }
 
 function onEnter(el, done) {
-  animatePageEnter(el)
-  setTimeout(done, 400)
+  animate(el, {
+    opacity: [0, 1],
+    translateY: [20, 0],
+    duration: 400,
+    ease: 'outCubic',
+    complete: done
+  })
 }
 
 function onLeave(el, done) {
-  animatePageLeave(el).then(done)
+  animate(el, {
+    opacity: [1, 0],
+    translateY: [0, -20],
+    duration: 300,
+    ease: 'inCubic',
+    complete: done
+  })
 }
 </script>
 

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
 import { animateButtonClick, animatePlayPause, animateAlbumCover, animateProgressBar, animateLoopMode } from '../composables/useAnimations.js'
 
@@ -57,16 +57,27 @@ const coverUrl = computed(() => {
 })
 
 const playModeSvg = computed(() => {
-  // SVG paths for different play modes to match other button styles
+  // SVG elements for different play modes
+  // Each mode contains an array of SVG elements with type and attributes
   const modes = [
     // 0: 顺序播放 (sequential)
-    '<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/><path d="M17 10l5 5-5 5V10z"/>',
+    [
+      { type: 'path', attrs: { d: 'M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z' } },
+      { type: 'path', attrs: { d: 'M17 10l5 5-5 5V10z' } }
+    ],
     // 1: 列表循环 (list loop)
-    '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>',
+    [
+      { type: 'path', attrs: { d: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z' } }
+    ],
     // 2: 单曲循环 (single loop)
-    '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/><circle cx="12" cy="12" r="2"/>',
+    [
+      { type: 'path', attrs: { d: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z' } },
+      { type: 'circle', attrs: { cx: '12', cy: '12', r: '2' } }
+    ],
     // 3: 随机播放 (shuffle)
-    '<path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>'
+    [
+      { type: 'path', attrs: { d: 'M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z' } }
+    ]
   ]
   const index = Math.max(0, Math.min(playerStore.playMode, modes.length - 1))
   return modes[index]
@@ -151,6 +162,18 @@ function updateVolumeFromEvent(e) {
   const percent = Math.max(0, Math.min(1, (e.clientX - volumeRect.left) / volumeRect.width))
   playerStore.setVolume(percent)
 }
+
+// Cleanup event listeners on component unmount
+onBeforeUnmount(() => {
+  if (isDraggingProgress.value) {
+    document.removeEventListener('mousemove', handleProgressMouseMove)
+    document.removeEventListener('mouseup', handleProgressMouseUp)
+  }
+  if (isDraggingVolume.value) {
+    document.removeEventListener('mousemove', handleVolumeMouseMove)
+    document.removeEventListener('mouseup', handleVolumeMouseUp)
+  }
+})
 
 // Animation handlers
 function onPlayButtonClick() {
@@ -240,7 +263,12 @@ watch(() => volumePercent.value, (newVal) => {
 
     <div class="controls">
       <button ref="loopButtonRef" class="ctrl-btn loop-btn" @click="onLoopButtonClick" :title="playModeText">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" v-html="playModeSvg"></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <template v-for="(element, index) in playModeSvg" :key="index">
+            <path v-if="element.type === 'path'" v-bind="element.attrs" />
+            <circle v-else-if="element.type === 'circle'" v-bind="element.attrs" />
+          </template>
+        </svg>
       </button>
 
       <button ref="prevButtonRef" class="ctrl-btn" @click="onPrevButtonClick">
