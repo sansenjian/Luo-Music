@@ -199,7 +199,6 @@ onUnmounted(() => {
   border-left-color: var(--accent);
   opacity: 1;
   font-weight: 700;
-  transform: scale(1.05); /* Slight zoom for active line */
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
 }
 
