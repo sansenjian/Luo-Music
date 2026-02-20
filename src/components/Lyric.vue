@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
+import { animate } from 'animejs'
 
 const playerStore = usePlayerStore()
 
@@ -8,7 +9,7 @@ const lyricContainer = ref(null)
 const lyricScrollArea = ref(null)
 let pauseActiveTimer = null
 let isUserScrolling = false
-let scrollRafId = null
+let scrollAnim = null
 
 // Use store state directly
 const currentLyricIndex = computed(() => playerStore.currentLyricIndex)
@@ -25,25 +26,27 @@ function handleLyricClick(time) {
 function scrollToActiveLine() {
   if (isUserScrolling || !lyricScrollArea.value) return
   
-  // 取消之前的滚动动画
-  if (scrollRafId) {
-    cancelAnimationFrame(scrollRafId)
-  }
+  const activeLine = lyricScrollArea.value?.querySelector('.lyric-line.active')
+  if (!activeLine) return
   
-  scrollRafId = requestAnimationFrame(() => {
-    const activeLine = lyricScrollArea.value?.querySelector('.lyric-line.active')
-    if (activeLine) {
-      const container = lyricScrollArea.value
-      const lineRect = activeLine.getBoundingClientRect()
-      const containerRect = container.getBoundingClientRect()
-      
-      const targetScroll = container.scrollTop + lineRect.top - containerRect.top - containerRect.height / 2 + lineRect.height / 2
-      
-      container.scrollTo({
-        top: targetScroll,
-        behavior: 'smooth'
-      })
-    }
+  const container = lyricScrollArea.value
+  
+  // Use offsetTop for stable position calculation
+  const lineOffsetTop = activeLine.offsetTop
+  const lineHeight = activeLine.offsetHeight
+  const containerHeight = container.clientHeight
+  
+  // Target: center the active line
+  const targetScroll = Math.max(0, lineOffsetTop - containerHeight / 2 + lineHeight / 2)
+  
+  // Cancel previous animation
+  if (scrollAnim) scrollAnim.pause()
+  
+  // Use anime.js for smooth scroll
+  scrollAnim = animate(container, {
+    scrollTop: targetScroll,
+    duration: 300,
+    ease: 'out(2)'
   })
 }
 
@@ -68,8 +71,8 @@ onUnmounted(() => {
   if (pauseActiveTimer) {
     clearTimeout(pauseActiveTimer)
   }
-  if (scrollRafId) {
-    cancelAnimationFrame(scrollRafId)
+  if (scrollAnim) {
+    scrollAnim.pause()
   }
 })
 </script>
@@ -199,6 +202,7 @@ onUnmounted(() => {
   border-left-color: var(--accent);
   opacity: 1;
   font-weight: 700;
+  transform: scale(1.05);
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
 }
 
