@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
-import { useAnimations } from '../composables/useAnimations'
+import { animateButtonClick, animatePlayPause, animateAlbumCover, animateProgressBar, animateLoopMode } from '../composables/useAnimations.js'
 
 const props = defineProps({
   compact: {
@@ -15,10 +15,10 @@ const props = defineProps({
 })
 
 const playerStore = usePlayerStore()
-const { animateButton } = useAnimations()
 
-const prevButtonRef = ref(null)
+// Refs for animation targets
 const playButtonRef = ref(null)
+const prevButtonRef = ref(null)
 const nextButtonRef = ref(null)
 const loopButtonRef = ref(null)
 const coverImgRef = ref(null)
@@ -57,10 +57,15 @@ const coverUrl = computed(() => {
 })
 
 const playModeSvg = computed(() => {
+  // SVG paths for different play modes to match other button styles
   const modes = [
-    '<path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/>',
+    // 0: 顺序播放 (sequential)
+    '<path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/><path d="M17 10l5 5-5 5V10z"/>',
+    // 1: 列表循环 (list loop)
     '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>',
+    // 2: 单曲循环 (single loop)
     '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/><circle cx="12" cy="12" r="2"/>',
+    // 3: 随机播放 (shuffle)
     '<path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>'
   ]
   const index = Math.max(0, Math.min(playerStore.playMode, modes.length - 1))
@@ -149,24 +154,48 @@ function updateVolumeFromEvent(e) {
 
 // Animation handlers
 function onPlayButtonClick() {
-  animateButton(playButtonRef.value)
+  animateButtonClick(playButtonRef.value)
+  animatePlayPause(playButtonRef.value, !playerStore.playing)
   playerStore.togglePlay()
 }
 
 function onPrevButtonClick() {
-  animateButton(prevButtonRef.value)
+  animateButtonClick(prevButtonRef.value)
   playerStore.playPrev()
 }
 
 function onNextButtonClick() {
-  animateButton(nextButtonRef.value)
+  animateButtonClick(nextButtonRef.value)
   playerStore.playNext()
 }
 
 function onLoopButtonClick() {
-  animateButton(loopButtonRef.value)
+  animateLoopMode(loopButtonRef.value)
   playerStore.togglePlayMode()
 }
+
+// Watch for song changes to animate cover
+watch(() => playerStore.currentSong, () => {
+  nextTick(() => {
+    if (coverImgRef.value) {
+      animateAlbumCover(coverImgRef.value)
+    }
+  })
+}, { immediate: true })
+
+// Watch for progress changes to animate progress bar
+watch(() => progressPercent.value, (newVal) => {
+  if (progressFillRef.value) {
+    animateProgressBar(progressFillRef.value, newVal)
+  }
+})
+
+// Watch for volume changes to animate volume bar
+watch(() => volumePercent.value, (newVal) => {
+  if (volumeFillRef.value) {
+    animateProgressBar(volumeFillRef.value, newVal)
+  }
+})
 </script>
 
 <template>
@@ -269,13 +298,15 @@ function onLoopButtonClick() {
   width: 100%;
   height: 100%;
   position: relative;
+  /* Removed padding-top: 4px; to let it center naturally */
   box-sizing: border-box;
 }
 
 .player-section.is-compact .progress-section {
-  display: none;
+  display: none; /* Hide original progress bar container completely */
 }
 
+/* Ensure controls are centered in compact mode */
 .player-section.is-compact .controls {
   display: flex;
   gap: 20px;
@@ -284,7 +315,7 @@ function onLoopButtonClick() {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%); /* Perfectly centered */
   margin: 0;
 }
 
@@ -292,38 +323,39 @@ function onLoopButtonClick() {
   display: flex;
   width: 120px;
   flex-shrink: 0;
-  margin-left: auto;
+  margin-left: auto; /* Push to right edge */
   border-top: none;
   padding-top: 0;
   margin-right: 0;
 }
-
+/* New Top Progress Bar Styles */
 .top-progress-container {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 4px;
-  background: transparent;
+  height: 4px; /* Default small height */
+  background: transparent; /* Transparent background initially */
   cursor: pointer;
   z-index: 100;
-  overflow: visible;
+  overflow: visible; /* Allow hover area to expand */
   transition: all 0.2s ease;
 }
 
+/* Add a pseudo-element to increase hover area without changing visual height initially */
 .top-progress-container::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 10px;
+  height: 10px; /* Invisible hit area */
   z-index: -1;
 }
 
 .top-progress-container:hover {
-  height: 20px;
-  background: #000;
+  height: 20px; /* Expand on hover */
+  background: #000; /* Show black background on hover */
 }
 
 .top-progress-fill {
@@ -332,9 +364,16 @@ function onLoopButtonClick() {
   width: 0%;
   transition: width 0.1s linear, height 0.2s ease;
   pointer-events: none;
-  opacity: 1;
+  opacity: 1; /* Fully visible accent color */
 }
 
+/* Hide background of progress bar when not hovered to make it look like just a thin line */
+.top-progress-container:not(:hover) .top-progress-fill {
+  /* When not hovered, maybe we want just the fill to be visible as a thin line */
+  /* And the rest is transparent */
+}
+
+/* Time display only visible on hover */
 .top-time-display {
   position: absolute;
   top: 0;
@@ -349,12 +388,12 @@ function onLoopButtonClick() {
   pointer-events: none;
   z-index: 12;
   text-shadow: 1px 1px 0 #000;
-  opacity: 0;
+  opacity: 0; /* Hidden by default */
   transition: opacity 0.2s ease;
 }
 
 .top-progress-container:hover .top-time-display {
-  opacity: 1;
+  opacity: 1; /* Show on hover */
 }
 
 .player-section.is-compact .cover-frame {
@@ -389,13 +428,13 @@ function onLoopButtonClick() {
 .player-section.is-compact .track-info {
   text-align: left;
   margin: 0;
-  width: auto;
-  max-width: 200px;
-  flex-shrink: 1;
+  width: auto; /* Allow width to fit content */
+  max-width: 200px; /* But cap it */
+  flex-shrink: 1; /* Allow shrinking */
   display: flex;
   flex-direction: column;
   justify-content: center;
-  margin-right: 20px;
+  margin-right: 20px; /* Add spacing before center controls */
 }
 
 .player-section.is-compact .track-title {
@@ -410,6 +449,15 @@ function onLoopButtonClick() {
   padding: 0;
 }
 
+/* Removed redundant styles that might conflict */
+/* .player-section.is-compact .controls { ... } */
+/* .player-section.is-compact .volume-row { ... } */
+
+/* Clean up old global selectors */
+/* Footer Player Specific Overrides */
+/* :global(.footer-player.player-section) ... removed */
+
+/* Footer mode styles (Compact Player at bottom) */
 .footer-player .cover-frame {
   width: 60px;
   max-width: 60px;
@@ -449,7 +497,7 @@ function onLoopButtonClick() {
 }
 
 .footer-player .time-row {
-  display: none;
+  display: none; /* Hide time text to save space or move it */
 }
 
 .footer-player .progress-bar {
@@ -459,7 +507,7 @@ function onLoopButtonClick() {
 }
 
 .footer-player .controls {
-  order: -1;
+  order: -1; /* Move controls to left of progress bar */
   gap: 16px;
 }
 
@@ -477,6 +525,7 @@ function onLoopButtonClick() {
   height: 40px;
 }
 
+/* Compact mode styles - kept for reference if needed elsewhere */
 :global(.main.player-compact) .cover-frame {
   width: 60px;
   max-width: 60px;
@@ -556,24 +605,25 @@ function onLoopButtonClick() {
 .corner-br { bottom: -5px; right: -5px; }
 
 .cover-img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-  background: var(--bg-dark);
-  margin: 0;
-}
-
-.player-section:not(.footer-player) .cover-img {
-  top: 8px;
-  left: 8px;
-  width: calc(100% - 16px);
-  height: calc(100% - 16px);
-}
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    background: var(--bg-dark);
+    margin: 0;
+  }
+  
+  /* Add padding for default cover frame mode to accommodate corners */
+  .player-section:not(.footer-player) .cover-img {
+    top: 8px;
+    left: 8px;
+    width: calc(100% - 16px);
+    height: calc(100% - 16px);
+  }
 
 .track-info {
   margin-top: 2px;

@@ -1,5 +1,6 @@
 <script setup>
 import { Analytics } from '@vercel/analytics/vue'
+import PageTransition from './components/PageTransition.vue'
 
 // 检测是否为 Electron 环境
 const isElectron = window.navigator.userAgent.indexOf('Electron') > -1
