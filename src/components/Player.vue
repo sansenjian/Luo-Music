@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
+import { animate, animateButtonClick, animatePlayPause, animateAlbumCover, animateLoopMode } from '../composables/useAnimations.js'
 
 const props = defineProps({
   compact: {
@@ -15,12 +16,23 @@ const props = defineProps({
 
 const playerStore = usePlayerStore()
 
+// Refs for animation targets
+const playButtonRef = ref(null)
+const prevButtonRef = ref(null)
+const nextButtonRef = ref(null)
+const loopButtonRef = ref(null)
+const coverImgRef = ref(null)
+const progressFillRef = ref(null)
+const volumeFillRef = ref(null)
+
 const currentSong = computed(() => playerStore.currentSongInfo)
 
 const defaultCover = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22%3E%3Crect fill=%22%23d1d5d8%22 width=%22300%22 height=%22300%22/%3E%3C/svg%3E'
 
 function isValidImageUrl(url) {
-  if (!url) return false
+  if (!url || url === '') return false
+  // Allow data URLs (for default cover) and http/https URLs
+  if (url.startsWith('data:')) return true
   try {
     const parsed = new URL(url)
     return parsed.protocol === 'http:' || parsed.protocol === 'https:'
@@ -36,8 +48,37 @@ const progressPercent = computed(() => {
 
 const volumePercent = computed(() => playerStore.volume * 100)
 
-const playModeIcon = computed(() => {
-  const modes = ['↻', '🔁', '🔂', '🔀']
+const coverUrl = computed(() => {
+  const url = currentSong.value?.cover
+  if (isValidImageUrl(url)) {
+    return url
+  }
+  return defaultCover
+})
+
+const playModeSvg = computed(() => {
+  // SVG elements for different play modes
+  // Each mode contains an array of SVG elements with type and attributes
+  const modes = [
+    // 0: 顺序播放 (sequential)
+    [
+      { type: 'path', attrs: { d: 'M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z' } },
+      { type: 'path', attrs: { d: 'M17 10l5 5-5 5V10z' } }
+    ],
+    // 1: 列表循环 (list loop)
+    [
+      { type: 'path', attrs: { d: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z' } }
+    ],
+    // 2: 单曲循环 (single loop)
+    [
+      { type: 'path', attrs: { d: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z' } },
+      { type: 'circle', attrs: { cx: '12', cy: '12', r: '2' } }
+    ],
+    // 3: 随机播放 (shuffle)
+    [
+      { type: 'path', attrs: { d: 'M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z' } }
+    ]
+  ]
   const index = Math.max(0, Math.min(playerStore.playMode, modes.length - 1))
   return modes[index]
 })
@@ -56,19 +97,163 @@ function handleProgressClick(e) {
   playerStore.seek(time)
 }
 
+const isDraggingProgress = ref(false)
+const isDraggingVolume = ref(false)
+let progressRect = null
+
+function handleProgressMouseDown(e) {
+  isDraggingProgress.value = true
+  progressRect = e.currentTarget.getBoundingClientRect()
+  updateProgressFromEvent(e)
+  document.addEventListener('mousemove', handleProgressMouseMove)
+  document.addEventListener('mouseup', handleProgressMouseUp)
+}
+
+function handleProgressMouseMove(e) {
+  if (!isDraggingProgress.value || !progressRect) return
+  updateProgressFromEvent(e)
+}
+
+function handleProgressMouseUp() {
+  isDraggingProgress.value = false
+  progressRect = null
+  document.removeEventListener('mousemove', handleProgressMouseMove)
+  document.removeEventListener('mouseup', handleProgressMouseUp)
+}
+
+function updateProgressFromEvent(e) {
+  if (!progressRect || progressRect.width === 0) return
+  const percent = Math.max(0, Math.min(1, (e.clientX - progressRect.left) / progressRect.width))
+  const time = percent * playerStore.duration
+  playerStore.seek(time)
+}
+
 function handleVolumeClick(e) {
   const rect = e.currentTarget.getBoundingClientRect()
   if (rect.width === 0) return
   const percent = (e.clientX - rect.left) / rect.width
   playerStore.setVolume(Math.max(0, Math.min(1, percent)))
 }
+
+let volumeRect = null
+
+function handleVolumeMouseDown(e) {
+  isDraggingVolume.value = true
+  volumeRect = e.currentTarget.getBoundingClientRect()
+  updateVolumeFromEvent(e)
+  document.addEventListener('mousemove', handleVolumeMouseMove)
+  document.addEventListener('mouseup', handleVolumeMouseUp)
+}
+
+function handleVolumeMouseMove(e) {
+  if (!isDraggingVolume.value || !volumeRect) return
+  updateVolumeFromEvent(e)
+}
+
+function handleVolumeMouseUp() {
+  isDraggingVolume.value = false
+  volumeRect = null
+  document.removeEventListener('mousemove', handleVolumeMouseMove)
+  document.removeEventListener('mouseup', handleVolumeMouseUp)
+}
+
+function updateVolumeFromEvent(e) {
+  if (!volumeRect || volumeRect.width === 0) return
+  const percent = Math.max(0, Math.min(1, (e.clientX - volumeRect.left) / volumeRect.width))
+  playerStore.setVolume(percent)
+}
+
+// Cleanup event listeners on component unmount
+onBeforeUnmount(() => {
+  if (isDraggingProgress.value) {
+    document.removeEventListener('mousemove', handleProgressMouseMove)
+    document.removeEventListener('mouseup', handleProgressMouseUp)
+  }
+  if (isDraggingVolume.value) {
+    document.removeEventListener('mousemove', handleVolumeMouseMove)
+    document.removeEventListener('mouseup', handleVolumeMouseUp)
+  }
+})
+
+// Animation handlers
+function onPlayButtonClick() {
+  animateButtonClick(playButtonRef.value)
+  animatePlayPause(playButtonRef.value, !playerStore.playing)
+  playerStore.togglePlay()
+}
+
+function onPrevButtonClick() {
+  animateButtonClick(prevButtonRef.value)
+  playerStore.playPrev()
+}
+
+function onNextButtonClick() {
+  animateButtonClick(nextButtonRef.value)
+  playerStore.playNext()
+}
+
+function onLoopButtonClick() {
+  animateLoopMode(loopButtonRef.value)
+  playerStore.togglePlayMode()
+}
+
+// Watch for song changes to animate cover
+watch(() => playerStore.currentSong, () => {
+  nextTick(() => {
+    if (coverImgRef.value) {
+      animateAlbumCover(coverImgRef.value)
+    }
+  })
+}, { immediate: true })
+
+// Anime.js instances for progress/volume bars
+let progressAnim = null
+let volumeAnim = null
+
+// Watch for progress changes - Anime.js driven
+watch(() => progressPercent.value, (newVal) => {
+  if (!progressFillRef.value) return
+  
+  if (progressAnim) progressAnim.pause()
+  
+  progressAnim = animate(progressFillRef.value, {
+    width: `${newVal}%`,
+    duration: 150,
+    ease: 'linear',
+    autoplay: true
+  })
+}, { flush: 'post' })
+
+// Watch for volume changes - Anime.js driven
+watch(() => volumePercent.value, (newVal) => {
+  if (!volumeFillRef.value) return
+  
+  if (volumeAnim) volumeAnim.pause()
+  
+  volumeAnim = animate(volumeFillRef.value, {
+    width: `${newVal}%`,
+    duration: 200,
+    ease: 'out(2)',
+    autoplay: true
+  })
+}, { flush: 'post' })
+
+// Initialize widths on mount
+onMounted(() => {
+  if (progressFillRef.value) {
+    progressFillRef.value.style.width = `${progressPercent.value}%`
+  }
+  if (volumeFillRef.value) {
+    volumeFillRef.value.style.width = `${volumePercent.value}%`
+  }
+})
 </script>
 
 <template>
   <div class="player-section" :class="{ 'is-compact': compact }">
     <!-- Progress bar on top for compact mode -->
-    <div v-if="compact" class="top-progress-container" @click="handleProgressClick">
-      <div class="top-progress-fill" :style="{ width: progressPercent + '%' }"></div>
+    <div v-if="compact" class="top-progress-container" @mousedown="handleProgressMouseDown">
+      <div class="top-progress-fill"></div>
       <div class="top-time-display">
         <span>{{ playerStore.formattedProgress }}</span> / <span>{{ playerStore.formattedDuration }}</span>
       </div>
@@ -80,7 +265,8 @@ function handleVolumeClick(e) {
       <div class="corner corner-bl"></div>
       <div class="corner corner-br"></div>
       <img
-        :src="isValidImageUrl(currentSong?.cover) ? currentSong.cover : defaultCover"
+        ref="coverImgRef"
+        :src="coverUrl"
         :alt="currentSong?.name"
         class="cover-img"
         loading="lazy"
@@ -98,23 +284,28 @@ function handleVolumeClick(e) {
         <span>{{ playerStore.formattedProgress }}</span>
         <span>{{ playerStore.formattedDuration }}</span>
       </div>
-      <div class="progress-bar" @click="handleProgressClick">
-        <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+      <div class="progress-bar" @mousedown="handleProgressMouseDown">
+        <div ref="progressFillRef" class="progress-fill"></div>
       </div>
     </div>
 
     <div class="controls">
-      <button class="ctrl-btn loop-btn" @click="playerStore.togglePlayMode" :title="playModeText">
-        {{ playModeIcon }}
+      <button ref="loopButtonRef" class="ctrl-btn loop-btn" @click="onLoopButtonClick" :title="playModeText">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <template v-for="(element, index) in playModeSvg" :key="index">
+            <path v-if="element.type === 'path'" v-bind="element.attrs" />
+            <circle v-else-if="element.type === 'circle'" v-bind="element.attrs" />
+          </template>
+        </svg>
       </button>
 
-      <button class="ctrl-btn" @click="playerStore.playPrev">
+      <button ref="prevButtonRef" class="ctrl-btn" @click="onPrevButtonClick">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
         </svg>
       </button>
 
-      <button class="ctrl-btn ctrl-main" @click="playerStore.togglePlay">
+      <button ref="playButtonRef" class="ctrl-btn ctrl-main" @click="onPlayButtonClick">
         <svg v-if="!playerStore.playing" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
           <path d="M8 5v14l11-7z"/>
         </svg>
@@ -123,7 +314,7 @@ function handleVolumeClick(e) {
         </svg>
       </button>
 
-      <button class="ctrl-btn" @click="playerStore.playNext">
+      <button ref="nextButtonRef" class="ctrl-btn" @click="onNextButtonClick">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
         </svg>
@@ -132,8 +323,8 @@ function handleVolumeClick(e) {
 
     <div class="volume-row">
       <span class="volume-label">Vol</span>
-      <div class="volume-bar" @click="handleVolumeClick">
-        <div class="volume-fill" :style="{ width: volumePercent + '%' }"></div>
+      <div class="volume-bar" @mousedown="handleVolumeMouseDown">
+        <div ref="volumeFillRef" class="volume-fill"></div>
       </div>
       <span class="volume-value">{{ Math.round(volumePercent) }}</span>
     </div>
@@ -262,22 +453,28 @@ function handleVolumeClick(e) {
 }
 
 .player-section.is-compact .cover-frame {
-  width: 40px;
-  max-width: 40px;
-  height: 40px;
+  width: 60px;
+  max-width: 60px;
+  height: 60px;
   margin: 0;
   border-width: 2px;
   flex-shrink: 0;
   display: block;
   position: relative;
   background: var(--bg-dark);
+  overflow: hidden;
+  padding: 0;
+  aspect-ratio: auto;
 }
 
 .player-section.is-compact .cover-img {
+  position: absolute;
   width: 100%;
   height: 100%;
   top: 0;
   left: 0;
+  object-fit: cover;
+  object-position: center;
 }
 
 .player-section.is-compact .corner {
@@ -386,8 +583,21 @@ function handleVolumeClick(e) {
 
 /* Compact mode styles - kept for reference if needed elsewhere */
 :global(.main.player-compact) .cover-frame {
-  max-width: 140px;
+  width: 60px;
+  max-width: 60px;
+  height: 60px;
   border-width: 2px;
+  overflow: hidden;
+}
+
+:global(.main.player-compact) .cover-img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  object-fit: cover;
+  object-position: center;
 }
 
 :global(.main.player-compact) .progress-section {
@@ -531,12 +741,35 @@ function handleVolumeClick(e) {
   position: relative;
 }
 
+.progress-bar:hover {
+  height: 8px;
+}
+
 .progress-fill {
   height: 100%;
   background: var(--black);
   width: 0%;
-  transition: width 0.1s linear;
-  pointer-events: none;
+  position: relative;
+  will-change: width;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border: 2px solid var(--black);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.progress-bar:hover .progress-fill::after {
+  opacity: 1;
 }
 
 .controls {
@@ -640,6 +873,7 @@ function handleVolumeClick(e) {
   background: var(--black);
   width: 0%;
   pointer-events: none;
+  will-change: width;
 }
 
 .volume-value {
