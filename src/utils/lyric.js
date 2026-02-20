@@ -4,10 +4,10 @@
  */
 
 const regNewLine = /\n/
-// 优化正则，支持 [00:00] [00:00.00] [00:00.000] [00:00:79] 等格式
-// 之前的正则 /\[\d{2}:\d{2}.\d{2,3}\]/ 太严格，会导致很多歌词解析失败
-// 支持冒号或点号作为毫秒分隔符
-const regTime = /\[\d+:\d+(?:(?:\.|:)\d+)?\]/
+// 匹配时间标签，支持多种格式：
+// [00:00] [00:00.00] [00:00.000] [00:00:00] [00:00:000]
+// 也支持分钟数超过两位的情况，如 [100:00]
+const regTime = /\[\d+:\d+(?:[.:]\d+)?\]/
 
 /**
  * 格式化歌词时间戳为秒数
@@ -154,26 +154,29 @@ export function parseLyric(lrcText, tlyricText = null, rlyricText = null) {
  * 查找当前应该高亮的歌词索引
  * @param {Array} lyrics - 歌词数组
  * @param {number} currentTime - 当前播放时间（秒）
- * @param {number} offset - 提前量（秒），默认 0.2
+ * @param {number} offset - 提前量（秒），默认 0.3
  * @returns {number} 歌词索引
  */
-export function findCurrentLyricIndex(lyrics, currentTime, offset = 0.2) {
+export function findCurrentLyricIndex(lyrics, currentTime, offset = 0.3) {
   if (!lyrics || lyrics.length === 0) return -1
 
   const time = currentTime + offset
-  const length = lyrics.length - 1
+  const length = lyrics.length
 
-  for (let i = 0; i < lyrics.length; i++) {
-    if (i !== length) {
-      if (time < lyrics[i + 1].time) {
-        return i
-      }
+  // Binary search for better performance
+  let left = 0
+  let right = length - 1
+  let index = -1
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2)
+    if (lyrics[mid].time <= time) {
+      index = mid
+      left = mid + 1
     } else {
-      if (time > lyrics[i].time) {
-        return i
-      }
+      right = mid - 1
     }
   }
 
-  return -1
+  return index
 }

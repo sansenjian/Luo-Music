@@ -119,6 +119,8 @@ export const usePlayerStore = defineStore('player', {
       if (!this.lyricsArray || this.lyricsArray.length === 0) return
 
       const currentTime = this.progress
+      // Add offset to show lyrics slightly ahead (0.3 seconds)
+      const time = currentTime + 0.3
 
       // Use binary search for better performance with large lyrics
       let left = 0
@@ -127,7 +129,7 @@ export const usePlayerStore = defineStore('player', {
 
       while (left <= right) {
         const mid = Math.floor((left + right) / 2)
-        if (this.lyricsArray[mid].time <= currentTime) {
+        if (this.lyricsArray[mid].time <= time) {
           index = mid
           left = mid + 1
         } else {

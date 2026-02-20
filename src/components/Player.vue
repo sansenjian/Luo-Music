@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
+import { useAnimations } from '../composables/useAnimations'
 
 const props = defineProps({
   compact: {
@@ -14,13 +15,24 @@ const props = defineProps({
 })
 
 const playerStore = usePlayerStore()
+const { animateButton } = useAnimations()
+
+const prevButtonRef = ref(null)
+const playButtonRef = ref(null)
+const nextButtonRef = ref(null)
+const loopButtonRef = ref(null)
+const coverImgRef = ref(null)
+const progressFillRef = ref(null)
+const volumeFillRef = ref(null)
 
 const currentSong = computed(() => playerStore.currentSongInfo)
 
 const defaultCover = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22%3E%3Crect fill=%22%23d1d5d8%22 width=%22300%22 height=%22300%22/%3E%3C/svg%3E'
 
 function isValidImageUrl(url) {
-  if (!url) return false
+  if (!url || url === '') return false
+  // Allow data URLs (for default cover) and http/https URLs
+  if (url.startsWith('data:')) return true
   try {
     const parsed = new URL(url)
     return parsed.protocol === 'http:' || parsed.protocol === 'https:'
@@ -36,8 +48,21 @@ const progressPercent = computed(() => {
 
 const volumePercent = computed(() => playerStore.volume * 100)
 
-const playModeIcon = computed(() => {
-  const modes = ['↻', '🔁', '🔂', '🔀']
+const coverUrl = computed(() => {
+  const url = currentSong.value?.cover
+  if (isValidImageUrl(url)) {
+    return url
+  }
+  return defaultCover
+})
+
+const playModeSvg = computed(() => {
+  const modes = [
+    '<path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/>',
+    '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>',
+    '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/><circle cx="12" cy="12" r="2"/>',
+    '<path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>'
+  ]
   const index = Math.max(0, Math.min(playerStore.playMode, modes.length - 1))
   return modes[index]
 })
@@ -56,18 +81,98 @@ function handleProgressClick(e) {
   playerStore.seek(time)
 }
 
+const isDraggingProgress = ref(false)
+const isDraggingVolume = ref(false)
+let progressRect = null
+
+function handleProgressMouseDown(e) {
+  isDraggingProgress.value = true
+  progressRect = e.currentTarget.getBoundingClientRect()
+  updateProgressFromEvent(e)
+  document.addEventListener('mousemove', handleProgressMouseMove)
+  document.addEventListener('mouseup', handleProgressMouseUp)
+}
+
+function handleProgressMouseMove(e) {
+  if (!isDraggingProgress.value || !progressRect) return
+  updateProgressFromEvent(e)
+}
+
+function handleProgressMouseUp() {
+  isDraggingProgress.value = false
+  progressRect = null
+  document.removeEventListener('mousemove', handleProgressMouseMove)
+  document.removeEventListener('mouseup', handleProgressMouseUp)
+}
+
+function updateProgressFromEvent(e) {
+  if (!progressRect || progressRect.width === 0) return
+  const percent = Math.max(0, Math.min(1, (e.clientX - progressRect.left) / progressRect.width))
+  const time = percent * playerStore.duration
+  playerStore.seek(time)
+}
+
 function handleVolumeClick(e) {
   const rect = e.currentTarget.getBoundingClientRect()
   if (rect.width === 0) return
   const percent = (e.clientX - rect.left) / rect.width
   playerStore.setVolume(Math.max(0, Math.min(1, percent)))
 }
+
+let volumeRect = null
+
+function handleVolumeMouseDown(e) {
+  isDraggingVolume.value = true
+  volumeRect = e.currentTarget.getBoundingClientRect()
+  updateVolumeFromEvent(e)
+  document.addEventListener('mousemove', handleVolumeMouseMove)
+  document.addEventListener('mouseup', handleVolumeMouseUp)
+}
+
+function handleVolumeMouseMove(e) {
+  if (!isDraggingVolume.value || !volumeRect) return
+  updateVolumeFromEvent(e)
+}
+
+function handleVolumeMouseUp() {
+  isDraggingVolume.value = false
+  volumeRect = null
+  document.removeEventListener('mousemove', handleVolumeMouseMove)
+  document.removeEventListener('mouseup', handleVolumeMouseUp)
+}
+
+function updateVolumeFromEvent(e) {
+  if (!volumeRect || volumeRect.width === 0) return
+  const percent = Math.max(0, Math.min(1, (e.clientX - volumeRect.left) / volumeRect.width))
+  playerStore.setVolume(percent)
+}
+
+// Animation handlers
+function onPlayButtonClick() {
+  animateButton(playButtonRef.value)
+  playerStore.togglePlay()
+}
+
+function onPrevButtonClick() {
+  animateButton(prevButtonRef.value)
+  playerStore.playPrev()
+}
+
+function onNextButtonClick() {
+  animateButton(nextButtonRef.value)
+  playerStore.playNext()
+}
+
+function onLoopButtonClick() {
+  animateButton(loopButtonRef.value)
+  playerStore.togglePlayMode()
+}
 </script>
 
 <template>
   <div class="player-section" :class="{ 'is-compact': compact }">
     <!-- Progress bar on top for compact mode -->
-    <div v-if="compact" class="top-progress-container" @click="handleProgressClick">
+    <div v-if="compact" class="top-progress-container" @mousedown="handleProgressMouseDown">
       <div class="top-progress-fill" :style="{ width: progressPercent + '%' }"></div>
       <div class="top-time-display">
         <span>{{ playerStore.formattedProgress }}</span> / <span>{{ playerStore.formattedDuration }}</span>
@@ -80,7 +185,8 @@ function handleVolumeClick(e) {
       <div class="corner corner-bl"></div>
       <div class="corner corner-br"></div>
       <img
-        :src="isValidImageUrl(currentSong?.cover) ? currentSong.cover : defaultCover"
+        ref="coverImgRef"
+        :src="coverUrl"
         :alt="currentSong?.name"
         class="cover-img"
         loading="lazy"
@@ -98,23 +204,23 @@ function handleVolumeClick(e) {
         <span>{{ playerStore.formattedProgress }}</span>
         <span>{{ playerStore.formattedDuration }}</span>
       </div>
-      <div class="progress-bar" @click="handleProgressClick">
-        <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+      <div class="progress-bar" @mousedown="handleProgressMouseDown">
+        <div ref="progressFillRef" class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
       </div>
     </div>
 
     <div class="controls">
-      <button class="ctrl-btn loop-btn" @click="playerStore.togglePlayMode" :title="playModeText">
-        {{ playModeIcon }}
+      <button ref="loopButtonRef" class="ctrl-btn loop-btn" @click="onLoopButtonClick" :title="playModeText">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" v-html="playModeSvg"></svg>
       </button>
 
-      <button class="ctrl-btn" @click="playerStore.playPrev">
+      <button ref="prevButtonRef" class="ctrl-btn" @click="onPrevButtonClick">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
         </svg>
       </button>
 
-      <button class="ctrl-btn ctrl-main" @click="playerStore.togglePlay">
+      <button ref="playButtonRef" class="ctrl-btn ctrl-main" @click="onPlayButtonClick">
         <svg v-if="!playerStore.playing" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
           <path d="M8 5v14l11-7z"/>
         </svg>
@@ -123,7 +229,7 @@ function handleVolumeClick(e) {
         </svg>
       </button>
 
-      <button class="ctrl-btn" @click="playerStore.playNext">
+      <button ref="nextButtonRef" class="ctrl-btn" @click="onNextButtonClick">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
         </svg>
@@ -132,8 +238,8 @@ function handleVolumeClick(e) {
 
     <div class="volume-row">
       <span class="volume-label">Vol</span>
-      <div class="volume-bar" @click="handleVolumeClick">
-        <div class="volume-fill" :style="{ width: volumePercent + '%' }"></div>
+      <div class="volume-bar" @mousedown="handleVolumeMouseDown">
+        <div ref="volumeFillRef" class="volume-fill" :style="{ width: volumePercent + '%' }"></div>
       </div>
       <span class="volume-value">{{ Math.round(volumePercent) }}</span>
     </div>
@@ -163,15 +269,13 @@ function handleVolumeClick(e) {
   width: 100%;
   height: 100%;
   position: relative;
-  /* Removed padding-top: 4px; to let it center naturally */
   box-sizing: border-box;
 }
 
 .player-section.is-compact .progress-section {
-  display: none; /* Hide original progress bar container completely */
+  display: none;
 }
 
-/* Ensure controls are centered in compact mode */
 .player-section.is-compact .controls {
   display: flex;
   gap: 20px;
@@ -180,7 +284,7 @@ function handleVolumeClick(e) {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%); /* Perfectly centered */
+  transform: translate(-50%, -50%);
   margin: 0;
 }
 
@@ -188,39 +292,38 @@ function handleVolumeClick(e) {
   display: flex;
   width: 120px;
   flex-shrink: 0;
-  margin-left: auto; /* Push to right edge */
+  margin-left: auto;
   border-top: none;
   padding-top: 0;
   margin-right: 0;
 }
-/* New Top Progress Bar Styles */
+
 .top-progress-container {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 4px; /* Default small height */
-  background: transparent; /* Transparent background initially */
+  height: 4px;
+  background: transparent;
   cursor: pointer;
   z-index: 100;
-  overflow: visible; /* Allow hover area to expand */
+  overflow: visible;
   transition: all 0.2s ease;
 }
 
-/* Add a pseudo-element to increase hover area without changing visual height initially */
 .top-progress-container::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 10px; /* Invisible hit area */
+  height: 10px;
   z-index: -1;
 }
 
 .top-progress-container:hover {
-  height: 20px; /* Expand on hover */
-  background: #000; /* Show black background on hover */
+  height: 20px;
+  background: #000;
 }
 
 .top-progress-fill {
@@ -229,16 +332,9 @@ function handleVolumeClick(e) {
   width: 0%;
   transition: width 0.1s linear, height 0.2s ease;
   pointer-events: none;
-  opacity: 1; /* Fully visible accent color */
+  opacity: 1;
 }
 
-/* Hide background of progress bar when not hovered to make it look like just a thin line */
-.top-progress-container:not(:hover) .top-progress-fill {
-  /* When not hovered, maybe we want just the fill to be visible as a thin line */
-  /* And the rest is transparent */
-}
-
-/* Time display only visible on hover */
 .top-time-display {
   position: absolute;
   top: 0;
@@ -253,31 +349,37 @@ function handleVolumeClick(e) {
   pointer-events: none;
   z-index: 12;
   text-shadow: 1px 1px 0 #000;
-  opacity: 0; /* Hidden by default */
+  opacity: 0;
   transition: opacity 0.2s ease;
 }
 
 .top-progress-container:hover .top-time-display {
-  opacity: 1; /* Show on hover */
+  opacity: 1;
 }
 
 .player-section.is-compact .cover-frame {
-  width: 40px;
-  max-width: 40px;
-  height: 40px;
+  width: 60px;
+  max-width: 60px;
+  height: 60px;
   margin: 0;
   border-width: 2px;
   flex-shrink: 0;
   display: block;
   position: relative;
   background: var(--bg-dark);
+  overflow: hidden;
+  padding: 0;
+  aspect-ratio: auto;
 }
 
 .player-section.is-compact .cover-img {
+  position: absolute;
   width: 100%;
   height: 100%;
   top: 0;
   left: 0;
+  object-fit: cover;
+  object-position: center;
 }
 
 .player-section.is-compact .corner {
@@ -287,13 +389,13 @@ function handleVolumeClick(e) {
 .player-section.is-compact .track-info {
   text-align: left;
   margin: 0;
-  width: auto; /* Allow width to fit content */
-  max-width: 200px; /* But cap it */
-  flex-shrink: 1; /* Allow shrinking */
+  width: auto;
+  max-width: 200px;
+  flex-shrink: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  margin-right: 20px; /* Add spacing before center controls */
+  margin-right: 20px;
 }
 
 .player-section.is-compact .track-title {
@@ -308,15 +410,6 @@ function handleVolumeClick(e) {
   padding: 0;
 }
 
-/* Removed redundant styles that might conflict */
-/* .player-section.is-compact .controls { ... } */
-/* .player-section.is-compact .volume-row { ... } */
-
-/* Clean up old global selectors */
-/* Footer Player Specific Overrides */
-/* :global(.footer-player.player-section) ... removed */
-
-/* Footer mode styles (Compact Player at bottom) */
 .footer-player .cover-frame {
   width: 60px;
   max-width: 60px;
@@ -356,7 +449,7 @@ function handleVolumeClick(e) {
 }
 
 .footer-player .time-row {
-  display: none; /* Hide time text to save space or move it */
+  display: none;
 }
 
 .footer-player .progress-bar {
@@ -366,7 +459,7 @@ function handleVolumeClick(e) {
 }
 
 .footer-player .controls {
-  order: -1; /* Move controls to left of progress bar */
+  order: -1;
   gap: 16px;
 }
 
@@ -384,10 +477,22 @@ function handleVolumeClick(e) {
   height: 40px;
 }
 
-/* Compact mode styles - kept for reference if needed elsewhere */
 :global(.main.player-compact) .cover-frame {
-  max-width: 140px;
+  width: 60px;
+  max-width: 60px;
+  height: 60px;
   border-width: 2px;
+  overflow: hidden;
+}
+
+:global(.main.player-compact) .cover-img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  object-fit: cover;
+  object-position: center;
 }
 
 :global(.main.player-compact) .progress-section {
@@ -451,25 +556,24 @@ function handleVolumeClick(e) {
 .corner-br { bottom: -5px; right: -5px; }
 
 .cover-img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-    display: block;
-    background: var(--bg-dark);
-    margin: 0;
-  }
-  
-  /* Add padding for default cover frame mode to accommodate corners */
-  .player-section:not(.footer-player) .cover-img {
-    top: 8px;
-    left: 8px;
-    width: calc(100% - 16px);
-    height: calc(100% - 16px);
-  }
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  background: var(--bg-dark);
+  margin: 0;
+}
+
+.player-section:not(.footer-player) .cover-img {
+  top: 8px;
+  left: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+}
 
 .track-info {
   margin-top: 2px;
@@ -531,12 +635,34 @@ function handleVolumeClick(e) {
   position: relative;
 }
 
+.progress-bar:hover {
+  height: 8px;
+}
+
 .progress-fill {
   height: 100%;
   background: var(--black);
   width: 0%;
-  transition: width 0.1s linear;
-  pointer-events: none;
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border: 2px solid var(--black);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.progress-bar:hover .progress-fill::after {
+  opacity: 1;
 }
 
 .controls {
