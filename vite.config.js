@@ -24,9 +24,15 @@ export default defineConfig(({ mode }) => {
             const srcPath = path.resolve('electron/preload.cjs')
             const destPath = path.resolve('dist-electron/preload.cjs')
             if (fs.existsSync(srcPath)) {
-              // Ensure the destination directory exists
-              fs.mkdirSync(path.dirname(destPath), { recursive: true })
-              fs.copyFileSync(srcPath, destPath)
+              try {
+                // Ensure the destination directory exists
+                fs.mkdirSync(path.dirname(destPath), { recursive: true })
+                fs.copyFileSync(srcPath, destPath)
+              } catch (err) {
+                console.warn(`Failed to copy preload.cjs: ${err.message}`)
+                console.warn(`  src: ${srcPath}`)
+                console.warn(`  dest: ${destPath}`)
+              }
             }
             options.reload()
           },
@@ -44,7 +50,7 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: 'http://localhost:14532',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '')
+          rewrite: (reqPath) => reqPath.replace(/^\/api/, '')
         }
       }
     },

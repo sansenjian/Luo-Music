@@ -21,7 +21,7 @@ function onEnter(el, done) {
     opacity: [0, 1],
     translateY: [20, 0],
     duration: 400,
-    ease: 'outCubic',
+    ease: 'out(3)',
     complete: done
   })
 }
@@ -31,7 +31,7 @@ function onLeave(el, done) {
     opacity: [1, 0],
     translateY: [0, -20],
     duration: 300,
-    ease: 'inCubic',
+    ease: 'in(3)',
     complete: done
   })
 }

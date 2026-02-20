@@ -10,7 +10,7 @@ export function animateButtonClick(element) {
   animate(element, {
     scale: [1, 0.9, 1.1, 1],
     duration: 300,
-    ease: 'inOutQuad'
+    ease: 'inOut(2)'
   })
 }
 
@@ -29,7 +29,7 @@ export function animatePlayPause(element, isPlaying) {
     rotate: isPlaying ? [0, 360] : [360, 0],
     scale: [1, 1.2, 1],
     duration: 400,
-    ease: 'inOutQuad'
+    ease: 'inOut(2)'
   })
 }
 
@@ -44,7 +44,7 @@ export function animateAlbumCover(element) {
     opacity: [0, 1],
     scale: [0.8, 1],
     duration: 500,
-    ease: 'outCubic'
+    ease: 'out(3)'
   })
 }
 
@@ -60,7 +60,7 @@ export function animateProgressBar(element, progress) {
   animate(element, {
     width: `${progress}%`,
     duration: 100,
-    ease: 'outQuad'
+    ease: 'out(2)'
   })
 }
 
@@ -75,7 +75,7 @@ export function animatePageEnter(element) {
     opacity: [0, 1],
     translateY: [20, 0],
     duration: 400,
-    ease: 'outCubic'
+    ease: 'out(3)'
   })
 }
 
@@ -92,7 +92,7 @@ export function animatePageLeave(element) {
       opacity: [1, 0],
       translateY: [0, -20],
       duration: 300,
-      ease: 'inCubic',
+      ease: 'in(3)',
       complete: resolve
     })
   })
@@ -110,7 +110,7 @@ export function animateListItems(elements) {
     translateX: [-20, 0],
     delay: (_, i) => i * 50,
     duration: 400,
-    ease: 'outCubic'
+    ease: 'out(3)'
   })
 }
 
@@ -124,7 +124,7 @@ export function animateVolumeIcon(element) {
   animate(element, {
     scale: [1, 1.3, 1],
     duration: 200,
-    ease: 'inOutQuad'
+    ease: 'inOut(2)'
   })
 }
 
@@ -139,7 +139,7 @@ export function animateLoopMode(element) {
     rotate: '+=360',
     scale: [1, 1.2, 1],
     duration: 500,
-    ease: 'inOutQuad'
+    ease: 'inOut(2)'
   })
 }
 
