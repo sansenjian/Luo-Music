@@ -22,7 +22,7 @@ function onEnter(el, done) {
     translateY: [20, 0],
     duration: 400,
     ease: 'out(3)',
-    complete: done
+    onComplete: done
   })
 }
 
@@ -32,7 +32,7 @@ function onLeave(el, done) {
     translateY: [0, -20],
     duration: 300,
     ease: 'in(3)',
-    complete: done
+    onComplete: done
   })
 }
 </script>

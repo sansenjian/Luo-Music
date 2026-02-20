@@ -96,7 +96,7 @@ export function animatePageLeave(element) {
       translateY: [0, -20],
       duration: 300,
       ease: 'in(3)',
-      complete: resolve
+      onComplete: resolve
     })
   })
 }

@@ -33,6 +33,9 @@ export default defineConfig(({ mode }) => {
                 console.warn(`  src: ${srcPath}`)
                 console.warn(`  dest: ${destPath}`)
               }
+            } else {
+              console.warn(`preload.cjs not found at ${srcPath}`)
+              console.warn(`  Expected for dist-electron: ${destPath}`)
             }
             options.reload()
           },
