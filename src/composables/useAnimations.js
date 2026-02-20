@@ -1,5 +1,8 @@
 import { animate } from 'animejs'
 
+// Re-export animate for direct use
+export { animate }
+
 /**
  * 播放器按钮点击动画
  * @param {HTMLElement} element - 按钮元素

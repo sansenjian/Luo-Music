@@ -1,7 +1,7 @@
 <script setup>
-import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
-import { animateButtonClick, animatePlayPause, animateAlbumCover, animateProgressBar, animateLoopMode } from '../composables/useAnimations.js'
+import { animate, animateButtonClick, animatePlayPause, animateAlbumCover, animateLoopMode } from '../composables/useAnimations.js'
 
 const props = defineProps({
   compact: {
@@ -206,17 +206,45 @@ watch(() => playerStore.currentSong, () => {
   })
 }, { immediate: true })
 
-// Watch for progress changes to animate progress bar
-watch(() => progressPercent.value, (newVal) => {
-  if (progressFillRef.value) {
-    animateProgressBar(progressFillRef.value, newVal)
-  }
-})
+// Anime.js instances for progress/volume bars
+let progressAnim = null
+let volumeAnim = null
 
-// Watch for volume changes to animate volume bar
+// Watch for progress changes - Anime.js driven
+watch(() => progressPercent.value, (newVal) => {
+  if (!progressFillRef.value) return
+  
+  if (progressAnim) progressAnim.pause()
+  
+  progressAnim = animate(progressFillRef.value, {
+    width: `${newVal}%`,
+    duration: 150,
+    ease: 'linear',
+    autoplay: true
+  })
+}, { flush: 'post' })
+
+// Watch for volume changes - Anime.js driven
 watch(() => volumePercent.value, (newVal) => {
+  if (!volumeFillRef.value) return
+  
+  if (volumeAnim) volumeAnim.pause()
+  
+  volumeAnim = animate(volumeFillRef.value, {
+    width: `${newVal}%`,
+    duration: 200,
+    ease: 'out(2)',
+    autoplay: true
+  })
+}, { flush: 'post' })
+
+// Initialize widths on mount
+onMounted(() => {
+  if (progressFillRef.value) {
+    progressFillRef.value.style.width = `${progressPercent.value}%`
+  }
   if (volumeFillRef.value) {
-    animateProgressBar(volumeFillRef.value, newVal)
+    volumeFillRef.value.style.width = `${volumePercent.value}%`
   }
 })
 </script>
@@ -225,7 +253,7 @@ watch(() => volumePercent.value, (newVal) => {
   <div class="player-section" :class="{ 'is-compact': compact }">
     <!-- Progress bar on top for compact mode -->
     <div v-if="compact" class="top-progress-container" @mousedown="handleProgressMouseDown">
-      <div class="top-progress-fill" :style="{ width: progressPercent + '%' }"></div>
+      <div class="top-progress-fill"></div>
       <div class="top-time-display">
         <span>{{ playerStore.formattedProgress }}</span> / <span>{{ playerStore.formattedDuration }}</span>
       </div>
@@ -257,7 +285,7 @@ watch(() => volumePercent.value, (newVal) => {
         <span>{{ playerStore.formattedDuration }}</span>
       </div>
       <div class="progress-bar" @mousedown="handleProgressMouseDown">
-        <div ref="progressFillRef" class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+        <div ref="progressFillRef" class="progress-fill"></div>
       </div>
     </div>
 
@@ -296,7 +324,7 @@ watch(() => volumePercent.value, (newVal) => {
     <div class="volume-row">
       <span class="volume-label">Vol</span>
       <div class="volume-bar" @mousedown="handleVolumeMouseDown">
-        <div ref="volumeFillRef" class="volume-fill" :style="{ width: volumePercent + '%' }"></div>
+        <div ref="volumeFillRef" class="volume-fill"></div>
       </div>
       <span class="volume-value">{{ Math.round(volumePercent) }}</span>
     </div>
@@ -722,6 +750,7 @@ watch(() => volumePercent.value, (newVal) => {
   background: var(--black);
   width: 0%;
   position: relative;
+  will-change: width;
 }
 
 .progress-fill::after {
@@ -844,6 +873,7 @@ watch(() => volumePercent.value, (newVal) => {
   background: var(--black);
   width: 0%;
   pointer-events: none;
+  will-change: width;
 }
 
 .volume-value {

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { audioManager } from '../utils/audioManager'
 import { getMusicUrl, getLyric } from '../api/song'
-import { parseLyric } from '../utils/lyric'
+import { parseLyric, findCurrentLyricIndex } from '../utils/lyric'
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -116,27 +116,7 @@ export const usePlayerStore = defineStore('player', {
     },
     
     updateLyricIndex() {
-      if (!this.lyricsArray || this.lyricsArray.length === 0) return
-
-      const currentTime = this.progress
-      // Add offset to show lyrics slightly ahead (0.3 seconds)
-      const time = currentTime + 0.3
-
-      // Use binary search for better performance with large lyrics
-      let left = 0
-      let right = this.lyricsArray.length - 1
-      let index = -1
-
-      while (left <= right) {
-        const mid = Math.floor((left + right) / 2)
-        if (this.lyricsArray[mid].time <= time) {
-          index = mid
-          left = mid + 1
-        } else {
-          right = mid - 1
-        }
-      }
-
+      const index = findCurrentLyricIndex(this.lyricsArray, this.progress)
       if (this.currentLyricIndex !== index) {
         this.currentLyricIndex = index
       }

@@ -145,6 +145,13 @@ npm run dev
 npm run dev:electron
 ```
 
+> **注意**：`npm run dev` 和 `npm run dev:electron` 功能相同，都会同时启动：
+> - NeteaseCloudMusicApi 服务（端口 14532）
+> - Vite 开发服务器（端口 5173）
+> - Electron 桌面应用窗口
+>
+> 两者没有区别，`dev:electron` 是为了兼容性保留的别名。
+
 ### 构建桌面应用
 
 ```bash

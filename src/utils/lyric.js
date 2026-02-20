@@ -3,6 +3,9 @@
  * 参考 Hydrogen Music 的歌词解析逻辑
  */
 
+// 歌词提前显示的偏移量（秒）
+export const LYRIC_OFFSET = 0.3
+
 const regNewLine = /\n/
 // 匹配时间标签，支持多种格式：
 // [00:00] [00:00.00] [00:00.000] [00:00:00] [00:00:000]
@@ -154,10 +157,10 @@ export function parseLyric(lrcText, tlyricText = null, rlyricText = null) {
  * 查找当前应该高亮的歌词索引
  * @param {Array} lyrics - 歌词数组
  * @param {number} currentTime - 当前播放时间（秒）
- * @param {number} offset - 提前量（秒），默认 0.3
+ * @param {number} offset - 提前量（秒），默认 LYRIC_OFFSET
  * @returns {number} 歌词索引
  */
-export function findCurrentLyricIndex(lyrics, currentTime, offset = 0.3) {
+export function findCurrentLyricIndex(lyrics, currentTime, offset = LYRIC_OFFSET) {
   if (!lyrics || lyrics.length === 0) return -1
 
   const time = currentTime + offset
