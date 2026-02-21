@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount, useTemplateRef } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
 import { animate, animateButtonClick, animatePlayPause, animateAlbumCover, animateLoopMode } from '../composables/useAnimations.js'
 
@@ -16,14 +16,13 @@ const props = defineProps({
 
 const playerStore = usePlayerStore()
 
-// Refs for animation targets
-const playButtonRef = ref(null)
-const prevButtonRef = ref(null)
-const nextButtonRef = ref(null)
-const loopButtonRef = ref(null)
-const coverImgRef = ref(null)
-const progressFillRef = ref(null)
-const volumeFillRef = ref(null)
+const playButtonRef = useTemplateRef('playButton')
+const prevButtonRef = useTemplateRef('prevButton')
+const nextButtonRef = useTemplateRef('nextButton')
+const loopButtonRef = useTemplateRef('loopButton')
+const coverImgRef = useTemplateRef('coverImg')
+const progressFillRef = useTemplateRef('progressFill')
+const volumeFillRef = useTemplateRef('volumeFill')
 
 const currentSong = computed(() => playerStore.currentSongInfo)
 
@@ -265,7 +264,7 @@ onMounted(() => {
       <div class="corner corner-bl"></div>
       <div class="corner corner-br"></div>
       <img
-        ref="coverImgRef"
+        ref="coverImg"
         :src="coverUrl"
         :alt="currentSong?.name"
         class="cover-img"
@@ -285,12 +284,12 @@ onMounted(() => {
         <span>{{ playerStore.formattedDuration }}</span>
       </div>
       <div class="progress-bar" @mousedown="handleProgressMouseDown">
-        <div ref="progressFillRef" class="progress-fill"></div>
+        <div ref="progressFill" class="progress-fill"></div>
       </div>
     </div>
 
     <div class="controls">
-      <button ref="loopButtonRef" class="ctrl-btn loop-btn" @click="onLoopButtonClick" :title="playModeText">
+      <button ref="loopButton" class="ctrl-btn loop-btn" @click="onLoopButtonClick" :title="playModeText">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <template v-for="(element, index) in playModeSvg" :key="index">
             <path v-if="element.type === 'path'" v-bind="element.attrs" />
@@ -299,13 +298,13 @@ onMounted(() => {
         </svg>
       </button>
 
-      <button ref="prevButtonRef" class="ctrl-btn" @click="onPrevButtonClick">
+      <button ref="prevButton" class="ctrl-btn" @click="onPrevButtonClick">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
         </svg>
       </button>
 
-      <button ref="playButtonRef" class="ctrl-btn ctrl-main" @click="onPlayButtonClick">
+      <button ref="playButton" class="ctrl-btn ctrl-main" @click="onPlayButtonClick">
         <svg v-if="!playerStore.playing" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
           <path d="M8 5v14l11-7z"/>
         </svg>
@@ -314,7 +313,7 @@ onMounted(() => {
         </svg>
       </button>
 
-      <button ref="nextButtonRef" class="ctrl-btn" @click="onNextButtonClick">
+      <button ref="nextButton" class="ctrl-btn" @click="onNextButtonClick">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
         </svg>
@@ -324,7 +323,7 @@ onMounted(() => {
     <div class="volume-row">
       <span class="volume-label">Vol</span>
       <div class="volume-bar" @mousedown="handleVolumeMouseDown">
-        <div ref="volumeFillRef" class="volume-fill"></div>
+        <div ref="volumeFill" class="volume-fill"></div>
       </div>
       <span class="volume-value">{{ Math.round(volumePercent) }}</span>
     </div>
