@@ -1,4 +1,4 @@
-import pkg from 'NeteaseCloudMusicApi'
+import pkg from '@neteasecloudmusicapienhanced/api'
 const { serveNcmApi } = pkg
 
 // 缓存 Express app 实例，避免每次请求重复初始化
@@ -30,16 +30,16 @@ export default async (req, res) => {
 
     // 初始化 API 服务
     if (!app && !initPromise) {
-      console.log('Initializing NeteaseCloudMusicApi...')
+      console.log('Initializing NeteaseCloudMusicApi Enhanced...')
       initPromise = serveNcmApi({
         checkVersion: false,
         port: 14533,
       }).then((expressApp) => {
-        console.log('NeteaseCloudMusicApi initialized successfully')
+        console.log('NeteaseCloudMusicApi Enhanced initialized successfully')
         app = expressApp
         return expressApp
       }).catch((err) => {
-        console.error('Failed to initialize NeteaseCloudMusicApi:', err)
+        console.error('Failed to initialize NeteaseCloudMusicApi Enhanced:', err)
         initError = err
         throw err
       })
