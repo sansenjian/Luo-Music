@@ -7,10 +7,6 @@ const props = defineProps({
   compact: {
     type: Boolean,
     default: false
-  },
-  loading: {
-    type: Boolean,
-    default: false
   }
 })
 
@@ -171,6 +167,14 @@ onBeforeUnmount(() => {
   if (isDraggingVolume.value) {
     document.removeEventListener('mousemove', handleVolumeMouseMove)
     document.removeEventListener('mouseup', handleVolumeMouseUp)
+  }
+  if (progressAnim) {
+    progressAnim.pause()
+    progressAnim = null
+  }
+  if (volumeAnim) {
+    volumeAnim.pause()
+    volumeAnim = null
   }
 })
 

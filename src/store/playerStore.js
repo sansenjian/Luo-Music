@@ -96,7 +96,7 @@ export const usePlayerStore = defineStore('player', {
       this.playing = false
       
       // 尝试重新获取 URL 并重试
-      if (this.currentSong && !this.currentSong.retryCount) {
+      if (this.currentSong && this.currentSong.retryCount === undefined) {
         this.currentSong.retryCount = 1
         try {
           const urlRes = await getMusicUrl(this.currentSong.id, 'standard')
@@ -361,7 +361,7 @@ export const usePlayerStore = defineStore('player', {
         }
         
         // 检查歌曲是否标记为不可用
-        if (!this.songList[newIndex].unavailable) {
+        if (newIndex >= 0 && newIndex < this.songList.length && !this.songList[newIndex].unavailable) {
           try {
             await this.playSongWithDetails(newIndex)
             // 成功播放后重置跳过计数
@@ -429,6 +429,16 @@ export const usePlayerStore = defineStore('player', {
       this.playing = false
       this.progress = 0
       this.duration = 0
+    },
+    
+    destroy() {
+      audioManager.off('timeupdate')
+      audioManager.off('loadedmetadata')
+      audioManager.off('ended')
+      audioManager.off('play')
+      audioManager.off('pause')
+      audioManager.off('error')
+      this.initialized = false
     },
   },
   

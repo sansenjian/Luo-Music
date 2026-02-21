@@ -2,12 +2,12 @@ class AudioManager {
   constructor() {
     this.audio = new Audio()
     this.callbacks = {}
+    this._boundHandlers = {}
     this._initEvents()
     this._setupCrossOrigin()
   }
 
   _setupCrossOrigin() {
-    // Web 环境下设置跨域属性
     const isElectron = () => window.navigator.userAgent.indexOf('Electron') > -1
     if (!isElectron()) {
       this.audio.crossOrigin = 'anonymous'
@@ -17,27 +17,28 @@ class AudioManager {
   _initEvents() {
     const events = ['timeupdate', 'loadedmetadata', 'ended', 'play', 'pause', 'error']
     events.forEach(event => {
-      this.audio.addEventListener(event, (e) => {
+      this._boundHandlers[event] = (e) => {
         if (this.callbacks[event]) {
           this.callbacks[event](e)
         }
-      })
+      }
+      this.audio.addEventListener(event, this._boundHandlers[event])
     })
   }
 
   on(event, callback) {
-    // Allow multiple callbacks per event? For now, simple override is fine based on current usage.
-    // Ideally, this should support multiple listeners.
     this.callbacks[event] = callback
   }
 
-  off(event, callback) {
-    if (this.callbacks[event] === callback) {
-      delete this.callbacks[event]
-    }
+  off(event) {
+    delete this.callbacks[event]
   }
 
   destroy() {
+    Object.keys(this._boundHandlers).forEach(event => {
+      this.audio.removeEventListener(event, this._boundHandlers[event])
+    })
+    this._boundHandlers = {}
     this.callbacks = {}
     this.audio.pause()
     this.audio.src = ''

@@ -110,7 +110,7 @@ export function parseLyric(lrcText, tlyricText = null, rlyricText = null) {
   if (!lrcText) return []
 
   // 检查是否是纯音乐 - 在解析前检查，避免继续处理
-  if (lrcText.indexOf('纯音乐') !== -1) {
+  if (lrcText.includes('纯音乐')) {
     return [{
       time: 0,
       lyric: "纯音乐，请欣赏",
@@ -133,7 +133,7 @@ export function parseLyric(lrcText, tlyricText = null, rlyricText = null) {
     const lyric = lyricList.join('\n')
     
     // 跳过作词作曲信息
-    if (lyric.indexOf('作词') !== -1 || lyric.indexOf('作曲') !== -1) {
+    if (lyric.includes('作词') || lyric.includes('作曲')) {
       return
     }
     
