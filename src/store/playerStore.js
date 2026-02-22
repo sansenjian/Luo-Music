@@ -60,6 +60,14 @@ export const usePlayerStore = defineStore('player', {
       this.initialized = true
       audioManager.setVolume(this.volume)
       
+      // 先清理旧事件，防止 HMR 或热重置时事件累积
+      audioManager.off('timeupdate')
+      audioManager.off('loadedmetadata')
+      audioManager.off('ended')
+      audioManager.off('play')
+      audioManager.off('pause')
+      audioManager.off('error')
+      
       // 节流处理 timeupdate，每 100ms 更新一次
       let lastUpdate = 0
       audioManager.on('timeupdate', () => {
@@ -234,8 +242,12 @@ export const usePlayerStore = defineStore('player', {
           throw new Error('播放列表中可用歌曲较少，请尝试其他歌单')
         }
         // 自动尝试播放下一首
-        await this.playNextSkipUnavailable()
-        throw error 
+        try {
+          await this.playNextSkipUnavailable()
+          return // 成功播放下一首，不再抛出错误
+        } catch (skipError) {
+          throw new Error('无法播放任何歌曲')
+        }
       } finally {
         this.loading = false
       }
@@ -252,16 +264,25 @@ export const usePlayerStore = defineStore('player', {
       audioManager.toggle()
     },
     
+    // 统一的随机播放辅助函数
+    getRandomIndex(excludeCurrent = true) {
+      if (this.songList.length === 0) return -1
+      if (this.songList.length === 1) return 0
+      
+      let newIndex = Math.floor(Math.random() * this.songList.length)
+      // 避免重复播放当前歌曲
+      if (excludeCurrent && newIndex === this.currentIndex) {
+        newIndex = (newIndex + 1) % this.songList.length
+      }
+      return newIndex
+    },
+    
     playPrev() {
       if (this.songList.length === 0) return
       
       let newIndex
       if (this.playMode === 3) {
-        // 随机播放优化：避免重复播放当前歌曲
-        newIndex = Math.floor(Math.random() * this.songList.length)
-        if (this.songList.length > 1 && newIndex === this.currentIndex) {
-          newIndex = (newIndex + 1) % this.songList.length
-        }
+        newIndex = this.getRandomIndex()
       } else {
         newIndex = this.currentIndex - 1
         if (newIndex < 0) {
@@ -279,11 +300,7 @@ export const usePlayerStore = defineStore('player', {
       
       let newIndex
       if (this.playMode === 3) {
-        // 随机播放优化：避免重复播放当前歌曲
-        newIndex = Math.floor(Math.random() * this.songList.length)
-        if (this.songList.length > 1 && newIndex === this.currentIndex) {
-          newIndex = (newIndex + 1) % this.songList.length
-        }
+        newIndex = this.getRandomIndex()
       } else {
         newIndex = this.currentIndex + 1
         if (newIndex >= this.songList.length) {
@@ -352,7 +369,7 @@ export const usePlayerStore = defineStore('player', {
       while (attempts < maxAttempts) {
         let newIndex
         if (this.playMode === 3) {
-          newIndex = Math.floor(Math.random() * this.songList.length)
+          newIndex = this.getRandomIndex()
         } else {
           newIndex = (this.currentIndex + 1) % this.songList.length
         }
@@ -450,6 +467,10 @@ export const usePlayerStore = defineStore('player', {
       // 验证音量范围
       if (context.store.volume < 0 || context.store.volume > 1) {
         context.store.volume = 0.7
+      }
+      // 设置音量到 audioManager
+      if (context.store.initialized) {
+        audioManager.setVolume(context.store.volume)
       }
       // 验证播放模式
       if (context.store.playMode < 0 || context.store.playMode > 3) {
