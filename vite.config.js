@@ -1,14 +1,13 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
-import path from 'node:path'
-import fs from 'node:fs'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 
 export default defineConfig(async ({ mode }) => {
   const isWeb = mode === 'web' || process.env.VERCEL === '1'
-  
+  const isElectron = !isWeb
+
   const plugins = [
     vue(),
     AutoImport({
@@ -29,33 +28,22 @@ export default defineConfig(async ({ mode }) => {
       deep: true
     })
   ]
-  
-  if (!isWeb) {
+
+  if (isElectron) {
     try {
       const electron = (await import('vite-plugin-electron')).default
       const renderer = (await import('vite-plugin-electron-renderer')).default
-      
+
       plugins.push(
         electron([
           {
             entry: 'electron/main.js',
+            onstart: ({ startup }) => startup()
           },
           {
             entry: 'electron/preload.cjs',
-            onstart(options) {
-              const srcPath = path.resolve('electron/preload.cjs')
-              const destPath = path.resolve('dist-electron/preload.cjs')
-              if (fs.existsSync(srcPath)) {
-                try {
-                  fs.mkdirSync(path.dirname(destPath), { recursive: true })
-                  fs.copyFileSync(srcPath, destPath)
-                } catch (err) {
-                  console.warn(`Failed to copy preload.cjs: ${err.message}`)
-                }
-              }
-              options.reload()
-            },
-          },
+            onstart: ({ reload }) => reload()
+          }
         ]),
         renderer()
       )
@@ -68,6 +56,8 @@ export default defineConfig(async ({ mode }) => {
     plugins,
     base: './',
     server: {
+      port: 5173,
+      host: 'localhost',
       proxy: {
         '/api': {
           target: 'http://localhost:14532',
