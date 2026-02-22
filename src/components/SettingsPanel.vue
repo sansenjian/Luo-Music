@@ -73,8 +73,13 @@ function closeSettings() {
                 </div>
               </section>
 
-              <section class="settings-section" v-if="isElectron">
-                <CacheManager />
+              <section class="settings-section">
+                <h3>缓存管理</h3>
+                <CacheManager v-if="isElectron" />
+                <div v-else class="cache-unavailable">
+                  <p>缓存管理功能仅在 Electron 桌面应用中可用。</p>
+                  <p class="cache-hint">请使用 <code>npm run dev</code> 启动 Electron 应用，或打包后的桌面应用。</p>
+                </div>
               </section>
             </div>
           </div>
@@ -228,5 +233,30 @@ function closeSettings() {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.cache-unavailable {
+  padding: 16px;
+  background: var(--bg-secondary, #f5f5f5);
+  border: 2px dashed var(--gray, #999);
+  text-align: center;
+}
+
+.cache-unavailable p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: var(--gray, #666);
+}
+
+.cache-unavailable .cache-hint {
+  font-size: 11px;
+  margin: 0;
+}
+
+.cache-unavailable code {
+  background: var(--bg, #fff);
+  padding: 2px 6px;
+  border: 1px solid var(--gray-light, #ddd);
+  font-size: 11px;
 }
 </style>
