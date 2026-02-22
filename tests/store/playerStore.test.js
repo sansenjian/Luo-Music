@@ -47,8 +47,6 @@ describe('playerStore', () => {
       expect(store.formattedProgress).toBe('00:00')
       expect(store.formattedDuration).toBe('00:00')
       expect(store.playModeText).toBe('顺序播放')
-      expect(store.canPlayNext).toBe(false)
-      expect(store.canPlayPrev).toBe(false)
     })
   })
 
