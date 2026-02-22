@@ -1,8 +1,7 @@
 <script setup>
-import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount, useTemplateRef } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
 import { animate, animateButtonClick, animatePlayPause, animateAlbumCover, animateLoopMode } from '../composables/useAnimations.js'
-import { PLAY_MODE, PLAY_MODE_LABELS } from '../utils/player/constants/playMode'
 
 const props = defineProps({
   compact: {
@@ -17,15 +16,14 @@ const props = defineProps({
 
 const playerStore = usePlayerStore()
 
-const playButtonRef = useTemplateRef('playButton')
-const prevButtonRef = useTemplateRef('prevButton')
-const nextButtonRef = useTemplateRef('nextButton')
-const loopButtonRef = useTemplateRef('loopButton')
-const coverImgRef = useTemplateRef('coverImg')
-const progressBarRef = useTemplateRef('progressBar')
-const progressFillRef = useTemplateRef('progressFill')
-const volumeBarRef = useTemplateRef('volumeBar')
-const volumeFillRef = useTemplateRef('volumeFill')
+// Refs for animation targets
+const playButtonRef = ref(null)
+const prevButtonRef = ref(null)
+const nextButtonRef = ref(null)
+const loopButtonRef = ref(null)
+const coverImgRef = ref(null)
+const progressFillRef = ref(null)
+const volumeFillRef = ref(null)
 
 const currentSong = computed(() => playerStore.currentSongInfo)
 
@@ -86,131 +84,95 @@ const playModeSvg = computed(() => {
 })
 
 const playModeText = computed(() => {
-  return PLAY_MODE_LABELS[playerStore.playMode] || PLAY_MODE_LABELS[PLAY_MODE.SEQUENTIAL]
+  const modes = ['顺序播放', '列表循环', '单曲循环', '随机播放']
+  const index = Math.max(0, Math.min(playerStore.playMode, modes.length - 1))
+  return modes[index]
 })
 
-// 进度条相关
+function handleProgressClick(e) {
+  const rect = e.currentTarget.getBoundingClientRect()
+  if (rect.width === 0) return
+  const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  const time = percent * playerStore.duration
+  playerStore.seek(time)
+}
+
 const isDraggingProgress = ref(false)
 const isDraggingVolume = ref(false)
+let progressRect = null
 
-// 计算点击/拖动位置对应的百分比
-function calculatePercentFromEvent(e, barElement) {
-  if (!barElement) return 0
-  const rect = barElement.getBoundingClientRect()
-  if (rect.width === 0) return 0
-  const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0)
-  const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-  return percent
-}
-
-// 进度条点击
-function handleProgressClick(e) {
-  const percent = calculatePercentFromEvent(e, progressBarRef.value)
-  const time = percent * playerStore.duration
-  playerStore.seek(time)
-}
-
-// 进度条拖动开始
 function handleProgressMouseDown(e) {
   isDraggingProgress.value = true
-  handleProgressDrag(e)
-  
-  // 添加全局事件监听
+  progressRect = e.currentTarget.getBoundingClientRect()
+  updateProgressFromEvent(e)
   document.addEventListener('mousemove', handleProgressMouseMove)
   document.addEventListener('mouseup', handleProgressMouseUp)
-  document.addEventListener('touchmove', handleProgressTouchMove)
-  document.addEventListener('touchend', handleProgressMouseUp)
 }
 
-// 进度条拖动中
 function handleProgressMouseMove(e) {
-  if (!isDraggingProgress.value) return
-  e.preventDefault()
-  handleProgressDrag(e)
+  if (!isDraggingProgress.value || !progressRect) return
+  updateProgressFromEvent(e)
 }
 
-// 进度条触摸拖动
-function handleProgressTouchMove(e) {
-  if (!isDraggingProgress.value) return
-  e.preventDefault()
-  handleProgressDrag(e)
+function handleProgressMouseUp() {
+  isDraggingProgress.value = false
+  progressRect = null
+  document.removeEventListener('mousemove', handleProgressMouseMove)
+  document.removeEventListener('mouseup', handleProgressMouseUp)
 }
 
-// 处理进度条拖动
-function handleProgressDrag(e) {
-  const percent = calculatePercentFromEvent(e, progressBarRef.value)
+function updateProgressFromEvent(e) {
+  if (!progressRect || progressRect.width === 0) return
+  const percent = Math.max(0, Math.min(1, (e.clientX - progressRect.left) / progressRect.width))
   const time = percent * playerStore.duration
   playerStore.seek(time)
 }
 
-// 进度条拖动结束
-function handleProgressMouseUp() {
-  isDraggingProgress.value = false
-  document.removeEventListener('mousemove', handleProgressMouseMove)
-  document.removeEventListener('mouseup', handleProgressMouseUp)
-  document.removeEventListener('touchmove', handleProgressTouchMove)
-  document.removeEventListener('touchend', handleProgressMouseUp)
-}
-
-// 音量条点击
 function handleVolumeClick(e) {
-  const percent = calculatePercentFromEvent(e, volumeBarRef.value)
-  playerStore.setVolume(percent)
+  const rect = e.currentTarget.getBoundingClientRect()
+  if (rect.width === 0) return
+  const percent = (e.clientX - rect.left) / rect.width
+  playerStore.setVolume(Math.max(0, Math.min(1, percent)))
 }
 
-// 音量条拖动开始
+let volumeRect = null
+
 function handleVolumeMouseDown(e) {
   isDraggingVolume.value = true
-  handleVolumeDrag(e)
-  
+  volumeRect = e.currentTarget.getBoundingClientRect()
+  updateVolumeFromEvent(e)
   document.addEventListener('mousemove', handleVolumeMouseMove)
   document.addEventListener('mouseup', handleVolumeMouseUp)
-  document.addEventListener('touchmove', handleVolumeTouchMove)
-  document.addEventListener('touchend', handleVolumeMouseUp)
 }
 
-// 音量条拖动中
 function handleVolumeMouseMove(e) {
-  if (!isDraggingVolume.value) return
-  e.preventDefault()
-  handleVolumeDrag(e)
+  if (!isDraggingVolume.value || !volumeRect) return
+  updateVolumeFromEvent(e)
 }
 
-// 音量条触摸拖动
-function handleVolumeTouchMove(e) {
-  if (!isDraggingVolume.value) return
-  e.preventDefault()
-  handleVolumeDrag(e)
-}
-
-// 处理音量条拖动
-function handleVolumeDrag(e) {
-  const percent = calculatePercentFromEvent(e, volumeBarRef.value)
-  playerStore.setVolume(percent)
-}
-
-// 音量条拖动结束
 function handleVolumeMouseUp() {
   isDraggingVolume.value = false
+  volumeRect = null
   document.removeEventListener('mousemove', handleVolumeMouseMove)
   document.removeEventListener('mouseup', handleVolumeMouseUp)
-  document.removeEventListener('touchmove', handleVolumeTouchMove)
-  document.removeEventListener('touchend', handleVolumeMouseUp)
+}
+
+function updateVolumeFromEvent(e) {
+  if (!volumeRect || volumeRect.width === 0) return
+  const percent = Math.max(0, Math.min(1, (e.clientX - volumeRect.left) / volumeRect.width))
+  playerStore.setVolume(percent)
 }
 
 // Cleanup event listeners on component unmount
 onBeforeUnmount(() => {
-  // 清理进度条事件
-  document.removeEventListener('mousemove', handleProgressMouseMove)
-  document.removeEventListener('mouseup', handleProgressMouseUp)
-  document.removeEventListener('touchmove', handleProgressTouchMove)
-  document.removeEventListener('touchend', handleProgressMouseUp)
-  
-  // 清理音量条事件
-  document.removeEventListener('mousemove', handleVolumeMouseMove)
-  document.removeEventListener('mouseup', handleVolumeMouseUp)
-  document.removeEventListener('touchmove', handleVolumeTouchMove)
-  document.removeEventListener('touchend', handleVolumeMouseUp)
+  if (isDraggingProgress.value) {
+    document.removeEventListener('mousemove', handleProgressMouseMove)
+    document.removeEventListener('mouseup', handleProgressMouseUp)
+  }
+  if (isDraggingVolume.value) {
+    document.removeEventListener('mousemove', handleVolumeMouseMove)
+    document.removeEventListener('mouseup', handleVolumeMouseUp)
+  }
 })
 
 // Animation handlers
@@ -244,16 +206,36 @@ watch(() => playerStore.currentSong, () => {
   })
 }, { immediate: true })
 
-// Watch for progress changes
+// Anime.js instances for progress/volume bars
+let progressAnim = null
+let volumeAnim = null
+
+// Watch for progress changes - Anime.js driven
 watch(() => progressPercent.value, (newVal) => {
   if (!progressFillRef.value) return
-  progressFillRef.value.style.width = `${newVal}%`
+  
+  if (progressAnim) progressAnim.pause()
+  
+  progressAnim = animate(progressFillRef.value, {
+    width: `${newVal}%`,
+    duration: 150,
+    ease: 'linear',
+    autoplay: true
+  })
 }, { flush: 'post' })
 
-// Watch for volume changes
+// Watch for volume changes - Anime.js driven
 watch(() => volumePercent.value, (newVal) => {
   if (!volumeFillRef.value) return
-  volumeFillRef.value.style.width = `${newVal}%`
+  
+  if (volumeAnim) volumeAnim.pause()
+  
+  volumeAnim = animate(volumeFillRef.value, {
+    width: `${newVal}%`,
+    duration: 200,
+    ease: 'out(2)',
+    autoplay: true
+  })
 }, { flush: 'post' })
 
 // Initialize widths on mount
@@ -270,15 +252,8 @@ onMounted(() => {
 <template>
   <div class="player-section" :class="{ 'is-compact': compact }">
     <!-- Progress bar on top for compact mode -->
-    <div 
-      v-if="compact" 
-      ref="progressBar"
-      class="top-progress-container" 
-      @mousedown="handleProgressMouseDown"
-      @touchstart="handleProgressMouseDown"
-      @click="handleProgressClick"
-    >
-      <div class="top-progress-fill" :style="{ width: progressPercent + '%' }"></div>
+    <div v-if="compact" class="top-progress-container" @mousedown="handleProgressMouseDown">
+      <div class="top-progress-fill"></div>
       <div class="top-time-display">
         <span>{{ playerStore.formattedProgress }}</span> / <span>{{ playerStore.formattedDuration }}</span>
       </div>
@@ -290,7 +265,7 @@ onMounted(() => {
       <div class="corner corner-bl"></div>
       <div class="corner corner-br"></div>
       <img
-        ref="coverImg"
+        ref="coverImgRef"
         :src="coverUrl"
         :alt="currentSong?.name"
         class="cover-img"
@@ -309,19 +284,13 @@ onMounted(() => {
         <span>{{ playerStore.formattedProgress }}</span>
         <span>{{ playerStore.formattedDuration }}</span>
       </div>
-      <div 
-        ref="progressBar"
-        class="progress-bar" 
-        @mousedown="handleProgressMouseDown"
-        @touchstart="handleProgressMouseDown"
-        @click="handleProgressClick"
-      >
-        <div ref="progressFill" class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+      <div class="progress-bar" @mousedown="handleProgressMouseDown">
+        <div ref="progressFillRef" class="progress-fill"></div>
       </div>
     </div>
 
     <div class="controls">
-      <button ref="loopButton" class="ctrl-btn loop-btn" @click="onLoopButtonClick" :title="playModeText">
+      <button ref="loopButtonRef" class="ctrl-btn loop-btn" @click="onLoopButtonClick" :title="playModeText">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <template v-for="(element, index) in playModeSvg" :key="index">
             <path v-if="element.type === 'path'" v-bind="element.attrs" />
@@ -330,13 +299,13 @@ onMounted(() => {
         </svg>
       </button>
 
-      <button ref="prevButton" class="ctrl-btn" @click="onPrevButtonClick">
+      <button ref="prevButtonRef" class="ctrl-btn" @click="onPrevButtonClick">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
         </svg>
       </button>
 
-      <button ref="playButton" class="ctrl-btn ctrl-main" @click="onPlayButtonClick">
+      <button ref="playButtonRef" class="ctrl-btn ctrl-main" @click="onPlayButtonClick">
         <svg v-if="!playerStore.playing" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
           <path d="M8 5v14l11-7z"/>
         </svg>
@@ -345,7 +314,7 @@ onMounted(() => {
         </svg>
       </button>
 
-      <button ref="nextButton" class="ctrl-btn" @click="onNextButtonClick">
+      <button ref="nextButtonRef" class="ctrl-btn" @click="onNextButtonClick">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
         </svg>
@@ -354,14 +323,8 @@ onMounted(() => {
 
     <div class="volume-row">
       <span class="volume-label">Vol</span>
-      <div 
-        ref="volumeBar"
-        class="volume-bar" 
-        @mousedown="handleVolumeMouseDown"
-        @touchstart="handleVolumeMouseDown"
-        @click="handleVolumeClick"
-      >
-        <div ref="volumeFill" class="volume-fill"></div>
+      <div class="volume-bar" @mousedown="handleVolumeMouseDown">
+        <div ref="volumeFillRef" class="volume-fill"></div>
       </div>
       <span class="volume-value">{{ Math.round(volumePercent) }}</span>
     </div>
