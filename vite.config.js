@@ -1,64 +1,61 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import electron from 'vite-plugin-electron'
-import renderer from 'vite-plugin-electron-renderer'
 import { fileURLToPath, URL } from 'node:url'
-import fs from 'node:fs'
 import path from 'node:path'
+import fs from 'node:fs'
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
   const isWeb = mode === 'web' || process.env.VERCEL === '1'
   
   const plugins = [vue()]
   
   if (!isWeb) {
-    plugins.push(
-      electron([
-        {
-          entry: 'electron/main.js',
-        },
-        {
-          entry: 'electron/preload.cjs',
-          onstart(options) {
-            // Copy the original preload.cjs to dist-electron without transformation
-            const srcPath = path.resolve('electron/preload.cjs')
-            const destPath = path.resolve('dist-electron/preload.cjs')
-            if (fs.existsSync(srcPath)) {
-              try {
-                // Ensure the destination directory exists
-                fs.mkdirSync(path.dirname(destPath), { recursive: true })
-                fs.copyFileSync(srcPath, destPath)
-              } catch (err) {
-                console.warn(`Failed to copy preload.cjs: ${err.message}`)
-                console.warn(`  src: ${srcPath}`)
-                console.warn(`  dest: ${destPath}`)
-              }
-            } else {
-              console.warn(`preload.cjs not found at ${srcPath}`)
-              console.warn(`  Expected for dist-electron: ${destPath}`)
-            }
-            options.reload()
+    try {
+      const electron = (await import('vite-plugin-electron')).default
+      const renderer = (await import('vite-plugin-electron-renderer')).default
+      
+      plugins.push(
+        electron([
+          {
+            entry: 'electron/main.js',
           },
-        },
-      ]),
-      renderer()
-    )
+          {
+            entry: 'electron/preload.cjs',
+            onstart(options) {
+              const srcPath = path.resolve('electron/preload.cjs')
+              const destPath = path.resolve('dist-electron/preload.cjs')
+              if (fs.existsSync(srcPath)) {
+                try {
+                  fs.mkdirSync(path.dirname(destPath), { recursive: true })
+                  fs.copyFileSync(srcPath, destPath)
+                } catch (err) {
+                  console.warn(`Failed to copy preload.cjs: ${err.message}`)
+                }
+              }
+              options.reload()
+            },
+          },
+        ]),
+        renderer()
+      )
+    } catch (e) {
+      console.log('Electron plugins not available, skipping for web build')
+    }
   }
 
   return {
     plugins,
-    base: './', // 相对路径，适配 Vercel
+    base: './',
     server: {
       proxy: {
         '/api': {
           target: 'http://localhost:14532',
           changeOrigin: true,
-          rewrite: (reqPath) => reqPath.replace(/^\/api/, '')
+          rewrite: (path) => path.replace(/^\/api/, '')
         }
       }
     },
     build: {
-      outDir: isWeb ? 'dist' : 'dist-electron',
       emptyOutDir: true,
       rollupOptions: {
         output: {
@@ -74,8 +71,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     define: {
-      __IS_WEB__: isWeb,
-      __API_BASE__: JSON.stringify(process.env.VITE_API_BASE_URL || '/api')
+      __APP_VERSION__: JSON.stringify('1.0.0')
     }
   }
 })
