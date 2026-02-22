@@ -253,7 +253,7 @@ onMounted(() => {
   <div class="player-section" :class="{ 'is-compact': compact }">
     <!-- Progress bar on top for compact mode -->
     <div v-if="compact" class="top-progress-container" @mousedown="handleProgressMouseDown">
-      <div class="top-progress-fill"></div>
+      <div class="top-progress-fill" :style="{ width: progressPercent + '%' }"></div>
       <div class="top-time-display">
         <span>{{ playerStore.formattedProgress }}</span> / <span>{{ playerStore.formattedDuration }}</span>
       </div>
