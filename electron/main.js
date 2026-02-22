@@ -97,58 +97,101 @@ app.on('second-instance', () => {
   }
 })
 
-// 缓存管理 IPC 处理程序
-ipcMain.handle('cache:get-size', async () => {
-  return new Promise((resolve) => {
-    session.defaultSession.getCacheSize((size) => {
-      resolve({
-        httpCache: size,
-        httpCacheFormatted: formatBytes(size)
+app.whenReady().then(() => {
+  // 创建窗口
+  createWindow()
+
+  // 注册缓存管理 IPC 处理程序（必须在 app ready 后）
+  ipcMain.handle('cache:get-size', async () => {
+    const ses = session.defaultSession
+    return new Promise((resolve) => {
+      ses.getCacheSize((size) => {
+        resolve({
+          httpCache: size,
+          httpCacheFormatted: formatBytes(size)
+        })
       })
     })
   })
-})
 
-ipcMain.handle('cache:clear', async (event, options = {}) => {
-  const {
-    cookies = false,
-    localStorage = false,
-    sessionStorage = false,
-    indexDB = false,
-    webSQL = false,
-    cache = false,
-    serviceWorkers = false,
-    shaderCache = false,
-    all = false
-  } = options
+  ipcMain.handle('cache:clear', async (event, options = {}) => {
+    const {
+      cookies = false,
+      localStorage = false,
+      sessionStorage = false,
+      indexDB = false,
+      webSQL = false,
+      cache = false,
+      serviceWorkers = false,
+      shaderCache = false,
+      all = false
+    } = options
 
-  const ses = session.defaultSession
-  const results = { success: [], failed: [] }
+    const ses = session.defaultSession
+    const results = { success: [], failed: [] }
 
-  const storages = []
-  if (cookies || all) storages.push('cookies')
-  if (localStorage || all) storages.push('localstorage')
-  if (sessionStorage || all) storages.push('sessionstorage')
-  if (indexDB || all) storages.push('indexdb')
-  if (webSQL || all) storages.push('websql')
-  if (serviceWorkers || all) storages.push('serviceworkers')
-  if (shaderCache || all) storages.push('shadercache')
+    const storages = []
+    if (cookies || all) storages.push('cookies')
+    if (localStorage || all) storages.push('localstorage')
+    if (sessionStorage || all) storages.push('sessionstorage')
+    if (indexDB || all) storages.push('indexdb')
+    if (webSQL || all) storages.push('websql')
+    if (serviceWorkers || all) storages.push('serviceworkers')
+    if (shaderCache || all) storages.push('shadercache')
 
-  if (storages.length > 0) {
-    try {
-      await new Promise((resolve, reject) => {
-        ses.clearStorageData({ storages }, (error) => {
-          if (error) reject(error)
-          else resolve()
+    if (storages.length > 0) {
+      try {
+        await new Promise((resolve, reject) => {
+          ses.clearStorageData({ storages }, (error) => {
+            if (error) reject(error)
+            else resolve()
+          })
         })
-      })
-      results.success.push(...storages)
-    } catch (error) {
-      results.failed.push({ type: storages, error: error.message })
+        results.success.push(...storages)
+      } catch (error) {
+        results.failed.push({ type: storages, error: error.message })
+      }
     }
-  }
 
-  if (cache || all) {
+    if (cache || all) {
+      try {
+        await new Promise((resolve) => {
+          ses.clearCache(() => resolve())
+        })
+        results.success.push('http-cache')
+      } catch (error) {
+        results.failed.push({ type: 'http-cache', error: error.message })
+      }
+    }
+
+    return results
+  })
+
+  ipcMain.handle('cache:clear-all', async (event, keepUserData = false) => {
+    const ses = session.defaultSession
+    const results = { success: [], failed: [] }
+
+    const storages = []
+    if (keepUserData) {
+      storages.push('cookies', 'sessionstorage', 'serviceworkers', 'shadercache')
+    } else {
+      storages.push('cookies', 'localstorage', 'sessionstorage', 'indexdb', 'websql', 'serviceworkers', 'shadercache')
+    }
+
+    if (storages.length > 0) {
+      try {
+        await new Promise((resolve, reject) => {
+          ses.clearStorageData({ storages }, (error) => {
+            if (error) reject(error)
+            else resolve()
+          })
+        })
+        results.success.push(...storages)
+      } catch (error) {
+        results.failed.push({ type: storages, error: error.message })
+      }
+    }
+
     try {
       await new Promise((resolve) => {
         ses.clearCache(() => resolve())
@@ -157,61 +200,20 @@ ipcMain.handle('cache:clear', async (event, options = {}) => {
     } catch (error) {
       results.failed.push({ type: 'http-cache', error: error.message })
     }
-  }
 
-  return results
-})
+    return results
+  })
 
-ipcMain.handle('cache:clear-all', async (event, keepUserData = false) => {
-  const ses = session.defaultSession
-  const results = { success: [], failed: [] }
-
-  const storages = []
-  if (keepUserData) {
-    storages.push('cookies', 'sessionstorage', 'serviceworkers', 'shadercache')
-  } else {
-    storages.push('cookies', 'localstorage', 'sessionstorage', 'indexdb', 'websql', 'serviceworkers', 'shadercache')
-  }
-
-  if (storages.length > 0) {
-    try {
-      await new Promise((resolve, reject) => {
-        ses.clearStorageData({ storages }, (error) => {
-          if (error) reject(error)
-          else resolve()
-        })
-      })
-      results.success.push(...storages)
-    } catch (error) {
-      results.failed.push({ type: storages, error: error.message })
+  ipcMain.handle('cache:get-paths', () => {
+    return {
+      userData: app.getPath('userData'),
+      cache: app.getPath('cache'),
+      temp: app.getPath('temp'),
+      logs: app.getPath('logs')
     }
-  }
+  })
 
-  // 清理 HTTP 缓存
-  try {
-    await new Promise((resolve) => {
-      ses.clearCache(() => resolve())
-    })
-    results.success.push('http-cache')
-  } catch (error) {
-    results.failed.push({ type: 'http-cache', error: error.message })
-  }
-
-  return results
-})
-
-ipcMain.handle('cache:get-paths', () => {
-  return {
-    userData: app.getPath('userData'),
-    cache: app.getPath('cache'),
-    temp: app.getPath('temp'),
-    logs: app.getPath('logs')
-  }
-})
-
-app.whenReady().then(() => {
-  createWindow()
-
+  // 窗口控制
   ipcMain.on('minimize-window', () => {
     win?.minimize()
   })
