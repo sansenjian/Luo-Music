@@ -86,6 +86,6 @@ export const usePlaylistStore = defineStore('playlistStore', {
     },
     persist: {
         storage: localStorage,
-        paths: ['songs', 'currentIndex']
+        paths: ['currentIndex']
     },
 })

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, session } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -27,16 +27,6 @@ if (!app.isPackaged) {
   app.setPath('userData', userDataPath)
 }
 
-// The built directory structure
-//
-// ├─┬─ dist
-// │ ├── index.html
-// │ ├── ...other-static-files-from-public
-// │
-// ├─┬─ dist-electron
-// │ ├── main.js
-// │ └── preload.js
-//
 process.env.DIST = path.join(__dirname, '../dist-electron')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(__dirname, '../public')
 
@@ -47,6 +37,15 @@ const MIN_WIDTH = 400
 const MIN_HEIGHT = 80
 const MAX_WIDTH = 3840
 const MAX_HEIGHT = 2160
+
+// 格式化字节大小
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -61,12 +60,11 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: true, // 启用安全策略
+      webSecurity: true,
       allowRunningInsecureContent: false,
     },
   })
 
-  // Test active push message to Renderer-process.
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', (new Date).toLocaleString())
   })
@@ -79,7 +77,6 @@ function createWindow() {
   }
 }
 
-// Quit when all windows are closed
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
@@ -93,7 +90,6 @@ app.on('activate', () => {
   }
 })
 
-// 处理第二个实例启动
 app.on('second-instance', () => {
   if (win) {
     if (win.isMinimized()) win.restore()
@@ -102,19 +98,130 @@ app.on('second-instance', () => {
 })
 
 app.whenReady().then(() => {
+  // 创建窗口
   createWindow()
 
+  // 注册缓存管理 IPC 处理程序（必须在 app ready 后）
+  ipcMain.handle('cache:get-size', async () => {
+    const ses = session.defaultSession
+    return new Promise((resolve) => {
+      ses.getCacheSize((size) => {
+        resolve({
+          httpCache: size,
+          httpCacheFormatted: formatBytes(size)
+        })
+      })
+    })
+  })
+
+  ipcMain.handle('cache:clear', async (event, options = {}) => {
+    const {
+      cookies = false,
+      localStorage = false,
+      sessionStorage = false,
+      indexDB = false,
+      webSQL = false,
+      cache = false,
+      serviceWorkers = false,
+      shaderCache = false,
+      all = false
+    } = options
+
+    const ses = session.defaultSession
+    const results = { success: [], failed: [] }
+
+    const storages = []
+    if (cookies || all) storages.push('cookies')
+    if (localStorage || all) storages.push('localstorage')
+    if (sessionStorage || all) storages.push('sessionstorage')
+    if (indexDB || all) storages.push('indexdb')
+    if (webSQL || all) storages.push('websql')
+    if (serviceWorkers || all) storages.push('serviceworkers')
+    if (shaderCache || all) storages.push('shadercache')
+
+    if (storages.length > 0) {
+      try {
+        await new Promise((resolve, reject) => {
+          ses.clearStorageData({ storages }, (error) => {
+            if (error) reject(error)
+            else resolve()
+          })
+        })
+        results.success.push(...storages)
+      } catch (error) {
+        results.failed.push({ type: storages, error: error.message })
+      }
+    }
+
+    if (cache || all) {
+      try {
+        await new Promise((resolve) => {
+          ses.clearCache(() => resolve())
+        })
+        results.success.push('http-cache')
+      } catch (error) {
+        results.failed.push({ type: 'http-cache', error: error.message })
+      }
+    }
+
+    return results
+  })
+
+  ipcMain.handle('cache:clear-all', async (event, keepUserData = false) => {
+    const ses = session.defaultSession
+    const results = { success: [], failed: [] }
+
+    const storages = []
+    if (keepUserData) {
+      storages.push('cookies', 'sessionstorage', 'serviceworkers', 'shadercache')
+    } else {
+      storages.push('cookies', 'localstorage', 'sessionstorage', 'indexdb', 'websql', 'serviceworkers', 'shadercache')
+    }
+
+    if (storages.length > 0) {
+      try {
+        await new Promise((resolve, reject) => {
+          ses.clearStorageData({ storages }, (error) => {
+            if (error) reject(error)
+            else resolve()
+          })
+        })
+        results.success.push(...storages)
+      } catch (error) {
+        results.failed.push({ type: storages, error: error.message })
+      }
+    }
+
+    try {
+      await new Promise((resolve) => {
+        ses.clearCache(() => resolve())
+      })
+      results.success.push('http-cache')
+    } catch (error) {
+      results.failed.push({ type: 'http-cache', error: error.message })
+    }
+
+    return results
+  })
+
+  ipcMain.handle('cache:get-paths', () => {
+    return {
+      userData: app.getPath('userData'),
+      cache: app.getPath('cache'),
+      temp: app.getPath('temp'),
+      logs: app.getPath('logs')
+    }
+  })
+
+  // 窗口控制
   ipcMain.on('minimize-window', () => {
     win?.minimize()
   })
 
   ipcMain.on('resize-window', (event, { width, height }) => {
     if (!win) return
-    
-    // 验证窗口尺寸
     const validWidth = Math.max(MIN_WIDTH, Math.min(width, MAX_WIDTH))
     const validHeight = Math.max(MIN_HEIGHT, Math.min(height, MAX_HEIGHT))
-    
     win.setSize(validWidth, validHeight)
   })
 

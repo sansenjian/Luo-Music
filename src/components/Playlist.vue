@@ -1,6 +1,7 @@
 <script setup>
 import { computed, watch, ref } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
+import { formatTime } from '../utils/player/helpers/timeFormatter'
 
 const playerStore = usePlayerStore()
 const listRef = ref(null)
@@ -18,13 +19,6 @@ watch(currentIndex, (newIndex) => {
 
 function playSong(index) {
   emit('play-song', index)
-}
-
-function formatDuration(seconds) {
-  if (!seconds) return '--:--'
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 }
 </script>
 
@@ -59,7 +53,7 @@ function formatDuration(seconds) {
           <div class="list-artist">{{ song.artist }}</div>
         </div>
         <div class="list-duration">
-          {{ formatDuration(song.duration) }}
+          {{ formatTime(song.duration) }}
         </div>
       </div>
     </div>

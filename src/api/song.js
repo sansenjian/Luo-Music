@@ -33,7 +33,7 @@ export function getMusicUrl(id, level = 'standard') {
   return request({
     url: '/song/url/v1',
     method: 'get',
-    params: { id, level }
+    params: { id, level, randomCNIP: true }
   })
 }
 
