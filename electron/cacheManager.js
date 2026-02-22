@@ -24,15 +24,14 @@ export const cacheManager = {
   async getCacheSize() {
     const ses = session.defaultSession
     
-    // 获取 HTTP 缓存大小
-    const httpCacheSize = await new Promise((resolve) => {
-      ses.getCacheSize((size) => resolve(size))
+    return new Promise((resolve) => {
+      ses.getCacheSize((size) => {
+        resolve({
+          httpCache: size,
+          httpCacheFormatted: formatBytes(size)
+        })
+      })
     })
-    
-    return {
-      httpCache: httpCacheSize,
-      httpCacheFormatted: formatBytes(httpCacheSize)
-    }
   },
 
   /**
@@ -69,7 +68,12 @@ export const cacheManager = {
     // 清理存储数据
     if (storages.length > 0) {
       try {
-        await ses.clearStorageData({ storages })
+        await new Promise((resolve, reject) => {
+          ses.clearStorageData({ storages }, (error) => {
+            if (error) reject(error)
+            else resolve()
+          })
+        })
         results.success.push(...storages)
       } catch (error) {
         results.failed.push({ type: storages, error: error.message })
@@ -79,7 +83,11 @@ export const cacheManager = {
     // 清理 HTTP 缓存
     if (cache || all) {
       try {
-        await ses.clearCache()
+        await new Promise((resolve, reject) => {
+          ses.clearCache(() => {
+            resolve()
+          })
+        })
         results.success.push('http-cache')
       } catch (error) {
         results.failed.push({ type: 'http-cache', error: error.message })
@@ -96,7 +104,6 @@ export const cacheManager = {
    */
   async clearAllCache(keepUserData = false) {
     if (keepUserData) {
-      // 保留 localStorage 和 IndexedDB（可能包含用户设置）
       return await this.clearCache({
         cookies: true,
         sessionStorage: true,
