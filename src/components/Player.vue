@@ -100,25 +100,36 @@ function handleProgressClick(e) {
 const isDraggingProgress = ref(false)
 const isDraggingVolume = ref(false)
 let progressRect = null
+let volumeRect = null
+let activeProgressPointerId = null
+let activeVolumePointerId = null
 
-function handleProgressMouseDown(e) {
+function handleProgressPointerDown(e) {
+  if (e.button !== undefined && e.button !== 0) return
   isDraggingProgress.value = true
+  activeProgressPointerId = e.pointerId ?? null
   progressRect = e.currentTarget.getBoundingClientRect()
+  e.currentTarget.setPointerCapture?.(e.pointerId)
   updateProgressFromEvent(e)
-  document.addEventListener('mousemove', handleProgressMouseMove)
-  document.addEventListener('mouseup', handleProgressMouseUp)
+  document.addEventListener('pointermove', handleProgressPointerMove)
+  document.addEventListener('pointerup', handleProgressPointerUp)
+  document.addEventListener('pointercancel', handleProgressPointerUp)
 }
 
-function handleProgressMouseMove(e) {
+function handleProgressPointerMove(e) {
   if (!isDraggingProgress.value || !progressRect) return
+  if (activeProgressPointerId !== null && e.pointerId !== activeProgressPointerId) return
   updateProgressFromEvent(e)
 }
 
-function handleProgressMouseUp() {
+function handleProgressPointerUp(e) {
+  if (activeProgressPointerId !== null && e.pointerId !== activeProgressPointerId) return
   isDraggingProgress.value = false
+  activeProgressPointerId = null
   progressRect = null
-  document.removeEventListener('mousemove', handleProgressMouseMove)
-  document.removeEventListener('mouseup', handleProgressMouseUp)
+  document.removeEventListener('pointermove', handleProgressPointerMove)
+  document.removeEventListener('pointerup', handleProgressPointerUp)
+  document.removeEventListener('pointercancel', handleProgressPointerUp)
 }
 
 function updateProgressFromEvent(e) {
@@ -135,26 +146,32 @@ function handleVolumeClick(e) {
   playerStore.setVolume(Math.max(0, Math.min(1, percent)))
 }
 
-let volumeRect = null
-
-function handleVolumeMouseDown(e) {
+function handleVolumePointerDown(e) {
+  if (e.button !== undefined && e.button !== 0) return
   isDraggingVolume.value = true
+  activeVolumePointerId = e.pointerId ?? null
   volumeRect = e.currentTarget.getBoundingClientRect()
+  e.currentTarget.setPointerCapture?.(e.pointerId)
   updateVolumeFromEvent(e)
-  document.addEventListener('mousemove', handleVolumeMouseMove)
-  document.addEventListener('mouseup', handleVolumeMouseUp)
+  document.addEventListener('pointermove', handleVolumePointerMove)
+  document.addEventListener('pointerup', handleVolumePointerUp)
+  document.addEventListener('pointercancel', handleVolumePointerUp)
 }
 
-function handleVolumeMouseMove(e) {
+function handleVolumePointerMove(e) {
   if (!isDraggingVolume.value || !volumeRect) return
+  if (activeVolumePointerId !== null && e.pointerId !== activeVolumePointerId) return
   updateVolumeFromEvent(e)
 }
 
-function handleVolumeMouseUp() {
+function handleVolumePointerUp(e) {
+  if (activeVolumePointerId !== null && e.pointerId !== activeVolumePointerId) return
   isDraggingVolume.value = false
+  activeVolumePointerId = null
   volumeRect = null
-  document.removeEventListener('mousemove', handleVolumeMouseMove)
-  document.removeEventListener('mouseup', handleVolumeMouseUp)
+  document.removeEventListener('pointermove', handleVolumePointerMove)
+  document.removeEventListener('pointerup', handleVolumePointerUp)
+  document.removeEventListener('pointercancel', handleVolumePointerUp)
 }
 
 function updateVolumeFromEvent(e) {
@@ -166,12 +183,14 @@ function updateVolumeFromEvent(e) {
 // Cleanup event listeners on component unmount
 onBeforeUnmount(() => {
   if (isDraggingProgress.value) {
-    document.removeEventListener('mousemove', handleProgressMouseMove)
-    document.removeEventListener('mouseup', handleProgressMouseUp)
+    document.removeEventListener('pointermove', handleProgressPointerMove)
+    document.removeEventListener('pointerup', handleProgressPointerUp)
+    document.removeEventListener('pointercancel', handleProgressPointerUp)
   }
   if (isDraggingVolume.value) {
-    document.removeEventListener('mousemove', handleVolumeMouseMove)
-    document.removeEventListener('mouseup', handleVolumeMouseUp)
+    document.removeEventListener('pointermove', handleVolumePointerMove)
+    document.removeEventListener('pointerup', handleVolumePointerUp)
+    document.removeEventListener('pointercancel', handleVolumePointerUp)
   }
 })
 
@@ -252,7 +271,7 @@ onMounted(() => {
 <template>
   <div class="player-section" :class="{ 'is-compact': compact }">
     <!-- Progress bar on top for compact mode -->
-    <div v-if="compact" class="top-progress-container" @mousedown="handleProgressMouseDown">
+    <div v-if="compact" class="top-progress-container" @pointerdown="handleProgressPointerDown">
       <div class="top-progress-fill" :style="{ width: progressPercent + '%' }"></div>
       <div class="top-time-display">
         <span>{{ playerStore.formattedProgress }}</span> / <span>{{ playerStore.formattedDuration }}</span>
@@ -284,7 +303,7 @@ onMounted(() => {
         <span>{{ playerStore.formattedProgress }}</span>
         <span>{{ playerStore.formattedDuration }}</span>
       </div>
-      <div class="progress-bar" @mousedown="handleProgressMouseDown">
+      <div class="progress-bar" @pointerdown="handleProgressPointerDown">
         <div ref="progressFillRef" class="progress-fill"></div>
       </div>
     </div>
@@ -323,7 +342,7 @@ onMounted(() => {
 
     <div class="volume-row">
       <span class="volume-label">Vol</span>
-      <div class="volume-bar" @mousedown="handleVolumeMouseDown">
+      <div class="volume-bar" @pointerdown="handleVolumePointerDown">
         <div ref="volumeFillRef" class="volume-fill"></div>
       </div>
       <span class="volume-value">{{ Math.round(volumePercent) }}</span>
