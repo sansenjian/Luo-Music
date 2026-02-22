@@ -10,6 +10,7 @@
     "dev:electron": "node scripts/dev-electron.js",
     "build": "vite build && electron-builder",
     "build:web": "vite build --mode web",
+    "build:electron": "vite build && electron-builder",
     "preview": "vite preview",
     "server": "node server.js",
     "start": "npm run dev",
