@@ -31,7 +31,7 @@ export const usePlayerStore = defineStore('player', {
     maxSkipAttempts: 5, // 最大连续跳过次数
     lastSkipTime: 0, // 上次跳过时间
     skipCooldownMs: 3000, // 跳过冷却时间（毫秒）
-    unavailableSongs: new Set(), // 记录不可用的歌曲ID
+    unavailableSongs: [], // 记录不可用的歌曲ID (使用数组而非Set，避免序列化问题)
   }),
   
   getters: {
@@ -224,7 +224,9 @@ export const usePlayerStore = defineStore('player', {
         if (this.songList[index]) {
           this.songList[index].unavailable = true
           this.songList[index].errorMessage = error.message
-          this.unavailableSongs.add(this.songList[index].id)
+          if (!this.unavailableSongs.includes(this.songList[index].id)) {
+            this.unavailableSongs.push(this.songList[index].id)
+          }
         }
         // 检查是否需要停止自动跳过
         if (this.shouldStopSkipping()) {
@@ -326,7 +328,7 @@ export const usePlayerStore = defineStore('player', {
       }
       
       // 如果不可用歌曲超过列表的80%，停止
-      if (this.songList.length > 0 && this.unavailableSongs.size / this.songList.length > 0.8) {
+      if (this.songList.length > 0 && this.unavailableSongs.length / this.songList.length > 0.8) {
         return true
       }
       
@@ -371,7 +373,9 @@ export const usePlayerStore = defineStore('player', {
           } catch (error) {
             // 播放失败，标记为不可用并继续尝试下一首
             this.songList[newIndex].unavailable = true
-            this.unavailableSongs.add(this.songList[newIndex].id)
+            if (!this.unavailableSongs.includes(this.songList[newIndex].id)) {
+              this.unavailableSongs.push(this.songList[newIndex].id)
+            }
             attempts++
             continue
           }
@@ -388,7 +392,7 @@ export const usePlayerStore = defineStore('player', {
     resetSkipState() {
       this.skipAttempts = 0
       this.lastSkipTime = 0
-      this.unavailableSongs.clear()
+      this.unavailableSongs = []
       // 清除歌曲列表中的不可用标记
       this.songList.forEach(song => {
         song.unavailable = false
