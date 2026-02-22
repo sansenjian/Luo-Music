@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, session } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { cacheManager } from './cacheManager.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -101,7 +102,24 @@ app.on('second-instance', () => {
   }
 })
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // 注册缓存管理 IPC 处理程序
+  ipcMain.handle('cache:get-size', async () => {
+    return await cacheManager.getCacheSize()
+  })
+
+  ipcMain.handle('cache:clear', async (event, options) => {
+    return await cacheManager.clearCache(options)
+  })
+
+  ipcMain.handle('cache:clear-all', async (event, keepUserData) => {
+    return await cacheManager.clearAllCache(keepUserData)
+  })
+
+  ipcMain.handle('cache:get-paths', () => {
+    return cacheManager.getCachePaths()
+  })
+
   createWindow()
 
   ipcMain.on('minimize-window', () => {

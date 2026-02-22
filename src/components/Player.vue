@@ -2,6 +2,7 @@
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
 import { animate, animateButtonClick, animatePlayPause, animateAlbumCover, animateLoopMode } from '../composables/useAnimations.js'
+import SettingsPanel from './SettingsPanel.vue'
 
 const props = defineProps({
   compact: {
@@ -346,6 +347,7 @@ onMounted(() => {
         <div ref="volumeFillRef" class="volume-fill"></div>
       </div>
       <span class="volume-value">{{ Math.round(volumePercent) }}</span>
+      <SettingsPanel />
     </div>
   </div>
 </template>
