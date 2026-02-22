@@ -12,6 +12,7 @@ export function useSearch() {
   const loading = ref(false)
   
   async function handleSearch() {
+    console.log('handleSearch called, keyword:', searchKeyword.value)
     if (!searchKeyword.value.trim()) {
       toastStore.error('Please enter a search keyword')
       return
@@ -19,7 +20,9 @@ export function useSearch() {
     
     loading.value = true
     try {
+      console.log('Calling search API...')
       const res = await search(searchKeyword.value, 1, 20)
+      console.log('Search response:', res)
       if (res.result && res.result.songs) {
         searchResults.value = res.result.songs
         
@@ -42,7 +45,23 @@ export function useSearch() {
       }
     } catch (error) {
       console.error('Search failed:', error)
-      toastStore.error('Search failed. Please check your connection.')
+      console.error('Error details:', error.message, error.response?.status, error.response?.data)
+      
+      // 根据错误类型显示不同的错误信息
+      let errorMsg = '搜索失败'
+      if (error.response?.status === 502) {
+        errorMsg = '网易云音乐服务暂时不可用，请稍后重试'
+      } else if (error.response?.status === 503) {
+        errorMsg = '服务繁忙，请稍后重试'
+      } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMsg = '请求超时，请检查网络连接'
+      } else if (!error.response) {
+        errorMsg = '网络连接失败，请检查网络'
+      } else {
+        errorMsg = `搜索失败: ${error.message || '未知错误'}`
+      }
+      
+      toastStore.error(errorMsg)
       return false
     } finally {
       loading.value = false
