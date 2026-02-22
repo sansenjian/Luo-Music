@@ -3,11 +3,32 @@ import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
 
 export default defineConfig(async ({ mode }) => {
   const isWeb = mode === 'web' || process.env.VERCEL === '1'
   
-  const plugins = [vue()]
+  const plugins = [
+    vue(),
+    AutoImport({
+      imports: [
+        'vue',
+        'vue-router',
+        'pinia',
+        '@vueuse/core'
+      ],
+      dts: 'src/auto-imports.d.ts',
+      dirs: ['src/composables', 'src/store'],
+      vueTemplate: true
+    }),
+    Components({
+      dirs: ['src/components'],
+      extensions: ['vue'],
+      dts: 'src/components.d.ts',
+      deep: true
+    })
+  ]
   
   if (!isWeb) {
     try {
@@ -61,6 +82,7 @@ export default defineConfig(async ({ mode }) => {
         output: {
           manualChunks: {
             vendor: ['vue', 'vue-router', 'pinia'],
+            vueuse: ['@vueuse/core']
           }
         }
       }
@@ -69,9 +91,6 @@ export default defineConfig(async ({ mode }) => {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url))
       }
-    },
-    define: {
-      __APP_VERSION__: JSON.stringify('1.0.0')
     }
   }
 })
