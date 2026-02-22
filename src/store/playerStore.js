@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { audioManager } from '../utils/audioManager'
 import { getMusicUrl, getLyric } from '../api/song'
 import { parseLyric, findCurrentLyricIndex } from '../utils/lyric'
+import { formatTime } from '../utils/player/helpers/timeFormatter'
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
