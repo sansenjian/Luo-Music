@@ -39,13 +39,59 @@
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | Vue | 3.5+ | 前端框架 |
-| Electron | 40.0+ | 桌面应用框架 |
+| Electron | 33.0+ | 桌面应用框架 |
 | Pinia | 3.0+ | 状态管理 |
 | Pinia Plugin Persistedstate | 4.7+ | 状态持久化 |
 | Axios | 1.6+ | HTTP 客户端 |
 | Vite | 7.0+ | 构建工具 |
 | Anime.js | 4.0+ | 动画效果 |
 | NeteaseCloudMusicApi Enhanced | 4.30+ | 音乐 API 服务 |
+
+## 依赖结构说明
+
+项目采用**依赖分离**策略，优化 Web 部署体积：
+
+```json
+{
+  "dependencies": {
+    // 纯 Web 依赖 - Vercel 部署时安装
+    "vue": "^3.5.28",
+    "pinia": "^3.0.4",
+    "animejs": "^4.3.6"
+    // ...
+  },
+  "devDependencies": {
+    // Electron 专属依赖 - 仅开发/打包时安装
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "vite-plugin-electron": "^0.29.0"
+    // ...
+  }
+}
+```
+
+### 为什么这样设计？
+
+| 场景 | 安装命令 | 安装的依赖 |
+|------|----------|-----------|
+| **本地开发** | `npm install` | 全部依赖 |
+| **Electron 打包** | `npm install` | 全部依赖 |
+| **Vercel Web 部署** | `npm install --production` | 仅 dependencies |
+
+### 安装 Electron 相关依赖
+
+```bash
+# 安装 Electron（开发依赖）
+npm install -D electron
+
+# 安装 Electron 打包工具
+npm install -D electron-builder
+
+# 安装 Vite Electron 插件
+npm install -D vite-plugin-electron vite-plugin-electron-renderer
+```
+
+> **注意**：Electron 相关包必须放在 `devDependencies` 中，否则 Vercel 部署时会安装不必要的依赖，导致部署失败或体积过大。
 
 ## 项目结构
 
