@@ -1,4 +1,4 @@
-import pkg from 'NeteaseCloudMusicApi'
+import pkg from '@neteasecloudmusicapienhanced/api'
 const { serveNcmApi } = pkg
 
 serveNcmApi({
@@ -6,7 +6,7 @@ serveNcmApi({
   host: 'localhost',
 })
   .then(() => {
-    console.log('NeteaseCloudMusicApi 服务已启动在 http://localhost:14532')
+    console.log('NeteaseCloudMusicApi Enhanced 服务已启动在 http://localhost:14532')
   })
   .catch((err) => {
     console.error('启动失败:', err)
