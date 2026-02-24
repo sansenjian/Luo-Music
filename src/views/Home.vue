@@ -7,6 +7,7 @@ import Player from '../components/Player.vue'
 import Lyric from '../components/Lyric.vue'
 import Playlist from '../components/Playlist.vue'
 import Toast from '../components/Toast.vue'
+import UserAvatar from '../components/UserAvatar.vue'
 
 // 使用 contextBridge 暴露的 API，不再直接 require('electron')
 // const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
@@ -77,8 +78,19 @@ function closeWindow() {
   window.electronAPI?.closeWindow()
 }
 
+// 检测是否为移动端
+function isMobile() {
+  return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  
+  // 如果是移动端且用户没有显式设置过偏好，自动进入紧凑模式
+  const userPreferenceSet = localStorage.getItem('compactModeUserToggled')
+  if (isMobile() && !playerStore.isCompact && !userPreferenceSet) {
+    playerStore.toggleCompactMode()
+  }
 })
 
 onUnmounted(() => {
@@ -108,6 +120,7 @@ onUnmounted(() => {
       </div>
 
       <div v-if="isElectron" class="window-controls">
+        <UserAvatar />
         <button class="win-btn" @click="minimizeWindow" title="Minimize">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>
@@ -178,6 +191,7 @@ onUnmounted(() => {
 .titlebar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: 12px 20px;
     padding-top: calc(12px + var(--safe-top));
     padding-left: calc(20px + var(--safe-left));
@@ -209,7 +223,7 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 16px;
-    width: 200px; /* Fixed width to balance layout */
+    flex-shrink: 0;
   }
 
   .logo {
@@ -224,14 +238,15 @@ onUnmounted(() => {
   gap: 8px;
   flex: 1;
   max-width: 400px;
-  margin: 0 auto; /* Center the search bar */
+  margin: 0 auto;
 }
 
 .window-controls {
   display: flex;
+  align-items: center;
   gap: 12px;
-  width: 200px; /* Fixed width to balance layout */
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .win-btn {
@@ -326,13 +341,30 @@ onUnmounted(() => {
     display: none;
   }
 
-  /* When compact mode is active, make sure right-panel takes full width but has no content issues */
+  /* When compact mode is active, make sure right-panel takes full width and shows content */
   .window.compact-mode .right-panel {
     border-left: none;
     display: flex; /* Restore display */
     flex: 1;
     width: 100%;
     overflow: hidden;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  /* Ensure content area is visible and scrollable in compact mode */
+  .window.compact-mode .content-area {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Ensure lyric and playlist components are visible in compact mode */
+  .window.compact-mode .content-area > * {
+    flex: 1;
+    min-height: 0;
   }
   
   /* Make sure footer stays at bottom */
@@ -355,6 +387,7 @@ onUnmounted(() => {
     height: 80px;
     flex-shrink: 0;
     box-sizing: border-box;
+    overflow: hidden;
   }
 
   .left-panel {
@@ -435,7 +468,7 @@ onUnmounted(() => {
     background: var(--white);
     border-top: 3px solid var(--black);
     padding: 0;
-    height: 80px; 
+    height: 80px;
     overflow: hidden;
   }
   
@@ -457,25 +490,48 @@ onUnmounted(() => {
 
 @media (max-width: 900px) {
   .main {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-columns: 260px 1fr;
   }
 
   .left-panel {
-    border-right: none;
-    border-bottom: var(--border);
-    max-height: none;
-    min-height: auto;
+    border-right: 2px solid var(--black);
+    min-width: 0;
   }
 
   .titlebar {
-    flex-wrap: wrap;
-    gap: 12px;
+    gap: 8px;
+    padding: 8px 12px;
+    padding-top: calc(8px + var(--safe-top));
+    padding-left: calc(12px + var(--safe-left));
+    padding-right: calc(12px + var(--safe-right));
+  }
+
+  .title-left {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-size: 14px;
   }
 
   .search-bar {
-    max-width: 100%;
-    width: 100%;
+    max-width: 300px;
+  }
+
+  .window-controls {
+    gap: 4px;
+  }
+
+  .win-btn {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main {
+    grid-template-columns: 200px 1fr;
   }
 }
 
@@ -483,15 +539,68 @@ onUnmounted(() => {
   .titlebar {
     padding: 8px 12px;
     padding-top: calc(8px + var(--safe-top));
+    padding-left: calc(12px + var(--safe-left));
+    padding-right: calc(12px + var(--safe-right));
+    gap: 8px;
   }
 
   .logo {
+    font-size: 12px;
+  }
+
+  .search-bar {
+    max-width: none;
+    flex: 1;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .cyber-input {
+    padding: 8px 10px;
     font-size: 14px;
+    min-width: 0;
+  }
+
+  .exec-btn {
+    padding: 8px 12px;
+    font-size: 10px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .win-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .win-btn svg {
+    width: 14px;
+    height: 14px;
   }
 
   .tab {
-    padding: 14px 16px;
-    font-size: 12px;
+    padding: 12px 16px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 390px) {
+  .titlebar {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  .logo {
+    font-size: 11px;
+  }
+
+  .exec-btn {
+    padding: 6px 10px;
+    font-size: 9px;
+  }
+
+  .cyber-input {
+    padding: 6px 8px;
   }
 }
 </style>

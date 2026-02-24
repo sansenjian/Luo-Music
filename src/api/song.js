@@ -77,3 +77,15 @@ export function getSongDetail(ids) {
     params: { ids }
   })
 }
+
+/**
+ * 获取喜欢歌曲列表
+ * @param {number} uid - 用户 ID
+ */
+export function getLikelist(uid) {
+  return request({
+    url: '/likelist',
+    method: 'get',
+    params: { uid, timestamp: new Date().getTime() }
+  })
+}

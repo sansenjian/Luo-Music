@@ -22,6 +22,8 @@
     "clean:all": "npm run clean && rimraf node_modules"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/noto-sans-sc": "^5.2.9",
     "@neteasecloudmusicapienhanced/api": "^4.30.1",
     "@vercel/analytics": "^1.6.1",
     "@vitejs/plugin-vue": "^6.0.4",
@@ -52,7 +54,7 @@
     "vitest": "^4.0.18"
   },
   "engines": {
-    "node": "20.x",
+    "node": ">=18 <25",
     "npm": ">=9.0.0"
   }
 }

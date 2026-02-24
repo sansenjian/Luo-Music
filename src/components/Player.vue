@@ -5,19 +5,13 @@ import { animate, animateButtonClick, animatePlayPause, animateAlbumCover, anima
 import SettingsPanel from './SettingsPanel.vue'
 
 const props = defineProps({
-  compact: {
-    type: Boolean,
-    default: false
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
+  compact: { type: Boolean, default: false },
+  loading: { type: Boolean, default: false }
 })
 
 const playerStore = usePlayerStore()
 
-// Refs for animation targets
+// Refs
 const playButtonRef = ref(null)
 const prevButtonRef = ref(null)
 const nextButtonRef = ref(null)
@@ -26,173 +20,179 @@ const coverImgRef = ref(null)
 const progressFillRef = ref(null)
 const volumeFillRef = ref(null)
 
-const currentSong = computed(() => playerStore.currentSongInfo)
-
 const defaultCover = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22%3E%3Crect fill=%22%23d1d5d8%22 width=%22300%22 height=%22300%22/%3E%3C/svg%3E'
 
-function isValidImageUrl(url) {
-  if (!url || url === '') return false
-  // Allow data URLs (for default cover) and http/https URLs
-  if (url.startsWith('data:')) return true
-  try {
-    const parsed = new URL(url)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
-const progressPercent = computed(() => {
-  if (!playerStore.duration) return 0
-  return (playerStore.progress / playerStore.duration) * 100
-})
-
+// Computed
+const currentSong = computed(() => playerStore.currentSongInfo)
+const progressPercent = computed(() => playerStore.duration ? (playerStore.progress / playerStore.duration) * 100 : 0)
 const volumePercent = computed(() => playerStore.volume * 100)
 
 const coverUrl = computed(() => {
   const url = currentSong.value?.cover
-  if (isValidImageUrl(url)) {
-    return url
+  if (!url) return defaultCover
+  if (url.startsWith('data:')) return url
+  try {
+    return new URL(url).protocol.match(/^https?:$/) ? url : defaultCover
+  } catch {
+    return defaultCover
   }
-  return defaultCover
 })
 
 const playModeSvg = computed(() => {
-  // SVG elements for different play modes
-  // Each mode contains an array of SVG elements with type and attributes
   const modes = [
-    // 0: 顺序播放 (sequential)
-    [
-      { type: 'path', attrs: { d: 'M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z' } },
-      { type: 'path', attrs: { d: 'M17 10l5 5-5 5V10z' } }
-    ],
-    // 1: 列表循环 (list loop)
-    [
-      { type: 'path', attrs: { d: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z' } }
-    ],
-    // 2: 单曲循环 (single loop)
-    [
-      { type: 'path', attrs: { d: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z' } },
-      { type: 'circle', attrs: { cx: '12', cy: '12', r: '2' } }
-    ],
-    // 3: 随机播放 (shuffle)
-    [
-      { type: 'path', attrs: { d: 'M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z' } }
-    ]
+    [{ d: 'M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z' }, { d: 'M17 10l5 5-5 5V10z' }],
+    [{ d: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z' }],
+    [{ d: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z' }, { circle: { cx: 12, cy: 12, r: 2 } }],
+    [{ d: 'M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z' }]
   ]
-  const index = Math.max(0, Math.min(playerStore.playMode, modes.length - 1))
-  return modes[index]
+  return modes[Math.max(0, Math.min(playerStore.playMode, 3))] || modes[0]
 })
 
-const playModeText = computed(() => {
-  const modes = ['顺序播放', '列表循环', '单曲循环', '随机播放']
-  const index = Math.max(0, Math.min(playerStore.playMode, modes.length - 1))
-  return modes[index]
-})
+const playModeText = computed(() => ['顺序播放', '列表循环', '单曲循环', '随机播放'][playerStore.playMode] || '顺序播放')
 
-function handleProgressClick(e) {
-  const rect = e.currentTarget.getBoundingClientRect()
-  if (rect.width === 0) return
-  const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  const time = percent * playerStore.duration
-  playerStore.seek(time)
-}
-
+// Drag state
 const isDraggingProgress = ref(false)
 const isDraggingVolume = ref(false)
 let progressRect = null
 let volumeRect = null
-let activeProgressPointerId = null
-let activeVolumePointerId = null
+let rafId = null
 
+// 拖拽移动检测（用于区分拖拽和点击）
+let didMoveProgress = false
+let didMoveVolume = false
+const MOVE_THRESHOLD = 3 // 像素
+
+// Progress handlers
 function handleProgressPointerDown(e) {
-  if (e.button !== undefined && e.button !== 0) return
+  if (e.button !== 0) return
   isDraggingProgress.value = true
-  activeProgressPointerId = e.pointerId ?? null
   progressRect = e.currentTarget.getBoundingClientRect()
   e.currentTarget.setPointerCapture?.(e.pointerId)
   updateProgressFromEvent(e)
-  document.addEventListener('pointermove', handleProgressPointerMove)
-  document.addEventListener('pointerup', handleProgressPointerUp)
-  document.addEventListener('pointercancel', handleProgressPointerUp)
 }
 
 function handleProgressPointerMove(e) {
   if (!isDraggingProgress.value || !progressRect) return
-  if (activeProgressPointerId !== null && e.pointerId !== activeProgressPointerId) return
-  updateProgressFromEvent(e)
+  e.preventDefault()
+  
+  // 检测是否移动超过阈值
+  const deltaX = Math.abs(e.clientX - progressRect.left - (progressRect.width * playerStore.progress / playerStore.duration))
+  if (deltaX > MOVE_THRESHOLD) {
+    didMoveProgress = true
+  }
+  
+  // 使用 RAF 节流
+  if (rafId) return
+  rafId = requestAnimationFrame(() => {
+    updateProgressFromEvent(e)
+    rafId = null
+  })
 }
 
 function handleProgressPointerUp(e) {
-  if (activeProgressPointerId !== null && e.pointerId !== activeProgressPointerId) return
+  if (!isDraggingProgress.value) return
+  
+  // 应用最终进度位置
+  if (progressRect?.width) {
+    const percent = Math.max(0, Math.min(1, (e.clientX - progressRect.left) / progressRect.width))
+    playerStore.seek(percent * playerStore.duration)
+  }
+  
   isDraggingProgress.value = false
-  activeProgressPointerId = null
   progressRect = null
-  document.removeEventListener('pointermove', handleProgressPointerMove)
-  document.removeEventListener('pointerup', handleProgressPointerUp)
-  document.removeEventListener('pointercancel', handleProgressPointerUp)
+  e.currentTarget.releasePointerCapture?.(e.pointerId)
+  if (rafId) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+  
+  // 延迟重置移动标志，确保 click 事件能检测到
+  setTimeout(() => {
+    didMoveProgress = false
+  }, 50)
 }
 
 function updateProgressFromEvent(e) {
-  if (!progressRect || progressRect.width === 0) return
+  if (!progressRect?.width) return
   const percent = Math.max(0, Math.min(1, (e.clientX - progressRect.left) / progressRect.width))
-  const time = percent * playerStore.duration
-  playerStore.seek(time)
+  playerStore.seek(percent * playerStore.duration)
 }
 
-function handleVolumeClick(e) {
-  const rect = e.currentTarget.getBoundingClientRect()
-  if (rect.width === 0) return
-  const percent = (e.clientX - rect.left) / rect.width
-  playerStore.setVolume(Math.max(0, Math.min(1, percent)))
-}
-
+// Volume handlers
 function handleVolumePointerDown(e) {
-  if (e.button !== undefined && e.button !== 0) return
+  if (e.button !== 0) return
   isDraggingVolume.value = true
-  activeVolumePointerId = e.pointerId ?? null
   volumeRect = e.currentTarget.getBoundingClientRect()
   e.currentTarget.setPointerCapture?.(e.pointerId)
   updateVolumeFromEvent(e)
-  document.addEventListener('pointermove', handleVolumePointerMove)
-  document.addEventListener('pointerup', handleVolumePointerUp)
-  document.addEventListener('pointercancel', handleVolumePointerUp)
 }
 
 function handleVolumePointerMove(e) {
   if (!isDraggingVolume.value || !volumeRect) return
-  if (activeVolumePointerId !== null && e.pointerId !== activeVolumePointerId) return
+  
+  // 检测是否移动超过阈值
+  const currentVolume = playerStore.volume
+  const deltaX = Math.abs(e.clientX - volumeRect.left - (volumeRect.width * currentVolume))
+  if (deltaX > MOVE_THRESHOLD) {
+    didMoveVolume = true
+  }
+  
   updateVolumeFromEvent(e)
 }
 
 function handleVolumePointerUp(e) {
-  if (activeVolumePointerId !== null && e.pointerId !== activeVolumePointerId) return
+  if (!isDraggingVolume.value) return
+  
+  // 应用最终音量位置
+  if (volumeRect?.width) {
+    const percent = Math.max(0, Math.min(1, (e.clientX - volumeRect.left) / volumeRect.width))
+    playerStore.setVolume(percent)
+  }
+  
   isDraggingVolume.value = false
-  activeVolumePointerId = null
   volumeRect = null
-  document.removeEventListener('pointermove', handleVolumePointerMove)
-  document.removeEventListener('pointerup', handleVolumePointerUp)
-  document.removeEventListener('pointercancel', handleVolumePointerUp)
+  e.currentTarget.releasePointerCapture?.(e.pointerId)
+  
+  // 延迟重置移动标志
+  setTimeout(() => {
+    didMoveVolume = false
+  }, 50)
 }
 
 function updateVolumeFromEvent(e) {
-  if (!volumeRect || volumeRect.width === 0) return
+  if (!volumeRect?.width) return
   const percent = Math.max(0, Math.min(1, (e.clientX - volumeRect.left) / volumeRect.width))
   playerStore.setVolume(percent)
 }
 
-// Cleanup event listeners on component unmount
+// Click handlers (for non-drag clicks)
+function handleProgressClick(e) {
+  if (isDraggingProgress.value) return // 避免拖拽后触发 click
+  if (didMoveProgress) {
+    didMoveProgress = false
+    return // 拖拽后忽略点击
+  }
+  const rect = e.currentTarget.getBoundingClientRect()
+  if (rect.width === 0) return // 防止零宽度导致 NaN
+  const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  playerStore.seek(percent * playerStore.duration)
+}
+
+function handleVolumeClick(e) {
+  if (isDraggingVolume.value) return
+  if (didMoveVolume) {
+    didMoveVolume = false
+    return // 拖拽后忽略点击
+  }
+  const rect = e.currentTarget.getBoundingClientRect()
+  if (rect.width === 0) return // 防止零宽度导致 NaN
+  const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  playerStore.setVolume(percent)
+}
+
+// Cleanup
 onBeforeUnmount(() => {
-  if (isDraggingProgress.value) {
-    document.removeEventListener('pointermove', handleProgressPointerMove)
-    document.removeEventListener('pointerup', handleProgressPointerUp)
-    document.removeEventListener('pointercancel', handleProgressPointerUp)
-  }
-  if (isDraggingVolume.value) {
-    document.removeEventListener('pointermove', handleVolumePointerMove)
-    document.removeEventListener('pointerup', handleVolumePointerUp)
-    document.removeEventListener('pointercancel', handleVolumePointerUp)
-  }
+  if (rafId) cancelAnimationFrame(rafId)
 })
 
 // Animation handlers
@@ -217,104 +217,104 @@ function onLoopButtonClick() {
   playerStore.togglePlayMode()
 }
 
-// Watch for song changes to animate cover
+// Watch for song changes
 watch(() => playerStore.currentSong, () => {
-  nextTick(() => {
-    if (coverImgRef.value) {
-      animateAlbumCover(coverImgRef.value)
-    }
-  })
+  nextTick(() => coverImgRef.value && animateAlbumCover(coverImgRef.value))
 }, { immediate: true })
 
-// Anime.js instances for progress/volume bars
+// Animation instances
 let progressAnim = null
 let volumeAnim = null
 
-// Watch for progress changes - Anime.js driven
+// Watch for progress - 只在非拖拽状态下使用动画
 watch(() => progressPercent.value, (newVal) => {
-  if (!progressFillRef.value) return
-  
-  if (progressAnim) progressAnim.pause()
-  
+  if (!progressFillRef.value || isDraggingProgress.value) return
+  progressAnim?.pause()
   progressAnim = animate(progressFillRef.value, {
     width: `${newVal}%`,
     duration: 150,
-    ease: 'linear',
-    autoplay: true
+    easing: 'linear'
   })
 }, { flush: 'post' })
 
-// Watch for volume changes - Anime.js driven
+// Watch for volume
 watch(() => volumePercent.value, (newVal) => {
   if (!volumeFillRef.value) return
-  
-  if (volumeAnim) volumeAnim.pause()
-  
+  volumeAnim?.pause()
   volumeAnim = animate(volumeFillRef.value, {
     width: `${newVal}%`,
     duration: 200,
-    ease: 'out(2)',
-    autoplay: true
+    easing: 'easeOutQuad'
   })
 }, { flush: 'post' })
 
-// Initialize widths on mount
 onMounted(() => {
-  if (progressFillRef.value) {
-    progressFillRef.value.style.width = `${progressPercent.value}%`
-  }
-  if (volumeFillRef.value) {
-    volumeFillRef.value.style.width = `${volumePercent.value}%`
-  }
+  if (progressFillRef.value) progressFillRef.value.style.width = `${progressPercent.value}%`
+  if (volumeFillRef.value) volumeFillRef.value.style.width = `${volumePercent.value}%`
 })
 </script>
 
 <template>
   <div class="player-section" :class="{ 'is-compact': compact }">
-    <!-- Progress bar on top for compact mode -->
-    <div v-if="compact" class="top-progress-container" @pointerdown="handleProgressPointerDown">
-      <div class="top-progress-fill" :style="{ width: progressPercent + '%' }"></div>
-      <div class="top-time-display">
-        <span>{{ playerStore.formattedProgress }}</span> / <span>{{ playerStore.formattedDuration }}</span>
+    <!-- Compact: Top progress bar -->
+    <div 
+      v-if="compact" 
+      class="top-progress-wrapper"
+      @pointerdown="handleProgressPointerDown"
+      @pointermove="handleProgressPointerMove"
+      @pointerup="handleProgressPointerUp"
+      @pointercancel="handleProgressPointerUp"
+      @click="handleProgressClick"
+    >
+      <div class="top-progress-track">
+        <div ref="progressFillRef" class="top-progress-fill" :style="{ width: `${progressPercent}%` }"></div>
+      </div>
+      <div class="top-progress-hover-info">
+        <span>{{ playerStore.formattedProgress }}</span>
+        <span class="separator">/</span>
+        <span>{{ playerStore.formattedDuration }}</span>
       </div>
     </div>
 
-    <div class="cover-frame">
-      <div class="corner corner-tl"></div>
-      <div class="corner corner-tr"></div>
-      <div class="corner corner-bl"></div>
-      <div class="corner corner-br"></div>
-      <img
-        ref="coverImgRef"
-        :src="coverUrl"
-        :alt="currentSong?.name"
-        class="cover-img"
-        loading="lazy"
-      />
+    <div class="player-left">
+      <div class="cover-frame">
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-tr"></div>
+        <div class="corner corner-bl"></div>
+        <div class="corner corner-br"></div>
+        <img ref="coverImgRef" :src="coverUrl" :alt="currentSong?.name" class="cover-img" loading="lazy" />
+      </div>
+
+      <div class="track-info">
+        <h2 class="track-title">{{ currentSong?.name || 'Unknown Track' }}</h2>
+        <p class="track-artist">{{ currentSong?.artist || 'Unknown Artist' }}</p>
+      </div>
     </div>
 
-    <div class="track-info">
-      <h2 class="track-title">{{ currentSong?.name || 'Unknown Track' }}</h2>
-      <p class="track-artist">{{ currentSong?.artist || '' }}</p>
-    </div>
-
-    <!-- Progress section only visible in non-compact mode now (or repurposed) -->
-    <div class="progress-section" v-if="!compact">
+    <!-- Normal: Bottom progress -->
+    <div v-if="!compact" class="progress-section">
       <div class="time-row">
         <span>{{ playerStore.formattedProgress }}</span>
         <span>{{ playerStore.formattedDuration }}</span>
       </div>
-      <div class="progress-bar" @pointerdown="handleProgressPointerDown">
-        <div ref="progressFillRef" class="progress-fill"></div>
+      <div 
+        class="progress-bar" 
+        @pointerdown="handleProgressPointerDown"
+        @pointermove="handleProgressPointerMove"
+        @pointerup="handleProgressPointerUp"
+        @pointercancel="handleProgressPointerUp"
+        @click="handleProgressClick"
+      >
+        <div ref="progressFillRef" class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
       </div>
     </div>
 
     <div class="controls">
       <button ref="loopButtonRef" class="ctrl-btn loop-btn" @click="onLoopButtonClick" :title="playModeText">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <template v-for="(element, index) in playModeSvg" :key="index">
-            <path v-if="element.type === 'path'" v-bind="element.attrs" />
-            <circle v-else-if="element.type === 'circle'" v-bind="element.attrs" />
+          <template v-for="(el, i) in playModeSvg" :key="i">
+            <path v-if="el.d" :d="el.d" />
+            <circle v-if="el.circle" v-bind="el.circle" />
           </template>
         </svg>
       </button>
@@ -342,8 +342,15 @@ onMounted(() => {
     </div>
 
     <div class="volume-row">
-      <span class="volume-label">Vol</span>
-      <div class="volume-bar" @pointerdown="handleVolumePointerDown">
+      <span class="volume-label">VOL</span>
+      <div 
+        class="volume-bar" 
+        @pointerdown="handleVolumePointerDown"
+        @pointermove="handleVolumePointerMove"
+        @pointerup="handleVolumePointerUp"
+        @pointercancel="handleVolumePointerUp"
+        @click="handleVolumeClick"
+      >
         <div ref="volumeFillRef" class="volume-fill"></div>
       </div>
       <span class="volume-value">{{ Math.round(volumePercent) }}</span>
@@ -365,137 +372,98 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 
-/* Footer/Compact Player Styles using Prop */
+/* ===== Compact Mode ===== */
 .player-section.is-compact {
-  flex-direction: row;
-  padding: 0 20px;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  padding: 12px 16px 8px;
+  gap: 12px;
   align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-  height: 100%;
   position: relative;
-  /* Removed padding-top: 4px; to let it center naturally */
-  box-sizing: border-box;
 }
 
-.player-section.is-compact .progress-section {
-  display: none; /* Hide original progress bar container completely */
-}
-
-/* Ensure controls are centered in compact mode */
-.player-section.is-compact .controls {
-  display: flex;
-  gap: 20px;
-  flex-shrink: 0;
-  padding: 0;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%); /* Perfectly centered */
-  margin: 0;
-}
-
-.player-section.is-compact .volume-row {
-  display: flex;
-  width: 120px;
-  flex-shrink: 0;
-  margin-left: auto; /* Push to right edge */
-  border-top: none;
-  padding-top: 0;
-  margin-right: 0;
-}
-/* New Top Progress Bar Styles */
-.top-progress-container {
+/* Top Progress Bar - 重构结构避免 height transition 问题 */
+.top-progress-wrapper {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 4px; /* Default small height */
-  background: transparent; /* Transparent background initially */
+  right: 0;
+  height: 3px;
   cursor: pointer;
   z-index: 100;
-  overflow: visible; /* Allow hover area to expand */
-  transition: all 0.2s ease;
+  touch-action: none;
 }
 
-/* Add a pseudo-element to increase hover area without changing visual height initially */
-.top-progress-container::before {
-  content: '';
+.top-progress-track {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 10px; /* Invisible hit area */
-  z-index: -1;
-}
-
-.top-progress-container:hover {
-  height: 20px; /* Expand on hover */
-  background: #000; /* Show black background on hover */
+  right: 0;
+  height: 100%;
+  background: var(--bg-dark);
+  overflow: hidden;
 }
 
 .top-progress-fill {
   height: 100%;
   background: var(--accent);
-  width: 0%;
-  transition: width 0.1s linear, height 0.2s ease;
-  pointer-events: none;
-  opacity: 1; /* Fully visible accent color */
+  /* 移除 CSS transition，完全由 JS 控制 */
+  will-change: width;
 }
 
-/* Hide background of progress bar when not hovered to make it look like just a thin line */
-.top-progress-container:not(:hover) .top-progress-fill {
-  /* When not hovered, maybe we want just the fill to be visible as a thin line */
-  /* And the rest is transparent */
+/* Hover 时展开的是 wrapper，不是 track */
+.top-progress-wrapper:hover {
+  height: 20px;
 }
 
-/* Time display only visible on hover */
-.top-time-display {
+.top-progress-wrapper:hover .top-progress-track {
+  height: 20px;
+  background: #000;
+}
+
+.top-progress-hover-info {
   position: absolute;
   top: 0;
   left: 8px;
-  height: 100%;
+  height: 20px;
   display: flex;
   align-items: center;
-  color: var(--white);
+  gap: 4px;
+  color: #fff;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   font-family: monospace;
-  pointer-events: none;
-  z-index: 12;
-  text-shadow: 1px 1px 0 #000;
-  opacity: 0; /* Hidden by default */
+  opacity: 0;
   transition: opacity 0.2s ease;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
 
-.top-progress-container:hover .top-time-display {
-  opacity: 1; /* Show on hover */
+.top-progress-wrapper:hover .top-progress-hover-info {
+  opacity: 1;
+}
+
+.separator {
+  opacity: 0.6;
+}
+
+/* Compact layout adjustments */
+/* Left: Cover + Track Info wrapper */
+.player-section.is-compact .player-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+  justify-self: start;
 }
 
 .player-section.is-compact .cover-frame {
-  width: 60px;
-  max-width: 60px;
-  height: 60px;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
   margin: 0;
   border-width: 2px;
-  flex-shrink: 0;
-  display: block;
-  position: relative;
-  background: var(--bg-dark);
-  overflow: hidden;
-  padding: 0;
-  aspect-ratio: auto;
-}
-
-.player-section.is-compact .cover-img {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  object-fit: cover;
-  object-position: center;
 }
 
 .player-section.is-compact .corner {
@@ -503,155 +471,51 @@ onMounted(() => {
 }
 
 .player-section.is-compact .track-info {
+  min-width: 0;
   text-align: left;
   margin: 0;
-  width: auto; /* Allow width to fit content */
-  max-width: 200px; /* But cap it */
-  flex-shrink: 1; /* Allow shrinking */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  margin-right: 20px; /* Add spacing before center controls */
+  flex: 1;
 }
 
 .player-section.is-compact .track-title {
-  font-size: 14px;
-  margin-bottom: 2px;
-  padding: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   -webkit-line-clamp: 1;
 }
 
 .player-section.is-compact .track-artist {
   font-size: 11px;
-  padding: 0;
-}
-
-/* Removed redundant styles that might conflict */
-/* .player-section.is-compact .controls { ... } */
-/* .player-section.is-compact .volume-row { ... } */
-
-/* Clean up old global selectors */
-/* Footer Player Specific Overrides */
-/* :global(.footer-player.player-section) ... removed */
-
-/* Footer mode styles (Compact Player at bottom) */
-.footer-player .cover-frame {
-  width: 60px;
-  max-width: 60px;
-  margin: 0;
-  border-width: 2px;
-}
-
-.footer-player .player-section {
-  flex-direction: row;
-  align-items: center;
-  padding: 0;
-  gap: 20px;
-  justify-content: space-between;
-}
-
-.footer-player .track-info {
-  text-align: left;
-  margin: 0;
-  min-width: 150px;
-}
-
-.footer-player .track-title {
-  font-size: 16px;
-  margin-bottom: 2px;
-}
-
-.footer-player .track-artist {
-  font-size: 12px;
-}
-
-.footer-player .progress-section {
-  flex: 1;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 20px;
-}
-
-.footer-player .time-row {
-  display: none; /* Hide time text to save space or move it */
-}
-
-.footer-player .progress-bar {
-  flex: 1;
-  margin: 0;
-  height: 6px;
-}
-
-.footer-player .controls {
-  order: -1; /* Move controls to left of progress bar */
-  gap: 16px;
-}
-
-.footer-player .volume-row {
-  width: 120px;
-}
-
-.footer-player .ctrl-btn {
-  width: 32px;
-  height: 32px;
-}
-
-.footer-player .ctrl-main {
-  width: 40px;
-  height: 40px;
-}
-
-/* Compact mode styles - kept for reference if needed elsewhere */
-:global(.main.player-compact) .cover-frame {
-  width: 60px;
-  max-width: 60px;
-  height: 60px;
-  border-width: 2px;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-:global(.main.player-compact) .cover-img {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  object-fit: cover;
-  object-position: center;
-}
-
-:global(.main.player-compact) .progress-section {
-  padding: 10px;
+/* Center: Controls */
+.player-section.is-compact .controls {
+  justify-self: center;
+  padding: 0;
   gap: 8px;
+  grid-column: 2;
 }
 
-:global(.main.player-compact) .track-info {
-  margin-bottom: 8px;
+/* Right: Volume */
+.player-section.is-compact .volume-row {
+  width: 200px;
+  justify-self: end;
+  border: none;
+  padding: 0;
+  grid-column: 3;
 }
 
-:global(.main.player-compact) .track-title {
-  font-size: 16px;
-  margin-bottom: 2px;
+.player-section.is-compact .progress-section {
+  display: none;
 }
 
-:global(.main.player-compact) .track-artist {
-  font-size: 12px;
-}
-
-:global(.main.player-compact) .ctrl-btn {
-  width: 28px;
-  height: 28px;
-}
-
-:global(.main.player-compact) .ctrl-main {
-  width: 36px;
-  height: 36px;
-}
-
-:global(.main.player-compact) .ctrl-main svg {
-  width: 20px;
-  height: 20px;
+/* ===== Normal Mode ===== */
+.player-left {
+  display: contents;
 }
 
 .cover-frame {
@@ -662,10 +526,8 @@ onMounted(() => {
   align-self: center;
   width: 85%;
   max-width: 280px;
-  aspect-ratio: 1 / 1;
-  overflow: visible;
+  aspect-ratio: 1;
   margin: 10px 0;
-  transition: all 0.3s ease;
 }
 
 .corner {
@@ -682,41 +544,25 @@ onMounted(() => {
 .corner-br { bottom: -5px; right: -5px; }
 
 .cover-img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-    display: block;
-    background: var(--bg-dark);
-    margin: 0;
-  }
-  
-  /* Add padding for default cover frame mode to accommodate corners */
-  .player-section:not(.footer-player) .cover-img {
-    top: 8px;
-    left: 8px;
-    width: calc(100% - 16px);
-    height: calc(100% - 16px);
-  }
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  object-fit: cover;
+  background: var(--bg-dark);
+}
 
 .track-info {
-  margin-top: 2px;
+  text-align: center;
   flex-shrink: 0;
   min-width: 0;
-  text-align: center;
 }
 
 .track-title {
   font-size: 18px;
   font-weight: 800;
-  letter-spacing: -0.02em;
   margin-bottom: 4px;
-  padding: 0 10px;
-  border-left: none;
-  word-break: break-word;
   line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -728,16 +574,7 @@ onMounted(() => {
 .track-artist {
   font-size: 12px;
   color: var(--gray);
-  padding: 0 10px;
   min-height: 18px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.track-artist:empty::before {
-  content: 'Unknown Artist';
-  opacity: 0.5;
 }
 
 .progress-section {
@@ -760,10 +597,13 @@ onMounted(() => {
   border: 2px solid var(--black);
   cursor: pointer;
   position: relative;
+  touch-action: none; /* 防止触摸滚动干扰 */
 }
 
 .progress-bar:hover {
   height: 8px;
+  margin-top: -1px;
+  margin-bottom: -1px;
 }
 
 .progress-fill {
@@ -813,42 +653,28 @@ onMounted(() => {
   justify-content: center;
 }
 
-.ctrl-btn:hover, .ctrl-btn:active {
+.ctrl-btn:hover {
   transform: scale(1.1);
 }
 
-.ctrl-btn svg {
-  width: 20px;
-  height: 20px;
-  pointer-events: none;
+.ctrl-btn:active {
+  transform: scale(0.95);
 }
 
 .ctrl-main {
   width: 44px;
   height: 44px;
   border: 2px solid var(--black);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
-.ctrl-main svg {
-  width: 24px;
-  height: 24px;
-}
-
-.ctrl-main:hover, .ctrl-main:active {
+.ctrl-main:hover {
   background: var(--black);
   color: var(--white);
 }
 
-.loop-btn {
-  position: relative;
-}
-
 .loop-btn.active {
   color: var(--accent);
+  position: relative;
 }
 
 .loop-btn.active::after {
@@ -871,15 +697,6 @@ onMounted(() => {
   border-top: 2px solid var(--black);
 }
 
-.volume-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--gray);
-  min-width: 24px;
-}
-
 .volume-bar {
   flex: 1;
   height: 12px;
@@ -887,109 +704,134 @@ onMounted(() => {
   border: 2px solid var(--black);
   cursor: pointer;
   position: relative;
+  touch-action: none;
 }
 
 .volume-fill {
   height: 100%;
   background: var(--black);
   width: 0%;
-  pointer-events: none;
   will-change: width;
 }
 
-.volume-value {
+.volume-label, .volume-value {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   min-width: 24px;
+}
+
+.volume-value {
   text-align: right;
 }
 
-@media (max-width: 900px) {
-  .player-section {
-    min-height: 280px;
-  }
-
-  .cover-frame {
-    max-width: 200px;
-    max-height: 200px;
-  }
-}
-
+/* Responsive */
 @media (max-width: 600px) {
-  .player-section {
-    min-height: 240px;
+  .player-section:not(.is-compact) {
     padding: 10px;
     gap: 8px;
   }
-
+  
   .cover-frame {
-    max-width: 160px;
-    max-height: 160px;
-    width: 45%;
-    border-width: 2px;
+    max-width: 200px;
   }
-
-  .corner {
-    width: 8px;
-    height: 8px;
-  }
-
-  .corner-tl { top: -4px; left: -4px; }
-  .corner-tr { top: -4px; right: -4px; }
-  .corner-bl { bottom: -4px; left: -4px; }
-  .corner-br { bottom: -4px; right: -4px; }
-
-  .cover-img {
-    top: 6px;
-    left: 6px;
-    right: 6px;
-    bottom: 6px;
-    width: calc(100% - 12px);
-    height: calc(100% - 12px);
-  }
-
+  
   .ctrl-btn {
     padding: 10px;
   }
-
+  
   .ctrl-btn svg {
     width: 24px;
     height: 24px;
   }
-
+  
   .ctrl-main {
     width: 50px;
     height: 50px;
   }
-
-  .ctrl-main svg {
-    width: 28px;
-    height: 28px;
+  
+  .player-section.is-compact {
+    padding: 12px 12px 8px;
+    gap: 8px;
   }
-
-  .progress-bar {
-    height: 10px;
+  
+  .player-section.is-compact .cover-frame {
+    width: 40px;
+    height: 40px;
   }
-
-  .volume-bar {
+  
+  .player-section.is-compact .track-title {
+    font-size: 12px;
+  }
+  
+  .player-section.is-compact .track-artist {
+    font-size: 10px;
+  }
+  
+  .player-section.is-compact .controls {
+    gap: 6px;
+  }
+  
+  .player-section.is-compact .ctrl-btn {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .player-section.is-compact .ctrl-btn svg {
+    width: 16px;
     height: 16px;
   }
-
-  .track-title {
-    font-size: 16px;
+  
+  .player-section.is-compact .ctrl-main {
+    width: 36px;
+    height: 36px;
   }
-
-  .track-artist {
-    font-size: 11px;
+  
+  .player-section.is-compact .ctrl-main svg {
+    width: 20px;
+    height: 20px;
   }
-
-  .time-row {
-    font-size: 11px;
+  
+  .player-section.is-compact .volume-row {
+    width: 80px;
   }
+}
 
-  .volume-label, .volume-value {
-    font-size: 11px;
+@media (max-width: 480px) {
+  .player-section.is-compact {
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    padding: 10px 12px 6px;
+  }
+  
+  .player-section.is-compact .track-info {
+    display: none;
+  }
+  
+  /* 显示音量控制，但缩小尺寸 */
+  .player-section.is-compact .volume-row {
+    width: 100px;
+    gap: 4px;
+  }
+  
+  .player-section.is-compact .volume-label {
+    font-size: 9px;
+    min-width: 18px;
+  }
+  
+  .player-section.is-compact .volume-value {
+    font-size: 9px;
+    min-width: 16px;
+  }
+  
+  .player-section.is-compact .volume-row :deep(.settings-btn) {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .player-section.is-compact .volume-row :deep(.settings-btn svg) {
+    width: 14px;
+    height: 14px;
   }
 }
 </style>

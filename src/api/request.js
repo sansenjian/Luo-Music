@@ -1,30 +1,65 @@
 import axios from 'axios'
+import { useUserStore } from '../store/userStore'
 
-// 检测运行环境
 const isElectron = () => window.navigator.userAgent.indexOf('Electron') > -1
 const isWeb = () => !isElectron()
 
-// 强制使用相对路径 /api，避免 Vercel 环境变量干扰
 const getBaseURL = () => {
   if (isElectron()) {
     return 'http://localhost:14532'
   }
-  // Web 环境使用相对路径，让请求自动匹配当前域名
   return '/api'
 }
 
 const request = axios.create({
   baseURL: getBaseURL(),
-  timeout: 30000, // 增加超时时间到 30 秒
-  // Web 环境下禁用 withCredentials 避免 CORS 问题
+  timeout: 30000,
   withCredentials: isElectron(),
-  // 添加重试配置
   retry: 3,
   retryDelay: 1000,
 })
 
+// Cache for user cookie to avoid repeated store access
+let cachedCookie = null
+let lastCookieCheck = 0
+const COOKIE_CACHE_TTL = 5000 // 5 seconds
+
+const getCachedCookie = () => {
+  const now = Date.now()
+  // Return cached cookie if still valid
+  if (cachedCookie !== null && (now - lastCookieCheck) < COOKIE_CACHE_TTL) {
+    return cachedCookie
+  }
+  
+  // Get from Pinia store only (single source of truth)
+  try {
+    const userStore = useUserStore()
+    cachedCookie = userStore?.cookie || null
+    lastCookieCheck = now
+    return cachedCookie
+  } catch {
+    // Pinia store not available
+    cachedCookie = null
+    lastCookieCheck = now
+    return null
+  }
+}
+
+// Expose method to clear cache when user logs out
+export const clearCookieCache = () => {
+  cachedCookie = null
+  lastCookieCheck = 0
+}
+
 request.interceptors.request.use(
   (config) => {
+    const cookie = getCachedCookie()
+    if (cookie) {
+      config.params = {
+        ...config.params,
+        cookie
+      }
+    }
     return config
   },
   (error) => {
@@ -35,7 +70,6 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   (response) => {
-    // 处理歌曲 URL，将 HTTP 转换为 HTTPS 避免混合内容问题
     if (response.data && response.config.url?.includes('/song/url')) {
       const data = response.data.data || response.data
       if (Array.isArray(data)) {
