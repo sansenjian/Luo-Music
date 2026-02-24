@@ -12,6 +12,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     CacheManager: typeof import('./components/CacheManager.vue')['default']
+    LoginModal: typeof import('./components/LoginModal.vue')['default']
     Lyric: typeof import('./components/Lyric.vue')['default']
     PageTransition: typeof import('./components/PageTransition.vue')['default']
     Player: typeof import('./components/Player.vue')['default']
@@ -21,5 +22,8 @@ declare module 'vue' {
     SearchInput: typeof import('./components/SearchInput.vue')['default']
     SettingsPanel: typeof import('./components/SettingsPanel.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
+    UserAvatar: typeof import('./components/UserAvatar.vue')['default']
+    UserCenter: typeof import('./components/UserCenter.vue')['default']
+    UserProfile: typeof import('./components/UserProfile.vue')['default']
   }
 }

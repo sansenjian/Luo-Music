@@ -47,3 +47,15 @@ export function getRecommendSongs() {
     method: 'get'
   })
 }
+
+/**
+ * 获取用户歌单
+ * @param {number} uid - 用户 ID
+ */
+export function getUserPlaylist(uid) {
+  return request({
+    url: '/user/playlist',
+    method: 'get',
+    params: { uid }
+  })
+}

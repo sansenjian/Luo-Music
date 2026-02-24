@@ -98,10 +98,7 @@ app.on('second-instance', () => {
 })
 
 app.whenReady().then(() => {
-  // 创建窗口
-  createWindow()
-
-  // 注册缓存管理 IPC 处理程序（必须在 app ready 后）
+  // 注册缓存管理 IPC 处理程序（必须在 createWindow 之前）
   ipcMain.handle('cache:get-size', async () => {
     const ses = session.defaultSession
     return new Promise((resolve) => {
@@ -235,5 +232,24 @@ app.whenReady().then(() => {
 
   ipcMain.on('close-window', () => {
     win?.close()
+  })
+
+  // 创建窗口
+  createWindow()
+  
+  // 启动后清理缓存（保留用户数据）- 在窗口创建后异步执行
+  const ses = session.defaultSession
+  ses.clearCache(() => {
+    console.log('Startup: HTTP cache cleared')
+  })
+  
+  ses.clearStorageData({
+    storages: ['sessionstorage', 'serviceworkers', 'shadercache', 'websql', 'indexdb']
+  }, (error) => {
+    if (error) {
+      console.error('Startup: Failed to clear storage data:', error)
+    } else {
+      console.log('Startup: Temporary storage cleared (preserved localStorage and cookies)')
+    }
   })
 })

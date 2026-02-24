@@ -1,8 +1,25 @@
 <script setup>
 import { Analytics } from '@vercel/analytics/vue'
 
-// 检测是否为 Electron 环境
 const isElectron = window.navigator.userAgent.indexOf('Electron') > -1
+
+if (isElectron) {
+  const playerState = localStorage.getItem('player')
+  if (playerState) {
+    try {
+      const parsed = JSON.parse(playerState)
+      const preserved = {
+        volume: parsed.volume ?? 0.7,
+        playMode: parsed.playMode ?? 0,
+        lyricType: parsed.lyricType ?? ['original', 'trans'],
+        isCompact: parsed.isCompact ?? false
+      }
+      localStorage.setItem('player', JSON.stringify(preserved))
+    } catch (e) {
+      console.error('Failed to clean player state:', e)
+    }
+  }
+}
 </script>
 
 <template>
@@ -12,8 +29,8 @@ const isElectron = window.navigator.userAgent.indexOf('Electron') > -1
 
 <style>
 :root {
-  --bg: #f5f5f0;
-  --bg-dark: #e5e5e0;
+  --bg: #f5f5f5;
+  --bg-dark: #e0e0e0;
   --black: #1a1a1a;
   --white: #ffffff;
   --accent: #ff6b35;
@@ -32,7 +49,7 @@ html, body {
 }
 
 body {
-  font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--black);
   line-height: 1.4;
