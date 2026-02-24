@@ -173,6 +173,7 @@ function handleProgressClick(e) {
     return // 拖拽后忽略点击
   }
   const rect = e.currentTarget.getBoundingClientRect()
+  if (rect.width === 0) return // 防止零宽度导致 NaN
   const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
   playerStore.seek(percent * playerStore.duration)
 }
@@ -184,6 +185,7 @@ function handleVolumeClick(e) {
     return // 拖拽后忽略点击
   }
   const rect = e.currentTarget.getBoundingClientRect()
+  if (rect.width === 0) return // 防止零宽度导致 NaN
   const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
   playerStore.setVolume(percent)
 }

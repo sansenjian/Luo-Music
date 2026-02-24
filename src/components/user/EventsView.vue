@@ -1,20 +1,38 @@
 <script setup>
-import { watch } from 'vue'
-import { useUserEvents } from '../../composables/useUserEvents'
-
 const props = defineProps({
-  userId: {
-    type: [String, Number],
+  events: {
+    type: Array,
     required: true,
+  },
+  loading: {
+    type: Boolean,
+    default: false,
   },
 })
 
-const { events, count, loading, formatEventTime, getEventMsg, loadEvents } = useUserEvents()
+const formatEventTime = (timestamp) => {
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diff = now - date
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  
+  if (minutes < 60) return `${minutes}分钟前`
+  if (hours < 24) return `${hours}小时前`
+  if (days < 30) return `${days}天前`
+  return date.toLocaleDateString('zh-CN')
+}
 
-// Load data when userId changes
-watch(() => props.userId, (newId) => {
-  if (newId) loadEvents(newId)
-}, { immediate: true })
+const getEventMsg = (event) => {
+  if (!event.json) return ''
+  try {
+    const data = JSON.parse(event.json)
+    return data.msg || ''
+  } catch {
+    return ''
+  }
+}
 </script>
 
 <template>

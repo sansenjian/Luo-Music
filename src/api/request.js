@@ -19,7 +19,7 @@ const request = axios.create({
   retryDelay: 1000,
 })
 
-// Cache for user cookie to avoid repeated localStorage parsing
+// Cache for user cookie to avoid repeated store access
 let cachedCookie = null
 let lastCookieCheck = 0
 const COOKIE_CACHE_TTL = 5000 // 5 seconds
@@ -31,33 +31,18 @@ const getCachedCookie = () => {
     return cachedCookie
   }
   
-  // Try to get from Pinia store first (if available)
+  // Get from Pinia store only (single source of truth)
   try {
     const userStore = useUserStore()
-    if (userStore?.cookie) {
-      cachedCookie = userStore.cookie
-      lastCookieCheck = now
-      return cachedCookie
-    }
+    cachedCookie = userStore?.cookie || null
+    lastCookieCheck = now
+    return cachedCookie
   } catch {
-    // Pinia store not available, fall back to localStorage
-  }
-  
-  // Fall back to localStorage with minimal parsing
-  const stored = localStorage.getItem('user')
-  if (stored) {
-    try {
-      const userState = JSON.parse(stored)
-      cachedCookie = userState?.cookie || null
-    } catch {
-      cachedCookie = null
-    }
-  } else {
+    // Pinia store not available
     cachedCookie = null
+    lastCookieCheck = now
+    return null
   }
-  
-  lastCookieCheck = now
-  return cachedCookie
 }
 
 // Expose method to clear cache when user logs out

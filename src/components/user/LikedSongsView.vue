@@ -1,30 +1,25 @@
 <script setup>
-import { watch } from 'vue'
-import { useLikedSongs } from '../../composables/useLikedSongs'
 import { formatDuration } from '../../utils/songFormatter'
 
 const props = defineProps({
-  userId: {
-    type: [String, Number],
+  likeSongs: {
+    type: Array,
     required: true,
+  },
+  loading: {
+    type: Boolean,
+    default: false,
   },
 })
 
 const emit = defineEmits(['play-song', 'play-all'])
 
-const { likeSongs, formattedSongs, count, loading, loadLikedSongs } = useLikedSongs()
-
-// Load data when userId changes
-watch(() => props.userId, (newId) => {
-  if (newId) loadLikedSongs(newId)
-}, { immediate: true })
-
 const handlePlayAll = () => {
-  emit('play-all', formattedSongs.value)
+  emit('play-all')
 }
 
 const handlePlaySong = (index) => {
-  emit('play-song', { songs: formattedSongs.value, index })
+  emit('play-song', index)
 }
 </script>
 
@@ -55,7 +50,7 @@ const handlePlaySong = (index) => {
         >
           <span class="song-index">{{ index + 1 }}</span>
           <div class="song-cover">
-            <img :src="song.al?.picUrl" :alt="song.name" />
+            <img :src="song.cover" :alt="song.name" />
             <div class="song-play-overlay">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8 5v14l11-7z"></path>
@@ -64,12 +59,10 @@ const handlePlaySong = (index) => {
           </div>
           <div class="song-info">
             <h4 class="song-name">{{ song.name }}</h4>
-            <p class="song-artist">
-              {{ song.ar?.map(a => a.name).join(' / ') || '未知歌手' }}
-            </p>
+            <p class="song-artist">{{ song.artist }}</p>
           </div>
-          <span class="song-album">{{ song.al?.name || '' }}</span>
-          <span class="song-duration">{{ formatDuration(song.dt) }}</span>
+          <span class="song-album">{{ song.album }}</span>
+          <span class="song-duration">{{ formatDuration(song.duration * 1000) }}</span>
         </div>
       </div>
     </template>

@@ -28,9 +28,9 @@ const loadingMap = ref({
 
 // Use composables for data fetching
 const { stats, loadUserData } = useUserData(userStore.userId)
-const { formattedSongs: likedSongs, count: likedCount, loadLikedSongs } = useLikedSongs()
-const { count: playlistCount, loadPlaylists, loadPlaylistSongs } = useUserPlaylists()
-const { count: eventsCount, loadEvents } = useUserEvents()
+const { formattedSongs, count: likedCount, loadLikedSongs } = useLikedSongs()
+const { playlists, count: playlistCount, loadPlaylists, loadPlaylistSongs } = useUserPlaylists()
+const { events, count: eventsCount, loadEvents } = useUserEvents()
 
 // Tab counts
 const tabCounts = computed(() => ({
@@ -87,7 +87,8 @@ const handlePlaylistClick = async (playlistId) => {
   }
 }
 
-const handlePlayAllLiked = async (songs) => {
+const handlePlayAllLiked = async () => {
+  const songs = formattedSongs.value
   if (songs.length > 0) {
     playlistStore.setPlaylist(songs)
     playerStore.setSongList(songs)
@@ -100,7 +101,8 @@ const handlePlayAllLiked = async (songs) => {
   }
 }
 
-const handlePlayLikedSong = async ({ songs, index }) => {
+const handlePlayLikedSong = async (index) => {
+  const songs = formattedSongs.value
   playlistStore.setPlaylist(songs)
   playerStore.setSongList(songs)
   try {
@@ -172,20 +174,23 @@ const goBack = () => {
         <template v-else>
           <LikedSongsView
             v-show="activeTab === 'liked'"
-            :user-id="userStore.userId"
+            :like-songs="formattedSongs"
+            :loading="loadingMap.liked"
             @play-all="handlePlayAllLiked"
             @play-song="handlePlayLikedSong"
           />
           
           <PlaylistsView
             v-show="activeTab === 'playlist'"
-            :user-id="userStore.userId"
+            :playlists="playlists"
+            :loading="loadingMap.playlist"
             @playlist-click="handlePlaylistClick"
           />
           
           <EventsView
             v-show="activeTab === 'events'"
-            :user-id="userStore.userId"
+            :events="events"
+            :loading="loadingMap.events"
           />
         </template>
       </section>

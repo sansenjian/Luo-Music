@@ -1,22 +1,16 @@
 <script setup>
-import { watch } from 'vue'
-import { useUserPlaylists } from '../../composables/useUserPlaylists'
-
 const props = defineProps({
-  userId: {
-    type: [String, Number],
+  playlists: {
+    type: Array,
     required: true,
+  },
+  loading: {
+    type: Boolean,
+    default: false,
   },
 })
 
 const emit = defineEmits(['playlist-click'])
-
-const { playlists, count, loading, loadPlaylists } = useUserPlaylists()
-
-// Load data when userId changes
-watch(() => props.userId, (newId) => {
-  if (newId) loadPlaylists(newId)
-}, { immediate: true })
 
 const handlePlaylistClick = (playlistId) => {
   emit('playlist-click', playlistId)
