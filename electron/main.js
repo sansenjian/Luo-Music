@@ -244,7 +244,7 @@ app.whenReady().then(() => {
   })
   
   ses.clearStorageData({
-    storages: ['sessionstorage', 'serviceworkers', 'shadercache', 'websql', 'indexdb']
+    storages: ['sessionstorage', 'serviceworkers', 'shadercache', 'websql', 'indexeddb']
   }, (error) => {
     if (error) {
       console.error('Startup: Failed to clear storage data:', error)

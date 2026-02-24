@@ -12,6 +12,7 @@ const qrKey = ref('')
 const status = ref('loading')
 const statusText = ref('正在获取二维码...')
 let pollingTimer = null
+let isChecking = false
 
 async function fetchQRCode() {
   status.value = 'loading'
@@ -46,6 +47,10 @@ function startPolling() {
   stopPolling()
   
   pollingTimer = setInterval(async () => {
+    // 防止重叠请求
+    if (isChecking) return
+    
+    isChecking = true
     try {
       const res = await checkQRStatus(qrKey.value)
       
@@ -72,6 +77,8 @@ function startPolling() {
       }
     } catch (error) {
       console.error('检查扫码状态失败:', error)
+    } finally {
+      isChecking = false
     }
   }, 3000)
 }

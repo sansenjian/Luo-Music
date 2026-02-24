@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/userStore'
 import { logout } from '../api/user'
@@ -56,6 +56,14 @@ function handleAvatarClick() {
     openLogin()
   }
 }
+
+// 组件卸载时清理超时
+onUnmounted(() => {
+  if (hideTimeout) {
+    clearTimeout(hideTimeout)
+    hideTimeout = null
+  }
+})
 </script>
 
 <template>
@@ -82,7 +90,8 @@ function handleAvatarClick() {
     <Transition name="dropdown">
       <div v-if="showDropdown && userStore.isLoggedIn" class="dropdown" @mouseenter="showMenu" @mouseleave="hideMenu">
         <div class="dropdown-header">
-          <img :src="userStore.avatarUrl" :alt="userStore.nickname" class="dropdown-avatar" />
+          <img v-if="userStore.avatarUrl" :src="userStore.avatarUrl" :alt="userStore.nickname" class="dropdown-avatar" />
+          <div v-else class="dropdown-avatar-placeholder"></div>
           <div class="dropdown-info">
             <span class="dropdown-nickname">{{ userStore.nickname }}</span>
             <span class="dropdown-id">ID: {{ userStore.userId }}</span>

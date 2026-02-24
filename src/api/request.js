@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useUserStore } from '../store/userStore'
 
 const isElectron = () => window.navigator.userAgent.indexOf('Electron') > -1
 const isWeb = () => !isElectron()
@@ -18,20 +19,60 @@ const request = axios.create({
   retryDelay: 1000,
 })
 
+// Cache for user cookie to avoid repeated localStorage parsing
+let cachedCookie = null
+let lastCookieCheck = 0
+const COOKIE_CACHE_TTL = 5000 // 5 seconds
+
+const getCachedCookie = () => {
+  const now = Date.now()
+  // Return cached cookie if still valid
+  if (cachedCookie !== null && (now - lastCookieCheck) < COOKIE_CACHE_TTL) {
+    return cachedCookie
+  }
+  
+  // Try to get from Pinia store first (if available)
+  try {
+    const userStore = useUserStore()
+    if (userStore?.cookie) {
+      cachedCookie = userStore.cookie
+      lastCookieCheck = now
+      return cachedCookie
+    }
+  } catch {
+    // Pinia store not available, fall back to localStorage
+  }
+  
+  // Fall back to localStorage with minimal parsing
+  const stored = localStorage.getItem('user')
+  if (stored) {
+    try {
+      const userState = JSON.parse(stored)
+      cachedCookie = userState?.cookie || null
+    } catch {
+      cachedCookie = null
+    }
+  } else {
+    cachedCookie = null
+  }
+  
+  lastCookieCheck = now
+  return cachedCookie
+}
+
+// Expose method to clear cache when user logs out
+export const clearCookieCache = () => {
+  cachedCookie = null
+  lastCookieCheck = 0
+}
+
 request.interceptors.request.use(
   (config) => {
-    const stored = localStorage.getItem('user')
-    if (stored) {
-      try {
-        const userState = JSON.parse(stored)
-        if (userState?.cookie) {
-          config.params = {
-            ...config.params,
-            cookie: userState.cookie
-          }
-        }
-      } catch (e) {
-        // ignore parse errors
+    const cookie = getCachedCookie()
+    if (cookie) {
+      config.params = {
+        ...config.params,
+        cookie
       }
     }
     return config

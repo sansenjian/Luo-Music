@@ -57,6 +57,11 @@ let progressRect = null
 let volumeRect = null
 let rafId = null
 
+// 拖拽移动检测（用于区分拖拽和点击）
+let didMoveProgress = false
+let didMoveVolume = false
+const MOVE_THRESHOLD = 3 // 像素
+
 // Progress handlers
 function handleProgressPointerDown(e) {
   if (e.button !== 0) return
@@ -69,6 +74,13 @@ function handleProgressPointerDown(e) {
 function handleProgressPointerMove(e) {
   if (!isDraggingProgress.value || !progressRect) return
   e.preventDefault()
+  
+  // 检测是否移动超过阈值
+  const deltaX = Math.abs(e.clientX - progressRect.left - (progressRect.width * playerStore.progress / playerStore.duration))
+  if (deltaX > MOVE_THRESHOLD) {
+    didMoveProgress = true
+  }
+  
   // 使用 RAF 节流
   if (rafId) return
   rafId = requestAnimationFrame(() => {
@@ -79,6 +91,13 @@ function handleProgressPointerMove(e) {
 
 function handleProgressPointerUp(e) {
   if (!isDraggingProgress.value) return
+  
+  // 应用最终进度位置
+  if (progressRect?.width) {
+    const percent = Math.max(0, Math.min(1, (e.clientX - progressRect.left) / progressRect.width))
+    playerStore.seek(percent * playerStore.duration)
+  }
+  
   isDraggingProgress.value = false
   progressRect = null
   e.currentTarget.releasePointerCapture?.(e.pointerId)
@@ -86,6 +105,11 @@ function handleProgressPointerUp(e) {
     cancelAnimationFrame(rafId)
     rafId = null
   }
+  
+  // 延迟重置移动标志，确保 click 事件能检测到
+  setTimeout(() => {
+    didMoveProgress = false
+  }, 50)
 }
 
 function updateProgressFromEvent(e) {
@@ -105,14 +129,34 @@ function handleVolumePointerDown(e) {
 
 function handleVolumePointerMove(e) {
   if (!isDraggingVolume.value || !volumeRect) return
+  
+  // 检测是否移动超过阈值
+  const currentVolume = playerStore.volume
+  const deltaX = Math.abs(e.clientX - volumeRect.left - (volumeRect.width * currentVolume))
+  if (deltaX > MOVE_THRESHOLD) {
+    didMoveVolume = true
+  }
+  
   updateVolumeFromEvent(e)
 }
 
 function handleVolumePointerUp(e) {
   if (!isDraggingVolume.value) return
+  
+  // 应用最终音量位置
+  if (volumeRect?.width) {
+    const percent = Math.max(0, Math.min(1, (e.clientX - volumeRect.left) / volumeRect.width))
+    playerStore.setVolume(percent)
+  }
+  
   isDraggingVolume.value = false
   volumeRect = null
   e.currentTarget.releasePointerCapture?.(e.pointerId)
+  
+  // 延迟重置移动标志
+  setTimeout(() => {
+    didMoveVolume = false
+  }, 50)
 }
 
 function updateVolumeFromEvent(e) {
@@ -124,6 +168,10 @@ function updateVolumeFromEvent(e) {
 // Click handlers (for non-drag clicks)
 function handleProgressClick(e) {
   if (isDraggingProgress.value) return // 避免拖拽后触发 click
+  if (didMoveProgress) {
+    didMoveProgress = false
+    return // 拖拽后忽略点击
+  }
   const rect = e.currentTarget.getBoundingClientRect()
   const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
   playerStore.seek(percent * playerStore.duration)
@@ -131,6 +179,10 @@ function handleProgressClick(e) {
 
 function handleVolumeClick(e) {
   if (isDraggingVolume.value) return
+  if (didMoveVolume) {
+    didMoveVolume = false
+    return // 拖拽后忽略点击
+  }
   const rect = e.currentTarget.getBoundingClientRect()
   const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
   playerStore.setVolume(percent)
@@ -251,7 +303,7 @@ onMounted(() => {
         @pointercancel="handleProgressPointerUp"
         @click="handleProgressClick"
       >
-        <div ref="progressFillRef" class="progress-fill"></div>
+        <div ref="progressFillRef" class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
       </div>
     </div>
 
@@ -337,6 +389,7 @@ onMounted(() => {
   height: 3px;
   cursor: pointer;
   z-index: 100;
+  touch-action: none;
 }
 
 .top-progress-track {
@@ -694,9 +747,7 @@ onMounted(() => {
     width: 50px;
     height: 50px;
   }
-}
-
-@media (max-width: 600px) {
+  
   .player-section.is-compact {
     padding: 12px 12px 8px;
     gap: 8px;

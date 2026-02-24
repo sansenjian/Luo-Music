@@ -86,8 +86,9 @@ function isMobile() {
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   
-  // 如果是移动端，自动进入紧凑模式
-  if (isMobile() && !playerStore.isCompact) {
+  // 如果是移动端且用户没有显式设置过偏好，自动进入紧凑模式
+  const userPreferenceSet = localStorage.getItem('compactModeUserToggled')
+  if (isMobile() && !playerStore.isCompact && !userPreferenceSet) {
     playerStore.toggleCompactMode()
   }
 })

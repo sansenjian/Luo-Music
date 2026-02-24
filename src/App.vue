@@ -5,18 +5,32 @@ const isElectron = window.navigator.userAgent.indexOf('Electron') > -1
 
 if (isElectron) {
   const playerState = localStorage.getItem('player')
+  const defaultState = {
+    volume: 0.7,
+    playMode: 0,
+    lyricType: ['original', 'trans'],
+    isCompact: false
+  }
+  
   if (playerState) {
     try {
       const parsed = JSON.parse(playerState)
-      const preserved = {
-        volume: parsed.volume ?? 0.7,
-        playMode: parsed.playMode ?? 0,
-        lyricType: parsed.lyricType ?? ['original', 'trans'],
-        isCompact: parsed.isCompact ?? false
+      // 验证解析结果是否为对象
+      if (typeof parsed !== 'object' || parsed === null) {
+        localStorage.setItem('player', JSON.stringify(defaultState))
+      } else {
+        const preserved = {
+          volume: parsed.volume ?? 0.7,
+          playMode: parsed.playMode ?? 0,
+          lyricType: parsed.lyricType ?? ['original', 'trans'],
+          isCompact: parsed.isCompact ?? false
+        }
+        localStorage.setItem('player', JSON.stringify(preserved))
       }
-      localStorage.setItem('player', JSON.stringify(preserved))
     } catch (e) {
-      console.error('Failed to clean player state:', e)
+      // 解析失败时写入默认值
+      localStorage.setItem('player', JSON.stringify(defaultState))
+      console.error('Failed to parse player state, reset to defaults:', e)
     }
   }
 }

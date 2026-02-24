@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { clearCookieCache } from '../api/request'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -33,11 +34,16 @@ export const useUserStore = defineStore('user', {
       this.userInfo = null
       this.cookie = ''
       this.isLoggedIn = false
+      // Clear the request cache to prevent stale cookie usage
+      clearCookieCache()
     },
   },
 
   persist: {
     storage: localStorage,
-    paths: ['userInfo', 'cookie', 'isLoggedIn'],
+    paths: ['userInfo', 'isLoggedIn'],
+    // Note: 'cookie' is intentionally excluded from persistence
+    // for security reasons. Cookie should be handled via httpOnly
+    // server-set cookies or refreshed on reload.
   },
 })

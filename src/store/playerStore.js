@@ -437,6 +437,8 @@ export const usePlayerStore = defineStore('player', {
     
     toggleCompactMode() {
       this.isCompact = !this.isCompact
+      // 标记用户已显式设置过紧凑模式偏好
+      localStorage.setItem('compactModeUserToggled', 'true')
     },
 
     setLyricsArray(lyrics) {
