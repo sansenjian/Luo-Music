@@ -25,6 +25,7 @@
     "@fontsource/inter": "^5.2.8",
     "@fontsource/noto-sans-sc": "^5.2.9",
     "@neteasecloudmusicapienhanced/api": "^4.30.1",
+    "@sansenjian/qq-music-api": "^1.0.6",
     "@vercel/analytics": "^1.6.1",
     "@vitejs/plugin-vue": "^6.0.4",
     "@vueuse/core": "^14.2.1",
