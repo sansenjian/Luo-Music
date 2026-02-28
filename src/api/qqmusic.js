@@ -178,24 +178,24 @@ export const qqMusicApi = {
     return qqRequest.get('/getImageUrl', { params })
   },
 
-  // QQ登录二维码
+  // QQ 登录二维码
   getQQLoginQr() {
-    return qqRequest.get('/user/getQQLoginQr')
+    return qqRequest.get('/getQQLoginQr')
   },
 
-  // 检查QQ登录状态
-  checkQQLoginQr(data) {
-    return qqRequest.post('/user/checkQQLoginQr', data)
+  // 检查 QQ 登录状态
+  checkQQLoginQr(ptqrtoken, qrsig) {
+    return qqRequest.get('/checkQQLoginQr', {
+      params: {
+        ptqrtoken,
+        qrsig
+      }
+    })
   },
 
-  // 获取Cookie
-  getCookie() {
+  // 检查 QQ 音乐登录状态（通过 cookie）
+  checkQQMusicLogin() {
     return qqRequest.get('/user/getCookie')
-  },
-
-  // 设置Cookie
-  setCookie(cookie) {
-    return qqRequest.get('/user/setCookie', { params: { cookie } })
   }
 }
 

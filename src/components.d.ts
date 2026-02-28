@@ -20,6 +20,7 @@ declare module 'vue' {
     Player: typeof import('./components/Player.vue')['default']
     Playlist: typeof import('./components/Playlist.vue')['default']
     PlaylistsView: typeof import('./components/user/PlaylistsView.vue')['default']
+    QQLoginModal: typeof import('./components/QQLoginModal.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SearchInput: typeof import('./components/SearchInput.vue')['default']

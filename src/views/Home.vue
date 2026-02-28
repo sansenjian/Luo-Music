@@ -18,13 +18,37 @@ const activeTab = ref('lyric')
 
 const servers = [
   { value: 'netease', label: '网易云' },
-  { value: 'qq', label: 'QQ音乐' },
+  { value: 'qq', label: 'QQ 音乐' },
 ]
+
+const showSelect = ref(false)
+
+const selectedServerLabel = computed(() => {
+  const server = servers.find(s => s.value === searchStore.server)
+  return server?.label || '网易云'
+})
 
 const selectedServer = computed({
   get: () => searchStore.server,
   set: (val) => searchStore.setServer(val)
 })
+
+function toggleSelect() {
+  showSelect.value = !showSelect.value
+}
+
+function selectServer(value) {
+  searchStore.setServer(value)
+  showSelect.value = false
+}
+
+// 点击外部关闭下拉框
+function handleClickOutside(event) {
+  const wrapper = document.querySelector('.server-select-wrapper')
+  if (wrapper && !wrapper.contains(event.target)) {
+    showSelect.value = false
+  }
+}
 
 const isLoading = computed(() => searchStore.isLoading)
 
@@ -102,6 +126,7 @@ function isMobile() {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  document.addEventListener('click', handleClickOutside)
   
   // 如果是移动端且用户没有显式设置过偏好，自动进入紧凑模式
   const userPreferenceSet = localStorage.getItem('compactModeUserToggled')
@@ -112,6 +137,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -123,11 +149,27 @@ onUnmounted(() => {
       </div>
       
       <div class="search-bar">
-        <select v-model="selectedServer" class="server-select">
-          <option v-for="server in servers" :key="server.value" :value="server.value">
-            {{ server.label }}
-          </option>
-        </select>
+        <div class="server-select-wrapper">
+          <div class="server-select-custom" @click="toggleSelect">
+            <span>{{ selectedServerLabel }}</span>
+            <svg class="arrow-icon" :class="{ rotated: showSelect }" viewBox="0 0 24 24" width="16" height="16">
+              <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+            </svg>
+          </div>
+          <Transition name="select-dropdown">
+            <div v-if="showSelect" class="server-dropdown">
+              <div 
+                v-for="server in servers" 
+                :key="server.value"
+                class="dropdown-option"
+                :class="{ active: selectedServer === server.value }"
+                @click="selectServer(server.value)"
+              >
+                {{ server.label }}
+              </div>
+            </div>
+          </Transition>
+        </div>
         <input
           v-model="searchKeyword"
           @keyup.enter="onSearch"
@@ -256,11 +298,98 @@ onUnmounted(() => {
 }
 
 .search-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   gap: 8px;
-  flex: 1;
-  max-width: 400px;
-  margin: 0 auto;
+  align-items: center;
+}
+
+.server-select-wrapper {
+  position: relative;
+}
+
+.server-select-custom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 2px solid var(--black);
+  background: var(--white);
+  cursor: pointer;
+  min-width: 100px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.server-select-custom:hover {
+  background: var(--bg);
+}
+
+.server-select-custom:active {
+  transform: scale(0.98);
+}
+
+.arrow-icon {
+  transition: transform 0.3s;
+  flex-shrink: 0;
+}
+
+.arrow-icon.rotated {
+  transform: rotate(180deg);
+}
+
+.server-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  background: var(--white);
+  border: 2px solid var(--black);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.dropdown-option {
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 1px solid var(--border);
+}
+
+.dropdown-option:last-child {
+  border-bottom: none;
+}
+
+.dropdown-option:hover {
+  background: var(--bg);
+}
+
+.dropdown-option.active {
+  background: var(--black);
+  color: var(--white);
+}
+
+.dropdown-option.active:hover {
+  background: var(--black);
+}
+
+/* 下拉菜单动画 */
+.select-dropdown-enter-active,
+.select-dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.select-dropdown-enter-from,
+.select-dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 
 .window-controls {
@@ -309,23 +438,6 @@ onUnmounted(() => {
 }
 
 .cyber-input:focus {
-  background: var(--bg);
-}
-
-.server-select {
-  padding: 8px 10px;
-  border: 2px solid var(--black);
-  background: var(--white);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  outline: none;
-  border-radius: 0;
-  cursor: pointer;
-  min-width: 90px;
-}
-
-.server-select:focus {
   background: var(--bg);
 }
 
