@@ -18,9 +18,14 @@ qqRequest.interceptors.response.use(
 )
 
 export const qqMusicApi = {
-  // 搜索
   search(keyword, limit = 20, page = 1) {
-    return qqRequest.get(`/getSearchByKey/${encodeURIComponent(keyword)}/${limit}/${page}`)
+    return qqRequest.get('/getSearchByKey', {
+      params: {
+        key: keyword,
+        limit: limit,
+        page: page
+      }
+    })
   },
 
   // 搜索建议
@@ -43,14 +48,23 @@ export const qqMusicApi = {
     return qqRequest.post('/batchGetSongInfo', { songmids })
   },
 
-  // 获取歌曲播放链接
-  getMusicPlay(songmid) {
-    return qqRequest.get(`/getMusicPlay/${songmid}`)
+  getMusicPlay(songmid, mediaId, quality = 128) {
+    return qqRequest.get('/getMusicPlay', {
+      params: {
+        songmid: songmid,
+        mediaId: mediaId,
+        quality: quality
+      }
+    })
   },
 
-  // 获取歌词
   getLyric(songmid, isFormat = true) {
-    return qqRequest.get(`/getLyric/${songmid}/${isFormat ? 1 : 0}`)
+    return qqRequest.get('/getLyric', {
+      params: {
+        songmid: songmid,
+        isFormat: isFormat ? 1 : 0
+      }
+    })
   },
 
   // 获取推荐

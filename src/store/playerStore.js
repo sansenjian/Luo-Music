@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { audioManager } from '../utils/audioManager'
 import { getMusicUrl, getLyric } from '../api/song'
+import { qqMusicApi } from '../api/qqmusic'
 import { parseLyric, findCurrentLyricIndex } from '../utils/lyric'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
 
@@ -174,18 +175,25 @@ export const usePlayerStore = defineStore('player', {
       try {
         // 1. Get URL if missing
         if (!song.url) {
-           const urlRes = await getMusicUrl(song.id, 'standard')
-           // Handle different API response formats
-           // urlRes could be { data: [...] } or directly [...] depending on request interceptor
-           const urlData = urlRes.data || urlRes
-           if (urlData && urlData[0] && urlData[0].url) {
-             song.url = urlData[0].url
-             // Force update song in list if needed, but object ref should work
-           } else {
-             // API returned data but URL is null - likely due to copyright/VIP restrictions
-             console.warn('Song URL unavailable (may require VIP or region restriction):', song.id)
-             throw new Error('该歌曲无法播放（可能需要 VIP 或受版权限制）')
-           }
+          if (song.server === 'qq') {
+            const urlRes = await qqMusicApi.getMusicPlay(song.id, song.mediaId)
+            const playUrl = urlRes?.data?.playUrl?.[song.id]
+            if (playUrl && playUrl.url) {
+              song.url = playUrl.url
+            } else {
+              console.warn('QQ Music URL unavailable:', song.id, playUrl?.error)
+              throw new Error('该歌曲无法播放（可能需要 VIP 或受版权限制）')
+            }
+          } else {
+            const urlRes = await getMusicUrl(song.id, 'standard')
+            const urlData = urlRes.data || urlRes
+            if (urlData && urlData[0] && urlData[0].url) {
+              song.url = urlData[0].url
+            } else {
+              console.warn('Song URL unavailable (may require VIP or region restriction):', song.id)
+              throw new Error('该歌曲无法播放（可能需要 VIP 或受版权限制）')
+            }
+          }
         }
 
         // 2. Play
@@ -193,35 +201,40 @@ export const usePlayerStore = defineStore('player', {
 
         // 3. Get Lyrics
         try {
-          const lyricRes = await getLyric(song.id)
-          console.log('Lyric response:', lyricRes)
-          if (lyricRes) {
-            this.setLyric(lyricRes)
-            // Handle different API response formats
-            const lrcText = lyricRes.lrc?.lyric || lyricRes.lyric || ''
-            // tlyric might be an object { lyric: '...' } or a string, or null
-            let tlyricText = ''
-            if (lyricRes.tlyric) {
-              if (typeof lyricRes.tlyric === 'string') {
-                tlyricText = lyricRes.tlyric
-              } else if (lyricRes.tlyric.lyric && typeof lyricRes.tlyric.lyric === 'string') {
-                tlyricText = lyricRes.tlyric.lyric
+          let lrcText = ''
+          let tlyricText = ''
+          let rlyricText = ''
+          
+          if (song.server === 'qq') {
+            const lyricRes = await qqMusicApi.getLyric(song.id, false)
+            if (lyricRes && lyricRes.response) {
+              lrcText = lyricRes.response.lyric?.lyric || ''
+              tlyricText = lyricRes.response.lyric?.trans || ''
+            }
+          } else {
+            const lyricRes = await getLyric(song.id)
+            if (lyricRes) {
+              this.setLyric(lyricRes)
+              lrcText = lyricRes.lrc?.lyric || lyricRes.lyric || ''
+              if (lyricRes.tlyric) {
+                if (typeof lyricRes.tlyric === 'string') {
+                  tlyricText = lyricRes.tlyric
+                } else if (lyricRes.tlyric.lyric && typeof lyricRes.tlyric.lyric === 'string') {
+                  tlyricText = lyricRes.tlyric.lyric
+                }
+              }
+              if (lyricRes.romalrc) {
+                if (typeof lyricRes.romalrc === 'string') {
+                  rlyricText = lyricRes.romalrc
+                } else if (lyricRes.romalrc.lyric && typeof lyricRes.romalrc.lyric === 'string') {
+                  rlyricText = lyricRes.romalrc.lyric
+                }
               }
             }
-            // romalrc might also be an object or string
-            let rlyricText = ''
-            if (lyricRes.romalrc) {
-              if (typeof lyricRes.romalrc === 'string') {
-                rlyricText = lyricRes.romalrc
-              } else if (lyricRes.romalrc.lyric && typeof lyricRes.romalrc.lyric === 'string') {
-                rlyricText = lyricRes.romalrc.lyric
-              }
-            }
-            console.log('Parsing lyrics:', { lrcText: lrcText?.substring(0, 100), tlyricText: tlyricText?.substring(0, 100) })
-            const lyrics = parseLyric(lrcText, tlyricText, rlyricText)
-            console.log('Parsed lyrics count:', lyrics.length)
-            this.setLyricsArray(lyrics)
           }
+          
+          const lyrics = parseLyric(lrcText, tlyricText, rlyricText)
+          this.setLyricsArray(lyrics)
         } catch (lyricError) {
           console.error('Failed to get lyrics:', lyricError)
           this.setLyricsArray([])

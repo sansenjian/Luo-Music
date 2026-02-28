@@ -38,6 +38,9 @@ function playSong(index) {
         :data-index="index"
         @click="playSong(index)"
       >
+        <div v-if="song.pic" class="list-cover">
+          <img :src="song.pic" :alt="song.album" loading="lazy" />
+        </div>
         <div class="list-num">
           <span v-if="!(index === currentIndex && playerStore.playing)">
             {{ String(index + 1).padStart(2, '0') }}
@@ -49,7 +52,12 @@ function playSong(index) {
           </div>
         </div>
         <div class="list-info">
-          <div class="list-title">{{ song.name }}</div>
+          <div class="list-title">
+            {{ song.name }}
+            <span class="server-badge" :class="song.server || 'netease'">
+              {{ song.server === 'qq' ? 'QQ' : '网易' }}
+            </span>
+          </div>
           <div class="list-artist">{{ song.artist }}</div>
         </div>
         <div class="list-duration">
@@ -88,7 +96,7 @@ function playSong(index) {
 
 .list-item {
   display: grid;
-  grid-template-columns: 36px 1fr 50px;
+  grid-template-columns: 50px 36px 1fr 50px;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
@@ -113,6 +121,20 @@ function playSong(index) {
   opacity: 0.5;
   border-color: var(--accent);
   background: var(--bg-dark);
+}
+
+.list-cover {
+  width: 50px;
+  height: 50px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.list-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .list-num {
@@ -182,6 +204,36 @@ function playSong(index) {
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.server-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.server-badge.netease {
+  background: #e60026;
+  color: white;
+}
+
+.server-badge.qq {
+  background: #31c27c;
+  color: white;
+}
+
+.list-item.active .server-badge.netease {
+  background: #ff4d6a;
+}
+
+.list-item.active .server-badge.qq {
+  background: #5dd99a;
 }
 
 .list-artist {

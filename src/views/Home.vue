@@ -2,31 +2,44 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
 import { useToastStore } from '../store/toastStore'
-import { useSearch } from '../composables/useSearch'
+import { useSearchStore } from '../store/searchStore'
 import Player from '../components/Player.vue'
 import Lyric from '../components/Lyric.vue'
 import Playlist from '../components/Playlist.vue'
 import Toast from '../components/Toast.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 
-// 使用 contextBridge 暴露的 API，不再直接 require('electron')
-// const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null }
-
 const playerStore = usePlayerStore()
 const toastStore = useToastStore()
-const { searchKeyword, loading, handleSearch } = useSearch()
+const searchStore = useSearchStore()
 
+const searchKeyword = ref('')
 const activeTab = ref('lyric')
 
-// 检测是否在 Electron 环境
-const isElectron = computed(() => {
-  return typeof window.electronAPI !== 'undefined'
+const servers = [
+  { value: 'netease', label: '网易云' },
+  { value: 'qq', label: 'QQ音乐' },
+]
+
+const selectedServer = computed({
+  get: () => searchStore.server,
+  set: (val) => searchStore.setServer(val)
 })
 
+const isLoading = computed(() => searchStore.isLoading)
+
 async function onSearch() {
-  const success = await handleSearch()
-  if (success) {
+  if (!searchKeyword.value.trim()) {
+    toastStore.error('请输入搜索关键词')
+    return
+  }
+  await searchStore.search(searchKeyword.value)
+  if (searchStore.hasResults) {
+    playerStore.setSongList([...searchStore.results])
     activeTab.value = 'playlist'
+    toastStore.success(`找到 ${searchStore.totalResults} 首歌曲`)
+  } else if (searchStore.error) {
+    toastStore.error(searchStore.error)
   }
 }
 
@@ -42,6 +55,10 @@ async function playSong(index) {
 function switchTab(tab) {
   activeTab.value = tab
 }
+
+const isElectron = computed(() => {
+  return typeof window.electronAPI !== 'undefined'
+})
 
 function handleKeydown(e) {
   if (e.key === 'Escape') {
@@ -106,6 +123,11 @@ onUnmounted(() => {
       </div>
       
       <div class="search-bar">
+        <select v-model="selectedServer" class="server-select">
+          <option v-for="server in servers" :key="server.value" :value="server.value">
+            {{ server.label }}
+          </option>
+        </select>
         <input
           v-model="searchKeyword"
           @keyup.enter="onSearch"
@@ -113,8 +135,8 @@ onUnmounted(() => {
           type="text"
           placeholder="Search..."
         />
-        <button @click="onSearch" class="exec-btn" :disabled="loading">
-          <span v-if="loading" class="loading"></span>
+        <button @click="onSearch" class="exec-btn" :disabled="isLoading">
+          <span v-if="isLoading" class="loading"></span>
           <span v-else>Execute</span>
         </button>
       </div>
@@ -287,6 +309,23 @@ onUnmounted(() => {
 }
 
 .cyber-input:focus {
+  background: var(--bg);
+}
+
+.server-select {
+  padding: 8px 10px;
+  border: 2px solid var(--black);
+  background: var(--white);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  border-radius: 0;
+  cursor: pointer;
+  min-width: 90px;
+}
+
+.server-select:focus {
   background: var(--bg);
 }
 

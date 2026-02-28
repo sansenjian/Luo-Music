@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { usePlaylistStore } from './playlistStore'
 import { usePlayerStore } from './playerStore'
 import { search as searchApi } from '../api/search'
+import { qqMusicApi } from '../api/qqmusic'
 
 export const useSearchStore = defineStore('searchStore', {
     state: () => {
@@ -45,6 +46,50 @@ export const useSearchStore = defineStore('searchStore', {
             }
             return ''
         },
+        async searchNetease(keyword) {
+            const res = await searchApi(keyword, 1, 30)
+            if (!res.result || !res.result.songs || res.result.songs.length === 0) {
+                return []
+            }
+            return res.result.songs.map((item, idx) => {
+                const artist = this.formatArtists(item)
+                const coverUrl = item.al?.picUrl || ''
+                return {
+                    index: idx,
+                    id: this.extractId(item),
+                    name: item.name || 'Unknown',
+                    artist: artist,
+                    album: item.al?.name || '',
+                    pic: coverUrl,
+                    cover: coverUrl,
+                    url: null,
+                    server: 'netease',
+                    duration: Math.floor((item.dt || 0) / 1000)
+                }
+            }).filter(song => song.id !== '')
+        },
+        async searchQQ(keyword) {
+            const res = await qqMusicApi.search(keyword, 30, 1)
+            const songList = res.response?.data?.song?.list || res.data?.list || []
+            if (songList.length === 0) {
+                return []
+            }
+            return songList.map((item, idx) => {
+                return {
+                    index: idx,
+                    id: item.songmid || item.mid,
+                    mediaId: item.strMediaMid || item.media_mid || item.songmid,
+                    name: item.songname || item.name || 'Unknown',
+                    artist: item.singer?.map(s => s.name).join(' / ') || 'Unknown Artist',
+                    album: item.albumname || item.album?.name || '',
+                    cover: item.albummid ? `https://y.qq.com/music/photo_new/T002R300x300M000${item.albummid}.jpg` : '',
+                    pic: item.albummid ? `https://y.qq.com/music/photo_new/T002R300x300M000${item.albummid}.jpg` : '',
+                    url: null,
+                    server: 'qq',
+                    duration: Math.floor((item.interval || 0))
+                }
+            }).filter(song => song.id !== '')
+        },
         async search(keyword) {
             if (!keyword || !keyword.trim()) {
                 this.error = 'Please enter a search keyword'
@@ -54,29 +99,20 @@ export const useSearchStore = defineStore('searchStore', {
             this.isLoading = true
             this.error = null
             try {
-                const res = await searchApi(this.keyword, 1, 30)
-                if (!res.result || !res.result.songs || res.result.songs.length === 0) {
+                let songs = []
+                if (this.server === 'qq' || this.server === 'tencent') {
+                    songs = await this.searchQQ(this.keyword)
+                } else {
+                    songs = await this.searchNetease(this.keyword)
+                }
+                
+                if (songs.length === 0) {
                     this.results = []
                     this.error = 'No results found'
                     return
                 }
-                this.results = res.result.songs.map((item, idx) => {
-                    const artist = this.formatArtists(item)
-                    return {
-                        index: idx,
-                        id: this.extractId(item),
-                        name: item.name || item.title || item.songname || 'Unknown',
-                        artist: artist,
-                        album: item.al?.name || item.album || item.albumname || '',
-                        pic: item.al?.picUrl || item.pic || item.cover || '',
-                        url: item.url || null,
-                        server: this.server,
-                        duration: Math.floor((item.dt || item.duration || 0) / 1000)
-                    }
-                }).filter(song => song.id !== '')
-                if (this.results.length === 0) {
-                    this.error = 'No valid tracks found'
-                }
+                
+                this.results = songs
             } catch (err) {
                 console.error('Search error:', err)
                 this.error = err.message || 'Search failed'
