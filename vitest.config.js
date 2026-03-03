@@ -10,7 +10,8 @@ export default defineConfig({
     setupFiles: ['./tests/setup.js'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
+      all: true,
       exclude: [
         'node_modules/',
         'tests/',
@@ -19,11 +20,22 @@ export default defineConfig({
         '**/dist-electron/**',
         'api/',
         'scripts/',
-        'electron/'
-      ]
+        'electron/',
+        '**/*.d.ts',
+        'src/main.js',
+        'src/App.vue'
+      ],
+      thresholds: {
+        lines: 60,
+        functions: 60,
+        branches: 50,
+        statements: 60
+      }
     },
     include: ['tests/**/*.{test,spec}.{js,ts}'],
-    exclude: ['tests/e2e/**']
+    exclude: ['tests/e2e/**'],
+    testTimeout: 10000,
+    hookTimeout: 10000
   },
   resolve: {
     alias: {

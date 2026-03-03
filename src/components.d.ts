@@ -27,7 +27,6 @@ declare module 'vue' {
     SettingsPanel: typeof import('./components/SettingsPanel.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
     UserAvatar: typeof import('./components/UserAvatar.vue')['default']
-    UserCenter: typeof import('./components/UserCenter.vue')['default']
     UserProfile: typeof import('./components/UserProfile.vue')['default']
     UserProfileHeader: typeof import('./components/user/UserProfileHeader.vue')['default']
   }

@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { usePlayerStore } from '../store/playerStore'
-import { animate } from 'animejs'
 
 const playerStore = usePlayerStore()
 
@@ -10,10 +9,56 @@ const lyricScrollArea = ref(null)
 let pauseActiveTimer = null
 let isUserScrolling = false
 let scrollAnim = null
+let scrollEndTimer = null // 滚动结束定时器
+
+// 虚拟列表常量
+const VIRTUAL_LIST_THRESHOLD = 100
+const VISIBLE_BUFFER = 10
+const ESTIMATED_LINE_HEIGHT = 60 // 估算行高 (px)
 
 // Use store state directly
 const currentLyricIndex = computed(() => playerStore.currentLyricIndex)
 const lyrics = computed(() => playerStore.lyricsArray)
+
+// 虚拟列表计算
+const shouldUseVirtualList = computed(() => {
+  return lyrics.value.length > VIRTUAL_LIST_THRESHOLD
+})
+
+const visibleRange = computed(() => {
+  if (!shouldUseVirtualList.value) {
+    return { start: 0, end: lyrics.value.length }
+  }
+  
+  const container = lyricScrollArea.value
+  if (!container) return { start: 0, end: VISIBLE_BUFFER }
+  
+  const scrollTop = container.scrollTop
+  const visibleCount = Math.ceil(container.clientHeight / ESTIMATED_LINE_HEIGHT)
+  
+  const start = Math.floor(scrollTop / ESTIMATED_LINE_HEIGHT)
+  
+  return {
+    start: Math.max(0, start - VISIBLE_BUFFER),
+    end: Math.min(lyrics.value.length, start + visibleCount + VISIBLE_BUFFER)
+  }
+})
+
+// 计算占位高度
+const placeholderHeight = computed(() => {
+  if (!shouldUseVirtualList.value) return 0
+  const { start } = visibleRange.value
+  return start * ESTIMATED_LINE_HEIGHT
+})
+
+// 获取可见的歌词
+const visibleLyrics = computed(() => {
+  const { start, end } = visibleRange.value
+  return lyrics.value.slice(start, end).map((item, index) => ({
+    ...item,
+    originalIndex: start + index
+  }))
+})
 
 const showOriginal = computed(() => playerStore.lyricType.includes('original'))
 const showTrans = computed(() => playerStore.lyricType.includes('trans'))
@@ -31,30 +76,38 @@ function scrollToActiveLine() {
   
   const container = lyricScrollArea.value
   
-  // Use offsetTop which is not affected by CSS transforms
+  // 使用 offsetTop 计算目标滚动位置
   const lineOffsetTop = activeLine.offsetTop
   const lineHeight = activeLine.offsetHeight
   const containerHeight = container.clientHeight
   
-  // Target: center the active line
+  // 目标：将当前行居中显示
   const targetScroll = Math.max(0, lineOffsetTop - containerHeight / 2 + lineHeight / 2)
   
-  // Cancel previous animation
-  if (scrollAnim) scrollAnim.pause()
+  // 取消上一帧动画
+  if (scrollAnim) cancelAnimationFrame(scrollAnim)
   
-  // Create a scroll animation object
   const startScroll = container.scrollTop
-  const scrollObj = { value: startScroll }
+  const startTime = performance.now()
+  const duration = 300
   
-  // Use anime.js to animate the scroll value
-  scrollAnim = animate(scrollObj, {
-    value: targetScroll,
-    duration: 300,
-    ease: 'out(2)',
-    onUpdate: () => {
-      container.scrollTop = scrollObj.value
+  // 使用 RAF 实现滚动动画
+  function animateScroll(currentTime) {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    // easeOutQuad 缓动函数
+    const ease = 1 - Math.pow(1 - progress, 2)
+    
+    container.scrollTop = startScroll + (targetScroll - startScroll) * ease
+    
+    if (progress < 1) {
+      scrollAnim = requestAnimationFrame(animateScroll)
+    } else {
+      scrollAnim = null
     }
-  })
+  }
+  
+  scrollAnim = requestAnimationFrame(animateScroll)
 }
 
 watch(currentLyricIndex, () => {
@@ -64,22 +117,39 @@ watch(currentLyricIndex, () => {
 function handleScroll() {
   isUserScrolling = true
   
+  // 清除之前的定时器
   if (pauseActiveTimer) {
     clearTimeout(pauseActiveTimer)
   }
   
-  pauseActiveTimer = setTimeout(() => {
-    isUserScrolling = false
-    scrollToActiveLine() // Snap back after timeout
-  }, 2000)
+  // 清除滚动结束定时器
+  if (scrollEndTimer) {
+    clearTimeout(scrollEndTimer)
+  }
+  
+  // 滚动中定时检测是否停止
+  scrollEndTimer = setTimeout(() => {
+    scrollEndTimer = null
+    
+    // 延迟恢复自动滚动
+    pauseActiveTimer = setTimeout(() => {
+      isUserScrolling = false
+      scrollToActiveLine() // Snap back after timeout
+    }, 500)
+  }, 150)
 }
 
 onUnmounted(() => {
   if (pauseActiveTimer) {
     clearTimeout(pauseActiveTimer)
   }
+  if (scrollEndTimer) {
+    clearTimeout(scrollEndTimer)
+  }
+  // 清理 RAF 动画
   if (scrollAnim) {
-    scrollAnim.pause()
+    cancelAnimationFrame(scrollAnim)
+    scrollAnim = null
   }
 })
 </script>
@@ -93,13 +163,17 @@ onUnmounted(() => {
 
     <div v-else class="lyrics-wrapper" ref="lyricScrollArea" @scroll="handleScroll" @wheel="handleScroll" @touchstart="handleScroll">
       <div class="lyrics-list">
+        <!-- 虚拟列表占位 -->
+        <div v-if="shouldUseVirtualList" class="placeholder" :style="{ height: `${placeholderHeight}px` }"></div>
+        
+        <!-- 渲染可见的歌词 -->
         <div
-          v-for="(item, index) in lyrics"
-          :key="index"
+          v-for="item in visibleLyrics"
+          :key="item.originalIndex"
           class="lyric-line"
           :class="{
-            active: index === currentLyricIndex,
-            passed: index < currentLyricIndex
+            active: item.originalIndex === currentLyricIndex,
+            passed: item.originalIndex < currentLyricIndex
           }"
           @click="handleLyricClick(item.time)"
         >
@@ -167,6 +241,15 @@ onUnmounted(() => {
 .lyrics-list {
   position: relative; /* Make this the offsetParent for lyric-line */
   padding: 50vh 40px; /* Add padding to center first/last lines */
+}
+
+/* 虚拟列表占位元素 */
+.placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
 }
 
 /* Compact mode styles for Lyric */

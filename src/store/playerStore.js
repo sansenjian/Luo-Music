@@ -4,6 +4,7 @@ import { getMusicUrl, getLyric } from '../api/song'
 import { qqMusicApi } from '../api/qqmusic'
 import { parseLyric, findCurrentLyricIndex } from '../utils/lyric'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
+import { PlaybackErrorHandler } from '../utils/player/modules/playbackErrorHandler'
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -25,14 +26,9 @@ export const usePlayerStore = defineStore('player', {
     showLyric: true,
     showPlaylist: false,
     initialized: false,
-    loading: false, // New loading state
-    isCompact: false, // Compact mode state
-    // 错误控制和跳过逻辑状态
-    skipAttempts: 0, // 连续跳过次数
-    maxSkipAttempts: 5, // 最大连续跳过次数
-    lastSkipTime: 0, // 上次跳过时间
-    skipCooldownMs: 3000, // 跳过冷却时间（毫秒）
-    unavailableSongs: [], // 记录不可用的歌曲ID (使用数组而非Set，避免序列化问题)
+    loading: false,
+    isCompact: false,
+    errorHandler: null,
   }),
   
   getters: {
@@ -103,26 +99,18 @@ export const usePlayerStore = defineStore('player', {
     },
     
     async handleAudioError(error) {
-      this.playing = false
-      
-      // 尝试重新获取 URL 并重试
-      if (this.currentSong && !this.currentSong.retryCount) {
-        this.currentSong.retryCount = 1
-        try {
-          const urlRes = await getMusicUrl(this.currentSong.id, 'standard')
-          if (urlRes.data?.[0]?.url) {
-            this.currentSong.url = urlRes.data[0].url
-            await audioManager.play(this.currentSong.url)
-            this.playing = true
-            return
-          }
-        } catch (e) {
-          console.error('Retry failed:', e)
-        }
+      if (!this.errorHandler) {
+        this.errorHandler = new PlaybackErrorHandler(this)
       }
       
-      // 重试失败或已重试过，播放下一首
-      this.playNext()
+      const result = await this.errorHandler.handleAudioError(error, this.currentSong)
+      
+      if (result.shouldRetry && result.url) {
+        await audioManager.play(result.url)
+        this.playing = true
+      } else if (result.shouldSkip) {
+        this.playNext()
+      }
     },
     
     updateLyricIndex() {
@@ -135,8 +123,7 @@ export const usePlayerStore = defineStore('player', {
     setSongList(songs) {
       this.songList = songs
       this.currentIndex = -1
-      // 切换歌单时重置跳过状态
-      this.resetSkipState()
+      this.resetErrorHandler()
     },
     
     addSong(song) {
@@ -209,7 +196,12 @@ export const usePlayerStore = defineStore('player', {
             const lyricRes = await qqMusicApi.getLyric(song.id, false)
             if (lyricRes && lyricRes.response) {
               lrcText = lyricRes.response.lyric?.lyric || ''
-              tlyricText = lyricRes.response.lyric?.trans || ''
+              tlyricText = lyricRes.response.trans || ''
+              console.log('QQ Music lyric:', {
+                hasLrc: !!lrcText,
+                hasTrans: !!tlyricText,
+                transLength: tlyricText?.length || 0
+              })
             }
           } else {
             const lyricRes = await getLyric(song.id)
@@ -241,23 +233,15 @@ export const usePlayerStore = defineStore('player', {
         }
       } catch (error) {
         console.error('Playback failed:', error)
-        // 标记当前歌曲为不可用，避免重复尝试
-        if (this.songList[index]) {
-          this.songList[index].unavailable = true
-          this.songList[index].errorMessage = error.message
-          if (!this.unavailableSongs.includes(this.songList[index].id)) {
-            this.unavailableSongs.push(this.songList[index].id)
-          }
+        
+        if (!this.errorHandler) {
+          this.errorHandler = new PlaybackErrorHandler(this)
         }
-        // 检查是否需要停止自动跳过
-        if (this.shouldStopSkipping()) {
-          console.warn('Too many failed songs, stopping auto-skip')
-          throw new Error('播放列表中可用歌曲较少，请尝试其他歌单')
-        }
-        // 自动尝试播放下一首
+        this.errorHandler.markAsUnavailable(this.songList[index])
+        
         try {
           await this.playNextSkipUnavailable()
-          return // 成功播放下一首，不再抛出错误
+          return
         } catch (skipError) {
           throw new Error('无法播放任何歌曲')
         }
@@ -338,96 +322,17 @@ export const usePlayerStore = defineStore('player', {
       }
     },
 
-    // 检查是否应该停止自动跳过（频率控制）
-    shouldStopSkipping() {
-      const now = Date.now()
-      
-      // 检查冷却时间
-      if (now - this.lastSkipTime < this.skipCooldownMs) {
-        this.skipAttempts++
-      } else {
-        // 冷却时间已过，重置计数
-        this.skipAttempts = 1
-      }
-      
-      this.lastSkipTime = now
-      
-      // 如果连续跳过次数超过阈值，停止自动跳过
-      if (this.skipAttempts >= this.maxSkipAttempts) {
-        return true
-      }
-      
-      // 如果不可用歌曲超过列表的80%，停止
-      if (this.songList.length > 0 && this.unavailableSongs.length / this.songList.length > 0.8) {
-        return true
-      }
-      
-      return false
-    },
-
-    // 跳过不可用的歌曲，自动寻找下一首可播放的
     async playNextSkipUnavailable() {
-      if (this.songList.length === 0) return
-      
-      // 检查频率限制
-      if (this.shouldStopSkipping()) {
-        console.warn('Skip frequency limit reached or too many unavailable songs')
-        return
+      if (!this.errorHandler) {
+        this.errorHandler = new PlaybackErrorHandler(this)
       }
-      
-      const startIndex = this.currentIndex
-      let attempts = 0
-      const maxAttempts = Math.min(this.songList.length, 10) // 最多尝试10首，避免遍历过长列表
-      
-      while (attempts < maxAttempts) {
-        let newIndex
-        if (this.playMode === 3) {
-          newIndex = this.getRandomIndex()
-        } else {
-          newIndex = (this.currentIndex + 1) % this.songList.length
-        }
-        
-        // 如果回到起点，说明所有歌曲都不可用
-        if (newIndex === startIndex && attempts > 0) {
-          console.warn('All songs in playlist are unavailable')
-          break
-        }
-        
-        // 检查歌曲是否标记为不可用
-        if (!this.songList[newIndex].unavailable) {
-          try {
-            await this.playSongWithDetails(newIndex)
-            // 成功播放后重置跳过计数
-            this.skipAttempts = 0
-            return // 成功播放
-          } catch (error) {
-            // 播放失败，标记为不可用并继续尝试下一首
-            this.songList[newIndex].unavailable = true
-            if (!this.unavailableSongs.includes(this.songList[newIndex].id)) {
-              this.unavailableSongs.push(this.songList[newIndex].id)
-            }
-            attempts++
-            continue
-          }
-        }
-        
-        attempts++
-        this.currentIndex = newIndex // 更新索引继续查找
-      }
-      
-      console.error('No available songs to play after', maxAttempts, 'attempts')
+      await this.errorHandler.playNextSkipUnavailable((index) => this.playSongWithDetails(index))
     },
 
-    // 重置跳过状态（当切换歌单时调用）
-    resetSkipState() {
-      this.skipAttempts = 0
-      this.lastSkipTime = 0
-      this.unavailableSongs = []
-      // 清除歌曲列表中的不可用标记
-      this.songList.forEach(song => {
-        song.unavailable = false
-        song.errorMessage = null
-      })
+    resetErrorHandler() {
+      if (this.errorHandler) {
+        this.errorHandler.reset()
+      }
     },
     
     seek(time) {
@@ -466,6 +371,7 @@ export const usePlayerStore = defineStore('player', {
       this.playing = false
       this.progress = 0
       this.duration = 0
+      this.resetErrorHandler()
     },
   },
   

@@ -4,14 +4,152 @@
 
 > ⚠️ **已知问题**：使用「沉浸式翻译」浏览器插件可能导致歌词不显示。如果遇到歌词不显示的问题，请尝试禁用该插件或将其加入白名单。
 
+## 🎉 最新动态
+
+### v2.0 - 双平台支持 (2026-03-01)
+- ✅ **QQ 音乐平台支持** - 搜索、播放、歌词一站式体验
+- ✅ **平台切换功能** - 搜索框旁可切换网易云/QQ 音乐
+- ✅ **扫码登录 QQ 音乐** - 获取 VIP 歌曲播放权限
+- ✅ **来源标识** - 歌曲名旁显示平台标签（红色=网易，绿色=QQ）
+- ✅ **专辑封面显示** - 播放列表和播放器显示封面
+- ✅ **优化 UI 设计** - 自定义下拉框、用户菜单美化
+
 ## 🚀 开发计划
 
 - [x] 进度条拖动时实时追踪歌词
 - [x] 升级 Vite 到 v7 版本
-- [x] 升级 Vue 到 v3.5 版本
+- [x] 升级 Vue 到 v3.7 版本
+- [x] 升级 Node.js 到 v24 版本
+- [x] 升级 Electron 到 v40 版本
+- [x] 双平台搜索支持（网易云 + QQ 音乐）
+- [x] QQ 音乐扫码登录功能
+- [x] 播放列表专辑封面显示
+- [x] 自定义平台选择下拉框
+- [x] 用户头像下拉菜单优化
+- [x] 添加功能思维导图
+- [ ] 消除翻译歌词不显示问题（QQ 音乐数据源问题）
 - [ ] 进行录屏或者截图会出现白屏问题
 - [x] 重构 playerStore 消除上帝类问题
 - [x] 优化歌词滚动性能
+
+## 功能思维导图
+
+```mermaid
+mindmap
+  root((LUO Music))
+    核心播放功能
+      播放控制
+        播放/暂停
+        上一曲/下一曲
+        进度条拖动
+        时间显示
+      播放模式
+        顺序播放
+        列表循环
+        单曲循环
+        随机播放
+      音频管理
+        音量控制
+        进度控制
+        错误处理
+        自动跳过
+    
+    平台支持
+      网易云音乐
+        歌曲搜索
+        播放 URL 获取
+        歌词获取
+        歌单详情
+      QQ 音乐
+        歌曲搜索
+        扫码登录
+        VIP 歌曲播放
+        平台切换
+      来源标识
+        平台标签
+        颜色区分
+    
+    歌词系统
+      歌词解析
+        LRC 格式
+        多层歌词
+        时间戳解析
+      歌词显示
+        原文歌词
+        翻译歌词
+        罗马音歌词
+      歌词交互
+        自动滚动
+        点击跳转
+        二分查找优化
+    
+    播放列表
+      列表管理
+        添加歌曲
+        清空列表
+        歌曲排序
+      显示优化
+        专辑封面
+        平台标识
+        不可用标记
+    
+    用户系统
+      用户信息
+        头像显示
+        昵称显示
+        登录状态
+      用户数据
+        喜欢歌曲
+        创建歌单
+        收藏歌单
+        动态消息
+    
+    UI/UX 功能
+      界面组件
+        播放器
+        歌词面板
+        搜索框
+        播放列表
+        用户中心
+      视觉效果
+        动画效果
+        响应式布局
+        紧凑模式
+        主题样式
+      交互优化
+        自定义下拉框
+        用户菜单
+        设置面板
+        Toast 提示
+    
+    技术架构
+      前端框架
+        Vue 3.7
+        Pinia 3.0
+        Vue Router 4.6
+      构建工具
+        Vite 7.0
+        Electron 40.0
+      动画库
+        Anime.js 4.0
+      状态管理
+        Pinia Store
+        持久化插件
+      网络请求
+        Axios
+        自定义封装
+    
+    部署支持
+      Web 部署
+        Vercel
+        静态资源
+      桌面应用
+        Electron
+        跨平台打包
+      API 服务
+        Serverless
+        本地服务
+```
 
 ## 功能特性
 
@@ -19,8 +157,9 @@
 - ✅ 音乐播放控制（播放/暂停/上一曲/下一曲）
 - ✅ 播放进度控制（进度条拖动/时间显示）
 - ✅ 歌词实时同步显示（LRC 格式解析）
-- ✅ 歌曲搜索（网易云音乐 API）
+- ✅ 歌曲搜索（支持网易云音乐 + QQ 音乐）
 - ✅ 播放列表管理
+- ✅ 平台切换（网易云/QQ 音乐一键切换）
 
 ### P1 增强功能
 - ✅ 音量控制（持久化、支持拖动）
@@ -33,19 +172,24 @@
 - ✅ 按钮动画效果（Anime.js）
 - ✅ 进度条拖动定位
 - ✅ Web 浏览器支持（Chrome/Edge/Firefox）
+- ✅ QQ 音乐扫码登录
+- ✅ 专辑封面显示
+- ✅ 来源标识（平台标签）
+- ✅ 登录状态检测
 
 ## 技术栈
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| Vue | 3.5+ | 前端框架 |
-| Electron | 33.0+ | 桌面应用框架 |
+| Vue | 3.7+ | 前端框架 |
+| Electron | 40.0+ | 桌面应用框架 |
 | Pinia | 3.0+ | 状态管理 |
 | Pinia Plugin Persistedstate | 4.7+ | 状态持久化 |
 | Axios | 1.6+ | HTTP 客户端 |
 | Vite | 7.0+ | 构建工具 |
 | Anime.js | 4.0+ | 动画效果 |
-| NeteaseCloudMusicApi Enhanced | 4.30+ | 音乐 API 服务 |
+| NeteaseCloudMusicApi Enhanced | 4.30+ | 网易云音乐 API |
+| QQ Music API | - | QQ 音乐 API 服务 |
 
 ## 依赖结构说明
 
@@ -55,14 +199,14 @@
 {
   "dependencies": {
     // 纯 Web 依赖 - Vercel 部署时安装
-    "vue": "^3.5.28",
+    "vue": "^3.7.0",
     "pinia": "^3.0.4",
     "animejs": "^4.3.6"
     // ...
   },
   "devDependencies": {
     // Electron 专属依赖 - 仅开发/打包时安装
-    "electron": "^33.2.1",
+    "electron": "^40.0.0",
     "electron-builder": "^25.1.8",
     "vite-plugin-electron": "^0.29.0"
     // ...
@@ -141,8 +285,8 @@ luo_music/
 ## 快速开始
 
 ### 环境要求
-- Node.js 18+
-- npm 9+
+- Node.js 24+
+- npm 10+
 
 ### 安装依赖
 
@@ -303,6 +447,7 @@ VITE_DEV_SERVER_PORT=5173
 
 ### 主要 API 端点
 
+#### 网易云音乐
 | 端点 | 说明 |
 |------|------|
 | `/search` | 歌曲搜索 |
@@ -311,6 +456,16 @@ VITE_DEV_SERVER_PORT=5173
 | `/lyric` | 获取歌词 |
 | `/song/detail` | 歌曲详情 |
 | `/playlist/detail` | 歌单详情 |
+
+#### QQ 音乐
+| 端点 | 说明 |
+|------|------|
+| `/getSearchByKey` | 歌曲搜索 |
+| `/getMusicPlay` | 获取播放链接 |
+| `/getLyric` | 获取歌词 |
+| `/getQQLoginQr` | 获取登录二维码 |
+| `/checkQQLoginQr` | 检查登录状态 |
+| `/user/getCookie` | 获取 Cookie |
 
 ---
 
@@ -347,6 +502,19 @@ VITE_DEV_SERVER_PORT=5173
 2. 歌词解析支持标准 LRC 格式，包括 `[00:00.00]` 和 `[00:00:00]` 两种时间戳格式
 3. 确保歌曲有歌词数据
 
+### Q: QQ 音乐搜索不到歌曲或播放失败
+**A**: 
+1. 确认 QQ 音乐 API 服务已启动（端口 3200）
+2. 检查是否有版权或 VIP 限制
+3. 尝试使用更高品质（如 320k 或 m4a）
+4. 部分歌曲需要登录后才能播放
+
+### Q: 无法播放 VIP 歌曲
+**A**: 
+1. 登录 QQ 音乐获取播放权限
+2. 点击右上角头像 → "QQ 音乐登录" → 扫码登录
+3. 登录成功后 cookie 会自动保存，下次启动无需重复登录
+
 ### Q: Electron 应用无法播放音乐
 **A**: 检查 `webSecurity` 设置，确保音频跨域配置正确。如果提示 `preload.cjs` 缺失，需要重新构建：`npm run build`。
 
@@ -367,10 +535,25 @@ VITE_DEV_SERVER_PORT=5173
 
 ---
 
+## ☕ 支持开发
+
+如果这个项目帮到了你，可以考虑赞助支持：
+
+**luo 音乐 API 作者 (sansenjian)**：
+- [爱发电 - @sansenjian](https://ifdian.net/a/sansenjian)
+
+你的支持将用于：
+- 维护网易云/QQ 音乐 API 接口
+- 开发更多功能
+- 持续优化播放器体验
+
+---
+
 ## 📚 参考资料
 
 - [Hydrogen Music](https://github.com/Kaidesuyo/Hydrogen-Music) - 参考架构设计
 - [NeteaseCloudMusicApi Enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced) - 网易云音乐 API（增强版，持续维护）
+- [QQ Music API](https://github.com/sansenjian/qq-music-api) - QQ 音乐 API 服务（sansenjian 版本）
 - [Electron 文档](https://www.electronjs.org/)
 - [Vue 3 文档](https://vuejs.org/)
 - [Vercel 文档](https://vercel.com/docs)

@@ -29,12 +29,13 @@ async function checkQQMusicLoginStatus() {
     const res = await qqMusicApi.checkQQMusicLogin()
     console.log('QQ Music login check response:', res)
     // 返回格式：{data: {cookie: '...', cookieList: [...]}} 或 {body: {data: {cookie: '...'}}}
-    const data = res.data || (res.body && res.body.data) || res
+    const data = res?.data || (res?.body && res.body.data) || res
     // 如果有 cookie 字段，说明已登录
     qqMusicLoggedIn.value = !!(data && data.cookie)
     console.log('QQ Music logged in:', qqMusicLoggedIn.value)
   } catch (error) {
-    console.error('Check QQ music login status failed:', error)
+    // 静默失败，不显示错误提示（因为可能是网络未连接或服务未启动）
+    console.warn('Check QQ music login status failed:', error.message)
     qqMusicLoggedIn.value = false
   }
 }

@@ -1,4 +1,4 @@
-import { ElMessage } from 'element-plus'
+import { useToastStore } from '../store/toastStore'
 
 /**
  * 错误类型枚举
@@ -46,13 +46,14 @@ export function handleError(error, options = {}) {
   // 确定显示的消息
   const message = customMessage || error.message || ErrorMessages[type]
 
-  // 显示用户提示
+  // 显示用户提示 (使用 toastStore)
   if (showToast) {
-    ElMessage({
-      message,
-      type: 'error',
-      duration: 3000
-    })
+    try {
+      const toastStore = useToastStore()
+      toastStore.error(message)
+    } catch (e) {
+      console.error(`[Toast] ${message}`)
+    }
   }
 
   // 执行回调

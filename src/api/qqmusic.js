@@ -9,10 +9,20 @@ const qqRequest = axios.create({
 
 qqRequest.interceptors.response.use(
   (response) => {
-    return response.data
+    // QQ 音乐 API 返回格式：{data: {...}}
+    // 如果 response.data 存在且包含 data 属性，返回完整的 response.data
+    // 否则直接返回 response.data
+    if (response && response.data) {
+      return response.data
+    }
+    return response
   },
   (error) => {
-    console.error('QQ Music API Error:', error)
+    console.error('QQ Music API Error:', error.message)
+    // 如果是网络错误，尝试重新请求或提示用户
+    if (error.code === 'ERR_NETWORK' || !error.response) {
+      console.warn('QQ Music API 网络错误，请检查 API 服务是否正常运行')
+    }
     return Promise.reject(error)
   }
 )
@@ -180,12 +190,12 @@ export const qqMusicApi = {
 
   // QQ 登录二维码
   getQQLoginQr() {
-    return qqRequest.get('/getQQLoginQr')
+    return qqRequest.get('/user/getQQLoginQr')
   },
 
   // 检查 QQ 登录状态
   checkQQLoginQr(ptqrtoken, qrsig) {
-    return qqRequest.get('/checkQQLoginQr', {
+    return qqRequest.post('/user/checkQQLoginQr', null, {
       params: {
         ptqrtoken,
         qrsig
