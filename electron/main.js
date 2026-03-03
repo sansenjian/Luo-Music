@@ -159,8 +159,13 @@ function startServer() {
         return
       }
       
+      // 开发模式使用系统 node，生产模式使用 Electron 自带的 node
+      const nodePath = app.isPackaged 
+        ? process.execPath 
+        : 'node'
+      
       // 使用 spawn 启动 server.cjs 作为独立 Node.js 进程
-      serverProcess = spawn(process.execPath, [serverPath], {
+      serverProcess = spawn(nodePath, [serverPath], {
         env: {
           ...process.env,
           NODE_ENV: app.isPackaged ? 'production' : 'development',
