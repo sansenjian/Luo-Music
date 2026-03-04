@@ -1,6 +1,5 @@
 <script setup>
-import { useUserData } from '../../composables/useUserData'
-import { watch } from 'vue'
+import { useUserDataQuery } from '../../composables/useUserDataQuery'
 
 const props = defineProps({
   userId: {
@@ -17,12 +16,8 @@ const props = defineProps({
   },
 })
 
-const { profile, stats, userDetail, loadUserData } = useUserData(props.userId)
-
-// Load data when userId changes
-watch(() => props.userId, (newId) => {
-  if (newId) loadUserData()
-}, { immediate: true })
+// 使用 Vue Query，传入 getter 以支持响应式更新
+const { profile, stats, userDetail } = useUserDataQuery(() => props.userId)
 </script>
 
 <template>

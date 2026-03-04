@@ -44,9 +44,21 @@ export default defineConfig(async ({ mode }) => {
               build: {
                 outDir: 'dist-electron',
                 rollupOptions: {
+                  external: [
+                    '@neteasecloudmusicapienhanced/api'
+                  ],
                   output: {
                     entryFileNames: 'main.mjs',
-                    format: 'es'  // ES Modules
+                    format: 'es',  // ES Modules
+                    banner: `
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+process.env.APP_ROOT = __dirname;
+`
                   }
                 },
                 minify: false
@@ -62,7 +74,7 @@ export default defineConfig(async ({ mode }) => {
                 rollupOptions: {
                   output: {
                     entryFileNames: 'preload.js',
-                    format: 'iife',
+                    format: 'cjs',  // CommonJS
                     exports: 'named'
                   }
                 },

@@ -7,8 +7,6 @@
 ## 📋 步骤清单
 
 - [ ] 安装 Node.js
-- [ ] 安装 NeteaseCloudMusicApi
-- [ ] 启动 API 服务
 - [ ] 安装项目依赖
 - [ ] 启动开发服务器
 - [ ] 开始使用
@@ -26,55 +24,9 @@ npm --version
 ### 下载安装
 访问 [Node.js 官网](https://nodejs.org/) 下载并安装 LTS 版本。
 
-## 2️⃣ 安装 NeteaseCloudMusicApi
+## 2️⃣ 安装项目依赖
 
-### 方法一：使用 Git（推荐）
-```bash
-# 克隆仓库
-git clone https://github.com/Binaryify/NeteaseCloudMusicApi.git
-
-# 进入目录
-cd NeteaseCloudMusicApi
-
-# 安装依赖
-npm install
-```
-
-### 方法二：手动下载
-1. 访问 https://github.com/Binaryify/NeteaseCloudMusicApi
-2. 点击 "Code" -> "Download ZIP"
-3. 解压到任意目录
-4. 在该目录打开终端，运行 `npm install`
-
-## 3️⃣ 启动 API 服务
-
-在 NeteaseCloudMusicApi 目录下运行：
-
-### Windows (CMD)
-```cmd
-set PORT=36530 && node app.js
-```
-
-### Windows (PowerShell)
-```powershell
-$env:PORT=36530; node app.js
-```
-
-### macOS / Linux
-```bash
-PORT=36530 node app.js
-```
-
-看到以下信息表示启动成功：
-```
-server running @ http://localhost:36530
-```
-
-**⚠️ 重要：保持这个终端窗口打开，不要关闭！**
-
-## 4️⃣ 安装项目依赖
-
-打开**新的**终端窗口，进入 luo_music 目录：
+打开终端窗口，进入 luo_music 目录：
 
 ```bash
 cd luo_music
@@ -83,23 +35,38 @@ npm install
 
 等待依赖安装完成（可能需要几分钟）。
 
-## 5️⃣ 启动开发服务器
+## 3️⃣ 启动开发服务器
+
+> **注意**: 启动 `npm run dev` 会自动同时启动前端应用和内置的 API 服务（端口 14532），无需额外操作。
 
 在 luo_music 目录下运行：
 
+### Windows (CMD)
+```cmd
+npm run dev
+```
+
+### Windows (PowerShell)
+```powershell
+npm run dev
+```
+
+### macOS / Linux
 ```bash
 npm run dev
 ```
 
 看到以下信息表示启动成功：
 ```
-  VITE v5.x.x  ready in xxx ms
+  VITE v7.x.x  ready in xxx ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
 ```
 
-## 6️⃣ 开始使用
+**API 服务会自动在后台启动（端口 14532），无需手动操作。**
+
+## 4️⃣ 开始使用
 
 1. 打开浏览器访问 `http://localhost:5173`
 2. 在搜索框输入歌曲名称，如"你的猫咪"
@@ -107,7 +74,7 @@ npm run dev
 4. 点击搜索结果中的歌曲开始播放
 5. 享受音乐！🎵
 
-## 🎉 成功！
+## 5️⃣ 成功！
 
 现在你应该看到：
 - ✅ API 服务运行在 http://localhost:36530

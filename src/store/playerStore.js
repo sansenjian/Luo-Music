@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
+import platform from '../platform'
+import { getMusicAdapter } from '../platform/music'
 import { audioManager } from '../utils/audioManager'
-import { getMusicUrl, getLyric } from '../api/song'
-import { qqMusicApi } from '../api/qqmusic'
 import { parseLyric, findCurrentLyricIndex } from '../utils/lyric'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
 import { PlaybackErrorHandler } from '../utils/player/modules/playbackErrorHandler'
+import { PLAY_MODE } from '../utils/player/constants/playMode'
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -96,11 +97,81 @@ export const usePlayerStore = defineStore('player', {
         console.error('Audio error:', e)
         this.handleAudioError(e)
       })
+      
+      this.setupIpcListeners()
+    },
+    
+    setupIpcListeners() {
+      // Platform check is safer, though platform.on handles non-electron gracefully
+      if (!platform.isElectron()) return
+      
+      const unsubscribers = []
+      
+      unsubscribers.push(
+        platform.on('music-playing-control', () => {
+          this.togglePlay()
+        })
+      )
+      
+      unsubscribers.push(
+        platform.on('music-song-control', (direction) => {
+          if (direction === 'prev') {
+            this.playPrev()
+          } else if (direction === 'next') {
+            this.playNext()
+          }
+        })
+      )
+      
+      unsubscribers.push(
+        platform.on('music-playmode-control', (mode) => {
+          this.setPlayMode(mode)
+        })
+      )
+      
+      unsubscribers.push(
+        platform.on('music-volume-up', () => {
+          this.setVolume(Math.min(1, this.volume + 0.1))
+        })
+      )
+      
+      unsubscribers.push(
+        platform.on('music-volume-down', () => {
+          this.setVolume(Math.max(0, this.volume - 0.1))
+        })
+      )
+      
+      unsubscribers.push(
+        platform.on('music-process-control', (direction) => {
+          const step = 5
+          if (direction === 'back') {
+            this.seek(Math.max(0, this.progress - step))
+          } else if (direction === 'forward') {
+            this.seek(Math.min(this.duration, this.progress + step))
+          }
+        })
+      )
+      
+      unsubscribers.push(
+        platform.on('hide-player', () => {
+          this.isCompact = !this.isCompact
+        })
+      )
+      
+      this._ipcUnsubscribers = unsubscribers
+    },
+    
+    notifyPlayingState() {
+      platform.sendPlayingState(this.playing)
+    },
+    
+    notifyPlayModeChange() {
+      platform.sendPlayModeChange(this.playMode)
     },
     
     async handleAudioError(error) {
       if (!this.errorHandler) {
-        this.errorHandler = new PlaybackErrorHandler(this)
+        this.errorHandler = this.createErrorHandler()
       }
       
       const result = await this.errorHandler.handleAudioError(error, this.currentSong)
@@ -111,6 +182,19 @@ export const usePlayerStore = defineStore('player', {
       } else if (result.shouldSkip) {
         this.playNext()
       }
+    },
+    
+    createErrorHandler() {
+      return new PlaybackErrorHandler({
+        getState: () => ({
+          songList: this.songList,
+          currentIndex: this.currentIndex,
+          playMode: this.playMode
+        }),
+        onStateChange: (changes) => {
+          if (changes.playing !== undefined) this.playing = changes.playing
+        }
+      })
     },
     
     updateLyricIndex() {
@@ -159,27 +243,22 @@ export const usePlayerStore = defineStore('player', {
       if (!song) return
 
       this.loading = true
+      const adapter = getMusicAdapter(song.server)
+
       try {
         // 1. Get URL if missing
         if (!song.url) {
-          if (song.server === 'qq') {
-            const urlRes = await qqMusicApi.getMusicPlay(song.id, song.mediaId)
-            const playUrl = urlRes?.data?.playUrl?.[song.id]
-            if (playUrl && playUrl.url) {
-              song.url = playUrl.url
+          try {
+            const url = await adapter.getSongUrl(song.id, { mediaId: song.mediaId })
+            if (url) {
+              song.url = url
             } else {
-              console.warn('QQ Music URL unavailable:', song.id, playUrl?.error)
+              console.warn('Song URL unavailable:', song.id)
               throw new Error('该歌曲无法播放（可能需要 VIP 或受版权限制）')
             }
-          } else {
-            const urlRes = await getMusicUrl(song.id, 'standard')
-            const urlData = urlRes.data || urlRes
-            if (urlData && urlData[0] && urlData[0].url) {
-              song.url = urlData[0].url
-            } else {
-              console.warn('Song URL unavailable (may require VIP or region restriction):', song.id)
-              throw new Error('该歌曲无法播放（可能需要 VIP 或受版权限制）')
-            }
+          } catch (urlError) {
+             console.error('Failed to get song URL:', urlError)
+             throw new Error('该歌曲无法播放（可能需要 VIP 或受版权限制）')
           }
         }
 
@@ -188,42 +267,11 @@ export const usePlayerStore = defineStore('player', {
 
         // 3. Get Lyrics
         try {
-          let lrcText = ''
-          let tlyricText = ''
-          let rlyricText = ''
+          const lyricData = await adapter.getLyric(song.id)
           
-          if (song.server === 'qq') {
-            const lyricRes = await qqMusicApi.getLyric(song.id, false)
-            if (lyricRes && lyricRes.response) {
-              lrcText = lyricRes.response.lyric?.lyric || ''
-              tlyricText = lyricRes.response.trans || ''
-              console.log('QQ Music lyric:', {
-                hasLrc: !!lrcText,
-                hasTrans: !!tlyricText,
-                transLength: tlyricText?.length || 0
-              })
-            }
-          } else {
-            const lyricRes = await getLyric(song.id)
-            if (lyricRes) {
-              this.setLyric(lyricRes)
-              lrcText = lyricRes.lrc?.lyric || lyricRes.lyric || ''
-              if (lyricRes.tlyric) {
-                if (typeof lyricRes.tlyric === 'string') {
-                  tlyricText = lyricRes.tlyric
-                } else if (lyricRes.tlyric.lyric && typeof lyricRes.tlyric.lyric === 'string') {
-                  tlyricText = lyricRes.tlyric.lyric
-                }
-              }
-              if (lyricRes.romalrc) {
-                if (typeof lyricRes.romalrc === 'string') {
-                  rlyricText = lyricRes.romalrc
-                } else if (lyricRes.romalrc.lyric && typeof lyricRes.romalrc.lyric === 'string') {
-                  rlyricText = lyricRes.romalrc.lyric
-                }
-              }
-            }
-          }
+          let lrcText = lyricData.lrc || ''
+          let tlyricText = lyricData.tlyric || ''
+          let rlyricText = lyricData.romalrc || ''
           
           const lyrics = parseLyric(lrcText, tlyricText, rlyricText)
           this.setLyricsArray(lyrics)
@@ -235,7 +283,7 @@ export const usePlayerStore = defineStore('player', {
         console.error('Playback failed:', error)
         
         if (!this.errorHandler) {
-          this.errorHandler = new PlaybackErrorHandler(this)
+          this.errorHandler = this.createErrorHandler()
         }
         this.errorHandler.markAsUnavailable(this.songList[index])
         
@@ -253,12 +301,13 @@ export const usePlayerStore = defineStore('player', {
     togglePlay() {
       if (!this.initialized) {
         if (this.songList.length > 0) {
-          this.playSongWithDetails(0) // Use detailed play
+          this.playSongWithDetails(0)
         }
         return
       }
       
       audioManager.toggle()
+      this.notifyPlayingState()
     },
     
     // 统一的随机播放辅助函数
@@ -278,7 +327,7 @@ export const usePlayerStore = defineStore('player', {
       if (this.songList.length === 0) return
       
       let newIndex
-      if (this.playMode === 3) {
+      if (this.playMode === PLAY_MODE.SHUFFLE) {
         newIndex = this.getRandomIndex()
       } else {
         newIndex = this.currentIndex - 1
@@ -296,12 +345,12 @@ export const usePlayerStore = defineStore('player', {
       if (this.songList.length === 0) return
       
       let newIndex
-      if (this.playMode === 3) {
+      if (this.playMode === PLAY_MODE.SHUFFLE) {
         newIndex = this.getRandomIndex()
       } else {
         newIndex = this.currentIndex + 1
         if (newIndex >= this.songList.length) {
-          if (this.playMode === 0) {
+          if (this.playMode === PLAY_MODE.SEQUENTIAL) {
             return
           }
           newIndex = 0
@@ -314,7 +363,7 @@ export const usePlayerStore = defineStore('player', {
     },
     
     handleSongEnd() {
-      if (this.playMode === 2) {
+      if (this.playMode === PLAY_MODE.SINGLE_LOOP) {
         audioManager.seek(0)
         audioManager.play()
       } else {
@@ -324,7 +373,7 @@ export const usePlayerStore = defineStore('player', {
 
     async playNextSkipUnavailable() {
       if (!this.errorHandler) {
-        this.errorHandler = new PlaybackErrorHandler(this)
+        this.errorHandler = this.createErrorHandler()
       }
       await this.errorHandler.playNextSkipUnavailable((index) => this.playSongWithDetails(index))
     },
@@ -347,6 +396,14 @@ export const usePlayerStore = defineStore('player', {
     
     togglePlayMode() {
       this.playMode = (this.playMode + 1) % 4
+      this.notifyPlayModeChange()
+    },
+    
+    setPlayMode(mode) {
+      if (mode >= 0 && mode <= 3) {
+        this.playMode = mode
+        this.notifyPlayModeChange()
+      }
     },
     
     setLyric(lyric) {

@@ -1,65 +1,60 @@
-// 模拟 HTMLAudioElement
 export class MockAudio {
   constructor() {
     this.currentTime = 0
-    this.duration = 0
+    this.duration = 100
     this.volume = 1
     this.paused = true
     this.ended = false
     this.src = ''
-    this.readyState = 0
-    this._listeners = new Map()
+    this._playbackRate = 1
+    this._events = {}
+  }
+
+  get playbackRate() {
+    return this._playbackRate
+  }
+
+  set playbackRate(value) {
+    this._playbackRate = value
+    this._trigger('ratechange')
   }
 
   play() {
     this.paused = false
-    this._emit('play')
+    this._trigger('play')
     return Promise.resolve()
   }
 
   pause() {
     this.paused = true
-    this._emit('pause')
+    this._trigger('pause')
   }
 
   load() {
-    this.readyState = 2
-    this._emit('canplay')
-    this._emit('loadedmetadata')
+    this._trigger('loadstart')
+    // Simulate async loading
+    setTimeout(() => {
+        this.readyState = 4
+        this._trigger('loadedmetadata')
+        this._trigger('canplay')
+    }, 0)
   }
 
-  addEventListener(event, callback) {
-    if (!this._listeners.has(event)) {
-      this._listeners.set(event, new Set())
-    }
-    this._listeners.get(event).add(callback)
+  addEventListener(event, handler) {
+    if (!this._events[event]) this._events[event] = []
+    this._events[event].push(handler)
   }
 
-  removeEventListener(event, callback) {
-    if (this._listeners.has(event)) {
-      this._listeners.get(event).delete(callback)
-    }
-  }
-
-  _emit(event, data) {
-    if (this._listeners.has(event)) {
-      this._listeners.get(event).forEach(cb => cb(data))
+  removeEventListener(event, handler) {
+    if (this._events[event]) {
+      this._events[event] = this._events[event].filter(h => h !== handler)
     }
   }
 
-  // 模拟时间更新
-  _updateTime(time) {
-    this.currentTime = time
-    this._emit('timeupdate')
-  }
-
-  // 模拟播放结束
-  _end() {
-    this.ended = true
-    this.paused = true
-    this._emit('ended')
+  // Helper to trigger events
+  _trigger(event, data) {
+    if (this._events[event]) {
+      this._events[event].forEach(handler => handler(data))
+    }
   }
 }
-
-// 全局模拟 Audio
-global.Audio = MockAudio

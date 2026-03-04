@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import platform from '../platform'
 import { usePlayerStore } from '../store/playerStore'
 import { useToastStore } from '../store/toastStore'
 import { useSearchStore } from '../store/searchStore'
@@ -81,7 +82,7 @@ function switchTab(tab) {
 }
 
 const isElectron = computed(() => {
-  return typeof window.electronAPI !== 'undefined'
+  return platform.isElectron()
 })
 
 function handleKeydown(e) {
@@ -108,20 +109,20 @@ function handleKeydown(e) {
 }
 
 function minimizeWindow() {
-  window.electronAPI?.minimizeWindow()
+  platform.minimizeWindow()
 }
 
 function maximizeWindow() {
-  window.electronAPI?.maximizeWindow()
+  platform.maximizeWindow()
 }
 
 function closeWindow() {
-  window.electronAPI?.closeWindow()
+  platform.closeWindow()
 }
 
 // 检测是否为移动端
 function isMobile() {
-  return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  return platform.isMobile()
 }
 
 onMounted(() => {

@@ -22,7 +22,7 @@ class AudioManager {
     }
 
     _initEvents() {
-        const events = ['timeupdate', 'loadedmetadata', 'ended', 'play', 'pause', 'error', 'canplay', 'waiting', 'playing']
+        const events = ['timeupdate', 'loadedmetadata', 'ended', 'play', 'pause', 'error', 'canplay', 'waiting', 'playing', 'ratechange']
         events.forEach(event => {
             this._boundHandlers.set(event, (e) => {
                 const callbacks = this.callbacks.get(event)
@@ -155,6 +155,16 @@ class AudioManager {
 
     getLoop() {
         return this.audio.loop
+    }
+
+    setPlaybackRate(rate) {
+        if (rate > 0) {
+            this.audio.playbackRate = rate
+        }
+    }
+
+    getPlaybackRate() {
+        return this.audio.playbackRate
     }
 
     get duration() {

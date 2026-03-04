@@ -1,10 +1,16 @@
 # luo_music
 
-基于 Vue 3 + Pinia + Electron 的跨平台音乐播放器
+基于 Vue 3 + Pinia + Electron + TypeScript + TanStack Query 的跨平台音乐播放器
 
 > ⚠️ **已知问题**：使用「沉浸式翻译」浏览器插件可能导致歌词不显示。如果遇到歌词不显示的问题，请尝试禁用该插件或将其加入白名单。
 
 ## 🎉 最新动态
+
+### v2.1 - 架构升级与优化 (2026-03-04)
+- ✅ **TypeScript 迁移** - 音乐平台适配器层全面 TypeScript 化
+- ✅ **TanStack Query 引入** - 引入 Vue Query 进行状态管理和数据缓存
+- ✅ **测试覆盖提升** - 新增组件和 Store 的单元测试
+- ✅ **性能优化** - 用户数据响应式更新，减少不必要的请求
 
 ### v2.0 - 双平台支持 (2026-03-01)
 - ✅ **QQ 音乐平台支持** - 搜索、播放、歌词一站式体验
@@ -27,6 +33,8 @@
 - [x] 自定义平台选择下拉框
 - [x] 用户头像下拉菜单优化
 - [x] 添加功能思维导图
+- [x] 引入 TypeScript 支持
+- [x] 引入 TanStack Query (Vue Query)
 - [ ] 消除翻译歌词不显示问题（QQ 音乐数据源问题）
 - [ ] 进行录屏或者截图会出现白屏问题
 - [x] 重构 playerStore 消除上帝类问题
@@ -127,6 +135,7 @@ mindmap
         Vue 3.7
         Pinia 3.0
         Vue Router 4.6
+        TypeScript
       构建工具
         Vite 7.0
         Electron 40.0
@@ -134,6 +143,7 @@ mindmap
         Anime.js 4.0
       状态管理
         Pinia Store
+        TanStack Query
         持久化插件
       网络请求
         Axios
@@ -182,8 +192,10 @@ mindmap
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | Vue | 3.7+ | 前端框架 |
+| TypeScript | 5.0+ | 静态类型检查 |
 | Electron | 40.0+ | 桌面应用框架 |
 | Pinia | 3.0+ | 状态管理 |
+| TanStack Query | 5.0+ | 服务端状态管理 |
 | Pinia Plugin Persistedstate | 4.7+ | 状态持久化 |
 | Axios | 1.6+ | HTTP 客户端 |
 | Vite | 7.0+ | 构建工具 |
@@ -201,14 +213,17 @@ mindmap
     // 纯 Web 依赖 - Vercel 部署时安装
     "vue": "^3.7.0",
     "pinia": "^3.0.4",
-    "animejs": "^4.3.6"
+    "animejs": "^4.3.6",
+    "@tanstack/vue-query": "^5.0.0"
     // ...
   },
   "devDependencies": {
     // Electron 专属依赖 - 仅开发/打包时安装
     "electron": "^40.0.0",
     "electron-builder": "^25.1.8",
-    "vite-plugin-electron": "^0.29.0"
+    "vite-plugin-electron": "^0.29.0",
+    "typescript": "^5.0.0",
+    "vue-tsc": "^2.0.0"
     // ...
   }
 }
@@ -249,10 +264,15 @@ luo_music/
 ├── scripts/          # 构建脚本
 │   └── dev-electron.js
 ├── src/
-│   ├── api/          # API 接口层
+│   ├── api/          # API 接口层 (Axios)
 │   ├── assets/       # 静态资源（CSS）
 │   ├── components/   # Vue 组件
-│   ├── composables/  # 组合式函数
+│   ├── composables/  # 组合式函数 (TanStack Query Hooks)
+│   ├── platform/     # 音乐平台适配层 (TypeScript)
+│   │   ├── music/
+│   │   │   ├── interface.ts # 接口定义
+│   │   │   ├── netease.ts   # 网易云适配器
+│   │   │   └── qq.ts        # QQ 音乐适配器
 │   ├── router/       # 路由配置
 │   ├── store/        # Pinia 状态管理
 │   ├── utils/        # 工具函数
@@ -268,6 +288,7 @@ luo_music/
 ├── server.js         # 本地 API 服务入口
 ├── package.json
 ├── vite.config.js
+├── tsconfig.json     # TypeScript 配置
 ├── vercel.json       # Vercel 部署配置
 └── index.html
 ```

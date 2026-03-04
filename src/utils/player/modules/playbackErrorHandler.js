@@ -1,9 +1,11 @@
 import { getMusicUrl } from '../../../api/song'
 import { qqMusicApi } from '../../../api/qqmusic'
+import { PLAY_MODE } from '../constants/playMode'
 
 export class PlaybackErrorHandler {
-  constructor(playerStore) {
-    this.playerStore = playerStore
+  constructor(options = {}) {
+    this.getState = options.getState || (() => ({}))
+    this.onStateChange = options.onStateChange || (() => {})
     this.skipAttempts = 0
     this.maxSkipAttempts = 5
     this.lastSkipTime = 0
@@ -12,7 +14,7 @@ export class PlaybackErrorHandler {
   }
 
   async handleAudioError(error, currentSong) {
-    this.playerStore.playing = false
+    this.onStateChange({ playing: false })
 
     if (currentSong && !currentSong.retryCount) {
       currentSong.retryCount = 1
@@ -67,7 +69,7 @@ export class PlaybackErrorHandler {
       return true
     }
     
-    const songList = this.playerStore.songList
+    const { songList } = this.getState()
     if (songList.length > 0 && this.unavailableSongs.length / songList.length > 0.8) {
       return true
     }
@@ -81,9 +83,10 @@ export class PlaybackErrorHandler {
       throw new Error('播放列表中可用歌曲较少，请尝试其他歌单')
     }
 
-    const startIndex = this.playerStore.currentIndex
+    const { currentIndex, songList } = this.getState()
+    const startIndex = currentIndex
     let attempts = 0
-    const maxAttempts = Math.min(this.playerStore.songList.length, 10)
+    const maxAttempts = Math.min(songList.length, 10)
     
     while (attempts < maxAttempts) {
       const newIndex = this.getNextAvailableIndex(startIndex, attempts)
@@ -93,13 +96,13 @@ export class PlaybackErrorHandler {
         break
       }
       
-      if (!this.playerStore.songList[newIndex].unavailable) {
+      if (!songList[newIndex].unavailable) {
         try {
           await playNext(newIndex)
           this.skipAttempts = 0
           return
         } catch (error) {
-          this.markAsUnavailable(this.playerStore.songList[newIndex])
+          this.markAsUnavailable(songList[newIndex])
           attempts++
           continue
         }
@@ -112,10 +115,9 @@ export class PlaybackErrorHandler {
   }
 
   getNextAvailableIndex(startIndex, attempts) {
-    const songList = this.playerStore.songList
-    const playMode = this.playerStore.playMode
+    const { songList, playMode } = this.getState()
     
-    if (playMode === 3) {
+    if (playMode === PLAY_MODE.SHUFFLE) {
       return Math.floor(Math.random() * songList.length)
     } else {
       return (startIndex + 1 + attempts) % songList.length
@@ -126,7 +128,8 @@ export class PlaybackErrorHandler {
     this.skipAttempts = 0
     this.lastSkipTime = 0
     this.unavailableSongs = []
-    this.playerStore.songList.forEach(song => {
+    const { songList } = this.getState()
+    songList.forEach(song => {
       song.unavailable = false
       song.errorMessage = null
     })

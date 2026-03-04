@@ -299,6 +299,7 @@ declare global {
   const useTransition: typeof import('@vueuse/core').useTransition
   const useUrlSearchParams: typeof import('@vueuse/core').useUrlSearchParams
   const useUserData: typeof import('./composables/useUserData.js').useUserData
+  const useUserDataQuery: typeof import('./composables/useUserDataQuery.js').useUserDataQuery
   const useUserEvents: typeof import('./composables/useUserEvents.js').useUserEvents
   const useUserMedia: typeof import('@vueuse/core').useUserMedia
   const useUserPlaylists: typeof import('./composables/useUserPlaylists.js').useUserPlaylists
@@ -637,6 +638,7 @@ declare module 'vue' {
     readonly useTransition: UnwrapRef<typeof import('@vueuse/core')['useTransition']>
     readonly useUrlSearchParams: UnwrapRef<typeof import('@vueuse/core')['useUrlSearchParams']>
     readonly useUserData: UnwrapRef<typeof import('./composables/useUserData.js')['useUserData']>
+    readonly useUserDataQuery: UnwrapRef<typeof import('./composables/useUserDataQuery.js')['useUserDataQuery']>
     readonly useUserEvents: UnwrapRef<typeof import('./composables/useUserEvents.js')['useUserEvents']>
     readonly useUserMedia: UnwrapRef<typeof import('@vueuse/core')['useUserMedia']>
     readonly useUserPlaylists: UnwrapRef<typeof import('./composables/useUserPlaylists.js')['useUserPlaylists']>

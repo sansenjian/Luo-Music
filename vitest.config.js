@@ -1,9 +1,15 @@
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
-import { resolve } from 'path'
+import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
   plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '~': fileURLToPath(new URL('./tests', import.meta.url))
+    }
+  },
   test: {
     environment: 'jsdom',
     globals: true,
@@ -32,15 +38,9 @@ export default defineConfig({
         statements: 60
       }
     },
-    include: ['tests/**/*.{test,spec}.{js,ts}'],
+    include: ['tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     exclude: ['tests/e2e/**'],
     testTimeout: 10000,
     hookTimeout: 10000
-  },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
-      '~': resolve(__dirname, './tests')
-    }
   }
 })

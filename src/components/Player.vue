@@ -193,15 +193,6 @@ function handleVolumeClick(e) {
 // Cleanup
 onBeforeUnmount(() => {
   if (rafId) cancelAnimationFrame(rafId)
-  // 完善清理：确保动画实例完全销毁
-  if (progressAnim) {
-    progressAnim.destroy()
-    progressAnim = null
-  }
-  if (volumeAnim) {
-    volumeAnim.destroy()
-    volumeAnim = null
-  }
 })
 
 // Animation handlers
@@ -231,17 +222,13 @@ watch(() => playerStore.currentSong, () => {
   nextTick(() => coverImgRef.value && animateAlbumCover(coverImgRef.value))
 }, { immediate: true })
 
-// Animation instances
-let progressAnim = null
-let volumeAnim = null
-
 // 阈值过滤常量
 const MIN_PROGRESS_CHANGE = 0.1 // 最小进度变化阈值 (%)
 const MIN_VOLUME_CHANGE = 1 // 最小音量变化阈值 (%)
 let lastProgressValue = 0
 let lastVolumeValue = -1 // 初始值设为 -1 确保首次更新
 
-// Watch for progress - 只在非拖拽状态下使用动画
+// Watch for progress - 只在非拖拽状态下更新
 watch(() => progressPercent.value, (newVal) => {
   if (!progressFillRef.value || isDraggingProgress.value) return
   
@@ -249,17 +236,8 @@ watch(() => progressPercent.value, (newVal) => {
   if (Math.abs(newVal - lastProgressValue) < MIN_PROGRESS_CHANGE) return
   lastProgressValue = newVal
   
-  // 完善清理：使用 destroy 而非 pause
-  if (progressAnim) {
-    progressAnim.destroy()
-    progressAnim = null
-  }
-  
-  progressAnim = animate(progressFillRef.value, {
-    width: `${newVal}%`,
-    duration: 150,
-    easing: 'linear'
-  })
+  // 直接更新样式，不使用动画（避免 animejs v4 destroy 问题）
+  progressFillRef.value.style.width = `${newVal}%`
 }, { flush: 'post' })
 
 // Watch for volume - 添加阈值过滤
@@ -270,17 +248,8 @@ watch(() => volumePercent.value, (newVal) => {
   if (Math.abs(newVal - lastVolumeValue) < MIN_VOLUME_CHANGE) return
   lastVolumeValue = newVal
   
-  // 完善清理：使用 destroy 而非 pause
-  if (volumeAnim) {
-    volumeAnim.destroy()
-    volumeAnim = null
-  }
-  
-  volumeAnim = animate(volumeFillRef.value, {
-    width: `${newVal}%`,
-    duration: 200,
-    easing: 'easeOutQuad'
-  })
+  // 直接更新样式，不使用动画
+  volumeFillRef.value.style.width = `${newVal}%`
 }, { flush: 'post' })
 
 onMounted(() => {

@@ -4,10 +4,12 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "electron",
-      "esbuild"
+      "esbuild",
+      "electron-winstaller"
     ],
     "overrides": {
-      "tar": ">=7.5.8"
+      "tar": ">=7.5.8",
+      "axios": "^1.7.9"
     }
   },
   "description": "LUO Music Player - A beautiful music player for Netease Cloud Music and QQ Music",
@@ -41,7 +43,10 @@
     "update:deps": "ncu -u",
     "check:unused": "depcheck",
     "analyze:bundle": "vite-bundle-visualizer",
-    "analyze:deps": "node scripts/analyze-deps.js"
+    "analyze:deps": "node scripts/analyze-deps.js",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "@babel/plugin-transform-async-to-generator": "^7.28.6",
@@ -51,10 +56,12 @@
     "@koa/router": "^15.0.0",
     "@neteasecloudmusicapienhanced/api": "^4.30.1",
     "@sansenjian/qq-music-api": "^2.1.1",
+    "@tanstack/vue-query": "^5.92.9",
     "@vercel/analytics": "^1.6.1",
     "@vueuse/core": "^14.2.1",
     "animejs": "^4.3.6",
     "axios": "^1.7.9",
+    "date-fns": "^4.1.0",
     "form-data": "^4.0.5",
     "koa": "^2.15.0",
     "koa-bodyparser": "^4.2.1",
@@ -79,17 +86,20 @@
     "jsdom": "^28.1.0",
     "npm-check-updates": "^19.6.3",
     "rimraf": "^6.0.1",
+    "typescript": "^5.9.3",
     "unplugin-auto-import": "^21.0.0",
     "unplugin-vue-components": "^31.0.0",
     "vite": "^7.3.1",
     "vite-bundle-visualizer": "^1.2.1",
     "vite-plugin-electron": "^0.29.0",
     "vite-plugin-electron-renderer": "^0.14.6",
-    "vitest": "^4.0.18"
+    "vitepress": "^1.6.4",
+    "vitest": "^4.0.18",
+    "vue-tsc": "^3.2.5"
   },
   "engines": {
-    "node": ">=24.0.0",
-    "npm": ">=10.0.0"
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
   },
   "overrides": {
     "axios": "^1.7.9"
@@ -101,63 +111,14 @@
       "output": "release",
       "buildResources": "build"
     },
-    "extraResources": [
-      {
-        "from": "./server.cjs",
-        "to": "server.cjs"
-      },
-      {
-        "from": "./node_modules/@neteasecloudmusicapienhanced",
-        "to": "app/node_modules/@neteasecloudmusicapienhanced",
-        "filter": [
-          "**/*",
-          "!**/*.md",
-          "!**/test/**/*"
-        ]
-      },
-      {
-        "from": "./node_modules/@sansenjian/qq-music-api",
-        "to": "app/node_modules/@sansenjian/qq-music-api",
-        "filter": [
-          "**/*",
-          "!**/*.md"
-        ]
-      },
-      {
-        "from": "./node_modules/@babel/register",
-        "to": "app/node_modules/@babel/register",
-        "filter": [
-          "**/*",
-          "!**/*.md"
-        ]
-      },
-      {
-        "from": "./node_modules/@babel/plugin-transform-async-to-generator",
-        "to": "app/node_modules/@babel/plugin-transform-async-to-generator",
-        "filter": [
-          "**/*",
-          "!**/*.md"
-        ]
-      },
-      {
-        "from": "./node_modules/form-data",
-        "to": "app/node_modules/form-data",
-        "filter": [
-          "**/*",
-          "!**/*.md"
-        ]
-      }
-    ],
+    "extraResources": [],
     "files": [
       "dist/**/*",
-      "dist-electron/**/*",
-      "!node_modules/**/*"
+      "dist-electron/**/*"
     ],
     "asar": true,
     "asarUnpack": [
-      "**/*.node",
-      "server.cjs",
-      "app/node_modules/**/*"
+      "**/*.node"
     ],
     "compression": "maximum",
     "win": {

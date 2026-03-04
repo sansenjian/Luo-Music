@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import { VueQueryPlugin } from '@tanstack/vue-query'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import naive from 'naive-ui'
 import router from './router'
@@ -57,4 +58,5 @@ clearCookies()
 app.use(pinia)
 app.use(router)
 app.use(naive)
+app.use(VueQueryPlugin)
 app.mount('#app')

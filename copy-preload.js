@@ -1,4 +1,4 @@
-import { copyFileSync } from 'fs'
+import { copyFileSync, mkdirSync, existsSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
@@ -11,3 +11,10 @@ copyFileSync(
 )
 
 console.log('✓ Copied electron/preload.js to dist-electron/preload.js')
+
+// 创建 dist-electron/public 目录，以防 API 依赖它
+const publicDir = join(__dirname, 'dist-electron/public')
+if (!existsSync(publicDir)) {
+  mkdirSync(publicDir, { recursive: true })
+  console.log('✓ Created dist-electron/public directory')
+}

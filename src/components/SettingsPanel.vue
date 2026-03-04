@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import platform from '../platform'
 import { usePlayerStore } from '../store/playerStore'
 import CacheManager from './CacheManager.vue'
 
@@ -7,7 +8,7 @@ const playerStore = usePlayerStore()
 const showSettings = ref(false)
 
 const isElectron = computed(() => {
-  return typeof window.electronAPI !== 'undefined'
+  return platform.isElectron()
 })
 
 function toggleSettings() {

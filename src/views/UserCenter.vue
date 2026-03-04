@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/userStore'
 import { usePlaylistStore } from '../store/playlistStore'
 import { usePlayerStore } from '../store/playerStore'
-import { useUserData } from '../composables/useUserData'
+import { useUserDataQuery } from '../composables/useUserDataQuery'
 import { useLikedSongs } from '../composables/useLikedSongs'
 import { useUserPlaylists } from '../composables/useUserPlaylists'
 import { useUserEvents } from '../composables/useUserEvents'
@@ -27,7 +27,8 @@ const loadingMap = ref({
 })
 
 // Use composables for data fetching
-const { stats, loadUserData } = useUserData(userStore.userId)
+// 使用 Vue Query 获取用户数据，支持响应式 userId
+const { stats, loading: userDataLoading } = useUserDataQuery(() => userStore.userId)
 const { formattedSongs, count: likedCount, loadLikedSongs } = useLikedSongs()
 const { playlists, count: playlistCount, loadPlaylists, loadPlaylistSongs } = useUserPlaylists()
 const { events, count: eventsCount, loadEvents } = useUserEvents()
@@ -54,7 +55,7 @@ const loadAllData = async () => {
   loadingMap.value.events = true
   
   await Promise.all([
-    loadUserData(),
+    // loadUserData 由 Vue Query 自动管理
     loadLikedSongs(userId).finally(() => loadingMap.value.liked = false),
     loadPlaylists(userId).finally(() => loadingMap.value.playlist = false),
     loadEvents(userId).finally(() => loadingMap.value.events = false),
