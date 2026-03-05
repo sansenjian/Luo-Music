@@ -1,19 +1,48 @@
-import { getMusicUrl } from '../../../api/song'
-import { qqMusicApi } from '../../../api/qqmusic'
+import { getMusicAdapter } from '../../../platform/music'
 import { PLAY_MODE } from '../constants/playMode'
+import type { Song } from '../../../platform/music/interface'
 
-export class PlaybackErrorHandler {
-  constructor(options = {}) {
-    this.getState = options.getState || (() => ({}))
+interface ErrorHandlerOptions {
+  getState?: () => {
+    songList: Song[];
+    currentIndex: number;
+    playMode: number;
+  };
+  onStateChange?: (changes: { playing?: boolean }) => void;
+}
+
+export interface AudioErrorResult {
+  shouldRetry: boolean;
+  shouldSkip?: boolean;
+  url?: string;
+}
+
+export interface ErrorHandler {
+  reset(): void
+  handleAudioError(error: any, song: Song | null): Promise<AudioErrorResult>
+  markAsUnavailable(song: Song, message?: string): void
+  playNextSkipUnavailable(playNext: (index: number) => Promise<void>): Promise<void>
+}
+
+export class PlaybackErrorHandler implements ErrorHandler {
+  private getState: () => {
+    songList: Song[];
+    currentIndex: number;
+    playMode: number;
+  }
+  private onStateChange: (changes: { playing?: boolean }) => void
+  private skipAttempts: number = 0
+  private maxSkipAttempts: number = 5
+  private lastSkipTime: number = 0
+  private skipCooldownMs: number = 3000
+  private unavailableSongs: (string | number)[] = []
+
+  constructor(options: ErrorHandlerOptions = {}) {
+    this.getState = options.getState || (() => ({ songList: [], currentIndex: -1, playMode: 0 }))
     this.onStateChange = options.onStateChange || (() => {})
-    this.skipAttempts = 0
-    this.maxSkipAttempts = 5
-    this.lastSkipTime = 0
-    this.skipCooldownMs = 3000
-    this.unavailableSongs = []
   }
 
-  async handleAudioError(error, currentSong) {
+  async handleAudioError(error: any, currentSong: Song | null): Promise<AudioErrorResult> {
     this.onStateChange({ playing: false })
 
     if (currentSong && !currentSong.retryCount) {
@@ -36,19 +65,25 @@ export class PlaybackErrorHandler {
     return { shouldRetry: false, shouldSkip: true }
   }
 
-  async retryGetMusicUrl(song) {
-    if (song.server === 'qq') {
-      const urlRes = await qqMusicApi.getMusicPlay(song.id, song.mediaId)
-      return urlRes?.data?.playUrl?.[song.id]
-    } else {
-      const urlRes = await getMusicUrl(song.id, 'standard')
-      return urlRes.data?.[0]
+  async retryGetMusicUrl(song: Song): Promise<{ url: string } | null> {
+    const platform = song.platform || (song as any).server || 'netease'
+    const adapter = getMusicAdapter(platform)
+    const mediaId = song.mediaId || (song.extra && song.extra.mediaId)
+    
+    try {
+      const url = await adapter.getSongUrl(song.id, { mediaId })
+      if (url) {
+        return { url }
+      }
+    } catch (e) {
+      console.error('Adapter retry failed:', e)
     }
+    return null
   }
 
-  markAsUnavailable(song) {
+  markAsUnavailable(song: Song, message?: string) {
     song.unavailable = true
-    song.errorMessage = '该歌曲无法播放（可能需要 VIP 或受版权限制）'
+    song.errorMessage = message || '该歌曲无法播放（可能需要 VIP 或受版权限制）'
     if (!this.unavailableSongs.includes(song.id)) {
       this.unavailableSongs.push(song.id)
     }
@@ -77,7 +112,7 @@ export class PlaybackErrorHandler {
     return false
   }
 
-  async playNextSkipUnavailable(playNext) {
+  async playNextSkipUnavailable(playNext: (index: number) => Promise<void>) {
     if (this.shouldStopSkipping()) {
       console.warn('Skip frequency limit reached or too many unavailable songs')
       throw new Error('播放列表中可用歌曲较少，请尝试其他歌单')
@@ -114,7 +149,7 @@ export class PlaybackErrorHandler {
     throw new Error('无法播放任何歌曲')
   }
 
-  getNextAvailableIndex(startIndex, attempts) {
+  getNextAvailableIndex(startIndex: number, attempts: number) {
     const { songList, playMode } = this.getState()
     
     if (playMode === PLAY_MODE.SHUFFLE) {

@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { search } from '../api/search'
-import { usePlayerStore } from '../store/playerStore'
+import { usePlayerStore } from '../store/playerStore.ts'
 import { useToastStore } from '../store/toastStore'
 
 export function useSearch() {

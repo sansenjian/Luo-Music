@@ -52,12 +52,12 @@ export default defineConfig(async ({ mode }) => {
                     format: 'es',  // ES Modules
                     banner: `
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
+import { fileURLToPath as _fileURLToPath } from 'node:url';
+import { dirname as _dirname, join as _join } from 'node:path';
 const require = createRequire(import.meta.url);
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-process.env.APP_ROOT = __dirname;
+const __filename = _fileURLToPath(import.meta.url);
+const __dirname = _dirname(__filename);
+process.env.APP_ROOT = _join(__dirname, '..');
 `
                   }
                 },
@@ -100,6 +100,7 @@ process.env.APP_ROOT = __dirname;
         '/api': {
           target: 'http://localhost:14532',
           changeOrigin: true,
+          // @ts-ignore
           rewrite: (path) => path.replace(/^\/api/, '')
         }
       }
@@ -111,16 +112,25 @@ process.env.APP_ROOT = __dirname;
       rollupOptions: {
         output: {
           // ✅ 精细化的代码分割配置
-          manualChunks: {
-            // 核心框架
-            'vendor-core': ['vue', 'vue-router', 'pinia'],
-            // Vue 生态
-            'vendor-vue': ['@vueuse/core'],
-            // UI 库（按需加载）
-            'vendor-ui': ['naive-ui'],
-            // 工具库
-            'vendor-utils': ['axios', 'animejs']
-            // 注意：音乐 API 是 CommonJS，不能在这里引入，需要在代码中动态导入
+          // @ts-ignore
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('naive-ui')) {
+                // Naive UI 是一个完整的库，很难通过文件路径简单拆分
+                // 更好的策略是让它独立打包，并接受它较大的事实
+                // 或者如果项目只用到了少量组件，检查是否开启了自动按需引入（unplugin-vue-components 已配置）
+                // 这里我们尝试将其核心逻辑和组件分开（如果可能），或者直接作为一个大块
+                return 'vendor-naive-ui'
+              }
+              if (id.includes('vue') || id.includes('pinia') || id.includes('router')) {
+                return 'vendor-core'
+              }
+              if (id.includes('axios') || id.includes('animejs')) {
+                return 'vendor-utils'
+              }
+              // 其他依赖打包到 vendor
+              return 'vendor-libs'
+            }
           }
         }
       }

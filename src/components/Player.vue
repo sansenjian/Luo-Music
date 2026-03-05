@@ -1,7 +1,9 @@
 <script setup>
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { usePlayerStore } from '../store/playerStore'
+import platform from '../platform'
+import { usePlayerStore } from '../store/playerStore.ts'
 import { animate, animateButtonClick, animatePlayPause, animateAlbumCover, animateLoopMode } from '../composables/useAnimations.js'
+import { useSlider } from '../composables/useSlider.ts'
 import SettingsPanel from './SettingsPanel.vue'
 
 const props = defineProps({
@@ -50,149 +52,15 @@ const playModeSvg = computed(() => {
 
 const playModeText = computed(() => ['顺序播放', '列表循环', '单曲循环', '随机播放'][playerStore.playMode] || '顺序播放')
 
-// Drag state
-const isDraggingProgress = ref(false)
-const isDraggingVolume = ref(false)
-let progressRect = null
-let volumeRect = null
-let rafId = null
+// Sliders
+const progressSlider = useSlider({
+  onUpdate: (percent) => playerStore.seek(percent * playerStore.duration),
+  getValue: () => playerStore.duration ? playerStore.progress / playerStore.duration : 0
+})
 
-// 拖拽移动检测（用于区分拖拽和点击）
-let didMoveProgress = false
-let didMoveVolume = false
-const MOVE_THRESHOLD = 3 // 像素
-
-// Progress handlers
-function handleProgressPointerDown(e) {
-  if (e.button !== 0) return
-  isDraggingProgress.value = true
-  progressRect = e.currentTarget.getBoundingClientRect()
-  e.currentTarget.setPointerCapture?.(e.pointerId)
-  updateProgressFromEvent(e)
-}
-
-function handleProgressPointerMove(e) {
-  if (!isDraggingProgress.value || !progressRect) return
-  e.preventDefault()
-  
-  // 检测是否移动超过阈值
-  const deltaX = Math.abs(e.clientX - progressRect.left - (progressRect.width * playerStore.progress / playerStore.duration))
-  if (deltaX > MOVE_THRESHOLD) {
-    didMoveProgress = true
-  }
-  
-  // 使用 RAF 节流
-  if (rafId) return
-  rafId = requestAnimationFrame(() => {
-    updateProgressFromEvent(e)
-    rafId = null
-  })
-}
-
-function handleProgressPointerUp(e) {
-  if (!isDraggingProgress.value) return
-  
-  // 应用最终进度位置
-  if (progressRect?.width) {
-    const percent = Math.max(0, Math.min(1, (e.clientX - progressRect.left) / progressRect.width))
-    playerStore.seek(percent * playerStore.duration)
-  }
-  
-  isDraggingProgress.value = false
-  progressRect = null
-  e.currentTarget.releasePointerCapture?.(e.pointerId)
-  if (rafId) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
-  
-  // 延迟重置移动标志，确保 click 事件能检测到
-  setTimeout(() => {
-    didMoveProgress = false
-  }, 50)
-}
-
-function updateProgressFromEvent(e) {
-  if (!progressRect?.width) return
-  const percent = Math.max(0, Math.min(1, (e.clientX - progressRect.left) / progressRect.width))
-  playerStore.seek(percent * playerStore.duration)
-}
-
-// Volume handlers
-function handleVolumePointerDown(e) {
-  if (e.button !== 0) return
-  isDraggingVolume.value = true
-  volumeRect = e.currentTarget.getBoundingClientRect()
-  e.currentTarget.setPointerCapture?.(e.pointerId)
-  updateVolumeFromEvent(e)
-}
-
-function handleVolumePointerMove(e) {
-  if (!isDraggingVolume.value || !volumeRect) return
-  
-  // 检测是否移动超过阈值
-  const currentVolume = playerStore.volume
-  const deltaX = Math.abs(e.clientX - volumeRect.left - (volumeRect.width * currentVolume))
-  if (deltaX > MOVE_THRESHOLD) {
-    didMoveVolume = true
-  }
-  
-  updateVolumeFromEvent(e)
-}
-
-function handleVolumePointerUp(e) {
-  if (!isDraggingVolume.value) return
-  
-  // 应用最终音量位置
-  if (volumeRect?.width) {
-    const percent = Math.max(0, Math.min(1, (e.clientX - volumeRect.left) / volumeRect.width))
-    playerStore.setVolume(percent)
-  }
-  
-  isDraggingVolume.value = false
-  volumeRect = null
-  e.currentTarget.releasePointerCapture?.(e.pointerId)
-  
-  // 延迟重置移动标志
-  setTimeout(() => {
-    didMoveVolume = false
-  }, 50)
-}
-
-function updateVolumeFromEvent(e) {
-  if (!volumeRect?.width) return
-  const percent = Math.max(0, Math.min(1, (e.clientX - volumeRect.left) / volumeRect.width))
-  playerStore.setVolume(percent)
-}
-
-// Click handlers (for non-drag clicks)
-function handleProgressClick(e) {
-  if (isDraggingProgress.value) return // 避免拖拽后触发 click
-  if (didMoveProgress) {
-    didMoveProgress = false
-    return // 拖拽后忽略点击
-  }
-  const rect = e.currentTarget.getBoundingClientRect()
-  if (rect.width === 0) return // 防止零宽度导致 NaN
-  const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  playerStore.seek(percent * playerStore.duration)
-}
-
-function handleVolumeClick(e) {
-  if (isDraggingVolume.value) return
-  if (didMoveVolume) {
-    didMoveVolume = false
-    return // 拖拽后忽略点击
-  }
-  const rect = e.currentTarget.getBoundingClientRect()
-  if (rect.width === 0) return // 防止零宽度导致 NaN
-  const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  playerStore.setVolume(percent)
-}
-
-// Cleanup
-onBeforeUnmount(() => {
-  if (rafId) cancelAnimationFrame(rafId)
+const volumeSlider = useSlider({
+  onUpdate: (percent) => playerStore.setVolume(percent),
+  getValue: () => playerStore.volume
 })
 
 // Animation handlers
@@ -210,6 +78,12 @@ function onPrevButtonClick() {
 function onNextButtonClick() {
   animateButtonClick(nextButtonRef.value)
   playerStore.playNext()
+}
+
+function toggleDesktopLyric() {
+  if (platform.isElectron()) {
+    platform.send('toggle-desktop-lyric')
+  }
 }
 
 function onLoopButtonClick() {
@@ -230,7 +104,7 @@ let lastVolumeValue = -1 // 初始值设为 -1 确保首次更新
 
 // Watch for progress - 只在非拖拽状态下更新
 watch(() => progressPercent.value, (newVal) => {
-  if (!progressFillRef.value || isDraggingProgress.value) return
+  if (!progressFillRef.value || progressSlider.isDragging.value) return
   
   // 阈值过滤：只有变化超过 0.1% 才更新
   if (Math.abs(newVal - lastProgressValue) < MIN_PROGRESS_CHANGE) return
@@ -264,11 +138,11 @@ onMounted(() => {
     <div 
       v-if="compact" 
       class="top-progress-wrapper"
-      @pointerdown="handleProgressPointerDown"
-      @pointermove="handleProgressPointerMove"
-      @pointerup="handleProgressPointerUp"
-      @pointercancel="handleProgressPointerUp"
-      @click="handleProgressClick"
+      @pointerdown="progressSlider.handlePointerDown"
+      @pointermove="progressSlider.handlePointerMove"
+      @pointerup="progressSlider.handlePointerUp"
+      @pointercancel="progressSlider.handlePointerUp"
+      @click="progressSlider.handleClick"
     >
       <div class="top-progress-track">
         <div ref="progressFillRef" class="top-progress-fill" :style="{ width: `${progressPercent}%` }"></div>
@@ -303,11 +177,11 @@ onMounted(() => {
       </div>
       <div 
         class="progress-bar" 
-        @pointerdown="handleProgressPointerDown"
-        @pointermove="handleProgressPointerMove"
-        @pointerup="handleProgressPointerUp"
-        @pointercancel="handleProgressPointerUp"
-        @click="handleProgressClick"
+        @pointerdown="progressSlider.handlePointerDown"
+        @pointermove="progressSlider.handlePointerMove"
+        @pointerup="progressSlider.handlePointerUp"
+        @pointercancel="progressSlider.handlePointerUp"
+        @click="progressSlider.handleClick"
       >
         <div ref="progressFillRef" class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
       </div>
@@ -343,17 +217,26 @@ onMounted(() => {
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
         </svg>
       </button>
+
+      <!-- Desktop Lyric Button -->
+      <button class="ctrl-btn lyric-btn" @click="toggleDesktopLyric" title="Desktop Lyric">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          <line x1="9" y1="9" x2="15" y2="9"></line>
+          <line x1="9" y1="13" x2="15" y2="13"></line>
+        </svg>
+      </button>
     </div>
 
     <div class="volume-row">
       <span class="volume-label">VOL</span>
       <div 
         class="volume-bar" 
-        @pointerdown="handleVolumePointerDown"
-        @pointermove="handleVolumePointerMove"
-        @pointerup="handleVolumePointerUp"
-        @pointercancel="handleVolumePointerUp"
-        @click="handleVolumeClick"
+        @pointerdown="volumeSlider.handlePointerDown"
+        @pointermove="volumeSlider.handlePointerMove"
+        @pointerup="volumeSlider.handlePointerUp"
+        @pointercancel="volumeSlider.handlePointerUp"
+        @click="volumeSlider.handleClick"
       >
         <div ref="volumeFillRef" class="volume-fill"></div>
       </div>
@@ -505,12 +388,20 @@ onMounted(() => {
 }
 
 /* Right: Volume */
+.player-section.is-compact .lyric-btn:hover {
+  color: var(--accent);
+}
+
 .player-section.is-compact .volume-row {
   width: 200px;
   justify-self: end;
   border: none;
   padding: 0;
   grid-column: 3;
+}
+
+.player-section.is-compact .volume-row::before {
+  display: none;
 }
 
 .player-section.is-compact .progress-section {
@@ -693,12 +584,28 @@ onMounted(() => {
   border-radius: 50%;
 }
 
+.lyric-btn:hover {
+  color: var(--accent);
+}
+
 .volume-row {
   display: flex;
   align-items: center;
   gap: 8px;
   padding-top: 10px;
-  border-top: 2px solid var(--black);
+  position: relative;
+  width: 100%; /* Ensure it takes full width */
+  box-sizing: border-box; /* Include padding/border */
+}
+
+.volume-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--black);
 }
 
 .volume-bar {
@@ -709,6 +616,7 @@ onMounted(() => {
   cursor: pointer;
   position: relative;
   touch-action: none;
+  min-width: 40px; /* Prevent shrinking too much */
 }
 
 .volume-fill {
@@ -723,10 +631,12 @@ onMounted(() => {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   min-width: 24px;
+  flex-shrink: 0;
 }
 
 .volume-value {
   text-align: right;
+  flex-shrink: 0;
 }
 
 /* Responsive */
@@ -797,8 +707,12 @@ onMounted(() => {
   }
   
   .player-section.is-compact .volume-row {
-    width: 80px;
-  }
+  width: 80px;
+}
+
+.player-section.is-compact .volume-row::before {
+  display: none;
+}
 }
 
 @media (max-width: 480px) {

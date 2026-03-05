@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -13,6 +14,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   sendPlayingState: (playing) => ipcRenderer.send('music-playing-check', playing),
   sendPlayModeChange: (mode) => ipcRenderer.send('music-playmode-tray-change', mode),
+  send: (channel, data) => {
+    const validSendChannels = [
+      'toggle-desktop-lyric',
+      'desktop-lyric-control',
+      'toggle-desktop-lyric-lock',
+      'sync-lyric',
+      'lyric-time-update',
+      'download-music',
+      'music-playing-control',
+      'music-song-control',
+      'desktop-lyric-set-ignore-mouse',
+      'log-message' // 添加日志通道
+    ]
+    if (validSendChannels.includes(channel)) {
+      ipcRenderer.send(channel, data)
+    }
+  },
   
   on: (channel, callback) => {
     const validChannels = [
@@ -24,7 +42,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'music-volume-up',
       'music-volume-down',
       'music-process-control',
-      'hide-player'
+      'hide-player',
+      'lyric-update',
+      'lyric-time-update',
+      'desktop-lyric-lock-state',
+      'download-progress',
+      'download-complete',
+      'download-failed',
+      'music-compact-mode-control'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)

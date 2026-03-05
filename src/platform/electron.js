@@ -23,6 +23,10 @@ export class ElectronAdapter extends PlatformAdapter {
     return () => {};
   }
   
+  send(channel, data) {
+    this.api?.send(channel, data);
+  }
+
   sendPlayingState(playing) { this.api?.sendPlayingState(playing); }
   sendPlayModeChange(mode) { this.api?.sendPlayModeChange(mode); }
 

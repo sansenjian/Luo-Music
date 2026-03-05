@@ -12,10 +12,12 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     CacheManager: typeof import('./components/CacheManager.vue')['default']
+    ErrorToast: typeof import('./components/ErrorToast.vue')['default']
     EventsView: typeof import('./components/user/EventsView.vue')['default']
     LikedSongsView: typeof import('./components/user/LikedSongsView.vue')['default']
     LoginModal: typeof import('./components/LoginModal.vue')['default']
-    Lyric: typeof import('./components/Lyric.vue')['default']
+    LyricDisplay: typeof import('./components/LyricDisplay.vue')['default']
+    LyricFloat: typeof import('./components/LyricFloat.vue')['default']
     PageTransition: typeof import('./components/PageTransition.vue')['default']
     Player: typeof import('./components/Player.vue')['default']
     Playlist: typeof import('./components/Playlist.vue')['default']

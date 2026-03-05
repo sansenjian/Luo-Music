@@ -1,6 +1,6 @@
 <script setup>
 import { computed, watch, ref } from 'vue'
-import { usePlayerStore } from '../store/playerStore'
+import { usePlayerStore } from '../store/playerStore.ts'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
 
 const playerStore = usePlayerStore()
@@ -54,8 +54,8 @@ function playSong(index) {
         <div class="list-info">
           <div class="list-title">
             {{ song.name }}
-            <span class="server-badge" :class="song.server || 'netease'">
-              {{ song.server === 'qq' ? 'QQ' : '网易' }}
+            <span class="server-badge" :class="song.platform || song.server || 'netease'">
+              {{ (song.platform === 'qq' || song.server === 'qq') ? 'QQ' : '网易' }}
             </span>
           </div>
           <div class="list-artist">{{ song.artist }}</div>

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import Playlist from '../../src/components/Playlist.vue'
-import { usePlayerStore } from '../../src/store/playerStore'
+import { usePlayerStore } from '../../src/store/playerStore.ts'
 
 // Mock scrollIntoView
 Element.prototype.scrollIntoView = vi.fn()

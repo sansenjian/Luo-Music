@@ -1,14 +1,44 @@
 import { defineStore } from 'pinia'
+import { markRaw } from 'vue'
 import platform from '../platform'
 import { getMusicAdapter } from '../platform/music'
-import { audioManager } from '../utils/audioManager'
-import { parseLyric, findCurrentLyricIndex } from '../utils/lyric'
+import { playerCore as audioManager } from '../utils/player/core/playerCore'
+import { LyricParser, LyricEngine, type LyricLine } from '../utils/player/core/lyric'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
 import { PlaybackErrorHandler } from '../utils/player/modules/playbackErrorHandler'
+import type { ErrorHandler } from '../utils/player/modules/playbackErrorHandler'
 import { PLAY_MODE } from '../utils/player/constants/playMode'
+import { errorCenter, Errors } from '../utils/error'
+import type { Song } from '../platform/music/interface'
+
+interface PlayerState {
+  playing: boolean
+  progress: number
+  duration: number
+  volume: number
+  playMode: number
+  songList: Song[]
+  currentIndex: number
+  currentSong: Song | null
+  lyric: any
+  lyricsArray: LyricLine[]
+  currentLyricIndex: number
+  lyricSize: number
+  tlyricSize: number
+  rlyricSize: number
+  lyricType: string[]
+  showLyric: boolean
+  showPlaylist: boolean
+  initialized: boolean
+  loading: boolean
+  isCompact: boolean
+  errorHandler: ErrorHandler | null
+  lyricEngine: LyricEngine | null
+  ipcInitialized: boolean
+}
 
 export const usePlayerStore = defineStore('player', {
-  state: () => ({
+  state: (): PlayerState => ({
     playing: false,
     progress: 0,
     duration: 0,
@@ -30,12 +60,14 @@ export const usePlayerStore = defineStore('player', {
     loading: false,
     isCompact: false,
     errorHandler: null,
+    lyricEngine: null,
+    ipcInitialized: false
   }),
   
   getters: {
     hasSongs: (state) => state.songList.length > 0,
     
-    currentSongInfo: (state) => {
+    currentSongInfo: (state): Song | null => {
       if (state.currentIndex >= 0 && state.currentIndex < state.songList.length) {
         return state.songList[state.currentIndex]
       }
@@ -52,13 +84,29 @@ export const usePlayerStore = defineStore('player', {
   },
   
   actions: {
+    seek(time: number): void {
+      audioManager.seek(time)
+      this.progress = time
+    },
+
+    async playNextSkipUnavailable(): Promise<void> {
+      if (!this.errorHandler) {
+        this.errorHandler = this.createErrorHandler()
+      }
+      await this.errorHandler.playNextSkipUnavailable(async (index: number) => {
+        await this.playSongWithDetails(index, false)
+      })
+    },
+
     initAudio() {
       if (this.initialized) return
       
       this.initialized = true
+      this.lyricEngine = markRaw(new LyricEngine()) // Initialize lyric engine
+
       audioManager.setVolume(this.volume)
       
-      // 先清理旧事件，防止 HMR 或热重置时事件累积
+      // ...先清理旧事件，防止 HMR 或热重置时事件累积
       audioManager.off('timeupdate')
       audioManager.off('loadedmetadata')
       audioManager.off('ended')
@@ -66,15 +114,40 @@ export const usePlayerStore = defineStore('player', {
       audioManager.off('pause')
       audioManager.off('error')
       
-      // 节流处理 timeupdate，每 100ms 更新一次
+      // 节流处理 timeupdate，每 100ms 更新一次 (本地 UI)
       let lastUpdate = 0
+      // IPC 广播节流，每 200ms 一次
+      let lastBroadcast = 0
+      
       audioManager.on('timeupdate', () => {
         const now = Date.now()
-        if (now - lastUpdate < 100) return
-        lastUpdate = now
         
-        this.progress = audioManager.currentTime
-        this.updateLyricIndex() // Sync lyric
+        // 本地更新 (100ms) - 降低频率以优化性能
+        if (now - lastUpdate >= 250) { // 从 100ms 改为 250ms，约 4fps，足够用于进度条
+          lastUpdate = now
+          // audioManager.currentTime 是一个属性，不是方法，也不是 Number 构造函数
+          // 如果它返回 Number 对象而不是 primitive number，可能会导致此错误
+          // 但通常 HTMLMediaElement.currentTime 返回的是 number
+          // 这里显式转换一下以防万一
+          this.progress = Number(audioManager.currentTime) || 0
+          
+          this.updateLyricIndex() // Sync lyric
+        }
+
+        // Sync lyric to desktop lyric window if running in Electron (500ms)
+        if (now - lastBroadcast >= 500) { // 从 200ms 改为 500ms
+          if (platform.isElectron()) {
+            lastBroadcast = now
+            const currentLyricLine = this.lyricsArray[this.currentLyricIndex]
+            platform.send('lyric-time-update', {
+              time: this.progress,
+              index: this.currentLyricIndex,
+              text: currentLyricLine?.text || '',
+              trans: currentLyricLine?.trans || '',
+              romalrc: currentLyricLine?.roma || '' // Note: LyricLine uses 'roma' not 'romalrc'
+            })
+          }
+        }
       })
       
       audioManager.on('loadedmetadata', () => {
@@ -93,7 +166,7 @@ export const usePlayerStore = defineStore('player', {
         this.playing = false
       })
       
-      audioManager.on('error', (e) => {
+      audioManager.on('error', (e: any) => {
         console.error('Audio error:', e)
         this.handleAudioError(e)
       })
@@ -102,63 +175,75 @@ export const usePlayerStore = defineStore('player', {
     },
     
     setupIpcListeners() {
+      // Prevent duplicate listeners
+      if (this.ipcInitialized) return
+      
       // Platform check is safer, though platform.on handles non-electron gracefully
       if (!platform.isElectron()) return
       
-      const unsubscribers = []
+      this.ipcInitialized = true
+      type Unsubscriber = () => void
+      const unsubscribers: Unsubscriber[] = []
       
       unsubscribers.push(
         platform.on('music-playing-control', () => {
           this.togglePlay()
-        })
+        }) as Unsubscriber
       )
       
       unsubscribers.push(
-        platform.on('music-song-control', (direction) => {
+        platform.on('music-song-control', (direction: string) => {
           if (direction === 'prev') {
             this.playPrev()
           } else if (direction === 'next') {
             this.playNext()
           }
-        })
+        }) as Unsubscriber
       )
       
       unsubscribers.push(
-        platform.on('music-playmode-control', (mode) => {
+        platform.on('music-playmode-control', (mode: number) => {
           this.setPlayMode(mode)
-        })
+        }) as Unsubscriber
       )
       
       unsubscribers.push(
         platform.on('music-volume-up', () => {
           this.setVolume(Math.min(1, this.volume + 0.1))
-        })
+        }) as Unsubscriber
       )
       
       unsubscribers.push(
         platform.on('music-volume-down', () => {
           this.setVolume(Math.max(0, this.volume - 0.1))
-        })
+        }) as Unsubscriber
       )
       
       unsubscribers.push(
-        platform.on('music-process-control', (direction) => {
+        platform.on('music-process-control', (direction: string) => {
           const step = 5
           if (direction === 'back') {
             this.seek(Math.max(0, this.progress - step))
           } else if (direction === 'forward') {
             this.seek(Math.min(this.duration, this.progress + step))
           }
-        })
+        }) as Unsubscriber
+      )
+      
+      unsubscribers.push(
+        platform.on('music-compact-mode-control', () => {
+          this.toggleCompactMode()
+        }) as Unsubscriber
       )
       
       unsubscribers.push(
         platform.on('hide-player', () => {
           this.isCompact = !this.isCompact
-        })
+        }) as Unsubscriber
       )
       
-      this._ipcUnsubscribers = unsubscribers
+      // Store unsubscribers if needed for cleanup
+      // this._ipcUnsubscribers = unsubscribers
     },
     
     notifyPlayingState() {
@@ -169,7 +254,7 @@ export const usePlayerStore = defineStore('player', {
       platform.sendPlayModeChange(this.playMode)
     },
     
-    async handleAudioError(error) {
+    async handleAudioError(error: any) {
       if (!this.errorHandler) {
         this.errorHandler = this.createErrorHandler()
       }
@@ -177,6 +262,9 @@ export const usePlayerStore = defineStore('player', {
       const result = await this.errorHandler.handleAudioError(error, this.currentSong)
       
       if (result.shouldRetry && result.url) {
+        if (this.currentSong) {
+          this.currentSong.url = result.url
+        }
         await audioManager.play(result.url)
         this.playing = true
       } else if (result.shouldSkip) {
@@ -185,7 +273,7 @@ export const usePlayerStore = defineStore('player', {
     },
     
     createErrorHandler() {
-      return new PlaybackErrorHandler({
+      return markRaw(new PlaybackErrorHandler({
         getState: () => ({
           songList: this.songList,
           currentIndex: this.currentIndex,
@@ -194,28 +282,38 @@ export const usePlayerStore = defineStore('player', {
         onStateChange: (changes) => {
           if (changes.playing !== undefined) this.playing = changes.playing
         }
-      })
+      }))
     },
     
-    updateLyricIndex() {
-      const index = findCurrentLyricIndex(this.lyricsArray, this.progress)
+    updateLyricIndex(): void {
+      if (!this.lyricEngine) return
+      
+      const index = this.lyricEngine.update(this.progress)
+      
       if (this.currentLyricIndex !== index) {
         this.currentLyricIndex = index
       }
     },
 
-    setSongList(songs) {
+    setSongList(songs: Song[]) {
       this.songList = songs
-      this.currentIndex = -1
+      
+      if (this.currentSong) {
+        const newIndex = songs.findIndex(s => s.id === this.currentSong!.id)
+        this.currentIndex = newIndex
+      } else {
+        this.currentIndex = -1
+      }
+      
       this.resetErrorHandler()
     },
     
-    addSong(song) {
+    addSong(song: Song): void {
       this.songList.push(song)
     },
     
     // Internal use or simple play
-    async playSongByIndex(index) {
+    async playSongByIndex(index: number): Promise<void> {
       if (index < 0 || index >= this.songList.length) return
       
       this.initAudio()
@@ -225,11 +323,12 @@ export const usePlayerStore = defineStore('player', {
       
       if (!this.currentSong.url) {
         console.error('No URL for song')
-        return
+        throw new Error('No URL for song')
       }
       
       try {
-        await audioManager.play(this.currentSong.url)
+        await audioManager.play(String(this.currentSong.url))
+        this.playing = true
       } catch (error) {
         console.error('播放失败:', error)
         this.playing = false
@@ -238,27 +337,42 @@ export const usePlayerStore = defineStore('player', {
     },
 
     // Comprehensive play action with URL fetching and lyrics
-    async playSongWithDetails(index) {
+    async playSongWithDetails(index: number, autoSkip = true): Promise<void> {
       const song = this.songList[index]
       if (!song) return
 
       this.loading = true
-      const adapter = getMusicAdapter(song.server)
+      // Fix: use platform instead of server, fallback to platform if server is missing
+      const platformKey = song.platform || (song as any).server
+      const adapter = getMusicAdapter(platformKey)
+      
+      console.log(`[Player] Playing song: ${song.name} (ID: ${song.id}, Platform: ${platformKey})`)
 
       try {
         // 1. Get URL if missing
         if (!song.url) {
           try {
-            const url = await adapter.getSongUrl(song.id, { mediaId: song.mediaId })
+            console.log('[Player] Fetching URL for song:', song.id)
+            const mediaId = song.mediaId || (song.extra && song.extra.mediaId)
+            const url = await adapter.getSongUrl(song.id, { mediaId })
+            console.log('[Player] Got URL:', url ? 'Success' : 'Failed')
+            
             if (url) {
               song.url = url
             } else {
               console.warn('Song URL unavailable:', song.id)
-              throw new Error('该歌曲无法播放（可能需要 VIP 或受版权限制）')
+              const err = Errors.noCopyright(song.id)
+              errorCenter.emit(err)
+              throw err
             }
-          } catch (urlError) {
+          } catch (urlError: any) {
              console.error('Failed to get song URL:', urlError)
-             throw new Error('该歌曲无法播放（可能需要 VIP 或受版权限制）')
+             // 如果已经是 AppError (上面抛出的)，直接重抛
+             if (urlError.name === 'AppError') throw urlError
+             
+             const err = Errors.noCopyright(song.id)
+             errorCenter.emit(err)
+             throw err
           }
         }
 
@@ -273,32 +387,41 @@ export const usePlayerStore = defineStore('player', {
           let tlyricText = lyricData.tlyric || ''
           let rlyricText = lyricData.romalrc || ''
           
-          const lyrics = parseLyric(lrcText, tlyricText, rlyricText)
+          const lyrics = LyricParser.parse(lrcText, tlyricText, rlyricText)
           this.setLyricsArray(lyrics)
         } catch (lyricError) {
           console.error('Failed to get lyrics:', lyricError)
           this.setLyricsArray([])
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Playback failed:', error)
         
         if (!this.errorHandler) {
           this.errorHandler = this.createErrorHandler()
         }
-        this.errorHandler.markAsUnavailable(this.songList[index])
         
+        // 标记不可用，并设置消息
+        // 如果是 AppError，使用其 getUserMessage
+        const message = error.name === 'AppError' ? error.getUserMessage() : '该歌曲无法播放（可能需要 VIP 或受版权限制）'
+        this.errorHandler.markAsUnavailable(song, message)
+        
+        // If autoSkip is false (called from error handler), throw error to let handler try next
+        if (!autoSkip) {
+          throw error
+        }
+
         try {
           await this.playNextSkipUnavailable()
           return
         } catch (skipError) {
-          throw new Error('无法播放任何歌曲')
+          errorCenter.emit(Errors.fatal('无法播放任何歌曲，请检查网络或切换歌单'))
         }
       } finally {
         this.loading = false
       }
     },
     
-    togglePlay() {
+    togglePlay(): void {
       if (!this.initialized) {
         if (this.songList.length > 0) {
           this.playSongWithDetails(0)
@@ -311,7 +434,7 @@ export const usePlayerStore = defineStore('player', {
     },
     
     // 统一的随机播放辅助函数
-    getRandomIndex(excludeCurrent = true) {
+    getRandomIndex(excludeCurrent = true): number {
       if (this.songList.length === 0) return -1
       if (this.songList.length === 1) return 0
       
@@ -323,7 +446,7 @@ export const usePlayerStore = defineStore('player', {
       return newIndex
     },
     
-    playPrev() {
+    playPrev(): void {
       if (this.songList.length === 0) return
       
       let newIndex
@@ -341,7 +464,7 @@ export const usePlayerStore = defineStore('player', {
       })
     },
     
-    playNext() {
+    playNext(): void {
       if (this.songList.length === 0) return
       
       let newIndex
@@ -362,7 +485,7 @@ export const usePlayerStore = defineStore('player', {
       })
     },
     
-    handleSongEnd() {
+    handleSongEnd(): void {
       if (this.playMode === PLAY_MODE.SINGLE_LOOP) {
         audioManager.seek(0)
         audioManager.play()
@@ -371,25 +494,13 @@ export const usePlayerStore = defineStore('player', {
       }
     },
 
-    async playNextSkipUnavailable() {
-      if (!this.errorHandler) {
-        this.errorHandler = this.createErrorHandler()
-      }
-      await this.errorHandler.playNextSkipUnavailable((index) => this.playSongWithDetails(index))
-    },
-
     resetErrorHandler() {
       if (this.errorHandler) {
         this.errorHandler.reset()
       }
     },
     
-    seek(time) {
-      audioManager.seek(time)
-      this.progress = time
-    },
-    
-    setVolume(vol) {
+    setVolume(vol: number) {
       this.volume = Math.max(0, Math.min(1, vol))
       audioManager.setVolume(this.volume)
     },
@@ -399,28 +510,31 @@ export const usePlayerStore = defineStore('player', {
       this.notifyPlayModeChange()
     },
     
-    setPlayMode(mode) {
+    setPlayMode(mode: number) {
       if (mode >= 0 && mode <= 3) {
         this.playMode = mode
         this.notifyPlayModeChange()
       }
     },
     
-    setLyric(lyric) {
+    setLyric(lyric: any) {
       this.lyric = lyric
     },
     
-    toggleCompactMode() {
+    toggleCompactMode(): void {
       this.isCompact = !this.isCompact
       // 标记用户已显式设置过紧凑模式偏好
       localStorage.setItem('compactModeUserToggled', 'true')
     },
 
-    setLyricsArray(lyrics) {
-      this.lyricsArray = lyrics
+    setLyricsArray(lyrics: LyricLine[]) {
+      this.lyricsArray = markRaw(lyrics) as LyricLine[]
+      if (this.lyricEngine) {
+        this.lyricEngine.setLyrics(lyrics)
+      }
     },
     
-    clearPlaylist() {
+    clearPlaylist(): void {
       this.songList = []
       this.currentIndex = -1
       this.currentSong = null
@@ -434,29 +548,30 @@ export const usePlayerStore = defineStore('player', {
   
   persist: {
     storage: localStorage,
-    paths: ['volume', 'playMode', 'lyricType', 'isCompact'],
+    pick: ['volume', 'playMode', 'lyricType', 'isCompact'],
     // Note: songList and currentIndex are excluded to avoid stale URL issues
     // Songs will be re-fetched when needed
-    beforeRestore: (context) => {
+    beforeHydrate: (context: any) => {
       // 数据恢复前验证
       console.log('Restoring player state...')
     },
-    afterRestore: (context) => {
+    afterHydrate: (context: any) => {
+      const store = context.store as PlayerState
       // 验证音量范围
-      if (context.store.volume < 0 || context.store.volume > 1) {
-        context.store.volume = 0.7
+      if (store.volume < 0 || store.volume > 1) {
+        store.volume = 0.7
       }
       // 设置音量到 audioManager
-      if (context.store.initialized) {
-        audioManager.setVolume(context.store.volume)
+      if (store.initialized) {
+        audioManager.setVolume(store.volume)
       }
       // 验证播放模式
-      if (context.store.playMode < 0 || context.store.playMode > 3) {
-        context.store.playMode = 0
+      if (store.playMode < 0 || store.playMode > 3) {
+        store.playMode = 0
       }
       // 验证歌词类型
-      if (!Array.isArray(context.store.lyricType) || context.store.lyricType.length === 0) {
-        context.store.lyricType = ['original', 'trans']
+      if (!Array.isArray(store.lyricType) || store.lyricType.length === 0) {
+        store.lyricType = ['original', 'trans']
       }
     }
   },

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { AudioManager } from '../../src/utils/player/core/audioManager'
+import { PlayerCore as AudioManager } from '../../src/utils/player/core/playerCore'
 
 describe('AudioManager', () => {
     let audioManager

@@ -11,9 +11,28 @@ export class QQMusicAdapter extends MusicPlatformAdapter {
   async search(keyword: string, limit: number = 20, page: number = 1): Promise<SearchResult> {
     const res = await qqMusicApi.search(keyword, limit, page);
     
+    // QQ Music API response wrapper handling
+    // The actual data might be in res.data or res.response.data depending on the API wrapper
+    // Based on curl output: {"response":"{\"code\":0,\"data\":{...}}"}
+    // It seems the response is a JSON string inside "response" field? 
+    // Or maybe qqMusicApi handles this. Let's check qqMusicApi.js
+    
+    let data = res;
+    // @ts-ignore
+    if (res.response && typeof res.response === 'string') {
+        try {
+            // @ts-ignore
+            const parsed = JSON.parse(res.response);
+            data = parsed;
+        } catch (e) {
+            console.error('Failed to parse QQ search response', e);
+        }
+    }
+    
     // Normalize response
-    const list = res.data?.list || [];
-    const total = res.data?.total || 0;
+    const songData = data.data?.song || {};
+    const list = songData.list || [];
+    const total = songData.totalnum || 0;
     
     return {
       list: list.map((song: any) => this._normalizeSong(song)),

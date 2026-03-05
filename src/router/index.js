@@ -12,6 +12,11 @@ const routes = [
     name: 'UserCenter',
     // ✅ 路由懒加载 - 只有访问用户中心时才加载 UserCenter.vue
     component: () => import('../views/UserCenter.vue')
+  },
+  {
+    path: '/desktop-lyric',
+    name: 'DesktopLyric',
+    component: () => import('../components/LyricFloat.vue')
   }
 ]
 

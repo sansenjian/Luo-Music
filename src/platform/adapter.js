@@ -19,6 +19,8 @@ export class PlatformAdapter {
     return () => {}; // Return cleanup function
   }
   
+  send(channel, data) { console.warn('send not implemented'); }
+
   sendPlayingState(playing) { /* no-op */ }
   sendPlayModeChange(mode) { /* no-op */ }
 

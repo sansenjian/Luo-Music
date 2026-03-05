@@ -1,18 +1,23 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import platform from '../platform'
-import { usePlayerStore } from '../store/playerStore'
+import { usePlayerStore } from '../store/playerStore.ts'
 import { useToastStore } from '../store/toastStore'
 import { useSearchStore } from '../store/searchStore'
+import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
+import LyricDisplay from '../components/LyricDisplay.vue'
 import Player from '../components/Player.vue'
-import Lyric from '../components/Lyric.vue'
 import Playlist from '../components/Playlist.vue'
 import Toast from '../components/Toast.vue'
+import ErrorToast from '../components/ErrorToast.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 
 const playerStore = usePlayerStore()
 const toastStore = useToastStore()
 const searchStore = useSearchStore()
+
+// 启用快捷键
+useKeyboardShortcuts()
 
 const searchKeyword = ref('')
 const activeTab = ref('lyric')
@@ -73,7 +78,7 @@ async function playSong(index) {
     await playerStore.playSongWithDetails(index)
     activeTab.value = 'lyric'
   } catch (error) {
-    toastStore.error('Playback failed. Please try again.')
+    toastStore.error(error.message || 'Playback failed. Please try again.')
   }
 }
 
@@ -85,31 +90,14 @@ const isElectron = computed(() => {
   return platform.isElectron()
 })
 
-function handleKeydown(e) {
-  if (e.key === 'Escape') {
-    // Prevent default behavior if needed (e.g. closing full screen)
-    // e.preventDefault()
-    playerStore.toggleCompactMode()
-    
-    // Resize window based on mode
-    /* User requested NOT to resize to mini bar, just change layout inside the window.
-       If we previously implemented resizing, we should revert it or make it optional.
-       The user said "不要缩小为长条状挂件", so we keep the window size but change the content layout.
-    */
-    /* 
-    if (playerStore.isCompact) {
-      ipcRenderer?.send('resize-window', { width: 800, height: 80 })
-    } else {
-      ipcRenderer?.send('resize-window', { width: 1200, height: 800 })
-    }
-    */
-    
-    console.log('Toggled compact mode via Escape', playerStore.isCompact)
-  }
-}
-
 function minimizeWindow() {
   platform.minimizeWindow()
+}
+
+function toggleDesktopLyric() {
+  if (isElectron.value) {
+    platform.send('toggle-desktop-lyric')
+  }
 }
 
 function maximizeWindow() {
@@ -126,7 +114,6 @@ function isMobile() {
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
   document.addEventListener('click', handleClickOutside)
   
   // 如果是移动端且用户没有显式设置过偏好，自动进入紧凑模式
@@ -134,10 +121,14 @@ onMounted(() => {
   if (isMobile() && !playerStore.isCompact && !userPreferenceSet) {
     playerStore.toggleCompactMode()
   }
+  
+  // 初始化 IPC 监听器，确保桌面歌词等外部控制能正常工作
+  if (isElectron.value) {
+    playerStore.setupIpcListeners()
+  }
 })
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
@@ -222,7 +213,10 @@ onUnmounted(() => {
         </div>
 
         <div class="content-area">
-          <Lyric v-show="activeTab === 'lyric'" />
+          <!-- Lyric View -->
+          <div v-show="activeTab === 'lyric'" class="lyric-view">
+            <LyricDisplay />
+          </div>
           <Playlist v-show="activeTab === 'playlist'" @play-song="playSong" />
         </div>
       </section>
@@ -242,6 +236,7 @@ onUnmounted(() => {
     </footer>
     
     <Toast />
+    <ErrorToast />
   </div>
 </template>
 
@@ -436,6 +431,7 @@ onUnmounted(() => {
   outline: none;
   border-radius: 0;
   -webkit-appearance: none;
+  appearance: none;
 }
 
 .cyber-input:focus {
@@ -455,6 +451,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.1s;
   -webkit-appearance: none;
+  appearance: none;
   border-radius: 0;
   display: flex;
   align-items: center;

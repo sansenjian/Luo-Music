@@ -2,7 +2,6 @@
 import { MusicPlatformAdapter, createSong, type Song, type SearchResult, type LyricResult, type PlaylistDetail } from './interface';
 // @ts-ignore
 import { search } from '../../api/search';
-// @ts-ignore
 import { getMusicUrl, getLyric, getSongDetail } from '../../api/song';
 // @ts-ignore
 import { getPlaylistDetail } from '../../api/playlist';
@@ -24,7 +23,14 @@ export class NeteaseAdapter extends MusicPlatformAdapter {
     };
   }
 
-  async getSongUrl(id: string | number, level: string = 'standard'): Promise<string | null> {
+  async getSongUrl(id: string | number, options: any = 'standard'): Promise<string | null> {
+    let level = 'standard';
+    if (typeof options === 'string') {
+      level = options;
+    } else if (typeof options === 'object' && options !== null) {
+      level = options.level || 'standard';
+    }
+
     const res: any = await getMusicUrl(id as any, level);
     const data = res.data || res;
     if (data && data[0] && data[0].url) {

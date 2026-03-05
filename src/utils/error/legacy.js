@@ -1,4 +1,4 @@
-import { useToastStore } from '../store/toastStore'
+import { useToastStore } from '../../store/toastStore'
 
 /**
  * 错误类型枚举

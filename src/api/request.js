@@ -3,6 +3,7 @@ import { useUserStore } from '../store/userStore'
 import { getCache, setCache, clearCache, cleanupExpiredCache } from '../utils/requestCache'
 import { cancelPendingRequest, registerRequest, removeRequest, generateRequestKey } from '../utils/requestCanceler'
 import { shouldRetry, calculateRetryDelay, executeWithRetry } from '../utils/requestRetry'
+import { errorCenter, Errors, AppError, ErrorCode } from '../utils/error'
 
 const isElectron = () => window.navigator.userAgent.indexOf('Electron') > -1
 const isWeb = () => !isElectron()
@@ -193,6 +194,27 @@ request.interceptors.response.use(
       }
     }
     
+    // 集成 ErrorCenter
+    let appError
+    if (!window.navigator.onLine) {
+      appError = Errors.network()
+    } else if (status === 404) {
+      appError = new AppError(ErrorCode.PLAYLIST_NOT_FOUND, 'Resource not found')
+    } else if (error.code === 'ECONNABORTED') {
+      appError = new AppError(ErrorCode.API_TIMEOUT, 'Request timeout')
+    } else if (status === 429) {
+      appError = new AppError(ErrorCode.API_RATE_LIMIT, 'Too many requests')
+    } else {
+      // 不自动上报未知错误，避免刷屏，仅记录
+      // errorCenter.emit 会处理
+    }
+
+    if (appError) {
+      errorCenter.emit(appError)
+      // 如果已处理，可能不需要再 reject，或者 reject appError 供上层判断
+      return Promise.reject(appError)
+    }
+
     console.error('[Response Error]', error.message || 'Network Error')
     return Promise.reject(error)
   }

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { usePlayerStore } from '../../src/store/playerStore'
+import { usePlayerStore } from '../../src/store/playerStore.ts'
 import { PLAY_MODE } from '../../src/utils/player/constants/playMode'
 
 // Mock audioManager

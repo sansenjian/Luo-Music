@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { usePlayerStore } from '../store/playerStore'
+import { usePlayerStore } from '../store/playerStore.ts'
+import { animate } from 'animejs'
 
 const playerStore = usePlayerStore()
 
@@ -8,19 +9,18 @@ const lyricContainer = ref(null)
 const lyricScrollArea = ref(null)
 let pauseActiveTimer = null
 let isUserScrolling = false
-let scrollAnim = null
-let scrollEndTimer = null // 滚动结束定时器
+let scrollEndTimer = null
 
-// 虚拟列表常量
+// Virtual List Constants
 const VIRTUAL_LIST_THRESHOLD = 100
 const VISIBLE_BUFFER = 10
-const ESTIMATED_LINE_HEIGHT = 60 // 估算行高 (px)
+const ESTIMATED_LINE_HEIGHT = 60
 
 // Use store state directly
 const currentLyricIndex = computed(() => playerStore.currentLyricIndex)
 const lyrics = computed(() => playerStore.lyricsArray)
 
-// 虚拟列表计算
+// Virtual List Calculation
 const shouldUseVirtualList = computed(() => {
   return lyrics.value.length > VIRTUAL_LIST_THRESHOLD
 })
@@ -44,14 +44,14 @@ const visibleRange = computed(() => {
   }
 })
 
-// 计算占位高度
+// Placeholder height
 const placeholderHeight = computed(() => {
   if (!shouldUseVirtualList.value) return 0
   const { start } = visibleRange.value
   return start * ESTIMATED_LINE_HEIGHT
 })
 
-// 获取可见的歌词
+// Visible lyrics
 const visibleLyrics = computed(() => {
   const { start, end } = visibleRange.value
   return lyrics.value.slice(start, end).map((item, index) => ({
@@ -71,43 +71,22 @@ function handleLyricClick(time) {
 function scrollToActiveLine() {
   if (isUserScrolling || !lyricScrollArea.value) return
   
-  const activeLine = lyricScrollArea.value?.querySelector('.lyric-line.active')
+  const activeLine = lyricScrollArea.value.querySelector('.lyric-line.active')
   if (!activeLine) return
   
   const container = lyricScrollArea.value
-  
-  // 使用 offsetTop 计算目标滚动位置
   const lineOffsetTop = activeLine.offsetTop
   const lineHeight = activeLine.offsetHeight
   const containerHeight = container.clientHeight
   
-  // 目标：将当前行居中显示
   const targetScroll = Math.max(0, lineOffsetTop - containerHeight / 2 + lineHeight / 2)
   
-  // 取消上一帧动画
-  if (scrollAnim) cancelAnimationFrame(scrollAnim)
-  
-  const startScroll = container.scrollTop
-  const startTime = performance.now()
-  const duration = 300
-  
-  // 使用 RAF 实现滚动动画
-  function animateScroll(currentTime) {
-    const elapsed = currentTime - startTime
-    const progress = Math.min(elapsed / duration, 1)
-    // easeOutQuad 缓动函数
-    const ease = 1 - Math.pow(1 - progress, 2)
-    
-    container.scrollTop = startScroll + (targetScroll - startScroll) * ease
-    
-    if (progress < 1) {
-      scrollAnim = requestAnimationFrame(animateScroll)
-    } else {
-      scrollAnim = null
-    }
-  }
-  
-  scrollAnim = requestAnimationFrame(animateScroll)
+  // Use anime.js for smooth scrolling
+  animate(container, {
+    scrollTop: targetScroll,
+    duration: 300,
+    easing: 'easeOutQuad'
+  })
 }
 
 watch(currentLyricIndex, () => {
@@ -117,40 +96,22 @@ watch(currentLyricIndex, () => {
 function handleScroll() {
   isUserScrolling = true
   
-  // 清除之前的定时器
-  if (pauseActiveTimer) {
-    clearTimeout(pauseActiveTimer)
-  }
+  if (pauseActiveTimer) clearTimeout(pauseActiveTimer)
+  if (scrollEndTimer) clearTimeout(scrollEndTimer)
   
-  // 清除滚动结束定时器
-  if (scrollEndTimer) {
-    clearTimeout(scrollEndTimer)
-  }
-  
-  // 滚动中定时检测是否停止
   scrollEndTimer = setTimeout(() => {
     scrollEndTimer = null
-    
-    // 延迟恢复自动滚动
     pauseActiveTimer = setTimeout(() => {
       isUserScrolling = false
-      scrollToActiveLine() // Snap back after timeout
+      scrollToActiveLine()
     }, 500)
   }, 150)
 }
 
 onUnmounted(() => {
-  if (pauseActiveTimer) {
-    clearTimeout(pauseActiveTimer)
-  }
-  if (scrollEndTimer) {
-    clearTimeout(scrollEndTimer)
-  }
-  // 清理 RAF 动画
-  if (scrollAnim) {
-    cancelAnimationFrame(scrollAnim)
-    scrollAnim = null
-  }
+  if (pauseActiveTimer) clearTimeout(pauseActiveTimer)
+  if (scrollEndTimer) clearTimeout(scrollEndTimer)
+  // anime.remove(lyricScrollArea.value) // animate in animejs v4 might not have a global remove or handle it differently
 })
 </script>
 
@@ -163,10 +124,10 @@ onUnmounted(() => {
 
     <div v-else class="lyrics-wrapper" ref="lyricScrollArea" @scroll="handleScroll" @wheel="handleScroll" @touchstart="handleScroll">
       <div class="lyrics-list">
-        <!-- 虚拟列表占位 -->
+        <!-- Virtual List Placeholder -->
         <div v-if="shouldUseVirtualList" class="placeholder" :style="{ height: `${placeholderHeight}px` }"></div>
         
-        <!-- 渲染可见的歌词 -->
+        <!-- Render Visible Lyrics -->
         <div
           v-for="item in visibleLyrics"
           :key="item.originalIndex"
@@ -177,14 +138,14 @@ onUnmounted(() => {
           }"
           @click="handleLyricClick(item.time)"
         >
-          <div v-if="item.rlyric && showRoma" class="lyric-roma">
-            {{ item.rlyric }}
+          <div v-if="item.roma && showRoma" class="lyric-roma">
+            {{ item.roma }}
           </div>
           <div v-if="showOriginal" class="lyric-main">
-            {{ item.lyric }}
+            {{ item.text }}
           </div>
-          <div v-if="item.tlyric && showTrans" class="lyric-trans">
-            {{ item.tlyric }}
+          <div v-if="item.trans && showTrans" class="lyric-trans">
+            {{ item.trans }}
           </div>
         </div>
       </div>
@@ -220,11 +181,10 @@ onUnmounted(() => {
   height: 100%;
   overflow-y: auto; /* Enable native scrolling */
   position: relative;
-  /* Smooth scrolling for user interaction */
-  scroll-behavior: smooth;
+  /* Smooth scrolling handled by anime.js, but keep smooth for user */
+  scroll-behavior: auto; /* Let anime.js handle it, or smooth for user? mixed can be weird */
 }
 
-/* Hide scrollbar but keep functionality */
 .lyrics-wrapper::-webkit-scrollbar {
   width: 6px;
 }
@@ -239,11 +199,10 @@ onUnmounted(() => {
 }
 
 .lyrics-list {
-  position: relative; /* Make this the offsetParent for lyric-line */
-  padding: 50vh 40px; /* Add padding to center first/last lines */
+  position: relative;
+  padding: 50vh 40px;
 }
 
-/* 虚拟列表占位元素 */
 .placeholder {
   position: absolute;
   top: 0;
@@ -252,7 +211,6 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* Compact mode styles for Lyric */
 :global(.player-compact) .lyric-line {
   margin-bottom: 12px;
   padding: 6px 10px;

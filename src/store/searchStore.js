@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { usePlaylistStore } from './playlistStore'
-import { usePlayerStore } from './playerStore'
+import { usePlayerStore } from './playerStore.ts'
 import { getMusicAdapter } from '../platform/music'
 
 export const useSearchStore = defineStore('searchStore', {
@@ -27,14 +27,15 @@ export const useSearchStore = defineStore('searchStore', {
                 this.error = 'Please enter a search keyword'
                 return
             }
-            this.keyword = keyword.trim()
+            const trimmedKeyword = keyword.trim()
+            this.keyword = trimmedKeyword
             this.isLoading = true
             this.error = null
             this.results = []
             
             try {
                 const adapter = getMusicAdapter(this.server)
-                const res = await adapter.search(this.keyword, 30, 1)
+                const res = await adapter.search(trimmedKeyword, 30, 1)
                 
                 if (res.list.length === 0) {
                     this.error = 'No results found'
@@ -45,9 +46,8 @@ export const useSearchStore = defineStore('searchStore', {
                 this.totalResults = res.total
                 
                 // Convert normalized Song objects to UI model
-                this.results = res.list.map((song, idx) => {
-                    return {
-                        index: idx,
+                this.results = res.list.map(song => {
+                    const mapped = {
                         id: song.id,
                         name: song.name,
                         artist: song.artists.map(a => a.name).join(' / '),
@@ -55,11 +55,16 @@ export const useSearchStore = defineStore('searchStore', {
                         pic: song.album.picUrl || '',
                         cover: song.album.picUrl || '', // Keep compatibility
                         url: null,
-                        server: song.platform,
+                        platform: song.platform, // Use platform field
                         duration: Math.floor(song.duration / 1000), // Convert ms to seconds
-                        // Extra fields needed for QQ playback if any
-                        mediaId: song.mediaId
+                    };
+                    
+                    // Add extra fields needed for specific platforms
+                    if (song.extra) {
+                        Object.assign(mapped, song.extra);
                     }
+                    
+                    return mapped;
                 })
             } catch (err) {
                 console.error('Search error:', err)

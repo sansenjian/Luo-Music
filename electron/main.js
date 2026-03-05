@@ -1,41 +1,43 @@
+// @ts-nocheck
 import { app, BrowserWindow, ipcMain, session, Tray, Menu, nativeImage, globalShortcut } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import net from 'node:net'
+import { windowManager } from './WindowManager'
+import logger from './logger'
+import { initPlayerIPC } from './ipc'
 
 // 引入网易云 API（借鉴 mrfz 方式：主进程直接加载）
 const { serveNcmApi } = require('@neteasecloudmusicapienhanced/api')
 
+// 重写 console.log 以使用 electron-logger
+console.log = logger.log.bind(logger);
+console.error = logger.error.bind(logger);
+console.warn = logger.warn.bind(logger);
+console.info = logger.info.bind(logger);
+
 const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
+  logger.warn('Instance already running, quitting...');
   app.quit()
   process.exit(0)
 }
 
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error)
-  logError('uncaughtException', error)
+  logger.error('Uncaught Exception:', error)
 })
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason)
-  logError('unhandledRejection', reason)
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason)
 })
 
 function logError(type, error) {
-  try {
-    const logsDir = app.getPath('logs')
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true })
-    }
-    const logPath = path.join(logsDir, 'error.log')
-    const timestamp = new Date().toISOString()
-    const message = `[${timestamp}] [${type}] ${error?.message || error}\n${error?.stack || ''}\n\n`
-    fs.appendFileSync(logPath, message)
-  } catch (e) {
-    console.error('Failed to write error log:', e)
-  }
+  logger.error(`[${type}]`, error);
 }
+
+ipcMain.on('error-report', (_, errorData) => {
+  logger.error(`[ERROR_REPORT] ${errorData.code}: ${errorData.message}`, errorData.stack, errorData.data);
+})
 
 if (!app.isPackaged) {
   const userDataPath = path.join(__dirname, '../.userData')
@@ -48,13 +50,7 @@ const RENDERER_DIST = path.join(__dirname, '../dist')
 process.env.DIST = RENDERER_DIST
 process.env.VITE_PUBLIC = app.isPackaged ? RENDERER_DIST : path.join(__dirname, '../public')
 
-let win
 let tray = null
-
-const MIN_WIDTH = 400
-const MIN_HEIGHT = 80
-const MAX_WIDTH = 3840
-const MAX_HEIGHT = 2160
 
 const NETEASE_PORT = 14532
 const QQ_MUSIC_PORT = 3200
@@ -94,7 +90,7 @@ function getIconPath() {
 function createTray() {
   const iconPath = getIconPath()
   if (!iconPath) {
-    console.log('Tray icon not found, skipping tray creation')
+    logger.warn('Tray icon not found, skipping tray creation')
     return null
   }
   
@@ -105,19 +101,19 @@ function createTray() {
     {
       label: '播放/暂停',
       click: () => {
-        win?.webContents.send('music-playing-control')
+        windowManager.send('music-playing-control')
       }
     },
     {
       label: '上一首',
       click: () => {
-        win?.webContents.send('music-song-control', 'prev')
+        windowManager.send('music-song-control', 'prev')
       }
     },
     {
       label: '下一首',
       click: () => {
-        win?.webContents.send('music-song-control', 'next')
+        windowManager.send('music-song-control', 'next')
       }
     },
     { type: 'separator' },
@@ -127,22 +123,22 @@ function createTray() {
         {
           label: '顺序播放',
           type: 'radio',
-          click: () => win?.webContents.send('music-playmode-control', 0)
+          click: () => windowManager.send('music-playmode-control', 0)
         },
         {
           label: '列表循环',
           type: 'radio',
-          click: () => win?.webContents.send('music-playmode-control', 1)
+          click: () => windowManager.send('music-playmode-control', 1)
         },
         {
           label: '单曲循环',
           type: 'radio',
-          click: () => win?.webContents.send('music-playmode-control', 2)
+          click: () => windowManager.send('music-playmode-control', 2)
         },
         {
           label: '随机播放',
           type: 'radio',
-          click: () => win?.webContents.send('music-playmode-control', 3)
+          click: () => windowManager.send('music-playmode-control', 3)
         }
       ]
     },
@@ -150,10 +146,7 @@ function createTray() {
     {
       label: '显示窗口',
       click: () => {
-        if (win) {
-          win.show()
-          win.focus()
-        }
+        windowManager.show()
       }
     },
     {
@@ -168,105 +161,42 @@ function createTray() {
   tray.setContextMenu(contextMenu)
   
   tray.on('double-click', () => {
-    if (win) {
-      win.show()
-      win.focus()
-    }
+    windowManager.show()
   })
   
+  windowManager.setTray(tray, contextMenu)
   return tray
 }
 
+import { DEFAULT_SHORTCUTS } from '../src/config/shortcuts.js'
+
 function registerShortcuts() {
-  const shortcuts = [
-    { key: 'Space', action: () => win?.webContents.send('music-playing-control') },
-    { key: 'MediaPlayPause', action: () => win?.webContents.send('music-playing-control') },
-    { key: 'MediaPreviousTrack', action: () => win?.webContents.send('music-song-control', 'prev') },
-    { key: 'MediaNextTrack', action: () => win?.webContents.send('music-song-control', 'next') },
-    { key: 'MediaStop', action: () => win?.webContents.send('music-playing-control', 'stop') },
-    { key: 'CommandOrControl+Up', action: () => win?.webContents.send('music-volume-up') },
-    { key: 'CommandOrControl+Down', action: () => win?.webContents.send('music-volume-down') },
-    { key: 'CommandOrControl+Left', action: () => win?.webContents.send('music-process-control', 'back') },
-    { key: 'CommandOrControl+Right', action: () => win?.webContents.send('music-process-control', 'forward') },
-    { key: 'Escape', action: () => win?.webContents.send('hide-player') },
-  ]
-  
-  for (const { key, action } of shortcuts) {
-    try {
-      globalShortcut.register(key, action)
-    } catch (e) {
-      console.log(`Failed to register shortcut ${key}:`, e.message)
+  // 动作映射
+  const actions = {
+    togglePlay: () => windowManager.send('music-playing-control'),
+    playPrev: () => windowManager.send('music-song-control', 'prev'),
+    playNext: () => windowManager.send('music-song-control', 'next'),
+    volumeUp: () => windowManager.send('music-volume-up'),
+    volumeDown: () => windowManager.send('music-volume-down'),
+    seekBack: () => windowManager.send('music-process-control', 'back'),
+    seekForward: () => windowManager.send('music-process-control', 'forward'),
+    toggleCompact: () => windowManager.send('hide-player')
+  }
+
+  for (const shortcut of DEFAULT_SHORTCUTS) {
+    if (!shortcut.globalKeys || shortcut.globalKeys.length === 0) continue
+    
+    const action = actions[shortcut.action]
+    if (!action) continue
+
+    for (const key of shortcut.globalKeys) {
+      try {
+        globalShortcut.register(key, action)
+      } catch (e) {
+        console.log(`Failed to register shortcut ${key}:`, e.message)
+      }
     }
   }
-}
-
-function updateThumbarButtons(playing) {
-  if (!win || process.platform !== 'win32') return
-  
-  const buttons = [
-    {
-      tooltip: '上一首',
-      icon: nativeImage.createFromPath(path.join(__dirname, '../public/icons/prev.png')),
-      click: () => win.webContents.send('music-song-control', 'prev')
-    },
-    {
-      tooltip: playing ? '暂停' : '播放',
-      icon: playing 
-        ? nativeImage.createFromPath(path.join(__dirname, '../public/icons/pause.png'))
-        : nativeImage.createFromPath(path.join(__dirname, '../public/icons/play.png')),
-      click: () => win.webContents.send('music-playing-control')
-    },
-    {
-      tooltip: '下一首',
-      icon: nativeImage.createFromPath(path.join(__dirname, '../public/icons/next.png')),
-      click: () => win.webContents.send('music-song-control', 'next')
-    }
-  ]
-  
-  win.setThumbarButtons(buttons)
-}
-
-function createWindow() {
-  win = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: MIN_WIDTH,
-    minHeight: MIN_HEIGHT,
-    frame: false,
-    titleBarStyle: 'hidden',
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
-    webPreferences: {
-      preload: path.join(MAIN_DIST, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      webSecurity: false,
-      allowRunningInsecureContent: false,
-    },
-  })
-
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
-  })
-
-  if (process.env.VITE_DEV_SERVER_URL) {
-    win.loadURL(process.env.VITE_DEV_SERVER_URL)
-    win.webContents.openDevTools()
-  } else {
-    const indexPath = app.isPackaged 
-      ? path.join(process.resourcesPath, 'app.asar', 'dist', 'index.html')
-      : path.join(__dirname, '../dist/index.html')
-    
-    console.log('Loading index.html from:', indexPath)
-    console.log('app.isPackaged:', app.isPackaged)
-    console.log('process.resourcesPath:', process.resourcesPath)
-    console.log('__dirname:', __dirname)
-    
-    win.loadFile(indexPath)
-  }
-  
-  win.on('show', () => {
-    updateThumbarButtons(false)
-  })
 }
 
 app.on('window-all-closed', async () => {
@@ -283,15 +213,12 @@ app.on('will-quit', () => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
+    windowManager.createWindow()
   }
 })
 
 app.on('second-instance', () => {
-  if (win) {
-    if (win.isMinimized()) win.restore()
-    win.focus()
-  }
+  windowManager.restore()
 })
 
 // 启动网易云 API（借鉴 mrfz 方式：主进程直接加载）
@@ -302,9 +229,9 @@ async function startNeteaseApi() {
       port: 14532,
       host: 'localhost',
     })
-    console.log('✅ 网易云音乐 API 服务已启动在 http://localhost:14532')
+    logger.info('✅ 网易云音乐 API 服务已启动在 http://localhost:14532')
   } catch (err) {
-    console.error('❌ 网易云音乐 API 启动失败:', err.message)
+    logger.error('❌ 网易云音乐 API 启动失败:', err.message)
     logError('neteaseApi', err)
   }
 }
@@ -312,7 +239,7 @@ async function startNeteaseApi() {
 // 启动 QQ 音乐 API（直接在主进程中加载）
 async function startQQMusicApi() {
   try {
-    console.log('=== Starting QQ Music API (main process) ===')
+    logger.info('=== Starting QQ Music API (main process) ===')
     
     // 切换工作目录到 userData，防止 API 写入只读目录报错
     // QQ 音乐 API 可能会尝试写入 cookie 等文件
@@ -324,65 +251,74 @@ async function startQQMusicApi() {
     const originalCwd = process.cwd()
     try {
       process.chdir(userDataPath)
-      console.log(`Changed CWD to ${userDataPath} for API startup`)
+      logger.info(`Changed CWD to ${userDataPath} for API startup`)
     } catch (err) {
-      console.error('Failed to change CWD:', err)
+      logger.error('Failed to change CWD:', err)
     }
 
     // 设置环境变量
     process.env.PORT = '3200'
     process.env.HOST = 'localhost'
-    // process.env.NODE_ENV = app.isPackaged ? 'production' : 'development' // 可能不需要，但以防万一
     
     // 直接 require 模块
     // 注意：@sansenjian/qq-music-api 的入口是 index.js，它 require 了 app.js
     // app.js 会自动执行 app.listen
-    require('@sansenjian/qq-music-api')
+    const qqMusicApi = require('@sansenjian/qq-music-api')
     
-    console.log('✅ QQ 音乐 API 服务已启动在 http://localhost:3200')
+    logger.info('✅ QQ 音乐 API 服务已启动在 http://localhost:3200')
     
     // 注意：我们不切回 originalCwd，因为 API 可能会在运行时继续读写文件
     // 主进程的其他部分应该使用绝对路径，所以改变 CWD 影响不大
   } catch (err) {
-    console.error('❌ QQ 音乐 API 启动失败:', err.message)
+    logger.error('❌ QQ 音乐 API 启动失败:', err.message)
     logError('qqMusicApi', err)
   }
 }
 
 app.whenReady().then(async () => {
-  console.log('=== App Ready ===')
-  console.log('Checking ports...')
+  logger.info('=== App Ready ===')
+  logger.info('Checking ports...')
   
   const neteaseAvailable = await checkPort(NETEASE_PORT)
   const qqAvailable = await checkPort(QQ_MUSIC_PORT)
-  console.log(`Port ${NETEASE_PORT} available:`, neteaseAvailable)
-  console.log(`Port ${QQ_MUSIC_PORT} available:`, qqAvailable)
+  logger.info(`Port ${NETEASE_PORT} available:`, neteaseAvailable)
+  logger.info(`Port ${QQ_MUSIC_PORT} available:`, qqAvailable)
   
   // 启动 API 服务
   try {
     await startNeteaseApi()
-    console.log('✅ 网易云 API 已启动')
+    logger.info('✅ 网易云 API 已启动')
   } catch (error) {
-    console.error('⚠️ 网易云 API 启动失败，但继续运行:', error.message)
+    logger.error('⚠️ 网易云 API 启动失败，但继续运行:', error.message)
   }
   
   try {
     await startQQMusicApi()
-    console.log('✅ QQ 音乐 API 已启动')
+    logger.info('✅ QQ 音乐 API 已启动')
   } catch (error) {
-    console.error('⚠️ QQ 音乐 API 启动失败，但继续运行:', error.message)
+    logger.error('⚠️ QQ 音乐 API 启动失败，但继续运行:', error.message)
   }
+
+  ipcMain.on('log-message', (event, { level, module, message, data }) => {
+    const text = `[${module}] ${message}`;
+    if (level === 'error') {
+      logger.error(text, data || '');
+    } else if (level === 'warn') {
+      logger.warn(text, data || '');
+    } else if (level === 'info') {
+      logger.info(text, data || '');
+    } else {
+      logger.verbose(text, data || '');
+    }
+  });
 
   ipcMain.handle('cache:get-size', async () => {
     const ses = session.defaultSession
-    return new Promise((resolve) => {
-      ses.getCacheSize((size) => {
-        resolve({
-          httpCache: size,
-          httpCacheFormatted: formatBytes(size)
-        })
-      })
-    })
+    const size = await ses.getCacheSize()
+    return {
+      httpCache: size,
+      httpCacheFormatted: formatBytes(size)
+    }
   })
 
   ipcMain.handle('cache:clear', async (event, options = {}) => {
@@ -412,12 +348,7 @@ app.whenReady().then(async () => {
 
     if (storages.length > 0) {
       try {
-        await new Promise((resolve, reject) => {
-          ses.clearStorageData({ storages }, (error) => {
-            if (error) reject(error)
-            else resolve()
-          })
-        })
+        await ses.clearStorageData({ storages })
         results.success.push(...storages)
       } catch (error) {
         results.failed.push({ type: storages, error: error.message })
@@ -426,9 +357,7 @@ app.whenReady().then(async () => {
 
     if (cache || all) {
       try {
-        await new Promise((resolve) => {
-          ses.clearCache(() => resolve())
-        })
+        await ses.clearCache()
         results.success.push('http-cache')
       } catch (error) {
         results.failed.push({ type: 'http-cache', error: error.message })
@@ -451,12 +380,7 @@ app.whenReady().then(async () => {
 
     if (storages.length > 0) {
       try {
-        await new Promise((resolve, reject) => {
-          ses.clearStorageData({ storages }, (error) => {
-            if (error) reject(error)
-            else resolve()
-          })
-        })
+        await ses.clearStorageData({ storages })
         results.success.push(...storages)
       } catch (error) {
         results.failed.push({ type: storages, error: error.message })
@@ -464,9 +388,7 @@ app.whenReady().then(async () => {
     }
 
     try {
-      await new Promise((resolve) => {
-        ses.clearCache(() => resolve())
-      })
+      await ses.clearCache()
       results.success.push('http-cache')
     } catch (error) {
       results.failed.push({ type: 'http-cache', error: error.message })
@@ -484,67 +406,27 @@ app.whenReady().then(async () => {
     }
   })
 
-  ipcMain.on('minimize-window', () => {
-    win?.minimize()
-  })
+  // Window control IPC handlers are now in WindowManager
 
-  ipcMain.on('resize-window', (event, { width, height }) => {
-    if (!win) return
-    const validWidth = Math.max(MIN_WIDTH, Math.min(width, MAX_WIDTH))
-    const validHeight = Math.max(MIN_HEIGHT, Math.min(height, MAX_HEIGHT))
-    win.setSize(validWidth, validHeight)
-  })
-
-  ipcMain.on('maximize-window', () => {
-    if (win?.isMaximized()) {
-      win.unmaximize()
-    } else {
-      win?.maximize()
-    }
-  })
-
-  ipcMain.on('close-window', () => {
-    win?.close()
-  })
-  
-  ipcMain.on('music-playing-check', (event, playing) => {
-    updateThumbarButtons(playing)
-    if (tray) {
-      const contextMenu = tray.contextMenu
-      if (contextMenu) {
-        contextMenu.items[0].visible = !playing
-        contextMenu.items[1].visible = playing
-      }
-    }
-  })
-  
-  ipcMain.on('music-playmode-tray-change', (event, mode) => {
-    if (tray) {
-      const contextMenu = tray.contextMenu
-      if (contextMenu && contextMenu.items[4]?.submenu) {
-        contextMenu.items[4].submenu.items.forEach((item, i) => {
-          item.checked = i === mode
-        })
-      }
-    }
-  })
-
-  createWindow()
+  windowManager.createWindow()
   createTray()
   registerShortcuts()
+  initPlayerIPC()
   
   const ses = session.defaultSession
-  ses.clearCache(() => {
-    console.log('Startup: HTTP cache cleared')
-  })
+  try {
+    await ses.clearCache()
+    logger.info('Startup: HTTP cache cleared')
+  } catch (e) {
+    logger.error('Startup: Failed to clear cache', e)
+  }
   
-  ses.clearStorageData({
-    storages: ['sessionstorage', 'serviceworkers', 'shadercache', 'websql', 'indexeddb']
-  }, (error) => {
-    if (error) {
-      console.error('Startup: Failed to clear storage data:', error)
-    } else {
-      console.log('Startup: Temporary storage cleared (preserved localStorage and cookies)')
-    }
-  })
+  try {
+    await ses.clearStorageData({
+      storages: ['sessionstorage', 'serviceworkers', 'shadercache', 'websql', 'indexeddb']
+    })
+    logger.info('Startup: Temporary storage cleared (preserved localStorage and cookies)')
+  } catch (error) {
+    logger.error('Startup: Failed to clear storage data:', error)
+  }
 })

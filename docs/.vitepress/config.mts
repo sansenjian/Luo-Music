@@ -31,6 +31,7 @@ export default defineConfig({
         items: [
           { text: 'API 文档', link: '/api-documentation' },
           { text: '组件', link: '/components-documentation' },
+          { text: '错误处理', link: '/error-handling' },
           { text: '请求使用说明', link: '/request-usage' }
         ]
       }

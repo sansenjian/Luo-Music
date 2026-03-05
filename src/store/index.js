@@ -1,5 +1,5 @@
 export { default as pinia } from './pinia'
-export { usePlayerStore } from './playerStore'
+export { usePlayerStore } from './playerStore.ts'
 export { usePlaylistStore } from './playlistStore'
 export { useSearchStore } from './searchStore'
 export { useToastStore } from './toastStore'

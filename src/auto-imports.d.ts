@@ -213,6 +213,7 @@ declare global {
   const useInterval: typeof import('@vueuse/core').useInterval
   const useIntervalFn: typeof import('@vueuse/core').useIntervalFn
   const useKeyModifier: typeof import('@vueuse/core').useKeyModifier
+  const useKeyboardShortcuts: typeof import('./composables/useKeyboardShortcuts.js').useKeyboardShortcuts
   const useLastChanged: typeof import('@vueuse/core').useLastChanged
   const useLikedSongs: typeof import('./composables/useLikedSongs.js').useLikedSongs
   const useLink: typeof import('vue-router').useLink
@@ -240,7 +241,7 @@ declare global {
   const useParentElement: typeof import('@vueuse/core').useParentElement
   const usePerformanceObserver: typeof import('@vueuse/core').usePerformanceObserver
   const usePermission: typeof import('@vueuse/core').usePermission
-  const usePlayerStore: typeof import('./store/playerStore.js').usePlayerStore
+  const usePlayerStore: typeof import('./store/playerStore').usePlayerStore
   const usePlaylistStore: typeof import('./store/playlistStore.js').usePlaylistStore
   const usePointer: typeof import('@vueuse/core').usePointer
   const usePointerLock: typeof import('@vueuse/core').usePointerLock
@@ -267,6 +268,7 @@ declare global {
   const useSearchStore: typeof import('./store/searchStore.js').useSearchStore
   const useSessionStorage: typeof import('@vueuse/core').useSessionStorage
   const useShare: typeof import('@vueuse/core').useShare
+  const useSlider: typeof import('./composables/useSlider').useSlider
   const useSlots: typeof import('vue').useSlots
   const useSorted: typeof import('@vueuse/core').useSorted
   const useSpeechRecognition: typeof import('@vueuse/core').useSpeechRecognition
@@ -338,6 +340,9 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { SliderOptions } from './composables/useSlider'
+  import('./composables/useSlider')
 }
 
 // for vue template auto import
@@ -552,6 +557,7 @@ declare module 'vue' {
     readonly useInterval: UnwrapRef<typeof import('@vueuse/core')['useInterval']>
     readonly useIntervalFn: UnwrapRef<typeof import('@vueuse/core')['useIntervalFn']>
     readonly useKeyModifier: UnwrapRef<typeof import('@vueuse/core')['useKeyModifier']>
+    readonly useKeyboardShortcuts: UnwrapRef<typeof import('./composables/useKeyboardShortcuts.js')['useKeyboardShortcuts']>
     readonly useLastChanged: UnwrapRef<typeof import('@vueuse/core')['useLastChanged']>
     readonly useLikedSongs: UnwrapRef<typeof import('./composables/useLikedSongs.js')['useLikedSongs']>
     readonly useLink: UnwrapRef<typeof import('vue-router')['useLink']>
@@ -579,7 +585,7 @@ declare module 'vue' {
     readonly useParentElement: UnwrapRef<typeof import('@vueuse/core')['useParentElement']>
     readonly usePerformanceObserver: UnwrapRef<typeof import('@vueuse/core')['usePerformanceObserver']>
     readonly usePermission: UnwrapRef<typeof import('@vueuse/core')['usePermission']>
-    readonly usePlayerStore: UnwrapRef<typeof import('./store/playerStore.js')['usePlayerStore']>
+    readonly usePlayerStore: UnwrapRef<typeof import('./store/playerStore')['usePlayerStore']>
     readonly usePlaylistStore: UnwrapRef<typeof import('./store/playlistStore.js')['usePlaylistStore']>
     readonly usePointer: UnwrapRef<typeof import('@vueuse/core')['usePointer']>
     readonly usePointerLock: UnwrapRef<typeof import('@vueuse/core')['usePointerLock']>
@@ -606,6 +612,7 @@ declare module 'vue' {
     readonly useSearchStore: UnwrapRef<typeof import('./store/searchStore.js')['useSearchStore']>
     readonly useSessionStorage: UnwrapRef<typeof import('@vueuse/core')['useSessionStorage']>
     readonly useShare: UnwrapRef<typeof import('@vueuse/core')['useShare']>
+    readonly useSlider: UnwrapRef<typeof import('./composables/useSlider')['useSlider']>
     readonly useSlots: UnwrapRef<typeof import('vue')['useSlots']>
     readonly useSorted: UnwrapRef<typeof import('@vueuse/core')['useSorted']>
     readonly useSpeechRecognition: UnwrapRef<typeof import('@vueuse/core')['useSpeechRecognition']>
