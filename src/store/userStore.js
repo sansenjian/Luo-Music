@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { clearCookieCache } from '../api/request'
+import { clearCookieCache } from '@/utils/http'
 
 export const useUserStore = defineStore('user', {
   state: () => ({

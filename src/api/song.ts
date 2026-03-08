@@ -1,4 +1,4 @@
-import request from '../utils/request'
+import request from '@/utils/http'
 
 /**
  * 获取推荐新音乐

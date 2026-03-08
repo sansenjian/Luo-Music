@@ -1,15 +1,27 @@
-import { BrowserWindow, screen, ipcMain } from 'electron'
+import { createRequire } from 'node:module'
+import { BrowserWindow, ipcMain, screen, type BrowserWindow as BrowserWindowType, type IpcMainEvent } from 'electron'
 import path from 'node:path'
 import { windowManager } from './WindowManager'
-import Store from 'electron-store'
+import { __dirname, MAIN_DIST, VITE_PUBLIC } from './utils/paths'
 
-const store = new Store()
+const require = createRequire(__filename)
+const StoreModule = require('electron-store')
+const Store = StoreModule.default || StoreModule
+const store = new Store({
+  projectName: 'luo-music'
+})
 
-const VITE_PUBLIC = process.env.VITE_PUBLIC || path.join(__dirname, '../public')
-const MAIN_DIST = path.join(__dirname, '../dist-electron')
+/** 桌面歌词数据结构 */
+interface LyricUpdateData {
+  time: number
+  index: number
+  text: string
+  trans: string
+  romalrc: string
+}
 
 export class DesktopLyricManager {
-  private win: BrowserWindow | null = null
+  private win: BrowserWindowType | null = null
   private isLocked: boolean = false
   private lastPosition: { x: number; y: number } | null = null
 
@@ -56,12 +68,14 @@ export class DesktopLyricManager {
       },
     })
 
-    this.win.setAlwaysOnTop(true, 'screen-saver')
-    this.win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+    // this.win 不会为 null，因为刚创建
+    const win = this.win!
+    win.setAlwaysOnTop(true, 'screen-saver')
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
 
     // Load the desktop lyric route
     if (process.env.VITE_DEV_SERVER_URL) {
-      this.win.loadURL(`${process.env.VITE_DEV_SERVER_URL}#/desktop-lyric`)
+      win.loadURL(`${process.env.VITE_DEV_SERVER_URL}#/desktop-lyric`)
     } else {
       // In production, we need to load index.html and then navigate
       // Or use query params if router supports it
@@ -69,15 +83,15 @@ export class DesktopLyricManager {
         ? path.join(process.env.VITE_PUBLIC, 'index.html') 
         : path.join(__dirname, '../dist/index.html')
       
-      this.win.loadFile(indexPath, { hash: 'desktop-lyric' })
+      win.loadFile(indexPath, { hash: 'desktop-lyric' })
     }
 
-    this.win.on('closed', () => {
+    win.on('closed', () => {
       this.win = null
     })
 
     // Save position on move
-    this.win.on('move', () => {
+    win.on('move', () => {
       if (this.win) {
         const [x, y] = this.win.getPosition()
         this.lastPosition = { x, y }
@@ -122,7 +136,7 @@ export class DesktopLyricManager {
     }
   }
 
-  sendLyric(data: any) {
+  sendLyric(data: LyricUpdateData) {
     if (this.win && !this.win.isDestroyed()) {
       this.win.webContents.send('lyric-time-update', data)
     }
@@ -137,7 +151,7 @@ export class DesktopLyricManager {
   }
 
   initIpc() {
-    ipcMain.on('desktop-lyric-control', (event, action) => {
+    ipcMain.on('desktop-lyric-control', (event: IpcMainEvent, action: string) => {
       switch (action) {
         case 'show':
           this.show()
@@ -158,7 +172,7 @@ export class DesktopLyricManager {
     })
 
     // Forward lyric data from main window to desktop lyric window
-    ipcMain.on('lyric-time-update', (event, data) => {
+    ipcMain.on('lyric-time-update', (event: IpcMainEvent, data: LyricUpdateData) => {
       this.sendLyric(data)
     })
     
@@ -167,18 +181,26 @@ export class DesktopLyricManager {
         this.setLocked(!this.isLocked)
     })
 
+    ipcMain.on('desktop-lyric-move', (event: IpcMainEvent, { x, y }: { x: number; y: number }) => {
+      if (this.win && !this.win.isDestroyed()) {
+        const [currentX, currentY] = this.win.getPosition()
+        this.win.setPosition(currentX + x, currentY + y)
+        // 移动事件会触发 'move' 监听器，自动保存位置
+      }
+    })
+
     // Dynamic mouse event handling from renderer
-    ipcMain.on('desktop-lyric-set-ignore-mouse', (event, ignore, options) => {
+    ipcMain.on('desktop-lyric-set-ignore-mouse', (event: IpcMainEvent, ignore: boolean, options?: { forward: boolean }) => {
       if (this.win && !this.win.isDestroyed()) {
         this.win.setIgnoreMouseEvents(ignore, options)
       }
     })
 
     // Forward music control events from desktop lyric to main window
-    ipcMain.on('music-playing-control', (event, ...args) => {
+    ipcMain.on('music-playing-control', (event: IpcMainEvent, ...args: unknown[]) => {
       windowManager.send('music-playing-control', ...args)
     })
-    ipcMain.on('music-song-control', (event, ...args) => {
+    ipcMain.on('music-song-control', (event: IpcMainEvent, ...args: unknown[]) => {
       windowManager.send('music-song-control', ...args)
     })
   }

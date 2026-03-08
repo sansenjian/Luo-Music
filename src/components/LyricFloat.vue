@@ -78,6 +78,45 @@ onMounted(() => {
     // platform.on('music-playing-state', (playing) => { isPlaying.value = playing })
   }
 })
+
+// JS 拖拽逻辑
+let isDragging = false
+let startX = 0
+let startY = 0
+
+function onMouseDown(e) {
+  // 如果锁定了，或者是点击了按钮（按钮会阻止冒泡，但为了保险），则不拖拽
+  if (isLocked.value || e.target.closest('.btn') || e.target.closest('.unlock-btn')) return
+  
+  isDragging = true
+  startX = e.screenX
+  startY = e.screenY
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+function onMouseMove(e) {
+  if (!isDragging) return
+  
+  const dx = e.screenX - startX
+  const dy = e.screenY - startY
+  
+  if (dx === 0 && dy === 0) return
+
+  // 更新起始点，避免累积
+  startX = e.screenX
+  startY = e.screenY
+  
+  if (platform.isElectron()) {
+    platform.moveWindow(dx, dy)
+  }
+}
+
+function onMouseUp() {
+  isDragging = false
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('mouseup', onMouseUp)
+}
 </script>
 
 <template>
@@ -86,6 +125,7 @@ onMounted(() => {
     :class="{ locked: isLocked, hover: isHovering }"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
+    @mousedown="onMouseDown"
   >
     <!-- 背景层：非锁定时显示 -->
     <div class="background" v-if="!isLocked"></div>
@@ -148,7 +188,8 @@ onMounted(() => {
 
 /* 非锁定时：可拖拽 */
 .lyric-window:not(.locked) {
-  -webkit-app-region: drag;
+  /* 移除 CSS 拖拽，改用 JS 拖拽，解决事件冲突 */
+  /* -webkit-app-region: drag; */
   cursor: grab;
 }
 
@@ -188,7 +229,7 @@ onMounted(() => {
   text-align: center;
   /* 允许在文字上拖拽，但不允许选中 */
   pointer-events: auto; 
-  -webkit-app-region: drag;
+  /* -webkit-app-region: drag; */
   padding: 0 20px;
   transition: transform 0.3s;
 }

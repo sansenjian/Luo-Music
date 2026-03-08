@@ -8,7 +8,7 @@ export default defineConfig(async ({ mode }) => {
   const isWeb = mode === 'web' || process.env.VERCEL === '1'
   const isElectron = !isWeb
 
-  const plugins = [
+  const plugins: any[] = [
     vue(),
     AutoImport({
       imports: [
@@ -36,49 +36,59 @@ export default defineConfig(async ({ mode }) => {
 
       plugins.push(
         electron([
+          // 主进程入口
           {
-            entry: 'electron/main.js',
-            onstart: ({ startup }) => startup(),
-            // ✅ 配置构建输出目录
+            entry: 'electron/main.ts',
+            onstart: (args: any) => args.reload(),
             vite: {
               build: {
                 outDir: 'dist-electron',
+                lib: {
+                  entry: 'electron/main.ts',
+                  formats: ['cjs'],
+                  fileName: () => 'main.cjs'
+                },
                 rollupOptions: {
-                  external: [
-                    '@neteasecloudmusicapienhanced/api'
-                  ],
+                  external: ['electron', 'electron-log', '@sentry/electron', 'electron-store', '@neteasecloudmusicapienhanced/api'],
                   output: {
-                    entryFileNames: 'main.mjs',
-                    format: 'es',  // ES Modules
-                    banner: `
-import { createRequire } from 'node:module';
-import { fileURLToPath as _fileURLToPath } from 'node:url';
-import { dirname as _dirname, join as _join } from 'node:path';
-const require = createRequire(import.meta.url);
-const __filename = _fileURLToPath(import.meta.url);
-const __dirname = _dirname(__filename);
-process.env.APP_ROOT = _join(__dirname, '..');
-`
+                    format: 'cjs',
+                    exports: 'named',
+                    strict: false
                   }
                 },
-                minify: false
+                commonjsOptions: {
+                  transformMixedEsModules: false
+                },
+                minify: false,
+                sourcemap: true
               }
             }
           },
+          // Preload 脚本
           {
             entry: 'electron/preload.js',
-            onstart: ({ reload }) => reload(),
+            onstart: (args: any) => args.reload(),
             vite: {
               build: {
                 outDir: 'dist-electron',
+                lib: {
+                  entry: 'electron/preload.js',
+                  formats: ['cjs'],
+                  fileName: () => 'preload.cjs'
+                },
                 rollupOptions: {
+                  external: ['electron'],
                   output: {
-                    entryFileNames: 'preload.js',
-                    format: 'cjs',  // CommonJS
-                    exports: 'named'
+                    format: 'cjs',
+                    exports: 'named',
+                    strict: false
                   }
                 },
-                minify: false
+                commonjsOptions: {
+                  transformMixedEsModules: false
+                },
+                minify: false,
+                sourcemap: true
               }
             }
           }
@@ -142,3 +152,4 @@ process.env.APP_ROOT = _join(__dirname, '..');
     }
   }
 })
+

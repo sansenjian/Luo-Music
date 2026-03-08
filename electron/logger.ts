@@ -1,6 +1,9 @@
-import log from 'electron-log';
-import * as Sentry from '@sentry/electron';
-import { app } from 'electron';
+import { createRequire } from 'node:module';
+import type * as SentryElectron from '@sentry/electron';
+
+const require = createRequire(__filename);
+const log = require('electron-log');
+const { app } = require('electron');
 
 // 配置 electron-log
 log.transports.file.level = 'info';
@@ -17,15 +20,21 @@ log.transports.file.fileName = `main-${date}.log`;
 
 // 初始化 Sentry (仅在生产环境或配置了 DSN 时)
 const SENTRY_DSN = process.env.SENTRY_DSN;
+let Sentry: typeof SentryElectron | null = null;
 
 if (app.isPackaged && SENTRY_DSN) {
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    // 自动关联 release 版本号 (需要在构建时注入版本号，或者读取 package.json)
-    release: `luo-music@${app.getVersion()}`,
-    environment: 'production',
-  });
-  log.info('Sentry initialized');
+  try {
+    Sentry = require('@sentry/electron') as typeof SentryElectron;
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      // 自动关联 release 版本号 (需要在构建时注入版本号，或者读取 package.json)
+      release: `luo-music@${app.getVersion()}`,
+      environment: 'production',
+    });
+    log.info('Sentry initialized');
+  } catch (error) {
+    log.error('Failed to initialize Sentry', error);
+  }
 } else {
   log.info('Sentry skipped (dev mode or no DSN)');
 }

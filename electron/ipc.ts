@@ -1,5 +1,8 @@
-import { ipcMain } from 'electron'
+import { createRequire } from 'node:module'
 import { windowManager } from './WindowManager'
+
+const require = createRequire(__filename)
+const { ipcMain } = require('electron')
 
 // 定义播放器相关的 IPC 通道
 export const PLAYER_CHANNELS = [

@@ -2,34 +2,65 @@
 import { Analytics } from '@vercel/analytics/vue'
 
 const isElectron = window.navigator.userAgent.indexOf('Electron') > -1
+const DEFAULT_PLAYER_STATE = {
+  volume: 0.7,
+  playMode: 0,
+  lyricType: ['original', 'trans'],
+  isCompact: false
+}
+const VALID_LYRIC_TYPES = new Set(['original', 'trans', 'roma'])
+
+const sanitizeVolume = (value) => {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
+    ? value
+    : DEFAULT_PLAYER_STATE.volume
+}
+
+const sanitizePlayMode = (value) => {
+  return Number.isInteger(value) && value >= 0 && value <= 3
+    ? value
+    : DEFAULT_PLAYER_STATE.playMode
+}
+
+const sanitizeLyricType = (value) => {
+  if (!Array.isArray(value)) {
+    return [...DEFAULT_PLAYER_STATE.lyricType]
+  }
+
+  const sanitized = value.filter(
+    (item) => typeof item === 'string' && VALID_LYRIC_TYPES.has(item)
+  )
+
+  return sanitized.length > 0 ? [...new Set(sanitized)] : [...DEFAULT_PLAYER_STATE.lyricType]
+}
+
+const sanitizeIsCompact = (value) => {
+  return typeof value === 'boolean' ? value : DEFAULT_PLAYER_STATE.isCompact
+}
+
+const sanitizePlayerState = (value) => {
+  if (typeof value !== 'object' || value === null) {
+    return { ...DEFAULT_PLAYER_STATE }
+  }
+
+  return {
+    volume: sanitizeVolume(value.volume),
+    playMode: sanitizePlayMode(value.playMode),
+    lyricType: sanitizeLyricType(value.lyricType),
+    isCompact: sanitizeIsCompact(value.isCompact)
+  }
+}
 
 if (isElectron) {
   const playerState = localStorage.getItem('player')
-  const defaultState = {
-    volume: 0.7,
-    playMode: 0,
-    lyricType: ['original', 'trans'],
-    isCompact: false
-  }
-  
+
   if (playerState) {
     try {
       const parsed = JSON.parse(playerState)
-      // 验证解析结果是否为对象
-      if (typeof parsed !== 'object' || parsed === null) {
-        localStorage.setItem('player', JSON.stringify(defaultState))
-      } else {
-        const preserved = {
-          volume: parsed.volume ?? 0.7,
-          playMode: parsed.playMode ?? 0,
-          lyricType: parsed.lyricType ?? ['original', 'trans'],
-          isCompact: parsed.isCompact ?? false
-        }
-        localStorage.setItem('player', JSON.stringify(preserved))
-      }
+      const sanitized = sanitizePlayerState(parsed)
+      localStorage.setItem('player', JSON.stringify(sanitized))
     } catch (e) {
-      // 解析失败时写入默认值
-      localStorage.setItem('player', JSON.stringify(defaultState))
+      localStorage.setItem('player', JSON.stringify(DEFAULT_PLAYER_STATE))
       console.error('Failed to parse player state, reset to defaults:', e)
     }
   }

@@ -16,8 +16,10 @@
     "paths": {
       "@/*": ["src/*"]
     },
-    "allowJs": true
+    "allowJs": false,
+    "checkJs": false
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.js", "tests/**/*.ts", "tests/**/*.js"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/config/**/*.js", "tests/**/*.ts", "electron/**/*.ts"],
+  "exclude": ["electron/**/*.js"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -9,11 +9,7 @@ const showApiInput = ref(false)
 
 const servers = [
   { value: 'netease', label: '网易云' },
-  { value: 'tencent', label: 'QQ音乐' },
-  { value: 'kugou', label: '酷狗' },
-  { value: 'kuwo', label: '酷我' },
-  { value: 'baidu', label: '百度' },
-  { value: 'xiami', label: '虾米' }
+  { value: 'qq', label: 'QQ音乐' }
 ]
 
 const apiPresets = [

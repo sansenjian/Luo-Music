@@ -9,7 +9,7 @@ import {
   getActiveRequestKeys,
   isRequestActive,
   generateRequestKey
-} from '../../src/utils/requestCanceler'
+} from '../../src/utils/http/requestCanceler'
 
 describe('requestCanceler', () => {
   beforeEach(() => {

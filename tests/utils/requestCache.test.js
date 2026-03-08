@@ -7,7 +7,7 @@ import {
   getCacheStats,
   deleteCacheByUrl,
   prefetch
-} from '../../src/utils/requestCache'
+} from '../../src/utils/http/requestCache'
 
 describe('requestCache', () => {
   beforeEach(() => {

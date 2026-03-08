@@ -5,7 +5,10 @@
     "onlyBuiltDependencies": [
       "electron",
       "esbuild",
-      "electron-winstaller"
+      "electron-winstaller",
+      "sqlite3",
+      "@neteasecloudmusicapienhanced/api",
+      "@sansenjian/qq-music-api"
     ],
     "overrides": {
       "tar": ">=7.5.8",
@@ -17,26 +20,27 @@
   "license": "PolyForm-Noncommercial-1.0.0",
   "private": true,
   "type": "module",
-  "main": "dist-electron/main.mjs",
+  "main": "dist-electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "dev:web": "vite",
     "dev:server": "concurrently \"npm run server\" \"vite --mode web\"",
-    "dev:electron": "concurrently -k \"npm run server\" \"vite\"",
-    "prebuild": "node -e \"const fs=require('fs'); if(fs.existsSync('release/win-unpacked')){console.error('ERROR: release directory contains old build! Run npm run clean first'); process.exit(1)}\"",
-    "build": "vite build && npm run copy:preload && electron-builder",
-    "build:web": "vite build --mode web",
-    "build:electron": "npm run clean && vite build && npm run copy:preload && electron-builder",
+    "dev:electron": "concurrently -k \"npm run server\" \"vite\" \"node scripts/dev-electron-launcher.cjs\"",
+    "prebuild": "node -e \"const fs=require('fs'); if(fs.existsSync('release_v2/win-unpacked')){console.error('ERROR: release_v2 directory contains old build! Run npm run clean first'); process.exit(1)}\"",
+    "build": "vite build && electron-builder",
+    "build:server": "tsup server.ts --format cjs --out-dir dist-server --clean",
+    "build:electron-main": "esbuild electron/main.ts --bundle --platform=node --target=node24 --format=cjs --outfile=dist-electron/main.cjs --external:electron --external:electron-log --external:@sentry/electron --external:electron-store --external:@neteasecloudmusicapienhanced/api",
+    "build:web": "npm run build:server && vite build --mode web",
+    "build:electron": "npm run clean && npm run build:server && vite build && electron-builder",
     "preview": "vite preview",
-    "server": "node server.cjs",
+    "server": "tsx server.ts",
     "start": "npm run dev",
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "clean": "rimraf dist dist-electron release .vite node_modules/.vite",
-    "clean:all": "npm run clean && rimraf node_modules",
-    "copy:preload": "node copy-preload.js",
+    "clean": "node scripts/clean-force.js",
+    "clean:all": "node scripts/clean-force.js --all",
     "analyze": "vite-bundle-visualizer",
     "audit": "npm audit",
     "check:deps": "ncu",
@@ -60,12 +64,19 @@
     "@vercel/analytics": "^1.6.1",
     "@vueuse/core": "^14.2.1",
     "animejs": "^4.3.6",
+    "async-kit": "^2.2.4",
     "axios": "^1.7.9",
+    "combined-stream": "^1.0.8",
     "date-fns": "^4.1.0",
+    "delayed-stream": "^1.0.0",
+    "electron-log": "^5.4.3",
+    "electron-store": "^11.0.2",
     "form-data": "^4.0.5",
     "koa": "^2.15.0",
     "koa-bodyparser": "^4.2.1",
     "koa-static": "^5.0.0",
+    "mime-db": "^1.54.0",
+    "mime-types": "^3.0.2",
     "naive-ui": "^2.43.2",
     "picocolors": "^1.1.1",
     "pinia": "^3.0.4",
@@ -76,17 +87,38 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/animejs": "^3.1.13",
+    "@types/chai": "^5.2.3",
+    "@types/debug": "^4.1.12",
+    "@types/deep-eql": "^4.0.2",
+    "@types/estree": "^1.0.8",
+    "@types/fs-extra": "^11.0.4",
+    "@types/hast": "^3.0.4",
+    "@types/http-cache-semantics": "^4.2.0",
+    "@types/katex": "^0.16.8",
+    "@types/linkify-it": "^5.0.0",
+    "@types/lodash": "^4.17.24",
+    "@types/lodash-es": "^4.17.12",
+    "@types/markdown-it": "^14.1.2",
+    "@types/mdast": "^4.0.4",
+    "@types/mdurl": "^2.0.0",
+    "@types/ms": "^2.1.0",
     "@types/node": "^25.3.3",
+    "@types/responselike": "^1.0.3",
+    "@types/unist": "^3.0.3",
+    "@types/web-bluetooth": "^0.0.21",
+    "@types/yauzl": "^2.10.3",
     "@vitejs/plugin-vue": "^6.0.4",
     "@vitest/coverage-v8": "^4.0.18",
     "@vue/test-utils": "^2.4.6",
     "concurrently": "^9.2.1",
     "depcheck": "^1.4.7",
-    "electron": "^40.x",
+    "electron": "40.0.0",
     "electron-builder": "^26.8.1",
     "jsdom": "^28.1.0",
     "npm-check-updates": "^19.6.3",
     "rimraf": "^6.0.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "unplugin-auto-import": "^21.0.0",
     "unplugin-vue-components": "^31.0.0",
@@ -99,41 +131,11 @@
     "vue-tsc": "^3.2.5"
   },
   "engines": {
-    "node": ">=20.0.0",
-    "npm": ">=9.0.0"
+    "node": ">=24.x",
+    "pnpm": ">=10.0.0"
   },
+  "packageManager": "pnpm@10.30.3",
   "overrides": {
     "axios": "^1.7.9"
-  },
-  "build": {
-    "appId": "com.sansenjian.luomusic",
-    "productName": "luo-music",
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
-    "extraResources": [],
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*"
-    ],
-    "asar": true,
-    "asarUnpack": [
-      "**/*.node"
-    ],
-    "compression": "maximum",
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico",
-      "requestedExecutionLevel": "asInvoker"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "deleteAppDataOnUninstall": false,
-      "createDesktopShortcut": true,
-      "shortcutName": "LUO Music"
-    },
-    "publish": null
   }
 }

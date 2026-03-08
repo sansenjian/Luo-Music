@@ -35,6 +35,7 @@ interface PlayerState {
   errorHandler: ErrorHandler | null
   lyricEngine: LyricEngine | null
   ipcInitialized: boolean
+  ipcUnsubscribers: Array<() => void>
 }
 
 export const usePlayerStore = defineStore('player', {
@@ -61,7 +62,8 @@ export const usePlayerStore = defineStore('player', {
     isCompact: false,
     errorHandler: null,
     lyricEngine: null,
-    ipcInitialized: false
+    ipcInitialized: false,
+    ipcUnsubscribers: []
   }),
   
   getters: {
@@ -160,10 +162,12 @@ export const usePlayerStore = defineStore('player', {
       
       audioManager.on('play', () => {
         this.playing = true
+        this.notifyPlayingState(true)
       })
       
       audioManager.on('pause', () => {
         this.playing = false
+        this.notifyPlayingState(false)
       })
       
       audioManager.on('error', (e: any) => {
@@ -242,12 +246,17 @@ export const usePlayerStore = defineStore('player', {
         }) as Unsubscriber
       )
       
-      // Store unsubscribers if needed for cleanup
-      // this._ipcUnsubscribers = unsubscribers
+      this.ipcUnsubscribers = unsubscribers
+    },
+
+    teardownIpcListeners() {
+      this.ipcUnsubscribers.forEach((unsubscribe: () => void) => unsubscribe())
+      this.ipcUnsubscribers = []
+      this.ipcInitialized = false
     },
     
-    notifyPlayingState() {
-      platform.sendPlayingState(this.playing)
+    notifyPlayingState(playing?: boolean) {
+      platform.sendPlayingState(playing ?? this.playing)
     },
     
     notifyPlayModeChange() {
@@ -430,7 +439,6 @@ export const usePlayerStore = defineStore('player', {
       }
       
       audioManager.toggle()
-      this.notifyPlayingState()
     },
     
     // 统一的随机播放辅助函数
@@ -459,7 +467,7 @@ export const usePlayerStore = defineStore('player', {
         }
       }
       
-      this.playSongWithDetails(newIndex).catch(err => {
+      this.playSongWithDetails(newIndex).catch((err: unknown) => {
         console.error('播放上一首失败:', err)
       })
     },
@@ -480,7 +488,7 @@ export const usePlayerStore = defineStore('player', {
         }
       }
       
-      this.playSongWithDetails(newIndex).catch(err => {
+      this.playSongWithDetails(newIndex).catch((err: unknown) => {
         console.error('播放下一首失败:', err)
       })
     },
@@ -543,8 +551,9 @@ export const usePlayerStore = defineStore('player', {
       this.progress = 0
       this.duration = 0
       this.resetErrorHandler()
+      this.teardownIpcListeners()
     },
-  },
+  } as any,
   
   persist: {
     storage: localStorage,
@@ -574,5 +583,6 @@ export const usePlayerStore = defineStore('player', {
         store.lyricType = ['original', 'trans']
       }
     }
-  },
+  } as any,
 })
+

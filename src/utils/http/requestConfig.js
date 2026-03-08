@@ -165,7 +165,13 @@ export function exportConfig() {
  */
 export function importConfig(config) {
   if (typeof config === 'object' && config !== null) {
-    Object.assign(RequestConfig, config)
+    for (const key in config) {
+      if (RequestConfig[key] && typeof config[key] === 'object') {
+        Object.assign(RequestConfig[key], config[key])
+      } else {
+        RequestConfig[key] = config[key]
+      }
+    }
   }
 }
 

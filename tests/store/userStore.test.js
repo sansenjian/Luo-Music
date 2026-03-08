@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useUserStore } from '../../src/store/userStore'
-import { clearCookieCache } from '../../src/api/request'
+import { clearCookieCache } from '../../src/utils/http'
 
 // Mock dependencies
-vi.mock('../../src/api/request', () => ({
+vi.mock('../../src/utils/http', () => ({
   clearCookieCache: vi.fn()
 }))
 

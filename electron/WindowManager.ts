@@ -1,9 +1,15 @@
-import { app, BrowserWindow, ipcMain, nativeImage, session, Tray, Menu, screen } from 'electron'
+import electron from 'electron'
+import type { BrowserWindow as BrowserWindowType, Tray as TrayType, Menu as MenuType } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
-import Store from 'electron-store'
+import { __dirname, MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
 
-const store = new Store()
+const { app, BrowserWindow, ipcMain, nativeImage, session, Tray, Menu, screen } = electron
+const StoreModule = require('electron-store')
+const Store = StoreModule.default || StoreModule
+const store = new Store({
+  projectName: 'luo-music'
+})
 
 const MIN_WIDTH = 400
 const MIN_HEIGHT = 80
@@ -11,20 +17,16 @@ const MAX_WIDTH = 3840
 const MAX_HEIGHT = 2160
 
 // Paths and environment variables setup
-const MAIN_DIST = path.join(__dirname, '../dist-electron')
-const RENDERER_DIST = path.join(__dirname, '../dist')
-
 process.env.DIST = RENDERER_DIST
-const VITE_PUBLIC = app.isPackaged ? RENDERER_DIST : path.join(__dirname, '../public')
 process.env.VITE_PUBLIC = VITE_PUBLIC
 
 import { downloadManager } from './DownloadManager'
 import { desktopLyricManager } from './DesktopLyricManager'
 
 export class WindowManager {
-  private win: BrowserWindow | null = null
-  private tray: Tray | null = null
-  private contextMenu: Menu | null = null
+  private win: BrowserWindowType | null = null
+  private tray: TrayType | null = null
+  private contextMenu: MenuType | null = null
   private lastSize: { width: number; height: number } | null = null
 
   constructor() {
@@ -51,7 +53,7 @@ export class WindowManager {
         preload: path.join(MAIN_DIST, 'preload.js'),
         nodeIntegration: false,
         contextIsolation: true,
-        webSecurity: false,
+        webSecurity: true,
         allowRunningInsecureContent: false,
       },
     })
@@ -70,7 +72,7 @@ export class WindowManager {
     } else {
       const indexPath = app.isPackaged 
         ? path.join(process.resourcesPath, 'app.asar', 'dist', 'index.html')
-        : path.join(__dirname, '../dist/index.html')
+        : path.join(RENDERER_DIST, 'index.html')
       
       console.log('Loading index.html from:', indexPath)
       
@@ -128,7 +130,7 @@ export class WindowManager {
     this.win?.webContents.send(channel, ...args)
   }
 
-  setTray(tray: Tray, contextMenu: Menu) {
+  setTray(tray: TrayType, contextMenu: MenuType) {
     this.tray = tray
     this.contextMenu = contextMenu
   }

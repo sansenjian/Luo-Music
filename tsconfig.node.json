@@ -5,16 +5,17 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "allowJs": true,
-    "checkJs": true,
+    "allowJs": false,
+    "checkJs": false,
     "strict": true,
     "emitDeclarationOnly": true,
     "types": ["node", "electron"]
   },
   "include": [
-    "vite.config.js",
+    "vite.config.ts",
     "electron/**/*.js",
     "electron/**/*.ts",
-    "src/config/**/*.js"
+    "src/config/**/*.js",
+    "src/config/**/*.d.ts"
   ]
 }

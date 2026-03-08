@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/userStore'
 import { logout } from '../api/user'
 import { qqMusicApi } from '../api/qqmusic'
+import { isElectron } from '../platform'
 import LoginModal from './LoginModal.vue'
 import QQLoginModal from './QQLoginModal.vue'
 
@@ -15,8 +16,6 @@ const showDropdown = ref(false)
 const qqMusicLoggedIn = ref(false)
 
 let hideTimeout = null
-
-const isElectron = window.navigator.userAgent.indexOf('Electron') > -1
 
 // 检测 QQ 音乐是否已登录
 const isQQMusicLoggedIn = computed(() => {
@@ -110,7 +109,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="isElectron" class="user-avatar-wrapper" @mouseleave="hideMenu">
+  <div class="user-avatar-wrapper" @mouseleave="hideMenu">
     <div 
       class="user-trigger" 
       @mouseenter="showMenu"
@@ -131,24 +130,38 @@ onUnmounted(() => {
     </div>
     
     <Transition name="dropdown">
-      <div v-if="showDropdown && userStore.isLoggedIn" class="dropdown" @mouseenter="showMenu" @mouseleave="hideMenu">
+      <div v-if="showDropdown" class="dropdown" @mouseenter="showMenu" @mouseleave="hideMenu">
         <div class="dropdown-header">
-        <img v-if="userStore.avatarUrl" :src="userStore.avatarUrl" :alt="userStore.nickname" class="dropdown-avatar" />
-        <div v-else class="dropdown-avatar-placeholder"></div>
-        <div class="dropdown-info">
-          <span class="dropdown-nickname">{{ userStore.nickname }}</span>
-          <span class="dropdown-id">ID: {{ userStore.userId }}</span>
+          <template v-if="userStore.isLoggedIn">
+            <img v-if="userStore.avatarUrl" :src="userStore.avatarUrl" :alt="userStore.nickname" class="dropdown-avatar" />
+            <div v-else class="dropdown-avatar-placeholder"></div>
+            <div class="dropdown-info">
+              <span class="dropdown-nickname">{{ userStore.nickname }}</span>
+              <span class="dropdown-id">ID: {{ userStore.userId }}</span>
+            </div>
+            <button class="logout-btn-small" @click="handleLogout" title="退出登录">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </button>
+          </template>
+          <template v-else>
+            <div class="dropdown-avatar-placeholder">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div class="dropdown-info" @click="openLogin" style="cursor: pointer;">
+              <span class="dropdown-nickname">未登录网易云</span>
+              <span class="dropdown-id login-link">点击登录 ></span>
+            </div>
+          </template>
         </div>
-        <button class="logout-btn-small" @click="handleLogout" title="退出登录">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-            <polyline points="16 17 21 12 16 7"></polyline>
-            <line x1="21" y1="12" x2="9" y2="12"></line>
-          </svg>
-        </button>
-      </div>
       <div class="dropdown-menu">
-        <button class="menu-btn" @click="openUserCenter">
+        <button v-if="userStore.isLoggedIn" class="menu-btn" @click="openUserCenter">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
@@ -374,6 +387,16 @@ onUnmounted(() => {
 .menu-btn:hover svg,
 .logout-btn:hover svg {
   transform: translateX(4px);
+}
+
+.login-link {
+  color: #4ade80; /* --accent */
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.login-link:hover {
+  text-decoration: underline;
 }
 
 .dropdown-enter-active,

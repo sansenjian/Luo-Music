@@ -1,10 +1,7 @@
 
 import { MusicPlatformAdapter, createSong, type Song, type SearchResult, type LyricResult, type PlaylistDetail } from './interface';
-// @ts-ignore
-import { search } from '../../api/search';
-import { getMusicUrl, getLyric, getSongDetail } from '../../api/song';
-// @ts-ignore
-import { getPlaylistDetail } from '../../api/playlist';
+import { neteaseAdapter } from '../../api/netease';
+import type { ApiResponse } from '../../api/adapter';
 
 export class NeteaseAdapter extends MusicPlatformAdapter {
   constructor() {
@@ -13,13 +10,22 @@ export class NeteaseAdapter extends MusicPlatformAdapter {
 
   async search(keyword: string, limit: number = 30, page: number = 1): Promise<SearchResult> {
     const offset = (page - 1) * limit;
-    const res: any = await search(keyword, 1, limit, offset);
-    
-    // Normalize response
-    const songs = (res.result?.songs || []).map((song: any) => this._normalizeSong(song));
+    const res = await neteaseAdapter.fetch<any>('/cloudsearch', {
+      keywords: keyword,
+      type: 1,
+      limit,
+      offset
+    });
+
+    if (!res.success) {
+      console.warn('Netease search failed:', res.error);
+      return { list: [], total: 0 };
+    }
+
+    const songs = (res.data.result?.songs || []).map((song: any) => this._normalizeSong(song));
     return {
       list: songs,
-      total: res.result?.songCount || 0
+      total: res.data.result?.songCount || 0
     };
   }
 
@@ -31,17 +37,42 @@ export class NeteaseAdapter extends MusicPlatformAdapter {
       level = options.level || 'standard';
     }
 
-    const res: any = await getMusicUrl(id as any, level);
-    const data = res.data || res;
-    if (data && data[0] && data[0].url) {
-      return data[0].url;
+    try {
+      const res: any = await neteaseAdapter.fetch<any>('/song/url/v1', {
+        id,
+        level,
+        randomCNIP: true,
+        unblock: 'true',
+        timestamp: Date.now()
+      });
+
+      if (!res.success) {
+        throw new Error('Failed to get song URL');
+      }
+
+      const data = res.data.data || res.data;
+      if (data && data[0] && data[0].url) {
+        return data[0].url;
+      }
+      return null;
+    } catch (error) {
+      console.warn('Netease getSongUrl failed, fallback needed', error);
+      throw error;
     }
-    return null;
   }
 
   async getSongDetail(id: string | number): Promise<Song | null> {
-    const res: any = await getSongDetail(id as any);
-    const song = res.songs && res.songs[0];
+    const res = await neteaseAdapter.fetch<any>('/song/detail', {
+      ids: String(id),
+      timestamp: Date.now()
+    });
+
+    if (!res.success) {
+      console.warn('Netease song detail failed:', res.error);
+      return null;
+    }
+
+    const song = res.data.songs && res.data.songs[0];
     if (song) {
       return this._normalizeSong(song);
     }
@@ -49,17 +80,32 @@ export class NeteaseAdapter extends MusicPlatformAdapter {
   }
 
   async getLyric(id: string | number): Promise<LyricResult> {
-    const res: any = await getLyric(id as any);
+    const res = await neteaseAdapter.fetch<any>('/lyric', {
+      id,
+      timestamp: Date.now()
+    });
+
+    if (!res.success) {
+      console.warn('Netease lyric failed:', res.error);
+      return { lrc: '', tlyric: '', romalrc: '' };
+    }
+
     return {
-      lrc: res.lrc?.lyric || res.lyric || '',
-      tlyric: res.tlyric?.lyric || res.tlyric || '',
-      romalrc: res.romalrc?.lyric || res.romalrc || ''
+      lrc: res.data.lrc?.lyric || res.data.lyric || '',
+      tlyric: res.data.tlyric?.lyric || res.data.tlyric || '',
+      romalrc: res.data.romalrc?.lyric || res.data.romalrc || ''
     };
   }
   
   async getPlaylistDetail(id: string | number): Promise<PlaylistDetail | null> {
-    const res: any = await getPlaylistDetail(id as any);
-    const playlist = res.playlist;
+    const res = await neteaseAdapter.fetch<any>('/playlist/detail', { id });
+
+    if (!res.success) {
+      console.warn('Netease playlist detail failed:', res.error);
+      return null;
+    }
+
+    const playlist = res.data.playlist;
     
     if (!playlist) return null;
 

@@ -4,7 +4,7 @@ import { usePlayerStore } from '../../src/store/playerStore.ts'
 import { PLAY_MODE } from '../../src/utils/player/constants/playMode'
 
 // Mock audioManager
-vi.mock('../../src/utils/player/core/audioManager', () => ({
+vi.mock('../../src/utils/player/audioManager', () => ({
   audioManager: {
     play: vi.fn(() => Promise.resolve()),
     pause: vi.fn(),

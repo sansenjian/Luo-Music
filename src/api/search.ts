@@ -1,4 +1,4 @@
-import request from '../utils/request'
+import request from '@/utils/http'
 
 /**
  * 搜索
@@ -7,7 +7,7 @@ import request from '../utils/request'
  * @param {number} limit - 返回数量
  * @param {number} offset - 偏移量
  */
-export function search(keywords, type = 1, limit = 30, offset = 0) {
+export function search(keywords: string, type: number = 1, limit: number = 30, offset: number = 0) {
   return request({
     url: '/cloudsearch',
     method: 'get',
@@ -24,7 +24,7 @@ export function search(keywords, type = 1, limit = 30, offset = 0) {
  * 搜索建议
  * @param {string} keywords - 搜索关键词
  */
-export function searchSuggest(keywords) {
+export function searchSuggest(keywords: string) {
   return request({
     url: '/search/suggest',
     method: 'get',

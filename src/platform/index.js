@@ -1,6 +1,6 @@
 
-import { ElectronAdapter } from './electron';
-import { WebAdapter } from './web';
+import { ElectronAdapter } from './core/electron';
+import { WebAdapter } from './core/web';
 
 let instance;
 

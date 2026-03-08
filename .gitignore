@@ -20,8 +20,11 @@ pids
 lib-cov
 
 # Coverage directory used by tools like istanbul
-coverage
-*.lcov
+coverage/
+!coverage/lcov.info
+!coverage/coverage-final.json
+coverage/*.html
+coverage/*.css
 
 # nyc test coverage
 .nyc_output
@@ -37,6 +40,7 @@ bower_components
 
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
+build/
 
 # Dependency directories
 node_modules/
@@ -121,6 +125,8 @@ dist
 dist-electron
 .userData
 release
+release_v2/
+dist-server/
 
 # Vercel
 .vercel
@@ -128,6 +134,11 @@ release
 
 # Trae IDE
 .trae/
+.kilo/
+.kilocode/
+
+# VitePress cache
+.vitepress/cache/
 
 # Playwright
 playwright-report/

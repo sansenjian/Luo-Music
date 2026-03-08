@@ -7,7 +7,7 @@ import {
   getRetryStats,
   resetRetryStats,
   recordRetryStat
-} from '../../src/utils/requestRetry'
+} from '../../src/utils/http/requestRetry'
 
 describe('requestRetry', () => {
   const mockConfig = {

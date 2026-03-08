@@ -1,4 +1,4 @@
-import request from './request'
+import request from '@/utils/http'
 
 export function getQRKey() {
   return request.get('/login/qr/key', {
@@ -6,7 +6,7 @@ export function getQRKey() {
   })
 }
 
-export function getQRCode(key) {
+export function getQRCode(key: string) {
   return request.get('/login/qr/create', {
     params: {
       key,
@@ -16,7 +16,7 @@ export function getQRCode(key) {
   })
 }
 
-export function checkQRStatus(key) {
+export function checkQRStatus(key: string) {
   return request.get('/login/qr/check', {
     params: {
       key,
@@ -37,7 +37,7 @@ export function logout() {
   })
 }
 
-export function getUserDetail(uid) {
+export function getUserDetail(uid: number) {
   return request.get('/user/detail', {
     params: { uid, timestamp: Date.now() }
   })
@@ -55,7 +55,7 @@ export function getUserLevel() {
   })
 }
 
-export function getUserEvent(uid, limit = 10, lasttime = -1) {
+export function getUserEvent(uid: number, limit: number = 10, lasttime: number = -1) {
   return request.get('/user/event', {
     params: { uid, limit, lasttime, timestamp: Date.now() }
   })

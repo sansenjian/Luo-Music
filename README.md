@@ -2,6 +2,9 @@
 
 基于 Vue 3 + Pinia + Electron + TypeScript + TanStack Query 的跨平台音乐播放器
 
+[![Test](https://github.com/sansenjian/luo_music/actions/workflows/test.yml/badge.svg)](https://github.com/sansenjian/luo_music/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/sansenjian/luo_music/branch/main/graph/badge.svg)](https://codecov.io/gh/sansenjian/luo_music)
+
 > ⚠️ **已知问题**：使用「沉浸式翻译」浏览器插件可能导致歌词不显示。如果遇到歌词不显示的问题，请尝试禁用该插件或将其加入白名单。
 
 ## 🎉 最新动态

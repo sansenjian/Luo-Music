@@ -1,133 +1,163 @@
+import {
+  MusicPlatformAdapter,
+  createSong,
+  type Song,
+  type SearchResult,
+  type LyricResult,
+  type PlaylistDetail,
+} from './interface'
+import {
+  qqMusicAdapter,
+  qqMusicApi,
+  type QQSearchData,
+  type QQSearchSongItem,
+  type QQSongInfoData,
+  type QQSongInfoTrack,
+  type QQMusicPlayData,
+  type QQLyricPayload,
+} from '../../api/qqmusic'
+import type { ApiResponse } from '../../api/adapter'
 
-import { MusicPlatformAdapter, createSong, type Song, type SearchResult, type LyricResult } from './interface';
-// @ts-ignore
-import { qqMusicApi } from '../../api/qqmusic';
+interface QQMusicPlayOptions {
+  mediaId?: string
+}
 
 export class QQMusicAdapter extends MusicPlatformAdapter {
   constructor() {
-    super('qq');
+    super('qq')
   }
 
   async search(keyword: string, limit: number = 20, page: number = 1): Promise<SearchResult> {
-    const res = await qqMusicApi.search(keyword, limit, page);
+    const res = await qqMusicAdapter.fetch<QQSearchData>('/getSearchByKey', {
+      key: keyword,
+      limit,
+      page
+    })
     
-    // QQ Music API response wrapper handling
-    // The actual data might be in res.data or res.response.data depending on the API wrapper
-    // Based on curl output: {"response":"{\"code\":0,\"data\":{...}}"}
-    // It seems the response is a JSON string inside "response" field? 
-    // Or maybe qqMusicApi handles this. Let's check qqMusicApi.js
-    
-    let data = res;
-    // @ts-ignore
-    if (res.response && typeof res.response === 'string') {
-        try {
-            // @ts-ignore
-            const parsed = JSON.parse(res.response);
-            data = parsed;
-        } catch (e) {
-            console.error('Failed to parse QQ search response', e);
-        }
+    if (!res.success) {
+      console.warn('QQ Music search failed:', res.error)
+      return { list: [], total: 0 }
     }
     
-    // Normalize response
-    const songData = data.data?.song || {};
-    const list = songData.list || [];
-    const total = songData.totalnum || 0;
-    
+    const songData = res.data?.song
+    const list = songData?.list ?? []
+    const total = songData?.totalnum ?? 0
+
     return {
-      list: list.map((song: any) => this._normalizeSong(song)),
-      total: total
-    };
+      list: list.map((song) => this.normalizeSong(song)),
+      total,
+    }
   }
 
-  async getSongUrl(id: string | number, options: any = {}): Promise<string | null> {
-    // QQ Music needs mediaId sometimes, but let's assume id is songmid
-    // We might need to fetch song info first if we don't have mediaId
-    // But for now, let's see if we can just use the API provided
-    
-    // In many QQ APIs, we need mediaId (strMediaMid) to get play url.
-    // If the caller only provides ID (songmid), we might need to fetch detail first.
-    // However, the existing qqMusicApi.getMusicPlay takes (songmid, mediaId).
-    
-    // Ideally, the 'id' passed here is the song object or we have a way to get mediaId.
-    // If 'id' is just a string, we might struggle.
-    // Let's assume the normalized song object's ID is songmid.
-    
-    // Hack: If options contains mediaId, use it. Otherwise, try to fetch it.
-    let mediaId = options.mediaId;
-    
+  async getSongUrl(id: string | number, options: QQMusicPlayOptions = {}): Promise<string | null> {
+    let mediaId = options.mediaId
+
     if (!mediaId) {
-       // Try to fetch song detail to get mediaId
-       try {
-         const info = await qqMusicApi.getSongInfo(id);
-         if (info && info.data && info.data.track_info) {
-             mediaId = info.data.track_info.file?.media_mid;
-         }
-       } catch (e) {
-         console.warn('Failed to fetch mediaId for QQ song', id);
-       }
+      try {
+        const infoRes = await qqMusicAdapter.fetch<QQSongInfoData>(`/getSongInfo/${id}`)
+        if (infoRes.success) {
+          mediaId = infoRes.data?.track_info?.file?.media_mid
+        }
+      } catch (error) {
+        console.warn('Failed to fetch mediaId for QQ song', id, error)
+      }
     }
 
-    const res = await qqMusicApi.getMusicPlay(id, mediaId);
-    const playUrl = res.data?.playUrl?.[id];
-    if (playUrl && playUrl.url) {
-      return playUrl.url;
+    const res = await qqMusicAdapter.fetch<QQMusicPlayData>('/getMusicPlay', {
+      songmid: id,
+      mediaId,
+      quality: 128
+    })
+
+    if (!res.success) {
+      console.warn('QQ Music play URL failed:', res.error)
+      return null
     }
-    return null;
+
+    const playKey = String(id)
+    const playUrl = res.data?.playUrl?.[playKey]
+    if (playUrl?.url) {
+      return playUrl.url
+    }
+
+    if (playUrl?.error) {
+      console.warn('QQ Music Play URL error:', playUrl.error)
+    }
+
+    return null
   }
 
   async getSongDetail(id: string | number): Promise<Song | null> {
-    const res = await qqMusicApi.getSongInfo(id);
-    const data = res.data?.track_info;
-    if (data) {
-      return this._normalizeSong(data);
+    const res = await qqMusicAdapter.fetch<QQSongInfoData>(`/getSongInfo/${id}`)
+    
+    if (!res.success) {
+      console.warn('QQ Music song detail failed:', res.error)
+      return null
     }
-    return null;
+    
+    const trackInfo = res.data?.track_info
+
+    if (trackInfo) {
+      return this.normalizeSong(trackInfo)
+    }
+
+    return null
   }
 
   async getLyric(id: string | number): Promise<LyricResult> {
-    const res: any = await qqMusicApi.getLyric(id, false);
+    const res = await qqMusicAdapter.fetch<QQLyricPayload>('/getLyric', {
+      songmid: id,
+      isFormat: 0
+    })
+
+    if (!res.success) {
+      console.warn('QQ Music lyric failed:', res.error)
+      return { lrc: '', tlyric: '', romalrc: '' }
+    }
+
+    const lyricPayload = res.data
     return {
-      lrc: res.response?.lyric?.lyric || '',
-      tlyric: res.response?.trans || '',
-      romalrc: '' // QQ usually doesn't provide roma via this API
-    };
+      lrc: lyricPayload?.lyric?.lyric || '',
+      tlyric: lyricPayload?.trans || '',
+      romalrc: '',
+    }
   }
 
-  async getPlaylistDetail(id: string | number): Promise<any> {
-      // TODO: Implement playlist detail for QQ if API available
-      throw new Error('Method not implemented.');
+  async getPlaylistDetail(id: string | number): Promise<PlaylistDetail | null> {
+    throw new Error(`Method not implemented for QQ playlist detail: ${id}`)
   }
 
-  private _normalizeSong(song: any): Song {
-    // QQ Music structure varies between search and detail
-    // Search: { songmid, songname, singer: [...], albummid, albumname ... }
-    // Detail: { mid, name, singer: [...], album: { mid, name } ... }
-    
-    const songmid = song.songmid || song.mid;
-    const songname = song.songname || song.name || song.title;
-    const singers = song.singer || [];
-    const album = song.album || {};
-    const albummid = song.albummid || album.mid;
-    const albumname = song.albumname || album.name;
-    const duration = song.interval || 0;
-    
+  private normalizeSong(song: QQSearchSongItem | QQSongInfoTrack): Song {
+    const searchSong = song as QQSearchSongItem
+    const detailSong = song as QQSongInfoTrack
+    const songmid = searchSong.songmid || detailSong.mid || ''
+    const songname = searchSong.songname || detailSong.name || detailSong.title || ''
+    const singers = song.singer || []
+    const album = detailSong.album || {}
+    const albummid = searchSong.albummid || album.mid || ''
+    const albumname = searchSong.albumname || album.name || ''
+    const duration = song.interval || 0
+    const originalId = searchSong.songid || detailSong.id || songmid
+
     return createSong({
       id: songmid,
       name: songname,
-      artists: singers.map((s: any) => ({ id: s.mid, name: s.name })),
+      artists: singers.map((s) => ({
+        id: s.mid || '',
+        name: s.name || '',
+      })),
       album: {
         id: albummid,
         name: albumname,
-        picUrl: albummid ? `https://y.gtimg.cn/music/photo_new/T002R300x300M000${albummid}.jpg` : ''
+        picUrl: albummid ? `https://y.gtimg.cn/music/photo_new/T002R300x300M000${albummid}.jpg` : '',
       },
       duration: duration * 1000,
       mvid: song.vid || '',
       platform: 'qq',
-      originalId: song.songid || song.id,
+      originalId,
       extra: {
-        mediaId: song.strMediaMid || song.file?.media_mid
-      }
-    });
+        mediaId: song.strMediaMid || song.file?.media_mid,
+      },
+    })
   }
 }

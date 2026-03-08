@@ -1,8 +1,9 @@
-export * from './player.js';
-export * from './lyric.js';
+export * from './player/index';
+export * from './player/lyric-parser.js';
+export * from './performance/index';
 
-import * as playerUtils from './player.js';
-import * as lyricUtils from './lyric.js';
+import playerUtils from './player/index';
+import * as lyricUtils from './player/lyric-parser.js';
 
 export default {
     ...playerUtils,

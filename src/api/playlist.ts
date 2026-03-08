@@ -1,10 +1,10 @@
-import request from '../utils/request'
+import request from '@/utils/http'
 
 /**
  * 获取推荐歌单
  * @param {number} limit - 数量
  */
-export function getRecommendPlaylist(limit = 10) {
+export function getRecommendPlaylist(limit: number = 10) {
   return request({
     url: '/personalized',
     method: 'get',
@@ -16,7 +16,7 @@ export function getRecommendPlaylist(limit = 10) {
  * 获取歌单详情
  * @param {number} id - 歌单 ID
  */
-export function getPlaylistDetail(id) {
+export function getPlaylistDetail(id: number) {
   return request({
     url: '/playlist/detail',
     method: 'get',
@@ -30,7 +30,7 @@ export function getPlaylistDetail(id) {
  * @param {number} limit - 数量
  * @param {number} offset - 偏移量
  */
-export function getPlaylistTracks(id, limit = 100, offset = 0) {
+export function getPlaylistTracks(id: number, limit: number = 100, offset: number = 0) {
   return request({
     url: '/playlist/track/all',
     method: 'get',
@@ -52,7 +52,7 @@ export function getRecommendSongs() {
  * 获取用户歌单
  * @param {number} uid - 用户 ID
  */
-export function getUserPlaylist(uid) {
+export function getUserPlaylist(uid: number) {
   return request({
     url: '/user/playlist',
     method: 'get',

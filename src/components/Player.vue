@@ -4,6 +4,7 @@ import platform from '../platform'
 import { usePlayerStore } from '../store/playerStore.ts'
 import { animate, animateButtonClick, animatePlayPause, animateAlbumCover, animateLoopMode } from '../composables/useAnimations.js'
 import { useSlider } from '../composables/useSlider.ts'
+import { useThrottledStyleUpdate } from '../composables/useThrottledStyleUpdate.ts'
 import SettingsPanel from './SettingsPanel.vue'
 
 const props = defineProps({
@@ -96,35 +97,19 @@ watch(() => playerStore.currentSong, () => {
   nextTick(() => coverImgRef.value && animateAlbumCover(coverImgRef.value))
 }, { immediate: true })
 
-// 阈值过滤常量
-const MIN_PROGRESS_CHANGE = 0.1 // 最小进度变化阈值 (%)
-const MIN_VOLUME_CHANGE = 1 // 最小音量变化阈值 (%)
-let lastProgressValue = 0
-let lastVolumeValue = -1 // 初始值设为 -1 确保首次更新
+// 使用可复用的 composable 函数进行阈值过滤的样式更新
+useThrottledStyleUpdate({
+  source: progressPercent,
+  targetRef: progressFillRef,
+  minChange: 0.1,
+  shouldSkip: () => progressSlider.isDragging.value
+})
 
-// Watch for progress - 只在非拖拽状态下更新
-watch(() => progressPercent.value, (newVal) => {
-  if (!progressFillRef.value || progressSlider.isDragging.value) return
-  
-  // 阈值过滤：只有变化超过 0.1% 才更新
-  if (Math.abs(newVal - lastProgressValue) < MIN_PROGRESS_CHANGE) return
-  lastProgressValue = newVal
-  
-  // 直接更新样式，不使用动画（避免 animejs v4 destroy 问题）
-  progressFillRef.value.style.width = `${newVal}%`
-}, { flush: 'post' })
-
-// Watch for volume - 添加阈值过滤
-watch(() => volumePercent.value, (newVal) => {
-  if (!volumeFillRef.value) return
-  
-  // 阈值过滤：只有变化超过 1% 才更新
-  if (Math.abs(newVal - lastVolumeValue) < MIN_VOLUME_CHANGE) return
-  lastVolumeValue = newVal
-  
-  // 直接更新样式，不使用动画
-  volumeFillRef.value.style.width = `${newVal}%`
-}, { flush: 'post' })
+useThrottledStyleUpdate({
+  source: volumePercent,
+  targetRef: volumeFillRef,
+  minChange: 1
+})
 
 onMounted(() => {
   if (progressFillRef.value) progressFillRef.value.style.width = `${progressPercent.value}%`
