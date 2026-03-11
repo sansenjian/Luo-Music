@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/userStore'
 import { usePlaylistStore } from '../store/playlistStore'
@@ -9,10 +9,12 @@ import { useLikedSongs } from '../composables/useLikedSongs'
 import { useUserPlaylists } from '../composables/useUserPlaylists'
 import { useUserEvents } from '../composables/useUserEvents'
 import { formatSongs } from '../utils/songFormatter'
-import UserProfileHeader from '../components/user/UserProfileHeader.vue'
-import LikedSongsView from '../components/user/LikedSongsView.vue'
-import PlaylistsView from '../components/user/PlaylistsView.vue'
-import EventsView from '../components/user/EventsView.vue'
+
+// 异步加载用户中心子组件
+const UserProfileHeader = defineAsyncComponent(() => import('../components/user/UserProfileHeader.vue'))
+const LikedSongsView = defineAsyncComponent(() => import('../components/user/LikedSongsView.vue'))
+const PlaylistsView = defineAsyncComponent(() => import('../components/user/PlaylistsView.vue'))
+const EventsView = defineAsyncComponent(() => import('../components/user/EventsView.vue'))
 
 const router = useRouter()
 const userStore = useUserStore()

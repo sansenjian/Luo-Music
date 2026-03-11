@@ -7,6 +7,10 @@ import Components from 'unplugin-vue-components/vite'
 export default defineConfig(async ({ mode }) => {
   const isWeb = mode === 'web' || process.env.VERCEL === '1'
   const isElectron = !isWeb
+  const isProduction = mode === 'production'
+  
+  // 生产环境统一输出目录
+  const outputDir = isProduction ? 'build' : 'dist'
 
   const plugins: any[] = [
     vue(),
@@ -29,76 +33,8 @@ export default defineConfig(async ({ mode }) => {
     })
   ]
 
-  if (isElectron) {
-    try {
-      const electron = (await import('vite-plugin-electron')).default
-      const renderer = (await import('vite-plugin-electron-renderer')).default
-
-      plugins.push(
-        electron([
-          // 主进程入口
-          {
-            entry: 'electron/main.ts',
-            onstart: (args: any) => args.reload(),
-            vite: {
-              build: {
-                outDir: 'dist-electron',
-                lib: {
-                  entry: 'electron/main.ts',
-                  formats: ['cjs'],
-                  fileName: () => 'main.cjs'
-                },
-                rollupOptions: {
-                  external: ['electron', 'electron-log', '@sentry/electron', 'electron-store', '@neteasecloudmusicapienhanced/api'],
-                  output: {
-                    format: 'cjs',
-                    exports: 'named',
-                    strict: false
-                  }
-                },
-                commonjsOptions: {
-                  transformMixedEsModules: false
-                },
-                minify: false,
-                sourcemap: true
-              }
-            }
-          },
-          // Preload 脚本
-          {
-            entry: 'electron/preload.js',
-            onstart: (args: any) => args.reload(),
-            vite: {
-              build: {
-                outDir: 'dist-electron',
-                lib: {
-                  entry: 'electron/preload.js',
-                  formats: ['cjs'],
-                  fileName: () => 'preload.cjs'
-                },
-                rollupOptions: {
-                  external: ['electron'],
-                  output: {
-                    format: 'cjs',
-                    exports: 'named',
-                    strict: false
-                  }
-                },
-                commonjsOptions: {
-                  transformMixedEsModules: false
-                },
-                minify: false,
-                sourcemap: true
-              }
-            }
-          }
-        ]),
-        renderer()
-      )
-    } catch (e) {
-      console.log('Electron plugins not available, skipping for web build')
-    }
-  }
+  // Note: Electron build is handled by electron-vite, not vite-plugin-electron
+  // This config is used for Web builds and Vite dev server only
 
   return {
     plugins,
@@ -112,12 +48,19 @@ export default defineConfig(async ({ mode }) => {
           changeOrigin: true,
           // @ts-ignore
           rewrite: (path) => path.replace(/^\/api/, '')
+        },
+        '/qq-api': {
+          target: 'http://localhost:3200',
+          changeOrigin: true,
+          secure: false,
+          // @ts-ignore
+          rewrite: (path) => path.replace(/^\/qq-api/, '')
         }
       }
     },
     build: {
       emptyOutDir: true,  // ✅ 每次构建前清空输出目录，避免缓存问题
-      outDir: 'dist',
+      outDir: outputDir,
       chunkSizeWarningLimit: 500, // 设置警告阈值为 500KB
       rollupOptions: {
         output: {

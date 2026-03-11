@@ -59,6 +59,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendPlayModeChange: (mode) => sendIpc('music-playmode-tray-change', mode),
   moveWindow: (x, y) => sendIpc('desktop-lyric-move', { x, y }),
 
+  // API 网关方法
+  apiRequest: (service, endpoint, params) => ipcRenderer.invoke('api:request', { service, endpoint, params }),
+  getServices: () => ipcRenderer.invoke('api:services'),
+  getServiceStatus: (serviceId) => ipcRenderer.invoke('service:status', serviceId),
+  startService: (serviceId) => ipcRenderer.invoke('service:start', serviceId),
+  stopService: (serviceId) => ipcRenderer.invoke('service:stop', serviceId),
+
   send: (channel, data) => {
     sendIpc(channel, data)
   },

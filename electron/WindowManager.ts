@@ -1,10 +1,12 @@
-import electron from 'electron'
 import type { BrowserWindow as BrowserWindowType, Tray as TrayType, Menu as MenuType } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
-import { __dirname, MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
+import { MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
 
-const { app, BrowserWindow, ipcMain, nativeImage, session, Tray, Menu, screen } = electron
+// 在 Electron 主进程中直接使用全局 require
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { app, BrowserWindow, ipcMain, nativeImage, session, Tray, Menu, screen } = require('electron')
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const StoreModule = require('electron-store')
 const Store = StoreModule.default || StoreModule
 const store = new Store({
@@ -50,7 +52,7 @@ export class WindowManager {
       titleBarStyle: 'hidden',
       icon: path.join(VITE_PUBLIC, 'electron-vite.svg'),
       webPreferences: {
-        preload: path.join(MAIN_DIST, 'preload.js'),
+        preload: path.join(MAIN_DIST, 'preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
         webSecurity: true,
@@ -71,7 +73,7 @@ export class WindowManager {
       this.win.webContents.openDevTools()
     } else {
       const indexPath = app.isPackaged 
-        ? path.join(process.resourcesPath, 'app.asar', 'dist', 'index.html')
+        ? path.join(process.resourcesPath, 'app.asar', 'build', 'index.html')
         : path.join(RENDERER_DIST, 'index.html')
       
       console.log('Loading index.html from:', indexPath)

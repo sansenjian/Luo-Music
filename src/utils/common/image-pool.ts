@@ -11,7 +11,7 @@ interface ImageLoadTask {
   id: string;
   url: string;
   resolve: (value: HTMLImageElement) => void;
-  reject: (reason?: any) => void;
+  reject: (reason?: unknown) => void;
   priority?: number; // 优先级，数字越大优先级越高
 }
 

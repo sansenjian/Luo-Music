@@ -2,7 +2,7 @@
 declare global {
   interface Window {
     electronAPI?: {
-      send: (channel: string, data?: any) => void;
+      send: (channel: string, data?: unknown) => void;
     }
   }
 }
@@ -23,7 +23,7 @@ class Logger {
     return import.meta.env.DEV;
   }
 
-  private formatMessage(module: string, message: string, data?: any): string {
+  private formatMessage(module: string, message: string, data?: unknown): string {
     const timestamp = new Date().toLocaleTimeString();
     let msg = `[${timestamp}] [${module}] ${message}`;
     if (data) {
@@ -36,7 +36,7 @@ class Logger {
     return msg;
   }
 
-  private sendToMain(level: 'info' | 'warn' | 'error' | 'debug', module: string, message: string, data?: any) {
+  private sendToMain(level: 'info' | 'warn' | 'error' | 'debug', module: string, message: string, data?: unknown) {
     if (window.electronAPI) {
       window.electronAPI.send('log-message', {
         level,
@@ -47,7 +47,7 @@ class Logger {
     }
   }
 
-  public info(module: string, message: string, data?: any) {
+  public info(module: string, message: string, data?: unknown) {
     // 开发模式：控制台输出
     if (this.isDev()) {
       console.info(`%c [INFO] [${module}] ${message}`, 'color: #2196F3', data || '');
@@ -56,21 +56,21 @@ class Logger {
     this.sendToMain('info', module, message, data);
   }
 
-  public warn(module: string, message: string, data?: any) {
+  public warn(module: string, message: string, data?: unknown) {
     if (this.isDev()) {
       console.warn(`%c [WARN] [${module}] ${message}`, 'color: #FF9800', data || '');
     }
     this.sendToMain('warn', module, message, data);
   }
 
-  public error(module: string, message: string, data?: any) {
+  public error(module: string, message: string, data?: unknown) {
     if (this.isDev()) {
       console.error(`%c [ERROR] [${module}] ${message}`, 'color: #F44336', data || '');
     }
     this.sendToMain('error', module, message, data);
   }
 
-  public debug(module: string, message: string, data?: any) {
+  public debug(module: string, message: string, data?: unknown) {
     if (this.isDev()) {
       console.debug(`%c [DEBUG] [${module}] ${message}`, 'color: #9E9E9E', data || '');
     }

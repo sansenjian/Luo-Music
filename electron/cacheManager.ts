@@ -1,7 +1,8 @@
-import electron from 'electron'
 import type { ClearStorageDataOptions, IpcMainInvokeEvent } from 'electron'
 
-const { app, session, ipcMain } = electron
+// 在 Electron 主进程中直接使用全局 require
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { app, session, ipcMain } = require('electron')
 
 type CacheClearOptions = {
   cookies?: boolean

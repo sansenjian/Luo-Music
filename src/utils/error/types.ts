@@ -24,7 +24,7 @@ export class AppError extends Error {
     public code: ErrorCode,
     message: string,
     public recoverable: boolean = true,  // 是否可自动恢复
-    public data?: any                    // 附加数据（如歌曲ID）
+    public data?: unknown                 // 附加数据（如歌曲ID）
   ) {
     super(message)
     this.name = 'AppError'
@@ -60,6 +60,6 @@ export const Errors = {
   fatal: (msg: string) =>
     new AppError(ErrorCode.MAIN_PROCESS_CRASH, msg, false),
     
-  unknown: (msg: string, data?: any) =>
+  unknown: (msg: string, data?: unknown) =>
     new AppError(ErrorCode.UNKNOWN_ERROR, msg, true, data)
 }

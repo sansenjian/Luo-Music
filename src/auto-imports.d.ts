@@ -20,6 +20,7 @@ declare global {
   const animateVolumeIcon: typeof import('./composables/useAnimations.js').animateVolumeIcon
   const asyncComputed: typeof import('@vueuse/core').asyncComputed
   const autoResetRef: typeof import('@vueuse/core').autoResetRef
+  const clearSearch: typeof import('./composables/useSearch').clearSearch
   const computed: typeof import('vue').computed
   const computedAsync: typeof import('@vueuse/core').computedAsync
   const computedEager: typeof import('@vueuse/core').computedEager
@@ -51,11 +52,15 @@ declare global {
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
+  const getResultsForPlaylist: typeof import('./composables/useSearch').getResultsForPlaylist
+  const getSongAt: typeof import('./composables/useSearch').getSongAt
   const h: typeof import('vue').h
+  const hasResults: typeof import('./composables/useSearch').hasResults
   const ignorableWatch: typeof import('@vueuse/core').ignorableWatch
   const inject: typeof import('vue').inject
   const injectLocal: typeof import('@vueuse/core').injectLocal
   const isDefined: typeof import('@vueuse/core').isDefined
+  const isLoading: typeof import('./composables/useSearch').isLoading
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive
   const isReadonly: typeof import('vue').isReadonly
@@ -91,7 +96,9 @@ declare global {
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
   const pausableWatch: typeof import('@vueuse/core').pausableWatch
+  const performSearch: typeof import('./composables/useSearch').performSearch
   const pinia: typeof import('./store/pinia.js').default
+  const platform: typeof import('./composables/useSearch').platform
   const provide: typeof import('vue').provide
   const provideLocal: typeof import('@vueuse/core').provideLocal
   const reactify: typeof import('@vueuse/core').reactify
@@ -110,8 +117,13 @@ declare global {
   const refWithControl: typeof import('@vueuse/core').refWithControl
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveRef: typeof import('@vueuse/core').resolveRef
+  const searchError: typeof import('./composables/useSearch').searchError
+  const searchKeyword: typeof import('./composables/useSearch').searchKeyword
+  const searchResults: typeof import('./composables/useSearch').searchResults
+  const searchTotal: typeof import('./composables/useSearch').searchTotal
   const setActivePinia: typeof import('pinia').setActivePinia
   const setMapStoreSuffix: typeof import('pinia').setMapStoreSuffix
+  const setSearchPlatform: typeof import('./composables/useSearch').setSearchPlatform
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
@@ -264,8 +276,8 @@ declare global {
   const useScriptTag: typeof import('@vueuse/core').useScriptTag
   const useScroll: typeof import('@vueuse/core').useScroll
   const useScrollLock: typeof import('@vueuse/core').useScrollLock
-  const useSearch: typeof import('./composables/useSearch.js').useSearch
-  const useSearchStore: typeof import('./store/searchStore.js').useSearchStore
+  const useSearch: typeof import('./composables/useSearch').default
+  const useSearchStore: typeof import('./store/searchStore').useSearchStore
   const useSessionStorage: typeof import('@vueuse/core').useSessionStorage
   const useShare: typeof import('@vueuse/core').useShare
   const useSlider: typeof import('./composables/useSlider').useSlider
@@ -342,8 +354,14 @@ declare global {
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
+  export type { SearchOptions, Song } from './composables/useSearch'
+  import('./composables/useSearch')
+  // @ts-ignore
   export type { SliderOptions } from './composables/useSlider'
   import('./composables/useSlider')
+  // @ts-ignore
+  export type { SearchResultItem } from './store/searchStore'
+  import('./store/searchStore')
 }
 
 // for vue template auto import
@@ -609,8 +627,8 @@ declare module 'vue' {
     readonly useScriptTag: UnwrapRef<typeof import('@vueuse/core')['useScriptTag']>
     readonly useScroll: UnwrapRef<typeof import('@vueuse/core')['useScroll']>
     readonly useScrollLock: UnwrapRef<typeof import('@vueuse/core')['useScrollLock']>
-    readonly useSearch: UnwrapRef<typeof import('./composables/useSearch.js')['useSearch']>
-    readonly useSearchStore: UnwrapRef<typeof import('./store/searchStore.js')['useSearchStore']>
+    readonly useSearch: UnwrapRef<typeof import('./composables/useSearch')['default']>
+    readonly useSearchStore: UnwrapRef<typeof import('./store/searchStore')['useSearchStore']>
     readonly useSessionStorage: UnwrapRef<typeof import('@vueuse/core')['useSessionStorage']>
     readonly useShare: UnwrapRef<typeof import('@vueuse/core')['useShare']>
     readonly useSlider: UnwrapRef<typeof import('./composables/useSlider')['useSlider']>

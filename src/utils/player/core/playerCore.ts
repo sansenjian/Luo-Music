@@ -48,10 +48,10 @@ export class PlayerCore {
   }
 
   private _setupCrossOrigin() {
-    const isElectron = () => window.navigator.userAgent.indexOf('Electron') > -1
-    if (!isElectron()) {
-      this.audio.crossOrigin = AUDIO_CONFIG.CROSS_ORIGIN
-    }
+    // 始终设置 crossOrigin，这对网易云音乐等需要跨域的音频源是必需的
+    // Electron 环境下也需要设置，因为音频可能来自不同域名
+    this.audio.crossOrigin = AUDIO_CONFIG.CROSS_ORIGIN
+    console.log('[PlayerCore] CrossOrigin set to:', AUDIO_CONFIG.CROSS_ORIGIN)
   }
 
   private _initVolume() {
@@ -60,7 +60,7 @@ export class PlayerCore {
 
   private _initAudioContext() {
     if (!this.audioContext) {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+      const AudioContext = window.AudioContext || (window as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
       this.audioContext = new AudioContext()
       
       this.analyser = this.audioContext.createAnalyser()

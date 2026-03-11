@@ -1,8 +1,10 @@
-import electron, { type BrowserWindow as BrowserWindowType, type Event, type DownloadItem, type WebContents } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
+import type { BrowserWindow as BrowserWindowType, Event, DownloadItem, WebContents } from 'electron'
 
-const { app, ipcMain, session } = electron
+// 在 Electron 主进程中直接使用全局 require
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { app, ipcMain, session } = require('electron')
 
 export class DownloadManager {
   private downloadPath: string | null = null

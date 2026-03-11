@@ -20,7 +20,7 @@ interface PlayerState {
   songList: Song[]
   currentIndex: number
   currentSong: Song | null
-  lyric: any
+  lyric: unknown
   lyricsArray: LyricLine[]
   currentLyricIndex: number
   lyricSize: number
@@ -170,7 +170,7 @@ export const usePlayerStore = defineStore('player', {
         this.notifyPlayingState(false)
       })
       
-      audioManager.on('error', (e: any) => {
+      audioManager.on('error', (e: unknown) => {
         console.error('Audio error:', e)
         this.handleAudioError(e)
       })
@@ -263,7 +263,7 @@ export const usePlayerStore = defineStore('player', {
       platform.sendPlayModeChange(this.playMode)
     },
     
-    async handleAudioError(error: any) {
+    async handleAudioError(error: unknown) {
       if (!this.errorHandler) {
         this.errorHandler = this.createErrorHandler()
       }
@@ -348,12 +348,18 @@ export const usePlayerStore = defineStore('player', {
     // Comprehensive play action with URL fetching and lyrics
     async playSongWithDetails(index: number, autoSkip = true): Promise<void> {
       const song = this.songList[index]
-      if (!song) return
+      if (!song) {
+        console.error('[Player] No song found at index:', index)
+        return
+      }
 
       this.loading = true
       // Fix: use platform instead of server, fallback to platform if server is missing
-      const platformKey = song.platform || (song as any).server
+      const platformKey = song.platform || (song as { server?: string }).server
+      console.log(`[Player] Song platform key: ${platformKey}, song.platform: ${song.platform}, song.server: ${(song as { server?: string }).server}`)
+      
       const adapter = getMusicAdapter(platformKey)
+      console.log(`[Player] Got adapter: ${adapter?.constructor?.name || 'null'}`)
       
       console.log(`[Player] Playing song: ${song.name} (ID: ${song.id}, Platform: ${platformKey})`)
 
@@ -374,10 +380,10 @@ export const usePlayerStore = defineStore('player', {
               errorCenter.emit(err)
               throw err
             }
-          } catch (urlError: any) {
+          } catch (urlError: unknown) {
              console.error('Failed to get song URL:', urlError)
              // 如果已经是 AppError (上面抛出的)，直接重抛
-             if (urlError.name === 'AppError') throw urlError
+             if (urlError instanceof Error && urlError.name === 'AppError') throw urlError
              
              const err = Errors.noCopyright(song.id)
              errorCenter.emit(err)
@@ -402,7 +408,7 @@ export const usePlayerStore = defineStore('player', {
           console.error('Failed to get lyrics:', lyricError)
           this.setLyricsArray([])
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Playback failed:', error)
         
         if (!this.errorHandler) {
@@ -411,7 +417,9 @@ export const usePlayerStore = defineStore('player', {
         
         // 标记不可用，并设置消息
         // 如果是 AppError，使用其 getUserMessage
-        const message = error.name === 'AppError' ? error.getUserMessage() : '该歌曲无法播放（可能需要 VIP 或受版权限制）'
+        const message = error instanceof Error && error.name === 'AppError' && typeof (error as { getUserMessage?: () => string }).getUserMessage === 'function'
+          ? (error as { getUserMessage: () => string }).getUserMessage()
+          : '该歌曲无法播放（可能需要 VIP 或受版权限制）'
         this.errorHandler.markAsUnavailable(song, message)
         
         // If autoSkip is false (called from error handler), throw error to let handler try next
@@ -525,7 +533,7 @@ export const usePlayerStore = defineStore('player', {
       }
     },
     
-    setLyric(lyric: any) {
+    setLyric(lyric: unknown) {
       this.lyric = lyric
     },
     
@@ -560,12 +568,12 @@ export const usePlayerStore = defineStore('player', {
     pick: ['volume', 'playMode', 'lyricType', 'isCompact'],
     // Note: songList and currentIndex are excluded to avoid stale URL issues
     // Songs will be re-fetched when needed
-    beforeHydrate: (context: any) => {
+    beforeHydrate: (context: unknown) => {
       // 数据恢复前验证
       console.log('Restoring player state...')
     },
-    afterHydrate: (context: any) => {
-      const store = context.store as PlayerState
+    afterHydrate: (context: unknown) => {
+      const store = (context as { store: PlayerState }).store
       // 验证音量范围
       if (store.volume < 0 || store.volume > 1) {
         store.volume = 0.7

@@ -19,8 +19,8 @@ export interface Song {
   mvid: string | number;
   platform: 'netease' | 'qq';
   originalId: string | number;
-  extra?: Record<string, any>;
-  [key: string]: any;
+  extra?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export interface PlaylistDetail {
@@ -41,6 +41,14 @@ export interface LyricResult {
   lrc: string;
   tlyric: string;
   romalrc: string;
+}
+
+/** 歌曲 URL 获取选项 */
+export interface SongUrlOptions {
+  level?: 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires';
+  br?: number;
+  /** QQ 音乐媒体 ID（用于获取播放链接） */
+  mediaId?: string;
 }
 
 /**
@@ -69,7 +77,7 @@ export abstract class MusicPlatformAdapter {
    * @param id Song ID
    * @param options Platform specific options (quality, etc.)
    */
-  abstract getSongUrl(id: string | number, options?: any): Promise<string | null>;
+  abstract getSongUrl(id: string | number, options?: SongUrlOptions | string): Promise<string | null>;
 
   /**
    * Get song details (including album art if missing)

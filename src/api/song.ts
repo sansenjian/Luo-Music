@@ -1,5 +1,21 @@
 import request from '@/utils/http'
 
+/** 音乐 URL 响应数据 */
+interface MusicUrlData {
+  id: number
+  url: string
+  br?: number
+  size?: number
+  type?: string
+  level?: string
+}
+
+/** 音乐 URL API 响应 */
+interface MusicUrlResponse {
+  code: number
+  data: MusicUrlData[]
+}
+
 /**
  * 获取推荐新音乐
  * @param {number} limit - 数量，默认 10
@@ -33,10 +49,10 @@ export function checkMusic(id: number) {
  * @param {number} id - 歌曲 ID
  * @param {string} level - 音质等级: standard, higher, exhigh, lossless, hires
  */
-export async function getMusicUrl(id: number, level: string = 'standard') {
+export async function getMusicUrl(id: number, level: string = 'standard'): Promise<MusicUrlResponse> {
   console.log(`[API] getMusicUrl called with id=${id}, level=${level}`)
   try {
-    const res: any = await request({
+    const res = await request({
       url: '/song/url/v1',
       method: 'get',
       params: { 
@@ -46,10 +62,10 @@ export async function getMusicUrl(id: number, level: string = 'standard') {
         unblock: 'true',
         timestamp: Date.now() 
       }
-    })
+    }) as MusicUrlResponse
     
     // 检查是否有有效的 URL
-    const data = res.data || res
+    const data = res.data || (res as unknown as { data?: MusicUrlData[] }).data
     console.log('[API] v1 response:', data)
     
     if (data && data[0] && data[0].url) {
@@ -75,7 +91,7 @@ export async function getMusicUrl(id: number, level: string = 'standard') {
     }
     
     try {
-      const fallbackRes: any = await request({
+      const fallbackRes = await request({
         url: '/song/url',
         method: 'get',
         params: { 
@@ -84,7 +100,7 @@ export async function getMusicUrl(id: number, level: string = 'standard') {
           randomCNIP: true, 
           timestamp: Date.now() 
         }
-      })
+      }) as MusicUrlResponse
       console.log('[API] Legacy response:', fallbackRes.data || fallbackRes)
       return fallbackRes
     } catch (fallbackError) {

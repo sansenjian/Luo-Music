@@ -13,11 +13,14 @@ const adapters: Record<string, MusicPlatformAdapter> = {
  * @param platform 'netease' | 'qq'
  */
 export function getMusicAdapter(platform: string): MusicPlatformAdapter {
+  console.log(`[getMusicAdapter] Requested platform: '${platform}', type: ${typeof platform}`);
   const adapter = adapters[platform];
   if (!adapter) {
-    console.warn(`Adapter for platform '${platform}' not found, falling back to netease`);
+    console.warn(`[getMusicAdapter] Adapter for platform '${platform}' not found, available: ${Object.keys(adapters).join(', ')}`);
+    console.warn(`[getMusicAdapter] Falling back to netease`);
     return adapters.netease;
   }
+  console.log(`[getMusicAdapter] Found adapter: ${adapter.constructor.name}`);
   return adapter;
 }
 

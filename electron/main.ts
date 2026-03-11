@@ -1,19 +1,17 @@
 import { createRequire } from 'node:module'
-import electron, { type Tray as TrayType } from 'electron'
+import type { Tray as TrayType } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
-import net from 'node:net'
 import { windowManager } from './WindowManager'
 import logger from './logger'
 import { initPlayerIPC } from './ipc'
 import { cacheManager } from './cacheManager'
-import { __dirname, MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
+import { __dirname, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
+import { serverManager } from './ServerManager'
 
 const require = createRequire(__filename)
-const { app, BrowserWindow, ipcMain, session, Tray, Menu, nativeImage, globalShortcut } = electron
-
-// 引入网易云 API（借鉴 mrfz 方式：主进程直接加载）
-const { serveNcmApi } = require('@neteasecloudmusicapienhanced/api')
+// 使用 require 导入 electron，避免 ESM 打包后命名导出问题
+const { app, BrowserWindow, ipcMain, session, Tray, Menu, nativeImage, globalShortcut } = require('electron')
 
 // 重写 console.log 以使用 electron-logger
 console.log = logger.log.bind(logger);
@@ -53,21 +51,6 @@ process.env.DIST = RENDERER_DIST
 process.env.VITE_PUBLIC = VITE_PUBLIC
 
 let tray: TrayType | null = null
-
-const NETEASE_PORT = 14532
-const QQ_MUSIC_PORT = 3200
-
-function checkPort(port: number) {
-  return new Promise((resolve) => {
-    const server = net.createServer()
-    server.once('error', () => resolve(false))
-    server.once('listening', () => {
-      server.close()
-      resolve(true)
-    })
-    server.listen(port)
-  })
-}
 
 function getIconPath() {
   const possiblePaths = [
@@ -199,6 +182,33 @@ function registerShortcuts() {
   }
 }
 
+// 注册服务状态相关的 IPC 通道
+// 注意：service:status, service:start, service:stop 已在 ipc.ts 的 initAPIGateway() 中注册
+// 这里只注册 ipc.ts 中未包含的额外服务管理功能
+function registerServiceIPC() {
+  // 获取所有服务状态（ipc.ts 中未包含）
+  ipcMain.handle('service:status:all', async () => {
+    return serverManager.getAllServiceStatus()
+  })
+
+  // 重启服务（ipc.ts 中未包含）
+  ipcMain.handle('service:restart', async (_event, serviceName: string) => {
+    return serverManager.restartService(serviceName)
+  })
+
+  // 健康检查（ipc.ts 中未包含）
+  ipcMain.handle('service:health', async (_event, serviceName: string) => {
+    return serverManager.checkServiceHealth(serviceName)
+  })
+
+  // 更新服务配置（ipc.ts 中未包含）
+  ipcMain.handle('service:update-config', async (_event, serviceName: string, config: any) => {
+    return serverManager.updateServiceConfig(serviceName, config)
+  })
+
+  logger.info('[IPC] Service IPC handlers registered')
+}
+
 app.on('window-all-closed', async () => {
   globalShortcut.unregisterAll()
   
@@ -207,8 +217,11 @@ app.on('window-all-closed', async () => {
   }
 })
 
-app.on('will-quit', () => {
+app.on('will-quit', async () => {
   globalShortcut.unregisterAll()
+  
+  // 停止所有服务
+  await serverManager.stopAllServices()
 })
 
 app.on('activate', () => {
@@ -221,116 +234,39 @@ app.on('second-instance', () => {
   windowManager.restore()
 })
 
-// 启动网易云 API（借鉴 mrfz 方式：主进程直接加载）
-async function startNeteaseApi() {
-  try {
-    console.log('=== Starting Netease API (main process) ===')
-    await serveNcmApi({
-      port: 14532,
-      host: 'localhost',
-    })
-    logger.info('✅ 网易云音乐 API 服务已启动在 http://localhost:14532')
-  } catch (err: any) {
-    logger.error('❌ 网易云音乐 API 启动失败:', err.message)
-    logError('neteaseApi', err)
-  }
-}
-
-// 启动 QQ 音乐 API（直接在主进程中加载）
-async function startQQMusicApi() {
-  try {
-    logger.info('=== Starting QQ Music API (main process) ===')
-    
-    // 检查端口是否被占用
-    const qqPortAvailable = await checkPort(QQ_MUSIC_PORT)
-    if (!qqPortAvailable) {
-      logger.warn(`⚠️ 端口 ${QQ_MUSIC_PORT} 已被占用，尝试停止占用进程...`)
-      
-      // 尝试找到并终止占用端口的进程
-      try {
-        const { execSync } = require('child_process')
-        const output = execSync(`netstat -ano | findstr :${QQ_MUSIC_PORT}`).toString()
-        const lines = output.split('\n').filter((line: string) => line.includes('LISTENING'))
-        
-        for (const line of lines) {
-          const parts = line.trim().split(/\s+/)
-          const pid = parts[parts.length - 1]
-          if (pid && pid !== process.pid.toString()) {
-            logger.info(`终止占用端口的进程 PID: ${pid}`)
-            execSync(`taskkill /F /PID ${pid}`)
-            logger.info(`已终止进程 ${pid}`)
-          }
-        }
-        
-        // 等待端口释放
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      } catch (killError: any) {
-        logger.error('无法终止占用端口的进程:', killError.message)
-        throw new Error(`端口 ${QQ_MUSIC_PORT} 被占用，无法启动 QQ 音乐 API`)
-      }
-    }
-    
-    // 切换工作目录到 userData，防止 API 写入只读目录报错
-    // QQ 音乐 API 可能会尝试写入 cookie 等文件
-    const userDataPath = app.getPath('userData')
-    if (!fs.existsSync(userDataPath)) {
-      fs.mkdirSync(userDataPath, { recursive: true })
-    }
-    
-    const originalCwd = process.cwd()
-    try {
-      process.chdir(userDataPath)
-      logger.info(`Changed CWD to ${userDataPath} for API startup`)
-    } catch (err) {
-      logger.error('Failed to change CWD:', err)
-    }
-
-    // 设置环境变量
-    process.env.PORT = '3200'
-    process.env.HOST = 'localhost'
-    
-    // 直接 require 模块
-    // 注意：@sansenjian/qq-music-api 的入口是 index.js，它 require 了 app.js
-    // app.js 会自动执行 app.listen
-    const qqMusicApi = require('@sansenjian/qq-music-api')
-    
-    logger.info('✅ QQ 音乐 API 服务已启动在 http://localhost:3200')
-    
-    // 恢复原始工作目录，避免影响 Electron preload 脚本加载
-    try {
-      process.chdir(originalCwd)
-      logger.info(`Restored CWD to ${originalCwd}`)
-    } catch (err) {
-      logger.error('Failed to restore CWD:', err)
-    }
-  } catch (err: any) {
-    logger.error('❌ QQ 音乐 API 启动失败:', err.message)
-    logError('qqMusicApi', err)
-  }
-}
-
 app.whenReady().then(async () => {
   logger.info('=== App Ready ===')
-  logger.info('Checking ports...')
+  logger.info('Starting services via ServerManager...')
+
+  // 检查是否由 launcher 启动了 API 服务（开发模式）
+  const neteaseStartedByLauncher = process.env.NETEASE_API_STARTED_BY_LAUNCHER === 'true'
+  const qqMusicStartedByLauncher = process.env.QQ_MUSIC_API_STARTED_BY_LAUNCHER === 'true'
   
-  const neteaseAvailable = await checkPort(NETEASE_PORT)
-  const qqAvailable = await checkPort(QQ_MUSIC_PORT)
-  logger.info(`Port ${NETEASE_PORT} available:`, neteaseAvailable)
-  logger.info(`Port ${QQ_MUSIC_PORT} available:`, qqAvailable)
-  
-  // 启动 API 服务
-  try {
-    await startNeteaseApi()
-    logger.info('✅ 网易云 API 已启动')
-  } catch (error: any) {
-    logger.error('⚠️ 网易云 API 启动失败，但继续运行:', error.message)
+  if (neteaseStartedByLauncher) {
+    logger.info('ℹ️ 检测到网易云 API 已由 launcher 启动')
+    // 更新服务状态为已运行
+    serverManager.markServiceAsRunning('netease', 14532)
   }
-  
-  try {
-    await startQQMusicApi()
-    logger.info('✅ QQ 音乐 API 已启动')
-  } catch (error: any) {
-    logger.error('⚠️ QQ 音乐 API 启动失败，但继续运行:', error.message)
+  if (qqMusicStartedByLauncher) {
+    logger.info('ℹ️ 检测到 QQ 音乐 API 已由 launcher 启动')
+    // 更新服务状态为已运行
+    serverManager.markServiceAsRunning('qq', 3200)
+  }
+
+  // 注册服务状态 IPC 通道
+  registerServiceIPC()
+
+  // 只有在 launcher 未启动任何服务时才启动
+  if (!neteaseStartedByLauncher && !qqMusicStartedByLauncher) {
+    // 后台异步启动服务，不阻塞窗口创建
+    logger.info('🚀 后台启动服务中...')
+    serverManager.startAllServices().then(() => {
+      logger.info('✅ 所有服务启动完成')
+      const allStatus = serverManager.getAllServiceStatus()
+      logger.info('服务状态:', JSON.stringify(allStatus, null, 2))
+    }).catch((error: any) => {
+      logger.error('⚠️ 服务启动过程中出现错误:', error.message)
+    })
   }
 
   ipcMain.on('log-message', (_event: Electron.IpcMainEvent, { level, module, message, data }: { level: string; module: string; message: string; data?: unknown }) => {

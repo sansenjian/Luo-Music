@@ -3,7 +3,16 @@ import type * as SentryElectron from '@sentry/electron';
 
 const require = createRequire(__filename);
 const log = require('electron-log');
-const { app } = require('electron');
+
+// 安全获取 electron app 对象
+let app: { isPackaged?: boolean; getVersion?: () => string } | undefined;
+try {
+  const electron = require('electron');
+  app = electron.app;
+} catch {
+  // 测试环境中 electron 可能不可用
+  app = undefined;
+}
 
 // 配置 electron-log
 log.transports.file.level = 'info';
@@ -22,13 +31,17 @@ log.transports.file.fileName = `main-${date}.log`;
 const SENTRY_DSN = process.env.SENTRY_DSN;
 let Sentry: typeof SentryElectron | null = null;
 
-if (app.isPackaged && SENTRY_DSN) {
+// 安全检查 app 对象
+const isPackaged = app?.isPackaged ?? false;
+const getVersion = app?.getVersion?.() ?? '0.0.0';
+
+if (isPackaged && SENTRY_DSN) {
   try {
     Sentry = require('@sentry/electron') as typeof SentryElectron;
     Sentry.init({
       dsn: SENTRY_DSN,
       // 自动关联 release 版本号 (需要在构建时注入版本号，或者读取 package.json)
-      release: `luo-music@${app.getVersion()}`,
+      release: `luo-music@${getVersion}`,
       environment: 'production',
     });
     log.info('Sentry initialized');

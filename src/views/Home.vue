@@ -1,16 +1,18 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, defineAsyncComponent, Suspense } from 'vue'
 import platform from '../platform'
 import { usePlayerStore } from '../store/playerStore.ts'
 import { useToastStore } from '../store/toastStore'
 import { useSearchStore } from '../store/searchStore'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
-import LyricDisplay from '../components/LyricDisplay.vue'
-import Player from '../components/Player.vue'
-import Playlist from '../components/Playlist.vue'
-import Toast from '../components/Toast.vue'
-import ErrorToast from '../components/ErrorToast.vue'
-import UserAvatar from '../components/UserAvatar.vue'
+
+// 异步加载大型组件，减少首屏加载时间
+const LyricDisplay = defineAsyncComponent(() => import('../components/LyricDisplay.vue'))
+const Player = defineAsyncComponent(() => import('../components/Player.vue'))
+const Playlist = defineAsyncComponent(() => import('../components/Playlist.vue'))
+const Toast = defineAsyncComponent(() => import('../components/Toast.vue'))
+const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.vue'))
+const UserAvatar = defineAsyncComponent(() => import('../components/UserAvatar.vue'))
 
 const playerStore = usePlayerStore()
 const toastStore = useToastStore()
@@ -59,11 +61,15 @@ function handleClickOutside(event) {
 const isLoading = computed(() => searchStore.isLoading)
 
 async function onSearch() {
+  console.log('[Home.vue] onSearch called with keyword:', searchKeyword.value)
   if (!searchKeyword.value.trim()) {
+    console.log('[Home.vue] Empty keyword, showing error')
     toastStore.error('请输入搜索关键词')
     return
   }
+  console.log('[Home.vue] Calling searchStore.search with:', searchKeyword.value)
   await searchStore.search(searchKeyword.value)
+  console.log('[Home.vue] Search completed, hasResults:', searchStore.hasResults, 'error:', searchStore.error)
   if (searchStore.hasResults) {
     playerStore.setSongList([...searchStore.results])
     activeTab.value = 'playlist'

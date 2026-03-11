@@ -19,7 +19,7 @@ export interface AudioErrorResult {
 
 export interface ErrorHandler {
   reset(): void
-  handleAudioError(error: any, song: Song | null): Promise<AudioErrorResult>
+  handleAudioError(error: unknown, song: Song | null): Promise<AudioErrorResult>
   markAsUnavailable(song: Song, message?: string): void
   playNextSkipUnavailable(playNext: (index: number) => Promise<void>): Promise<void>
 }
@@ -42,8 +42,15 @@ export class PlaybackErrorHandler implements ErrorHandler {
     this.onStateChange = options.onStateChange || (() => {})
   }
 
-  async handleAudioError(error: any, currentSong: Song | null): Promise<AudioErrorResult> {
+  async handleAudioError(error: unknown, currentSong: Song | null): Promise<AudioErrorResult> {
     this.onStateChange({ playing: false })
+
+    // Log error for debugging
+    if (error instanceof Error) {
+      console.error('Audio error:', error.message)
+    } else {
+      console.error('Audio error:', error)
+    }
 
     if (currentSong && !currentSong.retryCount) {
       currentSong.retryCount = 1
@@ -66,9 +73,9 @@ export class PlaybackErrorHandler implements ErrorHandler {
   }
 
   async retryGetMusicUrl(song: Song): Promise<{ url: string } | null> {
-    const platform = song.platform || (song as any).server || 'netease'
+    const platform = song.platform || 'netease'
     const adapter = getMusicAdapter(platform)
-    const mediaId = song.mediaId || (song.extra && song.extra.mediaId)
+    const mediaId = song.mediaId || (song.extra && song.extra.mediaId) as string | undefined
     
     try {
       const url = await adapter.getSongUrl(song.id, { mediaId })

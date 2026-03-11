@@ -35,7 +35,7 @@ ignore:
   - "tests/"
   - "**/*.config.js"
   - "**/dist/**"
-  - "**/dist-electron/**"
+  - "**/build/**"
   - "electron/"
   - "scripts/"
   - "**/*.d.ts"

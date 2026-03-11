@@ -36,7 +36,9 @@ type RequestConfig = InternalAxiosRequestConfig & {
 const isElectron = () => window.navigator.userAgent.indexOf('Electron') > -1
 
 const getBaseURL = () => {
-  if (isElectron()) {
+  // 开发环境下（使用 Vite 开发服务器），使用代理
+  // 生产环境下（Electron 打包后），直接访问本地服务
+  if (isElectron() && import.meta.env.PROD) {
     return 'http://localhost:14532'
   }
   return '/api'
@@ -235,4 +237,3 @@ request.interceptors.response.use(
 )
 
 export default request
-

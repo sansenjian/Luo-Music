@@ -4,7 +4,7 @@
  * 在 Windows 上处理文件锁定和权限问题
  */
 
-import { rmSync, existsSync, lstatSync } from 'fs'
+import { rmSync, existsSync } from 'fs'
 import { resolve } from 'path'
 
 // 获取项目根目录
@@ -33,19 +33,19 @@ if (cleanAll) {
  */
 function forceRemoveDir(dirPath) {
   if (!existsSync(dirPath)) {
-    console.log(`跳过不存在的目录: ${dirPath}`)
+    console.log(`跳过不存在的目录：${dirPath}`)
     return true
   }
 
   try {
     rmSync(dirPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
-    console.log(`已删除: ${dirPath}`)
+    console.log(`已删除：${dirPath}`)
     return true
   } catch (err) {
     // Windows 上可能因文件锁定失败
     if (err.code === 'EPERM' || err.code === 'EACCES' || err.code === 'EBUSY') {
-      console.warn(`警告: 无法删除 ${dirPath} - 文件可能被占用`) 
-      console.warn(`错误详情: ${err.message}`)
+      console.warn(`警告：无法删除 ${dirPath} - 文件可能被占用`)
+      console.warn(`错误详情：${err.message}`)
       return false
     }
     throw err
@@ -53,7 +53,7 @@ function forceRemoveDir(dirPath) {
 }
 
 console.log('开始清理...')
-console.log(`项目根目录: ${projectRoot}\n`)
+console.log(`项目根目录：${projectRoot}\n`)
 
 let success = true
 for (const dir of dirsToClean) {
@@ -66,6 +66,6 @@ for (const dir of dirsToClean) {
 console.log('\n清理完成!')
 
 if (!success) {
-  console.log('\n提示: 部分目录删除失败，可能需要关闭正在使用的程序后重试')
+  console.log('\n提示：部分目录删除失败，可能需要关闭正在使用的程序后重试')
   process.exit(1)
 }

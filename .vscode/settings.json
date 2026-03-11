@@ -25,6 +25,7 @@
     "*.vue": "vue"
   },
   "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
   "vetur.validation.template": false,
   "eslint.validate": ["javascript", "javascriptreact", "vue", "vue-html"]
 }

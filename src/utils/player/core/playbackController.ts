@@ -3,7 +3,7 @@ import { PLAY_MODE } from '../constants/playMode'
 import { shuffleHelper } from '../helpers/shuffleHelper'
 
 export class PlaybackController {
-  private progressTimer: any = null
+  private progressTimer: ReturnType<typeof setInterval> | null = null
   private _lastProgressUpdate: number = 0
 
   async play(url: string): Promise<boolean> {

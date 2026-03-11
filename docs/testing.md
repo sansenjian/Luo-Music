@@ -9,6 +9,7 @@
 - [GitHub Actions 自动化测试](#github-actions-自动化测试)
 - [Codecov 覆盖率集成](#codecov-覆盖率集成)
 - [测试文件组织](#测试文件组织)
+- [TypeScript 迁移](#typescript-迁移)
 
 ## 测试框架
 
@@ -115,20 +116,36 @@ coverage/*.css
 
 ```
 tests/
-├── setup.js              # 测试配置文件
+├── setup.ts              # 测试配置文件（TypeScript）
 ├── mocks/                # Mock 数据
-│   └── audio.js          # Audio API Mock
+│   └── audio.ts          # Audio API Mock（TypeScript）
 ├── components/           # 组件测试
-│   ├── Player.test.js
-│   └── UserProfile.test.js
+│   ├── Player.test.ts
+│   ├── Playlist.test.ts
+│   ├── UserProfile.test.ts
+│   └── user/
+│       └── UserProfileHeader.test.ts
 ├── store/                # Pinia Store 测试
-│   ├── playerStore.test.js
-│   └── userStore.test.js
+│   ├── playerStore.test.ts
+│   ├── playlistStore.test.ts
+│   └── userStore.test.ts
 ├── utils/                # 工具函数测试
+│   ├── audioManager.test.ts
 │   ├── errorCenter.test.ts
-│   └── requestConfig.test.js
-└── platform/             # 平台适配器测试
-    └── musicInterface.test.ts
+│   ├── errorTypes.test.ts
+│   ├── playMode.test.ts
+│   ├── requestCache.test.ts
+│   ├── requestCanceler.test.ts
+│   ├── requestConfig.test.ts
+│   ├── requestKeyGenerator.test.ts
+│   ├── requestRetry.test.ts
+│   └── timeFormatter.test.ts
+├── platform/             # 平台适配器测试
+│   └── musicInterface.test.ts
+└── electron/             # Electron 相关测试
+    ├── ipc.test.ts
+    ├── paths.test.ts
+    └── preload.test.ts
 ```
 
 ### 测试配置
@@ -214,3 +231,48 @@ describe('模块名称', () => {
 - [Vue Test Utils 文档](https://test-utils.vuejs.org/)
 - [GitHub Actions 文档](https://docs.github.com/en/actions)
 - [Codecov 文档](https://docs.codecov.com/)
+
+## TypeScript 迁移
+
+### 迁移状态
+
+项目已完成从 JavaScript 测试到 TypeScript 测试的迁移：
+
+| 目录 | 迁移状态 | 说明 |
+|------|----------|------|
+| `tests/setup.*` | ✅ 已完成 | `setup.js` → `setup.ts` |
+| `tests/mocks/` | ✅ 已完成 | `audio.js` → `audio.ts` |
+| `tests/components/` | ✅ 已完成 | 所有组件测试迁移到 TypeScript |
+| `tests/store/` | ✅ 已完成 | 所有 Store 测试迁移到 TypeScript |
+| `tests/utils/` | ✅ 已完成 | 所有工具函数测试迁移到 TypeScript |
+| `tests/e2e/` | ✅ 已完成 | E2E 测试迁移到 TypeScript |
+| `tests/electron/` | ✅ 已完成 | Electron 相关测试迁移到 TypeScript |
+
+### 迁移要点
+
+1. **Mock 类型定义**：TypeScript Mock 对象需要明确类型
+2. **泛型使用**：在测试中使用泛型提高类型安全
+3. **类型导入**：使用 `import type` 导入类型定义
+
+### 迁移示例
+
+**JavaScript (旧)**:
+```javascript
+import { createMockSong } from '../utils/test-utils'
+
+const song = createMockSong({ id: 1 })
+```
+
+**TypeScript (新)**:
+```typescript
+import type { Song } from '@/types/entities'
+
+const createMockSong = (overrides: Partial<Song> = {}): Song => ({
+  id: 1,
+  name: 'Test Song',
+  // ... 默认值
+  ...overrides
+})
+
+const song = createMockSong({ id: 1 })
+```

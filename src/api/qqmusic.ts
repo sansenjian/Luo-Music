@@ -1,7 +1,13 @@
 import axios from 'axios'
 import { QQMusicAdapter } from './adapter'
 
-const QQ_MUSIC_BASE_URL = 'http://localhost:3200'
+// QQ 音乐 API 代理路径（Electron 和 Web 环境统一使用代理）
+const QQ_MUSIC_BASE_URL = '/qq-api'
+
+// 开发模式下的调试日志
+if (import.meta.env.DEV) {
+  console.log('[QQMusic] Base URL:', QQ_MUSIC_BASE_URL)
+}
 
 export interface QQApiWrappedResponse<T> {
   response?: string | T
@@ -91,9 +97,9 @@ qqRequest.interceptors.response.use(
     return response
   },
   (error) => {
-    console.error('QQ Music API Error:', error.message)
+    console.error('[QQMusic] API Error:', error.message)
     if (error.code === 'ERR_NETWORK' || !error.response) {
-      console.warn('QQ Music API 网络错误，请检查 API 服务是否正常运行')
+      console.warn('[QQMusic] 网络错误，请检查 QQ 音乐 API 服务是否正常运行')
     }
     return Promise.reject(error)
   }
@@ -103,7 +109,7 @@ export const qqMusicAdapter = new QQMusicAdapter(qqRequest)
 
 export const qqMusicApi = {
   search(keyword: string, limit: number = 20, page: number = 1) {
-    return qqRequest.get<any, Promise<QQSearchResponse>>('/getSearchByKey', {
+    return qqRequest.get<unknown, Promise<QQSearchResponse>>('/getSearchByKey', {
       params: {
         key: keyword,
         limit,
@@ -121,7 +127,7 @@ export const qqMusicApi = {
   },
 
   getSongInfo(songmid: string | number, songid?: string | number) {
-    return qqRequest.get<any, Promise<QQSongInfoResponse>>(`/getSongInfo/${songmid}/${songid || ''}`)
+    return qqRequest.get<unknown, Promise<QQSongInfoResponse>>(`/getSongInfo/${songmid}/${songid || ''}`)
   },
 
   batchGetSongInfo(songmids: string[]) {
@@ -129,7 +135,7 @@ export const qqMusicApi = {
   },
 
   getMusicPlay(songmid: string | number, mediaId?: string, quality: number = 128) {
-    return qqRequest.get<any, Promise<QQMusicPlayResponse>>('/getMusicPlay', {
+    return qqRequest.get<unknown, Promise<QQMusicPlayResponse>>('/getMusicPlay', {
       params: {
         songmid,
         mediaId,
@@ -139,7 +145,7 @@ export const qqMusicApi = {
   },
 
   getLyric(songmid: string | number, isFormat: boolean = true) {
-    return qqRequest.get<any, Promise<QQLyricResponse>>('/getLyric', {
+    return qqRequest.get<unknown, Promise<QQLyricResponse>>('/getLyric', {
       params: {
         songmid,
         isFormat: isFormat ? 1 : 0

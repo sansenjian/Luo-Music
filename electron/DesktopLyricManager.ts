@@ -1,15 +1,25 @@
-import { createRequire } from 'node:module'
-import { BrowserWindow, ipcMain, screen, type BrowserWindow as BrowserWindowType, type IpcMainEvent } from 'electron'
 import path from 'node:path'
 import { windowManager } from './WindowManager'
-import { __dirname, MAIN_DIST, VITE_PUBLIC } from './utils/paths'
+import { MAIN_DIST, VITE_PUBLIC } from './utils/paths'
 
-const require = createRequire(__filename)
-const StoreModule = require('electron-store')
-const Store = StoreModule.default || StoreModule
-const store = new Store({
-  projectName: 'luo-music'
-})
+// 延迟获取 electron 模块，确保在 Electron 运行时环境中才执行 require
+// 这样可以避免打包时 rollup 对 require('electron') 进行静态分析导致的问题
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const getElectron = () => require('electron')
+type BrowserWindowType = InstanceType<ReturnType<typeof getElectron>['BrowserWindow']>
+type IpcMainType = ReturnType<typeof getElectron>['ipcMain']
+type IpcMainEvent = Parameters<Parameters<IpcMainType['on']>[1]>[0]
+
+// 延迟初始化 electron-store
+let store: ReturnType<typeof import('electron-store').default> | null = null
+const getStore = () => {
+  if (!store) {
+    const StoreModule = require('electron-store')
+    const Store = StoreModule.default || StoreModule
+    store = new Store({ projectName: 'luo-music' })
+  }
+  return store
+}
 
 /** 桌面歌词数据结构 */
 interface LyricUpdateData {
@@ -27,7 +37,7 @@ export class DesktopLyricManager {
 
   constructor() {
     this.initIpc()
-    const pos = store.get('desktopLyricPosition') as { x: number; y: number } | undefined
+    const pos = getStore().get('desktopLyricPosition') as { x: number; y: number } | undefined
     if (pos) {
       this.lastPosition = pos
     }
@@ -39,6 +49,7 @@ export class DesktopLyricManager {
       return
     }
 
+    const { screen, BrowserWindow } = getElectron()
     const primaryDisplay = screen.getPrimaryDisplay()
     const { width, height } = primaryDisplay.workAreaSize
 
@@ -60,7 +71,7 @@ export class DesktopLyricManager {
       hasShadow: false,
       resizable: true, 
       webPreferences: {
-        preload: path.join(MAIN_DIST, 'preload.js'),
+        preload: path.join(MAIN_DIST, 'preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
         webSecurity: false,
@@ -95,7 +106,7 @@ export class DesktopLyricManager {
       if (this.win) {
         const [x, y] = this.win.getPosition()
         this.lastPosition = { x, y }
-        store.set('desktopLyricPosition', { x, y })
+        getStore().set('desktopLyricPosition', { x, y })
       }
     })
 
@@ -151,6 +162,7 @@ export class DesktopLyricManager {
   }
 
   initIpc() {
+    const { ipcMain } = getElectron()
     ipcMain.on('desktop-lyric-control', (event: IpcMainEvent, action: string) => {
       switch (action) {
         case 'show':

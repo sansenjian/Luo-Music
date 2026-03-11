@@ -9,6 +9,13 @@
 
 ## 🎉 最新动态
 
+### v2.2 - Electron-Vite 构建升级 (2026-03-10)
+- ✅ **electron-vite 迁移** - 从 electron-builder + tsup 迁移到 electron-vite 方案
+- ✅ **TypeScript 测试迁移** - 所有测试文件从 JavaScript 迁移到 TypeScript
+- ✅ **构建输出统一** - 所有生产构建产物输出到 `build/` 目录
+- ✅ **开发体验优化** - 主进程和渲染进程都支持 HMR 热更新
+- ✅ **文档完善** - 新增构建文档和迁移指南（见 [`docs/`](./docs/) 目录）
+
 ### v2.1 - 架构升级与优化 (2026-03-04)
 - ✅ **TypeScript 迁移** - 音乐平台适配器层全面 TypeScript 化
 - ✅ **TanStack Query 引入** - 引入 Vue Query 进行状态管理和数据缓存
@@ -259,40 +266,55 @@ npm install -D vite-plugin-electron vite-plugin-electron-renderer
 
 ```
 luo_music/
-├── api/              # Vercel Serverless Function
-│   └── index.js      # API 入口
+├── docs/             # 项目文档 (VitePress)
+│   ├── build.md      # 构建文档
+│   ├── testing.md    # 测试文档
+│   ├── api-documentation.md
+│   └── ...
 ├── electron/         # Electron 主进程代码
-│   ├── main.js       # 主进程入口
-│   └── preload.cjs   # 预加载脚本
+│   ├── main.ts       # 主进程入口
+│   ├── preload.js    # 预加载脚本
+│   ├── ipc.ts        # IPC 通信
+│   ├── WindowManager.ts
+│   ├── ServerManager.ts
+│   └── utils/paths.ts
 ├── scripts/          # 构建脚本
-│   └── dev-electron.js
+│   ├── dev/          # 开发脚本
+│   └── utils/        # 工具脚本
+├── server/           # API 服务端
+│   └── index.ts
 ├── src/
-│   ├── api/          # API 接口层 (Axios)
-│   ├── assets/       # 静态资源（CSS）
+│   ├── api/          # API 接口层 (Axios + TypeScript)
+│   ├── assets/       # 静态资源（CSS/字体）
+│   ├── base/         # 基础架构 (事件/生命周期)
 │   ├── components/   # Vue 组件
-│   ├── composables/  # 组合式函数 (TanStack Query Hooks)
-│   ├── platform/     # 音乐平台适配层 (TypeScript)
-│   │   ├── music/
-│   │   │   ├── interface.ts # 接口定义
-│   │   │   ├── netease.ts   # 网易云适配器
-│   │   │   └── qq.ts        # QQ 音乐适配器
+│   ├── composables/  # 组合式函数
+│   ├── platform/     # 平台适配层 (TypeScript)
+│   │   ├── music/    # 音乐平台适配器
+│   │   ├── electron/ # Electron 平台服务
+│   │   └── web/      # Web 平台服务
 │   ├── router/       # 路由配置
 │   ├── store/        # Pinia 状态管理
+│   ├── types/        # TypeScript 类型定义
 │   ├── utils/        # 工具函数
-│   │   └── player/   # 播放器模块（重构后）
-│   │       ├── constants/   # 常量定义
-│   │       ├── helpers/     # 工具函数
-│   │       ├── core/        # 核心模块
-│   │       ├── modules/     # 功能模块
-│   │       └── index.js     # 统一入口
+│   │   ├── http/     # HTTP 请求封装
+│   │   ├── error/    # 错误处理
+│   │   └── player/   # 播放器模块
 │   ├── views/        # 页面视图
 │   ├── App.vue       # 根组件
 │   └── main.js       # 入口文件
-├── server.js         # 本地 API 服务入口
+├── tests/            # 测试目录
+│   ├── base/         # 基础架构测试
+│   ├── components/   # 组件测试
+│   ├── electron/     # Electron 测试
+│   ├── store/        # Store 测试
+│   └── utils/        # 工具函数测试
+├── build/            # 构建输出目录
 ├── package.json
-├── vite.config.js
-├── tsconfig.json     # TypeScript 配置
-├── vercel.json       # Vercel 部署配置
+├── vite.config.ts
+├── electron.vite.config.ts
+├── forge.config.ts
+├── tsconfig.json
 └── index.html
 ```
 
@@ -389,19 +411,27 @@ npm run dev:electron
 - Vite 开发服务器（端口 5173）
 - Electron 桌面应用窗口
 
+**特性**：
+- ✅ **HMR 热更新** - 主进程和渲染进程都支持热更新
+- ✅ **自动重启** - 主进程代码修改后自动重启
+- ✅ **更好的 sourcemap** - 开发调试更方便
+
 ### 构建桌面应用
 
 ```bash
-# 构建当前平台
+# 构建 Electron 应用（包含打包）
 npm run build:electron
 
-# 使用 electron-builder 直接构建指定平台
-npx electron-builder --win
-npx electron-builder --mac
-npx electron-builder --linux
+# 仅构建，不打包（输出到 release/ 目录）
+npm run build:electron:dir
+
+# 快速构建（仅打包，用于测试）
+npm run build:fast
 ```
 
-构建输出目录：`dist-electron/` 和 `release/`
+构建输出目录：
+- `build/` - 构建产物（前端 + Electron 主进程）
+- `release/` - 打包后的安装包
 
 ### Electron 特性
 
@@ -410,6 +440,21 @@ npx electron-builder --linux
 - **缓存管理**：在设置中清理 Cookies 和缓存数据
 - **系统托盘**：最小化到托盘
 - **全局快捷键**：支持媒体键控制
+
+### 构建系统迁移
+
+项目已从 `electron-builder + tsup` 迁移到 `electron-vite` 方案。详见 [`docs/build.md`](./docs/build.md)。
+
+## 📚 文档
+
+更多文档请访问 [`docs/`](./docs/) 目录：
+
+- [快速开始](./docs/GETTING_STARTED.md) - 项目入门指南
+- [构建文档](./docs/build.md) - 构建产物管理与部署
+- [API 文档](./docs/api-documentation.md) - API 接口说明
+- [组件文档](./docs/components-documentation.md) - 组件使用说明
+- [测试文档](./docs/testing.md) - 测试策略与用例
+- [错误处理](./docs/error-handling.md) - 错误处理规范
 
 ---
 

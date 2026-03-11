@@ -1,98 +1,82 @@
-import type { AxiosResponse } from 'axios'
+import {
+  parseQQMusicResponse,
+  parseNeteaseResponse,
+  handleApiError,
+  type ApiResponse
+} from './responseHandler'
 
-export interface ApiResponse<T> {
-  success: boolean
-  data: T
-  error?: string
-  code?: number
+/**
+ * API 请求参数接口
+ */
+export interface ApiRequestParams {
+  [key: string]: string | number | boolean | undefined
+}
+
+/**
+ * HTTP 请求实例接口，定义 get 和 post 方法
+ */
+export interface HttpRequestInstance {
+  get<T>(endpoint: string, config?: { params?: ApiRequestParams }): Promise<T>
+  post<T>(endpoint: string, data?: unknown): Promise<T>
 }
 
 export abstract class ApiAdapter {
-  abstract fetch<T>(endpoint: string, params?: any): Promise<ApiResponse<T>>
-
-  protected normalize<T>(response: any, code?: number): ApiResponse<T> {
-    return {
-      success: code === 200 || code === 0 || response.code === 200 || response.code === 0,
-      data: response.data as T ?? response.result ?? response,
-      error: response.message ?? response.error,
-      code: code ?? response.code
-    }
-  }
-
-  protected handleError(error: any): ApiResponse<never> {
-    console.error('API Error:', error.message ?? error)
-    return {
-      success: false,
-      data: null as never,
-      error: error.message ?? 'Unknown error',
-      code: error.code ?? error.status ?? -1
-    }
-  }
+  abstract fetch<T>(endpoint: string, params?: ApiRequestParams): Promise<ApiResponse<T>>
 }
 
 export class QQMusicAdapter extends ApiAdapter {
-  private request: any
+  private request: HttpRequestInstance
 
-  constructor(request: any) {
+  constructor(request: HttpRequestInstance) {
     super()
     this.request = request
   }
 
-  async fetch<T>(endpoint: string, params?: any): Promise<ApiResponse<T>> {
+  async fetch<T>(endpoint: string, params?: ApiRequestParams): Promise<ApiResponse<T>> {
     try {
       const res = await this.request.get(endpoint, { params })
-      const parsed = this.parseWrappedResponse(res)
-      return this.normalize<T>(parsed, parsed.code ?? parsed.result)
+      return parseQQMusicResponse<T>(res)
     } catch (error) {
-      return this.handleError(error)
+      throw handleApiError(error, 'QQ 音乐')
     }
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     try {
       const res = await this.request.post(endpoint, data)
-      const parsed = this.parseWrappedResponse(res)
-      return this.normalize<T>(parsed, parsed.code ?? parsed.result)
+      return parseQQMusicResponse<T>(res)
     } catch (error) {
-      return this.handleError(error)
+      throw handleApiError(error, 'QQ 音乐')
     }
-  }
-
-  private parseWrappedResponse<T>(payload: any): any {
-    if (typeof payload.response === 'string') {
-      try {
-        return JSON.parse(payload.response)
-      } catch (error) {
-        console.error('Failed to parse QQ wrapped response', error)
-      }
-    }
-    return payload
   }
 }
 
 export class NeteaseAdapter extends ApiAdapter {
-  private request: any
+  private request: HttpRequestInstance
 
-  constructor(request: any) {
+  constructor(request: HttpRequestInstance) {
     super()
     this.request = request
   }
 
-  async fetch<T>(endpoint: string, params?: any): Promise<ApiResponse<T>> {
+  async fetch<T>(endpoint: string, params?: ApiRequestParams): Promise<ApiResponse<T>> {
     try {
       const res = await this.request.get(endpoint, { params })
-      return this.normalize<T>(res.data ?? res, res.code)
+      return parseNeteaseResponse<T>(res)
     } catch (error) {
-      return this.handleError(error)
+      throw handleApiError(error, '网易云音乐')
     }
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     try {
       const res = await this.request.post(endpoint, data)
-      return this.normalize<T>(res.data ?? res, res.code)
+      return parseNeteaseResponse<T>(res)
     } catch (error) {
-      return this.handleError(error)
+      throw handleApiError(error, '网易云音乐')
     }
   }
 }
+
+// ApiRequestParams 在本地定义，供外部使用
+export { ApiRequestParams }

@@ -98,6 +98,18 @@ pnpm check:unused
 - 常量使用 kebab-case 加 `.const.ts`，例如 `player-config.const.ts`
 - 测试文件与目标文件保持同名语义，使用 `.test.js` 或 `.test.ts`
 
+#### 文档组织
+
+- **根目录**：仅保留 [`AGENTS.md`](./AGENTS.md) 和 [`README.md`](./README.md)
+- **docs/ 目录**：所有其他 Markdown 文档都应放在 [`docs/`](./docs/) 目录下
+  - 构建文档：`docs/build.md`
+  - 迁移指南：`docs/electron-vite-migration.md`
+  - 测试文档：`docs/testing.md`
+  - API 文档：`docs/api-documentation.md`
+  - 组件文档：`docs/components-documentation.md`
+  - 错误处理：`docs/error-handling.md`
+  - 其他专题文档
+
 #### 导入顺序
 
 - 1 组：框架与第三方库
@@ -152,21 +164,33 @@ pnpm check:unused
 
 检查清单：
 
-- `electron-builder.yml` 的 `files` 是否包含 `dist/**/*` 与 `dist-electron/**/*`
-- preload 路径是否通过 `fileURLToPath` 或统一路径工具完成转换
-- `asarUnpack` 是否包含 `**/*.node` 与服务器产物
+- `vite.config.ts` 的 `build.outDir` 是否指向 `build/` 目录
+- `vite.config.ts` 的 `electron` 插件配置是否正确
+- preload 路径在 `WindowManager.ts` 中是否正确配置
 - 构建、打包、路径异常时优先检查 `electron/utils/paths.ts`
 
 ### Electron 路径、preload、打包配置
 
 优先检查：
 
-- `package.json`
-- `vite.config.ts`
-- `electron-builder.yml`
-- `electron/utils/paths.ts`
-- `electron/main.ts`
-- `electron/preload.js`
+- `package.json` - 查看 `electron-vite` 相关脚本
+- `vite.config.ts` - Electron 插件配置和输出目录
+- `electron/utils/paths.ts` - 路径工具函数
+- `electron/main.ts` - 主进程入口
+- `electron/preload.js` - Preload 脚本
+- `electron/WindowManager.ts` - 窗口管理器（preload 路径配置）
+
+### 构建系统说明
+
+项目使用 `electron-vite` + `Electron Forge` 方案：
+
+| 构建目标 | 工具 | 输出路径 |
+|----------|------|----------|
+| Electron 主进程 | electron-vite | `build/electron/main.cjs` |
+| Preload 脚本 | electron-vite | `build/electron/preload.cjs` |
+| 渲染进程 | electron-vite | `build/` |
+| API 服务端 | tsup | `build/server/server.cjs` |
+| 应用打包 | Electron Forge | `out/` |
 
 ### QQ 音乐或平台适配
 

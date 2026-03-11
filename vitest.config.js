@@ -23,7 +23,7 @@ export default defineConfig({
         'tests/',
         '**/*.config.js',
         '**/dist/**',
-        '**/dist-electron/**',
+        '**/build/**',
         'api/',
         'scripts/',
         'electron/',

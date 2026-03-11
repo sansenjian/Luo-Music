@@ -143,3 +143,17 @@ dist-server/
 # Playwright
 playwright-report/
 test-results/
+
+# IDE
+.idea/
+
+# Cache directories
+.electron_cache/
+.vite_cache/
+.pnpm-store/
+
+# Qodana
+.qodana/
+
+# Backup files
+*.bak
