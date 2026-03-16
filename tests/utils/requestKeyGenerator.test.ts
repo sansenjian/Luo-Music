@@ -165,8 +165,18 @@ describe('requestKeyGenerator', () => {
 
   describe('isSameRequest', () => {
     it('should return true for identical configs', () => {
-      const config1: RequestConfig = { url: '/api/test', method: 'get', params: { id: 1 }, data: {} }
-      const config2: RequestConfig = { url: '/api/test', method: 'get', params: { id: 1 }, data: {} }
+      const config1: RequestConfig = {
+        url: '/api/test',
+        method: 'get',
+        params: { id: 1 },
+        data: {}
+      }
+      const config2: RequestConfig = {
+        url: '/api/test',
+        method: 'get',
+        params: { id: 1 },
+        data: {}
+      }
       expect(isSameRequest(config1, config2)).toBe(true)
     })
 
@@ -183,8 +193,18 @@ describe('requestKeyGenerator', () => {
     })
 
     it('should return false for different params', () => {
-      const config1: RequestConfig = { url: '/api/test', method: 'get', params: { id: 1 }, data: {} }
-      const config2: RequestConfig = { url: '/api/test', method: 'get', params: { id: 2 }, data: {} }
+      const config1: RequestConfig = {
+        url: '/api/test',
+        method: 'get',
+        params: { id: 1 },
+        data: {}
+      }
+      const config2: RequestConfig = {
+        url: '/api/test',
+        method: 'get',
+        params: { id: 2 },
+        data: {}
+      }
       expect(isSameRequest(config1, config2)).toBe(false)
     })
 

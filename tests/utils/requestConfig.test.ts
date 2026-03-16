@@ -71,7 +71,7 @@ describe('requestConfig', () => {
       const config = getCacheConfig()
       config.enabled = false
       config.ttl = 999
-      
+
       const freshConfig = getCacheConfig()
       expect(freshConfig.enabled).toBe(true)
       expect(freshConfig.ttl).toBe(5 * 60 * 1000)
@@ -139,7 +139,7 @@ describe('requestConfig', () => {
     it('should reset specific category to defaults', () => {
       updateConfig('cache', { enabled: false, ttl: 999 })
       resetConfig('cache')
-      
+
       const config = getCacheConfig()
       expect(config.enabled).toBe(true)
       expect(config.ttl).toBe(5 * 60 * 1000)
@@ -149,9 +149,9 @@ describe('requestConfig', () => {
       updateConfig('cache', { enabled: false })
       updateConfig('retry', { max_retries: 10 })
       updateConfig('cancel', { auto_cancel: false })
-      
+
       resetConfig()
-      
+
       expect(getCacheConfig().enabled).toBe(true)
       expect(getRetryConfig().max_retries).toBe(3)
       expect(getCancelConfig().auto_cancel).toBe(true)
@@ -166,7 +166,7 @@ describe('requestConfig', () => {
   describe('exportConfig', () => {
     it('should export a deep copy of entire config', () => {
       const exported = exportConfig()
-      
+
       expect(exported).toHaveProperty('cache')
       expect(exported).toHaveProperty('retry')
       expect(exported).toHaveProperty('cancel')
@@ -178,7 +178,7 @@ describe('requestConfig', () => {
       const exported = exportConfig()
       exported.cache.enabled = false
       exported.retry.max_retries = 100
-      
+
       expect(getCacheConfig().enabled).toBe(true)
       expect(getRetryConfig().max_retries).toBe(3)
     })
@@ -187,15 +187,35 @@ describe('requestConfig', () => {
   describe('importConfig', () => {
     it('should import valid config', () => {
       const newConfig = {
-        cache: { enabled: false, ttl: 9999, max_size: 50, methods: ['post'] as const, cleanup_interval: 5000 },
-        retry: { enabled: false, max_retries: 1, initial_delay: 500, max_delay: 5000, backoff: 3, statuses: [500], jitter: false },
+        cache: {
+          enabled: false,
+          ttl: 9999,
+          max_size: 50,
+          methods: ['post'] as const,
+          cleanup_interval: 5000
+        },
+        retry: {
+          enabled: false,
+          max_retries: 1,
+          initial_delay: 500,
+          max_delay: 5000,
+          backoff: 3,
+          statuses: [500],
+          jitter: false
+        },
         cancel: { enabled: false, auto_cancel: false, cancel_on_unmount: false },
         timeout: { default: 10000, download: 30000, upload: 30000 },
-        logging: { enabled: false, level: 'error' as const, log_request: false, log_response: false, log_error: false }
+        logging: {
+          enabled: false,
+          level: 'error' as const,
+          log_request: false,
+          log_response: false,
+          log_error: false
+        }
       }
-      
+
       importConfig(newConfig)
-      
+
       expect(getCacheConfig().enabled).toBe(false)
       expect(getCacheConfig().ttl).toBe(9999)
       expect(getRetryConfig().enabled).toBe(false)
@@ -220,7 +240,7 @@ describe('requestConfig', () => {
       importConfig({
         cache: { enabled: false }
       })
-      
+
       const cacheConfig = getCacheConfig()
       expect(cacheConfig.enabled).toBe(false)
       // 其他配置保持默认

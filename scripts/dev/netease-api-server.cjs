@@ -53,11 +53,13 @@ function waitForServer(port, host, timeout) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now()
     let attempts = 0
-    
+    let resolved = false
+
     const check = () => {
+      if (resolved) return
       attempts++
       console.log(`[Netease API] Health check attempt ${attempts}...`)
-      
+
       const req = http.request({
         host,
         port,
@@ -65,13 +67,16 @@ function waitForServer(port, host, timeout) {
         method: 'GET',
         timeout: 2000
       }, (res) => {
+        if (resolved) return
+        resolved = true
         // 只要服务器能响应（即使 404），说明服务器已启动
         console.log(`[Netease API] Server responded with status: ${res.statusCode}`)
         console.log(`[Netease API] ✅ Server confirmed running on http://${host}:${port}`)
         resolve()
       })
-      
+
       req.on('error', (err) => {
+        if (resolved) return
         console.log(`[Netease API] Health check failed: ${err.message}`)
         if (Date.now() - startTime > timeout) {
           reject(new Error(`Server did not start in ${timeout}ms`))
@@ -79,8 +84,9 @@ function waitForServer(port, host, timeout) {
           setTimeout(check, 500)
         }
       })
-      
+
       req.on('timeout', () => {
+        if (resolved) return
         console.log('[Netease API] Health check timeout')
         req.destroy()
         if (Date.now() - startTime > timeout) {
@@ -89,10 +95,10 @@ function waitForServer(port, host, timeout) {
           setTimeout(check, 500)
         }
       })
-      
+
       req.end()
     }
-    
+
     // 延迟开始检测，给服务器启动时间
     setTimeout(check, 1000)
   })

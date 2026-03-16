@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, defineAsyncComponent } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/userStore'
 import { usePlaylistStore } from '../store/playlistStore'
@@ -8,10 +8,11 @@ import { useUserDataQuery } from '../composables/useUserDataQuery'
 import { useLikedSongs } from '../composables/useLikedSongs'
 import { useUserPlaylists } from '../composables/useUserPlaylists'
 import { useUserEvents } from '../composables/useUserEvents'
-import { formatSongs } from '../utils/songFormatter'
 
 // 异步加载用户中心子组件
-const UserProfileHeader = defineAsyncComponent(() => import('../components/user/UserProfileHeader.vue'))
+const UserProfileHeader = defineAsyncComponent(
+  () => import('../components/user/UserProfileHeader.vue')
+)
 const LikedSongsView = defineAsyncComponent(() => import('../components/user/LikedSongsView.vue'))
 const PlaylistsView = defineAsyncComponent(() => import('../components/user/PlaylistsView.vue'))
 const EventsView = defineAsyncComponent(() => import('../components/user/EventsView.vue'))
@@ -25,13 +26,13 @@ const activeTab = ref('liked')
 const loadingMap = ref({
   liked: false,
   playlist: false,
-  events: false,
+  events: false
 })
 
 // Use composables for data fetching
 // 使用 Vue Query 获取用户数据，支持响应式 userId
-const { stats, loading: userDataLoading } = useUserDataQuery(() => userStore.userId)
-const { formattedSongs, count: likedCount, loadLikedSongs } = useLikedSongs()
+useUserDataQuery(() => userStore.userId)
+const { likeSongs, formattedSongs, count: likedCount, loadLikedSongs } = useLikedSongs()
 const { playlists, count: playlistCount, loadPlaylists, loadPlaylistSongs } = useUserPlaylists()
 const { events, count: eventsCount, loadEvents } = useUserEvents()
 
@@ -39,7 +40,7 @@ const { events, count: eventsCount, loadEvents } = useUserEvents()
 const tabCounts = computed(() => ({
   liked: likedCount.value,
   playlist: playlistCount.value,
-  events: eventsCount.value,
+  events: eventsCount.value
 }))
 
 // Load all data on mount
@@ -48,19 +49,19 @@ const loadAllData = async () => {
     router.push('/')
     return
   }
-  
+
   const userId = userStore.userId
-  
+
   // 独立设置每个 tab 的加载状态
   loadingMap.value.liked = true
   loadingMap.value.playlist = true
   loadingMap.value.events = true
-  
+
   await Promise.all([
     // loadUserData 由 Vue Query 自动管理
-    loadLikedSongs(userId).finally(() => loadingMap.value.liked = false),
-    loadPlaylists(userId).finally(() => loadingMap.value.playlist = false),
-    loadEvents(userId).finally(() => loadingMap.value.events = false),
+    loadLikedSongs(userId).finally(() => (loadingMap.value.liked = false)),
+    loadPlaylists(userId).finally(() => (loadingMap.value.playlist = false)),
+    loadEvents(userId).finally(() => (loadingMap.value.events = false))
   ])
 }
 
@@ -68,7 +69,7 @@ const loadAllData = async () => {
 loadAllData()
 
 // Event handlers
-const handlePlaylistClick = async (playlistId) => {
+const handlePlaylistClick = async playlistId => {
   loadingMap.value.playlist = true
   try {
     const songs = await loadPlaylistSongs(playlistId)
@@ -91,7 +92,7 @@ const handlePlaylistClick = async (playlistId) => {
 }
 
 const handlePlayAllLiked = async () => {
-  const songs = formattedSongs.value
+  const songs = likeSongs.value
   if (songs.length > 0) {
     playlistStore.setPlaylist(songs)
     playerStore.setSongList(songs)
@@ -104,8 +105,8 @@ const handlePlayAllLiked = async () => {
   }
 }
 
-const handlePlayLikedSong = async (index) => {
-  const songs = formattedSongs.value
+const handlePlayLikedSong = async index => {
+  const songs = likeSongs.value
   playlistStore.setPlaylist(songs)
   playerStore.setSongList(songs)
   try {
@@ -125,7 +126,14 @@ const goBack = () => {
   <div class="user-center-page">
     <div class="user-center-header">
       <button class="back-btn" @click="goBack">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <path d="M19 12H5"></path>
           <polyline points="12 19 5 12 12 5"></polyline>
         </svg>
@@ -134,7 +142,7 @@ const goBack = () => {
     </div>
 
     <div class="user-center-content">
-      <UserProfileHeader 
+      <UserProfileHeader
         :user-id="userStore.userId"
         :avatar-url="userStore.avatarUrl"
         :nickname="userStore.nickname"
@@ -143,24 +151,24 @@ const goBack = () => {
       <section class="content-section">
         <div class="section-header">
           <div class="tabs">
-            <button 
-              class="tab-btn" 
+            <button
+              class="tab-btn"
               :class="{ active: activeTab === 'liked' }"
               @click="activeTab = 'liked'"
             >
               我喜欢的音乐
               <span v-if="tabCounts.liked > 0" class="count">{{ tabCounts.liked }}</span>
             </button>
-            <button 
-              class="tab-btn" 
+            <button
+              class="tab-btn"
               :class="{ active: activeTab === 'playlist' }"
               @click="activeTab = 'playlist'"
             >
               歌单
               <span v-if="tabCounts.playlist > 0" class="count">{{ tabCounts.playlist }}</span>
             </button>
-            <button 
-              class="tab-btn" 
+            <button
+              class="tab-btn"
               :class="{ active: activeTab === 'events' }"
               @click="activeTab = 'events'"
             >
@@ -182,14 +190,14 @@ const goBack = () => {
             @play-all="handlePlayAllLiked"
             @play-song="handlePlayLikedSong"
           />
-          
+
           <PlaylistsView
             v-show="activeTab === 'playlist'"
             :playlists="playlists"
             :loading="loadingMap.playlist"
             @playlist-click="handlePlaylistClick"
           />
-          
+
           <EventsView
             v-show="activeTab === 'events'"
             :events="events"

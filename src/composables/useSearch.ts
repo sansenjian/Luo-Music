@@ -31,9 +31,17 @@ export function useSearch() {
   /**
    * 执行搜索
    */
-  async function search(searchKeyword: string, options?: SearchOptions): Promise<{ success: boolean; results?: typeof searchStore.results; total?: number; error?: string }> {
+  async function search(
+    searchKeyword: string,
+    _options?: SearchOptions
+  ): Promise<{
+    success: boolean
+    results?: typeof searchStore.results
+    total?: number
+    error?: string
+  }> {
     await searchStore.search(searchKeyword)
-    
+
     if (searchStore.hasResults) {
       return {
         success: true,
@@ -75,8 +83,8 @@ export function useSearch() {
   /**
    * 播放指定索引的结果
    */
-  function playResult(index: number): void {
-    searchStore.playResult(index)
+  function playResult(index: number): Promise<void> {
+    return searchStore.playResult(index)
   }
 
   /**
@@ -102,7 +110,7 @@ export function useSearch() {
     error,
     platform,
     hasResults,
-    
+
     // 方法
     search,
     clear,

@@ -3,16 +3,16 @@ export enum ErrorCode {
   NETWORK_OFFLINE = 1001,
   API_TIMEOUT = 1002,
   API_RATE_LIMIT = 1003,
-  
+
   // 业务层 (2000-2999)
-  SONG_NO_COPYRIGHT = 2001,      // 无版权
-  SONG_URL_EXPIRED = 2002,       // URL过期
+  SONG_NO_COPYRIGHT = 2001, // 无版权
+  SONG_URL_EXPIRED = 2002, // URL过期
   PLAYLIST_NOT_FOUND = 2003,
-  
+
   // 播放器层 (3000-3999)
-  AUDIO_DECODE_FAILED = 3001,    // 解码失败
-  AUDIO_CONTEXT_SUSPENDED = 3002,// 浏览器策略阻止播放
-  
+  AUDIO_DECODE_FAILED = 3001, // 解码失败
+  AUDIO_CONTEXT_SUSPENDED = 3002, // 浏览器策略阻止播放
+
   // 系统层 (4000-4999)
   MAIN_PROCESS_CRASH = 4001,
   STORAGE_FULL = 4002,
@@ -23,8 +23,8 @@ export class AppError extends Error {
   constructor(
     public code: ErrorCode,
     message: string,
-    public recoverable: boolean = true,  // 是否可自动恢复
-    public data?: unknown                 // 附加数据（如歌曲ID）
+    public recoverable: boolean = true, // 是否可自动恢复
+    public data?: unknown // 附加数据（如歌曲ID）
   ) {
     super(message)
     this.name = 'AppError'
@@ -53,13 +53,10 @@ export class AppError extends Error {
 export const Errors = {
   noCopyright: (songId: string | number) =>
     new AppError(ErrorCode.SONG_NO_COPYRIGHT, 'No copyright', true, { songId }),
-  
-  network: () =>
-    new AppError(ErrorCode.NETWORK_OFFLINE, 'Network error', true),
-    
-  fatal: (msg: string) =>
-    new AppError(ErrorCode.MAIN_PROCESS_CRASH, msg, false),
-    
-  unknown: (msg: string, data?: unknown) =>
-    new AppError(ErrorCode.UNKNOWN_ERROR, msg, true, data)
+
+  network: () => new AppError(ErrorCode.NETWORK_OFFLINE, 'Network error', true),
+
+  fatal: (msg: string) => new AppError(ErrorCode.MAIN_PROCESS_CRASH, msg, false),
+
+  unknown: (msg: string, data?: unknown) => new AppError(ErrorCode.UNKNOWN_ERROR, msg, true, data)
 }

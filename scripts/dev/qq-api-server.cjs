@@ -1,11 +1,11 @@
-// QQ 音乐 API 子进程服务
+// QQ 闊充箰 API 瀛愯繘绋嬫湇鍔?
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const http = require('http')
 
 const port = process.env.PORT || 3200
-const host = process.env.HOST || 'localhost'
+const host = process.env.HOST || '127.0.0.1'
 
 console.log(`[QQ Music API] ========================================`)
 console.log(`[QQ Music API] Starting...`)
@@ -17,7 +17,7 @@ console.log(`[QQ Music API] ========================================`)
 
 async function start() {
   try {
-    // 设置工作目录到用户数据目录，避免写入权限问题
+    // 璁剧疆宸ヤ綔鐩綍鍒扮敤鎴锋暟鎹洰褰曪紝閬垮厤鍐欏叆鏉冮檺闂
     const userDataPath = process.env.USER_DATA || path.join(os.homedir(), '.luo-music')
     if (!fs.existsSync(userDataPath)) {
       fs.mkdirSync(userDataPath, { recursive: true })
@@ -25,29 +25,35 @@ async function start() {
     process.chdir(userDataPath)
     console.log(`[QQ Music API] Working directory changed to: ${userDataPath}`)
     
-    // 设置环境变量
+    // 璁剧疆鐜鍙橀噺
     process.env.PORT = String(port)
     process.env.HOST = host
     
     console.log('[QQ Music API] Loading module...')
-    // 加载 QQ 音乐 API
-    require('@sansenjian/qq-music-api')
+    // 鍔犺浇 QQ 闊充箰 API
+    const qqApiModule = require('@sansenjian/qq-music-api/dist/app.js')
+    const qqApiApp = qqApiModule && (qqApiModule.default || qqApiModule)
+    if (!qqApiApp || typeof qqApiApp.listen !== 'function') {
+      throw new Error('Invalid QQ Music API app export')
+    }
+    qqApiApp.listen(Number(port), host, () => {
+      console.log(`[QQ Music API] Koa app listening on http://${host}:${port}`)
+    })
     console.log('[QQ Music API] Module loaded successfully')
     
     console.log(`[QQ Music API] Server started, waiting for ready...`)
     
-    // 等待确认服务真的启动了
+    // 绛夊緟纭鏈嶅姟鐪熺殑鍚姩浜?
     await waitForServer(port, host, 10000)
     
-    console.log(`[QQ Music API] ✅ Server confirmed running on http://${host}:${port}`)
     
-    // 通知父进程已就绪
+    // 閫氱煡鐖惰繘绋嬪凡灏辩华
     if (process.send) {
       process.send({ type: 'ready', port })
       console.log('[QQ Music API] Sent ready message to parent')
     }
   } catch (err) {
-    console.error('[QQ Music API] ❌ Failed to start:', err.message)
+    console.error('[QQ Music API] 鉂?Failed to start:', err.message)
     console.error(err.stack)
     
     if (process.send) {
@@ -62,11 +68,13 @@ function waitForServer(port, host, timeout) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now()
     let attempts = 0
-    
+    let resolved = false
+
     const check = () => {
+      if (resolved) return
       attempts++
       console.log(`[QQ Music API] Health check attempt ${attempts}...`)
-      
+
       const req = http.request({
         host,
         port,
@@ -74,14 +82,16 @@ function waitForServer(port, host, timeout) {
         method: 'GET',
         timeout: 2000
       }, (res) => {
-        // 只要服务器能响应（即使 404），说明服务器已启动
-        // QQ Music API 根路径返回 404 是正常的
+        if (resolved) return
+        resolved = true
+        // 鍙鏈嶅姟鍣ㄨ兘鍝嶅簲锛堝嵆浣?404锛夛紝璇存槑鏈嶅姟鍣ㄥ凡鍚姩
+        // QQ Music API 鏍硅矾寰勮繑鍥?404 鏄甯哥殑
         console.log(`[QQ Music API] Server responded with status: ${res.statusCode}`)
-        console.log(`[QQ Music API] ✅ Server confirmed running on http://${host}:${port}`)
         resolve()
       })
-      
+
       req.on('error', (err) => {
+        if (resolved) return
         console.log(`[QQ Music API] Health check failed: ${err.message}`)
         if (Date.now() - startTime > timeout) {
           reject(new Error(`Server did not start in ${timeout}ms`))
@@ -89,8 +99,9 @@ function waitForServer(port, host, timeout) {
           setTimeout(check, 500)
         }
       })
-      
+
       req.on('timeout', () => {
+        if (resolved) return
         console.log('[QQ Music API] Health check timeout')
         req.destroy()
         if (Date.now() - startTime > timeout) {
@@ -99,10 +110,10 @@ function waitForServer(port, host, timeout) {
           setTimeout(check, 500)
         }
       })
-      
+
       req.end()
     }
-    
+
     setTimeout(check, 1000)
   })
 }

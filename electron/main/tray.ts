@@ -1,11 +1,11 @@
 /**
  * 系统托盘管理
- * 
+ *
  * 负责创建和管理系统托盘图标、菜单。
  * 遵循 VSCode 的 Tray 模式，将托盘逻辑与主入口分离。
  */
 
-import { Tray, Menu, nativeImage, BrowserWindow } from 'electron'
+import { Tray, Menu, nativeImage } from 'electron'
 import type { Tray as TrayType, MenuItemConstructorOptions } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -35,11 +35,11 @@ function getIconPath(): string | null {
     path.join(__dirname, '../public/electron-vite.svg'),
     path.join(process.resourcesPath, 'app.asar', 'public', 'electron-vite.svg')
   ]
-  
+
   for (const p of possiblePaths) {
     if (fs.existsSync(p)) return p
   }
-  
+
   return null
 }
 
@@ -121,28 +121,28 @@ export function setWindowManager(manager: typeof windowManager): void {
  */
 export function createTray(): TrayType | null {
   const iconPath = getIconPath()
-  
+
   if (!iconPath) {
     logger.warn('Tray icon not found, skipping tray creation')
     return null
   }
-  
+
   const icon = nativeImage.createFromPath(iconPath)
   tray = new Tray(icon.resize({ width: 16, height: 16 }))
-  
+
   const contextMenu = Menu.buildFromTemplate(createTrayMenu())
-  
+
   tray.setToolTip('LUO Music')
   tray.setContextMenu(contextMenu)
-  
+
   tray.on('double-click', () => {
     windowManager?.show()
   })
-  
+
   if (windowManager) {
     windowManager.setTray(tray, contextMenu)
   }
-  
+
   logger.info('[Tray] System tray created')
   return tray
 }
@@ -159,7 +159,7 @@ export function getTray(): TrayType | null {
  */
 export function updateTrayMenu(): void {
   if (!tray) return
-  
+
   const contextMenu = Menu.buildFromTemplate(createTrayMenu())
   tray.setContextMenu(contextMenu)
 }

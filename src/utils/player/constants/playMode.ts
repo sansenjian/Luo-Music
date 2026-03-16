@@ -7,7 +7,7 @@ export const PLAY_MODE = {
 } as const
 
 /** 播放模式类型 */
-export type PlayMode = typeof PLAY_MODE[keyof typeof PLAY_MODE]
+export type PlayMode = (typeof PLAY_MODE)[keyof typeof PLAY_MODE]
 
 /** 播放模式标签映射 */
 export const PLAY_MODE_LABELS: Record<PlayMode, string> = {

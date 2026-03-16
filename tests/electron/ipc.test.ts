@@ -60,7 +60,8 @@ describe('electron/ipc', () => {
 
     initPlayerIPC()
 
-    const [, handler] = ipcMainOn.mock.calls.find(([channel]) => channel === 'music-song-control') || []
+    const [, handler] =
+      ipcMainOn.mock.calls.find(([channel]) => channel === 'music-song-control') || []
     expect(handler).toBeTypeOf('function')
 
     handler({ sender: { id: 200 } }, 'next', { source: 'tray' })
@@ -74,7 +75,8 @@ describe('electron/ipc', () => {
 
     initPlayerIPC()
 
-    const [, handler] = ipcMainOn.mock.calls.find(([channel]) => channel === 'music-volume-up') || []
+    const [, handler] =
+      ipcMainOn.mock.calls.find(([channel]) => channel === 'music-volume-up') || []
     expect(handler).toBeTypeOf('function')
 
     handler({ sender: { id: 300 } }, 1)

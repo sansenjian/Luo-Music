@@ -1,218 +1,230 @@
 import path from 'node:path'
+import type { BrowserWindow, IpcMainEvent } from 'electron'
+
 import { windowManager } from './WindowManager'
-import { MAIN_DIST, VITE_PUBLIC } from './utils/paths'
+import { MAIN_DIST, RENDERER_DIST } from './utils/paths'
 
-// 延迟获取 electron 模块，确保在 Electron 运行时环境中才执行 require
-// 这样可以避免打包时 rollup 对 require('electron') 进行静态分析导致的问题
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const getElectron = () => require('electron')
-type BrowserWindowType = InstanceType<ReturnType<typeof getElectron>['BrowserWindow']>
-type IpcMainType = ReturnType<typeof getElectron>['ipcMain']
-type IpcMainEvent = Parameters<Parameters<IpcMainType['on']>[1]>[0]
+const getElectron = (): typeof import('electron') =>
+  require('electron') as typeof import('electron')
 
-// 延迟初始化 electron-store
-let store: ReturnType<typeof import('electron-store').default> | null = null
-const getStore = () => {
+type ElectronStoreInstance = {
+  get(key: string): unknown
+  set(key: string, value: unknown): void
+}
+
+let store: ElectronStoreInstance | null = null
+
+function getStore(): ElectronStoreInstance {
   if (!store) {
-    const StoreModule = require('electron-store')
-    const Store = StoreModule.default || StoreModule
+    const StoreModule = require('electron-store') as {
+      default?: new (options?: { projectName: string }) => ElectronStoreInstance
+    }
+    const Store =
+      StoreModule.default ??
+      (StoreModule as unknown as new (options?: { projectName: string }) => ElectronStoreInstance)
+
     store = new Store({ projectName: 'luo-music' })
   }
+
   return store
 }
 
-/** 桌面歌词数据结构 */
 interface LyricUpdateData {
   time: number
   index: number
   text: string
   trans: string
-  romalrc: string
+  roma: string
+  playing?: boolean
+}
+
+interface CreateWindowOptions {
+  showOnReady?: boolean
 }
 
 export class DesktopLyricManager {
-  private win: BrowserWindowType | null = null
-  private isLocked: boolean = false
+  private win: BrowserWindow | null = null
+  private isLocked = false
   private lastPosition: { x: number; y: number } | null = null
+  private shouldShowOnReady = false
+  private isWindowReady = false
 
   constructor() {
     this.initIpc()
-    const pos = getStore().get('desktopLyricPosition') as { x: number; y: number } | undefined
-    if (pos) {
-      this.lastPosition = pos
+    const position = getStore().get('desktopLyricPosition') as { x: number; y: number } | undefined
+
+    if (position) {
+      this.lastPosition = position
     }
   }
 
-  createWindow() {
+  createWindow(options: CreateWindowOptions = {}): void {
+    const { showOnReady = true } = options
+
     if (this.win && !this.win.isDestroyed()) {
-      this.win.show()
+      this.shouldShowOnReady = showOnReady
+      if (showOnReady && this.isWindowReady) {
+        this.win.show()
+      }
       return
     }
 
-    const { screen, BrowserWindow } = getElectron()
+    this.shouldShowOnReady = showOnReady
+    this.isWindowReady = false
+
+    const { BrowserWindow, screen } = getElectron()
     const primaryDisplay = screen.getPrimaryDisplay()
     const { width, height } = primaryDisplay.workAreaSize
-
-    // Use last position if available, otherwise default position
     const x = this.lastPosition ? this.lastPosition.x : Math.floor((width - 800) / 2)
     const y = this.lastPosition ? this.lastPosition.y : Math.floor(height - 180)
 
-    this.win = new BrowserWindow({
+    const win = new BrowserWindow({
       width: 800,
-      height: 150, // 增加高度
-      x: x,
-      y: y,
+      height: 150,
+      x,
+      y,
       minWidth: 400,
       minHeight: 120,
       frame: false,
       transparent: true,
       alwaysOnTop: true,
+      show: false,
       skipTaskbar: true,
       hasShadow: false,
-      resizable: true, 
+      resizable: true,
       webPreferences: {
         preload: path.join(MAIN_DIST, 'preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
         webSecurity: false,
-        allowRunningInsecureContent: false,
-      },
+        allowRunningInsecureContent: false
+      }
     })
+    this.win = win
 
-    // this.win 不会为 null，因为刚创建
-    const win = this.win!
     win.setAlwaysOnTop(true, 'screen-saver')
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-
-    // Load the desktop lyric route
-    if (process.env.VITE_DEV_SERVER_URL) {
-      win.loadURL(`${process.env.VITE_DEV_SERVER_URL}#/desktop-lyric`)
-    } else {
-      // In production, we need to load index.html and then navigate
-      // Or use query params if router supports it
-      const indexPath = process.env.VITE_PUBLIC 
-        ? path.join(process.env.VITE_PUBLIC, 'index.html') 
-        : path.join(__dirname, '../dist/index.html')
-      
-      win.loadFile(indexPath, { hash: 'desktop-lyric' })
-    }
-
-    win.on('closed', () => {
-      this.win = null
-    })
-
-    // Save position on move
-    win.on('move', () => {
-      if (this.win) {
-        const [x, y] = this.win.getPosition()
-        this.lastPosition = { x, y }
-        getStore().set('desktopLyricPosition', { x, y })
+    win.once('ready-to-show', () => {
+      this.isWindowReady = true
+      if (!win.isDestroyed() && this.shouldShowOnReady) {
+        win.show()
       }
     })
 
-    // Forward mouse events if needed (ignore mouse events when locked)
+    if (process.env.VITE_DEV_SERVER_URL) {
+      win.loadURL(`${process.env.VITE_DEV_SERVER_URL}#/desktop-lyric`)
+    } else {
+      win.loadFile(path.join(RENDERER_DIST, 'index.html'), { hash: 'desktop-lyric' })
+    }
+
+    win.on('closed', () => {
+      this.isWindowReady = false
+      this.win = null
+    })
+
+    win.on('move', () => {
+      const [nextX, nextY] = win.getPosition()
+      this.lastPosition = { x: nextX, y: nextY }
+      getStore().set('desktopLyricPosition', this.lastPosition)
+    })
+
     this.setLocked(false)
   }
 
-  closeWindow() {
+  prewarmWindow(): void {
     if (this.win && !this.win.isDestroyed()) {
+      return
+    }
+
+    this.createWindow({ showOnReady: false })
+  }
+
+  closeWindow(): void {
+    if (this.win && !this.win.isDestroyed()) {
+      this.shouldShowOnReady = false
       this.win.close()
     }
   }
 
-  show() {
+  show(): void {
     if (!this.win || this.win.isDestroyed()) {
-      this.createWindow()
-    } else {
+      this.createWindow({ showOnReady: true })
+      return
+    }
+
+    this.shouldShowOnReady = true
+    if (this.isWindowReady) {
       this.win.show()
     }
   }
 
-  hide() {
+  hide(): void {
+    this.shouldShowOnReady = false
     this.win?.hide()
   }
 
-  setLocked(locked: boolean) {
+  setLocked(locked: boolean): void {
     this.isLocked = locked
-    if (this.win) {
-      this.win.setIgnoreMouseEvents(locked, { forward: true })
-      // Notify renderer about lock state
-      this.win.webContents.send('desktop-lyric-lock-state', locked)
-      
-      // When locked, we might want to make it "click-through" completely
-      // setIgnoreMouseEvents(true) makes it click-through.
-      // But we pass { forward: true } to allow hovering detection if needed (e.g. to show unlock button)
-      // Actually, if we want to show unlock button on hover, we need to handle mouse events carefully.
-      // For now, let's assume locked = click-through.
+
+    if (!this.win || this.win.isDestroyed()) {
+      return
     }
+
+    this.win.setIgnoreMouseEvents(locked, { forward: true })
+    this.win.webContents.send('desktop-lyric-lock-state', { locked })
   }
 
-  sendLyric(data: LyricUpdateData) {
+  setAlwaysOnTop(alwaysOnTop: boolean): void {
+    if (!this.win || this.win.isDestroyed()) {
+      return
+    }
+
+    this.win.setAlwaysOnTop(alwaysOnTop, alwaysOnTop ? 'screen-saver' : 'normal')
+  }
+
+  sendLyric(data: LyricUpdateData): void {
     if (this.win && !this.win.isDestroyed()) {
       this.win.webContents.send('lyric-time-update', data)
     }
   }
 
-  toggle() {
+  toggle(): void {
     if (this.win && !this.win.isDestroyed() && this.win.isVisible()) {
       this.closeWindow()
-    } else {
-      this.show()
+      return
+    }
+
+    this.show()
+  }
+
+  // Methods for IPC handlers
+  toggleLock(): void {
+    this.setLocked(!this.isLocked)
+  }
+
+  move(x: number, y: number): void {
+    if (this.win && !this.win.isDestroyed()) {
+      const [currentX, currentY] = this.win.getPosition()
+      this.win.setPosition(currentX + x, currentY + y)
     }
   }
 
-  initIpc() {
+  setIgnoreMouse(ignore: boolean): void {
+    if (!this.win || this.win.isDestroyed()) {
+      return
+    }
+
+    this.win.setIgnoreMouseEvents(ignore, { forward: true })
+  }
+
+  initIpc(): void {
     const { ipcMain } = getElectron()
-    ipcMain.on('desktop-lyric-control', (event: IpcMainEvent, action: string) => {
-      switch (action) {
-        case 'show':
-          this.show()
-          break
-        case 'hide':
-          this.hide()
-          break
-        case 'close':
-          this.closeWindow()
-          break
-        case 'lock':
-          this.setLocked(true)
-          break
-        case 'unlock':
-          this.setLocked(false)
-          break
-      }
-    })
 
-    // Forward lyric data from main window to desktop lyric window
-    ipcMain.on('lyric-time-update', (event: IpcMainEvent, data: LyricUpdateData) => {
-      this.sendLyric(data)
-    })
-    
-    // Allow desktop lyric window to toggle lock state
-    ipcMain.on('toggle-desktop-lyric-lock', () => {
-        this.setLocked(!this.isLocked)
-    })
-
-    ipcMain.on('desktop-lyric-move', (event: IpcMainEvent, { x, y }: { x: number; y: number }) => {
-      if (this.win && !this.win.isDestroyed()) {
-        const [currentX, currentY] = this.win.getPosition()
-        this.win.setPosition(currentX + x, currentY + y)
-        // 移动事件会触发 'move' 监听器，自动保存位置
-      }
-    })
-
-    // Dynamic mouse event handling from renderer
-    ipcMain.on('desktop-lyric-set-ignore-mouse', (event: IpcMainEvent, ignore: boolean, options?: { forward: boolean }) => {
-      if (this.win && !this.win.isDestroyed()) {
-        this.win.setIgnoreMouseEvents(ignore, options)
-      }
-    })
-
-    // Forward music control events from desktop lyric to main window
-    ipcMain.on('music-playing-control', (event: IpcMainEvent, ...args: unknown[]) => {
+    ipcMain.on('music-playing-control', (_event: IpcMainEvent, ...args: unknown[]) => {
       windowManager.send('music-playing-control', ...args)
     })
-    ipcMain.on('music-song-control', (event: IpcMainEvent, ...args: unknown[]) => {
+
+    ipcMain.on('music-song-control', (_event: IpcMainEvent, ...args: unknown[]) => {
       windowManager.send('music-song-control', ...args)
     })
   }

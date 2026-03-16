@@ -1,33 +1,77 @@
-<script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+
 import { qqMusicApi } from '../api/qqmusic'
+import { services } from '../services'
 import { useToastStore } from '../store/toastStore'
+import { useUserStore } from '../store/userStore'
 
-const props = defineProps({
-  modelValue: Boolean
-})
+type LoginStatus = 'loading' | 'waiting' | 'expired' | 'success' | 'error'
 
-const emit = defineEmits(['update:modelValue', 'loginSuccess'])
+type QQLoginPayload = {
+  session?: {
+    cookie?: string
+  }
+  data?: {
+    session?: {
+      cookie?: string
+    }
+  }
+  body?: {
+    session?: {
+      cookie?: string
+    }
+    data?: {
+      cookie?: string
+    }
+    img?: string
+    ptqrtoken?: string
+    qrsig?: string
+  }
+  cookie?: string
+  img?: string
+  ptqrtoken?: string
+  qrsig?: string
+  isOk?: boolean
+  refresh?: boolean
+}
 
+const props = defineProps<{
+  modelValue: boolean
+}>()
+
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  'login-success': []
+}>()
+
+const logger = services.logger().createLogger('qqLoginModal')
 const toastStore = useToastStore()
+const userStore = useUserStore()
 
 const qrCodeImg = ref('')
 const ptqrtoken = ref('')
 const qrsig = ref('')
-const status = ref('loading')
-const statusText = ref('正在获取二维码...')
-const checkInterval = ref(null)
+const status = ref<LoginStatus>('loading')
+const statusText = ref('正在加载二维码...')
 
-// 监听 props 变化
-watch(() => props.modelValue, (newVal) => {
-  if (newVal) {
-    loadQRCode()
+let checkInterval: ReturnType<typeof setInterval> | null = null
+
+watch(
+  () => props.modelValue,
+  newValue => {
+    if (newValue) {
+      void loadQRCode()
+      return
+    }
+
+    stopCheck()
   }
-})
+)
 
 onMounted(() => {
   if (props.modelValue) {
-    loadQRCode()
+    void loadQRCode()
   }
 })
 
@@ -35,74 +79,99 @@ onUnmounted(() => {
   stopCheck()
 })
 
-function stopCheck() {
-  if (checkInterval.value) {
-    clearInterval(checkInterval.value)
-    checkInterval.value = null
+function stopCheck(): void {
+  if (checkInterval) {
+    clearInterval(checkInterval)
+    checkInterval = null
   }
 }
 
-async function loadQRCode() {
+function extractSessionCookie(payload: QQLoginPayload | null | undefined): string {
+  if (!payload || typeof payload !== 'object') {
+    return ''
+  }
+
+  const value =
+    payload.session?.cookie ||
+    payload.data?.session?.cookie ||
+    payload.body?.session?.cookie ||
+    payload.body?.data?.cookie ||
+    payload.cookie ||
+    ''
+
+  return typeof value === 'string' ? value : ''
+}
+
+async function loadQRCode(): Promise<void> {
   status.value = 'loading'
-  statusText.value = '正在获取二维码...'
-  
+  statusText.value = '正在加载二维码...'
+
   try {
-    const res = await qqMusicApi.getQQLoginQr()
-    // API 返回格式可能是 {img, ptqrtoken, qrsig} 或 {body: {img, ptqrtoken, qrsig}}
+    const res = (await qqMusicApi.getQQLoginQr()) as QQLoginPayload
     const data = res.body || res
-    if (data && data.img) {
-      qrCodeImg.value = data.img
-      ptqrtoken.value = data.ptqrtoken
-      qrsig.value = data.qrsig
-      status.value = 'waiting'
-      statusText.value = '请使用手机 QQ 扫码登录'
-      startCheck()
-    } else {
-      status.value = 'error'
-      statusText.value = '获取二维码失败'
-      toastStore.error('获取二维码失败')
+
+    if (!data?.img || !data.ptqrtoken || !data.qrsig) {
+      throw new Error('Missing QR login payload')
     }
+
+    qrCodeImg.value = data.img
+    ptqrtoken.value = data.ptqrtoken
+    qrsig.value = data.qrsig
+    status.value = 'waiting'
+    statusText.value = '请使用 QQ 音乐 App 扫码登录'
+    startCheck()
   } catch (error) {
-    console.error('Failed to load QR code:', error)
+    logger.error('Failed to load QQ Music login QR code', error)
     status.value = 'error'
-    statusText.value = '获取二维码失败：' + error.message
-    toastStore.error('获取二维码失败：' + error.message)
+    statusText.value = '加载二维码失败，请稍后重试'
+    toastStore.error('加载 QQ 音乐二维码失败')
   }
 }
 
-function startCheck() {
+function startCheck(): void {
   stopCheck()
-  checkInterval.value = setInterval(async () => {
+
+  checkInterval = setInterval(async () => {
     try {
-      const res = await qqMusicApi.checkQQLoginQr(ptqrtoken.value, qrsig.value)
-      if (res && res.isOk) {
+      const res = (await qqMusicApi.checkQQLoginQr(
+        ptqrtoken.value,
+        qrsig.value
+      )) as QQLoginPayload
+
+      if (res?.isOk) {
+        const sessionCookie = extractSessionCookie(res)
+        if (!sessionCookie) {
+          throw new Error('Missing QQ session cookie')
+        }
+
+        userStore.setQQCookie(sessionCookie)
         status.value = 'success'
-        statusText.value = '登录成功！'
-        toastStore.success('登录成功！')
+        statusText.value = '登录成功'
+        toastStore.success('QQ 音乐登录成功')
         stopCheck()
+
         setTimeout(() => {
-          emit('loginSuccess')
+          emit('login-success')
           emit('update:modelValue', false)
         }, 500)
-      } else if (res && res.refresh) {
-        // 二维码已失效，重新加载
+      } else if (res?.refresh) {
         status.value = 'expired'
-        statusText.value = '二维码已过期，请点击刷新'
-        toastStore.warning('二维码已失效，请刷新')
+        statusText.value = '二维码已过期，请刷新后重新扫码'
+        toastStore.warning('二维码已过期，请刷新后重试')
         stopCheck()
       }
     } catch (error) {
-      console.error('Failed to check login status:', error)
+      logger.warn('Failed to poll QQ Music QR login status', error)
     }
   }, 2000)
 }
 
-function refreshQRCode() {
+function refreshQRCode(): void {
   stopCheck()
-  loadQRCode()
+  void loadQRCode()
 }
 
-function closeModal() {
+function closeModal(): void {
   stopCheck()
   emit('update:modelValue', false)
 }
@@ -114,20 +183,34 @@ function closeModal() {
       <div class="login-header">
         <h2>QQ 音乐登录</h2>
         <button class="close-btn" @click="closeModal">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
       </div>
-      
+
       <div class="login-content">
         <div class="qr-container">
           <div v-if="qrCodeImg" class="qr-wrapper" :class="{ 'qr-expired': status === 'expired' }">
-            <img :src="qrCodeImg" alt="登录二维码" class="qr-image" />
+            <img :src="qrCodeImg" alt="QQ 登录二维码" class="qr-image" />
             <div v-if="status === 'expired'" class="qr-overlay">
               <button class="refresh-btn" @click="refreshQRCode">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <polyline points="23 4 23 10 17 10"></polyline>
                   <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                 </svg>
@@ -135,17 +218,17 @@ function closeModal() {
               </button>
             </div>
           </div>
-          
+
           <div v-else class="qr-loading">
             <div class="loading-spinner"></div>
           </div>
         </div>
-        
+
         <p class="status-text" :class="'status-' + status">{{ statusText }}</p>
-        
+
         <div class="login-tips">
-          <p>打开手机 QQ / QQ 音乐 App</p>
-          <p>扫一扫 → 登录</p>
+          <p>打开 QQ 音乐或 QQ App</p>
+          <p>使用扫一扫完成登录</p>
         </div>
       </div>
     </div>
@@ -233,10 +316,7 @@ function closeModal() {
 
 .qr-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
@@ -298,10 +378,6 @@ function closeModal() {
 
 .status-text.status-error {
   color: #ff4d4f;
-}
-
-.status-text.status-scanned {
-  color: #1890ff;
 }
 
 .login-tips {

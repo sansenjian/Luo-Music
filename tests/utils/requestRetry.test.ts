@@ -94,18 +94,18 @@ describe('requestRetry', () => {
       const delay1 = calculateRetryDelay(1, 1000, 10000, 2, false)
       const delay2 = calculateRetryDelay(2, 1000, 10000, 2, false)
       const delay3 = calculateRetryDelay(3, 1000, 10000, 2, false)
-      
+
       expect(delay2).toBeGreaterThan(delay1)
       expect(delay3).toBeGreaterThan(delay2)
     })
 
     it('应该添加随机抖动', () => {
       const delays = new Set<number>()
-      
+
       for (let i = 0; i < 10; i++) {
         delays.add(calculateRetryDelay(1, 1000, 10000, 2, true))
       }
-      
+
       // 由于有随机抖动，10 次计算应该有不同的延迟
       expect(delays.size).toBeGreaterThan(1)
     })
@@ -130,9 +130,9 @@ describe('requestRetry', () => {
       const retryMap = new Map<string, number>()
       retryMap.set('test1', 3)
       retryMap.set('test2', 5)
-      
+
       const stats = getRetryStats(retryMap)
-      
+
       expect(stats.totalRetries).toBe(8)
       expect(stats.maxRetries).toBe(5)
       expect(stats.averageRetries).toBe(4)
@@ -141,7 +141,7 @@ describe('requestRetry', () => {
     it('空 Map 应该返回零值', () => {
       const retryMap = new Map<string, number>()
       const stats = getRetryStats(retryMap)
-      
+
       expect(stats.totalRetries).toBe(0)
       expect(stats.maxRetries).toBe(0)
       expect(stats.averageRetries).toBe(0)
@@ -153,9 +153,9 @@ describe('requestRetry', () => {
       const retryMap = new Map<string, number>()
       retryMap.set('test1', 3)
       retryMap.set('test2', 5)
-      
+
       resetRetryCount(retryMap, 'test1')
-      
+
       expect(retryMap.has('test1')).toBe(false)
       expect(retryMap.get('test2')).toBe(5)
     })
@@ -164,9 +164,9 @@ describe('requestRetry', () => {
       const retryMap = new Map<string, number>()
       retryMap.set('test1', 3)
       retryMap.set('test2', 5)
-      
+
       resetRetryCount(retryMap)
-      
+
       expect(retryMap.size).toBe(0)
     })
   })

@@ -1,24 +1,49 @@
-import Koa from 'koa';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const { serveNcmApi } = require('@neteasecloudmusicapienhanced/api');
+import Koa from 'koa'
 
-const app = new Koa();
+type ServeNcmApiOptions = {
+  port: number
+  host: string
+  checkVersion: boolean
+}
+
+type NeteaseApiModule = {
+  serveNcmApi?: (options: ServeNcmApiOptions) => Promise<void>
+  default?: {
+    serveNcmApi?: (options: ServeNcmApiOptions) => Promise<void>
+    server?: {
+      serveNcmApi?: (options: ServeNcmApiOptions) => Promise<void>
+    }
+  }
+}
+
+const app = new Koa()
 
 // 启动网易云 API
-const NCM_PORT = Number(process.env.NCM_PORT || 14532);
+const NCM_PORT = Number(process.env.NCM_PORT || 14532)
 
 async function startNeteaseApi() {
   try {
+    const apiModule = (await import('@neteasecloudmusicapienhanced/api')) as NeteaseApiModule
+    const serveNcmApi =
+      apiModule.serveNcmApi ??
+      apiModule.default?.serveNcmApi ??
+      apiModule.default?.server?.serveNcmApi
+
+    if (!serveNcmApi) {
+      console.error('Failed to resolve serveNcmApi from @neteasecloudmusicapienhanced/api')
+      process.exit(1)
+      return
+    }
+
     await serveNcmApi({
       port: NCM_PORT,
       host: 'localhost',
-      checkVersion: false,
-    });
-    console.log(`Netease Cloud Music API started at http://localhost:${NCM_PORT}`);
+      checkVersion: false
+    })
+    console.log(`Netease Cloud Music API started at http://localhost:${NCM_PORT}`)
   } catch (err) {
-    console.error('Error starting Netease API:', err);
-    process.exit(1);
+    console.error('Error starting Netease API:', err)
+    process.exit(1)
   }
 }
 
@@ -27,7 +52,7 @@ async function startNeteaseApi() {
 // async function startQQMusicApi() { ... }
 
 // 启动网易云 API
-startNeteaseApi();
+void startNeteaseApi()
 
 // Koa 服务配置 (如果需要)
 // app.use(...);
@@ -39,4 +64,4 @@ startNeteaseApi();
 // });
 
 // 导出 app 用于测试或集成
-export default app;
+export default app

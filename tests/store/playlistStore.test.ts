@@ -30,9 +30,9 @@ describe('Playlist Store', () => {
   it('setPlaylist updates songs and index', () => {
     const store = usePlaylistStore()
     const songs: MockSong[] = [{ id: 1 }, { id: 2 }]
-    
+
     store.setPlaylist(songs)
-    
+
     expect(store.songs).toEqual(songs)
     expect(store.currentIndex).toBe(0)
     expect(store.hasSongs).toBe(true)
@@ -42,9 +42,9 @@ describe('Playlist Store', () => {
   it('addSong pushes song to list', () => {
     const store = usePlaylistStore()
     const song: MockSong = { id: 1 }
-    
+
     store.addSong(song)
-    
+
     expect(store.songs).toHaveLength(1)
     expect(store.songs[0]).toEqual(song)
   })
@@ -54,10 +54,10 @@ describe('Playlist Store', () => {
     const songs: MockSong[] = [{ id: 1 }, { id: 2 }, { id: 3 }]
     store.setPlaylist(songs)
     store.currentIndex = 1 // Playing song 2
-    
+
     // Remove song 1 (index 0)
     store.removeSong(0)
-    
+
     expect(store.songs).toHaveLength(2)
     expect(store.songs[0].id).toBe(2)
     // Index should not change relative to array, so it now points to song 3 (new index 1)
@@ -67,19 +67,19 @@ describe('Playlist Store', () => {
     // It doesn't seem to adjust currentIndex if we remove a song BEFORE the current one.
     // This might be a bug or intended behavior.
     // Let's test what it does.
-    
+
     // If I remove index 0, the array becomes [{id:2}, {id:3}].
     // currentIndex is still 1.
     // So currentSong becomes {id:3}.
     expect(store.currentSong?.id).toBe(3)
   })
-  
+
   it('clearPlaylist resets state', () => {
     const store = usePlaylistStore()
     store.setPlaylist([{ id: 1 }])
-    
+
     store.clearPlaylist()
-    
+
     expect(store.songs).toEqual([])
     expect(store.currentIndex).toBe(-1)
   })
@@ -89,15 +89,15 @@ describe('Playlist Store', () => {
       const store = usePlaylistStore()
       const songs: MockSong[] = [{ id: 1 }, { id: 2 }, { id: 3 }]
       store.setPlaylist(songs)
-      
+
       // 0 -> 1
       expect(store.next(PLAY_MODE.SEQUENTIAL)).toEqual(songs[1])
       expect(store.currentIndex).toBe(1)
-      
+
       // 1 -> 2
       expect(store.next(PLAY_MODE.SEQUENTIAL)).toEqual(songs[2])
       expect(store.currentIndex).toBe(2)
-      
+
       // 2 -> End (Stay at last or loop? Logic says: if >= length, check mode)
       // Logic: if (nextIndex >= length) nextIndex = mode === 1 ? 0 : length - 1
       // So in SEQUENTIAL (0), it stays at last.
@@ -110,33 +110,33 @@ describe('Playlist Store', () => {
       const songs: MockSong[] = [{ id: 1 }, { id: 2 }]
       store.setPlaylist(songs)
       store.currentIndex = 1 // Last song
-      
+
       // 1 -> 0
       expect(store.next(PLAY_MODE.LIST_LOOP)).toEqual(songs[0])
       expect(store.currentIndex).toBe(0)
     })
-    
+
     it('prev() in SEQUENTIAL mode', () => {
       const store = usePlaylistStore()
       const songs: MockSong[] = [{ id: 1 }, { id: 2 }]
       store.setPlaylist(songs)
       store.currentIndex = 1
-      
+
       // 1 -> 0
       expect(store.prev(PLAY_MODE.SEQUENTIAL)).toEqual(songs[0])
-      
+
       // 0 -> 0 (Stay at start)
       expect(store.prev(PLAY_MODE.SEQUENTIAL)).toEqual(songs[0])
     })
-    
+
     it('prev() in LIST_LOOP mode', () => {
-        const store = usePlaylistStore()
-        const songs: MockSong[] = [{ id: 1 }, { id: 2 }]
-        store.setPlaylist(songs)
-        store.currentIndex = 0
-        
-        // 0 -> 1
-        expect(store.prev(PLAY_MODE.LIST_LOOP)).toEqual(songs[1])
+      const store = usePlaylistStore()
+      const songs: MockSong[] = [{ id: 1 }, { id: 2 }]
+      store.setPlaylist(songs)
+      store.currentIndex = 0
+
+      // 0 -> 1
+      expect(store.prev(PLAY_MODE.LIST_LOOP)).toEqual(songs[1])
     })
   })
 })

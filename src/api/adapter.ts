@@ -79,4 +79,3 @@ export class NeteaseAdapter extends ApiAdapter {
 }
 
 // ApiRequestParams 在本地定义，供外部使用
-export { ApiRequestParams }

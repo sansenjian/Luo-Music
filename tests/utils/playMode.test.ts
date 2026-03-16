@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { PLAY_MODE, PLAY_MODE_LABELS, PLAY_MODE_ICONS } from '../../src/utils/player/constants/playMode'
+import {
+  PLAY_MODE,
+  PLAY_MODE_LABELS,
+  PLAY_MODE_ICONS
+} from '../../src/utils/player/constants/playMode'
 
 describe('PlayMode Constants', () => {
   describe('PLAY_MODE', () => {
@@ -52,18 +56,18 @@ describe('PlayMode Constants', () => {
   describe('播放模式切换逻辑', () => {
     it('应该能正确循环切换播放模式', () => {
       const modeCount = Object.keys(PLAY_MODE).length
-      
+
       // 模拟切换逻辑
       let currentMode = PLAY_MODE.SEQUENTIAL
       currentMode = (currentMode + 1) % modeCount
       expect(currentMode).toBe(PLAY_MODE.LIST_LOOP)
-      
+
       currentMode = (currentMode + 1) % modeCount
       expect(currentMode).toBe(PLAY_MODE.SINGLE_LOOP)
-      
+
       currentMode = (currentMode + 1) % modeCount
       expect(currentMode).toBe(PLAY_MODE.SHUFFLE)
-      
+
       currentMode = (currentMode + 1) % modeCount
       expect(currentMode).toBe(PLAY_MODE.SEQUENTIAL)
     })

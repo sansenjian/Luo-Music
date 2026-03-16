@@ -1,255 +1,211 @@
-import { 
-  MusicPlatformAdapter, 
-  createSong, 
-  type Song, 
-  type SearchResult, 
-  type LyricResult, 
+import {
+  MusicPlatformAdapter,
+  createSong,
+  type LyricResult,
   type PlaylistDetail,
+  type SearchResult,
+  type Song,
   type SongUrlOptions
-} from './interface';
-import { neteaseAdapter } from '../../api/netease';
-import { validateSearchResponse } from '../../api/responseHandler';
+} from './interface'
+import { neteaseAdapter } from '../../api/netease'
+import { validateSearchResponse } from '../../api/responseHandler'
 
-/** 网易云 API 响应基础结构 */
-interface NeteaseResponse<T = unknown> {
-  success: boolean;
-  code?: number;
-  error?: string;
-  data?: T;
-}
-
-/** 网易云歌曲数据结构 */
 interface NeteaseSongData {
-  id: number;
-  name: string;
-  ar?: Array<{ id: number; name: string }>;
-  artists?: Array<{ id: number; name: string }>;
-  al?: { id: number; name: string; picUrl?: string };
-  album?: { id: number; name: string; picUrl?: string; artist?: { img1v1Url?: string } };
-  dt?: number;
-  duration?: number;
-  mv?: number;
-  mvid?: number;
+  id?: number
+  name?: string
+  ar?: Array<{ id?: number; name?: string }>
+  artists?: Array<{ id?: number; name?: string }>
+  al?: { id?: number; name?: string; picUrl?: string }
+  album?: {
+    id?: number
+    name?: string
+    picUrl?: string
+    artist?: { img1v1Url?: string }
+  }
+  dt?: number
+  duration?: number
+  mv?: number
+  mvid?: number
 }
 
-/** 网易云歌词数据结构 */
 interface NeteaseLyricData {
-  lrc?: { lyric?: string };
-  tlyric?: { lyric?: string };
-  romalrc?: { lyric?: string };
-  lyric?: string;
-  tlyric?: string;
+  lrc?: { lyric?: string }
+  tlyric?: { lyric?: string } | string
+  romalrc?: { lyric?: string } | string
+  lyric?: string
 }
 
-/** 网易云歌曲 URL 数据结构 */
-interface NeteaseUrlData {
-  url?: string;
-  data?: Array<{ url?: string }>;
+interface NeteaseUrlItem {
+  url?: string | null
 }
 
-/** 网易云歌单数据结构 */
 interface NeteasePlaylistData {
-  id: number;
-  name: string;
-  coverImgUrl?: string;
-  description?: string;
-  trackCount?: number;
-  tracks?: NeteaseSongData[];
+  id?: number
+  name?: string
+  coverImgUrl?: string
+  description?: string
+  trackCount?: number
+  tracks?: NeteaseSongData[]
+}
+
+function normalizeUrlItems(data: unknown): NeteaseUrlItem[] {
+  if (Array.isArray(data)) {
+    return data as NeteaseUrlItem[]
+  }
+
+  if (data && typeof data === 'object' && Array.isArray((data as { data?: unknown }).data)) {
+    return (data as { data: NeteaseUrlItem[] }).data
+  }
+
+  return []
 }
 
 export class NeteaseAdapter extends MusicPlatformAdapter {
   constructor() {
-    super('netease');
+    super('netease')
   }
 
-  async search(keyword: string, limit: number = 30, page: number = 1): Promise<SearchResult> {
-    const offset = (page - 1) * limit;
-    
-    console.log('[NeteaseAdapter] Searching:', { keyword, limit, offset });
-    
-    const res = await neteaseAdapter.fetch<NeteaseResponse>('/cloudsearch', {
+  async search(keyword: string, limit = 30, page = 1): Promise<SearchResult> {
+    const offset = (page - 1) * limit
+    const response = await neteaseAdapter.fetch<unknown>('/cloudsearch', {
       keywords: keyword,
-      type: 1,  // 1: 单曲
+      type: 1,
       limit,
       offset
-    });
+    })
 
-    console.log('[NeteaseAdapter] Response:', res);
-
-    if (!res.success) {
-      const errorMsg = res.error || `请求失败 (code: ${res.code})`;
-      console.warn('[NeteaseAdapter] Search failed:', errorMsg);
-      throw new Error(`网易云搜索失败: ${errorMsg}`);
+    if (!response.success) {
+      throw new Error(`网易云搜索失败: ${response.error || response.code || 'unknown error'}`)
     }
 
-    // 使用统一的响应验证
-    const validation = validateSearchResponse(res.data);
-    
+    const validation = validateSearchResponse(response.data)
     if (!validation.valid) {
-      console.warn('[NeteaseAdapter] Invalid data format:', validation.error);
-      return { list: [], total: 0 };
+      return { list: [], total: 0 }
     }
-
-    console.log('[NeteaseAdapter] Parsed results:', { 
-      count: validation.list.length, 
-      total: validation.total 
-    });
 
     return {
-      list: validation.list.map((song: NeteaseSongData) => this._normalizeSong(song)),
+      list: validation.list.map(song => this.normalizeSong(song as NeteaseSongData)),
       total: validation.total
-    };
+    }
   }
 
-  async getSongUrl(id: string | number, options: SongUrlOptions | string = 'standard'): Promise<string | null> {
-    let level = 'standard';
-    if (typeof options === 'string') {
-      level = options;
-    } else if (typeof options === 'object' && options !== null) {
-      level = options.level || 'standard';
-    }
+  async getSongUrl(
+    id: string | number,
+    options: SongUrlOptions | string = 'standard'
+  ): Promise<string | null> {
+    const level = typeof options === 'string' ? options : options.level || 'standard'
 
-    console.log('[NeteaseAdapter] Getting song URL:', { id, level, optionsType: typeof options, options });
-
-    // 首先尝试 v1 接口
+    // Try v1 API first
     try {
-      const res = await neteaseAdapter.fetch<NeteaseResponse<NeteaseUrlData>>('/song/url/v1', {
+      const v1Response = await neteaseAdapter.fetch<unknown>('/song/url/v1', {
         id,
         level,
         randomCNIP: true,
         unblock: 'true',
         timestamp: Date.now()
-      });
+      })
 
-      console.log('[NeteaseAdapter] v1 response:', res);
-
-      if (res.success) {
-        const data = res.data?.data || res.data;
-        if (data && data[0] && data[0].url) {
-          console.log('[NeteaseAdapter] Got URL from v1:', data[0].url.substring(0, 50) + '...');
-          return data[0].url;
-        }
+      const v1Url = v1Response ? normalizeUrlItems(v1Response.data)[0]?.url : null
+      if (v1Response?.success && v1Url) {
+        return v1Url
       }
-      
-      console.warn('[NeteaseAdapter] v1 API returned no URL, trying legacy API...');
-    } catch (error) {
-      console.warn('[NeteaseAdapter] v1 API failed:', error);
+    } catch {
+      // v1 API failed, fall back to legacy API
     }
 
-    // 降级到旧版接口
-    try {
-      // 映射 level 到 br
-      let br = 128000;
-      switch (level) {
-        case 'standard': br = 128000; break;
-        case 'higher': br = 192000; break;
-        case 'exhigh': br = 320000; break;
-        case 'lossless': br = 999000; break;
-        case 'hires': br = 999000; break;
-        default: br = 128000;
-      }
-
-      const res = await neteaseAdapter.fetch<NeteaseResponse<NeteaseUrlData>>('/song/url', {
-        id,
-        br,
-        randomCNIP: true,
-        timestamp: Date.now()
-      });
-
-      console.log('[NeteaseAdapter] Legacy response:', res);
-
-      if (res.success) {
-        const data = res.data?.data || res.data;
-        if (data && data[0] && data[0].url) {
-          console.log('[NeteaseAdapter] Got URL from legacy:', data[0].url.substring(0, 50) + '...');
-          return data[0].url;
-        }
-      }
-    } catch (error) {
-      console.error('[NeteaseAdapter] Legacy API also failed:', error);
+    const bitrateByLevel: Record<string, number> = {
+      standard: 128000,
+      higher: 192000,
+      exhigh: 320000,
+      lossless: 999000,
+      hires: 999000
     }
 
-    console.error('[NeteaseAdapter] Failed to get song URL for:', id);
-    return null;
+    const legacyResponse = await neteaseAdapter.fetch<unknown>('/song/url', {
+      id,
+      br: bitrateByLevel[level] || 128000,
+      randomCNIP: true,
+      timestamp: Date.now()
+    })
+
+    return legacyResponse.success ? (normalizeUrlItems(legacyResponse.data)[0]?.url ?? null) : null
   }
 
   async getSongDetail(id: string | number): Promise<Song | null> {
-    const res = await neteaseAdapter.fetch<NeteaseResponse<{ songs?: NeteaseSongData[] } | NeteaseSongData>>('/song/detail', {
+    const response = await neteaseAdapter.fetch<unknown>('/song/detail', {
       ids: String(id),
       timestamp: Date.now()
-    });
+    })
 
-    if (!res.success) {
-      console.warn('Netease song detail failed:', res.error);
-      return null;
+    if (!response.success || !response.data || typeof response.data !== 'object') {
+      return null
     }
 
-    const songs = res.data?.songs || res.data;
-    const song = Array.isArray(songs) ? songs[0] : songs;
-    
-    return song ? this._normalizeSong(song as NeteaseSongData) : null;
+    const songs = Array.isArray((response.data as { songs?: unknown }).songs)
+      ? (response.data as { songs: NeteaseSongData[] }).songs
+      : Array.isArray(response.data)
+        ? (response.data as NeteaseSongData[])
+        : [response.data as NeteaseSongData]
+
+    return songs[0] ? this.normalizeSong(songs[0]) : null
   }
 
   async getLyric(id: string | number): Promise<LyricResult> {
-    const res = await neteaseAdapter.fetch<NeteaseResponse<NeteaseLyricData>>('/lyric', {
+    const response = await neteaseAdapter.fetch<NeteaseLyricData>('/lyric', {
       id,
       timestamp: Date.now()
-    });
+    })
 
-    if (!res.success) {
-      console.warn('Netease lyric failed:', res.error);
-      return { lrc: '', tlyric: '', romalrc: '' };
-    }
-
-    const data = res.data || res;
+    const data = response.data
+    const tlyric = typeof data?.tlyric === 'string' ? data.tlyric : data?.tlyric?.lyric
+    const romalrc = typeof data?.romalrc === 'string' ? data.romalrc : data?.romalrc?.lyric
     return {
-      lrc: data.lrc?.lyric || data.lyric || '',
-      tlyric: data.tlyric?.lyric || data.tlyric || '',
-      romalrc: data.romalrc?.lyric || data.romalrc || ''
-    };
+      lrc: data?.lrc?.lyric || data?.lyric || '',
+      tlyric: tlyric || '',
+      romalrc: romalrc || ''
+    }
   }
-  
-  async getPlaylistDetail(id: string | number): Promise<PlaylistDetail | null> {
-    const res = await neteaseAdapter.fetch<NeteaseResponse<{ playlist?: NeteasePlaylistData } | NeteasePlaylistData>>('/playlist/detail', { id });
 
-    if (!res.success) {
-      console.warn('Netease playlist detail failed:', res.error);
-      return null;
+  async getPlaylistDetail(id: string | number): Promise<PlaylistDetail | null> {
+    const response = await neteaseAdapter.fetch<unknown>('/playlist/detail', { id })
+
+    if (!response.success || !response.data || typeof response.data !== 'object') {
+      return null
     }
 
-    const playlist = res.data?.playlist || res.data;
-    
-    if (!playlist) return null;
-
-    const tracks = (playlist.tracks || []).map((track: NeteaseSongData) => this._normalizeSong(track));
+    const playlist = ((response.data as { playlist?: unknown }).playlist ||
+      response.data) as NeteasePlaylistData
+    if (!playlist.id || !playlist.name) {
+      return null
+    }
 
     return {
       id: playlist.id,
       name: playlist.name,
-      coverImgUrl: playlist.coverImgUrl,
+      coverImgUrl: playlist.coverImgUrl || '',
       description: playlist.description,
       trackCount: playlist.trackCount,
-      tracks
-    };
+      tracks: (playlist.tracks || []).map(track => this.normalizeSong(track))
+    }
   }
 
-  private _normalizeSong(song: NeteaseSongData): Song {
+  private normalizeSong(song: NeteaseSongData): Song {
     return createSong({
-      id: song.id,
-      name: song.name,
-      artists: (song.ar || song.artists || []).map((a: { id: number; name: string }) => ({ 
-        id: a.id, 
-        name: a.name 
+      id: song.id || 0,
+      name: song.name || '',
+      artists: (song.ar || song.artists || []).map(artist => ({
+        id: artist.id || 0,
+        name: artist.name || ''
       })),
       album: {
-        id: song.al?.id || song.album?.id,
-        name: song.al?.name || song.album?.name,
-        picUrl: song.al?.picUrl || song.album?.picUrl || song.album?.artist?.img1v1Url
+        id: song.al?.id || song.album?.id || 0,
+        name: song.al?.name || song.album?.name || '',
+        picUrl: song.al?.picUrl || song.album?.picUrl || song.album?.artist?.img1v1Url || ''
       },
       duration: song.dt || song.duration || 0,
       mvid: song.mv || song.mvid || 0,
       platform: 'netease',
-      originalId: song.id
-    });
+      originalId: song.id || 0
+    })
   }
 }

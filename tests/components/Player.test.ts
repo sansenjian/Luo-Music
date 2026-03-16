@@ -12,7 +12,7 @@ vi.mock('animejs', () => ({
 }))
 
 // Mock composables
-vi.mock('../../src/composables/useAnimations.js', () => ({
+vi.mock('../../src/composables/useAnimations.ts', () => ({
   animate: vi.fn(),
   animateButtonClick: vi.fn(),
   animatePlayPause: vi.fn(),
@@ -32,7 +32,7 @@ describe('Player Component', () => {
         loading: false
       }
     })
-    
+
     expect(wrapper.exists()).toBe(true)
     // 组件渲染成功即可
   })
@@ -44,7 +44,7 @@ describe('Player Component', () => {
         loading: false
       }
     })
-    
+
     expect(wrapper.exists()).toBe(true)
   })
 
@@ -55,7 +55,7 @@ describe('Player Component', () => {
         loading: false
       }
     })
-    
+
     // 检查是否有按钮元素
     const buttons = wrapper.findAll('button')
     expect(buttons.length).toBeGreaterThan(0)
@@ -68,12 +68,12 @@ describe('Player Component', () => {
         loading: false
       }
     })
-    
+
     expect(wrapper.props('compact')).toBe(false)
     expect(wrapper.props('loading')).toBe(false)
-    
+
     await wrapper.setProps({ compact: true, loading: true })
-    
+
     expect(wrapper.props('compact')).toBe(true)
     expect(wrapper.props('loading')).toBe(true)
   })
@@ -85,8 +85,8 @@ describe('Player Component', () => {
         loading: false
       }
     })
-    
-    const store = wrapper.vm.playerStore
+
+    const store = (wrapper.vm as unknown as { playerStore: { playing: boolean } }).playerStore
     expect(store).toBeDefined()
     expect(store.playing).toBe(false)
   })

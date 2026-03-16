@@ -1,5 +1,7 @@
 # 构建产物管理
 
+**最后更新**: 2026-03-15
+
 ## 📁 统一输出目录
 
 所有生产环境的构建产物都输出到 `build/` 目录。
@@ -41,92 +43,134 @@ out/
 
 ## 🚀 构建命令
 
+### 依赖安装
+
+```bash
+# 安装所有依赖（包含 devDependencies）
+npm install
+
+# 仅安装生产依赖（Vercel 部署）
+npm install --production
+```
+
 ### Web 构建
 
 ```bash
 # 构建 Web 版本（生产环境）
-pnpm build
+npm run build:web
 
 # 构建 Web 版本（包含 API 服务器）
-pnpm build:web
+npm run build:server && npm run build:web
 ```
 
 ### Electron 构建
 
 ```bash
 # 开发模式（热重载）
-pnpm dev:electron
+npm run dev:electron
 
 # 构建 Electron 应用（仅构建，不打包）
-pnpm build
+npm run build
 
 # 构建并打包 Electron 应用（生成安装包）
-pnpm build:electron
+npm run build:electron
 
 # 仅打包（使用已构建的文件）
-pnpm electron-forge make
+npm run make
 ```
 
 ### 服务端构建
 
 ```bash
 # 仅构建服务端（用于 Web 版本或独立运行）
-pnpm build:server
+npm run build:server
 
 # 运行服务端（开发模式）
-pnpm server
+npm run server
 
 # 或
-pnpm dev:server
+npm run dev:server
+```
+
+### 代码质量
+
+```bash
+# ESLint 检查
+npm run lint
+
+# ESLint 自动修复
+npm run lint:fix
+
+# Prettier 格式化
+npm run format
+
+# TypeScript 类型检查
+npm run typecheck
+```
+
+### 测试
+
+```bash
+# 运行所有测试
+npm run test:run
+
+# 交互式测试 UI
+npm run test:ui
+
+# 生成覆盖率报告
+npm run test:coverage
 ```
 
 ## 📦 API 服务端 (Server) 说明
 
 ### 运行方式
 
-#### 方式一：集成在 Electron 主进程中（默认）
+应用使用 **子进程模式** 运行 API 服务：
 
-Electron 主进程直接加载 API 模块：
-- 网易云 API: `serveNcmApi()` 在主进程中直接调用
-- QQ 音乐 API: `require('@sansenjian/qq-music-api')` 在主进程中加载
-
-**优点**：
-- 启动速度快
-- 无需进程间通信
-- 代码简单，易于调试
-
-**缺点**：
-- API 崩溃可能影响主进程稳定性
-- 无法独立重启 API 服务
-
-#### 方式二：独立子进程（可选）
-
-使用 `ServerManager` 以子进程方式运行 API：
-
-```typescript
-import { serverManager } from './ServerManager'
-
-// 启动服务
-await serverManager.start()
-
-// 停止服务
-await serverManager.stop()
-
-// 重启服务
-await serverManager.restart()
-
-// 获取状态
-const isRunning = serverManager.getStatus()
-```
+- 网易云音乐 API: 通过 `scripts/dev/netease-api-server.cjs` 子进程启动
+- QQ 音乐 API: 通过 `scripts/dev/qq-api-server.cjs` 子进程启动
 
 **优点**：
 - API 崩溃不影响主进程
 - 可以独立重启 API 服务
 - 资源隔离更好
 
-**缺点**：
-- 需要进程间通信
-- 启动稍慢
+**架构**：
+- `ServiceManager` 统一管理所有 API 子进程
+- 支持健康检查和自动重启
+- 通过 HTTP 进行进程间通信
+
+### ServiceManager 使用
+
+```typescript
+import { serviceManager } from './ServiceManager'
+
+// 初始化并启动服务
+await serviceManager.initialize({
+  services: {
+    netease: { enabled: true, port: 14532 },
+    qq: { enabled: true, port: 3200 }
+  }
+})
+
+// 停止单个服务
+await serviceManager.stopService('netease')
+
+// 启动单个服务
+await serviceManager.startService('netease')
+
+// 重启服务
+await serviceManager.restartService('netease')
+
+// 获取服务状态
+const status = serviceManager.getServiceStatus('netease')
+
+// 获取所有可用服务
+const services = serviceManager.getAvailableServices()
+
+// 停止所有服务
+await serviceManager.stopAll()
+```
 
 ### Server 构建
 
@@ -246,11 +290,12 @@ node build/server/server.cjs
 ## ⚠️ 注意事项
 
 1. **electron-vite**: 使用 `electron-vite` 构建 Electron 主进程、preload 和渲染进程
+2. **编码统一**：项目文本文件统一使用 UTF-8（无 BOM），避免编码不一致导致的乱码与构建异常
 2. **Electron Forge**: 使用 `@electron-forge` 进行应用打包和分发
 3. **输出目录**: Forge 默认输出到 `out/` 目录（可在 `forge.config.ts` 中修改）
-4. **API 服务端**: 
-   - Electron 版本中 API 默认集成在主进程中
-   - 如需独立进程，可使用 `ServerManager`
+4. **API 服务端**:
+   - API 服务通过子进程启动（QQ 音乐和网易云）
+   - 使用 `ServiceManager` 管理服务子进程
    - 打包时通过 `extraResource` 包含 server 代码
 
 ## 🎯 构建优化

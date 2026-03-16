@@ -127,6 +127,18 @@ dist-electron
 release
 release_v2/
 dist-server/
+electron/sandbox/index.js
+electron/shared/protocol/channels.js
+electron/cacheManager.js
+electron/DesktopLyricManager.js
+electron/ipc/index.js
+electron/ipc/IpcService.js
+electron/ipc/types.js
+electron/ipc/middleware/error.js
+electron/ipc/middleware/logger.js
+electron/ipc/handlers/player.handler.js
+electron/main/index.js
+electron.vite.config.js
 
 # Vercel
 .vercel
@@ -146,6 +158,10 @@ test-results/
 
 # IDE
 .idea/
+.claude/
+
+# Husky
+.husky/.gitignore
 
 # Cache directories
 .electron_cache/
@@ -157,3 +173,8 @@ test-results/
 
 # Backup files
 *.bak
+.sentryclirc
+.env.sentry
+
+# Sentry Config File
+.env.sentry-build-plugin

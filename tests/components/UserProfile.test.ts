@@ -33,7 +33,7 @@ describe('UserProfile.vue', () => {
     })
 
     const wrapper = mount(UserProfile)
-    
+
     expect(wrapper.find('.user-nickname').text()).toBe('Test User')
     expect(wrapper.find('.user-id').text()).toContain('12345')
     expect(wrapper.find('img.user-avatar').exists()).toBe(true)
@@ -49,7 +49,7 @@ describe('UserProfile.vue', () => {
     })
 
     const wrapper = mount(UserProfile)
-    
+
     expect(wrapper.find('.user-avatar-placeholder').exists()).toBe(true)
     expect(wrapper.find('img.user-avatar').exists()).toBe(false)
   })
@@ -57,7 +57,7 @@ describe('UserProfile.vue', () => {
   it('renders default text when no user info', () => {
     // No user info set
     const wrapper = mount(UserProfile)
-    
+
     expect(wrapper.find('.user-nickname').text()).toBe('未知用户')
     expect(wrapper.find('.user-id').text()).toContain('-')
   })
@@ -68,14 +68,14 @@ describe('UserProfile.vue', () => {
       nickname: 'Test User',
       userId: '12345'
     })
-    
+
     // Spy on store logout action
     const storeLogoutSpy = vi.spyOn(store, 'logout')
-    
+
     const wrapper = mount(UserProfile)
-    
+
     await wrapper.find('.logout-btn').trigger('click')
-    
+
     expect(logout).toHaveBeenCalled()
     expect(storeLogoutSpy).toHaveBeenCalled()
   })
@@ -84,21 +84,21 @@ describe('UserProfile.vue', () => {
     // Mock logout failure
     vi.mocked(logout).mockRejectedValueOnce(new Error('Logout failed'))
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    
+
     const store = useUserStore()
     const storeLogoutSpy = vi.spyOn(store, 'logout')
-    
+
     const wrapper = mount(UserProfile)
-    
+
     await wrapper.find('.logout-btn').trigger('click')
-    
+
     // API called
     expect(logout).toHaveBeenCalled()
     // Error logged
     expect(consoleSpy).toHaveBeenCalledWith('退出登录失败:', expect.any(Error))
     // Store logout should still be called (in finally block)
     expect(storeLogoutSpy).toHaveBeenCalled()
-    
+
     consoleSpy.mockRestore()
   })
 })

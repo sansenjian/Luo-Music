@@ -1,6 +1,6 @@
 /**
  * 全局快捷键管理
- * 
+ *
  * 负责注册和管理全局快捷键。
  * 遵循 VSCode 的 Keybinding 模式，将快捷键逻辑集中管理。
  */
@@ -11,7 +11,7 @@ import logger from '../logger'
 /**
  * 快捷键动作映射类型
  */
-export type ShortcutAction = 
+export type ShortcutAction =
   | 'togglePlay'
   | 'playPrev'
   | 'playNext'
@@ -57,7 +57,7 @@ function getActionHandler(action: ShortcutAction): (() => void) | null {
     seekForward: () => windowManager?.send('music-process-control', 'forward'),
     toggleCompact: () => windowManager?.send('hide-player')
   }
-  
+
   return actions[action] || null
 }
 
@@ -67,10 +67,10 @@ function getActionHandler(action: ShortcutAction): (() => void) | null {
 export function registerShortcuts(shortcuts: ShortcutConfig[]): void {
   for (const shortcut of shortcuts) {
     if (!shortcut.globalKeys || shortcut.globalKeys.length === 0) continue
-    
+
     const handler = getActionHandler(shortcut.action)
     if (!handler) continue
-    
+
     for (const key of shortcut.globalKeys) {
       try {
         globalShortcut.register(key, handler)

@@ -1,4 +1,4 @@
-import type { ComponentOptions } from 'vue'
+import type { Component } from 'vue'
 import { mount, type MountingOptions } from '@vue/test-utils'
 
 export interface MockSong {
@@ -16,7 +16,6 @@ export interface MockLyrics {
   tlyric: { lyric: string }
 }
 
-// 创建测试用的歌曲数据
 export function createMockSong(overrides: Partial<MockSong> = {}): MockSong {
   return {
     id: 123,
@@ -30,7 +29,6 @@ export function createMockSong(overrides: Partial<MockSong> = {}): MockSong {
   }
 }
 
-// 创建测试用的歌词数据
 export function createMockLyrics(): MockLyrics {
   return {
     lrc: {
@@ -48,11 +46,7 @@ export function createMockLyrics(): MockLyrics {
   }
 }
 
-// 挂载组件的辅助函数
-export function mountComponent<T extends ComponentOptions>(
-  component: T,
-  options: MountingOptions<T> = {}
-): ReturnType<typeof mount> {
+export function mountComponent(component: Component, options: MountingOptions<any> = {}) {
   return mount(component, {
     global: {
       stubs: {
@@ -64,17 +58,14 @@ export function mountComponent<T extends ComponentOptions>(
   })
 }
 
-// 等待指定时间
 export function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-// 模拟 API 响应
 export function mockApiResponse<T>(data: T): Promise<{ data: T }> {
   return Promise.resolve({ data })
 }
 
-// 模拟 API 错误
-export function mockApiError(message: string = 'API Error'): Promise<never> {
+export function mockApiError(message = 'API Error'): Promise<never> {
   return Promise.reject(new Error(message))
 }

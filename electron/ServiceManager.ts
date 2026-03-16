@@ -1,19 +1,20 @@
 import { ChildProcess, spawn } from 'node:child_process'
-import { createRequire } from 'node:module'
+import http from 'node:http'
 import type {
   ServiceConfig,
-  ServiceItemConfig,
   ServiceStatus,
   ServiceStatusType,
   AvailableService
 } from './types/service'
 import logger from './logger'
-import { getScriptPath, PROJECT_ROOT } from './utils/paths'
-import path from 'node:path'
+import { getScriptPath } from './utils/paths'
 
-const require = createRequire(__filename)
-// 使用 require 导入 electron，避免 ESM 打包后命名导出问题
-const { ipcMain } = require('electron')
+/** IPC 消息类型定义 */
+interface IpcMessage {
+  type: 'ready' | 'error'
+  port?: number
+  error?: string
+}
 
 /**
  * 服务基础类 - 所有音乐平台服务的基类
@@ -63,9 +64,102 @@ export abstract class BaseService {
   }
 
   /**
+   * 标记服务为运行状态（由外部启动时使用）
+   */
+  markAsRunning(port: number): void {
+    this.port = port
+    this.status = 'running'
+    this.lastUpdate = Date.now()
+    this.lastError = undefined
+  }
+
+  /**
    * 处理 API 请求
    */
   abstract handleRequest(endpoint: string, params: Record<string, unknown>): Promise<unknown>
+
+  /**
+   * 等待服务就绪（IPC 消息 + 端口检查双重保障）
+   */
+  protected async waitForReady(timeout: number = 15000): Promise<void> {
+    await Promise.race([this.waitForIpcMessage(timeout), this.waitForPort(timeout)])
+  }
+
+  /**
+   * 等待 IPC 就绪消息
+   */
+  private waitForIpcMessage(timeout: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('IPC message timeout'))
+      }, timeout)
+
+      const onMessage = (msg: IpcMessage): void => {
+        if (msg.type === 'ready') {
+          clearTimeout(timer)
+          this.process?.off('message', onMessage)
+          resolve()
+        } else if (msg.type === 'error') {
+          clearTimeout(timer)
+          this.process?.off('message', onMessage)
+          reject(new Error(msg.error || 'Startup error'))
+        }
+      }
+
+      if (this.process) {
+        this.process.on('message', onMessage)
+      } else {
+        clearTimeout(timer)
+        reject(new Error('Process not started'))
+      }
+    })
+  }
+
+  /**
+   * 等待端口响应
+   */
+  private async waitForPort(timeout: number): Promise<void> {
+    const startTime = Date.now()
+
+    const check = (): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        const elapsed = Date.now() - startTime
+        if (elapsed > timeout) {
+          reject(new Error(`Port check timeout after ${timeout}ms`))
+          return
+        }
+
+        const req = http.request(
+          {
+            host: 'localhost',
+            port: this.port,
+            path: '/',
+            method: 'GET',
+            timeout: 2000
+          },
+          _res => {
+            // 任何响应都表示服务已启动
+            resolve()
+          }
+        )
+
+        req.on('error', () => {
+          setTimeout(() => check().then(resolve, reject), 500)
+        })
+
+        req.on('timeout', () => {
+          req.destroy()
+          setTimeout(() => check().then(resolve, reject), 500)
+        })
+
+        req.end()
+      })
+    }
+
+    // 延迟 1 秒开始检测
+    await new Promise(r => setTimeout(r, 1000))
+    await check()
+  }
 }
 
 /**
@@ -85,29 +179,33 @@ export class QQService extends BaseService {
       // 使用统一的路径工具获取脚本路径（兼容开发和打包环境）
       const scriptPath = getScriptPath('qq-api-server.cjs')
       logger.info(`[QQService] Script path: ${scriptPath}`)
-      
-      // 启动 QQ 音乐 API 子进程
+
+      // 启动 QQ 音乐 API 子进程，启用 IPC 通道
       this.process = spawn('node', [scriptPath], {
-        env: { ...process.env, PORT: String(this.port) },
-        stdio: ['ignore', 'pipe', 'pipe']
+        env: {
+          ...process.env,
+          PORT: String(this.port),
+          NODE_OPTIONS: '' // 清除继承的调试选项，避免 inspector 端口警告
+        },
+        stdio: ['ignore', 'pipe', 'pipe', 'ipc'] // 启用 IPC 通道
       })
 
-      this.process.stdout?.on('data', (data) => {
+      this.process.stdout?.on('data', data => {
         logger.info(`[QQService] ${data.toString().trim()}`)
       })
 
-      this.process.stderr?.on('data', (data) => {
+      this.process.stderr?.on('data', data => {
         logger.error(`[QQService] ${data.toString().trim()}`)
       })
 
-      this.process.on('error', (err) => {
+      this.process.on('error', err => {
         logger.error(`[QQService] Process error:`, err)
         this.status = 'error'
         this.lastError = err.message
         this.lastUpdate = Date.now()
       })
 
-      this.process.on('exit', (code) => {
+      this.process.on('exit', code => {
         logger.info(`[QQService] Process exited with code ${code}`)
         if (this.status === 'running') {
           this.status = 'stopped'
@@ -115,8 +213,9 @@ export class QQService extends BaseService {
         this.lastUpdate = Date.now()
       })
 
-      // 等待服务启动（简单延迟，实际应该检查端口）
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // 等待服务真正就绪（IPC 消息 + 端口检查）
+      await this.waitForReady(15000)
+
       this.status = 'running'
       this.lastUpdate = Date.now()
       logger.info(`[QQService] Started successfully`)
@@ -155,23 +254,27 @@ export class QQService extends BaseService {
 
     return new Promise((resolve, reject) => {
       const postData = JSON.stringify(params)
-      const req = http.request(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(postData)
-        }
-      }, (res) => {
-        let data = ''
-        res.on('data', chunk => data += chunk)
-        res.on('end', () => {
-          try {
-            resolve(JSON.parse(data))
-          } catch (e) {
-            reject(new Error(`Invalid JSON response: ${e}`))
+      const req = http.request(
+        url,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
           }
-        })
-      })
+        },
+        res => {
+          let data = ''
+          res.on('data', chunk => (data += chunk))
+          res.on('end', () => {
+            try {
+              resolve(JSON.parse(data))
+            } catch (e) {
+              reject(new Error(`Invalid JSON response: ${e}`))
+            }
+          })
+        }
+      )
 
       req.on('error', reject)
       req.write(postData)
@@ -194,30 +297,36 @@ export class NeteaseService extends BaseService {
     logger.info(`[NeteaseService] Starting on port ${this.port}`)
 
     try {
-      // 启动网易云音乐 API 子进程
-      this.process = spawn('node', [
-        require.resolve('../scripts/dev/netease-api-server.cjs')
-      ], {
-        env: { ...process.env, PORT: String(this.port) },
-        stdio: ['ignore', 'pipe', 'pipe']
+      // 使用统一的路径工具获取脚本路径（兼容开发和打包环境）
+      const scriptPath = getScriptPath('netease-api-server.cjs')
+      logger.info(`[NeteaseService] Script path: ${scriptPath}`)
+
+      // 启动网易云音乐 API 子进程，启用 IPC 通道
+      this.process = spawn('node', [scriptPath], {
+        env: {
+          ...process.env,
+          PORT: String(this.port),
+          NODE_OPTIONS: '' // 清除继承的调试选项，避免 inspector 端口警告
+        },
+        stdio: ['ignore', 'pipe', 'pipe', 'ipc'] // 启用 IPC 通道
       })
 
-      this.process.stdout?.on('data', (data) => {
+      this.process.stdout?.on('data', data => {
         logger.info(`[NeteaseService] ${data.toString().trim()}`)
       })
 
-      this.process.stderr?.on('data', (data) => {
+      this.process.stderr?.on('data', data => {
         logger.error(`[NeteaseService] ${data.toString().trim()}`)
       })
 
-      this.process.on('error', (err) => {
+      this.process.on('error', err => {
         logger.error(`[NeteaseService] Process error:`, err)
         this.status = 'error'
         this.lastError = err.message
         this.lastUpdate = Date.now()
       })
 
-      this.process.on('exit', (code) => {
+      this.process.on('exit', code => {
         logger.info(`[NeteaseService] Process exited with code ${code}`)
         if (this.status === 'running') {
           this.status = 'stopped'
@@ -225,8 +334,9 @@ export class NeteaseService extends BaseService {
         this.lastUpdate = Date.now()
       })
 
-      // 等待服务启动
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // 等待服务真正就绪（IPC 消息 + 端口检查）
+      await this.waitForReady(15000)
+
       this.status = 'running'
       this.lastUpdate = Date.now()
       logger.info(`[NeteaseService] Started successfully`)
@@ -264,23 +374,27 @@ export class NeteaseService extends BaseService {
 
     return new Promise((resolve, reject) => {
       const postData = JSON.stringify(params)
-      const req = http.request(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(postData)
-        }
-      }, (res) => {
-        let data = ''
-        res.on('data', chunk => data += chunk)
-        res.on('end', () => {
-          try {
-            resolve(JSON.parse(data))
-          } catch (e) {
-            reject(new Error(`Invalid JSON response: ${e}`))
+      const req = http.request(
+        url,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
           }
-        })
-      })
+        },
+        res => {
+          let data = ''
+          res.on('data', chunk => (data += chunk))
+          res.on('end', () => {
+            try {
+              resolve(JSON.parse(data))
+            } catch (e) {
+              reject(new Error(`Invalid JSON response: ${e}`))
+            }
+          })
+        }
+      )
 
       req.on('error', reject)
       req.write(postData)
@@ -338,6 +452,15 @@ export class ServiceManager {
     if (!service) {
       throw new Error(`Service ${serviceId} not found`)
     }
+
+    const { status } = service.getStatus()
+    if (status === 'starting' || status === 'running') {
+      logger.warn(
+        `[ServiceManager] Skip duplicate start for ${serviceId}, current status: ${status}`
+      )
+      return
+    }
+
     await service.start()
   }
 
@@ -427,6 +550,79 @@ export class ServiceManager {
       }
     }
     logger.info('[ServiceManager] All services stopped')
+  }
+
+  /**
+   * 停止所有服务（别名）
+   */
+  async stopAllServices(): Promise<void> {
+    return this.stopAll()
+  }
+
+  /**
+   * 启动所有已注册的服务
+   */
+  async startAllServices(): Promise<void> {
+    logger.info('[ServiceManager] Starting all services...')
+    for (const [serviceId] of this.services) {
+      try {
+        await this.startService(serviceId)
+      } catch (error) {
+        logger.error(`[ServiceManager] Failed to start ${serviceId}:`, error)
+      }
+    }
+    logger.info('[ServiceManager] All services started')
+  }
+
+  /**
+   * 获取所有服务状态
+   */
+  getAllServiceStatus(): Record<string, ServiceStatus> {
+    const result: Record<string, ServiceStatus> = {}
+    for (const [serviceId, service] of this.services) {
+      result[serviceId] = service.getStatus()
+    }
+    return result
+  }
+
+  /**
+   * 标记服务为运行状态（由外部启动时使用）
+   */
+  markServiceAsRunning(serviceId: string, port: number): void {
+    const service = this.services.get(serviceId)
+    if (service) {
+      service.markAsRunning(port)
+      logger.info(`[ServiceManager] Marked ${serviceId} as running on port ${port}`)
+    } else {
+      logger.warn(`[ServiceManager] Service ${serviceId} not found for marking as running`)
+    }
+  }
+
+  /**
+   * 检查服务健康状态
+   */
+  async checkServiceHealth(
+    serviceId: string
+  ): Promise<{ healthy: boolean; status: ServiceStatus | null }> {
+    const service = this.services.get(serviceId)
+    if (!service) {
+      return { healthy: false, status: null }
+    }
+
+    const status = service.getStatus()
+    const healthy = service.isAlive()
+
+    return { healthy, status }
+  }
+
+  /**
+   * 更新服务配置
+   */
+  updateServiceConfig(serviceId: string, config: unknown): void {
+    logger.info(`[ServiceManager] Updating config for ${serviceId}:`, config)
+    // 当前实现中，服务配置在初始化时确定
+    // 此方法预留用于动态配置更新
+    // 可以在未来扩展以支持热重载配置
   }
 }
 

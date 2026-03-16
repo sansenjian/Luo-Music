@@ -11,7 +11,7 @@ export class PlaybackController {
       console.error('No URL provided for playback')
       return false
     }
-    
+
     try {
       await audioManager.play(url)
       return true
@@ -43,10 +43,10 @@ export class PlaybackController {
   }
 
   getNextIndex(
-    currentIndex: number, 
-    songListLength: number, 
-    playMode: number, 
-    shuffledIndices: number[] | null = null, 
+    currentIndex: number,
+    songListLength: number,
+    playMode: number,
+    shuffledIndices: number[] | null = null,
     currentShuffleIndex: number = -1
   ): number {
     if (songListLength === 0) return -1
@@ -63,10 +63,10 @@ export class PlaybackController {
   }
 
   getPrevIndex(
-    currentIndex: number, 
-    songListLength: number, 
-    playMode: number, 
-    shuffledIndices: number[] | null = null, 
+    currentIndex: number,
+    songListLength: number,
+    playMode: number,
+    shuffledIndices: number[] | null = null,
     currentShuffleIndex: number = -1
   ): number {
     if (songListLength === 0) return -1

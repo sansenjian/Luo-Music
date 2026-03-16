@@ -33,7 +33,7 @@ describe('error/types', () => {
   describe('AppError', () => {
     it('should create error with code and message', () => {
       const error = new AppError(ErrorCode.NETWORK_OFFLINE, 'Network is offline')
-      
+
       expect(error).toBeInstanceOf(Error)
       expect(error).toBeInstanceOf(AppError)
       expect(error.name).toBe('AppError')
@@ -44,19 +44,21 @@ describe('error/types', () => {
 
     it('should create error with custom recoverable flag', () => {
       const error = new AppError(ErrorCode.MAIN_PROCESS_CRASH, 'Crashed', false)
-      
+
       expect(error.recoverable).toBe(false)
     })
 
     it('should create error with additional data', () => {
-      const error = new AppError(ErrorCode.SONG_NO_COPYRIGHT, 'No copyright', true, { songId: '12345' })
-      
+      const error = new AppError(ErrorCode.SONG_NO_COPYRIGHT, 'No copyright', true, {
+        songId: '12345'
+      })
+
       expect(error.data).toEqual({ songId: '12345' })
     })
 
     it('should have correct stack trace', () => {
       const error = new AppError(ErrorCode.UNKNOWN_ERROR, 'Test error')
-      
+
       expect(error.stack).toBeDefined()
       expect(error.stack).toContain('AppError')
     })
@@ -134,7 +136,7 @@ describe('error/types', () => {
     describe('Errors.noCopyright()', () => {
       it('should create SONG_NO_COPYRIGHT error with songId', () => {
         const error = Errors.noCopyright('song123')
-        
+
         expect(error.code).toBe(ErrorCode.SONG_NO_COPYRIGHT)
         expect(error.message).toBe('No copyright')
         expect(error.recoverable).toBe(true)
@@ -150,7 +152,7 @@ describe('error/types', () => {
     describe('Errors.network()', () => {
       it('should create NETWORK_OFFLINE error', () => {
         const error = Errors.network()
-        
+
         expect(error.code).toBe(ErrorCode.NETWORK_OFFLINE)
         expect(error.message).toBe('Network error')
         expect(error.recoverable).toBe(true)
@@ -160,7 +162,7 @@ describe('error/types', () => {
     describe('Errors.fatal()', () => {
       it('should create non-recoverable MAIN_PROCESS_CRASH error', () => {
         const error = Errors.fatal('Critical system failure')
-        
+
         expect(error.code).toBe(ErrorCode.MAIN_PROCESS_CRASH)
         expect(error.message).toBe('Critical system failure')
         expect(error.recoverable).toBe(false)
@@ -170,7 +172,7 @@ describe('error/types', () => {
     describe('Errors.unknown()', () => {
       it('should create UNKNOWN_ERROR with message', () => {
         const error = Errors.unknown('Something went wrong')
-        
+
         expect(error.code).toBe(ErrorCode.UNKNOWN_ERROR)
         expect(error.message).toBe('Something went wrong')
         expect(error.recoverable).toBe(true)
@@ -178,7 +180,7 @@ describe('error/types', () => {
 
       it('should create UNKNOWN_ERROR with data', () => {
         const error = Errors.unknown('Error', { detail: 'info' })
-        
+
         expect(error.data).toEqual({ detail: 'info' })
       })
     })

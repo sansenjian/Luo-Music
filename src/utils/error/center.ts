@@ -22,10 +22,10 @@ class ErrorCenter {
 
   // 抛出错误（业务代码调用）
   emit(error: AppError | Error | unknown) {
-    let appError: AppError;
+    let appError: AppError
 
     if (error instanceof AppError) {
-      appError = error;
+      appError = error
     } else if (error instanceof Error) {
       // 包装未知错误
       appError = new AppError(
@@ -35,19 +35,15 @@ class ErrorCenter {
         { stack: error.stack }
       )
     } else {
-      appError = new AppError(
-        ErrorCode.UNKNOWN_ERROR,
-        String(error),
-        true
-      )
+      appError = new AppError(ErrorCode.UNKNOWN_ERROR, String(error), true)
     }
 
     // 1. 特定处理器
     const specific = this.handlers.get(appError.code) || []
-    
+
     // 2. 全局处理器
     const handlers = [...specific, ...this.globalHandlers]
-    
+
     // 3. 执行处理链
     handlers.forEach(h => {
       try {

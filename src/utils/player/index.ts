@@ -9,12 +9,12 @@ import { playlistManager } from './core/playlistManager'
 import { LyricEngine } from './core/lyric'
 
 export function createPlayer() {
-    return {
-        audio: audioManager,
-        playback: playbackController,
-        playlist: playlistManager,
-        lyric: new LyricEngine()
-    }
+  return {
+    audio: audioManager,
+    playback: playbackController,
+    playlist: playlistManager,
+    lyric: new LyricEngine()
+  }
 }
 
 // Default export for backward compatibility
@@ -30,20 +30,20 @@ import { TIME_INTERVAL, SKIP_CONFIG } from './constants/timeInterval'
 import { VOLUME, AUDIO_CONFIG } from './constants/volume'
 
 export default {
-    audioManager: playerCore,
-    playbackController: pc,
-    playlistManager: pm,
-    LyricParser,
-    LyricEngine: LE,
-    timeFormatter,
-    shuffleHelper,
-    PlaybackErrorHandler,
-    PLAY_MODE,
-    PLAY_MODE_LABELS,
-    PLAY_MODE_ICONS,
-    TIME_INTERVAL,
-    SKIP_CONFIG,
-    VOLUME,
-    AUDIO_CONFIG,
-    createPlayer
+  audioManager: playerCore,
+  playbackController: pc,
+  playlistManager: pm,
+  LyricParser,
+  LyricEngine: LE,
+  timeFormatter,
+  shuffleHelper,
+  PlaybackErrorHandler,
+  PLAY_MODE,
+  PLAY_MODE_LABELS,
+  PLAY_MODE_ICONS,
+  TIME_INTERVAL,
+  SKIP_CONFIG,
+  VOLUME,
+  AUDIO_CONFIG,
+  createPlayer
 }

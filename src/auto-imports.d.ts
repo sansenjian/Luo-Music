@@ -8,16 +8,16 @@ export {}
 declare global {
   const EffectScope: typeof import('vue').EffectScope
   const acceptHMRUpdate: typeof import('pinia').acceptHMRUpdate
-  const animate: typeof import('./composables/useAnimations.js').animate
-  const animateAlbumCover: typeof import('./composables/useAnimations.js').animateAlbumCover
-  const animateButtonClick: typeof import('./composables/useAnimations.js').animateButtonClick
-  const animateListItems: typeof import('./composables/useAnimations.js').animateListItems
-  const animateLoopMode: typeof import('./composables/useAnimations.js').animateLoopMode
-  const animatePageEnter: typeof import('./composables/useAnimations.js').animatePageEnter
-  const animatePageLeave: typeof import('./composables/useAnimations.js').animatePageLeave
-  const animatePlayPause: typeof import('./composables/useAnimations.js').animatePlayPause
-  const animateProgressBar: typeof import('./composables/useAnimations.js').animateProgressBar
-  const animateVolumeIcon: typeof import('./composables/useAnimations.js').animateVolumeIcon
+  const animate: typeof import('./composables/useAnimations').animate
+  const animateAlbumCover: typeof import('./composables/useAnimations').animateAlbumCover
+  const animateButtonClick: typeof import('./composables/useAnimations').animateButtonClick
+  const animateListItems: typeof import('./composables/useAnimations').animateListItems
+  const animateLoopMode: typeof import('./composables/useAnimations').animateLoopMode
+  const animatePageEnter: typeof import('./composables/useAnimations').animatePageEnter
+  const animatePageLeave: typeof import('./composables/useAnimations').animatePageLeave
+  const animatePlayPause: typeof import('./composables/useAnimations').animatePlayPause
+  const animateProgressBar: typeof import('./composables/useAnimations').animateProgressBar
+  const animateVolumeIcon: typeof import('./composables/useAnimations').animateVolumeIcon
   const asyncComputed: typeof import('@vueuse/core').asyncComputed
   const autoResetRef: typeof import('@vueuse/core').autoResetRef
   const clearSearch: typeof import('./composables/useSearch').clearSearch
@@ -97,7 +97,7 @@ declare global {
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
   const pausableWatch: typeof import('@vueuse/core').pausableWatch
   const performSearch: typeof import('./composables/useSearch').performSearch
-  const pinia: typeof import('./store/pinia.js').default
+  const pinia: typeof import('./store/pinia').default
   const platform: typeof import('./composables/useSearch').platform
   const provide: typeof import('vue').provide
   const provideLocal: typeof import('@vueuse/core').provideLocal
@@ -119,6 +119,7 @@ declare global {
   const resolveRef: typeof import('@vueuse/core').resolveRef
   const searchError: typeof import('./composables/useSearch').searchError
   const searchKeyword: typeof import('./composables/useSearch').searchKeyword
+  const searchResultItemToSong: typeof import('./store/searchStore').searchResultItemToSong
   const searchResults: typeof import('./composables/useSearch').searchResults
   const searchTotal: typeof import('./composables/useSearch').searchTotal
   const setActivePinia: typeof import('pinia').setActivePinia
@@ -148,8 +149,9 @@ declare global {
   const unrefElement: typeof import('@vueuse/core').unrefElement
   const until: typeof import('@vueuse/core').until
   const useActiveElement: typeof import('@vueuse/core').useActiveElement
+  const useActiveLyricState: typeof import('./composables/useActiveLyricState').useActiveLyricState
   const useAnimate: typeof import('@vueuse/core').useAnimate
-  const useAnimations: typeof import('./composables/useAnimations.js').default
+  const useAnimations: typeof import('./composables/useAnimations').default
   const useArrayDifference: typeof import('@vueuse/core').useArrayDifference
   const useArrayEvery: typeof import('@vueuse/core').useArrayEvery
   const useArrayFilter: typeof import('@vueuse/core').useArrayFilter
@@ -176,6 +178,7 @@ declare global {
   const useClipboardItems: typeof import('@vueuse/core').useClipboardItems
   const useCloned: typeof import('@vueuse/core').useCloned
   const useColorMode: typeof import('@vueuse/core').useColorMode
+  const useCommandContext: typeof import('./composables/useCommandContext').useCommandContext
   const useConfirmDialog: typeof import('@vueuse/core').useConfirmDialog
   const useCountdown: typeof import('@vueuse/core').useCountdown
   const useCounter: typeof import('@vueuse/core').useCounter
@@ -217,6 +220,8 @@ declare global {
   const useFullscreen: typeof import('@vueuse/core').useFullscreen
   const useGamepad: typeof import('@vueuse/core').useGamepad
   const useGeolocation: typeof import('@vueuse/core').useGeolocation
+  const useHomePage: typeof import('./composables/useHomePage').default
+  const useHomeShell: typeof import('./composables/useHomeShell').useHomeShell
   const useId: typeof import('vue').useId
   const useIdle: typeof import('@vueuse/core').useIdle
   const useImage: typeof import('@vueuse/core').useImage
@@ -225,11 +230,12 @@ declare global {
   const useInterval: typeof import('@vueuse/core').useInterval
   const useIntervalFn: typeof import('@vueuse/core').useIntervalFn
   const useKeyModifier: typeof import('@vueuse/core').useKeyModifier
-  const useKeyboardShortcuts: typeof import('./composables/useKeyboardShortcuts.js').useKeyboardShortcuts
+  const useKeyboardShortcuts: typeof import('./composables/useKeyboardShortcuts').useKeyboardShortcuts
   const useLastChanged: typeof import('@vueuse/core').useLastChanged
-  const useLikedSongs: typeof import('./composables/useLikedSongs.js').useLikedSongs
+  const useLikedSongs: typeof import('./composables/useLikedSongs').useLikedSongs
   const useLink: typeof import('vue-router').useLink
   const useLocalStorage: typeof import('@vueuse/core').useLocalStorage
+  const useLyricAutoScroll: typeof import('./composables/useLyricAutoScroll').useLyricAutoScroll
   const useMagicKeys: typeof import('@vueuse/core').useMagicKeys
   const useManualRefHistory: typeof import('@vueuse/core').useManualRefHistory
   const useMediaControls: typeof import('@vueuse/core').useMediaControls
@@ -254,7 +260,7 @@ declare global {
   const usePerformanceObserver: typeof import('@vueuse/core').usePerformanceObserver
   const usePermission: typeof import('@vueuse/core').usePermission
   const usePlayerStore: typeof import('./store/playerStore').usePlayerStore
-  const usePlaylistStore: typeof import('./store/playlistStore.js').usePlaylistStore
+  const usePlaylistStore: typeof import('./store/playlistStore').usePlaylistStore
   const usePointer: typeof import('@vueuse/core').usePointer
   const usePointerLock: typeof import('@vueuse/core').usePointerLock
   const usePointerSwipe: typeof import('@vueuse/core').usePointerSwipe
@@ -309,16 +315,16 @@ declare global {
   const useTitle: typeof import('@vueuse/core').useTitle
   const useToNumber: typeof import('@vueuse/core').useToNumber
   const useToString: typeof import('@vueuse/core').useToString
-  const useToastStore: typeof import('./store/toastStore.js').useToastStore
+  const useToastStore: typeof import('./store/toastStore').useToastStore
   const useToggle: typeof import('@vueuse/core').useToggle
   const useTransition: typeof import('@vueuse/core').useTransition
   const useUrlSearchParams: typeof import('@vueuse/core').useUrlSearchParams
-  const useUserData: typeof import('./composables/useUserData.js').useUserData
-  const useUserDataQuery: typeof import('./composables/useUserDataQuery.js').useUserDataQuery
-  const useUserEvents: typeof import('./composables/useUserEvents.js').useUserEvents
+  const useUserData: typeof import('./composables/useUserData').useUserData
+  const useUserDataQuery: typeof import('./composables/useUserDataQuery').useUserDataQuery
+  const useUserEvents: typeof import('./composables/useUserEvents').useUserEvents
   const useUserMedia: typeof import('@vueuse/core').useUserMedia
-  const useUserPlaylists: typeof import('./composables/useUserPlaylists.js').useUserPlaylists
-  const useUserStore: typeof import('./store/userStore.js').useUserStore
+  const useUserPlaylists: typeof import('./composables/useUserPlaylists').useUserPlaylists
+  const useUserStore: typeof import('./store/userStore').useUserStore
   const useVModel: typeof import('@vueuse/core').useVModel
   const useVModels: typeof import('@vueuse/core').useVModels
   const useVibrate: typeof import('@vueuse/core').useVibrate
@@ -354,14 +360,50 @@ declare global {
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
+  export type { LyricStateSource, UseActiveLyricStateOptions } from './composables/useActiveLyricState'
+  import('./composables/useActiveLyricState')
+  // @ts-ignore
+  export type { AnimationFunctions } from './composables/useAnimations'
+  import('./composables/useAnimations')
+  // @ts-ignore
+  export type { MusicServerOption } from './composables/useHomePage'
+  import('./composables/useHomePage')
+  // @ts-ignore
+  export type { HomeTab } from './composables/useHomeShell'
+  import('./composables/useHomeShell')
+  // @ts-ignore
+  export type { UseLikedSongsReturn } from './composables/useLikedSongs'
+  import('./composables/useLikedSongs')
+  // @ts-ignore
+  export type { UseLyricAutoScrollOptions } from './composables/useLyricAutoScroll'
+  import('./composables/useLyricAutoScroll')
+  // @ts-ignore
   export type { SearchOptions, Song } from './composables/useSearch'
   import('./composables/useSearch')
   // @ts-ignore
   export type { SliderOptions } from './composables/useSlider'
   import('./composables/useSlider')
   // @ts-ignore
+  export type { UserStats, UseUserDataReturn } from './composables/useUserData'
+  import('./composables/useUserData')
+  // @ts-ignore
+  export type { UseUserDataQueryReturn } from './composables/useUserDataQuery'
+  import('./composables/useUserDataQuery')
+  // @ts-ignore
+  export type { EventItem, UseUserEventsReturn } from './composables/useUserEvents'
+  import('./composables/useUserEvents')
+  // @ts-ignore
+  export type { PlaylistItem, UseUserPlaylistsReturn } from './composables/useUserPlaylists'
+  import('./composables/useUserPlaylists')
+  // @ts-ignore
+  export type { PlayerStoreActions } from './store/playerStore'
+  import('./store/playerStore')
+  // @ts-ignore
   export type { SearchResultItem } from './store/searchStore'
   import('./store/searchStore')
+  // @ts-ignore
+  export type { UserInfo } from './store/userStore'
+  import('./store/userStore')
 }
 
 // for vue template auto import
@@ -371,16 +413,16 @@ declare module 'vue' {
   interface ComponentCustomProperties {
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
-    readonly animate: UnwrapRef<typeof import('./composables/useAnimations.js')['animate']>
-    readonly animateAlbumCover: UnwrapRef<typeof import('./composables/useAnimations.js')['animateAlbumCover']>
-    readonly animateButtonClick: UnwrapRef<typeof import('./composables/useAnimations.js')['animateButtonClick']>
-    readonly animateListItems: UnwrapRef<typeof import('./composables/useAnimations.js')['animateListItems']>
-    readonly animateLoopMode: UnwrapRef<typeof import('./composables/useAnimations.js')['animateLoopMode']>
-    readonly animatePageEnter: UnwrapRef<typeof import('./composables/useAnimations.js')['animatePageEnter']>
-    readonly animatePageLeave: UnwrapRef<typeof import('./composables/useAnimations.js')['animatePageLeave']>
-    readonly animatePlayPause: UnwrapRef<typeof import('./composables/useAnimations.js')['animatePlayPause']>
-    readonly animateProgressBar: UnwrapRef<typeof import('./composables/useAnimations.js')['animateProgressBar']>
-    readonly animateVolumeIcon: UnwrapRef<typeof import('./composables/useAnimations.js')['animateVolumeIcon']>
+    readonly animate: UnwrapRef<typeof import('./composables/useAnimations')['animate']>
+    readonly animateAlbumCover: UnwrapRef<typeof import('./composables/useAnimations')['animateAlbumCover']>
+    readonly animateButtonClick: UnwrapRef<typeof import('./composables/useAnimations')['animateButtonClick']>
+    readonly animateListItems: UnwrapRef<typeof import('./composables/useAnimations')['animateListItems']>
+    readonly animateLoopMode: UnwrapRef<typeof import('./composables/useAnimations')['animateLoopMode']>
+    readonly animatePageEnter: UnwrapRef<typeof import('./composables/useAnimations')['animatePageEnter']>
+    readonly animatePageLeave: UnwrapRef<typeof import('./composables/useAnimations')['animatePageLeave']>
+    readonly animatePlayPause: UnwrapRef<typeof import('./composables/useAnimations')['animatePlayPause']>
+    readonly animateProgressBar: UnwrapRef<typeof import('./composables/useAnimations')['animateProgressBar']>
+    readonly animateVolumeIcon: UnwrapRef<typeof import('./composables/useAnimations')['animateVolumeIcon']>
     readonly asyncComputed: UnwrapRef<typeof import('@vueuse/core')['asyncComputed']>
     readonly autoResetRef: UnwrapRef<typeof import('@vueuse/core')['autoResetRef']>
     readonly computed: UnwrapRef<typeof import('vue')['computed']>
@@ -454,7 +496,7 @@ declare module 'vue' {
     readonly onUpdated: UnwrapRef<typeof import('vue')['onUpdated']>
     readonly onWatcherCleanup: UnwrapRef<typeof import('vue')['onWatcherCleanup']>
     readonly pausableWatch: UnwrapRef<typeof import('@vueuse/core')['pausableWatch']>
-    readonly pinia: UnwrapRef<typeof import('./store/pinia.js')['default']>
+    readonly pinia: UnwrapRef<typeof import('./store/pinia')['default']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
     readonly provideLocal: UnwrapRef<typeof import('@vueuse/core')['provideLocal']>
     readonly reactify: UnwrapRef<typeof import('@vueuse/core')['reactify']>
@@ -473,6 +515,7 @@ declare module 'vue' {
     readonly refWithControl: UnwrapRef<typeof import('@vueuse/core')['refWithControl']>
     readonly resolveComponent: UnwrapRef<typeof import('vue')['resolveComponent']>
     readonly resolveRef: UnwrapRef<typeof import('@vueuse/core')['resolveRef']>
+    readonly searchResultItemToSong: UnwrapRef<typeof import('./store/searchStore')['searchResultItemToSong']>
     readonly setActivePinia: UnwrapRef<typeof import('pinia')['setActivePinia']>
     readonly setMapStoreSuffix: UnwrapRef<typeof import('pinia')['setMapStoreSuffix']>
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>
@@ -499,8 +542,9 @@ declare module 'vue' {
     readonly unrefElement: UnwrapRef<typeof import('@vueuse/core')['unrefElement']>
     readonly until: UnwrapRef<typeof import('@vueuse/core')['until']>
     readonly useActiveElement: UnwrapRef<typeof import('@vueuse/core')['useActiveElement']>
+    readonly useActiveLyricState: UnwrapRef<typeof import('./composables/useActiveLyricState')['useActiveLyricState']>
     readonly useAnimate: UnwrapRef<typeof import('@vueuse/core')['useAnimate']>
-    readonly useAnimations: UnwrapRef<typeof import('./composables/useAnimations.js')['default']>
+    readonly useAnimations: UnwrapRef<typeof import('./composables/useAnimations')['default']>
     readonly useArrayDifference: UnwrapRef<typeof import('@vueuse/core')['useArrayDifference']>
     readonly useArrayEvery: UnwrapRef<typeof import('@vueuse/core')['useArrayEvery']>
     readonly useArrayFilter: UnwrapRef<typeof import('@vueuse/core')['useArrayFilter']>
@@ -527,6 +571,7 @@ declare module 'vue' {
     readonly useClipboardItems: UnwrapRef<typeof import('@vueuse/core')['useClipboardItems']>
     readonly useCloned: UnwrapRef<typeof import('@vueuse/core')['useCloned']>
     readonly useColorMode: UnwrapRef<typeof import('@vueuse/core')['useColorMode']>
+    readonly useCommandContext: UnwrapRef<typeof import('./composables/useCommandContext')['useCommandContext']>
     readonly useConfirmDialog: UnwrapRef<typeof import('@vueuse/core')['useConfirmDialog']>
     readonly useCountdown: UnwrapRef<typeof import('@vueuse/core')['useCountdown']>
     readonly useCounter: UnwrapRef<typeof import('@vueuse/core')['useCounter']>
@@ -568,6 +613,8 @@ declare module 'vue' {
     readonly useFullscreen: UnwrapRef<typeof import('@vueuse/core')['useFullscreen']>
     readonly useGamepad: UnwrapRef<typeof import('@vueuse/core')['useGamepad']>
     readonly useGeolocation: UnwrapRef<typeof import('@vueuse/core')['useGeolocation']>
+    readonly useHomePage: UnwrapRef<typeof import('./composables/useHomePage')['default']>
+    readonly useHomeShell: UnwrapRef<typeof import('./composables/useHomeShell')['useHomeShell']>
     readonly useId: UnwrapRef<typeof import('vue')['useId']>
     readonly useIdle: UnwrapRef<typeof import('@vueuse/core')['useIdle']>
     readonly useImage: UnwrapRef<typeof import('@vueuse/core')['useImage']>
@@ -576,11 +623,12 @@ declare module 'vue' {
     readonly useInterval: UnwrapRef<typeof import('@vueuse/core')['useInterval']>
     readonly useIntervalFn: UnwrapRef<typeof import('@vueuse/core')['useIntervalFn']>
     readonly useKeyModifier: UnwrapRef<typeof import('@vueuse/core')['useKeyModifier']>
-    readonly useKeyboardShortcuts: UnwrapRef<typeof import('./composables/useKeyboardShortcuts.js')['useKeyboardShortcuts']>
+    readonly useKeyboardShortcuts: UnwrapRef<typeof import('./composables/useKeyboardShortcuts')['useKeyboardShortcuts']>
     readonly useLastChanged: UnwrapRef<typeof import('@vueuse/core')['useLastChanged']>
-    readonly useLikedSongs: UnwrapRef<typeof import('./composables/useLikedSongs.js')['useLikedSongs']>
+    readonly useLikedSongs: UnwrapRef<typeof import('./composables/useLikedSongs')['useLikedSongs']>
     readonly useLink: UnwrapRef<typeof import('vue-router')['useLink']>
     readonly useLocalStorage: UnwrapRef<typeof import('@vueuse/core')['useLocalStorage']>
+    readonly useLyricAutoScroll: UnwrapRef<typeof import('./composables/useLyricAutoScroll')['useLyricAutoScroll']>
     readonly useMagicKeys: UnwrapRef<typeof import('@vueuse/core')['useMagicKeys']>
     readonly useManualRefHistory: UnwrapRef<typeof import('@vueuse/core')['useManualRefHistory']>
     readonly useMediaControls: UnwrapRef<typeof import('@vueuse/core')['useMediaControls']>
@@ -605,7 +653,7 @@ declare module 'vue' {
     readonly usePerformanceObserver: UnwrapRef<typeof import('@vueuse/core')['usePerformanceObserver']>
     readonly usePermission: UnwrapRef<typeof import('@vueuse/core')['usePermission']>
     readonly usePlayerStore: UnwrapRef<typeof import('./store/playerStore')['usePlayerStore']>
-    readonly usePlaylistStore: UnwrapRef<typeof import('./store/playlistStore.js')['usePlaylistStore']>
+    readonly usePlaylistStore: UnwrapRef<typeof import('./store/playlistStore')['usePlaylistStore']>
     readonly usePointer: UnwrapRef<typeof import('@vueuse/core')['usePointer']>
     readonly usePointerLock: UnwrapRef<typeof import('@vueuse/core')['usePointerLock']>
     readonly usePointerSwipe: UnwrapRef<typeof import('@vueuse/core')['usePointerSwipe']>
@@ -660,16 +708,16 @@ declare module 'vue' {
     readonly useTitle: UnwrapRef<typeof import('@vueuse/core')['useTitle']>
     readonly useToNumber: UnwrapRef<typeof import('@vueuse/core')['useToNumber']>
     readonly useToString: UnwrapRef<typeof import('@vueuse/core')['useToString']>
-    readonly useToastStore: UnwrapRef<typeof import('./store/toastStore.js')['useToastStore']>
+    readonly useToastStore: UnwrapRef<typeof import('./store/toastStore')['useToastStore']>
     readonly useToggle: UnwrapRef<typeof import('@vueuse/core')['useToggle']>
     readonly useTransition: UnwrapRef<typeof import('@vueuse/core')['useTransition']>
     readonly useUrlSearchParams: UnwrapRef<typeof import('@vueuse/core')['useUrlSearchParams']>
-    readonly useUserData: UnwrapRef<typeof import('./composables/useUserData.js')['useUserData']>
-    readonly useUserDataQuery: UnwrapRef<typeof import('./composables/useUserDataQuery.js')['useUserDataQuery']>
-    readonly useUserEvents: UnwrapRef<typeof import('./composables/useUserEvents.js')['useUserEvents']>
+    readonly useUserData: UnwrapRef<typeof import('./composables/useUserData')['useUserData']>
+    readonly useUserDataQuery: UnwrapRef<typeof import('./composables/useUserDataQuery')['useUserDataQuery']>
+    readonly useUserEvents: UnwrapRef<typeof import('./composables/useUserEvents')['useUserEvents']>
     readonly useUserMedia: UnwrapRef<typeof import('@vueuse/core')['useUserMedia']>
-    readonly useUserPlaylists: UnwrapRef<typeof import('./composables/useUserPlaylists.js')['useUserPlaylists']>
-    readonly useUserStore: UnwrapRef<typeof import('./store/userStore.js')['useUserStore']>
+    readonly useUserPlaylists: UnwrapRef<typeof import('./composables/useUserPlaylists')['useUserPlaylists']>
+    readonly useUserStore: UnwrapRef<typeof import('./store/userStore')['useUserStore']>
     readonly useVModel: UnwrapRef<typeof import('@vueuse/core')['useVModel']>
     readonly useVModels: UnwrapRef<typeof import('@vueuse/core')['useVModels']>
     readonly useVibrate: UnwrapRef<typeof import('@vueuse/core')['useVibrate']>

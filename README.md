@@ -9,6 +9,16 @@
 
 ## 🎉 最新动态
 
+### v2.3 - VSCode 开发环境优化 (2026-03-15)
+- ✅ **调试配置** - 添加 launch.json，支持主进程/渲染进程联合调试
+- ✅ **扩展推荐** - 推荐 8 个必备 VSCode 扩展
+- ✅ **任务配置** - 8 个常用任务一键执行
+- ✅ **Git 钩子** - Husky + lint-staged 预提交检查
+- ✅ **提交规范** - 约定式提交模板
+- ✅ **GitHub 模板** - PR/Issue 模板规范化
+- ✅ **依赖清理** - 移除未使用的 Babel 依赖
+- ✅ **文档完善** - 新增 VSCode 配置文档和快速参考
+
 ### v2.2 - Electron-Vite 构建升级 (2026-03-10)
 - ✅ **electron-vite 迁移** - 从 electron-builder + tsup 迁移到 electron-vite 方案
 - ✅ **TypeScript 测试迁移** - 所有测试文件从 JavaScript 迁移到 TypeScript
@@ -34,7 +44,7 @@
 
 - [x] 进度条拖动时实时追踪歌词
 - [x] 升级 Vite 到 v7 版本
-- [x] 升级 Vue 到 v3.7 版本
+- [x] 升级 Vue 到 v3.5 版本
 - [x] 升级 Node.js 到 v24 版本
 - [x] 升级 Electron 到 v40 版本
 - [x] 双平台搜索支持（网易云 + QQ 音乐）
@@ -45,6 +55,9 @@
 - [x] 添加功能思维导图
 - [x] 引入 TypeScript 支持
 - [x] 引入 TanStack Query (Vue Query)
+- [x] VSCode 调试配置完善
+- [x] Git 提交规范化
+- [x] 预提交代码检查
 - [ ] 消除翻译歌词不显示问题（QQ 音乐数据源问题）
 - [ ] 进行录屏或者截图会出现白屏问题
 - [x] 重构 playerStore 消除上帝类问题
@@ -142,22 +155,31 @@ mindmap
     
     技术架构
       前端框架
-        Vue 3.7
+        Vue 3.5
         Pinia 3.0
         Vue Router 4.6
-        TypeScript
+        TypeScript 5.9
       构建工具
-        Vite 7.0
+        Vite 7.3
         Electron 40.0
+        Electron-Vite 5.0
+        Electron Forge 7.11
       动画库
-        Anime.js 4.0
+        Anime.js 4.3
       状态管理
         Pinia Store
-        TanStack Query
+        TanStack Query 5.92
         持久化插件
       网络请求
-        Axios
+        Axios 1.7
         自定义封装
+      代码质量
+        ESLint 10.0
+        Prettier 3.8
+        Husky 9.1
+      测试框架
+        Vitest 4.0
+        Playwright 1.58
     
     部署支持
       Web 部署
@@ -201,17 +223,26 @@ mindmap
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| Vue | 3.7+ | 前端框架 |
-| TypeScript | 5.0+ | 静态类型检查 |
-| Electron | 40.0+ | 桌面应用框架 |
-| Pinia | 3.0+ | 状态管理 |
-| TanStack Query | 5.0+ | 服务端状态管理 |
-| Pinia Plugin Persistedstate | 4.7+ | 状态持久化 |
-| Axios | 1.6+ | HTTP 客户端 |
-| Vite | 7.0+ | 构建工具 |
-| Anime.js | 4.0+ | 动画效果 |
-| NeteaseCloudMusicApi Enhanced | 4.30+ | 网易云音乐 API |
-| QQ Music API | - | QQ 音乐 API 服务 |
+| Vue | 3.5.29 | 前端框架 |
+| TypeScript | 5.9.3 | 静态类型检查 |
+| Electron | 40.0.0 | 桌面应用框架 |
+| Pinia | 3.0.4 | 状态管理 |
+| TanStack Query | 5.92.9 | 服务端状态管理 |
+| Pinia Plugin Persistedstate | 4.7.1 | 状态持久化 |
+| Axios | 1.7.9 | HTTP 客户端 |
+| Vite | 7.3.1 | 构建工具 |
+| Anime.js | 4.3.6 | 动画效果 |
+| NeteaseCloudMusicApi Enhanced | 4.30.1 | 网易云音乐 API |
+| QQ Music API | 2.2.10 | QQ 音乐 API 服务 |
+| Electron-Vite | 5.0.0 | Electron 构建工具 |
+| Electron Forge | 7.11.1 | Electron 打包工具 |
+| ESLint | 10.0.3 | 代码检查 |
+| Prettier | 3.8.1 | 代码格式化 |
+| Vitest | 4.0.18 | 单元测试框架 |
+| Playwright | 1.58.2 | E2E 测试框架 |
+| VitePress | 1.6.4 | 文档生成工具 |
+| Husky | 9.1.7 | Git 钩子 |
+| lint-staged | 16.1.2 | 预提交检查 |
 
 ## 依赖结构说明
 
@@ -221,23 +252,37 @@ mindmap
 {
   "dependencies": {
     // 纯 Web 依赖 - Vercel 部署时安装
-    "vue": "^3.7.0",
+    "vue": "^3.5.29",
     "pinia": "^3.0.4",
     "animejs": "^4.3.6",
-    "@tanstack/vue-query": "^5.0.0"
+    "@tanstack/vue-query": "^5.92.9",
+    "axios": "^1.7.9",
+    "@vueuse/core": "^14.2.1",
+    "zod": "^4.3.6"
     // ...
   },
   "devDependencies": {
     // Electron 专属依赖 - 仅开发/打包时安装
     "electron": "^40.0.0",
-    "electron-builder": "^25.1.8",
-    "vite-plugin-electron": "^0.29.0",
-    "typescript": "^5.0.0",
-    "vue-tsc": "^2.0.0"
+    "electron-vite": "^5.0.0",
+    "@electron-forge/cli": "^7.11.1",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.2.5"
     // ...
   }
 }
 ```
+
+### 依赖清理
+
+项目已清理以下未使用的依赖：
+
+- ❌ `@babel/plugin-transform-async-to-generator` - 未使用
+- ❌ `@babel/register` - 未使用
+- ❌ `combined-stream` - 传递依赖
+- ❌ `delayed-stream` - 传递依赖
+- ❌ `mime-db` - 传递依赖
+- ❌ `mime-types` - 传递依赖
 
 ### 为什么这样设计？
 
@@ -254,10 +299,10 @@ mindmap
 npm install -D electron
 
 # 安装 Electron 打包工具
-npm install -D electron-builder
+npm install -D @electron-forge/cli
 
-# 安装 Vite Electron 插件
-npm install -D vite-plugin-electron vite-plugin-electron-renderer
+# 安装 Electron-Vite
+npm install -D electron-vite
 ```
 
 > **注意**：Electron 相关包必须放在 `devDependencies` 中，否则 Vercel 部署时会安装不必要的依赖，导致部署失败或体积过大。
@@ -269,14 +314,21 @@ luo_music/
 ├── docs/             # 项目文档 (VitePress)
 │   ├── build.md      # 构建文档
 │   ├── testing.md    # 测试文档
-│   ├── api-documentation.md
+│   ├── vscode-setup.md         # VSCode 配置
+│   ├── optimization-summary.md # 优化总结
 │   └── ...
 ├── electron/         # Electron 主进程代码
-│   ├── main.ts       # 主进程入口
-│   ├── preload.js    # 预加载脚本
-│   ├── ipc.ts        # IPC 通信
+│   ├── main/         # 主进程模块
+│   │   ├── index.ts  # 主进程入口
+│   │   ├── app.ts    # 应用生命周期
+│   │   ├── tray.ts   # 系统托盘
+│   │   └── shortcuts.ts # 快捷键
+│   ├── sandbox/      # 预加载脚本
+│   ├── ipc/          # IPC 通信
+│   ├── shared/       # 共享代码
+│   ├── utils/        # 工具函数
 │   ├── WindowManager.ts
-│   ├── ServerManager.ts
+│   ├── ServiceManager.ts  # 服务管理 (子进程)
 │   └── utils/paths.ts
 ├── scripts/          # 构建脚本
 │   ├── dev/          # 开发脚本
@@ -294,27 +346,41 @@ luo_music/
 │   │   ├── electron/ # Electron 平台服务
 │   │   └── web/      # Web 平台服务
 │   ├── router/       # 路由配置
+│   ├── services/     # 服务注册表
 │   ├── store/        # Pinia 状态管理
 │   ├── types/        # TypeScript 类型定义
 │   ├── utils/        # 工具函数
 │   │   ├── http/     # HTTP 请求封装
 │   │   ├── error/    # 错误处理
+│   │   ├── cache/    # 缓存管理
 │   │   └── player/   # 播放器模块
 │   ├── views/        # 页面视图
 │   ├── App.vue       # 根组件
-│   └── main.js       # 入口文件
+│   └── main.ts       # 入口文件
 ├── tests/            # 测试目录
 │   ├── base/         # 基础架构测试
 │   ├── components/   # 组件测试
 │   ├── electron/     # Electron 测试
+│   ├── platform/     # 平台适配器测试
 │   ├── store/        # Store 测试
 │   └── utils/        # 工具函数测试
 ├── build/            # 构建输出目录
+├── .vscode/          # VSCode 配置
+│   ├── launch.json   # 调试配置
+│   ├── tasks.json    # 任务配置
+│   ├── settings.json # 编辑器设置
+│   └── extensions.json # 扩展推荐
+├── .husky/           # Git 钩子
+├── .github/          # GitHub 配置
+│   ├── ISSUE_TEMPLATE/
+│   └── PULL_REQUEST_TEMPLATE.md
 ├── package.json
 ├── vite.config.ts
 ├── electron.vite.config.ts
 ├── forge.config.ts
 ├── tsconfig.json
+├── eslint.config.js
+├── .prettierrc
 └── index.html
 ```
 
@@ -455,6 +521,9 @@ npm run build:fast
 - [组件文档](./docs/components-documentation.md) - 组件使用说明
 - [测试文档](./docs/testing.md) - 测试策略与用例
 - [错误处理](./docs/error-handling.md) - 错误处理规范
+- [VSCode 配置](./docs/vscode-setup.md) - VSCode 调试和扩展配置
+- [优化总结](./docs/optimization-summary.md) - 项目框架优化总结
+- [快速参考](./docs/QUICK_REFERENCE.md) - 常用命令和配置速查
 
 ---
 
@@ -498,9 +567,34 @@ vercel dev
 # Vercel 部署：/api（使用相对路径）
 VITE_API_BASE_URL=http://localhost:14532
 
+# QQ 音乐 API 基础 URL
+VITE_QQ_API_BASE_URL=http://localhost:3200
+
 # 开发服务器端口
 VITE_DEV_SERVER_PORT=5173
+
+# Sentry 配置（可选）
+SENTRY_DSN=
+SENTRY_RELEASE=
+
+# Sentry Build Plugin 配置（打包时上传 sourcemap）
+# SENTRY_ORG=
+# SENTRY_PROJECT=
+# SENTRY_AUTH_TOKEN=
 ```
+
+### 环境变量说明
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `VITE_API_BASE_URL` | 网易云 API 地址 | `http://localhost:14532` |
+| `VITE_QQ_API_BASE_URL` | QQ 音乐 API 地址 | `http://localhost:3200` |
+| `VITE_DEV_SERVER_PORT` | Vite 开发服务器端口 | `5173` |
+| `SENTRY_DSN` | Sentry DSN | 空 |
+| `SENTRY_RELEASE` | Sentry 版本号 | `luo-music@{version}` |
+| `SENTRY_ORG` | Sentry 组织名 | 空 |
+| `SENTRY_PROJECT` | Sentry 项目名 | 空 |
+| `SENTRY_AUTH_TOKEN` | Sentry 认证令牌 | 空 |
 
 ---
 
@@ -601,6 +695,31 @@ VITE_DEV_SERVER_PORT=5173
 
 ### Q: 安装依赖时提示 EBUSY 错误
 **A**: 文件被占用，请关闭所有 Node.js 和 Electron 进程，或重启电脑后重试。
+
+### Q: 如何清理依赖缓存
+**A**: 项目已移除未使用的 Babel 依赖（`@babel/plugin-transform-async-to-generator`、`@babel/register`）以及传递依赖（`combined-stream`、`delayed-stream`、`mime-db`、`mime-types`）。运行以下命令重新安装：
+
+```bash
+# 清理 node_modules 和 lock 文件
+npm run clean:all
+
+# 重新安装依赖
+npm install
+```
+
+### Q: 如何配置 Git 提交模板
+**A**: 运行以下命令设置全局提交模板：
+
+```bash
+git config commit.template .gitmessage
+```
+
+### Q: 如何使用调试功能
+**A**:
+1. 按 `F5` 打开调试配置
+2. 选择 "Debug Full Electron" 同时调试主进程和渲染进程
+3. 或选择 "Debug Main Process" / "Debug Renderer" 单独调试
+4. 在代码中设置断点开始调试
 
 ---
 

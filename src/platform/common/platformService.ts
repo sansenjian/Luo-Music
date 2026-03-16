@@ -43,7 +43,7 @@ export function detectMobile(): boolean {
  */
 export function detectElectron(): boolean {
   if (typeof window === 'undefined') return false
-  return typeof window.electronAPI !== 'undefined'
+  return typeof (window as Window & { electronAPI?: unknown }).electronAPI !== 'undefined'
 }
 
 /**
@@ -91,7 +91,7 @@ export abstract class PlatformServiceBase implements IPlatformService {
 
   on(_channel: string, _callback: IMessageHandler): IDisposable {
     console.warn('[PlatformService] on not implemented')
-    return Disposable.NONE
+    return Disposable.none
   }
 
   send(_channel: string, _data: unknown): void {
@@ -102,7 +102,7 @@ export abstract class PlatformServiceBase implements IPlatformService {
     // no-op in base class
   }
 
-  sendPlayModeChange(_mode: string): void {
+  sendPlayModeChange(_mode: number): void {
     // no-op in base class
   }
 
@@ -117,12 +117,14 @@ export abstract class PlatformServiceBase implements IPlatformService {
 
   async clearCache(_options: IClearCacheOptions): Promise<IClearCacheResult> {
     return {
+      success: [],
       failed: []
     }
   }
 
   async clearAllCache(_keepUserData?: boolean): Promise<IClearCacheResult> {
     return {
+      success: [],
       failed: []
     }
   }

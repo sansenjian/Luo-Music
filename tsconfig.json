@@ -4,6 +4,7 @@
     "useDefineForClassFields": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "strict": true,
     "jsx": "preserve",
     "resolveJsonModule": true,
@@ -12,14 +13,28 @@
     "lib": ["ESNext", "DOM"],
     "skipLibCheck": true,
     "noEmit": true,
+    "types": ["vite/client", "vitest/globals"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@electron/sandbox": ["electron/sandbox/index.ts"],
+      "@electron/shared/*": ["electron/shared/*"]
     },
     "allowJs": false,
-    "checkJs": false
+    "checkJs": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/config/**/*.js", "tests/**/*.ts", "electron/**/*.ts"],
-  "exclude": ["electron/**/*.js"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "src/config/**/*.js",
+    "tests/**/*.ts",
+    "tests/**/*.d.ts",
+    "electron/sandbox/**/*.ts",
+    "electron/shared/**/*.ts"
+  ],
+  "exclude": ["electron/main/**/*.ts", "electron/**/*.js"]
 }

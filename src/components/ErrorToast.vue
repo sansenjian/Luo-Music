@@ -18,7 +18,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { errorCenter, AppError } from '../utils/error'
+import { services } from '../services'
+import type { AppError } from '../utils/error'
 
 interface ToastError {
   id: number
@@ -29,19 +30,20 @@ interface ToastError {
 
 const visibleErrors = ref<ToastError[]>([])
 let idCounter = 0
+const errorService = services.error()
 
 onMounted(() => {
   // 监听所有错误
-  errorCenter.onAny((err: AppError) => {
+  errorService.onAny((err: AppError) => {
     const toast: ToastError = {
       id: ++idCounter,
       message: err.getUserMessage(),
       recoverable: err.recoverable,
       type: err.recoverable ? 'warning' : 'error'
     }
-    
+
     visibleErrors.value.push(toast)
-    
+
     // 可恢复错误3秒自动消失，致命错误需手动关闭
     if (err.recoverable) {
       setTimeout(() => dismiss(toast.id), 3000)
@@ -77,14 +79,18 @@ const dismiss = (id: number) => {
   color: var(--text-main, #fff);
   border-left: 4px solid;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   min-width: 300px;
   max-width: 400px;
 }
 
-.error-toast.warning { border-color: #f59e0b; }
-.error-toast.error { border-color: #ef4444; }
+.error-toast.warning {
+  border-color: #f59e0b;
+}
+.error-toast.error {
+  border-color: #ef4444;
+}
 
 .content {
   flex: 1;

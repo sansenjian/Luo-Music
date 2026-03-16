@@ -18,7 +18,7 @@ luo_music_new/
 │   └── views/            # 页面视图
 ├── electron/             # Electron 主进程
 │   ├── main.ts           # 主入口
-│   ├── preload.js        # 预加载脚本
+│   ├── sandbox/index.ts  # 预加载脚本
 │   └── *.ts              # 各功能模块
 └── server.ts             # API 服务端
 ```
@@ -370,8 +370,8 @@ export const IPC_CHANNELS = {
 - [ ] 实现 IPC 服务代理层
 - [ ] 迁移现有 IPC 处理器到新架构
 - [ ] 迁移 WindowManager 到新架构
-- [ ] 迁移各功能模块（ServerManager, DesktopLyricManager 等）
-- [ ] 更新 preload.js 到 TypeScript
+- [ ] 迁移各功能模块（ServiceManager, DesktopLyricManager 等）
+- [x] 预加载脚本已迁移至 TypeScript（electron/sandbox/index.ts）
 - [ ] 更新构建配置支持新目录结构
 
 ---

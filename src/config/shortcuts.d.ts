@@ -6,7 +6,15 @@ export interface ShortcutConfig {
   keys: string[]
   globalKeys?: string[]
   modifiers?: string[]
-  action: string
+  action:
+    | 'togglePlay'
+    | 'playPrev'
+    | 'playNext'
+    | 'volumeUp'
+    | 'volumeDown'
+    | 'seekBack'
+    | 'seekForward'
+    | 'toggleCompact'
 }
 
 export const DEFAULT_SHORTCUTS: ShortcutConfig[]

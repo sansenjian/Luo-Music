@@ -40,14 +40,14 @@ async function clearCache(options, message = '确定要清理缓存吗？') {
   loading.value = true
   try {
     const result = await platform.clearCache(options)
-    
+
     if (result.failed.length === 0) {
       notify('缓存清理成功', 'success')
     } else {
       const failedTypes = result.failed.map(f => f.type).join(', ')
       notify(`部分缓存清理失败: ${failedTypes}`, 'warning')
     }
-    
+
     await loadCacheSize()
   } catch (error) {
     notify('缓存清理失败: ' + (error.message || error), 'error')
@@ -71,12 +71,12 @@ async function clearAllCache() {
       <h3>缓存管理</h3>
       <p class="cache-desc">管理应用程序缓存数据，清理后可能需要重新登录。</p>
     </div>
-    
+
     <div class="cache-info">
       <span class="cache-label">当前缓存大小:</span>
       <span class="cache-value">{{ cacheSize.httpCacheFormatted }}</span>
     </div>
-    
+
     <div class="cache-actions">
       <button class="cache-btn" @click="clearCookiesOnly" :disabled="loading">
         {{ loading ? '清理中...' : '清理 Cookies' }}

@@ -5,7 +5,7 @@
 
 import type { IDisposable } from '../../base/common/lifecycle/disposable'
 import { Disposable, DisposableStore } from '../../base/common/lifecycle/disposable'
-import { PlatformServiceBase, formatBytes } from '../common/platformService'
+import { PlatformServiceBase } from '../common/platformService'
 import type {
   ICacheSize,
   IClearCacheOptions,
@@ -15,7 +15,7 @@ import type {
 
 /**
  * Electron API 类型定义
- * 与 preload.js 中暴露的 API 对应
+ * 与 preload 脚本中暴露的 API 对应
  */
 interface IElectronAPI {
   // Window Management
@@ -29,11 +29,11 @@ interface IElectronAPI {
 
   // Player State
   sendPlayingState(playing: boolean): void
-  sendPlayModeChange(mode: string): void
+  sendPlayModeChange(mode: number): void
 
   // Cache Management
   getCacheSize(): Promise<ICacheSize>
-  clearCache(options: IClearCacheOptions): Promise<IClearCacheResult>
+  clearCache(options?: IClearCacheOptions): Promise<IClearCacheResult>
   clearAllCache(keepUserData?: boolean): Promise<IClearCacheResult>
 }
 
@@ -43,18 +43,18 @@ interface IElectronAPI {
  */
 export class ElectronPlatformService extends PlatformServiceBase {
   readonly name = 'electron'
-  
+
   private readonly api: IElectronAPI | undefined
   private readonly disposables = new DisposableStore()
 
   constructor() {
     super()
-    
+
     // 获取 Electron API
     this.api = (window as unknown as { electronAPI?: IElectronAPI }).electronAPI
-    
+
     if (!this.api) {
-      console.error('[ElectronPlatformService] Electron API not found! Is preload.js loaded?')
+      console.error('[ElectronPlatformService] Electron API not found! Is preload script loaded?')
     }
   }
 
@@ -83,16 +83,16 @@ export class ElectronPlatformService extends PlatformServiceBase {
   override on(channel: string, callback: IMessageHandler): IDisposable {
     if (this.api?.on) {
       const unsubscribe = this.api.on(channel, callback)
-      
-      const disposable = new Disposable(() => {
+
+      const disposable = Disposable.from(() => {
         unsubscribe()
       })
-      
+
       this.disposables.add(disposable)
       return disposable
     }
-    
-    return Disposable.NONE
+
+    return Disposable.none
   }
 
   override send(channel: string, data: unknown): void {
@@ -103,7 +103,7 @@ export class ElectronPlatformService extends PlatformServiceBase {
     this.api?.sendPlayingState(playing)
   }
 
-  override sendPlayModeChange(mode: string): void {
+  override sendPlayModeChange(mode: number): void {
     this.api?.sendPlayModeChange(mode)
   }
 
@@ -116,7 +116,7 @@ export class ElectronPlatformService extends PlatformServiceBase {
     return super.getCacheSize()
   }
 
-  override async clearCache(options: IClearCacheOptions): Promise<IClearCacheResult> {
+  override async clearCache(options: IClearCacheOptions = {}): Promise<IClearCacheResult> {
     if (this.api?.clearCache) {
       return this.api.clearCache(options)
     }

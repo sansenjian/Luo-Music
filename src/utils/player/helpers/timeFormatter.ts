@@ -23,10 +23,10 @@ export class TimeFormatter {
     if (!timeStr || typeof timeStr !== 'string') return 0
     const match = timeStr.match(/(\d+):(\d+)(?:[.:](\d+))?/)
     if (!match) return 0
-    
+
     const mins = parseInt(match[1], 10)
     const secs = parseInt(match[2], 10)
-    
+
     let ms = 0
     if (match[3]) {
       // Normalize ms to seconds fraction (e.g. .5 -> 0.5, .50 -> 0.5, .500 -> 0.5)
@@ -39,18 +39,18 @@ export class TimeFormatter {
       // If length is 2 (common), it's hundredths. e.g. .50 = 500ms
       // If length is 3, it's thousandths.
       // If length is 1, usually means tenths? e.g. .5 = 500ms
-      
+
       // Original logic implementation:
       // match[3] is the captured string part after . or :
       // parseInt(match[3].padEnd(3, '0').substring(0, 3), 10) / 1000
       // Example: "5" -> "500" -> 500/1000 = 0.5
       // Example: "05" -> "050" -> 50/1000 = 0.05
       // Example: "123" -> "123" -> 123/1000 = 0.123
-      
+
       const paddedMs = msStr.padEnd(3, '0').substring(0, 3)
       ms = parseInt(paddedMs, 10) / 1000
     }
-    
+
     return mins * 60 + secs + ms
   }
 

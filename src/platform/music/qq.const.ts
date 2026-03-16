@@ -33,7 +33,7 @@ export const QQ_MUSIC_ERROR_MAP: Record<number, string> = {
   5: '版权限制',
   6: 'VIP 限制',
   7: '地区限制',
-  8: '请求过于频繁',
+  8: '请求过于频繁'
 } as const
 
 /**

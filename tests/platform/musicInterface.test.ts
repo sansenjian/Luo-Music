@@ -36,7 +36,11 @@ describe('platform/music/interface', () => {
       expect(song.name).toBe('Full Song')
       expect(song.artists).toHaveLength(1)
       expect(song.artists[0]).toEqual({ id: 1, name: 'Artist Name' })
-      expect(song.album).toEqual({ id: 2, name: 'Album Name', picUrl: 'https://example.com/cover.jpg' })
+      expect(song.album).toEqual({
+        id: 2,
+        name: 'Album Name',
+        picUrl: 'https://example.com/cover.jpg'
+      })
       expect(song.duration).toBe(180000)
       expect(song.mvid).toBe(789)
       expect(song.platform).toBe('qq')

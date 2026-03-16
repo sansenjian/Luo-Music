@@ -1,16 +1,25 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+
+import type { Song } from '../../src/platform/music/interface'
 import { usePlayerStore } from '../../src/store/playerStore.ts'
 import { PLAY_MODE } from '../../src/utils/player/constants/playMode'
+import type { LyricLine } from '../../src/utils/player/core/lyric'
 
-interface MockSong {
-  id: number
-  name: string
-  artist?: string
-  url?: string
+function createMockSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
+  return {
+    id: overrides.id ?? 1,
+    name: String(overrides.name ?? 'Song'),
+    artists: overrides.artists ?? [{ id: 1, name: String(overrides.artist ?? 'Artist') }],
+    album: overrides.album ?? { id: 1, name: 'Album', picUrl: '' },
+    duration: Number(overrides.duration ?? 180000),
+    mvid: overrides.mvid ?? 0,
+    platform: (overrides.platform as 'netease' | 'qq') ?? 'netease',
+    originalId: overrides.originalId ?? overrides.id ?? 1,
+    ...overrides
+  }
 }
 
-// Mock audioManager
 vi.mock('../../src/utils/player/audioManager', () => ({
   audioManager: {
     play: vi.fn(() => Promise.resolve()),
@@ -20,9 +29,15 @@ vi.mock('../../src/utils/player/audioManager', () => ({
     setVolume: vi.fn(),
     on: vi.fn(),
     off: vi.fn(),
-    get currentTime() { return 0 },
-    get duration() { return 180 },
-    get paused() { return true }
+    get currentTime() {
+      return 0
+    },
+    get duration() {
+      return 180
+    },
+    get paused() {
+      return true
+    }
   }
 }))
 
@@ -31,10 +46,10 @@ describe('playerStore', () => {
     setActivePinia(createPinia())
   })
 
-  describe('初始化状态', () => {
-    it('应该有正确的初始状态', () => {
+  describe('initial state', () => {
+    it('has correct defaults', () => {
       const store = usePlayerStore()
-      
+
       expect(store.playing).toBe(false)
       expect(store.progress).toBe(0)
       expect(store.duration).toBe(0)
@@ -46,9 +61,9 @@ describe('playerStore', () => {
       expect(store.initialized).toBe(false)
     })
 
-    it('应该有正确的 getter 值', () => {
+    it('has correct getters', () => {
       const store = usePlayerStore()
-      
+
       expect(store.hasSongs).toBe(false)
       expect(store.currentSongInfo).toBeNull()
       expect(store.formattedProgress).toBe('00:00')
@@ -57,140 +72,121 @@ describe('playerStore', () => {
     })
   })
 
-  describe('播放列表管理', () => {
-    it('setSongList 应该设置歌曲列表', () => {
+  describe('playlist management', () => {
+    it('setSongList sets songs', () => {
       const store = usePlayerStore()
-      const songs: MockSong[] = [
-        { id: 1, name: 'Song 1', artist: 'Artist 1' },
-        { id: 2, name: 'Song 2', artist: 'Artist 2' }
+      const songs = [
+        createMockSong({ id: 1, name: 'Song 1' }),
+        createMockSong({ id: 2, name: 'Song 2' })
       ]
-      
+
       store.setSongList(songs)
-      
+
       expect(store.songList).toHaveLength(2)
       expect(store.songList[0].name).toBe('Song 1')
       expect(store.currentIndex).toBe(-1)
     })
 
-    it('addSong 应该添加歌曲到列表', () => {
+    it('addSong appends a song', () => {
       const store = usePlayerStore()
-      const song: MockSong = { id: 1, name: 'New Song', artist: 'Artist' }
-      
+      const song = createMockSong({ id: 1, name: 'New Song' })
+
       store.addSong(song)
-      
+
       expect(store.songList).toHaveLength(1)
       expect(store.songList[0].name).toBe('New Song')
     })
 
-    it('可以通过直接修改 songList 移除歌曲', () => {
+    it('allows direct songList updates', () => {
       const store = usePlayerStore()
       store.setSongList([
-        { id: 1, name: 'Song 1' },
-        { id: 2, name: 'Song 2' },
-        { id: 3, name: 'Song 3' }
+        createMockSong({ id: 1, name: 'Song 1' }),
+        createMockSong({ id: 2, name: 'Song 2' }),
+        createMockSong({ id: 3, name: 'Song 3' })
       ])
-      
-      // 直接修改 songList
-      store.songList = store.songList.filter(s => s.id !== 2)
-      
+
+      store.songList = store.songList.filter(song => song.id !== 2)
+
       expect(store.songList).toHaveLength(2)
-      expect(store.songList.find(s => s.id === 2)).toBeUndefined()
+      expect(store.songList.find(song => song.id === 2)).toBeUndefined()
     })
   })
 
-  describe('播放控制', () => {
-    it('togglePlayMode 应该循环切换播放模式', () => {
+  describe('playback controls', () => {
+    it('togglePlayMode cycles play modes', () => {
       const store = usePlayerStore()
-      
+
       expect(store.playMode).toBe(PLAY_MODE.SEQUENTIAL)
-      
       store.togglePlayMode()
       expect(store.playMode).toBe(PLAY_MODE.LIST_LOOP)
-      
       store.togglePlayMode()
       expect(store.playMode).toBe(PLAY_MODE.SINGLE_LOOP)
-      
       store.togglePlayMode()
       expect(store.playMode).toBe(PLAY_MODE.SHUFFLE)
-      
       store.togglePlayMode()
       expect(store.playMode).toBe(PLAY_MODE.SEQUENTIAL)
     })
 
-    it('setVolume 应该设置音量', () => {
+    it('setVolume sets volume', () => {
       const store = usePlayerStore()
-      
       store.setVolume(0.5)
-      
       expect(store.volume).toBe(0.5)
     })
 
-    it('seek 应该设置播放进度', () => {
+    it('seek updates progress', () => {
       const store = usePlayerStore()
       store.duration = 180
-      
       store.seek(60)
-      
       expect(store.progress).toBe(60)
-    })
-
-    it('updateProgress 应该更新进度', () => {
-      const store = usePlayerStore()
-      
-      store.progress = 30
-      
-      expect(store.progress).toBe(30)
     })
   })
 
-  describe('歌词管理', () => {
-    it('setLyric 应该设置歌词数据', () => {
+  describe('lyrics', () => {
+    it('setLyric stores lyric payload', () => {
       const store = usePlayerStore()
       const lyricData = { lrc: { lyric: '[00:00.00]Test lyric' } }
-      
+
       store.setLyric(lyricData)
-      
       expect(store.lyric).toEqual(lyricData)
     })
 
-    it('setLyricsArray 应该设置歌词数组', () => {
+    it('setLyricsArray stores parsed lyrics', () => {
       const store = usePlayerStore()
-      const lyrics = [
-        { time: 0, lyric: 'Line 1' },
-        { time: 5, lyric: 'Line 2' }
+      const lyrics: LyricLine[] = [
+        { time: 0, text: 'Line 1', trans: '', roma: '' },
+        { time: 5, text: 'Line 2', trans: '', roma: '' }
       ]
-      
+
+      store.currentLyricIndex = 1
       store.setLyricsArray(lyrics)
-      
+
       expect(store.lyricsArray).toHaveLength(2)
-      expect(store.lyricsArray[0].lyric).toBe('Line 1')
+      expect(store.lyricsArray[0].text).toBe('Line 1')
+      expect(store.currentLyricIndex).toBe(-1)
     })
 
-    it('lyricType 应该有默认值', () => {
+    it('uses default lyricType', () => {
       const store = usePlayerStore()
-      
       expect(store.lyricType).toEqual(['original', 'trans'])
     })
   })
 
-  describe('播放模式切换', () => {
+  describe('compact mode', () => {
     beforeEach(() => {
       const store = usePlayerStore()
       store.setSongList([
-        { id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' },
-        { id: 2, name: 'Song 2', url: 'http://test.com/2.mp3' },
-        { id: 3, name: 'Song 3', url: 'http://test.com/3.mp3' }
+        createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' }),
+        createMockSong({ id: 2, name: 'Song 2', url: 'http://test.com/2.mp3' }),
+        createMockSong({ id: 3, name: 'Song 3', url: 'http://test.com/3.mp3' })
       ])
     })
 
-    it('toggleCompactMode 应该切换紧凑模式', () => {
+    it('toggleCompactMode toggles compact mode', () => {
       const store = usePlayerStore()
-      
+
       expect(store.isCompact).toBe(false)
-      
       store.toggleCompactMode()
       expect(store.isCompact).toBe(true)
-      
       store.toggleCompactMode()
       expect(store.isCompact).toBe(false)
     })

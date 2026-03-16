@@ -12,7 +12,7 @@ export function isWebMode(): boolean {
   if (typeof window === 'undefined') {
     return false
   }
-  
+
   // 检查 userAgent 是否包含 Electron 标识
   return !window.navigator.userAgent.includes('Electron')
 }

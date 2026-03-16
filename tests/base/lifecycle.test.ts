@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
-import { Disposable, DisposableStore, ReferenceDisposable, DisposableTracker } from '../../src/base/common/lifecycle'
+import {
+  Disposable,
+  DisposableStore,
+  ReferenceDisposable,
+  DisposableTracker
+} from '../../src/base/common/lifecycle'
 
 describe('Disposable', () => {
   it('should dispose registered resources', () => {
@@ -73,10 +78,7 @@ describe('Disposable', () => {
   it('Disposable.combine should combine multiple disposables', () => {
     const dispose1 = vi.fn()
     const dispose2 = vi.fn()
-    const combined = Disposable.combine(
-      { dispose: dispose1 },
-      { dispose: dispose2 }
-    )
+    const combined = Disposable.combine({ dispose: dispose1 }, { dispose: dispose2 })
 
     combined.dispose()
 

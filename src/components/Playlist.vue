@@ -1,23 +1,43 @@
-<script setup>
-import { computed, watch, ref } from 'vue'
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+
 import { usePlayerStore } from '../store/playerStore.ts'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
+import type { Song } from '../platform/music/interface'
 
 const playerStore = usePlayerStore()
-const listRef = ref(null)
+const listRef = ref<HTMLElement | null>(null)
 
 const emit = defineEmits(['play-song'])
 
-const songs = computed(() => playerStore.songList)
+type PlaylistItem = {
+  id: Song['id']
+  artistText: string
+  cover: string
+  duration: number
+  isQQ: boolean
+  name: string
+}
+
+const songs = computed<PlaylistItem[]>(() =>
+  playerStore.songList.map(song => ({
+    id: song.id,
+    artistText: song.artists.map(artist => artist.name).join(' / '),
+    cover: song.album.picUrl || '',
+    duration: Math.floor(song.duration / 1000), // 毫秒转秒
+    isQQ: song.platform === 'qq',
+    name: song.name
+  }))
+)
 const currentIndex = computed(() => playerStore.currentIndex)
 
-watch(currentIndex, (newIndex) => {
+watch(currentIndex, newIndex => {
   if (newIndex === -1) return
   const el = listRef.value?.querySelector(`[data-index="${newIndex}"]`)
   el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 })
 
-function playSong(index) {
+function playSong(index: number): void {
   emit('play-song', index)
 }
 </script>
@@ -38,8 +58,8 @@ function playSong(index) {
         :data-index="index"
         @click="playSong(index)"
       >
-        <div v-if="song.pic" class="list-cover">
-          <img :src="song.pic" :alt="song.album" loading="lazy" />
+        <div v-if="song.cover" class="list-cover">
+          <img :src="song.cover" :alt="song.name" loading="lazy" />
         </div>
         <div class="list-num">
           <span v-if="!(index === currentIndex && playerStore.playing)">
@@ -54,11 +74,11 @@ function playSong(index) {
         <div class="list-info">
           <div class="list-title">
             {{ song.name }}
-            <span class="server-badge" :class="song.platform || song.server || 'netease'">
-              {{ (song.platform === 'qq' || song.server === 'qq') ? 'QQ' : '网易' }}
+            <span class="server-badge" :class="song.isQQ ? 'qq' : 'netease'">
+              {{ song.isQQ ? 'QQ' : 'Netease' }}
             </span>
           </div>
-          <div class="list-artist">{{ song.artist }}</div>
+          <div class="list-artist">{{ song.artistText }}</div>
         </div>
         <div class="list-duration">
           {{ formatTime(song.duration) }}

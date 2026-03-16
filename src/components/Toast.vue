@@ -20,14 +20,43 @@ function remove(id) {
           @click="remove(toast.id)"
         >
           <span class="toast-icon">
-            <svg v-if="toast.type === 'error'" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            <svg
+              v-if="toast.type === 'error'"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
+              />
             </svg>
-            <svg v-else-if="toast.type === 'success'" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            <svg
+              v-else-if="toast.type === 'success'"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+              />
+            </svg>
+            <svg
+              v-else-if="toast.type === 'warning'"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+              />
             </svg>
             <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+              />
             </svg>
           </span>
           <span class="toast-message">{{ toast.message }}</span>
@@ -79,6 +108,12 @@ function remove(id) {
   background: #dbeafe;
   border-color: #3b82f6;
   color: #2563eb;
+}
+
+.toast.warning {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #b45309;
 }
 
 .toast-icon {

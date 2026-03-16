@@ -1,7 +1,14 @@
 /**
  * 服务状态枚举
  */
-export type ServiceStatusType = 'pending' | 'starting' | 'running' | 'stopping' | 'stopped' | 'error' | 'unavailable'
+export type ServiceStatusType =
+  | 'pending'
+  | 'starting'
+  | 'running'
+  | 'stopping'
+  | 'stopped'
+  | 'error'
+  | 'unavailable'
 
 /**
  * 服务状态接口
@@ -51,5 +58,9 @@ export interface IServiceManager {
   restartService(serviceId: string): Promise<void>
   getServiceStatus(serviceId: string): ServiceStatus | null
   getAvailableServices(): Record<string, AvailableService | null>
-  handleRequest(service: string, endpoint: string, params: Record<string, unknown>): Promise<unknown>
+  handleRequest(
+    service: string,
+    endpoint: string,
+    params: Record<string, unknown>
+  ): Promise<unknown>
 }

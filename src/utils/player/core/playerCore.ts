@@ -9,25 +9,29 @@ export enum PlayerState {
 }
 
 type AudioEventMap = {
-  'timeupdate': Event
-  'loadedmetadata': Event
-  'ended': Event
-  'play': Event
-  'pause': Event
-  'error': Event
-  'canplay': Event
-  'waiting': Event
-  'playing': Event
-  'ratechange': Event
-  'loadstart': Event
-  'seek': number
-  'statechange': PlayerState
-  'volumechange': number
-  'mutechange': boolean
-  'loopchange': boolean
+  timeupdate: Event
+  loadedmetadata: Event
+  ended: Event
+  play: Event
+  pause: Event
+  error: Event
+  playbackError: unknown
+  canplay: Event
+  waiting: Event
+  playing: Event
+  ratechange: Event
+  loadstart: Event
+  seek: number
+  statechange: PlayerState
+  volumechange: number
+  mutechange: boolean
+  loopchange: boolean
 }
 
 type EventCallback<K extends keyof AudioEventMap> = (data: AudioEventMap[K]) => void
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyCallback = (data: any) => void
 
 export class PlayerCore {
   private audio: HTMLAudioElement
@@ -35,10 +39,11 @@ export class PlayerCore {
   private source: MediaElementAudioSourceNode | null = null
   private analyser: AnalyserNode | null = null
   private gainNode: GainNode | null = null
-  
+
   public state: PlayerState = PlayerState.IDLE
-  private callbacks: Map<string, Set<Function>> = new Map()
+  private callbacks: Map<string, Set<AnyCallback>> = new Map()
   private _boundHandlers: Map<string, EventListener> = new Map()
+  private _isPlayingInProgress = false
 
   constructor() {
     this.audio = new Audio()
@@ -60,15 +65,17 @@ export class PlayerCore {
 
   private _initAudioContext() {
     if (!this.audioContext) {
-      const AudioContext = window.AudioContext || (window as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
+      const AudioContext =
+        window.AudioContext ||
+        (window as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
       this.audioContext = new AudioContext()
-      
+
       this.analyser = this.audioContext.createAnalyser()
       this.analyser.fftSize = 2048 // Higher resolution for visualization
-      
+
       this.gainNode = this.audioContext.createGain()
       this.gainNode.connect(this.audioContext.destination)
-      
+
       // Connect audio element to source
       try {
         this.source = this.audioContext.createMediaElementSource(this.audio)
@@ -83,7 +90,19 @@ export class PlayerCore {
   }
 
   private _initEvents() {
-    const events = ['timeupdate', 'loadedmetadata', 'ended', 'play', 'pause', 'error', 'canplay', 'waiting', 'playing', 'ratechange', 'loadstart']
+    const events = [
+      'timeupdate',
+      'loadedmetadata',
+      'ended',
+      'play',
+      'pause',
+      'error',
+      'canplay',
+      'waiting',
+      'playing',
+      'ratechange',
+      'loadstart'
+    ]
     events.forEach(event => {
       const handler = (e: Event) => {
         this._handleEvent(event, e)
@@ -94,7 +113,7 @@ export class PlayerCore {
     })
   }
 
-  private _handleEvent(event: string, e: Event) {
+  private _handleEvent(event: string, _e: Event) {
     switch (event) {
       case 'loadstart':
       case 'waiting':
@@ -148,24 +167,30 @@ export class PlayerCore {
   public async play(url?: string): Promise<void> {
     // Initialize AudioContext on first user interaction (play)
     this._initAudioContext()
-    
+
     // Resume AudioContext if suspended
     if (this.audioContext && this.audioContext.state === 'suspended') {
       await this.audioContext.resume()
     }
 
+    // 防止重入调用
+    if (this._isPlayingInProgress) {
+      return
+    }
+
     try {
       // If url provided and different, load it
       if (url && this.audio.src !== url) {
+        this._isPlayingInProgress = true
         // [Leak Fix] Break connection with previous source to help GC
         // When switching songs, explicit load() is crucial.
         this.audio.src = url
         this.audio.load()
       } else if (url && this.audio.src === url && this.audio.ended) {
-         // Replay if ended
-         this.audio.currentTime = 0
+        // Replay if ended
+        this.audio.currentTime = 0
       }
-      
+
       // If we are already playing the same URL, do nothing or just ensure playing
       if (!this.audio.paused && this.audio.src === url) {
         return
@@ -179,6 +204,7 @@ export class PlayerCore {
           const cleanup = () => {
             this.audio.removeEventListener('canplay', onCanPlay)
             this.audio.removeEventListener('error', onError)
+            this._isPlayingInProgress = false
           }
           const onCanPlay = () => {
             cleanup()
@@ -188,17 +214,20 @@ export class PlayerCore {
             cleanup()
             reject(e)
           }
-          
+
           this.audio.addEventListener('canplay', onCanPlay)
           this.audio.addEventListener('error', onError)
         })
       }
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
+    } catch (error: unknown) {
+      this._isPlayingInProgress = false
+      if (error instanceof DOMException && error.name === 'AbortError') {
         // Ignore AbortError caused by rapid switching
         return
       }
       throw error
+    } finally {
+      this._isPlayingInProgress = false
     }
   }
 
@@ -283,7 +312,7 @@ export class PlayerCore {
     this.analyser.getByteTimeDomainData(array as Uint8Array<ArrayBuffer>)
     return array
   }
-  
+
   public get frequencyBinCount() {
     return this.analyser ? this.analyser.frequencyBinCount : 0
   }
@@ -308,7 +337,7 @@ export class PlayerCore {
   public get src() {
     return this.audio.src
   }
-  
+
   public get buffered() {
     return this.audio.buffered
   }
@@ -326,11 +355,11 @@ export class PlayerCore {
     })
     this._boundHandlers.clear()
     this.callbacks.clear()
-    
+
     this.audio.pause()
     this.audio.removeAttribute('src')
     this.audio.load()
-    
+
     if (this.audioContext) {
       this.audioContext.close()
       this.audioContext = null

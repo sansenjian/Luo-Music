@@ -1,92 +1,134 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
-import { useUserStore } from '../../src/store/userStore'
-import type { UserInfo } from '../../src/store/userStore'
-import { clearCookieCache } from '../../src/utils/http'
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 
 vi.mock('../../src/utils/http', () => ({
-  clearCookieCache: vi.fn()
+  AUTH_REQUEST_CACHE_NAMESPACE: 'auth',
+  clearCookieCache: vi.fn(),
+  clearCacheNamespaces: vi.fn()
 }))
 
-describe('User Store', () => {
+vi.mock('../../src/api/qqmusic', () => ({
+  clearQQCookieCache: vi.fn()
+}))
+
+import { clearQQCookieCache } from '../../src/api/qqmusic'
+import { useUserStore } from '../../src/store/userStore'
+import type { UserInfo } from '../../src/store/userStore'
+import { clearCacheNamespaces, clearCookieCache } from '../../src/utils/http'
+
+describe('userStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 
-  it('initializes with default state', () => {
+  it('initializes with separate Netease and QQ sessions', () => {
     const store = useUserStore()
+
     expect(store.userInfo).toBe(null)
     expect(store.cookie).toBe('')
     expect(store.isLoggedIn).toBe(false)
+    expect(store.qqCookie).toBe('')
+    expect(store.qqLoggedIn).toBe(false)
+    expect(store.isQQMusicLoggedIn).toBe(false)
   })
 
-  it('setUserInfo updates state correctly', () => {
+  it('setUserInfo does not mark Netease as logged in without a cookie', () => {
     const store = useUserStore()
     const userInfo: UserInfo = { nickname: 'Test User', userId: 123 }
-    
+
     store.setUserInfo(userInfo)
-    
+
     expect(store.userInfo).toEqual(userInfo)
-    expect(store.isLoggedIn).toBe(true)
+    expect(store.isLoggedIn).toBe(false)
   })
 
-  it('setCookie updates cookie state', () => {
+  it('setCookie updates Netease session state and clears request cache', () => {
     const store = useUserStore()
-    const cookie = 'test-cookie'
-    
-    store.setCookie(cookie)
-    
-    expect(store.cookie).toBe(cookie)
+
+    store.setCookie('test-cookie')
+    expect(store.cookie).toBe('test-cookie')
+    expect(store.isLoggedIn).toBe(false)
+
+    store.setUserInfo({ nickname: 'Test User' })
+    expect(store.isLoggedIn).toBe(true)
+    expect(clearCookieCache).toHaveBeenCalled()
+    expect(clearCacheNamespaces).toHaveBeenCalledWith(['auth'])
   })
 
-  it('login updates both userInfo and cookie', () => {
+  it('login updates Netease profile and cookie together', () => {
     const store = useUserStore()
     const userInfo: UserInfo = { nickname: 'Test User', userId: 123 }
-    const cookie = 'test-cookie'
-    
-    store.login(userInfo, cookie)
-    
+
+    store.login(userInfo, 'test-cookie')
+
     expect(store.userInfo).toEqual(userInfo)
-    expect(store.cookie).toBe(cookie)
+    expect(store.cookie).toBe('test-cookie')
     expect(store.isLoggedIn).toBe(true)
+    expect(clearCookieCache).toHaveBeenCalled()
+    expect(clearCacheNamespaces).toHaveBeenCalledWith(['auth'])
   })
 
-  it('logout clears state and cache', () => {
+  it('logout clears only the Netease session', () => {
     const store = useUserStore()
-    // Setup initial logged in state
-    store.login({ name: 'User' }, 'cookie')
-    
+
+    store.login({ nickname: 'User' }, 'netease-cookie')
+    store.setQQCookie('qq-cookie')
     store.logout()
-    
+
     expect(store.userInfo).toBe(null)
     expect(store.cookie).toBe('')
     expect(store.isLoggedIn).toBe(false)
+    expect(store.qqCookie).toBe('qq-cookie')
+    expect(store.qqLoggedIn).toBe(true)
     expect(clearCookieCache).toHaveBeenCalled()
+    expect(clearCacheNamespaces).toHaveBeenCalledWith(['auth'])
   })
 
-  describe('Getters', () => {
-    it('nickname returns correct value', () => {
+  it('setQQCookie updates only the QQ session', () => {
+    const store = useUserStore()
+
+    store.setQQCookie('qq-cookie')
+
+    expect(store.qqCookie).toBe('qq-cookie')
+    expect(store.qqLoggedIn).toBe(true)
+    expect(store.isQQMusicLoggedIn).toBe(true)
+    expect(store.cookie).toBe('')
+    expect(clearQQCookieCache).toHaveBeenCalled()
+    expect(clearCacheNamespaces).toHaveBeenCalledWith(['auth'])
+  })
+
+  it('logoutQQ clears only the QQ session', () => {
+    const store = useUserStore()
+
+    store.login({ nickname: 'User' }, 'netease-cookie')
+    store.setQQCookie('qq-cookie')
+    store.logoutQQ()
+
+    expect(store.cookie).toBe('netease-cookie')
+    expect(store.isLoggedIn).toBe(true)
+    expect(store.qqCookie).toBe('')
+    expect(store.qqLoggedIn).toBe(false)
+    expect(clearQQCookieCache).toHaveBeenCalled()
+    expect(clearCacheNamespaces).toHaveBeenCalledWith(['auth'])
+  })
+
+  describe('getters', () => {
+    it('exposes profile fields from userInfo', () => {
       const store = useUserStore()
+
       expect(store.nickname).toBe('')
-      
-      store.setUserInfo({ nickname: 'Test User' })
-      expect(store.nickname).toBe('Test User')
-    })
-
-    it('avatarUrl returns correct value', () => {
-      const store = useUserStore()
       expect(store.avatarUrl).toBe('')
-      
-      store.setUserInfo({ avatarUrl: 'http://example.com/avatar.jpg' })
-      expect(store.avatarUrl).toBe('http://example.com/avatar.jpg')
-    })
-
-    it('userId returns correct value', () => {
-      const store = useUserStore()
       expect(store.userId).toBe(null)
-      
-      store.setUserInfo({ userId: 12345 })
+
+      store.setUserInfo({
+        nickname: 'Test User',
+        avatarUrl: 'http://example.com/avatar.jpg',
+        userId: 12345
+      })
+
+      expect(store.nickname).toBe('Test User')
+      expect(store.avatarUrl).toBe('http://example.com/avatar.jpg')
       expect(store.userId).toBe(12345)
     })
   })

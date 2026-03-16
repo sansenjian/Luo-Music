@@ -36,7 +36,7 @@ function handleKeydown(event: KeyboardEvent) {
     <div class="search-header">
       <h3 class="search-title">搜索音乐</h3>
     </div>
-    
+
     <div class="search-body">
       <div class="search-row">
         <div class="input-wrapper">
@@ -162,8 +162,12 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .search-options {

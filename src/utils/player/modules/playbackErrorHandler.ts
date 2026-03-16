@@ -4,17 +4,17 @@ import type { Song } from '../../../platform/music/interface'
 
 interface ErrorHandlerOptions {
   getState?: () => {
-    songList: Song[];
-    currentIndex: number;
-    playMode: number;
-  };
-  onStateChange?: (changes: { playing?: boolean }) => void;
+    songList: Song[]
+    currentIndex: number
+    playMode: number
+  }
+  onStateChange?: (changes: { playing?: boolean }) => void
 }
 
 export interface AudioErrorResult {
-  shouldRetry: boolean;
-  shouldSkip?: boolean;
-  url?: string;
+  shouldRetry: boolean
+  shouldSkip?: boolean
+  url?: string
 }
 
 export interface ErrorHandler {
@@ -26,9 +26,9 @@ export interface ErrorHandler {
 
 export class PlaybackErrorHandler implements ErrorHandler {
   private getState: () => {
-    songList: Song[];
-    currentIndex: number;
-    playMode: number;
+    songList: Song[]
+    currentIndex: number
+    playMode: number
   }
   private onStateChange: (changes: { playing?: boolean }) => void
   private skipAttempts: number = 0
@@ -75,8 +75,13 @@ export class PlaybackErrorHandler implements ErrorHandler {
   async retryGetMusicUrl(song: Song): Promise<{ url: string } | null> {
     const platform = song.platform || 'netease'
     const adapter = getMusicAdapter(platform)
-    const mediaId = song.mediaId || (song.extra && song.extra.mediaId) as string | undefined
-    
+    const mediaId =
+      typeof song.mediaId === 'string'
+        ? song.mediaId
+        : typeof song.extra?.mediaId === 'string'
+          ? song.extra.mediaId
+          : undefined
+
     try {
       const url = await adapter.getSongUrl(song.id, { mediaId })
       if (url) {
@@ -98,24 +103,24 @@ export class PlaybackErrorHandler implements ErrorHandler {
 
   shouldStopSkipping() {
     const now = Date.now()
-    
+
     if (now - this.lastSkipTime < this.skipCooldownMs) {
       this.skipAttempts++
     } else {
       this.skipAttempts = 1
     }
-    
+
     this.lastSkipTime = now
-    
+
     if (this.skipAttempts >= this.maxSkipAttempts) {
       return true
     }
-    
+
     const { songList } = this.getState()
     if (songList.length > 0 && this.unavailableSongs.length / songList.length > 0.8) {
       return true
     }
-    
+
     return false
   }
 
@@ -129,36 +134,36 @@ export class PlaybackErrorHandler implements ErrorHandler {
     const startIndex = currentIndex
     let attempts = 0
     const maxAttempts = Math.min(songList.length, 10)
-    
+
     while (attempts < maxAttempts) {
       const newIndex = this.getNextAvailableIndex(startIndex, attempts)
-      
+
       if (newIndex === startIndex && attempts > 0) {
         console.warn('All songs in playlist are unavailable')
         break
       }
-      
+
       if (!songList[newIndex].unavailable) {
         try {
           await playNext(newIndex)
           this.skipAttempts = 0
           return
-        } catch (error) {
+        } catch {
           this.markAsUnavailable(songList[newIndex])
           attempts++
           continue
         }
       }
-      
+
       attempts++
     }
-    
+
     throw new Error('无法播放任何歌曲')
   }
 
   getNextAvailableIndex(startIndex: number, attempts: number) {
     const { songList, playMode } = this.getState()
-    
+
     if (playMode === PLAY_MODE.SHUFFLE) {
       return Math.floor(Math.random() * songList.length)
     } else {

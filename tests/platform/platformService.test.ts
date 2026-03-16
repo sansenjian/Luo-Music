@@ -5,7 +5,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Disposable } from '../../src/base/common/lifecycle/disposable'
-import { PlatformServiceRegistry, formatBytes, detectMobile } from '../../src/platform/common/platformService'
+import {
+  PlatformServiceRegistry,
+  formatBytes,
+  detectMobile
+} from '../../src/platform/common/platformService'
 import { WebPlatformService } from '../../src/platform/web/webPlatformService'
 import type { IMessageHandler } from '../../src/platform/common/types'
 
@@ -107,7 +111,7 @@ describe('WebPlatformService', () => {
 
       // 等待事件循环完成
       await new Promise(resolve => setTimeout(resolve, 10))
-      
+
       expect(handler).toHaveBeenCalledWith({ data: 'test' })
     })
 
@@ -118,7 +122,7 @@ describe('WebPlatformService', () => {
       // 验证返回的是有效的 Disposable
       expect(disposable).toBeDefined()
       expect(typeof disposable.dispose).toBe('function')
-      
+
       // 可以正常调用 dispose
       expect(() => disposable.dispose()).not.toThrow()
     })
@@ -142,8 +146,9 @@ describe('WebPlatformService', () => {
       sessionStorage.setItem('test-session', 'session-value')
 
       const result = await service.clearCache({
-        httpCache: true,
-        userData: true
+        cache: true,
+        localStorage: true,
+        sessionStorage: true
       })
 
       expect(result.failed).toEqual([])
@@ -206,9 +211,9 @@ describe('工具函数', () => {
 describe('Disposable 集成', () => {
   it('平台服务应该实现 IDisposable', () => {
     const service = new WebPlatformService()
-    
+
     expect(typeof service.dispose).toBe('function')
-    
+
     // 应该能正常调用 dispose
     expect(() => service.dispose()).not.toThrow()
   })

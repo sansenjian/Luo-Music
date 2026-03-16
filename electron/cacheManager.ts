@@ -1,22 +1,16 @@
-import type { ClearStorageDataOptions, IpcMainInvokeEvent } from 'electron'
+﻿import type { ClearStorageDataOptions } from 'electron'
+import type { CacheClearOptions } from './shared/protocol/cache.ts'
 
-// 在 Electron 主进程中直接使用全局 require
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { app, session, ipcMain } = require('electron')
 
-type CacheClearOptions = {
-  cookies?: boolean
-  localStorage?: boolean
-  sessionStorage?: boolean
-  indexDB?: boolean
-  webSQL?: boolean
-  cache?: boolean
-  serviceWorkers?: boolean
-  shaderCache?: boolean
-  all?: boolean
-}
-
-type StorageType = 'cookies' | 'localstorage' | 'sessionstorage' | 'indexdb' | 'websql' | 'serviceworkers' | 'shadercache'
+type StorageType =
+  | 'cookies'
+  | 'localstorage'
+  | 'sessionstorage'
+  | 'indexdb'
+  | 'websql'
+  | 'serviceworkers'
+  | 'shadercache'
 
 type CacheClearResult = {
   success: string[]
@@ -28,19 +22,33 @@ function getErrorMessage(error: unknown): string {
 }
 
 class CacheManager {
-  constructor() {
-    // IPC handlers will be initialized when imported
-  }
+  private ipcInitialized = false
 
-  init() {
+  init(): void {
+    if (this.ipcInitialized) {
+      return
+    }
+
     this.initIpc()
+    this.ipcInitialized = true
   }
 
-  private initIpc() {
-    ipcMain.handle('cache:get-size', () => this.getCacheSize())
-    ipcMain.handle('cache:clear', (_: IpcMainInvokeEvent, options?: CacheClearOptions) => this.clearCache(options))
-    ipcMain.handle('cache:clear-all', (_: IpcMainInvokeEvent, keepUserData?: boolean) => this.clearAllCache(keepUserData))
-    ipcMain.handle('cache:get-paths', () => this.getCachePaths())
+  private initIpc(): void {
+    const safeHandle = (channel: string, listener: (...args: unknown[]) => unknown) => {
+      ipcMain.removeHandler(channel)
+      ipcMain.handle(channel, listener)
+    }
+
+    safeHandle('cache:get-size', () => this.getCacheSize())
+    safeHandle('cache:clear', async (...args: unknown[]) => {
+      const options = args[1] as CacheClearOptions | undefined
+      return this.clearCache(options)
+    })
+    safeHandle('cache:clear-all', async (...args: unknown[]) => {
+      const keepUserData = args[1] as boolean | undefined
+      return this.clearAllCache(keepUserData)
+    })
+    safeHandle('cache:get-paths', () => this.getCachePaths())
   }
 
   private formatBytes(bytes: number): string {
@@ -53,14 +61,16 @@ class CacheManager {
 
   async getCacheSize() {
     const ses = session.defaultSession
-    const size = await ses.getCacheSize()
+    const httpCacheSize = await ses.getCacheSize()
+
     return {
-      httpCache: size,
-      httpCacheFormatted: this.formatBytes(size)
+      httpCache: httpCacheSize,
+      httpCacheFormatted: this.formatBytes(httpCacheSize),
+      note: 'Storage data size is not available via Electron API'
     }
   }
 
-  async clearCache(options: CacheClearOptions = {}) {
+  async clearCache(options: CacheClearOptions = {}): Promise<CacheClearResult> {
     const {
       cookies = false,
       localStorage = false,
@@ -87,7 +97,6 @@ class CacheManager {
 
     if (storages.length > 0) {
       try {
-        // 类型断言：Electron 实际支持 'sessionstorage'，但其 TS 类型定义未包含
         await ses.clearStorageData({ storages: storages as ClearStorageDataOptions['storages'] })
         results.success.push(...storages)
       } catch (error) {
@@ -107,7 +116,7 @@ class CacheManager {
     return results
   }
 
-  async clearAllCache(keepUserData = false) {
+  async clearAllCache(keepUserData = false): Promise<CacheClearResult> {
     const ses = session.defaultSession
     const results: CacheClearResult = { success: [], failed: [] }
 
@@ -115,12 +124,19 @@ class CacheManager {
     if (keepUserData) {
       storages.push('cookies', 'sessionstorage', 'serviceworkers', 'shadercache')
     } else {
-      storages.push('cookies', 'localstorage', 'sessionstorage', 'indexdb', 'websql', 'serviceworkers', 'shadercache')
+      storages.push(
+        'cookies',
+        'localstorage',
+        'sessionstorage',
+        'indexdb',
+        'websql',
+        'serviceworkers',
+        'shadercache'
+      )
     }
 
     if (storages.length > 0) {
       try {
-        // 类型断言：Electron 实际支持 'sessionstorage'，但其 TS 类型定义未包含
         await ses.clearStorageData({ storages: storages as ClearStorageDataOptions['storages'] })
         results.success.push(...storages)
       } catch (error) {
@@ -138,7 +154,7 @@ class CacheManager {
     return results
   }
 
-  getCachePaths() {
+  getCachePaths(): Record<string, string> {
     return {
       userData: app.getPath('userData'),
       cache: app.getPath('sessionData'),

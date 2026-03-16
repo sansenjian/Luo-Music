@@ -1,5 +1,6 @@
 <script setup>
 import { Analytics } from '@vercel/analytics/vue'
+import { useCommandContext } from './composables/useCommandContext'
 
 const isElectron = window.navigator.userAgent.indexOf('Electron') > -1
 const DEFAULT_PLAYER_STATE = {
@@ -10,35 +11,31 @@ const DEFAULT_PLAYER_STATE = {
 }
 const VALID_LYRIC_TYPES = new Set(['original', 'trans', 'roma'])
 
-const sanitizeVolume = (value) => {
+const sanitizeVolume = value => {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
     ? value
     : DEFAULT_PLAYER_STATE.volume
 }
 
-const sanitizePlayMode = (value) => {
-  return Number.isInteger(value) && value >= 0 && value <= 3
-    ? value
-    : DEFAULT_PLAYER_STATE.playMode
+const sanitizePlayMode = value => {
+  return Number.isInteger(value) && value >= 0 && value <= 3 ? value : DEFAULT_PLAYER_STATE.playMode
 }
 
-const sanitizeLyricType = (value) => {
+const sanitizeLyricType = value => {
   if (!Array.isArray(value)) {
     return [...DEFAULT_PLAYER_STATE.lyricType]
   }
 
-  const sanitized = value.filter(
-    (item) => typeof item === 'string' && VALID_LYRIC_TYPES.has(item)
-  )
+  const sanitized = value.filter(item => typeof item === 'string' && VALID_LYRIC_TYPES.has(item))
 
   return sanitized.length > 0 ? [...new Set(sanitized)] : [...DEFAULT_PLAYER_STATE.lyricType]
 }
 
-const sanitizeIsCompact = (value) => {
+const sanitizeIsCompact = value => {
   return typeof value === 'boolean' ? value : DEFAULT_PLAYER_STATE.isCompact
 }
 
-const sanitizePlayerState = (value) => {
+const sanitizePlayerState = value => {
   if (typeof value !== 'object' || value === null) {
     return { ...DEFAULT_PLAYER_STATE }
   }
@@ -50,6 +47,8 @@ const sanitizePlayerState = (value) => {
     isCompact: sanitizeIsCompact(value.isCompact)
   }
 }
+
+useCommandContext()
 
 if (isElectron) {
   const playerState = localStorage.getItem('player')
@@ -89,12 +88,19 @@ if (isElectron) {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
 }
 
 body {
-  font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    'Inter',
+    'Noto Sans SC',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   background: var(--bg);
   color: var(--black);
   line-height: 1.4;

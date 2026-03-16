@@ -1,12 +1,13 @@
 /**
  * 应用生命周期管理
- * 
+ *
  * 负责 Electron 应用的启动、退出、单实例锁定等核心生命周期事件。
  * 遵循 VSCode 的 App 模式，将生命周期管理与业务逻辑分离。
  */
 
 import { app } from 'electron'
 import logger from '../logger'
+import { PROJECT_ROOT } from '../utils/paths'
 
 /**
  * 单实例锁状态
@@ -19,13 +20,13 @@ let hasLock = false
  */
 export function requestSingleInstanceLock(): boolean {
   hasLock = app.requestSingleInstanceLock()
-  
+
   if (!hasLock) {
     logger.warn('Instance already running, quitting...')
     app.quit()
     process.exit(0)
   }
-  
+
   return hasLock
 }
 
@@ -42,9 +43,8 @@ export function hasSingleInstanceLock(): boolean {
  */
 export function setupDevUserData(): void {
   if (!app.isPackaged) {
-    const { __dirname } = require('../utils/paths')
     const path = require('node:path')
-    const userDataPath = path.join(__dirname, '../.userData')
+    const userDataPath = path.join(PROJECT_ROOT, '.userData')
     app.setPath('userData', userDataPath)
     logger.info(`[App] Dev userData path: ${userDataPath}`)
   }
@@ -54,7 +54,7 @@ export function setupDevUserData(): void {
  * 注册全局异常处理
  */
 export function setupErrorHandlers(): void {
-  process.on('uncaughtException', (error) => {
+  process.on('uncaughtException', error => {
     logger.error('Uncaught Exception:', error)
   })
 

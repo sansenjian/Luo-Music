@@ -3,44 +3,66 @@
 ## 项目速览
 
 - 项目名称：LUO Music
-- 技术栈：Vue 3、Vite、Pinia、Electron、TypeScript、Vitest
-- 运行环境：Windows 优先，Node.js 24.x，pnpm 优先
-- 当前状态：代码库正在从 JavaScript 迁移到 TypeScript，并同时支持 Web 与 Electron 桌面端
-- 包管理现状：项目已使用 `pnpm-lock.yaml`，默认按 pnpm 工作流维护
+- 技术栈：Vue 3.5.29、Vite 7.3.1、Pinia 3.0.4、Electron 40.0.0、TypeScript 5.9.3、Vitest 4.0.18
+- 代码质量工具：ESLint 10.0.3、Prettier 3.8.1、Husky 9.1.7、lint-staged 16.1.2
+- 运行环境：Windows 优先，Node.js 24+，npm 10+
+- 当前状态：已完成 TypeScript 迁移，支持 Web 与 Electron 桌面端
+- 包管理现状：项目使用 `package-lock.json`，默认按 npm 工作流维护
 
 ## 快速命令
 
 ### 安装依赖
 
 ```bash
-pnpm install
+npm install
 ```
 
 ### 开发与构建
 
 ```bash
-pnpm dev
-pnpm dev:web
-pnpm dev:electron
-pnpm server
-pnpm build:web
-pnpm build:electron
-pnpm test:run
+npm run dev
+npm run dev:web
+npm run dev:electron
+npm run server
+npm run build:web
+npm run build:electron
+npm run test:run
+```
+
+### 代码质量
+
+```bash
+npm run lint
+npm run lint:fix
+npm run format
+npm run typecheck
+```
+
+### 清理
+
+```bash
+npm run clean
+npm run clean:all
 ```
 
 ### 文档与排查
 
 ```bash
-pnpm docs:dev
-pnpm docs:build
-pnpm analyze:deps
-pnpm check:unused
+npm run docs:dev
+npm run docs:build
+npm run analyze:deps
+npm run check:unused
 ```
 
 ## 关键目录
 
 | 目录 | 职责 | 注意事项 |
 | --- | --- | --- |
+| `.vscode/` | VSCode 调试配置 | 包含 launch.json、tasks.json、extensions.json |
+| `.husky/` | Git 钩子 | 预提交自动执行 lint-staged |
+| `.github/` | GitHub 模板 | PR/Issue 模板 |
+| `build/` | 构建产物输出 | Web 和 Electron 统一输出目录 |
+| `out/` | Electron 打包输出 | 安装包和便携版 |
 | `src/api/` | 音乐平台接口封装 | 必须优先使用 TypeScript，禁止扩散 `any` |
 | `src/platform/` | 平台能力抽象 | 不直接耦合 UI |
 | `src/store/` | Pinia 状态管理 | 跨组件状态保持唯一数据源 |
@@ -118,6 +140,11 @@ pnpm check:unused
 - 同组内保持稳定顺序，依赖 ESLint 自动修复时遵循工具结果
 - 类型导入优先使用 `import type`
 
+### 3.1 编码规范
+
+- 项目文本文件统一使用 UTF-8（无 BOM）
+- 避免混用 GBK/UTF-16 等编码导致的乱码与构建问题
+
 ### 4. Electron 构建约束
 
 - 产物格式：主进程构建产物为 CJS，源码保持 ESM 兼容
@@ -128,12 +155,12 @@ pnpm check:unused
 
 ### 5. 依赖管理
 
-- 优先使用 pnpm，避免 npm 与 pnpm 混用导致锁文件与依赖树漂移
-- 发现 `pnpm-lock.yaml` 后，不再新增 `package-lock.json`
-- 在 `package.json` 中维护 `engines` 与 `packageManager`，确保团队环境一致
-- 当前项目已声明 `engines.node`，后续如继续强化约束，应补充 `engines.pnpm` 与 `packageManager`
-- 当依赖安装、锁文件或构建行为异常时，优先检查包管理器版本是否与项目约束一致
-- 修改依赖前，先确认是否已有 `pnpm.overrides` 或根级 `overrides` 规则，避免覆盖既有约束
+- 使用 npm 作为包管理器，避免 npm 与 pnpm 混用导致锁文件与依赖树漂移
+- 项目使用 `package-lock.json` 锁定依赖版本
+- 在 `package.json` 中维护 `engines`，确保团队环境一致
+- 当前项目已声明 `engines.node`，确保 Node.js 版本符合要求
+- 当依赖安装、锁文件或构建行为异常时，优先检查 Node.js 版本是否与项目约束一致
+- 修改依赖前，先确认是否已有根级 `overrides` 规则，避免覆盖既有约束
 
 ### 6. 状态管理
 
@@ -230,20 +257,20 @@ pnpm check:unused
 至少执行：
 
 ```bash
-pnpm test:run
+npm run test:run
 ```
 
 如修改了构建、Electron 或路径相关逻辑，额外执行：
 
 ```bash
-pnpm build:web
-pnpm build:electron
+npm run build:web
+npm run build:electron
 ```
 
 如修改了文档站点或项目文档结构，可补充执行：
 
 ```bash
-pnpm docs:build
+npm run docs:build
 ```
 
 ## 禁止事项

@@ -1,13 +1,18 @@
 interface HasId {
-  id: string | number;
+  id: string | number
 }
 
 export class ShuffleHelper {
-  shuffle<T extends HasId>(arr: T[], currentSongId: string | number | null, currentIndex: number, isPlayAll: boolean = false): T[] {
+  shuffle<T extends HasId>(
+    arr: T[],
+    currentSongId: string | number | null,
+    currentIndex: number,
+    isPlayAll: boolean = false
+  ): T[] {
     if (!arr || arr.length === 0) return []
-    
+
     const _arr = [...arr]
-    
+
     for (let i = _arr.length - 1; i > 0; i--) {
       const j = this.getRandomInt(0, i)
       const temp = _arr[i]
@@ -32,7 +37,7 @@ export class ShuffleHelper {
 
   generateShuffledIndices(length: number, currentIndex: number = -1): number[] {
     const indices = Array.from({ length }, (_, i) => i)
-    
+
     for (let i = indices.length - 1; i > 0; i--) {
       const j = this.getRandomInt(0, i)
       const temp = indices[i]

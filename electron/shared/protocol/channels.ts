@@ -1,6 +1,6 @@
 /**
  * IPC 通道常量定义
- * 
+ *
  * 集中管理所有 IPC 通道名称，便于维护和类型检查。
  * 遵循 VSCode 的 Protocol 模式，将通道分为三类：
  * - Invoke: 双向通信，渲染进程调用并等待结果
@@ -27,6 +27,60 @@ export const INVOKE_CHANNELS = {
   SERVICE_GET_STATUS: 'service:status',
   SERVICE_START: 'service:start',
   SERVICE_STOP: 'service:stop',
+  SERVICE_STATUS_ALL: 'service:status:all',
+  SERVICE_RESTART: 'service:restart',
+  SERVICE_HEALTH: 'service:health',
+  SERVICE_UPDATE_CONFIG: 'service:update-config',
+
+  // 窗口控制
+  WINDOW_GET_SIZE: 'window:get-size',
+  WINDOW_IS_MAXIMIZED: 'window:is-maximized',
+  WINDOW_IS_MINIMIZED: 'window:is-minimized',
+  WINDOW_GET_STATE: 'window:get-state',
+
+  // 配置管理
+  CONFIG_GET: 'config:get',
+  CONFIG_GET_ALL: 'config:get-all',
+  CONFIG_SET: 'config:set',
+  CONFIG_DELETE: 'config:delete',
+  CONFIG_RESET: 'config:reset',
+
+  // API 服务
+  API_SEARCH: 'api:search',
+  API_GET_SONG_URL: 'api:get-song-url',
+  API_GET_LYRIC: 'api:get-lyric',
+  API_GET_SONG_DETAIL: 'api:get-song-detail',
+  API_GET_PLAYLIST_DETAIL: 'api:get-playlist-detail',
+  API_GET_ARTIST_DETAIL: 'api:get-artist-detail',
+  API_GET_ALBUM_DETAIL: 'api:get-album-detail',
+  API_GET_RECOMMENDED_PLAYLISTS: 'api:get-recommended-playlists',
+  API_GET_CHART: 'api:get-chart',
+
+  // 播放器控制
+  PLAYER_PLAY: 'player:play',
+  PLAYER_PAUSE: 'player:pause',
+  PLAYER_TOGGLE: 'player:toggle',
+  PLAYER_PLAY_SONG: 'player:play-song',
+  PLAYER_PLAY_SONG_BY_ID: 'player:play-song-by-id',
+  PLAYER_SKIP_TO_PREVIOUS: 'player:skip-to-previous',
+  PLAYER_SKIP_TO_NEXT: 'player:skip-to-next',
+  PLAYER_SEEK_TO: 'player:seek-to',
+  PLAYER_SET_VOLUME: 'player:set-volume',
+  PLAYER_TOGGLE_MUTE: 'player:toggle-mute',
+  PLAYER_SET_PLAY_MODE: 'player:set-play-mode',
+  PLAYER_TOGGLE_PLAY_MODE: 'player:toggle-play-mode',
+  PLAYER_GET_STATE: 'player:get-state',
+  PLAYER_GET_CURRENT_SONG: 'player:get-current-song',
+  PLAYER_GET_PLAYLIST: 'player:get-playlist',
+  PLAYER_ADD_TO_NEXT: 'player:add-to-next',
+  PLAYER_REMOVE_FROM_PLAYLIST: 'player:remove-from-playlist',
+  PLAYER_CLEAR_PLAYLIST: 'player:clear-playlist',
+  PLAYER_GET_LYRIC: 'player:get-lyric',
+
+  // 歌词控制
+  LYRIC_TOGGLE: 'lyric:toggle',
+  LYRIC_SET_ALWAYS_ON_TOP: 'lyric:set-always-on-top',
+  LYRIC_LOCK: 'lyric:lock'
 } as const
 
 /**
@@ -39,6 +93,12 @@ export const SEND_CHANNELS = {
   WINDOW_MAXIMIZE: 'maximize-window',
   WINDOW_CLOSE: 'close-window',
   WINDOW_RESIZE: 'resize-window',
+  WINDOW_MINIMIZE_TO_TRAY: 'minimize-to-tray',
+  WINDOW_SET_ALWAYS_ON_TOP: 'set-always-on-top',
+  WINDOW_TOGGLE_FULLSCREEN: 'toggle-fullscreen',
+  WINDOW_RESTORE: 'restore-window',
+  WINDOW_SHOW: 'show-window',
+  WINDOW_HIDE: 'hide-window',
 
   // 桌面歌词
   DESKTOP_LYRIC_TOGGLE: 'toggle-desktop-lyric',
@@ -46,9 +106,6 @@ export const SEND_CHANNELS = {
   DESKTOP_LYRIC_TOGGLE_LOCK: 'toggle-desktop-lyric-lock',
   DESKTOP_LYRIC_MOVE: 'desktop-lyric-move',
   DESKTOP_LYRIC_SET_IGNORE_MOUSE: 'desktop-lyric-set-ignore-mouse',
-
-  // 歌词同步
-  LYRIC_SYNC: 'sync-lyric',
   LYRIC_TIME_UPDATE: 'lyric-time-update',
 
   // 下载
@@ -60,6 +117,9 @@ export const SEND_CHANNELS = {
 
   // 日志
   LOG_MESSAGE: 'log-message',
+
+  // 错误报告
+  ERROR_REPORT: 'error-report'
 } as const
 
 /**
@@ -82,6 +142,15 @@ export const RECEIVE_CHANNELS = {
   MUSIC_PROCESS_CONTROL: 'music-process-control',
   MUSIC_COMPACT_MODE_CONTROL: 'music-compact-mode-control',
 
+  // 播放器状态变化
+  PLAYER_STATE_CHANGE: 'player:state-change',
+  PLAYER_TRACK_CHANGED: 'player:track-changed',
+  PLAYER_LYRIC_UPDATE: 'player:lyric-update',
+  PLAYER_PLAY_ERROR: 'player:play-error',
+
+  // 配置变化
+  CONFIG_CHANGED: 'config:changed',
+
   // 界面
   HIDE_PLAYER: 'hide-player',
 
@@ -93,7 +162,7 @@ export const RECEIVE_CHANNELS = {
   // 下载
   DOWNLOAD_PROGRESS: 'download-progress',
   DOWNLOAD_COMPLETE: 'download-complete',
-  DOWNLOAD_FAILED: 'download-failed',
+  DOWNLOAD_FAILED: 'download-failed'
 } as const
 
 /**
@@ -107,9 +176,9 @@ export const VALID_INVOKE_CHANNELS = Object.values(INVOKE_CHANNELS)
 /**
  * 通道类型定义
  */
-export type InvokeChannel = typeof INVOKE_CHANNELS[keyof typeof INVOKE_CHANNELS]
-export type SendChannel = typeof SEND_CHANNELS[keyof typeof SEND_CHANNELS]
-export type ReceiveChannel = typeof RECEIVE_CHANNELS[keyof typeof RECEIVE_CHANNELS]
+export type InvokeChannel = (typeof INVOKE_CHANNELS)[keyof typeof INVOKE_CHANNELS]
+export type SendChannel = (typeof SEND_CHANNELS)[keyof typeof SEND_CHANNELS]
+export type ReceiveChannel = (typeof RECEIVE_CHANNELS)[keyof typeof RECEIVE_CHANNELS]
 
 /**
  * 检查通道是否有效

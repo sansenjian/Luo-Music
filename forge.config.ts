@@ -1,12 +1,39 @@
-import type { ForgeConfig } from '@electron-forge/shared-types'
 import { MakerSquirrel } from '@electron-forge/maker-squirrel'
 import { MakerZIP } from '@electron-forge/maker-zip'
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives'
 import { FusesPlugin } from '@electron-forge/plugin-fuses'
 import { FuseV1Options, FuseVersion } from '@electron/fuses'
-import { resolve } from 'path'
+import fs from 'fs-extra'
+import path from 'node:path'
 
-const config: ForgeConfig = {
+interface PackagerConfigWithAsar {
+  name: string
+  executableName: string
+  appBundleId: string
+  asar: boolean
+  asarUnpack?: string[]
+  extraResource: string[]
+  download: {
+    unsafelyDisableChecksums: boolean
+    mirrorOptions: {
+      mirror: string
+      customDir: string
+    }
+  }
+  ignore: (string | RegExp)[]
+}
+
+interface ForgeConfigWithAsar {
+  packagerConfig: PackagerConfigWithAsar
+  rebuildConfig: Record<string, never>
+  makers: unknown[]
+  plugins: unknown[]
+  hooks: {
+    packageAfterPrune?: (config: unknown, buildPath: string) => Promise<void>
+  }
+}
+
+const config: ForgeConfigWithAsar = {
   packagerConfig: {
     name: 'LUO Music',
     executableName: 'LUO Music',
@@ -21,22 +48,18 @@ const config: ForgeConfig = {
       '**/node_modules/uint8array-extras/**',
       '**/node_modules/type-fest/**'
     ],
-    // icon: resolve(__dirname, 'public/icon'), // 暂时注释，需要创建 icon.ico 文件
     extraResource: [
-      'build/server'
+      'build/server',
+      'scripts/dev/qq-api-server.cjs',
+      'scripts/dev/netease-api-server.cjs'
     ],
-    // 跳过 checksum 验证（Electron v40.0.0 的 checksum 文件存在问题）
-    electronDownload: {
-      verifyChecksum: false,
-      // 使用镜像源下载 Electron
+    download: {
+      unsafelyDisableChecksums: true,
       mirrorOptions: {
-        mirror: 'https://npmmirror.com/mirrors/electron/',
-        customDir: '{{ version }}'
-      },
-      // 跳过 checksum 验证
-      strictSSL: false
+        mirror: 'https://github.com/electron/electron/releases/download/',
+        customDir: 'v{{ version }}'
+      }
     },
-    // 忽略不需要打包的文件（使用正则表达式精确匹配）
     ignore: [
       '.github',
       '.vscode',
@@ -49,11 +72,12 @@ const config: ForgeConfig = {
       'docs',
       'tests',
       'test',
-      'scripts',
+      'scripts/utils',
+      'scripts/dev/dev-electron-launcher.cjs',
       '.vite_cache',
       '.electron_cache',
       'src',
-      /^electron\//,  // 只忽略根目录的 electron 源码目录，不忽略 build/electron
+      /^electron\//,
       'index.html',
       'vite.config.ts',
       'electron.vite.config.ts',
@@ -65,12 +89,10 @@ const config: ForgeConfig = {
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({
-      name: 'LUO_Music',  // Squirrel 包名不能包含空格
-      // setupIcon: resolve(__dirname, 'public/icon.ico'), // 暂时注释，需要创建 icon.ico 文件
-      // 允许用户选择安装目录
+      name: 'LUO_Music',
       oneClick: false,
       allowToChangeInstallationDirectory: true
-    }),
+    } as never),
     new MakerZIP({}, ['darwin', 'linux', 'win32'])
   ],
   plugins: [
@@ -86,11 +108,7 @@ const config: ForgeConfig = {
     })
   ],
   hooks: {
-    packageAfterPrune: async (_config, buildPath) => {
-      const fs = await import('fs-extra')
-      const path = await import('path')
-      
-      // 清理不必要的文件以减小包体积
+    packageAfterPrune: async (_config: unknown, buildPath: string): Promise<void> => {
       const filesToRemove = [
         'README.md',
         'CHANGELOG.md',
@@ -100,31 +118,76 @@ const config: ForgeConfig = {
         '.vscode',
         '.idea'
       ]
-      
+
       for (const file of filesToRemove) {
         const filePath = path.join(buildPath, file)
+
         if (fs.existsSync(filePath)) {
           await fs.remove(filePath)
         }
       }
-      
-      // 修复 pnpm 符号链接问题：确保 conf/dist 目录存在
-      // pnpm 使用符号链接管理依赖，打包时可能丢失 dist 目录
-      const confDir = path.join(buildPath, 'node_modules', 'conf')
-      const confDistDir = path.join(confDir, 'dist')
-      
-      if (fs.existsSync(confDir) && !fs.existsSync(confDistDir)) {
-        // 从项目根目录的 node_modules 复制 conf/dist
-        const projectRoot = path.resolve(__dirname)
-        const sourceConfDist = path.join(projectRoot, 'node_modules', 'conf', 'dist')
-        
-        if (fs.existsSync(sourceConfDist)) {
-          console.log('Copying conf/dist from project node_modules...')
-          await fs.copy(sourceConfDist, confDistDir)
-          console.log('conf/dist copied successfully')
-        } else {
-          console.warn('Warning: conf/dist not found in project node_modules')
+
+      const projectRoot = process.cwd()
+      const sourceNodeModulesRoot = path.join(projectRoot, 'node_modules')
+      const buildNodeModulesRoot = path.join(buildPath, 'node_modules')
+      const visitedPackages = new Set<string>()
+      const rootPackageJson = await fs.readJson(path.join(projectRoot, 'package.json')) as {
+        dependencies?: Record<string, string>
+      }
+      const packageNamesToRepair = Object.keys(rootPackageJson.dependencies ?? {})
+
+      const getPackageDir = (nodeModulesRoot: string, packageName: string) =>
+        path.join(nodeModulesRoot, ...packageName.split('/'))
+
+      const ensurePackageRuntimeFiles = async (packageName: string): Promise<void> => {
+        if (visitedPackages.has(packageName)) {
+          return
         }
+
+        visitedPackages.add(packageName)
+
+        const sourcePackageDir = getPackageDir(sourceNodeModulesRoot, packageName)
+        const buildPackageDir = getPackageDir(buildNodeModulesRoot, packageName)
+
+        if (!fs.existsSync(sourcePackageDir)) {
+          console.warn(`Warning: source package not found for ${packageName}`)
+          return
+        }
+
+        if (!fs.existsSync(buildPackageDir)) {
+          console.warn(`Warning: packaged dependency directory missing for ${packageName}, copying package directory`)
+        }
+
+        await fs.copy(sourcePackageDir, buildPackageDir, {
+          overwrite: false,
+          errorOnExist: false
+        })
+
+        const sourcePackageJsonPath = path.join(sourcePackageDir, 'package.json')
+
+        if (!fs.existsSync(sourcePackageJsonPath)) {
+          return
+        }
+
+        console.log(`Synced runtime files for ${packageName}`)
+
+        const packageJson = await fs.readJson(sourcePackageJsonPath) as {
+          dependencies?: Record<string, string>
+          optionalDependencies?: Record<string, string>
+        }
+
+        const runtimeDependencies = {
+          ...packageJson.dependencies,
+          ...packageJson.optionalDependencies
+        }
+
+        for (const dependencyName of Object.keys(runtimeDependencies)) {
+          await ensurePackageRuntimeFiles(dependencyName)
+        }
+      }
+
+      for (const packageName of packageNamesToRepair) {
+        await ensurePackageRuntimeFiles(packageName)
       }
     }
   }

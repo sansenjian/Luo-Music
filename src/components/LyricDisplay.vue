@@ -1,140 +1,58 @@
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue'
-import { usePlayerStore } from '../store/playerStore.ts'
-import { animate } from 'animejs'
+import { ref } from 'vue'
+
+import { useActiveLyricState } from '../composables/useActiveLyricState'
+import { useLyricAutoScroll } from '../composables/useLyricAutoScroll'
+import { usePlayerStore } from '../store/playerStore'
+
+const props = defineProps({
+  active: {
+    type: Boolean,
+    default: true
+  }
+})
 
 const playerStore = usePlayerStore()
-
-const lyricContainer = ref(null)
 const lyricScrollArea = ref(null)
-let pauseActiveTimer = null
-let isUserScrolling = false
-let scrollEndTimer = null
-
-// Virtual List Constants
-const VIRTUAL_LIST_THRESHOLD = 100
-const VISIBLE_BUFFER = 10
-const ESTIMATED_LINE_HEIGHT = 60
-
-// Use store state directly
-const currentLyricIndex = computed(() => playerStore.currentLyricIndex)
-const lyrics = computed(() => playerStore.lyricsArray)
-
-// Virtual List Calculation
-const shouldUseVirtualList = computed(() => {
-  return lyrics.value.length > VIRTUAL_LIST_THRESHOLD
-})
-
-const visibleRange = computed(() => {
-  if (!shouldUseVirtualList.value) {
-    return { start: 0, end: lyrics.value.length }
-  }
-  
-  const container = lyricScrollArea.value
-  if (!container) return { start: 0, end: VISIBLE_BUFFER }
-  
-  const scrollTop = container.scrollTop
-  const visibleCount = Math.ceil(container.clientHeight / ESTIMATED_LINE_HEIGHT)
-  
-  const start = Math.floor(scrollTop / ESTIMATED_LINE_HEIGHT)
-  
-  return {
-    start: Math.max(0, start - VISIBLE_BUFFER),
-    end: Math.min(lyrics.value.length, start + visibleCount + VISIBLE_BUFFER)
-  }
-})
-
-// Placeholder height
-const placeholderHeight = computed(() => {
-  if (!shouldUseVirtualList.value) return 0
-  const { start } = visibleRange.value
-  return start * ESTIMATED_LINE_HEIGHT
-})
-
-// Visible lyrics
-const visibleLyrics = computed(() => {
-  const { start, end } = visibleRange.value
-  return lyrics.value.slice(start, end).map((item, index) => ({
-    ...item,
-    originalIndex: start + index
-  }))
-})
-
-const showOriginal = computed(() => playerStore.lyricType.includes('original'))
-const showTrans = computed(() => playerStore.lyricType.includes('trans'))
-const showRoma = computed(() => playerStore.lyricType.includes('roma'))
+const { lyrics, currentLyricIndex, showOriginal, showTrans, showRoma } = useActiveLyricState()
 
 function handleLyricClick(time) {
   playerStore.seek(time)
 }
 
-function scrollToActiveLine() {
-  if (isUserScrolling || !lyricScrollArea.value) return
-  
-  const activeLine = lyricScrollArea.value.querySelector('.lyric-line.active')
-  if (!activeLine) return
-  
-  const container = lyricScrollArea.value
-  const lineOffsetTop = activeLine.offsetTop
-  const lineHeight = activeLine.offsetHeight
-  const containerHeight = container.clientHeight
-  
-  const targetScroll = Math.max(0, lineOffsetTop - containerHeight / 2 + lineHeight / 2)
-  
-  // Use anime.js for smooth scrolling
-  animate(container, {
-    scrollTop: targetScroll,
-    duration: 300,
-    easing: 'easeOutQuad'
-  })
-}
-
-watch(currentLyricIndex, () => {
-  scrollToActiveLine()
-})
-
-function handleScroll() {
-  isUserScrolling = true
-  
-  if (pauseActiveTimer) clearTimeout(pauseActiveTimer)
-  if (scrollEndTimer) clearTimeout(scrollEndTimer)
-  
-  scrollEndTimer = setTimeout(() => {
-    scrollEndTimer = null
-    pauseActiveTimer = setTimeout(() => {
-      isUserScrolling = false
-      scrollToActiveLine()
-    }, 500)
-  }, 150)
-}
-
-onUnmounted(() => {
-  if (pauseActiveTimer) clearTimeout(pauseActiveTimer)
-  if (scrollEndTimer) clearTimeout(scrollEndTimer)
-  // anime.remove(lyricScrollArea.value) // animate in animejs v4 might not have a global remove or handle it differently
+const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
+  scrollArea: lyricScrollArea,
+  lyrics,
+  activeIndex: currentLyricIndex,
+  active: () => props.active,
+  alignSources: [showOriginal, showTrans, showRoma],
+  resetSources: [() => playerStore.currentSong?.id]
 })
 </script>
 
 <template>
-  <div class="lyric" ref="lyricContainer">
+  <div class="lyric">
     <div v-if="lyrics.length === 0" class="empty-state">
-      <div class="empty-icon">♪</div>
+      <div class="empty-icon">LRC</div>
       <div>Search and play a track to view lyrics</div>
     </div>
 
-    <div v-else class="lyrics-wrapper" ref="lyricScrollArea" @scroll="handleScroll" @wheel="handleScroll" @touchstart="handleScroll">
+    <div
+      v-else
+      ref="lyricScrollArea"
+      class="lyrics-wrapper"
+      @scroll="handleScroll"
+      @wheel.passive="handleUserScrollStart"
+      @touchstart.passive="handleUserScrollStart"
+    >
       <div class="lyrics-list">
-        <!-- Virtual List Placeholder -->
-        <div v-if="shouldUseVirtualList" class="placeholder" :style="{ height: `${placeholderHeight}px` }"></div>
-        
-        <!-- Render Visible Lyrics -->
         <div
-          v-for="item in visibleLyrics"
-          :key="item.originalIndex"
+          v-for="(item, index) in lyrics"
+          :key="`${item.time}-${index}`"
           class="lyric-line"
           :class="{
-            active: item.originalIndex === currentLyricIndex,
-            passed: item.originalIndex < currentLyricIndex
+            active: index === currentLyricIndex,
+            passed: index < currentLyricIndex
           }"
           @click="handleLyricClick(item.time)"
         >
@@ -172,17 +90,17 @@ onUnmounted(() => {
 }
 
 .empty-icon {
-  font-size: 40px;
+  font-size: 32px;
   margin-bottom: 12px;
+  letter-spacing: 0.12em;
   opacity: 0.3;
 }
 
 .lyrics-wrapper {
   height: 100%;
-  overflow-y: auto; /* Enable native scrolling */
+  overflow-y: auto;
   position: relative;
-  /* Smooth scrolling handled by anime.js, but keep smooth for user */
-  scroll-behavior: auto; /* Let anime.js handle it, or smooth for user? mixed can be weird */
+  scroll-behavior: auto;
 }
 
 .lyrics-wrapper::-webkit-scrollbar {
@@ -201,14 +119,6 @@ onUnmounted(() => {
 .lyrics-list {
   position: relative;
   padding: 50vh 40px;
-}
-
-.placeholder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  pointer-events: none;
 }
 
 :global(.player-compact) .lyric-line {

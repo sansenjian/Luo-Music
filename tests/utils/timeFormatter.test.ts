@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { formatTime, formatTimeDetailed, parseTimeToSeconds, formatTimeWithHours } from '../../src/utils/player/helpers/timeFormatter'
+import {
+  formatTime,
+  formatTimeDetailed,
+  parseTimeToSeconds,
+  formatTimeWithHours
+} from '../../src/utils/player/helpers/timeFormatter'
 
 describe('TimeFormatter', () => {
   describe('formatTime', () => {

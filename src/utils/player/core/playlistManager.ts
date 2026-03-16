@@ -42,15 +42,15 @@ export class PlaylistManager {
 
   removeFromPlaylist(playlist: Playlist, index: number): Song | null {
     if (index < 0 || index >= playlist.list.length) return null
-    
+
     const removed = playlist.list.splice(index, 1)[0]
-    
+
     if (playlist.currentIndex >= playlist.list.length) {
       playlist.currentIndex = playlist.list.length - 1
     } else if (index < playlist.currentIndex) {
       playlist.currentIndex--
     }
-    
+
     this.shuffledIndices = []
     return removed
   }
@@ -71,26 +71,26 @@ export class PlaylistManager {
 
   getNextSong(playlist: Playlist): Song | null {
     if (playlist.list.length === 0) return null
-    
+
     const nextIndex = this.getNextIndex(playlist)
     return playlist.list[nextIndex]
   }
 
   getPrevSong(playlist: Playlist): Song | null {
     if (playlist.list.length === 0) return null
-    
+
     const prevIndex = this.getPrevIndex(playlist)
     return playlist.list[prevIndex]
   }
 
   getNextIndex(playlist: Playlist): number {
     const { list, currentIndex, playMode } = playlist
-    
+
     if (list.length === 0) return -1
 
     if (playMode === PLAY_MODE.SHUFFLE) {
       this.currentShuffleIndex = shuffleHelper.getNextShuffledIndex(
-        this.shuffledIndices, 
+        this.shuffledIndices,
         this.currentShuffleIndex
       )
       return this.shuffledIndices[this.currentShuffleIndex]
@@ -105,12 +105,12 @@ export class PlaylistManager {
 
   getPrevIndex(playlist: Playlist): number {
     const { list, currentIndex, playMode } = playlist
-    
+
     if (list.length === 0) return -1
 
     if (playMode === PLAY_MODE.SHUFFLE) {
       this.currentShuffleIndex = shuffleHelper.getPrevShuffledIndex(
-        this.shuffledIndices, 
+        this.shuffledIndices,
         this.currentShuffleIndex
       )
       return this.shuffledIndices[this.currentShuffleIndex]
@@ -124,12 +124,17 @@ export class PlaylistManager {
   }
 
   setPlayMode(playlist: Playlist, mode: number) {
-    const validModes = [PLAY_MODE.SEQUENTIAL, PLAY_MODE.LIST_LOOP, PLAY_MODE.SINGLE_LOOP, PLAY_MODE.SHUFFLE]
-    
+    const validModes: number[] = [
+      PLAY_MODE.SEQUENTIAL,
+      PLAY_MODE.LIST_LOOP,
+      PLAY_MODE.SINGLE_LOOP,
+      PLAY_MODE.SHUFFLE
+    ]
+
     if (!validModes.includes(mode)) return
-    
+
     playlist.playMode = mode
-    
+
     if (mode === PLAY_MODE.SHUFFLE) {
       this.initShuffle(playlist)
     } else {
@@ -146,7 +151,7 @@ export class PlaylistManager {
 
   initShuffle(playlist: Playlist) {
     this.shuffledIndices = shuffleHelper.generateShuffledIndices(
-      playlist.list.length, 
+      playlist.list.length,
       playlist.currentIndex
     )
     this.currentShuffleIndex = 0
@@ -162,7 +167,7 @@ export class PlaylistManager {
 
   addToNext(playlist: Playlist, song: Song) {
     if (!song) return
-    
+
     const existingIndex = this.findSongIndex(playlist, song.id)
     if (existingIndex !== -1) {
       playlist.list.splice(existingIndex, 1)
@@ -170,7 +175,7 @@ export class PlaylistManager {
         playlist.currentIndex--
       }
     }
-    
+
     playlist.list.splice(playlist.currentIndex + 1, 0, song)
     this.shuffledIndices = []
   }

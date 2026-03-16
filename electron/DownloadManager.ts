@@ -3,7 +3,6 @@ import fs from 'node:fs'
 import type { BrowserWindow as BrowserWindowType, Event, DownloadItem, WebContents } from 'electron'
 
 // 在 Electron 主进程中直接使用全局 require
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { app, ipcMain, session } = require('electron')
 
 export class DownloadManager {
@@ -31,61 +30,64 @@ export class DownloadManager {
 
   init() {
     // 监听下载事件
-    session.defaultSession.on('will-download', (event: Event, item: DownloadItem, webContents: WebContents) => {
-      // 获取文件名
-      const fileName = item.getFilename()
-      // 等待 downloadPath 初始化完成
-      const waitForPath = setInterval(() => {
-        if (this.isInitialized && this.downloadPath) {
-          clearInterval(waitForPath)
-          const filePath = path.join(this.downloadPath, fileName)
-          
-          // 设置保存路径，不显示保存对话框
-          item.setSavePath(filePath)
-          
-          item.on('updated', (event: Event, state: 'progressing' | 'interrupted') => {
-            if (state === 'interrupted') {
-              console.log('Download is interrupted but can be resumed')
-            } else if (state === 'progressing') {
-              if (item.isPaused()) {
-                console.log('Download is paused')
-              } else {
-                // 发送进度到渲染进程
+    session.defaultSession.on(
+      'will-download',
+      (event: Event, item: DownloadItem, _webContents: WebContents) => {
+        // 获取文件名
+        const fileName = item.getFilename()
+        // 等待 downloadPath 初始化完成
+        const waitForPath = setInterval(() => {
+          if (this.isInitialized && this.downloadPath) {
+            clearInterval(waitForPath)
+            const filePath = path.join(this.downloadPath, fileName)
+
+            // 设置保存路径，不显示保存对话框
+            item.setSavePath(filePath)
+
+            item.on('updated', (event: Event, state: 'progressing' | 'interrupted') => {
+              if (state === 'interrupted') {
+                console.log('Download is interrupted but can be resumed')
+              } else if (state === 'progressing') {
+                if (item.isPaused()) {
+                  console.log('Download is paused')
+                } else {
+                  // 发送进度到渲染进程
+                  if (this.window) {
+                    const progress = item.getReceivedBytes() / item.getTotalBytes()
+                    this.window.webContents.send('download-progress', {
+                      filename: fileName,
+                      progress,
+                      received: item.getReceivedBytes(),
+                      total: item.getTotalBytes()
+                    })
+                  }
+                }
+              }
+            })
+
+            item.once('done', (event: Event, state: 'completed' | 'cancelled' | 'interrupted') => {
+              if (state === 'completed') {
+                console.log('Download successfully')
                 if (this.window) {
-                  const progress = item.getReceivedBytes() / item.getTotalBytes()
-                  this.window.webContents.send('download-progress', {
+                  this.window.webContents.send('download-complete', {
                     filename: fileName,
-                    progress,
-                    received: item.getReceivedBytes(),
-                    total: item.getTotalBytes()
+                    path: filePath
+                  })
+                }
+              } else {
+                console.log(`Download failed: ${state}`)
+                if (this.window) {
+                  this.window.webContents.send('download-failed', {
+                    filename: fileName,
+                    error: state
                   })
                 }
               }
-            }
-          })
-          
-          item.once('done', (event: Event, state: 'completed' | 'cancelled' | 'interrupted') => {
-            if (state === 'completed') {
-              console.log('Download successfully')
-              if (this.window) {
-                this.window.webContents.send('download-complete', {
-                  filename: fileName,
-                  path: filePath
-                })
-              }
-            } else {
-              console.log(`Download failed: ${state}`)
-              if (this.window) {
-                this.window.webContents.send('download-failed', {
-                  filename: fileName,
-                  error: state
-                })
-              }
-            }
-          })
-        }
-      }, 100)
-    })
+            })
+          }
+        }, 100)
+      }
+    )
 
     // 内部使用的 IPC，不对外公开暴露给 UI 直接调用下载
     // 仅用于接收下载指令（如果需要的话，比如从其他模块触发）
@@ -95,7 +97,7 @@ export class DownloadManager {
       }
     })
   }
-  
+
   download(url: string) {
     if (this.window) {
       this.window.webContents.downloadURL(url)

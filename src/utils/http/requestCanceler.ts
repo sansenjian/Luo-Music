@@ -104,18 +104,20 @@ export function isRequestActive(config: AxiosRequestConfig): boolean {
  * @param requestFn - 请求函数
  * @returns 包含请求和取消方法的对象
  */
-export function createCancellableRequest<T = any>(requestFn: (config: AxiosRequestConfig) => Promise<T>) {
+export function createCancellableRequest<T = any>(
+  requestFn: (config: AxiosRequestConfig) => Promise<T>
+) {
   const controller = new AbortController()
-  
+
   const execute = (config: AxiosRequestConfig): Promise<T> => {
     config.signal = controller.signal
     return requestFn(config)
   }
-  
+
   const cancel = (): void => {
     controller.abort()
   }
-  
+
   return { execute, cancel }
 }
 
@@ -125,18 +127,21 @@ export function createCancellableRequest<T = any>(requestFn: (config: AxiosReque
  * @param autoCancel - 是否自动取消之前的请求
  * @returns 装饰后的请求函数
  */
-export function dedupeRequest<T = any>(requestFn: (config: AxiosRequestConfig) => Promise<T>, autoCancel = true) {
-  return async function(config: AxiosRequestConfig): Promise<T> {
+export function dedupeRequest<T = any>(
+  requestFn: (config: AxiosRequestConfig) => Promise<T>,
+  autoCancel = true
+) {
+  return async function (config: AxiosRequestConfig): Promise<T> {
     const key = generateRequestKey(config)
-    
+
     if (autoCancel && activeRequests.has(key)) {
       cancelPendingRequest(key)
     }
-    
+
     const controller = new AbortController()
     registerRequest(config, controller)
     config.signal = controller.signal
-    
+
     try {
       const result = await requestFn(config)
       removeRequest(key)
@@ -156,10 +161,15 @@ export function cleanupOnUnmount(): () => void {
   return cancelAllRequests
 }
 
-// 监听页面卸载事件
+// 监听页面卸载事件（使用单次初始化标志防止 HMR 重复注册）
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', cancelAllRequests)
-  window.addEventListener('pagehide', cancelAllRequests)
+  const CANCELER_INIT_SYMBOL = Symbol.for('http-request-canceler-initialized')
+
+  if (!(window as unknown as Record<symbol, boolean>)[CANCELER_INIT_SYMBOL]) {
+    window.addEventListener('beforeunload', cancelAllRequests)
+    window.addEventListener('pagehide', cancelAllRequests)
+    ;(window as unknown as Record<symbol, boolean>)[CANCELER_INIT_SYMBOL] = true
+  }
 }
 
 export default {

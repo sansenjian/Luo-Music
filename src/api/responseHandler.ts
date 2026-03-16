@@ -4,10 +4,8 @@
  */
 
 import { z } from 'zod'
-import {
-  SearchValidationResultSchema,
-  type SearchValidationResult,
-} from '@/types/schemas'
+import { type SearchValidationResult } from '@/types/schemas'
+import { isCanceledRequestError } from '@/utils/http/cancelError'
 
 /** 原始 API 响应类型 - 外部 API 返回的未知格式数据 */
 export type RawApiResponse = Record<string, unknown>
@@ -41,16 +39,16 @@ const DEFAULT_SUCCESS_CODES = [0, 200, 2000, 20000]
  */
 function getValueByPath(obj: unknown, path?: string): unknown {
   if (!path || !obj) return obj
-  
+
   const keys = path.split('.')
   let value: unknown = obj
-  
+
   for (const key of keys) {
     if (value === null || value === undefined) return undefined
     if (typeof value !== 'object') return undefined
     value = (value as Record<string, unknown>)[key]
   }
-  
+
   return value
 }
 
@@ -61,10 +59,10 @@ function getValueByPath(obj: unknown, path?: string): unknown {
  * @returns 统一格式的响应
  */
 export function parseResponse<T>(
-  response: unknown, 
+  response: unknown,
   options: ResponseParseOptions = {}
 ): ApiResponse<T> {
-  const { 
+  const {
     successCodes = DEFAULT_SUCCESS_CODES,
     dataPath,
     errorPath = 'message,error,msg',
@@ -135,44 +133,25 @@ export function parseQQMusicResponse<T>(response: unknown): ApiResponse<T> {
   // QQ 音乐可能返回包装在 response 字段中的 JSON 字符串
   let parsed: unknown = response
 
-  console.log('[ResponseHandler] QQ Music raw response:', JSON.stringify(response, null, 2))
-  console.log('[ResponseHandler] QQ Music response type:', typeof response, Array.isArray(response))
-
   if (typeof response === 'object' && response !== null) {
     const resp = response as Record<string, unknown>
-    console.log('[ResponseHandler] QQ Music response keys:', Object.keys(resp))
-    
+
     if (typeof resp.response === 'string') {
-      console.log('[ResponseHandler] QQ Music response is string, attempting JSON.parse')
       try {
         parsed = JSON.parse(resp.response)
-        console.log('[ResponseHandler] Parsed wrapped response:', JSON.stringify(parsed, null, 2))
       } catch (e) {
         console.warn('Failed to parse QQ Music wrapped response:', e)
       }
     } else if (resp.response && typeof resp.response === 'object') {
-      console.log('[ResponseHandler] QQ Music response is object, using directly')
       parsed = resp.response
-      console.log('[ResponseHandler] Using response object:', JSON.stringify(parsed, null, 2))
-    } else {
-      console.log('[ResponseHandler] QQ Music response has no response field, using raw response')
     }
   }
 
-  const result = parseResponse<T>(parsed, {
-    successCodes: [0, 200, 20000],  // 扩展成功状态码
-    codePath: 'code,result,status',  // 扩展状态码字段
+  return parseResponse<T>(parsed, {
+    successCodes: [0, 200, 20000], // 扩展成功状态码
+    codePath: 'code,result,status', // 扩展状态码字段
     errorPath: 'message,error,msg'
   })
-
-  console.log('[ResponseHandler] Parsed result:', {
-    success: result.success,
-    code: result.code,
-    error: result.error,
-    dataKeys: result.data ? Object.keys(result.data as object) : 'no data'
-  })
-
-  return result
 }
 
 /**
@@ -193,8 +172,12 @@ export function parseNeteaseResponse<T>(response: unknown): ApiResponse<T> {
  * @returns 格式化的错误信息
  */
 export function handleApiError(error: unknown, context?: string): Error {
+  if (isCanceledRequestError(error)) {
+    return new Error(context ? `${context}: canceled` : 'canceled')
+  }
+
   let message = '请求失败'
-  
+
   if (error instanceof Error) {
     message = error.message
   } else if (typeof error === 'object' && error !== null) {
@@ -207,7 +190,7 @@ export function handleApiError(error: unknown, context?: string): Error {
   } else if (typeof error === 'string') {
     message = error
   }
-  
+
   // 网络错误分类
   if (message.includes('Network Error') || message.includes('ECONNREFUSED')) {
     message = '网络错误：API 服务未启动'
@@ -216,9 +199,9 @@ export function handleApiError(error: unknown, context?: string): Error {
   } else if (message.includes('404')) {
     message = '接口不存在'
   }
-  
+
   const fullMessage = context ? `${context}: ${message}` : message
-  
+
   console.error('[API Error]', fullMessage, error)
   return new Error(fullMessage)
 }
@@ -235,8 +218,8 @@ export function validateSearchResponse(data: unknown): SearchValidationResult {
   const QQMusicSchema = z.object({
     song: z.object({
       list: z.array(z.unknown()),
-      totalnum: z.number(),
-    }),
+      totalnum: z.number()
+    })
   })
 
   const qqResult = QQMusicSchema.safeParse(data)
@@ -244,14 +227,14 @@ export function validateSearchResponse(data: unknown): SearchValidationResult {
     return {
       valid: true,
       list: qqResult.data.song.list,
-      total: qqResult.data.song.totalnum,
+      total: qqResult.data.song.totalnum
     }
   }
 
   // 网易云格式: { songs: [], songCount: N }
   const NeteaseSchema = z.object({
     songs: z.array(z.unknown()),
-    songCount: z.number(),
+    songCount: z.number()
   })
 
   const neteaseResult = NeteaseSchema.safeParse(data)
@@ -259,14 +242,14 @@ export function validateSearchResponse(data: unknown): SearchValidationResult {
     return {
       valid: true,
       list: neteaseResult.data.songs,
-      total: neteaseResult.data.songCount,
+      total: neteaseResult.data.songCount
     }
   }
 
   // 通用格式: { list: [], total: N }
   const GenericSchema = z.object({
     list: z.array(z.unknown()),
-    total: z.number(),
+    total: z.number()
   })
 
   const genericResult = GenericSchema.safeParse(data)
@@ -274,7 +257,7 @@ export function validateSearchResponse(data: unknown): SearchValidationResult {
     return {
       valid: true,
       list: genericResult.data.list,
-      total: genericResult.data.total,
+      total: genericResult.data.total
     }
   }
 
@@ -282,6 +265,6 @@ export function validateSearchResponse(data: unknown): SearchValidationResult {
     valid: false,
     list: [],
     total: 0,
-    error: '未知的数据格式',
+    error: '未知的数据格式'
   }
 }

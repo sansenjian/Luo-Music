@@ -1,4 +1,4 @@
-version: "1.0"
+version: '1.0'
 profile:
   name: qodana.recommended
 
@@ -14,13 +14,16 @@ exclude:
       - release
       - out
       - build
+      - node_modules
+      - .vite_cache
 
-      # 明确排除自动生成的类型定义（如果它们被 Git 跟踪）
-      - "*.d.ts"
-      - auto-imports.d.ts
-      - components.d.ts
+      # 明确排除自动生成的类型定义
+      - src/auto-imports.d.ts
+      - src/components.d.ts
+      - '**/*.d.ts'
+      - scripts
 
-  # 保留：针对特定规则的精细排除（如你截图中的逗号表达式警告）
+  # 保留：针对特定规则的精细排除
   - name: CommaExpression
     paths:
       - docs/.vitepress
@@ -33,7 +36,6 @@ include:
 
 bootstrap: |
   export CI=true
-  npm install -g pnpm
-  pnpm install --frozen-lockfile
+  npm ci
 
 linter: jetbrains/qodana-js:2025.3

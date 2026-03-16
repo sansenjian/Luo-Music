@@ -19,7 +19,7 @@ interface UseThrottledStyleUpdateOptions {
 
 /**
  * 使用阈值过滤的样式更新
- * 
+ *
  * 当监听的数据源变化时，只有变化超过指定阈值才更新目标元素的样式。
  * 这可以避免频繁的 DOM 操作，提升性能。
  */
@@ -38,17 +38,17 @@ export function useThrottledStyleUpdate(options: UseThrottledStyleUpdateOptions)
 
   watch(
     () => source.value,
-    (newVal) => {
+    newVal => {
       // 检查目标元素是否存在
       if (!targetRef.value) return
-      
+
       // 检查是否应该跳过更新
       if (shouldSkip?.()) return
-      
+
       // 阈值过滤：只有变化超过指定阈值才更新
       if (Math.abs(newVal - lastValue) < minChange) return
       lastValue = newVal
-      
+
       // 直接更新样式
       const value = usePercent ? `${newVal}%` : `${newVal}`
       targetRef.value.style[property as any] = value
@@ -58,6 +58,8 @@ export function useThrottledStyleUpdate(options: UseThrottledStyleUpdateOptions)
 
   return {
     /** 手动重置最后记录的值，强制下次更新 */
-    resetLastValue: () => { lastValue = -1 }
+    resetLastValue: () => {
+      lastValue = -1
+    }
   }
 }

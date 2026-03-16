@@ -34,9 +34,7 @@ test.describe('Search Functionality', () => {
       const url = new URL(route.request().url())
       const keywords = url.searchParams.get('keywords')
       const body: MockSearchResult =
-        keywords === 'nonexistent'
-          ? { result: { songs: [] } }
-          : mockSearchResponse
+        keywords === 'nonexistent' ? { result: { songs: [] } } : mockSearchResponse
 
       await route.fulfill({
         status: 200,

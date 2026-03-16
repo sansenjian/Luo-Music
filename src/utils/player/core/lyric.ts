@@ -3,10 +3,6 @@
  * Supports standard LRC and enhanced word-level LRC
  */
 
-// Time format regex: [mm:ss.xx] or <mm:ss.xx>
-const TIME_REGEX = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/g
-const WORD_TIME_REGEX = /<(\d{2}):(\d{2})(?:\.(\d{2,3}))?>/g
-
 export interface LyricWord {
   time: number
   duration: number
@@ -26,14 +22,14 @@ export class LyricParser {
     // Format: mm:ss.xx or mm:ss:xx
     const normalized = timeStr.replace(/:(\d+)$/, '.$1')
     const parts = normalized.match(/(\d+):(\d+)(?:\.(\d+))?/)
-    
+
     if (!parts) return 0
-    
+
     const min = parseInt(parts[1], 10)
     const sec = parseInt(parts[2], 10)
     const msStr = parts[3] || '0'
     const ms = parseFloat(`0.${msStr}`)
-    
+
     return min * 60 + sec + ms
   }
 
@@ -45,7 +41,7 @@ export class LyricParser {
 
     const parseContent = (text: string, type: 'text' | 'trans' | 'roma') => {
       if (!text || typeof text !== 'string') return
-      
+
       const lines = text.split('\n')
       lines.forEach(line => {
         // Match all timestamps: [mm:ss.xx]
@@ -53,13 +49,13 @@ export class LyricParser {
         const timeMatches = [...line.matchAll(/\[(\d+:\d+(?:[.:]\d+)?)\]/g)]
         if (timeMatches.length > 0) {
           const content = line.replace(/\[\d+:\d+(?:[.:]\d+)?\]/g, '').trim()
-          
+
           timeMatches.forEach(match => {
             const timeStr = match[1]
             // Fix: ensure parseTime returns number
             const time = LyricParser.parseTime(timeStr) || 0
             const key = Math.round(time * 1000)
-            
+
             if (!linesMap.has(key)) {
               linesMap.set(key, {
                 time,
@@ -68,7 +64,7 @@ export class LyricParser {
                 roma: ''
               })
             }
-            
+
             const entry = linesMap.get(key)!
             if (type === 'text') entry.text = content
             else if (type === 'trans') entry.trans = content
@@ -109,15 +105,15 @@ export class LyricEngine {
    */
   update(currentTime: number): number {
     if (!this.lyrics || this.lyrics.length === 0) return -1
-    
+
     const time = currentTime + this.offset
-    
+
     // Binary search
     let left = 0
     let right = this.lyrics.length - 1
     // We want to find the last line that starts <= time
     // If time < first line, index should be -1
-    
+
     while (left <= right) {
       const mid = Math.floor((left + right) / 2)
       if (this.lyrics[mid].time <= time) {
@@ -127,7 +123,7 @@ export class LyricEngine {
         right = mid - 1
       }
     }
-    
+
     // Reset if time is before first line
     if (this.currentIndex >= 0 && this.lyrics[this.currentIndex].time > time) {
       this.currentIndex = -1
@@ -142,7 +138,7 @@ export class LyricEngine {
     }
     return null
   }
-  
+
   getNextLine(): LyricLine | null {
     if (this.currentIndex >= -1 && this.currentIndex < this.lyrics.length - 1) {
       return this.lyrics[this.currentIndex + 1]
@@ -157,16 +153,16 @@ export class LyricEngine {
   getProgress(currentTime: number): number {
     const current = this.getCurrentLine()
     if (!current) return 0
-    
+
     const next = this.getNextLine()
     const startTime = current.time
-    const endTime = next ? next.time : (current.time + 5) // Fallback duration 5s
-    
+    const endTime = next ? next.time : current.time + 5 // Fallback duration 5s
+
     const time = currentTime + this.offset
     const duration = endTime - startTime
-    
+
     if (duration <= 0) return 1
-    
+
     return Math.max(0, Math.min(1, (time - startTime) / duration))
   }
 }

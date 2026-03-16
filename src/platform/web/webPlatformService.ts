@@ -1,6 +1,5 @@
 /**
  * Web Platform Service Implementation
- * Web 平台服务实现
  */
 
 import type { IDisposable } from '../../base/common/lifecycle/disposable'
@@ -13,34 +12,20 @@ import type {
   IMessageHandler
 } from '../common/types'
 
-/**
- * Web 平台服务
- * 实现 Web 浏览器特定的平台功能
- */
 export class WebPlatformService extends PlatformServiceBase {
   readonly name = 'web'
-  
+
   private readonly eventListeners = new Map<string, Set<IMessageHandler>>()
-
-  constructor() {
-    super()
-  }
-
-  // ==================== IPlatformInfoService ====================
 
   override isElectron(): boolean {
     return false
   }
 
-  // ==================== IWindowService ====================
-
   override minimizeWindow(): void {
-    // Web 环境下无法最小化窗口
     console.debug('[WebPlatformService] minimizeWindow not available in web mode')
   }
 
   override maximizeWindow(): void {
-    // Web 环境下可以尝试全屏
     if (document.documentElement.requestFullscreen) {
       document.documentElement.requestFullscreen().catch(() => {
         console.debug('[WebPlatformService] Failed to enter fullscreen')
@@ -49,53 +34,33 @@ export class WebPlatformService extends PlatformServiceBase {
   }
 
   override closeWindow(): void {
-    // Web 环境下无法关闭窗口
     console.debug('[WebPlatformService] closeWindow not available in web mode')
   }
 
-  // ==================== IIPCService ====================
-
   override on(channel: string, callback: IMessageHandler): IDisposable {
-    // Web 环境下使用自定义事件模拟 IPC
-    // 使用 Map 存储 handler 引用，确保 dispose 时能正确移除
-    const handlerMap = new Map<IMessageHandler, EventListener>()
-    
     const handler = ((event: Event): void => {
-      const customEvent = event as CustomEvent
-      callback(customEvent.detail)
+      callback((event as CustomEvent).detail)
     }) as EventListener
-    
-    handlerMap.set(callback, handler)
 
-    // 存储监听器引用以便管理
     if (!this.eventListeners.has(channel)) {
       this.eventListeners.set(channel, new Set())
     }
-    this.eventListeners.get(channel)!.add(callback)
+    this.eventListeners.get(channel)?.add(callback)
 
-    // 添加 DOM 事件监听
     window.addEventListener(`ipc:${channel}`, handler)
 
-    return new Disposable(() => {
-      // 移除 DOM 事件监听
+    return Disposable.from(() => {
       window.removeEventListener(`ipc:${channel}`, handler)
-      // 从管理集合中移除
       this.eventListeners.get(channel)?.delete(callback)
-      handlerMap.delete(callback)
     })
   }
 
   override send(channel: string, data: unknown): void {
-    // Web 环境下使用自定义事件模拟 IPC
-    const event = new CustomEvent(`ipc:${channel}`, { detail: data })
-    window.dispatchEvent(event)
+    window.dispatchEvent(new CustomEvent(`ipc:${channel}`, { detail: data }))
   }
 
-  // ==================== ICacheService ====================
-
   override async getCacheSize(): Promise<ICacheSize> {
-    // 使用 Storage API 估算存储使用量
-    if (navigator.storage && navigator.storage.estimate) {
+    if (navigator.storage?.estimate) {
       try {
         const estimate = await navigator.storage.estimate()
         return {
@@ -109,17 +74,16 @@ export class WebPlatformService extends PlatformServiceBase {
       }
     }
 
-    // 降级方案：估算 localStorage 和 sessionStorage
     let totalSize = 0
-    
+
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
         if (key) {
-          totalSize += (localStorage.getItem(key) || '').length * 2 // UTF-16
+          totalSize += (localStorage.getItem(key) || '').length * 2
         }
       }
-      
+
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)
         if (key) {
@@ -137,47 +101,154 @@ export class WebPlatformService extends PlatformServiceBase {
   }
 
   override async clearCache(options: IClearCacheOptions): Promise<IClearCacheResult> {
-    const failed: string[] = []
+    const result: IClearCacheResult = { success: [], failed: [] }
+    const clearAll = Boolean(options.all)
 
-    if (options.httpCache) {
+    if (options.cache || clearAll) {
       try {
-        // 清除 Cache API
         if ('caches' in window) {
           const cacheNames = await caches.keys()
           await Promise.all(cacheNames.map(name => caches.delete(name)))
         }
+        result.success.push('http-cache')
       } catch (error) {
         console.warn('[WebPlatformService] Failed to clear cache API:', error)
-        failed.push('cache-api')
+        result.failed.push({ type: 'http-cache', error: this.getErrorMessage(error) })
       }
     }
 
-    if (options.userData && !options.keepUserData) {
+    if (options.cookies || clearAll) {
+      try {
+        this.clearDocumentCookies()
+        result.success.push('cookies')
+      } catch (error) {
+        console.warn('[WebPlatformService] Failed to clear cookies:', error)
+        result.failed.push({ type: 'cookies', error: this.getErrorMessage(error) })
+      }
+    }
+
+    if (options.localStorage || clearAll) {
       try {
         localStorage.clear()
-        sessionStorage.clear()
+        result.success.push('localstorage')
       } catch (error) {
-        console.warn('[WebPlatformService] Failed to clear storage:', error)
-        failed.push('storage')
+        console.warn('[WebPlatformService] Failed to clear localStorage:', error)
+        result.failed.push({ type: 'localstorage', error: this.getErrorMessage(error) })
       }
     }
 
-    return { failed }
+    if (options.sessionStorage || clearAll) {
+      try {
+        sessionStorage.clear()
+        result.success.push('sessionstorage')
+      } catch (error) {
+        console.warn('[WebPlatformService] Failed to clear sessionStorage:', error)
+        result.failed.push({ type: 'sessionstorage', error: this.getErrorMessage(error) })
+      }
+    }
+
+    if (options.indexDB || clearAll) {
+      try {
+        await this.clearIndexedDBDatabases()
+        result.success.push('indexdb')
+      } catch (error) {
+        console.warn('[WebPlatformService] Failed to clear IndexedDB:', error)
+        result.failed.push({ type: 'indexdb', error: this.getErrorMessage(error) })
+      }
+    }
+
+    if (options.serviceWorkers || clearAll) {
+      try {
+        await this.clearServiceWorkers()
+        result.success.push('serviceworkers')
+      } catch (error) {
+        console.warn('[WebPlatformService] Failed to clear service workers:', error)
+        result.failed.push({ type: 'serviceworkers', error: this.getErrorMessage(error) })
+      }
+    }
+
+    if (options.webSQL || clearAll) {
+      console.debug('[WebPlatformService] webSQL clear is not supported in web mode')
+    }
+
+    if (options.shaderCache || clearAll) {
+      console.debug('[WebPlatformService] shader cache clear is not supported in web mode')
+    }
+
+    return result
   }
 
   override async clearAllCache(keepUserData?: boolean): Promise<IClearCacheResult> {
-    return this.clearCache({
-      httpCache: true,
-      userData: !keepUserData,
-      keepUserData
-    })
+    if (keepUserData) {
+      return this.clearCache({
+        cookies: true,
+        sessionStorage: true,
+        cache: true,
+        serviceWorkers: true
+      })
+    }
+
+    return this.clearCache({ all: true })
   }
 
-  // ==================== Lifecycle ====================
+  private clearDocumentCookies(): void {
+    if (!document.cookie) {
+      return
+    }
 
-  /**
-   * 销毁服务，清理所有监听器
-   */
+    const cookies = document.cookie.split(';')
+    for (const item of cookies) {
+      const key = item.split('=')[0]?.trim()
+      if (!key) {
+        continue
+      }
+      document.cookie = `${key}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
+    }
+  }
+
+  private async clearIndexedDBDatabases(): Promise<void> {
+    if (typeof indexedDB === 'undefined') {
+      return
+    }
+
+    const indexedDBWithDatabases = indexedDB as IDBFactory & {
+      databases?: () => Promise<Array<{ name?: string }>>
+    }
+
+    if (typeof indexedDBWithDatabases.databases !== 'function') {
+      return
+    }
+
+    const dbList = await indexedDBWithDatabases.databases()
+    await Promise.all(
+      dbList
+        .map(db => db.name)
+        .filter((name): name is string => Boolean(name))
+        .map(
+          name =>
+            new Promise<void>((resolve, reject) => {
+              const request = indexedDB.deleteDatabase(name)
+              request.onsuccess = () => resolve()
+              request.onerror = () => reject(request.error || new Error(`Failed to delete ${name}`))
+              request.onblocked = () => reject(new Error(`IndexedDB delete blocked: ${name}`))
+            })
+        )
+    )
+  }
+
+  private async clearServiceWorkers(): Promise<void> {
+    if (!('serviceWorker' in navigator)) {
+      return
+    }
+
+    const registrations = await navigator.serviceWorker.getRegistrations()
+    await Promise.all(registrations.map(registration => registration.unregister()))
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error)
+  }
+
   dispose(): void {
     this.eventListeners.clear()
   }

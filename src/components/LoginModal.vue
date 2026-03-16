@@ -1,63 +1,97 @@
-<script setup>
-import { ref, onUnmounted } from 'vue'
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref } from 'vue'
+
+import { services } from '../services'
+import { getQRCode, getQRKey, getUserAccount, checkQRStatus } from '../api/user'
+import { useToastStore } from '../store/toastStore'
 import { useUserStore } from '../store/userStore'
-import { getQRKey, getQRCode, checkQRStatus, getUserAccount } from '../api/user'
 
-const emit = defineEmits(['close'])
+type LoginStatus = 'loading' | 'waiting' | 'scanned' | 'expired' | 'success' | 'error'
 
+type QrKeyResponse = {
+  data?: {
+    unikey?: string
+  }
+}
+
+type QrImageResponse = {
+  data?: {
+    qrimg?: string
+  }
+}
+
+type QrCheckResponse = {
+  code?: number
+  cookie?: string
+}
+
+type UserAccountResponse = {
+  profile?: Record<string, unknown>
+}
+
+const emit = defineEmits<{
+  close: []
+}>()
+
+const logger = services.logger().createLogger('loginModal')
+const toastStore = useToastStore()
 const userStore = useUserStore()
 
 const qrImage = ref('')
 const qrKey = ref('')
-const status = ref('loading')
-const statusText = ref('正在获取二维码...')
-let pollingTimer = null
+const status = ref<LoginStatus>('loading')
+const statusText = ref('正在加载二维码...')
+
+let pollingTimer: ReturnType<typeof setInterval> | null = null
 let isChecking = false
 
-async function fetchQRCode() {
+async function fetchQRCode(): Promise<void> {
   status.value = 'loading'
-  statusText.value = '正在获取二维码...'
-  
+  statusText.value = '正在加载二维码...'
+
   try {
-    const keyRes = await getQRKey()
-    if (!keyRes.data?.unikey) {
-      throw new Error('获取 key 失败')
+    const keyRes = (await getQRKey()) as QrKeyResponse
+    const unikey = keyRes.data?.unikey
+    if (!unikey) {
+      throw new Error('Missing QR key')
     }
-    
-    qrKey.value = keyRes.data.unikey
-    
-    const qrRes = await getQRCode(qrKey.value)
-    if (!qrRes.data?.qrimg) {
-      throw new Error('获取二维码失败')
+
+    qrKey.value = unikey
+
+    const qrRes = (await getQRCode(qrKey.value)) as QrImageResponse
+    const qrimg = qrRes.data?.qrimg
+    if (!qrimg) {
+      throw new Error('Missing QR image')
     }
-    
-    qrImage.value = qrRes.data.qrimg
+
+    qrImage.value = qrimg
     status.value = 'waiting'
     statusText.value = '请使用网易云音乐 App 扫码登录'
-    
     startPolling()
   } catch (error) {
-    console.error('获取二维码失败:', error)
+    logger.error('Failed to load Netease login QR code', error)
     status.value = 'error'
-    statusText.value = '获取二维码失败，请重试'
+    statusText.value = '加载二维码失败，请稍后重试'
+    toastStore.error('加载网易云登录二维码失败')
   }
 }
 
-function startPolling() {
+function startPolling(): void {
   stopPolling()
-  
+
   pollingTimer = setInterval(async () => {
-    // 防止重叠请求
-    if (isChecking) return
-    
+    if (isChecking) {
+      return
+    }
+
     isChecking = true
     try {
-      const res = await checkQRStatus(qrKey.value)
-      
+      const res = (await checkQRStatus(qrKey.value)) as QrCheckResponse
+
       switch (res.code) {
         case 800:
           status.value = 'expired'
-          statusText.value = '二维码已过期，请点击刷新'
+          statusText.value = '二维码已过期，请刷新后重新扫码'
           stopPolling()
           break
         case 801:
@@ -70,56 +104,63 @@ function startPolling() {
           break
         case 803:
           status.value = 'success'
-          statusText.value = '登录成功！'
+          statusText.value = '登录成功'
           stopPolling()
-          await handleLoginSuccess(res.cookie)
+          await handleLoginSuccess(res.cookie ?? '')
+          break
+        default:
           break
       }
     } catch (error) {
-      console.error('检查扫码状态失败:', error)
+      logger.warn('Failed to poll Netease QR login status', error)
     } finally {
       isChecking = false
     }
   }, 3000)
 }
 
-function stopPolling() {
+function stopPolling(): void {
   if (pollingTimer) {
     clearInterval(pollingTimer)
     pollingTimer = null
   }
 }
 
-async function handleLoginSuccess(cookie) {
+async function handleLoginSuccess(cookie: string): Promise<void> {
   try {
     userStore.setCookie(cookie)
-    
-    const userRes = await getUserAccount()
-    if (userRes.profile) {
-      userStore.setUserInfo(userRes.profile)
+
+    const userRes = (await getUserAccount()) as UserAccountResponse
+    if (!userRes.profile) {
+      throw new Error('Missing user profile')
     }
-    
+
+    userStore.login(userRes.profile, cookie)
     setTimeout(() => {
       emit('close')
     }, 500)
   } catch (error) {
-    console.error('获取用户信息失败:', error)
+    logger.error('Failed to load Netease user profile after login', error)
+    userStore.logout()
     status.value = 'error'
-    statusText.value = '登录成功但获取用户信息失败'
+    statusText.value = '登录成功，但获取账号信息失败，请重试'
+    toastStore.error('获取账号信息失败，请重试')
   }
 }
 
-function refreshQRCode() {
+function refreshQRCode(): void {
   stopPolling()
-  fetchQRCode()
+  void fetchQRCode()
 }
 
-function close() {
+function close(): void {
   stopPolling()
   emit('close')
 }
 
-fetchQRCode()
+onMounted(() => {
+  void fetchQRCode()
+})
 
 onUnmounted(() => {
   stopPolling()
@@ -132,20 +173,34 @@ onUnmounted(() => {
       <div class="login-header">
         <h2>网易云登录</h2>
         <button class="close-btn" @click="close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
       </div>
-      
+
       <div class="login-content">
         <div class="qr-container">
           <div v-if="qrImage" class="qr-wrapper" :class="{ 'qr-expired': status === 'expired' }">
-            <img :src="qrImage" alt="登录二维码" class="qr-image" />
+            <img :src="qrImage" alt="网易云登录二维码" class="qr-image" />
             <div v-if="status === 'expired'" class="qr-overlay">
               <button class="refresh-btn" @click="refreshQRCode">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <polyline points="23 4 23 10 17 10"></polyline>
                   <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                 </svg>
@@ -153,17 +208,17 @@ onUnmounted(() => {
               </button>
             </div>
           </div>
-          
+
           <div v-else class="qr-loading">
             <div class="loading-spinner"></div>
           </div>
         </div>
-        
+
         <p class="status-text" :class="'status-' + status">{{ statusText }}</p>
-        
+
         <div class="login-tips">
           <p>打开网易云音乐 App</p>
-          <p>扫一扫 → 登录</p>
+          <p>使用扫一扫完成登录</p>
         </div>
       </div>
     </div>
@@ -251,10 +306,7 @@ onUnmounted(() => {
 
 .qr-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;

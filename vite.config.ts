@@ -1,18 +1,21 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
+import type { ManualChunksOption } from 'rollup'
 
 export default defineConfig(async ({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const sentryDsn = env.SENTRY_DSN ?? ''
+  const sentryRelease = env.SENTRY_RELEASE ?? ''
   const isWeb = mode === 'web' || process.env.VERCEL === '1'
-  const isElectron = !isWeb
   const isProduction = mode === 'production'
-  
+
   // 生产环境统一输出目录
   const outputDir = isProduction ? 'build' : 'dist'
 
-  const plugins: any[] = [
+  const plugins = [
     vue(),
     AutoImport({
       imports: [
@@ -36,9 +39,26 @@ export default defineConfig(async ({ mode }) => {
   // Note: Electron build is handled by electron-vite, not vite-plugin-electron
   // This config is used for Web builds and Vite dev server only
 
+  const manualChunksFn: ManualChunksOption = (id: string) => {
+    if (id.includes('node_modules')) {
+      if (id.includes('vue') || id.includes('pinia') || id.includes('router')) {
+        return 'vendor-core'
+      }
+      if (id.includes('axios') || id.includes('animejs')) {
+        return 'vendor-utils'
+      }
+      return 'vendor-libs'
+    }
+    return undefined
+  }
+
   return {
     plugins,
     base: './',
+    define: {
+      'import.meta.env.SENTRY_DSN': JSON.stringify(sentryDsn),
+      'import.meta.env.SENTRY_RELEASE': JSON.stringify(sentryRelease)
+    },
     server: {
       port: 5173,
       host: 'localhost',
@@ -46,45 +66,26 @@ export default defineConfig(async ({ mode }) => {
         '/api': {
           target: 'http://localhost:14532',
           changeOrigin: true,
-          // @ts-ignore
-          rewrite: (path) => path.replace(/^\/api/, '')
+          rewrite: (path: string) => path.replace(/^\/api/, '')
         },
         '/qq-api': {
           target: 'http://localhost:3200',
           changeOrigin: true,
           secure: false,
-          // @ts-ignore
-          rewrite: (path) => path.replace(/^\/qq-api/, '')
+          rewrite: (path: string) => path.replace(/^\/qq-api/, ''),
+          // 增加超时配置，避免长时间等待
+          proxyTimeout: 15000,
+          timeout: 15000
         }
       }
     },
     build: {
-      emptyOutDir: true,  // ✅ 每次构建前清空输出目录，避免缓存问题
+      emptyOutDir: true,
       outDir: outputDir,
-      chunkSizeWarningLimit: 500, // 设置警告阈值为 500KB
+      chunkSizeWarningLimit: 500,
       rollupOptions: {
         output: {
-          // ✅ 精细化的代码分割配置
-          // @ts-ignore
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              if (id.includes('naive-ui')) {
-                // Naive UI 是一个完整的库，很难通过文件路径简单拆分
-                // 更好的策略是让它独立打包，并接受它较大的事实
-                // 或者如果项目只用到了少量组件，检查是否开启了自动按需引入（unplugin-vue-components 已配置）
-                // 这里我们尝试将其核心逻辑和组件分开（如果可能），或者直接作为一个大块
-                return 'vendor-naive-ui'
-              }
-              if (id.includes('vue') || id.includes('pinia') || id.includes('router')) {
-                return 'vendor-core'
-              }
-              if (id.includes('axios') || id.includes('animejs')) {
-                return 'vendor-utils'
-              }
-              // 其他依赖打包到 vendor
-              return 'vendor-libs'
-            }
-          }
+          manualChunks: manualChunksFn
         }
       }
     },

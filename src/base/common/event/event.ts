@@ -111,7 +111,7 @@ export function createEmptyEvent<T>(): Event<T> {
 export function anyEvent<T>(...events: Event<T>[]): Event<T> {
   return (listener: (e: T) => unknown): IDisposable => {
     const disposables: IDisposable[] = []
-    
+
     for (const event of events) {
       disposables.push(event(listener))
     }
@@ -153,10 +153,7 @@ export function onceEvent<T>(event: Event<T>): Event<T> {
  * 过滤事件
  * 只有当过滤器返回 true 时才触发
  */
-export function filterEvent<T>(
-  event: Event<T>,
-  filter: (e: T) => boolean
-): Event<T> {
+export function filterEvent<T>(event: Event<T>, filter: (e: T) => boolean): Event<T> {
   return (listener: (e: T) => unknown): IDisposable => {
     return event((e: T) => {
       if (filter(e)) {
@@ -169,10 +166,7 @@ export function filterEvent<T>(
 /**
  * 映射事件数据
  */
-export function mapEvent<I, O>(
-  event: Event<I>,
-  map: (e: I) => O
-): Event<O> {
+export function mapEvent<I, O>(event: Event<I>, map: (e: I) => O): Event<O> {
   return (listener: (e: O) => unknown): IDisposable => {
     return event((e: I) => {
       listener(map(e))
@@ -184,10 +178,7 @@ export function mapEvent<I, O>(
  * 防抖事件
  * 在事件停止触发一段时间后才触发
  */
-export function debounceEvent<T>(
-  event: Event<T>,
-  delay: number
-): Event<T> {
+export function debounceEvent<T>(event: Event<T>, delay: number): Event<T> {
   return (listener: (e: T) => unknown): IDisposable => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null
     let lastData: T

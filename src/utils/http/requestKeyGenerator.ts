@@ -33,29 +33,29 @@ export function generateCacheKey(config: AxiosRequestConfig): string {
  */
 function findJsonObjectEnd(str: string, start: number): number {
   if (str[start] !== '{') return -1
-  
+
   let braceCount = 0
   let inString = false
   let escape = false
-  
+
   for (let i = start; i < str.length; i++) {
     const char = str[i]
-    
+
     if (escape) {
       escape = false
       continue
     }
-    
+
     if (char === '\\') {
       escape = true
       continue
     }
-    
+
     if (char === '"' && !escape) {
       inString = !inString
       continue
     }
-    
+
     if (!inString) {
       if (char === '{') {
         braceCount++
@@ -67,7 +67,7 @@ function findJsonObjectEnd(str: string, start: number): number {
       }
     }
   }
-  
+
   return -1
 }
 
@@ -76,43 +76,48 @@ function findJsonObjectEnd(str: string, start: number): number {
  * @param key - 请求键
  * @returns 解析后的信息
  */
-export function parseRequestKey(key: string): { method: string; url: string; params: Record<string, any>; data: Record<string, any> } {
+export function parseRequestKey(key: string): {
+  method: string
+  url: string
+  params: Record<string, any>
+  data: Record<string, any>
+} {
   if (!key) {
     return { method: 'UNKNOWN', url: '', params: {}, data: {} }
   }
-  
+
   const firstColon = key.indexOf(':')
   if (firstColon === -1) {
     return { method: 'UNKNOWN', url: key, params: {}, data: {} }
   }
-  
+
   const method = key.substring(0, firstColon)
   const rest = key.substring(firstColon + 1)
-  
+
   const secondColon = rest.indexOf(':')
   if (secondColon === -1) {
     return { method, url: rest, params: {}, data: {} }
   }
-  
+
   const url = rest.substring(0, secondColon)
   const remaining = rest.substring(secondColon + 1)
-  
+
   if (!remaining) {
     return { method, url, params: {}, data: {} }
   }
-  
+
   let paramsStr: string
   let dataStr: string
-  
+
   if (remaining[0] === '{') {
     const paramsEnd = findJsonObjectEnd(remaining, 0)
     if (paramsEnd === -1) {
       return { method, url, params: {}, data: {} }
     }
-    
+
     paramsStr = remaining.substring(0, paramsEnd + 1)
     const afterParams = remaining.substring(paramsEnd + 1)
-    
+
     if (afterParams.startsWith(':')) {
       dataStr = afterParams.substring(1)
     } else {
@@ -122,7 +127,7 @@ export function parseRequestKey(key: string): { method: string; url: string; par
     paramsStr = remaining
     dataStr = ''
   }
-  
+
   try {
     return {
       method,

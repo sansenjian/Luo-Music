@@ -97,18 +97,13 @@ export type EventCallback<T = unknown> = (data: T) => void
 /**
  * 异步函数类型
  */
-export type AsyncFunction<T = void, Args extends any[] = []> = (
-  ...args: Args
-) => Promise<T>
+export type AsyncFunction<T = void, Args extends any[] = []> = (...args: Args) => Promise<T>
 
 /**
  * 比较两个类型是否相等
  */
-export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
-  T
->() => T extends Y ? 1 : 2
-  ? true
-  : false
+export type Equals<X, Y> =
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? true : false
 
 /**
  * 品牌类型（用于创建名义类型）
@@ -223,7 +218,5 @@ export function isError(value: unknown): value is Error {
  * 类型守卫：检查值是否为 Promise
  */
 export function isPromise<T = unknown>(value: unknown): value is Promise<T> {
-  return value instanceof Promise || (
-    isObject(value) && isFunction((value as any).then)
-  )
+  return value instanceof Promise || (isObject(value) && isFunction((value as any).then))
 }

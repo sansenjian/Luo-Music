@@ -1,22 +1,22 @@
 <script setup>
-const props = defineProps({
+defineProps({
   playlists: {
     type: Array,
-    required: true,
+    required: true
   },
   loading: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const emit = defineEmits(['playlist-click'])
 
-const handlePlaylistClick = (playlistId) => {
+const handlePlaylistClick = playlistId => {
   emit('playlist-click', playlistId)
 }
 
-const formatPlayCount = (count) => {
+const formatPlayCount = count => {
   if (count > 10000) {
     return (count / 10000).toFixed(1) + '万'
   }
@@ -35,9 +35,9 @@ const formatPlayCount = (count) => {
     </div>
 
     <div v-else class="playlists-grid">
-      <div 
-        v-for="playlist in playlists" 
-        :key="playlist.id" 
+      <div
+        v-for="playlist in playlists"
+        :key="playlist.id"
         class="playlist-card"
         @click="handlePlaylistClick(playlist.id)"
       >

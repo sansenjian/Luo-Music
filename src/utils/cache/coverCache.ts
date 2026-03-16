@@ -8,7 +8,7 @@ import { LRUCache } from 'lru-cache'
 const coverCache = new LRUCache<string, string>({
   max: 50,
   ttl: 1000 * 60 * 60, // 1 hour
-  dispose: (value, key) => {
+  dispose: (value, _key) => {
     // 如果存储的是 Blob URL，需要手动释放
     if (value.startsWith('blob:')) {
       URL.revokeObjectURL(value)
@@ -56,7 +56,7 @@ export class CoverCacheManager {
       return url // 失败时返回原 URL
     }
   }
-  
+
   static clear() {
     coverCache.clear()
   }

@@ -66,11 +66,11 @@ describe('UserProfileHeader.vue', () => {
         userId: '123'
       }
     })
-    
+
     expect(wrapper.find('.user-nickname').text()).toBe('Test User')
     expect(wrapper.find('.user-signature').text()).toBe('Test Signature')
     expect(wrapper.find('.user-level').text()).toBe('Lv.8')
-    
+
     // Check stats
     const statValues = wrapper.findAll('.stat-value')
     expect(statValues[0].text()).toBe('5') // playlists
@@ -84,7 +84,7 @@ describe('UserProfileHeader.vue', () => {
         userId: '123'
       }
     })
-    
+
     expect(mockUseUserDataQuery).toHaveBeenCalled()
     // 验证传入的是一个函数
     const sourceArg = mockUseUserDataQuery.mock.calls[0][0] as () => string
@@ -98,12 +98,12 @@ describe('UserProfileHeader.vue', () => {
         userId: '123'
       }
     })
-    
+
     const sourceArg = mockUseUserDataQuery.mock.calls[0][0] as () => string
     expect(sourceArg()).toBe('123')
-    
+
     await wrapper.setProps({ userId: '456' })
-    
+
     // useUserDataQuery 只会在 setup 时调用一次，但它的参数（getter）应该返回新值
     expect(sourceArg()).toBe('456')
   })
