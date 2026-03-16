@@ -82,7 +82,23 @@ export abstract class BaseService {
    * 等待服务就绪（IPC 消息 + 端口检查双重保障）
    */
   protected async waitForReady(timeout: number = 15000): Promise<void> {
-    await Promise.race([this.waitForIpcMessage(timeout), this.waitForPort(timeout)])
+    // 使用 Promise.race 时，需要确保两个 promise 都被正确处理
+    // waitForPort 的递归轮询可能产生未处理的 rejection，所以我们在 race 中捕获它
+    const errors: Error[] = []
+
+    await Promise.race([
+      this.waitForIpcMessage(timeout).catch(err => {
+        errors.push(err)
+      }),
+      this.waitForPort(timeout).catch(err => {
+        errors.push(err)
+      })
+    ])
+
+    // 如果两个都失败，抛出聚合错误
+    if (errors.length === 2) {
+      throw new Error(`Service startup failed: ${errors.map(e => e.message).join(', ')}`)
+    }
   }
 
   /**

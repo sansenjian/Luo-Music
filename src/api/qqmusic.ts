@@ -440,7 +440,19 @@ export const qqMusicApi = {
     }
 
     try {
-      return await qqRequest.get(QQ_LOGIN_CHECK_PATH)
+      const response = await qqRequest.get(QQ_LOGIN_CHECK_PATH)
+      // 统一返回格式：确保始终返回 { data: { cookie: string } }
+      // 如果 response 已经是 { cookie: ... } 格式，则包装一层
+      // 如果 response 已经是 { data: { cookie: ... } } 格式，则直接返回
+      if (response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'cookie' in response.data) {
+        return response
+      }
+      // response 可能是 { cookie: '...' } 格式（被 axios 拦截器解包）
+      return {
+        data: {
+          cookie: (response as { cookie?: string }).cookie || ''
+        }
+      }
     } catch (error) {
       // 处理 500 错误或网络超时，返回空 cookie 表示未登录
       if (axios.isAxiosError(error)) {
