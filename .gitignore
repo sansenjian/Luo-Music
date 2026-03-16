@@ -159,6 +159,7 @@ test-results/
 # IDE
 .idea/
 .claude/
+.ai/
 
 # Husky
 .husky/.gitignore
