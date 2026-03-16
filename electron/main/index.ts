@@ -9,7 +9,8 @@ import 'dotenv/config'
 import { BrowserWindow, ipcMain } from 'electron'
 import { desktopLyricManager } from '../DesktopLyricManager'
 import { windowManager } from '../WindowManager'
-import logger, { initSentry, writeStructuredLog } from '../logger'
+import logger, { initSentry, Sentry, writeStructuredLog } from '../logger'
+import type * as SentryMain from '@sentry/electron/main'
 import { serviceManager } from '../ServiceManager'
 import type { LogEntry } from '../shared/log'
 import type { ServiceConfig } from '../types/service'
@@ -117,11 +118,27 @@ function initializeIpcService(): void {
   ipcMain.on(
     'error-report',
     (_event, errorData: { code: string; message: string; stack?: string; data?: unknown }) => {
-      logger.error(
-        `[ERROR_REPORT] ${errorData.code}: ${errorData.message}`,
-        errorData.stack,
-        errorData.data
-      )
+      const fullMessage = `[ERROR_REPORT] ${errorData.code}: ${errorData.message}`
+
+      // 记录到本地日志
+      logger.error(fullMessage, errorData.stack, errorData.data)
+
+      // 上报到 Sentry（如果已初始化）
+      if (Sentry) {
+        Sentry.captureException(
+          new Error(errorData.message),
+          (scope: SentryMain.Scope) => {
+            scope.setTag('error_code', errorData.code)
+            scope.setContext('error_data', {
+              code: errorData.code,
+              message: errorData.message,
+              stack: errorData.stack,
+              data: errorData.data
+            })
+            return scope
+          }
+        )
+      }
     }
   )
 

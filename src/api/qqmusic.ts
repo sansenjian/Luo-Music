@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { QQMusicAdapter } from './adapter'
-import { services } from '../services'
+import { services } from'../services'
 import type { ILogger } from '../services/loggerService'
 import { useUserStore } from '../store/userStore'
 
@@ -73,9 +73,7 @@ async function resolveQQMusicBaseURL(): Promise<string> {
   return resolvingQQBaseURL
 }
 
-// 开发模式下的调试日志
-if (import.meta.env.DEV) {
-}
+// 开发模式下的调试日志 - 已移除，使用统一的日志系统
 
 export interface QQApiWrappedResponse<T> {
   response?: string | T
@@ -215,6 +213,7 @@ qqRequest.interceptors.response.use(
       error.code === 'ETIMEDOUT' ||
       error.code === 'ECONNRESET' ||
       error.code === 'ERR_NETWORK' ||
+      error.code === 'ECONNABORTED' ||
       !error.response
     )) {
       getLogger().debug('QQ login check network error, ignoring', {
@@ -264,7 +263,6 @@ export const qqMusicApi = {
       }
     })
   },
-
   getSmartbox(keyword: string) {
     return qqRequest.get(`/getSmartbox/${encodeURIComponent(keyword)}`)
   },
@@ -445,19 +443,22 @@ export const qqMusicApi = {
       return await qqRequest.get(QQ_LOGIN_CHECK_PATH)
     } catch (error) {
       // 处理 500 错误或网络超时，返回空 cookie 表示未登录
-      if (
-        (axios.isAxiosError(error) && error.response?.status === 500) ||
-        error.code === 'ETIMEDOUT' ||
-        error.code === 'ECONNRESET' ||
-        error.code === 'ERR_NETWORK'
-      ) {
-        getLogger().warn('QQ login check failed, treating as not logged in', {
-          code: error.code,
-          message: error.message
-        })
-        return {
-          data: {
-            cookie: ''
+      if (axios.isAxiosError(error)) {
+        if (
+          error.response?.status === 500 ||
+          error.code === 'ETIMEDOUT' ||
+          error.code === 'ECONNRESET' ||
+          error.code === 'ERR_NETWORK' ||
+          error.code === 'ECONNABORTED'
+        ) {
+          getLogger().warn('QQ login check failed, treating as not logged in', {
+            code: error.code,
+            message: error.message
+          })
+          return {
+            data: {
+              cookie: ''
+            }
           }
         }
       }

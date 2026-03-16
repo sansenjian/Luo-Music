@@ -7,7 +7,7 @@ export type PlatformService = {
   on(channel: string, handler: (data: unknown) => void): () => void
   getCacheSize(): Promise<unknown>
   clearCache(options?: unknown): Promise<unknown>
-  getServiceStatus?(serviceId: string): Promise<{ port?: number } | null>
+  getServiceStatus?(serviceId: string): Promise<{ status: string; port?: number } | null>
 }
 
 export function createPlatformService(): PlatformService {
@@ -36,11 +36,11 @@ export function createPlatformService(): PlatformService {
       return platform.clearCache(options as never)
     },
 
-    async getServiceStatus(serviceId: string): Promise<{ port?: number } | null> {
+    async getServiceStatus(serviceId: string): Promise<{ status: string; port?: number } | null> {
       const electronAPI = (
         window as unknown as {
           electronAPI?: {
-            getServiceStatus?: (serviceId: string) => Promise<{ port?: number } | null>
+            getServiceStatus?: (serviceId: string) => Promise<{ status: string; port?: number } | null>
           }
         }
       ).electronAPI

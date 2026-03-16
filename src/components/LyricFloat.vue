@@ -257,7 +257,7 @@ onMounted(() => {
 
   const subscribe = window.services?.on ?? platform.on
   unsubscribers.push(
-    subscribe<{ locked: boolean }>('desktop-lyric-lock-state', payload => {
+    subscribe('desktop-lyric-lock-state', payload => {
       const data = payload as { locked: boolean }
       if (typeof data.locked !== 'boolean') {
         return

@@ -2,7 +2,7 @@
 import { SEND_CHANNELS, RECEIVE_CHANNELS, INVOKE_CHANNELS } from '../shared/protocol/channels.ts'
 import type { CacheClearOptions, CacheClearResult } from '../shared/protocol/cache.ts'
 
-// 瀵煎叆鏈嶅姟浠ｇ悊
+// 导入服务代理
 import {
   IpcProxy,
   LogProxy,
@@ -27,7 +27,7 @@ interface ValidatedIpcBridge {
 }
 
 /**
- * 鏈嶅姟浠ｇ悊 API 鎺ュ彛
+ * 服务代理 API 接口
  */
 export interface ServiceAPI {
   // IPC 鏍稿績
@@ -321,7 +321,7 @@ function exposeAPI(): void {
     getServices: () => ipc.invoke<string[]>(INVOKE_CHANNELS.API_GET_SERVICES),
 
     getServiceStatus: (serviceId: string) =>
-      ipc.invoke<'running' | 'stopped' | 'error'>(INVOKE_CHANNELS.SERVICE_GET_STATUS, serviceId),
+      ipc.invoke<{ status: 'running' | 'stopped' | 'error'; port?: number }>(INVOKE_CHANNELS.SERVICE_GET_STATUS, serviceId),
     startService: (serviceId: string) =>
       ipc.invoke<void>(INVOKE_CHANNELS.SERVICE_START, serviceId),
     stopService: (serviceId: string) =>

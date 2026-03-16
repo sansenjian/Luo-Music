@@ -56,7 +56,6 @@
     "@vercel/analytics": "^1.6.1",
     "@vueuse/core": "^14.2.1",
     "animejs": "^4.3.6",
-    "async-kit": "^2.2.4",
     "axios": "^1.7.9",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.5",
@@ -135,8 +134,7 @@
     "vue-tsc": "^3.2.5"
   },
   "engines": {
-    "node": ">=24.x",
-    "npm": ">=10.x"
+    "node": ">=22.x"
   },
   "packageManager": "npm@10.9.2",
   "overrides": {

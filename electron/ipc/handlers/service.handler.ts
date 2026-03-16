@@ -6,7 +6,7 @@ import { INVOKE_CHANNELS } from '../../shared/protocol/channels.ts'
 import { ipcService } from '../IpcService'
 import type { ServiceManager } from '../../ServiceManager'
 import type { ServiceStatusType } from '../../types/service'
-import type { ServiceStatus } from '../types'
+import type { ServiceStatus, ServiceStatusResponse } from '../types'
 
 // 将内部 ServiceStatusType 转换为 IPC ServiceStatus
 function convertServiceStatusType(type: ServiceStatusType | null): ServiceStatus {
@@ -27,11 +27,14 @@ export function registerServiceHandlers(serviceManager: ServiceManager): void {
 
   ipcService.registerInvoke(INVOKE_CHANNELS.SERVICE_GET_STATUS, async (serviceId: string) => {
     const status = await serviceManager.getServiceStatus(serviceId)
-    // 将内部 ServiceStatus 转换为 IPC ServiceStatus
+    // 将内部 ServiceStatus 转换为 IPC ServiceStatus（保留 port 元数据）
     if (status === null) {
-      return 'stopped' as ServiceStatus
+      return { status: 'stopped' as ServiceStatus }
     }
-    return convertServiceStatusType(status.status)
+    return {
+      status: convertServiceStatusType(status.status),
+      port: status.port
+    }
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.SERVICE_START, async (serviceId: string) => {

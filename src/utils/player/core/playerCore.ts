@@ -30,8 +30,9 @@ type AudioEventMap = {
 
 type EventCallback<K extends keyof AudioEventMap> = (data: AudioEventMap[K]) => void
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyCallback = (data: any) => void
+// 使用联合类型替代 any，提高类型安全性
+// 允许 unknown 数据传入回调，但在 emit 时保持类型安全
+type SafeCallback = (data: unknown) => void
 
 export class PlayerCore {
   private audio: HTMLAudioElement
@@ -41,15 +42,28 @@ export class PlayerCore {
   private gainNode: GainNode | null = null
 
   public state: PlayerState = PlayerState.IDLE
-  private callbacks: Map<string, Set<AnyCallback>> = new Map()
+  private callbacks: Map<string, Set<SafeCallback>> = new Map()
   private _boundHandlers: Map<string, EventListener> = new Map()
   private _isPlayingInProgress = false
+  private _isDestroyed = false
 
   constructor() {
     this.audio = new Audio()
     this._initEvents()
     this._setupCrossOrigin()
     this._initVolume()
+  }
+
+  /**
+   * 检查实例是否已被销毁
+   * 在调用任何公共方法前应该检查此状态
+   */
+  private _checkDestroyed(): boolean {
+    if (this._isDestroyed) {
+      console.warn('[PlayerCore] Method called after destroy()')
+      return true
+    }
+    return false
   }
 
   private _setupCrossOrigin() {
@@ -105,6 +119,11 @@ export class PlayerCore {
     ]
     events.forEach(event => {
       const handler = (e: Event) => {
+        // 防止在销毁后处理事件
+        if (this._isDestroyed) {
+          this.audio.removeEventListener(event, handler)
+          return
+        }
         this._handleEvent(event, e)
         this.emit(event as keyof AudioEventMap, e)
       }
@@ -145,7 +164,10 @@ export class PlayerCore {
     if (!this.callbacks.has(event)) {
       this.callbacks.set(event, new Set())
     }
-    this.callbacks.get(event)!.add(callback)
+    // 安全地将类型特定的回调转换为通用回调
+    // 调用时会保证类型安全，因为 emit 使用相同的泛型 K
+    const safeCallback = callback as SafeCallback
+    this.callbacks.get(event)!.add(safeCallback)
     return () => this.off(event, callback)
   }
 
@@ -153,18 +175,25 @@ export class PlayerCore {
     if (!callback) {
       this.callbacks.delete(event)
     } else if (this.callbacks.has(event)) {
-      this.callbacks.get(event)!.delete(callback)
+      const safeCallback = callback as SafeCallback
+      this.callbacks.get(event)!.delete(safeCallback)
     }
   }
 
   public emit<K extends keyof AudioEventMap>(event: K, data: AudioEventMap[K]) {
     const callbacks = this.callbacks.get(event)
     if (callbacks) {
+      // 类型断言：我们知道 data 是 AudioEventMap[K] 类型
+      // 与注册的回调类型匹配
       callbacks.forEach(cb => cb(data))
     }
   }
 
   public async play(url?: string): Promise<void> {
+    if (this._checkDestroyed()) {
+      return
+    }
+
     // Initialize AudioContext on first user interaction (play)
     this._initAudioContext()
 
@@ -201,16 +230,22 @@ export class PlayerCore {
         await this.audio.play()
       } else {
         return new Promise((resolve, reject) => {
+          let isResolved = false
+
           const cleanup = () => {
+            if (isResolved) return
+            isResolved = true
             this.audio.removeEventListener('canplay', onCanPlay)
             this.audio.removeEventListener('error', onError)
             this._isPlayingInProgress = false
           }
           const onCanPlay = () => {
+            if (isResolved) return
             cleanup()
             this.audio.play().then(resolve).catch(reject)
           }
           const onError = (e: Event) => {
+            if (isResolved) return
             cleanup()
             reject(e)
           }
@@ -232,10 +267,16 @@ export class PlayerCore {
   }
 
   public pause() {
+    if (this._checkDestroyed()) {
+      return
+    }
     this.audio.pause()
   }
 
   public toggle() {
+    if (this._checkDestroyed()) {
+      return
+    }
     if (this.audio.paused) {
       return this.play()
     } else {
@@ -244,6 +285,9 @@ export class PlayerCore {
   }
 
   public seek(time: number) {
+    if (this._checkDestroyed()) {
+      return
+    }
     if (Number.isFinite(time) && this.audio.duration) {
       // Clamp time
       const t = Math.max(0, Math.min(time, this.audio.duration))
@@ -253,6 +297,9 @@ export class PlayerCore {
   }
 
   public setVolume(volume: number) {
+    if (this._checkDestroyed()) {
+      return
+    }
     const vol = Math.max(VOLUME.MIN, Math.min(VOLUME.MAX, volume))
     this.audio.volume = vol
     // If we want to use GainNode for volume:
@@ -262,50 +309,59 @@ export class PlayerCore {
   }
 
   public getVolume() {
-    return this.audio.volume
+    return this._isDestroyed ? 0 : this.audio.volume
   }
 
   public setMuted(muted: boolean) {
+    if (this._checkDestroyed()) {
+      return
+    }
     this.audio.muted = muted
     this.emit('mutechange', muted)
   }
 
   public getMuted() {
-    return this.audio.muted
+    return this._isDestroyed ? false : this.audio.muted
   }
 
   public setLoop(loop: boolean) {
+    if (this._checkDestroyed()) {
+      return
+    }
     this.audio.loop = loop
     this.emit('loopchange', loop)
   }
 
   public getLoop() {
-    return this.audio.loop
+    return this._isDestroyed ? false : this.audio.loop
   }
 
   public setPlaybackRate(rate: number) {
+    if (this._checkDestroyed()) {
+      return
+    }
     if (rate > 0) {
       this.audio.playbackRate = rate
     }
   }
 
   public getPlaybackRate() {
-    return this.audio.playbackRate
+    return this._isDestroyed ? 1 : this.audio.playbackRate
   }
 
   // Visualization Data
   public getAnalyserData(array?: Uint8Array): Uint8Array | null {
-    if (!this.analyser) return null
+    if (this._isDestroyed || !this.analyser) return null
     // User should provide Uint8Array of size analyser.frequencyBinCount
     if (!array) {
       array = new Uint8Array(this.analyser.frequencyBinCount)
     }
-    this.analyser!.getByteFrequencyData(array as Uint8Array<ArrayBuffer>)
+    this.analyser.getByteFrequencyData(array as Uint8Array<ArrayBuffer>)
     return array
   }
 
   public getWaveformData(array?: Uint8Array): Uint8Array | null {
-    if (!this.analyser) return null
+    if (this._isDestroyed || !this.analyser) return null
     if (!array) {
       array = new Uint8Array(this.analyser.frequencyBinCount)
     }
@@ -319,51 +375,66 @@ export class PlayerCore {
 
   // Getters
   public get duration() {
-    return this.audio.duration || 0
+    return this._isDestroyed ? 0 : this.audio.duration || 0
   }
 
   public get currentTime() {
-    return this.audio.currentTime || 0
+    return this._isDestroyed ? 0 : this.audio.currentTime || 0
   }
 
   public get paused() {
-    return this.audio.paused
+    return this._isDestroyed ? true : this.audio.paused
   }
 
   public get ended() {
-    return this.audio.ended
+    return this._isDestroyed ? true : this.audio.ended
   }
 
   public get src() {
-    return this.audio.src
+    return this._isDestroyed ? '' : this.audio.src
   }
 
   public get buffered() {
-    return this.audio.buffered
+    return this._isDestroyed
+      ? ({ length: 0 } as TimeRanges)
+      : this.audio.buffered
   }
 
   public get bufferedPercent() {
-    if (!this.audio.duration) return 0
+    if (this._isDestroyed || !this.audio.duration) return 0
     const buffered = this.audio.buffered
     if (buffered.length === 0) return 0
     return buffered.end(buffered.length - 1) / this.audio.duration
   }
 
   public destroy() {
+    if (this._isDestroyed) {
+      return // 防止重复销毁
+    }
+    this._isDestroyed = true
+
+    // 移除所有事件监听器
     this._boundHandlers.forEach((handler, event) => {
       this.audio.removeEventListener(event, handler)
     })
     this._boundHandlers.clear()
     this.callbacks.clear()
 
+    // 停止音频播放
     this.audio.pause()
     this.audio.removeAttribute('src')
     this.audio.load()
 
+    // 关闭 AudioContext
     if (this.audioContext) {
       this.audioContext.close()
       this.audioContext = null
     }
+
+    // 清空其他引用
+    this.source = null
+    this.analyser = null
+    this.gainNode = null
   }
 }
 
