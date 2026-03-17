@@ -1,15 +1,15 @@
 <script setup>
 import { formatDuration } from '../../utils/songFormatter'
 
-const props = defineProps({
+defineProps({
   likeSongs: {
     type: Array,
-    required: true,
+    required: true
   },
   loading: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const emit = defineEmits(['play-song', 'play-all'])
@@ -18,7 +18,7 @@ const handlePlayAll = () => {
   emit('play-all')
 }
 
-const handlePlaySong = (index) => {
+const handlePlaySong = index => {
   emit('play-song', index)
 }
 </script>
@@ -40,11 +40,11 @@ const handlePlaySong = (index) => {
         </svg>
         播放全部
       </div>
-      
+
       <div class="songs-list">
-        <div 
-          v-for="(song, index) in likeSongs" 
-          :key="song.id" 
+        <div
+          v-for="(song, index) in likeSongs"
+          :key="song.id"
           class="song-item"
           @click="handlePlaySong(index)"
         >
@@ -246,12 +246,12 @@ const handlePlaySong = (index) => {
   .song-album {
     display: none;
   }
-  
+
   .song-item {
     padding: 12px 16px;
     gap: 12px;
   }
-  
+
   .song-cover {
     width: 44px;
     height: 44px;

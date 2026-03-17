@@ -20,8 +20,11 @@ pids
 lib-cov
 
 # Coverage directory used by tools like istanbul
-coverage
-*.lcov
+coverage/
+!coverage/lcov.info
+!coverage/coverage-final.json
+coverage/*.html
+coverage/*.css
 
 # nyc test coverage
 .nyc_output
@@ -37,6 +40,7 @@ bower_components
 
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
+build/
 
 # Dependency directories
 node_modules/
@@ -47,6 +51,7 @@ typings/
 
 # TypeScript cache
 *.tsbuildinfo
+outDir/
 
 # Optional npm cache directory
 .npm
@@ -120,6 +125,20 @@ dist
 dist-electron
 .userData
 release
+release_v2/
+dist-server/
+electron/sandbox/index.js
+electron/shared/protocol/channels.js
+electron/cacheManager.js
+electron/DesktopLyricManager.js
+electron/ipc/index.js
+electron/ipc/IpcService.js
+electron/ipc/types.js
+electron/ipc/middleware/error.js
+electron/ipc/middleware/logger.js
+electron/ipc/handlers/player.handler.js
+electron/main/index.js
+electron.vite.config.js
 
 # Vercel
 .vercel
@@ -127,7 +146,36 @@ release
 
 # Trae IDE
 .trae/
+.kilo/
+.kilocode/
+
+# VitePress cache
+.vitepress/cache/
 
 # Playwright
 playwright-report/
 test-results/
+
+# IDE
+.idea/
+.claude/
+.ai/
+
+# Husky
+.husky/.gitignore
+
+# Cache directories
+.electron_cache/
+.vite_cache/
+.pnpm-store/
+
+# Qodana
+.qodana/
+
+# Backup files
+*.bak
+.sentryclirc
+.env.sentry
+
+# Sentry Config File
+.env.sentry-build-plugin

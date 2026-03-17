@@ -18,14 +18,21 @@ async function handleLogout() {
 <template>
   <div class="user-profile">
     <div class="user-info">
-      <img 
-        v-if="userStore.avatarUrl" 
-        :src="userStore.avatarUrl" 
-        :alt="userStore.nickname" 
+      <img
+        v-if="userStore.avatarUrl"
+        :src="userStore.avatarUrl"
+        :alt="userStore.nickname"
         class="user-avatar"
       />
       <div v-else class="user-avatar-placeholder">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
@@ -35,9 +42,7 @@ async function handleLogout() {
         <span class="user-id">ID: {{ userStore.userId || '-' }}</span>
       </div>
     </div>
-    <button class="logout-btn" @click="handleLogout">
-      退出登录
-    </button>
+    <button class="logout-btn" @click="handleLogout">退出登录</button>
   </div>
 </template>
 

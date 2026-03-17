@@ -1,10 +1,5 @@
 <template>
-  <Transition
-    @before-enter="onBeforeEnter"
-    @enter="onEnter"
-    @leave="onLeave"
-    mode="out-in"
-  >
+  <Transition @before-enter="onBeforeEnter" @enter="onEnter" @leave="onLeave" mode="out-in">
     <slot />
   </Transition>
 </template>

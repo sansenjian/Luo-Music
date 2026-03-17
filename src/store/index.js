@@ -1,6 +1,0 @@
-export { default as pinia } from './pinia'
-export { usePlayerStore } from './playerStore'
-export { usePlaylistStore } from './playlistStore'
-export { useSearchStore } from './searchStore'
-export { useToastStore } from './toastStore'
-export { useUserStore } from './userStore'

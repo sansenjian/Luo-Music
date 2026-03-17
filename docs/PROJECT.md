@@ -1,203 +1,77 @@
-# LUO Music - 项目文档
+# 项目概览
 
-## 项目概述
+LUO Music 是一个基于 Vue 3 + Pinia + Electron + TypeScript + TanStack Query 的现代化跨平台音乐播放器。
 
-LUO Music 是一个基于 Vue 3 + Pinia 的现代音乐播放器，参考 Hydrogen Music 的技术架构。
+## 🎯 核心目标
 
-## 技术栈
+打造一个美观、流畅、功能强大的双平台（网易云音乐 + QQ 音乐）音乐播放器，提供一致的用户体验。
 
-- **前端框架**: Vue 3 (Composition API)
-- **状态管理**: Pinia
-- **HTTP 客户端**: Axios
-- **构建工具**: Vite
-- **音频播放**: 原生 Audio API
-- **后端 API**: NeteaseCloudMusicApi (本地服务)
+## 🏗️ 架构概览
 
-## 项目结构
+### 技术栈
+
+- **前端框架**: Vue 3.7+ (Composition API)
+- **构建工具**: Vite 7.0+
+- **桌面框架**: Electron 40.0+
+- **状态管理**: Pinia 3.0+ & TanStack Query 5.0+
+- **语言**: TypeScript 5.0+
+- **UI 组件**: Naive UI 2.43+
+- **动画库**: Anime.js 4.0+
+- **网络请求**: Axios 1.6+
+
+### 目录结构
 
 ```
 luo_music/
 ├── src/
-│   ├── api/              # API 接口
-│   │   ├── song.js       # 歌曲相关 API
-│   │   ├── search.js     # 搜索相关 API
-│   │   └── playlist.js   # 歌单相关 API
+│   ├── api/              # Axios 封装与 REST API
 │   ├── assets/           # 静态资源
-│   │   ├── main.css      # 全局样式
-│   │   └── components/   # 组件样式
 │   ├── components/       # Vue 组件
-│   │   ├── Player.vue    # 播放器组件
-│   │   ├── Lyric.vue     # 歌词组件
-│   │   ├── Playlist.vue  # 播放列表组件
-│   │   └── Search.vue    # 搜索组件
-│   ├── store/            # Pinia Store
-│   │   └── playerStore.js # 播放器状态管理
+│   ├── composables/      # 组合式函数 (Vue Query Hooks)
+│   ├── platform/         # 音乐平台适配层 (TypeScript)
+│   │   ├── music/
+│   │   │   ├── interface.ts # 统一接口定义
+│   │   │   ├── netease.ts   # 网易云适配器
+│   │   │   └── qq.ts        # QQ 音乐适配器
+│   ├── router/           # 路由配置
+│   ├── store/            # Pinia 状态管理
 │   ├── utils/            # 工具函数
-│   │   ├── request.js    # Axios 封装
-│   │   └── lyric.js      # 歌词解析工具
 │   ├── views/            # 页面视图
-│   │   └── Home.vue      # 主页
 │   ├── App.vue           # 根组件
 │   └── main.js           # 入口文件
-├── index.html            # HTML 模板
-├── vite.config.js        # Vite 配置
-└── package.json          # 项目配置
-
+├── electron/             # Electron 主进程
+├── docs/                 # 文档目录
+└── ...
 ```
 
-## 核心功能
+## ✨ 主要特性
 
-### 1. 音乐播放
-- ✅ 播放/暂停
-- ✅ 上一曲/下一曲
-- ✅ 进度条控制
-- ✅ 音量控制
-- ✅ 播放模式切换（顺序/循环/单曲/随机）
+### 1. 双平台支持
+通过统一的适配器模式 (`platform/music`)，实现了对网易云音乐和 QQ 音乐的无缝支持。
+- **统一接口**: `MusicPlatformAdapter` 定义了标准化的操作。
+- **自动切换**: 用户可以自由切换搜索源。
+- **扫码登录**: 支持 QQ 音乐扫码登录获取 VIP 权限。
 
-### 2. 歌词显示
-- ✅ LRC 格式解析
-- ✅ 三层歌词支持（原文+翻译+罗马音）
-- ✅ 实时同步高亮
-- ✅ 点击歌词跳转
-- ✅ 歌词滚动
+### 2. 现代化状态管理
+- **Pinia**: 管理播放器状态（播放/暂停、进度、音量）、播放列表等客户端状态。
+- **TanStack Query (Vue Query)**: 管理服务端状态（用户数据、歌单详情），提供自动缓存、去重和后台更新。
 
-### 3. 搜索功能
-- ✅ 关键词搜索
-- ✅ 搜索建议
-- ✅ 热搜榜单
+### 3. 极致的 UI/UX
+- **流畅动画**: 基于 Anime.js 实现的微交互动画。
+- **响应式设计**: 完美适配桌面端和不同尺寸的窗口。
+- **紧凑模式**: 支持迷你播放器模式。
+- **歌词系统**: 支持 LRC 格式解析、多层歌词（原文/翻译/罗马音）和高性能滚动。
 
-### 4. 播放列表
-- ✅ 歌曲列表显示
-- ✅ 当前播放高亮
-- ✅ 点击播放
+### 4. 稳健的工程化
+- **TypeScript**: 核心逻辑全面类型化，减少运行时错误。
+- **单元测试**: 关键组件和 Store 拥有 Vitest 测试覆盖。
+- **依赖分离**: `dependencies` (Web) 和 `devDependencies` (Electron) 分离，优化部署体积。
 
-## API 接口
+## 🚀 部署方案
 
-### 基础配置
-- **Base URL**: `http://localhost:36530`
-- **需要本地运行**: NeteaseCloudMusicApi
+- **Web 端**: 自动部署到 Vercel，使用 Serverless Function 代理 API。
+- **桌面端**: 使用 Electron Builder 打包为 Windows/macOS/Linux 应用。
 
-### 主要接口
+## 📈 发展路线
 
-#### 歌曲相关
-- `GET /lyric?id={id}` - 获取歌词
-- `GET /song/url/v1?id={id}&level={level}` - 获取音乐 URL
-- `GET /song/detail?ids={ids}` - 获取歌曲详情
-- `GET /check/music?id={id}` - 检查音乐可用性
-
-#### 搜索相关
-- `GET /cloudsearch?keywords={keywords}&type=1` - 搜索歌曲
-- `GET /search/suggest?keywords={keywords}` - 搜索建议
-- `GET /search/hot/detail` - 热搜列表
-
-#### 歌单相关
-- `GET /personalized?limit={limit}` - 推荐歌单
-- `GET /playlist/detail?id={id}` - 歌单详情
-- `GET /playlist/track/all?id={id}` - 歌单所有歌曲
-
-## 歌词解析
-
-### 支持格式
-- LRC 标准格式: `[mm:ss.ms]歌词内容`
-- 三层歌词:
-  - `lrc.lyric` - 原文歌词
-  - `tlyric.lyric` - 翻译歌词
-  - `romalrc.lyric` - 罗马音歌词
-
-### 解析流程
-1. 获取歌词 API 响应
-2. 分离三层歌词文本
-3. 按行分割并解析时间戳
-4. 通过时间戳匹配合并三层歌词
-5. 按时间排序生成歌词数组
-
-### 实时同步
-- 轮询间隔: 200ms
-- 提前量: 0.2 秒
-- 高亮策略: 当前时间 + 0.2s 匹配歌词时间
-
-## 开发指南
-
-### 安装依赖
-```bash
-npm install
-```
-
-### 启动开发服务器
-```bash
-npm run dev
-```
-
-### 构建生产版本
-```bash
-npm run build
-```
-
-### 预览生产版本
-```bash
-npm run preview
-```
-
-## 前置要求
-
-### 1. 安装 NeteaseCloudMusicApi
-```bash
-git clone https://github.com/Binaryify/NeteaseCloudMusicApi.git
-cd NeteaseCloudMusicApi
-npm install
-node app.js
-```
-
-默认端口: 3000
-如需修改端口为 36530:
-```bash
-PORT=36530 node app.js
-```
-
-### 2. 配置 API 地址
-如果 API 端口不是 36530，修改 `src/utils/request.js`:
-```javascript
-baseURL: 'http://localhost:YOUR_PORT'
-```
-
-## 设计理念
-
-### 视觉风格
-- 简洁现代的界面设计
-- 柔和的配色方案
-- 流畅的动画过渡
-- 响应式布局
-
-### 用户体验
-- 直观的操作逻辑
-- 快速的响应速度
-- 友好的错误提示
-- 流畅的交互动画
-
-## 待实现功能
-
-- [ ] 用户登录
-- [ ] 收藏功能
-- [ ] 播放历史
-- [ ] 歌单管理
-- [ ] MV 播放
-- [ ] 评论功能
-- [ ] 分享功能
-- [ ] 桌面歌词
-- [ ] 快捷键支持
-- [ ] 主题切换
-
-## 参考项目
-
-- [Hydrogen Music](https://github.com/Kaidesuyo/Hydrogen-Music) - 主要参考
-- [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi) - API 服务
-
-## 许可证
-
-MIT License
-
----
-
-**开发者**: LUO
-**版本**: 0.1.0
-**更新时间**: 2026-02-16
+详见 [README.md](./index.md#🚀-开发计划) 中的开发计划。

@@ -1,0 +1,55 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Main Process",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+      },
+      "args": ["--inspect=9223", "."],
+      "port": 9223,
+      "attachSimplePort": 9223,
+      "preLaunchTask": "build:electron",
+      "outFiles": ["${workspaceFolder}/build/electron/**/*.cjs"],
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "env": {
+        "ELECTRON_ENABLE_LOGGING": "true"
+      }
+    },
+    {
+      "name": "Debug Renderer (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/src",
+      "preLaunchTask": "npm: dev",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Attach to Renderer",
+      "type": "chrome",
+      "request": "attach",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/src",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Full Electron",
+      "configurations": ["Debug Main Process", "Debug Renderer (Chrome)"],
+      "presentation": {
+        "hidden": false,
+        "group": "electron",
+        "order": 1
+      }
+    }
+  ]
+}

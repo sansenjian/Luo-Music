@@ -1,53 +1,54 @@
 <script setup>
-import { useUserData } from '../../composables/useUserData'
-import { watch } from 'vue'
+import { useUserDataQuery } from '../../composables/useUserDataQuery'
 
 const props = defineProps({
   userId: {
     type: [String, Number],
-    required: true,
+    required: true
   },
   avatarUrl: {
     type: String,
-    default: '',
+    default: ''
   },
   nickname: {
     type: String,
-    default: '',
-  },
+    default: ''
+  }
 })
 
-const { profile, stats, userDetail, loadUserData } = useUserData(props.userId)
-
-// Load data when userId changes
-watch(() => props.userId, (newId) => {
-  if (newId) loadUserData()
-}, { immediate: true })
+// 使用 Vue Query，传入 getter 以支持响应式更新
+const { profile, stats } = useUserDataQuery(() => props.userId)
 </script>
 
 <template>
   <section class="user-profile-section">
-    <div 
-      class="user-profile-bg" 
+    <div
+      class="user-profile-bg"
       :class="{ 'has-custom-bg': profile?.backgroundUrl }"
-      :style="profile?.backgroundUrl ? { 
-        backgroundImage: `linear-gradient(135deg, rgba(255, 126, 95, 0.3), rgba(254, 180, 123, 0.3)), url(${profile.backgroundUrl})` 
-      } : {}"
+      :style="
+        profile?.backgroundUrl
+          ? {
+              backgroundImage: `linear-gradient(135deg, rgba(255, 126, 95, 0.3), rgba(254, 180, 123, 0.3)), url(${profile.backgroundUrl})`
+            }
+          : {}
+      "
     ></div>
     <div class="user-profile-info">
       <div class="user-avatar-container">
-        <img 
-          v-if="avatarUrl" 
-          :src="avatarUrl" 
-          :alt="nickname" 
-          class="user-avatar"
-        />
+        <img v-if="avatarUrl" :src="avatarUrl" :alt="nickname" class="user-avatar" />
       </div>
       <div class="user-details">
         <div class="user-name-row">
           <h1 class="user-nickname">{{ profile?.nickname || nickname || '未知用户' }}</h1>
           <span v-if="stats.level" class="user-level">Lv.{{ stats.level }}</span>
-          <svg v-if="stats.isVip" class="vip-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <svg
+            v-if="stats.isVip"
+            class="vip-icon"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
           </svg>
         </div>
@@ -91,7 +92,7 @@ watch(() => props.userId, (newId) => {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.3) 100%);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.3) 100%);
 }
 
 .user-profile-bg.has-custom-bg {
@@ -121,7 +122,9 @@ watch(() => props.userId, (newId) => {
   object-fit: cover;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   background: var(--white);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .user-avatar:hover {

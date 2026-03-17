@@ -1,0 +1,42 @@
+version: '1.0'
+profile:
+  name: qodana.recommended
+
+# 方案 A：如果只想检查"本次有变更的"Git 跟踪文件（PR/CI 场景常用）
+# changes: true
+
+exclude:
+  - name: All
+    paths:
+      # 只保留：即使被 Git 跟踪也不想被 Qodana 检查的文件
+      # 或明确排除构建产物（防止万一被意外提交）
+      - dist
+      - release
+      - out
+      - build
+      - node_modules
+      - .vite_cache
+
+      # 明确排除自动生成的类型定义
+      - src/auto-imports.d.ts
+      - src/components.d.ts
+      - '**/*.d.ts'
+      - scripts
+      - docs/.vitepress
+
+  # 保留：针对特定规则的精细排除
+  - name: CommaExpression
+    paths:
+      - docs/.vitepress
+  - name: JSReferencingMutableVariableFromClosure
+    paths:
+      - docs/.vitepress
+
+include:
+  - name: CheckDependencyLicenses
+
+bootstrap: |
+  export CI=true
+  npm ci
+
+linter: jetbrains/qodana-js:2025.3

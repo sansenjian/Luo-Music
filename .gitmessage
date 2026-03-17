@@ -1,0 +1,29 @@
+# <type>: <subject>
+
+# Types:
+# feat:     新功能
+# fix:      修复 bug
+# docs:     文档变更
+# style:    代码格式（不影响代码运行）
+# refactor: 重构（既不是新功能也不是 bug 修复）
+# perf:     性能优化
+# test:     添加或修改测试
+# chore:    构建过程或辅助工具变动
+# ci:       CI 配置文件和脚本变更
+# build:    影响构建系统或外部依赖的更改
+# revert:   回滚提交
+
+# --- 分隔线 ---
+# 更详细的描述（可选）
+
+# 动机和上下文（可选）
+
+# --- 关联 Issue ---
+# Fixes #<issue-number>
+# Closes #<issue-number>
+
+# 示例:
+# feat: 添加播放器歌词同步功能
+# - 实现歌词时间轴解析
+# - 添加歌词高亮滚动效果
+# Fixes #123

@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "allowSyntheticDefaultImports": true,
+    "allowJs": false,
+    "checkJs": false,
+    "strict": true,
+    "types": ["node", "electron"],
+    "noEmit": true  // ← 添加这行，停止生成 .js 文件
+  },
+  "include": [
+    "vite.config.ts",
+    "forge.config.ts",
+    "server/**/*.ts",
+    "server/**/*.d.ts",
+    "electron/**/*.js",
+    "electron/**/*.ts",
+    "electron/**/*.d.ts",
+    "src/config/**/*.js",
+    "src/config/**/*.d.ts"
+  ]
+}

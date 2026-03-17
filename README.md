@@ -1,17 +1,197 @@
 # luo_music
 
-基于 Vue 3 + Pinia + Electron 的跨平台音乐播放器
+基于 Vue 3 + Pinia + Electron + TypeScript + TanStack Query 的跨平台音乐播放器
+
+[![Test](https://github.com/sansenjian/luo_music/actions/workflows/test.yml/badge.svg)](https://github.com/sansenjian/luo_music/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/sansenjian/luo_music/branch/main/graph/badge.svg)](https://codecov.io/gh/sansenjian/luo_music)
 
 > ⚠️ **已知问题**：使用「沉浸式翻译」浏览器插件可能导致歌词不显示。如果遇到歌词不显示的问题，请尝试禁用该插件或将其加入白名单。
+
+## 🎉 最新动态
+
+### v2.3 - VSCode 开发环境优化 (2026-03-15)
+- ✅ **调试配置** - 添加 launch.json，支持主进程/渲染进程联合调试
+- ✅ **扩展推荐** - 推荐 8 个必备 VSCode 扩展
+- ✅ **任务配置** - 8 个常用任务一键执行
+- ✅ **Git 钩子** - Husky + lint-staged 预提交检查
+- ✅ **提交规范** - 约定式提交模板
+- ✅ **GitHub 模板** - PR/Issue 模板规范化
+- ✅ **依赖清理** - 移除未使用的 Babel 依赖
+- ✅ **文档完善** - 新增 VSCode 配置文档和快速参考
+
+### v2.2 - Electron-Vite 构建升级 (2026-03-10)
+- ✅ **electron-vite 迁移** - 从 electron-builder + tsup 迁移到 electron-vite 方案
+- ✅ **TypeScript 测试迁移** - 所有测试文件从 JavaScript 迁移到 TypeScript
+- ✅ **构建输出统一** - 所有生产构建产物输出到 `build/` 目录
+- ✅ **开发体验优化** - 主进程和渲染进程都支持 HMR 热更新
+- ✅ **文档完善** - 新增构建文档和迁移指南（见 [`docs/`](./docs/) 目录）
+
+### v2.1 - 架构升级与优化 (2026-03-04)
+- ✅ **TypeScript 迁移** - 音乐平台适配器层全面 TypeScript 化
+- ✅ **TanStack Query 引入** - 引入 Vue Query 进行状态管理和数据缓存
+- ✅ **测试覆盖提升** - 新增组件和 Store 的单元测试
+- ✅ **性能优化** - 用户数据响应式更新，减少不必要的请求
+
+### v2.0 - 双平台支持 (2026-03-01)
+- ✅ **QQ 音乐平台支持** - 搜索、播放、歌词一站式体验
+- ✅ **平台切换功能** - 搜索框旁可切换网易云/QQ 音乐
+- ✅ **扫码登录 QQ 音乐** - 获取 VIP 歌曲播放权限
+- ✅ **来源标识** - 歌曲名旁显示平台标签（红色=网易，绿色=QQ）
+- ✅ **专辑封面显示** - 播放列表和播放器显示封面
+- ✅ **优化 UI 设计** - 自定义下拉框、用户菜单美化
 
 ## 🚀 开发计划
 
 - [x] 进度条拖动时实时追踪歌词
 - [x] 升级 Vite 到 v7 版本
 - [x] 升级 Vue 到 v3.5 版本
+- [x] 升级 Node.js 到 v24 版本
+- [x] 升级 Electron 到 v40 版本
+- [x] 双平台搜索支持（网易云 + QQ 音乐）
+- [x] QQ 音乐扫码登录功能
+- [x] 播放列表专辑封面显示
+- [x] 自定义平台选择下拉框
+- [x] 用户头像下拉菜单优化
+- [x] 添加功能思维导图
+- [x] 引入 TypeScript 支持
+- [x] 引入 TanStack Query (Vue Query)
+- [x] VSCode 调试配置完善
+- [x] Git 提交规范化
+- [x] 预提交代码检查
+- [ ] 消除翻译歌词不显示问题（QQ 音乐数据源问题）
 - [ ] 进行录屏或者截图会出现白屏问题
 - [x] 重构 playerStore 消除上帝类问题
 - [x] 优化歌词滚动性能
+
+## 功能思维导图
+
+```mermaid
+mindmap
+  root((LUO Music))
+    核心播放功能
+      播放控制
+        播放/暂停
+        上一曲/下一曲
+        进度条拖动
+        时间显示
+      播放模式
+        顺序播放
+        列表循环
+        单曲循环
+        随机播放
+      音频管理
+        音量控制
+        进度控制
+        错误处理
+        自动跳过
+    
+    平台支持
+      网易云音乐
+        歌曲搜索
+        播放 URL 获取
+        歌词获取
+        歌单详情
+      QQ 音乐
+        歌曲搜索
+        扫码登录
+        VIP 歌曲播放
+        平台切换
+      来源标识
+        平台标签
+        颜色区分
+    
+    歌词系统
+      歌词解析
+        LRC 格式
+        多层歌词
+        时间戳解析
+      歌词显示
+        原文歌词
+        翻译歌词
+        罗马音歌词
+      歌词交互
+        自动滚动
+        点击跳转
+        二分查找优化
+    
+    播放列表
+      列表管理
+        添加歌曲
+        清空列表
+        歌曲排序
+      显示优化
+        专辑封面
+        平台标识
+        不可用标记
+    
+    用户系统
+      用户信息
+        头像显示
+        昵称显示
+        登录状态
+      用户数据
+        喜欢歌曲
+        创建歌单
+        收藏歌单
+        动态消息
+    
+    UI/UX 功能
+      界面组件
+        播放器
+        歌词面板
+        搜索框
+        播放列表
+        用户中心
+      视觉效果
+        动画效果
+        响应式布局
+        紧凑模式
+        主题样式
+      交互优化
+        自定义下拉框
+        用户菜单
+        设置面板
+        Toast 提示
+    
+    技术架构
+      前端框架
+        Vue 3.5
+        Pinia 3.0
+        Vue Router 4.6
+        TypeScript 5.9
+      构建工具
+        Vite 7.3
+        Electron 40.0
+        Electron-Vite 5.0
+        Electron Forge 7.11
+      动画库
+        Anime.js 4.3
+      状态管理
+        Pinia Store
+        TanStack Query 5.92
+        持久化插件
+      网络请求
+        Axios 1.7
+        自定义封装
+      代码质量
+        ESLint 10.0
+        Prettier 3.8
+        Husky 9.1
+      测试框架
+        Vitest 4.0
+        Playwright 1.58
+    
+    部署支持
+      Web 部署
+        Vercel
+        静态资源
+      桌面应用
+        Electron
+        跨平台打包
+      API 服务
+        Serverless
+        本地服务
+```
 
 ## 功能特性
 
@@ -19,8 +199,9 @@
 - ✅ 音乐播放控制（播放/暂停/上一曲/下一曲）
 - ✅ 播放进度控制（进度条拖动/时间显示）
 - ✅ 歌词实时同步显示（LRC 格式解析）
-- ✅ 歌曲搜索（网易云音乐 API）
+- ✅ 歌曲搜索（支持网易云音乐 + QQ 音乐）
 - ✅ 播放列表管理
+- ✅ 平台切换（网易云/QQ 音乐一键切换）
 
 ### P1 增强功能
 - ✅ 音量控制（持久化、支持拖动）
@@ -33,19 +214,35 @@
 - ✅ 按钮动画效果（Anime.js）
 - ✅ 进度条拖动定位
 - ✅ Web 浏览器支持（Chrome/Edge/Firefox）
+- ✅ QQ 音乐扫码登录
+- ✅ 专辑封面显示
+- ✅ 来源标识（平台标签）
+- ✅ 登录状态检测
 
 ## 技术栈
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| Vue | 3.5+ | 前端框架 |
-| Electron | 33.0+ | 桌面应用框架 |
-| Pinia | 3.0+ | 状态管理 |
-| Pinia Plugin Persistedstate | 4.7+ | 状态持久化 |
-| Axios | 1.6+ | HTTP 客户端 |
-| Vite | 7.0+ | 构建工具 |
-| Anime.js | 4.0+ | 动画效果 |
-| NeteaseCloudMusicApi Enhanced | 4.30+ | 音乐 API 服务 |
+| Vue | 3.5.29 | 前端框架 |
+| TypeScript | 5.9.3 | 静态类型检查 |
+| Electron | 40.0.0 | 桌面应用框架 |
+| Pinia | 3.0.4 | 状态管理 |
+| TanStack Query | 5.92.9 | 服务端状态管理 |
+| Pinia Plugin Persistedstate | 4.7.1 | 状态持久化 |
+| Axios | 1.7.9 | HTTP 客户端 |
+| Vite | 7.3.1 | 构建工具 |
+| Anime.js | 4.3.6 | 动画效果 |
+| NeteaseCloudMusicApi Enhanced | 4.30.1 | 网易云音乐 API |
+| QQ Music API | 2.2.10 | QQ 音乐 API 服务 |
+| Electron-Vite | 5.0.0 | Electron 构建工具 |
+| Electron Forge | 7.11.1 | Electron 打包工具 |
+| ESLint | 10.0.3 | 代码检查 |
+| Prettier | 3.8.1 | 代码格式化 |
+| Vitest | 4.0.18 | 单元测试框架 |
+| Playwright | 1.58.2 | E2E 测试框架 |
+| VitePress | 1.6.4 | 文档生成工具 |
+| Husky | 9.1.7 | Git 钩子 |
+| lint-staged | 16.1.2 | 预提交检查 |
 
 ## 依赖结构说明
 
@@ -55,20 +252,37 @@
 {
   "dependencies": {
     // 纯 Web 依赖 - Vercel 部署时安装
-    "vue": "^3.5.28",
+    "vue": "^3.5.29",
     "pinia": "^3.0.4",
-    "animejs": "^4.3.6"
+    "animejs": "^4.3.6",
+    "@tanstack/vue-query": "^5.92.9",
+    "axios": "^1.7.9",
+    "@vueuse/core": "^14.2.1",
+    "zod": "^4.3.6"
     // ...
   },
   "devDependencies": {
     // Electron 专属依赖 - 仅开发/打包时安装
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
-    "vite-plugin-electron": "^0.29.0"
+    "electron": "^40.0.0",
+    "electron-vite": "^5.0.0",
+    "@electron-forge/cli": "^7.11.1",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.2.5"
     // ...
   }
 }
 ```
+
+### 依赖清理
+
+项目已清理以下未使用的依赖：
+
+- ❌ `@babel/plugin-transform-async-to-generator` - 未使用
+- ❌ `@babel/register` - 未使用
+- ❌ `combined-stream` - 传递依赖
+- ❌ `delayed-stream` - 传递依赖
+- ❌ `mime-db` - 传递依赖
+- ❌ `mime-types` - 传递依赖
 
 ### 为什么这样设计？
 
@@ -85,10 +299,10 @@
 npm install -D electron
 
 # 安装 Electron 打包工具
-npm install -D electron-builder
+npm install -D @electron-forge/cli
 
-# 安装 Vite Electron 插件
-npm install -D vite-plugin-electron vite-plugin-electron-renderer
+# 安装 Electron-Vite
+npm install -D electron-vite
 ```
 
 > **注意**：Electron 相关包必须放在 `devDependencies` 中，否则 Vercel 部署时会安装不必要的依赖，导致部署失败或体积过大。
@@ -97,34 +311,76 @@ npm install -D vite-plugin-electron vite-plugin-electron-renderer
 
 ```
 luo_music/
-├── api/              # Vercel Serverless Function
-│   └── index.js      # API 入口
+├── docs/             # 项目文档 (VitePress)
+│   ├── build.md      # 构建文档
+│   ├── testing.md    # 测试文档
+│   ├── vscode-setup.md         # VSCode 配置
+│   ├── optimization-summary.md # 优化总结
+│   └── ...
 ├── electron/         # Electron 主进程代码
-│   ├── main.js       # 主进程入口
-│   └── preload.cjs   # 预加载脚本
+│   ├── main/         # 主进程模块
+│   │   ├── index.ts  # 主进程入口
+│   │   ├── app.ts    # 应用生命周期
+│   │   ├── tray.ts   # 系统托盘
+│   │   └── shortcuts.ts # 快捷键
+│   ├── sandbox/      # 预加载脚本
+│   ├── ipc/          # IPC 通信
+│   ├── shared/       # 共享代码
+│   ├── utils/        # 工具函数
+│   ├── WindowManager.ts
+│   ├── ServiceManager.ts  # 服务管理 (子进程)
+│   └── utils/paths.ts
 ├── scripts/          # 构建脚本
-│   └── dev-electron.js
+│   ├── dev/          # 开发脚本
+│   └── utils/        # 工具脚本
+├── server/           # API 服务端
+│   └── index.ts
 ├── src/
-│   ├── api/          # API 接口层
-│   ├── assets/       # 静态资源（CSS）
+│   ├── api/          # API 接口层 (Axios + TypeScript)
+│   ├── assets/       # 静态资源（CSS/字体）
+│   ├── base/         # 基础架构 (事件/生命周期)
 │   ├── components/   # Vue 组件
 │   ├── composables/  # 组合式函数
+│   ├── platform/     # 平台适配层 (TypeScript)
+│   │   ├── music/    # 音乐平台适配器
+│   │   ├── electron/ # Electron 平台服务
+│   │   └── web/      # Web 平台服务
 │   ├── router/       # 路由配置
+│   ├── services/     # 服务注册表
 │   ├── store/        # Pinia 状态管理
+│   ├── types/        # TypeScript 类型定义
 │   ├── utils/        # 工具函数
-│   │   └── player/   # 播放器模块（重构后）
-│   │       ├── constants/   # 常量定义
-│   │       ├── helpers/     # 工具函数
-│   │       ├── core/        # 核心模块
-│   │       ├── modules/     # 功能模块
-│   │       └── index.js     # 统一入口
+│   │   ├── http/     # HTTP 请求封装
+│   │   ├── error/    # 错误处理
+│   │   ├── cache/    # 缓存管理
+│   │   └── player/   # 播放器模块
 │   ├── views/        # 页面视图
 │   ├── App.vue       # 根组件
-│   └── main.js       # 入口文件
-├── server.js         # 本地 API 服务入口
+│   └── main.ts       # 入口文件
+├── tests/            # 测试目录
+│   ├── base/         # 基础架构测试
+│   ├── components/   # 组件测试
+│   ├── electron/     # Electron 测试
+│   ├── platform/     # 平台适配器测试
+│   ├── store/        # Store 测试
+│   └── utils/        # 工具函数测试
+├── build/            # 构建输出目录
+├── .vscode/          # VSCode 配置
+│   ├── launch.json   # 调试配置
+│   ├── tasks.json    # 任务配置
+│   ├── settings.json # 编辑器设置
+│   └── extensions.json # 扩展推荐
+├── .husky/           # Git 钩子
+├── .github/          # GitHub 配置
+│   ├── ISSUE_TEMPLATE/
+│   └── PULL_REQUEST_TEMPLATE.md
 ├── package.json
-├── vite.config.js
-├── vercel.json       # Vercel 部署配置
+├── vite.config.ts
+├── electron.vite.config.ts
+├── forge.config.ts
+├── tsconfig.json
+├── eslint.config.js
+├── .prettierrc
 └── index.html
 ```
 
@@ -141,8 +397,8 @@ luo_music/
 ## 快速开始
 
 ### 环境要求
-- Node.js 18+
-- npm 9+
+- Node.js 24+
+- npm 10+
 
 ### 安装依赖
 
@@ -221,19 +477,27 @@ npm run dev:electron
 - Vite 开发服务器（端口 5173）
 - Electron 桌面应用窗口
 
+**特性**：
+- ✅ **HMR 热更新** - 主进程和渲染进程都支持热更新
+- ✅ **自动重启** - 主进程代码修改后自动重启
+- ✅ **更好的 sourcemap** - 开发调试更方便
+
 ### 构建桌面应用
 
 ```bash
-# 构建当前平台
+# 构建 Electron 应用（包含打包）
 npm run build:electron
 
-# 使用 electron-builder 直接构建指定平台
-npx electron-builder --win
-npx electron-builder --mac
-npx electron-builder --linux
+# 仅构建，不打包（输出到 release/ 目录）
+npm run build:electron:dir
+
+# 快速构建（仅打包，用于测试）
+npm run build:fast
 ```
 
-构建输出目录：`dist-electron/` 和 `release/`
+构建输出目录：
+- `build/` - 构建产物（前端 + Electron 主进程）
+- `release/` - 打包后的安装包
 
 ### Electron 特性
 
@@ -242,6 +506,24 @@ npx electron-builder --linux
 - **缓存管理**：在设置中清理 Cookies 和缓存数据
 - **系统托盘**：最小化到托盘
 - **全局快捷键**：支持媒体键控制
+
+### 构建系统迁移
+
+项目已从 `electron-builder + tsup` 迁移到 `electron-vite` 方案。详见 [`docs/build.md`](./docs/build.md)。
+
+## 📚 文档
+
+更多文档请访问 [`docs/`](./docs/) 目录：
+
+- [快速开始](./docs/GETTING_STARTED.md) - 项目入门指南
+- [构建文档](./docs/build.md) - 构建产物管理与部署
+- [API 文档](./docs/api-documentation.md) - API 接口说明
+- [组件文档](./docs/components-documentation.md) - 组件使用说明
+- [测试文档](./docs/testing.md) - 测试策略与用例
+- [错误处理](./docs/error-handling.md) - 错误处理规范
+- [VSCode 配置](./docs/vscode-setup.md) - VSCode 调试和扩展配置
+- [优化总结](./docs/optimization-summary.md) - 项目框架优化总结
+- [快速参考](./docs/QUICK_REFERENCE.md) - 常用命令和配置速查
 
 ---
 
@@ -285,9 +567,34 @@ vercel dev
 # Vercel 部署：/api（使用相对路径）
 VITE_API_BASE_URL=http://localhost:14532
 
+# QQ 音乐 API 基础 URL
+VITE_QQ_API_BASE_URL=http://localhost:3200
+
 # 开发服务器端口
 VITE_DEV_SERVER_PORT=5173
+
+# Sentry 配置（可选）
+SENTRY_DSN=
+SENTRY_RELEASE=
+
+# Sentry Build Plugin 配置（打包时上传 sourcemap）
+# SENTRY_ORG=
+# SENTRY_PROJECT=
+# SENTRY_AUTH_TOKEN=
 ```
+
+### 环境变量说明
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `VITE_API_BASE_URL` | 网易云 API 地址 | `http://localhost:14532` |
+| `VITE_QQ_API_BASE_URL` | QQ 音乐 API 地址 | `http://localhost:3200` |
+| `VITE_DEV_SERVER_PORT` | Vite 开发服务器端口 | `5173` |
+| `SENTRY_DSN` | Sentry DSN | 空 |
+| `SENTRY_RELEASE` | Sentry 版本号 | `luo-music@{version}` |
+| `SENTRY_ORG` | Sentry 组织名 | 空 |
+| `SENTRY_PROJECT` | Sentry 项目名 | 空 |
+| `SENTRY_AUTH_TOKEN` | Sentry 认证令牌 | 空 |
 
 ---
 
@@ -303,6 +610,7 @@ VITE_DEV_SERVER_PORT=5173
 
 ### 主要 API 端点
 
+#### 网易云音乐
 | 端点 | 说明 |
 |------|------|
 | `/search` | 歌曲搜索 |
@@ -311,6 +619,16 @@ VITE_DEV_SERVER_PORT=5173
 | `/lyric` | 获取歌词 |
 | `/song/detail` | 歌曲详情 |
 | `/playlist/detail` | 歌单详情 |
+
+#### QQ 音乐
+| 端点 | 说明 |
+|------|------|
+| `/getSearchByKey` | 歌曲搜索 |
+| `/getMusicPlay` | 获取播放链接 |
+| `/getLyric` | 获取歌词 |
+| `/getQQLoginQr` | 获取登录二维码 |
+| `/checkQQLoginQr` | 检查登录状态 |
+| `/user/getCookie` | 获取 Cookie |
 
 ---
 
@@ -347,6 +665,19 @@ VITE_DEV_SERVER_PORT=5173
 2. 歌词解析支持标准 LRC 格式，包括 `[00:00.00]` 和 `[00:00:00]` 两种时间戳格式
 3. 确保歌曲有歌词数据
 
+### Q: QQ 音乐搜索不到歌曲或播放失败
+**A**: 
+1. 确认 QQ 音乐 API 服务已启动（端口 3200）
+2. 检查是否有版权或 VIP 限制
+3. 尝试使用更高品质（如 320k 或 m4a）
+4. 部分歌曲需要登录后才能播放
+
+### Q: 无法播放 VIP 歌曲
+**A**: 
+1. 登录 QQ 音乐获取播放权限
+2. 点击右上角头像 → "QQ 音乐登录" → 扫码登录
+3. 登录成功后 cookie 会自动保存，下次启动无需重复登录
+
 ### Q: Electron 应用无法播放音乐
 **A**: 检查 `webSecurity` 设置，确保音频跨域配置正确。如果提示 `preload.cjs` 缺失，需要重新构建：`npm run build`。
 
@@ -365,12 +696,52 @@ VITE_DEV_SERVER_PORT=5173
 ### Q: 安装依赖时提示 EBUSY 错误
 **A**: 文件被占用，请关闭所有 Node.js 和 Electron 进程，或重启电脑后重试。
 
+### Q: 如何清理依赖缓存
+**A**: 项目已移除未使用的 Babel 依赖（`@babel/plugin-transform-async-to-generator`、`@babel/register`）以及传递依赖（`combined-stream`、`delayed-stream`、`mime-db`、`mime-types`）。运行以下命令重新安装：
+
+```bash
+# 清理 node_modules 和 lock 文件
+npm run clean:all
+
+# 重新安装依赖
+npm install
+```
+
+### Q: 如何配置 Git 提交模板
+**A**: 运行以下命令设置全局提交模板：
+
+```bash
+git config commit.template .gitmessage
+```
+
+### Q: 如何使用调试功能
+**A**:
+1. 按 `F5` 打开调试配置
+2. 选择 "Debug Full Electron" 同时调试主进程和渲染进程
+3. 或选择 "Debug Main Process" / "Debug Renderer" 单独调试
+4. 在代码中设置断点开始调试
+
+---
+
+## ☕ 支持开发
+
+如果这个项目帮到了你，可以考虑赞助支持：
+
+**luo 音乐 API 作者 (sansenjian)**：
+- [爱发电 - @sansenjian](https://ifdian.net/a/sansenjian)
+
+你的支持将用于：
+- 维护网易云/QQ 音乐 API 接口
+- 开发更多功能
+- 持续优化播放器体验
+
 ---
 
 ## 📚 参考资料
 
 - [Hydrogen Music](https://github.com/Kaidesuyo/Hydrogen-Music) - 参考架构设计
 - [NeteaseCloudMusicApi Enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced) - 网易云音乐 API（增强版，持续维护）
+- [QQ Music API](https://github.com/sansenjian/qq-music-api) - QQ 音乐 API 服务（sansenjian 版本）
 - [Electron 文档](https://www.electronjs.org/)
 - [Vue 3 文档](https://vuejs.org/)
 - [Vercel 文档](https://vercel.com/docs)
