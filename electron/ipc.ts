@@ -10,6 +10,7 @@ import {
   setCache
 } from './ipc/utils/gatewayCache.ts'
 import logger from './logger'
+import type { ServiceStatusResponse } from './ipc/types'
 import type { ServiceConfig } from './types/service'
 
 type TaskFactory<T> = () => Promise<T>
@@ -67,6 +68,30 @@ class Limiter {
 
 function createLimiter(concurrency: number): Limiter {
   return new Limiter(concurrency)
+}
+
+function toServiceStatusResponse(
+  status: ReturnType<typeof serviceManager.getServiceStatus>
+): ServiceStatusResponse {
+  if (status === null) {
+    return { status: 'stopped' }
+  }
+
+  if (status.status === 'running') {
+    return { status: 'running', port: status.port }
+  }
+
+  if (
+    status.status === 'pending' ||
+    status.status === 'starting' ||
+    status.status === 'stopping' ||
+    status.status === 'stopped' ||
+    status.status === 'unavailable'
+  ) {
+    return { status: 'stopped', port: status.port }
+  }
+
+  return { status: 'error', port: status.port }
 }
 
 export const LIMIT_CONCURRENCY = createLimiter(3)
@@ -155,7 +180,7 @@ export function initAPIGateway() {
   })
 
   ipcMain.handle('service:status', (_, serviceId: string) => {
-    return serviceManager.getServiceStatus(serviceId)
+    return toServiceStatusResponse(serviceManager.getServiceStatus(serviceId))
   })
 
   ipcMain.handle('service:start', async (_, serviceId: string) => {

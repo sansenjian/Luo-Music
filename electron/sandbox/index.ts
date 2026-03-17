@@ -1,6 +1,7 @@
 ﻿import { contextBridge, ipcRenderer } from 'electron'
 import { SEND_CHANNELS, RECEIVE_CHANNELS, INVOKE_CHANNELS } from '../shared/protocol/channels.ts'
 import type { CacheClearOptions, CacheClearResult } from '../shared/protocol/cache.ts'
+import type { ServiceStatusResponse } from '../ipc/types'
 
 // 导入服务代理
 import {
@@ -149,7 +150,7 @@ export interface ElectronAPI {
   ) => Promise<T>
   getServices: () => Promise<string[]>
 
-  getServiceStatus: (serviceId: string) => Promise<'running' | 'stopped' | 'error'>
+  getServiceStatus: (serviceId: string) => Promise<ServiceStatusResponse>
   startService: (serviceId: string) => Promise<void>
   stopService: (serviceId: string) => Promise<void>
 
@@ -321,7 +322,7 @@ function exposeAPI(): void {
     getServices: () => ipc.invoke<string[]>(INVOKE_CHANNELS.API_GET_SERVICES),
 
     getServiceStatus: (serviceId: string) =>
-      ipc.invoke<{ status: 'running' | 'stopped' | 'error'; port?: number }>(INVOKE_CHANNELS.SERVICE_GET_STATUS, serviceId),
+      ipc.invoke<ServiceStatusResponse>(INVOKE_CHANNELS.SERVICE_GET_STATUS, serviceId),
     startService: (serviceId: string) =>
       ipc.invoke<void>(INVOKE_CHANNELS.SERVICE_START, serviceId),
     stopService: (serviceId: string) =>
@@ -349,6 +350,5 @@ declare global {
     services: ServiceAPI
   }
 }
-
 
 

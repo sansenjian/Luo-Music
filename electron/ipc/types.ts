@@ -22,6 +22,11 @@ export type { CacheClearOptions, CacheClearResult }
 
 export type ServiceStatus = 'running' | 'stopped' | 'error'
 
+export interface ServiceStatusResponse {
+  status: ServiceStatus
+  port?: number
+}
+
 export type ApiRequestResult = {
   success: boolean
   data?: unknown
@@ -114,7 +119,10 @@ export interface InvokeChannelMap {
   [INVOKE_CHANNELS.API_GET_SERVICES]: { params: []; result: string[] }
 
   // 鏈嶅姟绠＄悊
-  [INVOKE_CHANNELS.SERVICE_GET_STATUS]: { params: [serviceId: string]; result: ServiceStatus }
+  [INVOKE_CHANNELS.SERVICE_GET_STATUS]: {
+    params: [serviceId: string]
+    result: ServiceStatusResponse
+  }
   [INVOKE_CHANNELS.SERVICE_START]: {
     params: [serviceId: string]
     result: { success: boolean; error?: string }

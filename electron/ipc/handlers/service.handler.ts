@@ -8,7 +8,6 @@ import type { ServiceManager } from '../../ServiceManager'
 import type { ServiceStatusType } from '../../types/service'
 import type { ServiceStatus, ServiceStatusResponse } from '../types'
 
-// 将内部 ServiceStatusType 转换为 IPC ServiceStatus
 function convertServiceStatusType(type: ServiceStatusType | null): ServiceStatus {
   if (type === null || type === undefined) {
     return 'stopped'
@@ -16,25 +15,35 @@ function convertServiceStatusType(type: ServiceStatusType | null): ServiceStatus
   if (type === 'running') {
     return 'running'
   }
-  if (type === 'stopped' || type === 'pending' || type === 'stopping') {
+  if (
+    type === 'pending' ||
+    type === 'starting' ||
+    type === 'stopping' ||
+    type === 'stopped' ||
+    type === 'unavailable'
+  ) {
     return 'stopped'
   }
   return 'error'
 }
 
-export function registerServiceHandlers(serviceManager: ServiceManager): void {
-  // ========== Invoke Handlers ==========
+function toServiceStatusResponse(
+  status: ReturnType<ServiceManager['getServiceStatus']>
+): ServiceStatusResponse {
+  if (status === null) {
+    return { status: 'stopped' }
+  }
 
+  return {
+    status: convertServiceStatusType(status.status),
+    port: status.port
+  }
+}
+
+export function registerServiceHandlers(serviceManager: ServiceManager): void {
   ipcService.registerInvoke(INVOKE_CHANNELS.SERVICE_GET_STATUS, async (serviceId: string) => {
     const status = await serviceManager.getServiceStatus(serviceId)
-    // 将内部 ServiceStatus 转换为 IPC ServiceStatus（保留 port 元数据）
-    if (status === null) {
-      return { status: 'stopped' as ServiceStatus }
-    }
-    return {
-      status: convertServiceStatusType(status.status),
-      port: status.port
-    }
+    return toServiceStatusResponse(status)
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.SERVICE_START, async (serviceId: string) => {
@@ -63,7 +72,6 @@ export function registerServiceHandlers(serviceManager: ServiceManager): void {
 
   ipcService.registerInvoke(INVOKE_CHANNELS.SERVICE_STATUS_ALL, async () => {
     const internalStatus = await serviceManager.getAllServiceStatus()
-    // 将内部 ServiceStatus 转换为 IPC ServiceStatus
     const result: Record<string, ServiceStatus> = {}
     for (const [key, value] of Object.entries(internalStatus)) {
       result[key] = convertServiceStatusType(value.status)
@@ -86,7 +94,6 @@ export function registerServiceHandlers(serviceManager: ServiceManager): void {
   ipcService.registerInvoke(INVOKE_CHANNELS.SERVICE_HEALTH, async (serviceId: string) => {
     try {
       const healthResult = await serviceManager.checkServiceHealth(serviceId)
-      // healthResult 是 { healthy: boolean, status: ServiceStatus | null }
       const healthy = healthResult.healthy
       return {
         healthy,
