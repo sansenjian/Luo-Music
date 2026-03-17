@@ -73,6 +73,9 @@
     "vue-router": "^4.6.4",
     "zod": "^4.3.6"
   },
+  "optionalDependencies": {
+    "encoding": "^0.1.13"
+  },
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",
     "@electron-forge/maker-squirrel": "^7.11.1",

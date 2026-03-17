@@ -22,6 +22,7 @@ exclude:
       - src/components.d.ts
       - '**/*.d.ts'
       - scripts
+      - docs/.vitepress
 
   # 保留：针对特定规则的精细排除
   - name: CommaExpression
