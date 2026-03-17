@@ -1,10 +1,6 @@
 import { getIpcProxy } from './ipcProxy'
 import { SEND_CHANNELS } from '../../shared/protocol/channels'
-import {
-  LogLevel as LogLevels,
-  type LogEntry,
-  type LogLevel
-} from '../../shared/log'
+import { LogLevel as LogLevels, type LogEntry, type LogLevel } from '../../shared/log'
 
 export { LogLevels as LogLevelValueMap }
 export type { LogLevel }

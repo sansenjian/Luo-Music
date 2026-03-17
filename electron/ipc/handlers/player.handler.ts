@@ -105,9 +105,12 @@ export function registerPlayerHandlers(windowManager: WindowManager): void {
     // Handled in renderer via playerStore
   })
 
-  ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_PLAY_SONG_BY_ID, async (_id: string | number) => {
-    // Handled in renderer via playerStore
-  })
+  ipcService.registerInvoke(
+    INVOKE_CHANNELS.PLAYER_PLAY_SONG_BY_ID,
+    async (_id: string | number) => {
+      // Handled in renderer via playerStore
+    }
+  )
 
   // ========== Send Handlers ==========
 

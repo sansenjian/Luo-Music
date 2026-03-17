@@ -40,7 +40,9 @@ export function createPlatformService(): PlatformService {
       const electronAPI = (
         window as unknown as {
           electronAPI?: {
-            getServiceStatus?: (serviceId: string) => Promise<{ status: string; port?: number } | null>
+            getServiceStatus?: (
+              serviceId: string
+            ) => Promise<{ status: string; port?: number } | null>
           }
         }
       ).electronAPI

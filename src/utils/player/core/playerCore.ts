@@ -395,9 +395,7 @@ export class PlayerCore {
   }
 
   public get buffered() {
-    return this._isDestroyed
-      ? ({ length: 0 } as TimeRanges)
-      : this.audio.buffered
+    return this._isDestroyed ? ({ length: 0 } as TimeRanges) : this.audio.buffered
   }
 
   public get bufferedPercent() {

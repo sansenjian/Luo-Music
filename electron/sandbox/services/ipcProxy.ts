@@ -79,7 +79,7 @@ export class IpcProxy {
       return result as T
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
-      throw new Error(`[IpcProxy] Invoke failed on ${channel}: ${message}`)
+      throw new Error(`[IpcProxy] Invoke failed on ${channel}: ${message}`, { cause: error })
     }
   }
 

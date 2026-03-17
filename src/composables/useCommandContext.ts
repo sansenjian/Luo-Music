@@ -10,7 +10,10 @@ export function useCommandContext(): void {
 
   watchEffect(() => {
     contextService.setContext(CONTEXT_KEYS.PLATFORM_IS_ELECTRON, platform.isElectron())
-    contextService.setContext(CONTEXT_KEYS.PLAYER_HAS_CURRENT_SONG, playerStore.currentSongInfo !== null)
+    contextService.setContext(
+      CONTEXT_KEYS.PLAYER_HAS_CURRENT_SONG,
+      playerStore.currentSongInfo !== null
+    )
     contextService.setContext(CONTEXT_KEYS.PLAYER_HAS_PLAYLIST, playerStore.songList.length > 0)
     contextService.setContext(
       CONTEXT_KEYS.PLAYER_CAN_SEEK,

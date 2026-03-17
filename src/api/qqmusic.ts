@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { QQMusicAdapter } from './adapter'
-import { services } from'../services'
+import { services } from '../services'
 import type { ILogger } from '../services/loggerService'
 import { useUserStore } from '../store/userStore'
 
@@ -209,13 +209,14 @@ qqRequest.interceptors.response.use(
     const isQQLoginCheck = requestUrl.includes(QQ_LOGIN_CHECK_PATH)
 
     // 对于 QQ 登录检查，静默处理网络错误和超时
-    if (isQQLoginCheck && (
-      error.code === 'ETIMEDOUT' ||
-      error.code === 'ECONNRESET' ||
-      error.code === 'ERR_NETWORK' ||
-      error.code === 'ECONNABORTED' ||
-      !error.response
-    )) {
+    if (
+      isQQLoginCheck &&
+      (error.code === 'ETIMEDOUT' ||
+        error.code === 'ECONNRESET' ||
+        error.code === 'ERR_NETWORK' ||
+        error.code === 'ECONNABORTED' ||
+        !error.response)
+    ) {
       getLogger().debug('QQ login check network error, ignoring', {
         url: requestUrl,
         code: error.code,
@@ -444,7 +445,14 @@ export const qqMusicApi = {
       // 统一返回格式：确保始终返回 { data: { cookie: string } }
       // 如果 response 已经是 { cookie: ... } 格式，则包装一层
       // 如果 response 已经是 { data: { cookie: ... } } 格式，则直接返回
-      if (response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'cookie' in response.data) {
+      if (
+        response &&
+        typeof response === 'object' &&
+        'data' in response &&
+        response.data &&
+        typeof response.data === 'object' &&
+        'cookie' in response.data
+      ) {
         return response
       }
       // response 可能是 { cookie: '...' } 格式（被 axios 拦截器解包）

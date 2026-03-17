@@ -1,11 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { clearQQCookieCache } from '@/api/qqmusic'
-import {
-  AUTH_REQUEST_CACHE_NAMESPACE,
-  clearCacheNamespaces,
-  clearCookieCache
-} from '@/utils/http'
+import { AUTH_REQUEST_CACHE_NAMESPACE, clearCacheNamespaces, clearCookieCache } from '@/utils/http'
 
 export interface UserInfo {
   nickname?: string

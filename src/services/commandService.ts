@@ -119,29 +119,45 @@ export function createCommandService(): CommandService {
 
   const getPlayerStore = () => usePlayerStore()
 
-  register(COMMANDS.PLAYER_TOGGLE_PLAY, () => {
-    getPlayerStore().togglePlay()
-  }, {
-    enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_TOGGLE_PLAY]
-  })
+  register(
+    COMMANDS.PLAYER_TOGGLE_PLAY,
+    () => {
+      getPlayerStore().togglePlay()
+    },
+    {
+      enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_TOGGLE_PLAY]
+    }
+  )
 
-  register(COMMANDS.PLAYER_PLAY_PREV, () => {
-    getPlayerStore().playPrev()
-  }, {
-    enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_PLAY_PREV]
-  })
+  register(
+    COMMANDS.PLAYER_PLAY_PREV,
+    () => {
+      getPlayerStore().playPrev()
+    },
+    {
+      enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_PLAY_PREV]
+    }
+  )
 
-  register(COMMANDS.PLAYER_PLAY_NEXT, () => {
-    getPlayerStore().playNext()
-  }, {
-    enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_PLAY_NEXT]
-  })
+  register(
+    COMMANDS.PLAYER_PLAY_NEXT,
+    () => {
+      getPlayerStore().playNext()
+    },
+    {
+      enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_PLAY_NEXT]
+    }
+  )
 
-  register(COMMANDS.PLAYER_TOGGLE_PLAY_MODE, () => {
-    getPlayerStore().togglePlayMode()
-  }, {
-    enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_TOGGLE_PLAY_MODE]
-  })
+  register(
+    COMMANDS.PLAYER_TOGGLE_PLAY_MODE,
+    () => {
+      getPlayerStore().togglePlayMode()
+    },
+    {
+      enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_TOGGLE_PLAY_MODE]
+    }
+  )
 
   register<StepPayload>(COMMANDS.PLAYER_VOLUME_UP, payload => {
     const playerStore = getPlayerStore()
@@ -155,33 +171,45 @@ export function createCommandService(): CommandService {
     playerStore.setVolume(Math.max(0, playerStore.volume - step))
   })
 
-  register<SeekPayload>(COMMANDS.PLAYER_SEEK_FORWARD, payload => {
-    const playerStore = getPlayerStore()
-    const seconds = payload?.seconds ?? DEFAULT_SEEK_SECONDS
-    playerStore.seek(Math.min(playerStore.duration, playerStore.progress + seconds))
-  }, {
-    enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_SEEK_FORWARD]
-  })
+  register<SeekPayload>(
+    COMMANDS.PLAYER_SEEK_FORWARD,
+    payload => {
+      const playerStore = getPlayerStore()
+      const seconds = payload?.seconds ?? DEFAULT_SEEK_SECONDS
+      playerStore.seek(Math.min(playerStore.duration, playerStore.progress + seconds))
+    },
+    {
+      enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_SEEK_FORWARD]
+    }
+  )
 
-  register<SeekPayload>(COMMANDS.PLAYER_SEEK_BACK, payload => {
-    const playerStore = getPlayerStore()
-    const seconds = payload?.seconds ?? DEFAULT_SEEK_SECONDS
-    playerStore.seek(Math.max(0, playerStore.progress - seconds))
-  }, {
-    enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_SEEK_BACK]
-  })
+  register<SeekPayload>(
+    COMMANDS.PLAYER_SEEK_BACK,
+    payload => {
+      const playerStore = getPlayerStore()
+      const seconds = payload?.seconds ?? DEFAULT_SEEK_SECONDS
+      playerStore.seek(Math.max(0, playerStore.progress - seconds))
+    },
+    {
+      enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_SEEK_BACK]
+    }
+  )
 
   register(COMMANDS.PLAYER_TOGGLE_COMPACT_MODE, () => {
     getPlayerStore().toggleCompactMode()
   })
 
-  register(COMMANDS.DESKTOP_LYRIC_TOGGLE, () => {
-    if (platform.isElectron()) {
-      platform.send('toggle-desktop-lyric', undefined)
+  register(
+    COMMANDS.DESKTOP_LYRIC_TOGGLE,
+    () => {
+      if (platform.isElectron()) {
+        platform.send('toggle-desktop-lyric', undefined)
+      }
+    },
+    {
+      enablement: COMMAND_ENABLEMENT[COMMANDS.DESKTOP_LYRIC_TOGGLE]
     }
-  }, {
-    enablement: COMMAND_ENABLEMENT[COMMANDS.DESKTOP_LYRIC_TOGGLE]
-  })
+  )
 
   return {
     onDidChangeCommandEnablement: enablementEmitter.event,

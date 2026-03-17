@@ -43,11 +43,9 @@ describe('loggerService', () => {
     const service = createLoggerService()
     service.info('playerStore', 'song changed', { id: 1 })
 
-    expect(info).toHaveBeenCalledWith(
-      '%c [INFO] [playerStore] song changed',
-      'color: #2196F3',
-      { id: 1 }
-    )
+    expect(info).toHaveBeenCalledWith('%c [INFO] [playerStore] song changed', 'color: #2196F3', {
+      id: 1
+    })
   })
 
   it('respects global and per-resource log levels', () => {

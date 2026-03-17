@@ -101,7 +101,9 @@ describe('useHomeShell', () => {
     platformMock.isElectron.mockReturnValue(true)
 
     const playerStore = usePlayerStore()
-    const setupIpcListeners = vi.spyOn(playerStore, 'setupIpcListeners').mockImplementation(() => {})
+    const setupIpcListeners = vi
+      .spyOn(playerStore, 'setupIpcListeners')
+      .mockImplementation(() => {})
 
     mountShell()
     await nextTick()
@@ -114,7 +116,9 @@ describe('useHomeShell', () => {
 
     const playerStore = usePlayerStore()
     playerStore.isCompact = false
-    const toggleCompactMode = vi.spyOn(playerStore, 'toggleCompactMode').mockImplementation(() => {})
+    const toggleCompactMode = vi
+      .spyOn(playerStore, 'toggleCompactMode')
+      .mockImplementation(() => {})
 
     mountShell()
     await nextTick()
@@ -128,7 +132,9 @@ describe('useHomeShell', () => {
 
     const playerStore = usePlayerStore()
     playerStore.isCompact = false
-    const toggleCompactMode = vi.spyOn(playerStore, 'toggleCompactMode').mockImplementation(() => {})
+    const toggleCompactMode = vi
+      .spyOn(playerStore, 'toggleCompactMode')
+      .mockImplementation(() => {})
 
     mountShell()
     await nextTick()

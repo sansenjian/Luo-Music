@@ -32,4 +32,3 @@ const LOG_LEVEL_ORDER: Record<LogLevel, number> = {
 export function shouldLog(level: ActiveLogLevel, threshold: LogLevel): boolean {
   return LOG_LEVEL_ORDER[level] >= LOG_LEVEL_ORDER[threshold]
 }
-

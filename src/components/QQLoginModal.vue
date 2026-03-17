@@ -133,10 +133,7 @@ function startCheck(): void {
 
   checkInterval = setInterval(async () => {
     try {
-      const res = (await qqMusicApi.checkQQLoginQr(
-        ptqrtoken.value,
-        qrsig.value
-      )) as QQLoginPayload
+      const res = (await qqMusicApi.checkQQLoginQr(ptqrtoken.value, qrsig.value)) as QQLoginPayload
 
       if (res?.isOk) {
         const sessionCookie = extractSessionCookie(res)

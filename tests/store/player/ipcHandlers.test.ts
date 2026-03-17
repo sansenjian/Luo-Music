@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createIpcHandlers } from '../../../src/store/player/ipcHandlers'
+import {
+  createIpcHandlers,
+  IpcEventHandler
+} from '../../../src/store/player/ipcHandlers'
 import { createInitialState } from '../../../src/store/player/playerState'
 
 type Listener = (...args: unknown[]) => void
 
 describe('ipcHandlers music-playing-control', () => {
   const listeners = new Map<string, Listener>()
+  let unsubscribeCount = 0
 
   const state = createInitialState()
   const togglePlay = vi.fn()
@@ -23,13 +27,30 @@ describe('ipcHandlers music-playing-control', () => {
     on: vi.fn((channel: string, callback: Listener) => {
       listeners.set(channel, callback)
       return () => {
+        unsubscribeCount += 1
         listeners.delete(channel)
       }
     })
   }
 
+  const createDeps = (overrides: Record<string, unknown> = {}) => ({
+    getState: () => state,
+    onStateChange: () => {},
+    togglePlay,
+    play,
+    pause,
+    playPrev,
+    playNext,
+    setPlayMode,
+    setVolume,
+    toggleCompactMode,
+    platform,
+    ...overrides
+  })
+
   beforeEach(() => {
     listeners.clear()
+    unsubscribeCount = 0
     togglePlay.mockClear()
     play.mockClear()
     pause.mockClear()
@@ -41,22 +62,12 @@ describe('ipcHandlers music-playing-control', () => {
     platform.on.mockClear()
     platform.isElectron.mockClear()
     state.playing = false
+    state.playMode = 0
+    state.volume = 0.7
   })
 
   it('uses explicit play/pause handlers when command is provided', () => {
-    const handlers = createIpcHandlers({
-      getState: () => state,
-      onStateChange: () => {},
-      togglePlay,
-      play,
-      pause,
-      playPrev,
-      playNext,
-      setPlayMode,
-      setVolume,
-      toggleCompactMode,
-      platform
-    })
+    const handlers = createIpcHandlers(createDeps())
 
     handlers.setup()
 
@@ -72,17 +83,12 @@ describe('ipcHandlers music-playing-control', () => {
   })
 
   it('falls back to toggle only when state and explicit handlers require it', () => {
-    const handlers = createIpcHandlers({
-      getState: () => state,
-      onStateChange: () => {},
-      togglePlay,
-      playPrev,
-      playNext,
-      setPlayMode,
-      setVolume,
-      toggleCompactMode,
-      platform
-    })
+    const handlers = createIpcHandlers(
+      createDeps({
+        play: undefined,
+        pause: undefined
+      })
+    )
 
     handlers.setup()
 
@@ -104,5 +110,93 @@ describe('ipcHandlers music-playing-control', () => {
     state.playing = false
     listener?.('pause')
     expect(togglePlay).toHaveBeenCalledTimes(2)
+  })
+
+  it('handles legacy toggle and volume commands on music-playing-control', () => {
+    const handlers = createIpcHandlers(createDeps())
+
+    handlers.setup()
+
+    const listener = listeners.get('music-playing-control')
+    expect(listener).toBeTypeOf('function')
+
+    listener?.(undefined)
+    listener?.('toggle')
+    listener?.('toggle-mute')
+    listener?.({ type: 'seek', time: 12 })
+    listener?.({ type: 'volume', volume: 0.25 })
+
+    expect(togglePlay).toHaveBeenCalledTimes(2)
+    expect(setVolume).toHaveBeenCalledTimes(1)
+    expect(setVolume).toHaveBeenCalledWith(0.25)
+  })
+
+  it('handles song, playmode, volume, compact and hide-player channels', () => {
+    const handlers = createIpcHandlers(createDeps())
+
+    handlers.setup()
+
+    listeners.get('music-song-control')?.('prev')
+    listeners.get('music-song-control')?.('next')
+    listeners.get('music-song-control')?.('noop')
+
+    state.playMode = 3
+    listeners.get('music-playmode-control')?.('toggle')
+    listeners.get('music-playmode-control')?.(2)
+
+    state.volume = 0.95
+    listeners.get('music-volume-up')?.()
+    state.volume = 0.05
+    listeners.get('music-volume-down')?.()
+
+    listeners.get('music-process-control')?.('back')
+    listeners.get('music-process-control')?.('forward')
+    listeners.get('music-compact-mode-control')?.()
+    listeners.get('hide-player')?.()
+
+    expect(playPrev).toHaveBeenCalledTimes(1)
+    expect(playNext).toHaveBeenCalledTimes(1)
+    expect(setPlayMode).toHaveBeenNthCalledWith(1, 0)
+    expect(setPlayMode).toHaveBeenNthCalledWith(2, 2)
+    expect(setVolume).toHaveBeenNthCalledWith(1, 1)
+    expect(setVolume).toHaveBeenNthCalledWith(2, 0)
+    expect(toggleCompactMode).toHaveBeenCalledTimes(2)
+  })
+
+  it('skips setup outside electron and tears down registered listeners', () => {
+    const handlers = createIpcHandlers(
+      createDeps({
+        platform: {
+          ...platform,
+          isElectron: vi.fn(() => false)
+        }
+      })
+    )
+
+    handlers.setup()
+    expect(listeners.size).toBe(0)
+
+    const electronHandlers = createIpcHandlers(createDeps())
+    electronHandlers.setup()
+
+    expect(listeners.size).toBe(8)
+    electronHandlers.teardown()
+
+    expect(listeners.size).toBe(0)
+    expect(unsubscribeCount).toBe(8)
+
+    electronHandlers.teardown()
+    expect(unsubscribeCount).toBe(8)
+  })
+
+  it('refuses to init an event handler after it has been disposed', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const eventHandler = new IpcEventHandler(createDeps())
+
+    eventHandler.dispose()
+    eventHandler.init()
+
+    expect(warnSpy).toHaveBeenCalledWith('[IpcEventHandler] Cannot init after dispose')
+    expect(listeners.size).toBe(0)
   })
 })

@@ -302,13 +302,17 @@ function evaluateExpression(
       return !evaluateExpression(node.operand, getValue)
     case 'binary': {
       if (node.operator === '&&') {
-        return Boolean(evaluateExpression(node.left, getValue)) &&
+        return (
+          Boolean(evaluateExpression(node.left, getValue)) &&
           Boolean(evaluateExpression(node.right, getValue))
+        )
       }
 
       if (node.operator === '||') {
-        return Boolean(evaluateExpression(node.left, getValue)) ||
+        return (
+          Boolean(evaluateExpression(node.left, getValue)) ||
           Boolean(evaluateExpression(node.right, getValue))
+        )
       }
 
       const left = evaluateExpression(node.left, getValue)
@@ -347,7 +351,10 @@ class BoundContextKey<T extends ContextKeyValue> implements ContextKey<T> {
 class ContextKeyServiceImpl implements ContextKeyService {
   private readonly values = new Map<string, ContextKeyValue>()
   private readonly expressionCache = new Map<string, AstNode>()
-  private readonly onDidChangeContextEmitter = new EventEmitter<{ key: string; value: ContextKeyValue }>()
+  private readonly onDidChangeContextEmitter = new EventEmitter<{
+    key: string
+    value: ContextKeyValue
+  }>()
 
   readonly onDidChangeContext = this.onDidChangeContextEmitter.event
 

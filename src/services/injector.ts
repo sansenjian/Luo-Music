@@ -132,7 +132,15 @@ export class Injector {
    */
   protected getServiceByIndex(index: number): unknown {
     // 常见服务顺序：platform, api, logger, error, config, command
-    const serviceOrder: ServiceId[] = ['platform', 'api', 'logger', 'error', 'config', 'context', 'command']
+    const serviceOrder: ServiceId[] = [
+      'platform',
+      'api',
+      'logger',
+      'error',
+      'config',
+      'context',
+      'command'
+    ]
 
     if (index < serviceOrder.length) {
       try {

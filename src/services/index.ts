@@ -61,10 +61,7 @@ export type ServiceOverrides = Partial<{
  * @param overrides 覆盖服务（可选）
  * @param useNewApi 是否使用新的 ServiceIdentifier API（默认 true）
  */
-export function setupServices(
-  overrides: ServiceOverrides = {},
-  useNewApi: boolean = true
-): void {
+export function setupServices(overrides: ServiceOverrides = {}, useNewApi: boolean = true): void {
   const hasOverrides = Object.keys(overrides).length > 0
   if (initialized && !hasOverrides) {
     return

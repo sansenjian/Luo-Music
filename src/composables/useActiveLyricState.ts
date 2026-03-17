@@ -58,7 +58,9 @@ export function useActiveLyricState(options: UseActiveLyricStateOptions = {}) {
     source === 'store' ? currentLine.value?.roma || '' : ipcLyricRoma.value
   )
   const secondaryLyric = computed(() => currentTrans.value || currentRoma.value)
-  const isPlaying = computed(() => (source === 'store' ? (playerStore?.playing ?? false) : ipcIsPlaying.value))
+  const isPlaying = computed(() =>
+    source === 'store' ? (playerStore?.playing ?? false) : ipcIsPlaying.value
+  )
 
   const showOriginal = computed(() =>
     playerStore ? playerStore.lyricType.includes('original') : true

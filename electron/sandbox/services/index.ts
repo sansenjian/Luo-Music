@@ -15,19 +15,9 @@
  */
 
 // 导入所有服务和类型
-import {
-  IpcProxy,
-  getIpcProxy,
-  type IpcResult,
-  type Channel
-} from './ipcProxy'
+import { IpcProxy, getIpcProxy, type IpcResult, type Channel } from './ipcProxy'
 
-import {
-  LogProxy,
-  createLogger,
-  type LogLevel,
-  type LogMessage
-} from './logProxy'
+import { LogProxy, createLogger, type LogLevel, type LogMessage } from './logProxy'
 
 import {
   ConfigProxy,
@@ -49,11 +39,7 @@ import {
   type DetailParams
 } from './apiProxy'
 
-import {
-  WindowProxy,
-  getWindowProxy,
-  type WindowState
-} from './windowProxy'
+import { WindowProxy, getWindowProxy, type WindowState } from './windowProxy'
 
 import {
   PlayerProxy,

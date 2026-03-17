@@ -67,33 +67,24 @@ export function createDecorator<T>(name: string): ServiceIdentifier<T> {
 /**
  * 预定义的核心服务标识符
  */
-export const IPlatformService = createDecorator<
-  import('./platformService').PlatformService
->('IPlatformService')
+export const IPlatformService =
+  createDecorator<import('./platformService').PlatformService>('IPlatformService')
 
-export const IApiService = createDecorator<
-  import('./apiService').ApiService
->('IApiService')
+export const IApiService = createDecorator<import('./apiService').ApiService>('IApiService')
 
-export const ILoggerService = createDecorator<
-  import('./loggerService').LoggerService
->('ILoggerService')
+export const ILoggerService =
+  createDecorator<import('./loggerService').LoggerService>('ILoggerService')
 
-export const IErrorService = createDecorator<
-  import('./errorService').ErrorService
->('IErrorService')
+export const IErrorService = createDecorator<import('./errorService').ErrorService>('IErrorService')
 
-export const IConfigService = createDecorator<
-  import('./configService').ConfigService
->('IConfigService')
+export const IConfigService =
+  createDecorator<import('./configService').ConfigService>('IConfigService')
 
-export const IContextKeyService = createDecorator<
-  import('./contextKeyService').ContextKeyService
->('IContextKeyService')
+export const IContextKeyService =
+  createDecorator<import('./contextKeyService').ContextKeyService>('IContextKeyService')
 
-export const ICommandService = createDecorator<
-  import('./commandService').CommandService
->('ICommandService')
+export const ICommandService =
+  createDecorator<import('./commandService').CommandService>('ICommandService')
 
 /**
  * 所有核心服务的联合类型

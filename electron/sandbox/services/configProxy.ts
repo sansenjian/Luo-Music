@@ -130,9 +130,12 @@ export class ConfigProxy {
   onConfigChange(listener: (event: ConfigChangeEvent) => void): () => void {
     this.changeListeners.add(listener)
 
-    const unsubscribe = this.ipcProxy.on<ConfigChangeEvent>(RECEIVE_CHANNELS.CONFIG_CHANGED, (event) => {
-      listener(event)
-    })
+    const unsubscribe = this.ipcProxy.on<ConfigChangeEvent>(
+      RECEIVE_CHANNELS.CONFIG_CHANGED,
+      event => {
+        listener(event)
+      }
+    )
 
     return () => {
       this.changeListeners.delete(listener)

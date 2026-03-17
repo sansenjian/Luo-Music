@@ -121,7 +121,10 @@ export class ApiProxy {
    * @returns 歌曲 URL
    */
   async getSongUrl(params: SongUrlParams): Promise<string> {
-    const result = await this.ipcProxy.invoke<{ url: string }>(INVOKE_CHANNELS.API_GET_SONG_URL, params)
+    const result = await this.ipcProxy.invoke<{ url: string }>(
+      INVOKE_CHANNELS.API_GET_SONG_URL,
+      params
+    )
     return result.url
   }
 

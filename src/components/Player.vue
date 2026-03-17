@@ -59,9 +59,13 @@ const canNavigatePlaylist = computed(() => {
   return playerStore.songList.length > 0 && commandService.canExecute(COMMANDS.PLAYER_PLAY_NEXT)
 })
 const canTogglePlayMode = computed(() => {
-  return playerStore.songList.length > 0 && commandService.canExecute(COMMANDS.PLAYER_TOGGLE_PLAY_MODE)
+  return (
+    playerStore.songList.length > 0 && commandService.canExecute(COMMANDS.PLAYER_TOGGLE_PLAY_MODE)
+  )
 })
-const canToggleDesktopLyric = computed(() => commandService.canExecute(COMMANDS.DESKTOP_LYRIC_TOGGLE))
+const canToggleDesktopLyric = computed(() =>
+  commandService.canExecute(COMMANDS.DESKTOP_LYRIC_TOGGLE)
+)
 
 const coverUrl = computed(() => {
   const url = currentSong.value?.album?.picUrl
@@ -251,13 +255,23 @@ onMounted(() => {
         </svg>
       </button>
 
-      <button ref="prevButtonRef" class="ctrl-btn" :disabled="!canNavigatePlaylist" @click="onPrevButtonClick">
+      <button
+        ref="prevButtonRef"
+        class="ctrl-btn"
+        :disabled="!canNavigatePlaylist"
+        @click="onPrevButtonClick"
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
         </svg>
       </button>
 
-      <button ref="playButtonRef" class="ctrl-btn ctrl-main" :disabled="!canTogglePlay" @click="onPlayButtonClick">
+      <button
+        ref="playButtonRef"
+        class="ctrl-btn ctrl-main"
+        :disabled="!canTogglePlay"
+        @click="onPlayButtonClick"
+      >
         <svg
           v-if="!playerStore.playing"
           width="24"
@@ -272,14 +286,24 @@ onMounted(() => {
         </svg>
       </button>
 
-      <button ref="nextButtonRef" class="ctrl-btn" :disabled="!canNavigatePlaylist" @click="onNextButtonClick">
+      <button
+        ref="nextButtonRef"
+        class="ctrl-btn"
+        :disabled="!canNavigatePlaylist"
+        @click="onNextButtonClick"
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
         </svg>
       </button>
 
       <!-- Desktop Lyric Button -->
-      <button class="ctrl-btn lyric-btn" :disabled="!canToggleDesktopLyric" @click="toggleDesktopLyric" title="Desktop Lyric">
+      <button
+        class="ctrl-btn lyric-btn"
+        :disabled="!canToggleDesktopLyric"
+        @click="toggleDesktopLyric"
+        title="Desktop Lyric"
+      >
         <svg
           width="20"
           height="20"

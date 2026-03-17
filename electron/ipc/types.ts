@@ -19,7 +19,6 @@ export type PlayMode = PlayerPlayMode
 
 export type { CacheClearOptions, CacheClearResult }
 
-
 export type ServiceStatus = 'running' | 'stopped' | 'error'
 
 export interface ServiceStatusResponse {
@@ -149,7 +148,10 @@ export interface InvokeChannelMap {
   [INVOKE_CHANNELS.WINDOW_GET_SIZE]: { params: []; result: { width: number; height: number } }
   [INVOKE_CHANNELS.WINDOW_IS_MAXIMIZED]: { params: []; result: boolean }
   [INVOKE_CHANNELS.WINDOW_IS_MINIMIZED]: { params: []; result: boolean }
-  [INVOKE_CHANNELS.WINDOW_GET_STATE]: { params: []; result: { isMaximized: boolean; isMinimized: boolean; isFullScreen: boolean } }
+  [INVOKE_CHANNELS.WINDOW_GET_STATE]: {
+    params: []
+    result: { isMaximized: boolean; isMinimized: boolean; isFullScreen: boolean }
+  }
 
   // 閰嶇疆绠＄悊
   [INVOKE_CHANNELS.CONFIG_GET]: { params: [key: string]; result: unknown }
@@ -160,39 +162,39 @@ export interface InvokeChannelMap {
 
   // API 鏈嶅姟
   [INVOKE_CHANNELS.API_SEARCH]: {
-    params: [keyword: string, type?: string];
+    params: [keyword: string, type?: string]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_SONG_URL]: {
-    params: [id: string | number];
+    params: [id: string | number]
     result: { url?: string; error?: string }
   }
   [INVOKE_CHANNELS.API_GET_LYRIC]: {
-    params: [id: string | number];
+    params: [id: string | number]
     result: { lyric?: string; tlyric?: string; rlyric?: string; error?: string }
   }
   [INVOKE_CHANNELS.API_GET_SONG_DETAIL]: {
-    params: [id: string | number];
+    params: [id: string | number]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_PLAYLIST_DETAIL]: {
-    params: [id: string | number];
+    params: [id: string | number]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_ARTIST_DETAIL]: {
-    params: [id: string | number];
+    params: [id: string | number]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_ALBUM_DETAIL]: {
-    params: [id: string | number];
+    params: [id: string | number]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_RECOMMENDED_PLAYLISTS]: {
-    params: [];
+    params: []
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_CHART]: {
-    params: [chartId: string];
+    params: [chartId: string]
     result: unknown
   }
 
@@ -308,4 +310,3 @@ export type SendFunction<T extends SendChannel> = (...args: SendChannelMap[T]['p
 export type ReceiveCallback<T extends ReceiveChannel> = (
   payload: ReceiveChannelMap[T]['payload']
 ) => void
-

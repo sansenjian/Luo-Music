@@ -4,14 +4,7 @@ import type { CacheClearOptions, CacheClearResult } from '../shared/protocol/cac
 import type { ServiceStatusResponse } from '../ipc/types'
 
 // 导入服务代理
-import {
-  IpcProxy,
-  LogProxy,
-  ConfigProxy,
-  ApiProxy,
-  WindowProxy,
-  PlayerProxy
-} from './services'
+import { IpcProxy, LogProxy, ConfigProxy, ApiProxy, WindowProxy, PlayerProxy } from './services'
 
 console.log('--- Preload script loaded (TypeScript) ---')
 
@@ -51,12 +44,19 @@ export interface ServiceAPI {
 
   // 閰嶇疆鏈嶅姟
   config: {
-    get: <T extends keyof import('./services').AppConfig>(key: T) => Promise<import('./services').AppConfig[T]>
+    get: <T extends keyof import('./services').AppConfig>(
+      key: T
+    ) => Promise<import('./services').AppConfig[T]>
     getAll: () => Promise<import('./services').AppConfig>
-    set: <T extends keyof import('./services').AppConfig>(key: T, value: import('./services').AppConfig[T]) => Promise<void>
+    set: <T extends keyof import('./services').AppConfig>(
+      key: T,
+      value: import('./services').AppConfig[T]
+    ) => Promise<void>
     delete: (key: keyof import('./services').AppConfig) => Promise<void>
     reset: () => Promise<void>
-    onConfigChange: (listener: (event: import('./services').ConfigChangeEvent) => void) => () => void
+    onConfigChange: (
+      listener: (event: import('./services').ConfigChangeEvent) => void
+    ) => () => void
   }
 
   // API 鏈嶅姟
@@ -69,9 +69,14 @@ export interface ServiceAPI {
       limit?: number
     ) => Promise<import('./services').SearchResult>
     getSongUrl: (params: import('./services').SongUrlParams) => Promise<string>
-    getLyric: (params: import('./services').LyricParams) => Promise<import('./services').LyricResponse>
+    getLyric: (
+      params: import('./services').LyricParams
+    ) => Promise<import('./services').LyricResponse>
     getSongDetail: (params: import('./services').DetailParams) => Promise<unknown>
-    getPlaylistDetail: (id: string, platform?: import('./services').MusicPlatform) => Promise<unknown>
+    getPlaylistDetail: (
+      id: string,
+      platform?: import('./services').MusicPlatform
+    ) => Promise<unknown>
     getArtistDetail: (id: string, platform?: import('./services').MusicPlatform) => Promise<unknown>
     getAlbumDetail: (id: string, platform?: import('./services').MusicPlatform) => Promise<unknown>
     getRecommendedPlaylists: (
@@ -106,7 +111,10 @@ export interface ServiceAPI {
     play: () => Promise<void>
     pause: () => Promise<void>
     toggle: () => Promise<void>
-    playSong: (song: import('./services').Song, playlist?: import('./services').Song[]) => Promise<void>
+    playSong: (
+      song: import('./services').Song,
+      playlist?: import('./services').Song[]
+    ) => Promise<void>
     playSongById: (id: string, platform?: 'netease' | 'qq') => Promise<void>
     skipToPrevious: () => Promise<void>
     skipToNext: () => Promise<void>
@@ -121,11 +129,22 @@ export interface ServiceAPI {
     addToNext: (song: import('./services').Song) => Promise<void>
     removeFromPlaylist: (index: number) => Promise<void>
     clearPlaylist: () => Promise<void>
-    getLyric: (songId: string, platform?: 'netease' | 'qq') => Promise<import('./services').LyricLine[]>
-    onPlayStateChange: (listener: (data: { isPlaying: boolean; currentTime: number }) => void) => () => void
-    onSongChange: (listener: (data: { song: import('./services').Song | null; index: number }) => void) => () => void
-    onLyricUpdate: (listener: (data: { index: number; line: import('./services').LyricLine }) => void) => () => void
-    onPlayError: (listener: (data: { error: string; song: import('./services').Song }) => void) => () => void
+    getLyric: (
+      songId: string,
+      platform?: 'netease' | 'qq'
+    ) => Promise<import('./services').LyricLine[]>
+    onPlayStateChange: (
+      listener: (data: { isPlaying: boolean; currentTime: number }) => void
+    ) => () => void
+    onSongChange: (
+      listener: (data: { song: import('./services').Song | null; index: number }) => void
+    ) => () => void
+    onLyricUpdate: (
+      listener: (data: { index: number; line: import('./services').LyricLine }) => void
+    ) => () => void
+    onPlayError: (
+      listener: (data: { error: string; song: import('./services').Song }) => void
+    ) => () => void
   }
 }
 
@@ -221,25 +240,25 @@ function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
     removeAllListeners: (channel?: Channel) => ipcProxy.removeAllListeners(channel),
 
     // 鏃ュ織鏈嶅姟
-    createLogger: (module) => new LogProxy(module),
+    createLogger: module => new LogProxy(module),
 
     // 閰嶇疆鏈嶅姟
     config: {
-      get: (key) => configProxy.get(key),
+      get: key => configProxy.get(key),
       getAll: () => configProxy.getAll(),
       set: (key, value) => configProxy.set(key, value),
-      delete: (key) => configProxy.delete(key),
+      delete: key => configProxy.delete(key),
       reset: () => configProxy.reset(),
-      onConfigChange: (listener) => configProxy.onConfigChange(listener)
+      onConfigChange: listener => configProxy.onConfigChange(listener)
     },
 
     // API 鏈嶅姟
     api: {
       search: (keyword, type, platform, page, limit) =>
         apiProxy.search(keyword, type, platform, page, limit),
-      getSongUrl: (params) => apiProxy.getSongUrl(params),
-      getLyric: (params) => apiProxy.getLyric(params),
-      getSongDetail: (params) => apiProxy.getSongDetail(params),
+      getSongUrl: params => apiProxy.getSongUrl(params),
+      getLyric: params => apiProxy.getLyric(params),
+      getSongDetail: params => apiProxy.getSongDetail(params),
       getPlaylistDetail: (id, platform) => apiProxy.getPlaylistDetail(id, platform),
       getArtistDetail: (id, platform) => apiProxy.getArtistDetail(id, platform),
       getAlbumDetail: (id, platform) => apiProxy.getAlbumDetail(id, platform),
@@ -254,7 +273,7 @@ function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
       toggleMaximize: () => windowProxy.toggleMaximize(),
       close: () => windowProxy.close(),
       minimizeToTray: () => windowProxy.minimizeToTray(),
-      setAlwaysOnTop: (alwaysOnTop) => windowProxy.setAlwaysOnTop(alwaysOnTop),
+      setAlwaysOnTop: alwaysOnTop => windowProxy.setAlwaysOnTop(alwaysOnTop),
       toggleFullScreen: () => windowProxy.toggleFullScreen(),
       getState: () => windowProxy.getState(),
       isMaximized: () => windowProxy.isMaximized(),
@@ -263,9 +282,9 @@ function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
       restore: () => windowProxy.restore(),
       show: () => windowProxy.show(),
       hide: () => windowProxy.hide(),
-      toggleDesktopLyric: (show) => windowProxy.toggleDesktopLyric(show),
-      setDesktopLyricOnTop: (alwaysOnTop) => windowProxy.setDesktopLyricOnTop(alwaysOnTop),
-      lockDesktopLyric: (locked) => windowProxy.lockDesktopLyric(locked)
+      toggleDesktopLyric: show => windowProxy.toggleDesktopLyric(show),
+      setDesktopLyricOnTop: alwaysOnTop => windowProxy.setDesktopLyricOnTop(alwaysOnTop),
+      lockDesktopLyric: locked => windowProxy.lockDesktopLyric(locked)
     },
 
     // Player controls
@@ -277,22 +296,22 @@ function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
       playSongById: (id, platform) => playerProxy.playSongById(id, platform),
       skipToPrevious: () => playerProxy.skipToPrevious(),
       skipToNext: () => playerProxy.skipToNext(),
-      seekTo: (time) => playerProxy.seekTo(time),
-      setVolume: (volume) => playerProxy.setVolume(volume),
+      seekTo: time => playerProxy.seekTo(time),
+      setVolume: volume => playerProxy.setVolume(volume),
       toggleMute: () => playerProxy.toggleMute(),
-      setPlayMode: (mode) => playerProxy.setPlayMode(mode),
+      setPlayMode: mode => playerProxy.setPlayMode(mode),
       togglePlayMode: () => playerProxy.togglePlayMode(),
       getState: () => playerProxy.getState(),
       getCurrentSong: () => playerProxy.getCurrentSong(),
       getPlaylist: () => playerProxy.getPlaylist(),
-      addToNext: (song) => playerProxy.addToNext(song),
-      removeFromPlaylist: (index) => playerProxy.removeFromPlaylist(index),
+      addToNext: song => playerProxy.addToNext(song),
+      removeFromPlaylist: index => playerProxy.removeFromPlaylist(index),
       clearPlaylist: () => playerProxy.clearPlaylist(),
       getLyric: (songId, platform) => playerProxy.getLyric(songId, platform),
-      onPlayStateChange: (listener) => playerProxy.onPlayStateChange(listener),
-      onSongChange: (listener) => playerProxy.onSongChange(listener),
-      onLyricUpdate: (listener) => playerProxy.onLyricUpdate(listener),
-      onPlayError: (listener) => playerProxy.onPlayError(listener)
+      onPlayStateChange: listener => playerProxy.onPlayStateChange(listener),
+      onSongChange: listener => playerProxy.onSongChange(listener),
+      onLyricUpdate: listener => playerProxy.onLyricUpdate(listener),
+      onPlayError: listener => playerProxy.onPlayError(listener)
     }
   }
 }
@@ -314,8 +333,7 @@ function exposeAPI(): void {
       ipc.invoke<CacheClearResult>(INVOKE_CHANNELS.CACHE_CLEAR, options),
     clearAllCache: (keepUserData?: boolean) =>
       ipc.invoke<CacheClearResult>(INVOKE_CHANNELS.CACHE_CLEAR_ALL, keepUserData),
-    getCachePaths: () =>
-      ipc.invoke<Record<string, string>>(INVOKE_CHANNELS.CACHE_GET_PATHS),
+    getCachePaths: () => ipc.invoke<Record<string, string>>(INVOKE_CHANNELS.CACHE_GET_PATHS),
 
     apiRequest: (service: string, endpoint: string, params: Record<string, unknown>) =>
       services.api.getSongUrl({ id: params.id as string }),
@@ -323,14 +341,11 @@ function exposeAPI(): void {
 
     getServiceStatus: (serviceId: string) =>
       ipc.invoke<ServiceStatusResponse>(INVOKE_CHANNELS.SERVICE_GET_STATUS, serviceId),
-    startService: (serviceId: string) =>
-      ipc.invoke<void>(INVOKE_CHANNELS.SERVICE_START, serviceId),
-    stopService: (serviceId: string) =>
-      ipc.invoke<void>(INVOKE_CHANNELS.SERVICE_STOP, serviceId),
+    startService: (serviceId: string) => ipc.invoke<void>(INVOKE_CHANNELS.SERVICE_START, serviceId),
+    stopService: (serviceId: string) => ipc.invoke<void>(INVOKE_CHANNELS.SERVICE_STOP, serviceId),
 
     sendPlayingState: (playing: boolean) => ipc.send(SEND_CHANNELS.MUSIC_PLAYING_CHECK, playing),
-    sendPlayModeChange: (mode: number) =>
-      ipc.send(SEND_CHANNELS.MUSIC_PLAYMODE_TRAY_CHANGE, mode),
+    sendPlayModeChange: (mode: number) => ipc.send(SEND_CHANNELS.MUSIC_PLAYMODE_TRAY_CHANGE, mode),
     moveWindow: (x: number, y: number) => ipc.send(SEND_CHANNELS.DESKTOP_LYRIC_MOVE, { x, y }),
 
     send: (channel: string, data: unknown) => ipc.send(channel, data),
@@ -350,5 +365,3 @@ declare global {
     services: ServiceAPI
   }
 }
-
-

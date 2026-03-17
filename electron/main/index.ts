@@ -125,19 +125,16 @@ function initializeIpcService(): void {
 
       // 上报到 Sentry（如果已初始化）
       if (Sentry) {
-        Sentry.captureException(
-          new Error(errorData.message),
-          (scope: SentryMain.Scope) => {
-            scope.setTag('error_code', errorData.code)
-            scope.setContext('error_data', {
-              code: errorData.code,
-              message: errorData.message,
-              stack: errorData.stack,
-              data: errorData.data
-            })
-            return scope
-          }
-        )
+        Sentry.captureException(new Error(errorData.message), (scope: SentryMain.Scope) => {
+          scope.setTag('error_code', errorData.code)
+          scope.setContext('error_data', {
+            code: errorData.code,
+            message: errorData.message,
+            stack: errorData.stack,
+            data: errorData.data
+          })
+          return scope
+        })
       }
     }
   )

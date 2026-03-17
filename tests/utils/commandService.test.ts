@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { CONTEXT_KEYS } from '../../src/core/context/contextKeys'
 import { COMMANDS } from '../../src/core/commands/commands'
+import platform from '../../src/platform'
 import { createCommandService } from '../../src/services/commandService'
 import { createContextKeyService } from '../../src/services/contextKeyService'
 import { registerService, resetServices } from '../../src/services/registry'
@@ -21,6 +22,8 @@ describe('commandService', () => {
     setActivePinia(createPinia())
     resetServices()
     registerService(IContextKeyService, createContextKeyService)
+    vi.mocked(platform.isElectron).mockReturnValue(true)
+    vi.mocked(platform.send).mockClear()
   })
 
   it('executes built-in player commands through the store', async () => {
@@ -77,5 +80,95 @@ describe('commandService', () => {
     await expect(commandService.execute(COMMANDS.PLAYER_TOGGLE_PLAY)).rejects.toThrow(
       'currently disabled'
     )
+  })
+
+  it('keeps the latest duplicate registration active and exposes command metadata', async () => {
+    const context = createContextKeyService()
+    resetServices()
+    registerService(IContextKeyService, () => context)
+
+    const commandService = createCommandService()
+    const firstHandler = vi.fn()
+    const secondHandler = vi.fn()
+
+    const disposeFirst = commandService.register('test.duplicate', firstHandler)
+    const disposeSecond = commandService.register('test.duplicate', secondHandler, {
+      enablement: 'custom.enabled'
+    })
+
+    disposeFirst()
+
+    expect(commandService.get('test.duplicate')).toEqual({
+      id: 'test.duplicate',
+      enablement: 'custom.enabled'
+    })
+    expect(commandService.list()).toContain('test.duplicate')
+
+    context.setContext('custom.enabled', true)
+    await commandService.execute('test.duplicate')
+
+    expect(firstHandler).not.toHaveBeenCalled()
+    expect(secondHandler).toHaveBeenCalledTimes(1)
+
+    disposeSecond()
+    expect(commandService.get('test.duplicate')).toBeUndefined()
+  })
+
+  it('fires enablement events and stops after listener disposal', () => {
+    const context = createContextKeyService()
+    resetServices()
+    registerService(IContextKeyService, () => context)
+
+    const commandService = createCommandService()
+    const listener = vi.fn()
+    const subscription = commandService.onDidChangeCommandEnablement(listener)
+
+    const dispose = commandService.register('test.event', vi.fn())
+    context.setContext(CONTEXT_KEYS.PLAYER_HAS_CURRENT_SONG, true)
+    dispose()
+
+    expect(listener).toHaveBeenCalledWith({ id: 'test.event' })
+    expect(listener).toHaveBeenCalledWith({})
+
+    const callCount = listener.mock.calls.length
+    subscription.dispose()
+    context.setContext(CONTEXT_KEYS.PLAYER_HAS_CURRENT_SONG, false)
+
+    expect(listener).toHaveBeenCalledTimes(callCount)
+  })
+
+  it('handles desktop lyric and seek commands across branch conditions', async () => {
+    const context = createContextKeyService()
+    resetServices()
+    registerService(IContextKeyService, () => context)
+
+    const commandService = createCommandService()
+    const playerStore = usePlayerStore()
+
+    context.setContext(CONTEXT_KEYS.PLAYER_CAN_SEEK, true)
+    context.setContext('platform.isElectron', true)
+
+    playerStore.duration = 10
+    playerStore.progress = 8
+
+    await commandService.execute(COMMANDS.PLAYER_SEEK_FORWARD)
+    expect(playerStore.progress).toBe(10)
+
+    await commandService.execute(COMMANDS.PLAYER_SEEK_BACK, { seconds: 20 })
+    expect(playerStore.progress).toBe(0)
+
+    vi.mocked(platform.isElectron).mockReturnValue(false)
+    await commandService.execute(COMMANDS.DESKTOP_LYRIC_TOGGLE)
+    expect(platform.send).not.toHaveBeenCalled()
+
+    vi.mocked(platform.isElectron).mockReturnValue(true)
+    await commandService.execute(COMMANDS.DESKTOP_LYRIC_TOGGLE)
+    expect(platform.send).toHaveBeenCalledWith('toggle-desktop-lyric', undefined)
+  })
+
+  it('throws when executing a missing command', async () => {
+    const commandService = createCommandService()
+
+    await expect(commandService.execute('missing.command')).rejects.toThrow('not registered')
   })
 })

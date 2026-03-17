@@ -78,7 +78,9 @@ export function isValidPlatform(platform: string): platform is 'netease' | 'qq' 
 /**
  * 验证搜索类型
  */
-export function isValidSearchType(type: string): type is 'song' | 'artist' | 'album' | 'playlist' | 'user' {
+export function isValidSearchType(
+  type: string
+): type is 'song' | 'artist' | 'album' | 'playlist' | 'user' {
   return ['song', 'artist', 'album', 'playlist', 'user'].includes(type)
 }
 

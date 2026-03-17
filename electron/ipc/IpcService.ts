@@ -176,7 +176,10 @@ export class IpcService {
         return result
       } catch (error) {
         const duration = Date.now() - startTime
-        logger.error(`[IpcService] Invoke error on ${channel} [${requestId}] (${duration}ms):`, error)
+        logger.error(
+          `[IpcService] Invoke error on ${channel} [${requestId}] (${duration}ms):`,
+          error
+        )
         throw error
       }
     })

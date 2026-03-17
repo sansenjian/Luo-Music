@@ -57,7 +57,10 @@ describe('performanceMonitor', () => {
       registerService(IApiService, () => ({ request: () => Promise.resolve({ data: {} }) }))
       registerService(ILoggerService, () => createMockLoggerService())
       registerService(IConfigService, () => ({
-        get: () => ({ env: { mode: 'test', isDev: true, isProd: false }, ports: { qq: 3200, netease: 14532 } }),
+        get: () => ({
+          env: { mode: 'test', isDev: true, isProd: false },
+          ports: { qq: 3200, netease: 14532 }
+        }),
         getPort: () => 3000
       }))
 
@@ -141,7 +144,10 @@ describe('performanceMonitor', () => {
       registerService(IApiService, () => ({ request: () => Promise.resolve({ data: {} }) }))
       registerService(ILoggerService, () => createMockLoggerService())
       registerService(IConfigService, () => ({
-        get: () => ({ env: { mode: 'test', isDev: true, isProd: false }, ports: { qq: 3200, netease: 14532 } }),
+        get: () => ({
+          env: { mode: 'test', isDev: true, isProd: false },
+          ports: { qq: 3200, netease: 14532 }
+        }),
         getPort: () => 3000
       }))
 

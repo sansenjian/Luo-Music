@@ -82,8 +82,9 @@ function getElectronBridge(): { send?: (channel: string, data?: unknown) => void
     return undefined
   }
 
-  return (window as unknown as { electronAPI?: { send?: (channel: string, data?: unknown) => void } })
-    .electronAPI
+  return (
+    window as unknown as { electronAPI?: { send?: (channel: string, data?: unknown) => void } }
+  ).electronAPI
 }
 
 function supportsMainProcessLogging(): boolean {
@@ -222,8 +223,10 @@ class ResourceLogger extends Disposable implements ILogger {
 class LoggerServiceImpl extends Disposable implements LoggerService {
   private readonly sink: MultiplexLogSink
   private readonly loggers = new Map<string, ResourceLogger>()
-  private readonly onDidChangeLogLevelEmitter =
-    new EventEmitter<{ resource?: string; level: LogLevel }>()
+  private readonly onDidChangeLogLevelEmitter = new EventEmitter<{
+    resource?: string
+    level: LogLevel
+  }>()
   private globalLevel: LogLevel = isDev() ? LogLevels.Debug : LogLevels.Info
   private readonly defaultLogger: ResourceLogger
 

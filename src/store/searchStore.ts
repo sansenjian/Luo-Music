@@ -152,7 +152,7 @@ export const useSearchStore = defineStore(
         results.value = []
         totalResults.value = 0
 
-        throw new Error(errorMessage)
+        throw new Error(errorMessage, { cause: err })
       } finally {
         if (searchId === activeSearchId) {
           isLoading.value = false

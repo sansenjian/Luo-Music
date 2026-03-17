@@ -78,7 +78,9 @@ describe('useHomePage', () => {
     })
 
     const wrapper = mount(Harness)
-    ;(wrapper.vm as unknown as { setSearchKeyword: (value: string) => void }).setSearchKeyword('song')
+    ;(wrapper.vm as unknown as { setSearchKeyword: (value: string) => void }).setSearchKeyword(
+      'song'
+    )
     await (wrapper.vm as unknown as { onSearch: () => Promise<void> }).onSearch()
 
     expect(mockSetSongList).toHaveBeenCalledTimes(1)

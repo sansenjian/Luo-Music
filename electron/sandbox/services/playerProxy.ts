@@ -249,7 +249,9 @@ export class PlayerProxy {
    * @param listener - 回调函数
    * @returns 取消监听函数
    */
-  onPlayStateChange(listener: (data: { isPlaying: boolean; currentTime: number }) => void): () => void {
+  onPlayStateChange(
+    listener: (data: { isPlaying: boolean; currentTime: number }) => void
+  ): () => void {
     return this.ipcProxy.on(RECEIVE_CHANNELS.PLAYER_STATE_CHANGE, listener)
   }
 

@@ -7,11 +7,7 @@ import {
   createAnnotatedInstance
 } from '@/services/injector'
 import { getService, registerService, resetServices } from '@/services/registry'
-import {
-  IApiService,
-  ILoggerService,
-  IConfigService
-} from '@/services/types'
+import { IApiService, ILoggerService, IConfigService } from '@/services/types'
 import { LogLevel } from '@/services/loggerService'
 
 // ==================== Mock 服务定义 ====================

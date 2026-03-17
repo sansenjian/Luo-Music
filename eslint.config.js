@@ -26,14 +26,16 @@ export default [
       '**/*.cjs',
       '**/*.mjs',
       '**/vendor-*.js',
-      '**/chunk-*.js'
+      '**/chunk-*.js',
+      'coverage/**'
     ]
   },
   // 基础错误预防规则
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
-  // Prettier 关闭所有与格式化冲突的规则
+  // eslint-config-prettier 禁用所有与 Prettier 冲突的 ESLint 规则
+  // 必须放在最后以覆盖前面的规则
   eslintConfigPrettier,
   {
     // 浏览器环境全局变量
@@ -112,6 +114,11 @@ export default [
         DOMRect: 'readonly',
         DOMTokenList: 'readonly',
         CSSStyleDeclaration: 'readonly',
+        // DOM Element Types (for TypeScript refs in Vue)
+        HTMLButtonElement: 'readonly',
+        HTMLImageElement: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLInputElement: 'readonly',
         // Web Animations API
         animate: 'readonly',
         Animation: 'readonly',
@@ -131,38 +138,20 @@ export default [
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.vue'],
     rules: {
-      // === 错误预防规则 ===
+      // === 错误预防规则（只保留逻辑相关，格式全部交给 Prettier）===
+      // TypeScript 逻辑规则
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/no-require-imports': 'off',
-      // preserve-caught-error 太严格，关闭
-      'preserve-caught-error': 'off',
-      // 关闭格式相关规则（由 Prettier 管理）
-      '@typescript-eslint/semi': 'off',
-      '@typescript-eslint/quotes': 'off',
-      '@typescript-eslint/comma-dangle': 'off',
-      '@typescript-eslint/indent': 'off',
-      '@typescript-eslint/brace-style': 'off',
-      '@typescript-eslint/keyword-spacing': 'off',
-      '@typescript-eslint/space-before-function-paren': 'off',
-      '@typescript-eslint/object-curly-spacing': 'off',
-      '@typescript-eslint/array-bracket-spacing': 'off',
-      '@typescript-eslint/space-infix-ops': 'off',
-      '@typescript-eslint/member-delimiter-style': 'off',
-      '@typescript-eslint/type-annotation-spacing': 'off',
-      // Vue 规则 - 只保留错误预防，关闭格式规则
+      // Vue 逻辑规则（关闭所有格式相关）
       'vue/multi-word-component-names': 'off',
-      'vue/max-attributes-per-line': 'off',
-      'vue/singleline-html-element-content-newline': 'off',
-      'vue/html-indent': 'off',
-      'vue/html-self-closing': 'off',
-      'vue/first-attribute-linebreak': 'off',
-      'vue/max-len': 'off',
-      'vue/attributes-order': 'off',
       'vue/no-v-html': 'off',
+      // 关闭属性顺序规则（由 Prettier 管理）
+      'vue/attributes-order': 'off',
+      // 必须保留的 Vue 错误预防规则
       'vue/require-v-for-key': 'error',
       'vue/no-use-v-if-with-v-for': 'error',
       'vue/no-dupe-keys': 'error',
