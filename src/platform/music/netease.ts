@@ -9,6 +9,7 @@ import {
 } from './interface'
 import { neteaseAdapter } from '../../api/netease'
 import { validateSearchResponse } from '../../api/responseHandler'
+import { getBitrateByLevel, DEFAULT_AUDIO_BITRATE } from '../../constants/audio'
 
 interface NeteaseSongData {
   id?: number
@@ -113,17 +114,9 @@ export class NeteaseAdapter extends MusicPlatformAdapter {
       // v1 API failed, fall back to legacy API
     }
 
-    const bitrateByLevel: Record<string, number> = {
-      standard: 128000,
-      higher: 192000,
-      exhigh: 320000,
-      lossless: 999000,
-      hires: 999000
-    }
-
     const legacyResponse = await neteaseAdapter.fetch<unknown>('/song/url', {
       id,
-      br: bitrateByLevel[level] || 128000,
+      br: getBitrateByLevel(level, DEFAULT_AUDIO_BITRATE),
       randomCNIP: true,
       timestamp: Date.now()
     })

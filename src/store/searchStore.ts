@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { getMusicAdapter } from '../platform/music'
 import type { Song } from '../platform/music/interface'
+import { getMusicAccessor } from '../services/musicAccessor'
 import { services } from '../services'
+import { storageAdapter } from '../services/storageService'
+import { isCanceledRequestError } from '../utils/http/cancelError'
+import { createLatestRequestController } from '../utils/http/requestScope'
 import { usePlayerStore } from './playerStore'
 import { usePlaylistStore } from './playlistStore'
 
@@ -72,7 +75,7 @@ export const useSearchStore = defineStore(
     const error = ref<string | null>(null)
     const totalResults = ref(0)
     const hasResults = computed(() => results.value.length > 0)
-    let activeSearchId = 0
+    const activeSearch = createLatestRequestController()
 
     function setServer(serverId: string) {
       server.value = serverId
@@ -92,71 +95,66 @@ export const useSearchStore = defineStore(
       }
 
       const trimmedKeyword = searchKeyword.trim()
-      const searchId = ++activeSearchId
+      const task = activeSearch.start()
       keyword.value = trimmedKeyword
       isLoading.value = true
       error.value = null
 
       services.logger().info('searchStore', 'Starting search', {
         keyword: trimmedKeyword,
-        server: server.value,
-        searchId
+        server: server.value
       })
 
       try {
-        const adapter = getMusicAdapter(server.value)
-        const response = await adapter.search(trimmedKeyword, 30, 1)
+        const response = await task.guard(getMusicAccessor().search(server.value, trimmedKeyword, 30, 1))
 
         services.logger().debug('searchStore', 'Search result', response)
-
-        if (searchId !== activeSearchId) {
-          services.logger().debug('searchStore', 'Ignoring stale search result', {
-            keyword: trimmedKeyword,
-            searchId
-          })
-          return
-        }
 
         if (!response?.list || !Array.isArray(response.list)) {
           throw new Error('Invalid search result payload')
         }
 
         if (response.list.length === 0) {
-          results.value = []
-          totalResults.value = 0
-          error.value = 'No songs found for the current keyword'
+          task.commit(() => {
+            results.value = []
+            totalResults.value = 0
+            error.value = 'No songs found for the current keyword'
+          })
           return
         }
 
-        totalResults.value = response.total || 0
-        results.value = normalizeSearchResults(response.list)
+        task.commit(() => {
+          totalResults.value = response.total || 0
+          results.value = normalizeSearchResults(response.list)
 
-        services.logger().info('searchStore', 'Search successful', {
-          count: results.value.length,
-          total: totalResults.value,
-          searchId
+          services.logger().info('searchStore', 'Search successful', {
+            count: results.value.length,
+            total: totalResults.value
+          })
         })
       } catch (err: unknown) {
-        if (searchId !== activeSearchId) {
-          services.logger().debug('searchStore', 'Ignoring stale search error', {
+        if (isCanceledRequestError(err)) {
+          services.logger().debug('searchStore', 'Search canceled', {
             keyword: trimmedKeyword,
-            searchId
+            server: server.value
           })
           return
         }
 
         const errorMessage = formatError(err)
-        services.logger().error('searchStore', 'Search error', { errorMessage, err, searchId })
+        services.logger().error('searchStore', 'Search error', { errorMessage, err })
 
-        error.value = errorMessage
-        results.value = []
-        totalResults.value = 0
+        task.commit(() => {
+          error.value = errorMessage
+          results.value = []
+          totalResults.value = 0
+        })
 
         throw new Error(errorMessage, { cause: err })
       } finally {
-        if (searchId === activeSearchId) {
+        task.commit(() => {
           isLoading.value = false
-        }
+        })
       }
     }
 
@@ -193,6 +191,7 @@ export const useSearchStore = defineStore(
     }
 
     function clearResults() {
+      activeSearch.cancel()
       results.value = []
       error.value = null
       keyword.value = ''
@@ -217,7 +216,7 @@ export const useSearchStore = defineStore(
   },
   {
     persist: {
-      storage: localStorage,
+      storage: storageAdapter,
       pick: ['server']
     }
   }

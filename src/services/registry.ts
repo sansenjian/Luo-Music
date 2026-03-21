@@ -133,6 +133,10 @@ class DependencyGraph {
 
 type ServiceFactory<T> = () => T
 
+type DisposableLike = {
+  dispose(): void
+}
+
 // 使用 ServiceIdentifier 作为 Key
 const factories = new Map<ServiceIdentifier<unknown>, ServiceFactory<unknown>>()
 const instances = new Map<ServiceIdentifier<unknown>, unknown>()
@@ -140,6 +144,22 @@ const graph = new DependencyGraph()
 
 // 当前正在创建的服务栈（用于检测循环依赖）
 const creatingStack: string[] = []
+
+function isDisposableLike(value: unknown): value is DisposableLike {
+  return typeof value === 'object' && value !== null && 'dispose' in value
+}
+
+function disposeServiceInstance(identifierName: string, instance: unknown): void {
+  if (!isDisposableLike(instance) || typeof instance.dispose !== 'function') {
+    return
+  }
+
+  try {
+    instance.dispose()
+  } catch (error) {
+    console.warn(`[Services] Failed to dispose service "${identifierName}"`, error)
+  }
+}
 
 /**
  * 注册服务 - 支持 ServiceIdentifier 和字符串 ID 两种方式
@@ -158,6 +178,12 @@ export function registerService<T>(
   factory: ServiceFactory<T>
 ): void {
   const identifier = toIdentifier(id)
+  const existing = instances.get(identifier)
+
+  if (existing !== undefined) {
+    disposeServiceInstance(identifier.name, existing)
+  }
+
   factories.set(identifier, factory as ServiceFactory<unknown>)
   instances.delete(identifier)
 
@@ -230,6 +256,10 @@ export function getService<T>(id: ServiceIdentifier<T> | ServiceId): T {
  * 重置所有服务（用于测试）
  */
 export function resetServices(): void {
+  for (const [identifier, instance] of instances.entries()) {
+    disposeServiceInstance(identifier.name, instance)
+  }
+
   instances.clear()
   graph.clear()
   creatingStack.length = 0

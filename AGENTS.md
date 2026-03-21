@@ -155,7 +155,7 @@ npm run check:unused
 
 ### 5. 依赖管理
 
-- 使用 npm 作为包管理器，避免 npm 与 pnpm 混用导致锁文件与依赖树漂移
+- 使用 npm 作为包管理器
 - 项目使用 `package-lock.json` 锁定依赖版本
 - 在 `package.json` 中维护 `engines`，确保团队环境一致
 - 当前项目已声明 `engines.node`，确保 Node.js 版本符合要求
@@ -278,7 +278,6 @@ npm run docs:build
 - 不要在未确认构建输出名称前硬编码 preload、main、server 产物名
 - 不要在前端渲染进程直接调用 Node / Electron 主进程能力，必须经过 preload 或 IPC
 - 不要在未补充类型的情况下大面积扩散 `any`
-- 不要混用 npm 与 pnpm 造成锁文件冲突
 - 不要随意恢复已迁移删除的旧模块，除非已确认新模块无法覆盖原能力
 - 不要在迁移中的模块上做与当前任务无关的大范围重构
 - 不要绕过现有请求层、错误处理层与平台适配层直接在页面中堆逻辑

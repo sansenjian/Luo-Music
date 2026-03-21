@@ -1,6 +1,6 @@
 import { computed, onMounted, ref } from 'vue'
 
-import platform from '../platform'
+import { services } from '../services'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { usePlayerStore } from '../store/playerStore'
 import { useToastStore } from '../store/toastStore'
@@ -12,11 +12,13 @@ const COMPACT_MODE_PREFERENCE_KEY = 'compactModeUserToggled'
 export function useHomeShell() {
   const playerStore = usePlayerStore()
   const toastStore = useToastStore()
+  const platformService = services.platform()
+  const storageService = services.storage()
   const activeTab = ref<HomeTab>('lyric')
 
   useKeyboardShortcuts()
 
-  const isElectron = computed(() => platform.isElectron())
+  const isElectron = computed(() => platformService.isElectron())
 
   function switchTab(tab: HomeTab): void {
     activeTab.value = tab
@@ -33,23 +35,23 @@ export function useHomeShell() {
   }
 
   function minimizeWindow(): void {
-    platform.minimizeWindow()
+    platformService.minimizeWindow()
   }
 
   function maximizeWindow(): void {
-    platform.maximizeWindow()
+    platformService.maximizeWindow()
   }
 
   function closeWindow(): void {
-    platform.closeWindow()
+    platformService.closeWindow()
   }
 
   function isMobile(): boolean {
-    return platform.isMobile()
+    return platformService.isMobile()
   }
 
   onMounted(() => {
-    const userPreferenceSet = localStorage.getItem(COMPACT_MODE_PREFERENCE_KEY)
+    const userPreferenceSet = storageService.getItem(COMPACT_MODE_PREFERENCE_KEY)
     if (isMobile() && !playerStore.isCompact && !userPreferenceSet) {
       playerStore.toggleCompactMode()
     }

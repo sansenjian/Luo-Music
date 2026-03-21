@@ -16,6 +16,190 @@ interface IpcMessage {
   error?: string
 }
 
+type JsonHttpError = Error & {
+  code?: string
+  response?: {
+    status?: number
+    data?: unknown
+  }
+}
+
+type ParsedErrorPayload = {
+  message: string
+  data: unknown
+  code?: string
+}
+
+function buildQueryString(params: Record<string, unknown>): string {
+  const searchParams = new URLSearchParams()
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) {
+      continue
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item !== undefined && item !== null) {
+          searchParams.append(key, String(item))
+        }
+      }
+      continue
+    }
+
+    searchParams.append(key, String(value))
+  }
+
+  const query = searchParams.toString()
+  return query.length > 0 ? `?${query}` : ''
+}
+
+function parseErrorPayload(raw: string): ParsedErrorPayload {
+  if (!raw) {
+    return {
+      message: 'Empty response',
+      data: undefined
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      error?: {
+        message?: unknown
+        name?: unknown
+        code?: unknown
+        status?: unknown
+        config?: {
+          url?: unknown
+          method?: unknown
+        }
+      }
+      message?: unknown
+    }
+
+    const upstreamError = parsed?.error
+    const message =
+      typeof upstreamError?.message === 'string'
+        ? upstreamError.message
+        : typeof parsed?.message === 'string'
+          ? parsed.message
+          : raw
+    const code = typeof upstreamError?.code === 'string' ? upstreamError.code : undefined
+
+    if (upstreamError && typeof upstreamError === 'object') {
+      return {
+        message,
+        code,
+        data: {
+          error: {
+            message,
+            name: upstreamError.name,
+            code,
+            status: upstreamError.status,
+            url: upstreamError.config?.url,
+            method: upstreamError.config?.method
+          }
+        }
+      }
+    }
+  } catch {
+    // Keep the original text response for plain-text errors.
+  }
+
+  return {
+    message: raw,
+    data: raw
+  }
+}
+
+async function requestJson(
+  port: number,
+  endpoint: string,
+  params: Record<string, unknown>,
+  options: {
+    method: 'GET' | 'POST'
+    serviceName: string
+  }
+): Promise<unknown> {
+  const http = await import('node:http')
+  const query = options.method === 'GET' ? buildQueryString(params) : ''
+  const path = `/${endpoint}${query}`
+  const body = options.method === 'POST' ? JSON.stringify(params) : null
+
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        host: 'localhost',
+        port,
+        path,
+        method: options.method,
+        headers:
+          body === null
+            ? undefined
+            : {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(body)
+              }
+      },
+      res => {
+        let data = ''
+        res.on('data', chunk => (data += chunk))
+        res.on('end', () => {
+          const status = typeof res.statusCode === 'number' ? res.statusCode : 500
+          const contentTypeHeader = res.headers['content-type']
+          const contentType = Array.isArray(contentTypeHeader)
+            ? contentTypeHeader.join(', ')
+            : String(contentTypeHeader ?? '')
+
+          if (status < 200 || status >= 300) {
+            const payload = parseErrorPayload(data)
+            const error = new Error(
+              `${options.serviceName} service request failed with status ${status}: ${payload.message}`
+            ) as JsonHttpError
+            if (payload.code) {
+              error.code = payload.code
+            }
+            error.response = {
+              status,
+              data: payload.data
+            }
+            reject(error)
+            return
+          }
+
+          if (data.length === 0) {
+            resolve({})
+            return
+          }
+
+          try {
+            resolve(JSON.parse(data))
+          } catch (parseError) {
+            const error = new Error(
+              `${options.serviceName} service returned invalid JSON (${contentType || 'unknown content type'}): ${
+                parseError instanceof Error ? parseError.message : String(parseError)
+              }`
+            ) as JsonHttpError
+            error.response = {
+              status,
+              data
+            }
+            reject(error)
+          }
+        })
+      }
+    )
+
+    req.on('error', reject)
+
+    if (body !== null) {
+      req.write(body)
+    }
+
+    req.end()
+  })
+}
+
 /**
  * 服务基础类 - 所有音乐平台服务的基类
  */
@@ -106,28 +290,40 @@ export abstract class BaseService {
    */
   private waitForIpcMessage(timeout: number): Promise<void> {
     return new Promise((resolve, reject) => {
+      const processRef = this.process
+      if (!processRef) {
+        reject(new Error('Process not started'))
+        return
+      }
+
+      const cleanup = (): void => {
+        clearTimeout(timer)
+        processRef.off('message', onMessage)
+        processRef.off('exit', onExit)
+      }
+
       const timer = setTimeout(() => {
+        cleanup()
         reject(new Error('IPC message timeout'))
       }, timeout)
 
       const onMessage = (msg: IpcMessage): void => {
         if (msg.type === 'ready') {
-          clearTimeout(timer)
-          this.process?.off('message', onMessage)
+          cleanup()
           resolve()
         } else if (msg.type === 'error') {
-          clearTimeout(timer)
-          this.process?.off('message', onMessage)
+          cleanup()
           reject(new Error(msg.error || 'Startup error'))
         }
       }
 
-      if (this.process) {
-        this.process.on('message', onMessage)
-      } else {
-        clearTimeout(timer)
-        reject(new Error('Process not started'))
+      const onExit = (): void => {
+        cleanup()
+        reject(new Error('Process exited before ready'))
       }
+
+      processRef.on('message', onMessage)
+      processRef.once('exit', onExit)
     })
   }
 
@@ -182,6 +378,13 @@ export abstract class BaseService {
  * QQ 音乐服务实现
  */
 export class QQService extends BaseService {
+  private static readonly POST_ENDPOINTS = new Set([
+    'batchGetSongLists',
+    'batchGetSongInfo',
+    'checkQQLoginQr',
+    'user/checkQQLoginQr'
+  ])
+
   constructor(port: number) {
     super('qq', port)
   }
@@ -265,36 +468,10 @@ export class QQService extends BaseService {
     }
 
     // 通过 HTTP 请求转发到 QQ 音乐 API 服务
-    const http = await import('node:http')
-    const url = `http://localhost:${this.port}/${endpoint}`
-
-    return new Promise((resolve, reject) => {
-      const postData = JSON.stringify(params)
-      const req = http.request(
-        url,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
-          }
-        },
-        res => {
-          let data = ''
-          res.on('data', chunk => (data += chunk))
-          res.on('end', () => {
-            try {
-              resolve(JSON.parse(data))
-            } catch (e) {
-              reject(new Error(`Invalid JSON response: ${e}`))
-            }
-          })
-        }
-      )
-
-      req.on('error', reject)
-      req.write(postData)
-      req.end()
+    const method = QQService.POST_ENDPOINTS.has(endpoint) ? 'POST' : 'GET'
+    return requestJson(this.port, endpoint, params, {
+      method,
+      serviceName: 'QQ'
     })
   }
 }
@@ -385,36 +562,9 @@ export class NeteaseService extends BaseService {
       throw new Error('Netease Service is not available')
     }
 
-    const http = await import('node:http')
-    const url = `http://localhost:${this.port}/${endpoint}`
-
-    return new Promise((resolve, reject) => {
-      const postData = JSON.stringify(params)
-      const req = http.request(
-        url,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
-          }
-        },
-        res => {
-          let data = ''
-          res.on('data', chunk => (data += chunk))
-          res.on('end', () => {
-            try {
-              resolve(JSON.parse(data))
-            } catch (e) {
-              reject(new Error(`Invalid JSON response: ${e}`))
-            }
-          })
-        }
-      )
-
-      req.on('error', reject)
-      req.write(postData)
-      req.end()
+    return requestJson(this.port, endpoint, params, {
+      method: 'POST',
+      serviceName: 'Netease'
     })
   }
 }
@@ -425,6 +575,21 @@ export class NeteaseService extends BaseService {
 export class ServiceManager {
   private services: Map<string, BaseService> = new Map()
   private config: ServiceConfig | null = null
+  private startTasks: Map<string, Promise<void>> = new Map()
+
+  private ensureBuiltInServices(config: ServiceConfig): void {
+    if (!this.services.has('qq')) {
+      this.registerService('qq', new QQService(config.services.qq?.port || 3200))
+    }
+
+    if (!this.services.has('netease')) {
+      this.registerService('netease', new NeteaseService(config.services.netease?.port || 14532))
+    }
+  }
+
+  private isServiceEnabled(serviceId: string): boolean {
+    return this.config?.services[serviceId]?.enabled ?? true
+  }
 
   /**
    * 初始化服务管理器
@@ -433,21 +598,20 @@ export class ServiceManager {
     this.config = config
     logger.info('[ServiceManager] Initializing...')
 
-    // 注册内置服务
-    // 注意：QQ 音乐默认端口 3200，网易云音乐默认端口 14532
-    this.registerService('qq', new QQService(config.services.qq?.port || 3200))
-    this.registerService('netease', new NeteaseService(config.services.netease?.port || 14532))
+    this.ensureBuiltInServices(config)
 
     // 根据配置启动服务
-    for (const [serviceId, serviceConfig] of Object.entries(config.services)) {
-      if (serviceConfig.enabled) {
+    const startupTasks = Object.entries(config.services)
+      .filter(([, serviceConfig]) => serviceConfig.enabled)
+      .map(async ([serviceId]) => {
         try {
           await this.startService(serviceId)
         } catch (error) {
           logger.error(`[ServiceManager] Failed to start ${serviceId}:`, error)
         }
-      }
-    }
+      })
+
+    await Promise.all(startupTasks)
 
     logger.info('[ServiceManager] Initialization complete')
   }
@@ -469,6 +633,11 @@ export class ServiceManager {
       throw new Error(`Service ${serviceId} not found`)
     }
 
+    const pendingStart = this.startTasks.get(serviceId)
+    if (pendingStart) {
+      return pendingStart
+    }
+
     const { status } = service.getStatus()
     if (status === 'starting' || status === 'running') {
       logger.warn(
@@ -477,7 +646,12 @@ export class ServiceManager {
       return
     }
 
-    await service.start()
+    const startTask = service.start().finally(() => {
+      this.startTasks.delete(serviceId)
+    })
+
+    this.startTasks.set(serviceId, startTask)
+    await startTask
   }
 
   /**
@@ -546,6 +720,12 @@ export class ServiceManager {
     const serviceInstance = this.services.get(service)
     if (!serviceInstance) {
       throw new Error(`Service ${service} not found`)
+    }
+    if (!this.isServiceEnabled(service)) {
+      throw new Error(`Service ${service} is disabled`)
+    }
+    if (!serviceInstance.isAlive()) {
+      await this.startService(service)
     }
     if (!serviceInstance.isAlive()) {
       throw new Error(`Service ${service} is not available`)

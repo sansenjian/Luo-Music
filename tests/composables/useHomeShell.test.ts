@@ -7,7 +7,7 @@ import { useHomeShell } from '../../src/composables/useHomeShell'
 import { usePlayerStore } from '../../src/store/playerStore'
 import { useToastStore } from '../../src/store/toastStore'
 
-const platformMock = vi.hoisted(() => ({
+const platformServiceMock = vi.hoisted(() => ({
   closeWindow: vi.fn(),
   isElectron: vi.fn(() => false),
   isMobile: vi.fn(() => false),
@@ -16,11 +16,27 @@ const platformMock = vi.hoisted(() => ({
   on: vi.fn(() => vi.fn())
 }))
 
+const storageServiceMock = vi.hoisted(() => ({
+  getItem: vi.fn(() => null),
+  getJSON: vi.fn(() => null),
+  removeItem: vi.fn(),
+  setItem: vi.fn(),
+  setJSON: vi.fn()
+}))
+
 const useKeyboardShortcutsMock = vi.hoisted(() => vi.fn())
 
-vi.mock('../../src/platform', () => ({
-  default: platformMock
-}))
+vi.mock('../../src/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('../../src/services')>()
+  return {
+    ...actual,
+    services: {
+      ...actual.services,
+      platform: () => platformServiceMock,
+      storage: () => storageServiceMock
+    }
+  }
+})
 
 vi.mock('../../src/composables/useKeyboardShortcuts', () => ({
   useKeyboardShortcuts: useKeyboardShortcutsMock
@@ -42,8 +58,9 @@ describe('useHomeShell', () => {
     setActivePinia(createPinia())
     localStorage.clear()
     vi.clearAllMocks()
-    platformMock.isElectron.mockReturnValue(false)
-    platformMock.isMobile.mockReturnValue(false)
+    platformServiceMock.isElectron.mockReturnValue(false)
+    platformServiceMock.isMobile.mockReturnValue(false)
+    storageServiceMock.getItem.mockReturnValue(null)
   })
 
   it('initializes keyboard shortcuts and exposes shell actions', () => {
@@ -60,9 +77,9 @@ describe('useHomeShell', () => {
     vm.maximizeWindow()
     vm.closeWindow()
 
-    expect(platformMock.minimizeWindow).toHaveBeenCalledTimes(1)
-    expect(platformMock.maximizeWindow).toHaveBeenCalledTimes(1)
-    expect(platformMock.closeWindow).toHaveBeenCalledTimes(1)
+    expect(platformServiceMock.minimizeWindow).toHaveBeenCalledTimes(1)
+    expect(platformServiceMock.maximizeWindow).toHaveBeenCalledTimes(1)
+    expect(platformServiceMock.closeWindow).toHaveBeenCalledTimes(1)
   })
 
   it('switches back to lyric tab after a successful play request', async () => {
@@ -98,7 +115,7 @@ describe('useHomeShell', () => {
   })
 
   it('sets up ipc listeners on mount in Electron', async () => {
-    platformMock.isElectron.mockReturnValue(true)
+    platformServiceMock.isElectron.mockReturnValue(true)
 
     const playerStore = usePlayerStore()
     const setupIpcListeners = vi
@@ -112,7 +129,7 @@ describe('useHomeShell', () => {
   })
 
   it('enables compact mode on first mobile mount without user preference', async () => {
-    platformMock.isMobile.mockReturnValue(true)
+    platformServiceMock.isMobile.mockReturnValue(true)
 
     const playerStore = usePlayerStore()
     playerStore.isCompact = false
@@ -127,8 +144,8 @@ describe('useHomeShell', () => {
   })
 
   it('does not force compact mode after the user has already chosen a preference', async () => {
-    platformMock.isMobile.mockReturnValue(true)
-    localStorage.setItem('compactModeUserToggled', '1')
+    platformServiceMock.isMobile.mockReturnValue(true)
+    storageServiceMock.getItem.mockReturnValue('1')
 
     const playerStore = usePlayerStore()
     playerStore.isCompact = false

@@ -189,6 +189,21 @@ describe('ipcHandlers music-playing-control', () => {
     expect(unsubscribeCount).toBe(8)
   })
 
+  it('tears down previous listeners before repeated setup', () => {
+    const handlers = createIpcHandlers(createDeps())
+
+    handlers.setup()
+    expect(unsubscribeCount).toBe(0)
+
+    handlers.setup()
+
+    expect(listeners.size).toBe(8)
+    expect(unsubscribeCount).toBe(8)
+
+    handlers.teardown()
+    expect(unsubscribeCount).toBe(16)
+  })
+
   it('refuses to init an event handler after it has been disposed', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const eventHandler = new IpcEventHandler(createDeps())

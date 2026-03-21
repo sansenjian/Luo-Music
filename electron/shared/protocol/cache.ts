@@ -2,6 +2,12 @@
  * Shared cache types and defaults across renderer/main/preload.
  */
 
+/**
+ * API 服务端口配置
+ */
+export const NETEASE_API_PORT = 14532
+export const QQ_API_PORT = 3200
+
 export const CACHE_DEFAULTS = {
   TTL: 5 * 60 * 1000,
   MAX_SIZE: 100,

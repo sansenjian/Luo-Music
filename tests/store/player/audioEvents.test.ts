@@ -66,9 +66,6 @@ describe('audioEvents', () => {
     state.currentLyricIndex = 2
     state.playing = true
     state.progress = 9
-    state.lyricEngine = {
-      update: vi.fn()
-    } as unknown as typeof state.lyricEngine
 
     const callbacks = {
       onTimeUpdate: vi.fn(),
@@ -97,7 +94,6 @@ describe('audioEvents', () => {
     playerCoreMock.emit('timeupdate')
 
     expect(callbacks.onTimeUpdate).toHaveBeenCalledWith(12)
-    expect(state.lyricEngine?.update).toHaveBeenCalledWith(12)
 
     vi.setSystemTime(new Date('2026-03-17T00:00:00.400Z'))
     playerCoreMock.emit('timeupdate')
@@ -136,6 +132,8 @@ describe('audioEvents', () => {
 
     const handler = new AudioEventHandler(state, callbacks, platform)
     handler.init({
+      uiUpdateInterval: 250,
+      ipcBroadcastInterval: 500,
       getCurrentLyricLine: () => ({ text: '', trans: '', roma: '' })
     })
 
@@ -155,6 +153,70 @@ describe('audioEvents', () => {
     expect(errorSpy).toHaveBeenCalled()
   })
 
+  it('keeps progress and lyric updates moving while playback is active even without timeupdate events', () => {
+    const state = createInitialState()
+    state.currentLyricIndex = 1
+    state.playing = true
+
+    const callbacks = {
+      onTimeUpdate: vi.fn(),
+      onLoadedMetadata: vi.fn(),
+      onEnded: vi.fn(),
+      onPlay: vi.fn(),
+      onPause: vi.fn(),
+      onError: vi.fn()
+    }
+    const platform = {
+      isElectron: vi.fn(() => true),
+      send: vi.fn()
+    }
+
+    const handler = createAudioEventHandler(state, callbacks, platform)
+    handler.init({
+      uiUpdateInterval: 250,
+      ipcBroadcastInterval: 500,
+      getCurrentLyricLine: () => ({ text: 'line', trans: '', roma: '' })
+    })
+
+    playerCoreMock.setCurrentTime(3)
+    playerCoreMock.emit('play')
+
+    expect(callbacks.onPlay).toHaveBeenCalledTimes(1)
+    expect(callbacks.onTimeUpdate).toHaveBeenCalledWith(3)
+    expect(platform.send).toHaveBeenCalledWith(
+      'lyric-time-update',
+      expect.objectContaining({
+        time: 3,
+        index: 1,
+        text: 'line'
+      })
+    )
+
+    callbacks.onTimeUpdate.mockClear()
+    platform.send.mockClear()
+
+    playerCoreMock.setCurrentTime(4)
+    vi.advanceTimersByTime(260)
+    expect(callbacks.onTimeUpdate).toHaveBeenCalledWith(4)
+
+    playerCoreMock.setCurrentTime(5)
+    vi.advanceTimersByTime(260)
+    expect(platform.send).toHaveBeenCalledWith(
+      'lyric-time-update',
+      expect.objectContaining({
+        time: 5,
+        index: 1,
+        text: 'line'
+      })
+    )
+
+    callbacks.onTimeUpdate.mockClear()
+    playerCoreMock.emit('pause')
+    playerCoreMock.setCurrentTime(6)
+    vi.advanceTimersByTime(600)
+    expect(callbacks.onTimeUpdate).not.toHaveBeenCalled()
+  })
+
   it('supports config and callback replacement, and guards reinit after dispose', () => {
     const state = createInitialState()
     const callbacks = {
@@ -170,7 +232,8 @@ describe('audioEvents', () => {
     handler.dispose()
 
     expect(handler.disposed).toBe(true)
-    expect(playerCoreMock.off).toHaveBeenCalledWith('timeupdate')
+    expect(playerCoreMock.listeners.get('timeupdate')?.size ?? 0).toBe(0)
+    expect(playerCoreMock.off).not.toHaveBeenCalled()
 
     handler.init()
     expect(warn).toHaveBeenCalled()

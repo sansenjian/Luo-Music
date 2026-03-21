@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+import { onClickOutside } from '@vueuse/core'
+
 import type { MusicServerOption } from '../../composables/useHomePage'
 
 const props = defineProps<{
@@ -9,9 +12,18 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  'close-select': []
   'select-server': [value: string]
   'toggle-select': []
 }>()
+
+const rootRef = ref<HTMLElement | null>(null)
+
+onClickOutside(rootRef, () => {
+  if (props.showSelect) {
+    emit('close-select')
+  }
+})
 
 function onSelectServer(value: string): void {
   emit('select-server', value)
@@ -23,7 +35,7 @@ function onToggleSelect(): void {
 </script>
 
 <template>
-  <div class="server-select-wrapper">
+  <div ref="rootRef" class="server-select-wrapper">
     <div class="server-select-custom" @click="onToggleSelect">
       <span>{{ props.selectedServerLabel }}</span>
       <svg

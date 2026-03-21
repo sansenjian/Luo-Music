@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { useHomeShell } from './useHomeShell'
 import { searchResultItemToSong, useSearchStore } from '../store/searchStore'
@@ -47,13 +47,8 @@ export function useHomePage() {
     showSelect.value = false
   }
 
-  function handleClickOutside(event: MouseEvent): void {
-    const wrapper = document.querySelector('.server-select-wrapper')
-    const target = event.target instanceof Node ? event.target : null
-
-    if (wrapper && target && !wrapper.contains(target)) {
-      showSelect.value = false
-    }
+  function closeSelect(): void {
+    showSelect.value = false
   }
 
   async function onSearch(): Promise<void> {
@@ -84,16 +79,9 @@ export function useHomePage() {
     }
   }
 
-  onMounted(() => {
-    document.addEventListener('click', handleClickOutside)
-  })
-
-  onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside)
-  })
-
   return {
     ...homeShell,
+    closeSelect,
     isLoading,
     searchKeyword,
     selectedServer,

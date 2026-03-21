@@ -1,9 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 
 import { useActiveLyricState } from '../composables/useActiveLyricState'
 import { useLyricAutoScroll } from '../composables/useLyricAutoScroll'
 import { usePlayerStore } from '../store/playerStore'
+import type { LyricLine } from '../utils/player/core/lyric'
 
 const props = defineProps({
   active: {
@@ -18,6 +19,17 @@ const { lyrics, currentLyricIndex, showOriginal, showTrans, showRoma } = useActi
 
 function handleLyricClick(time) {
   playerStore.seek(time)
+}
+
+function shouldShowOriginalLine(item: LyricLine) {
+  if (showOriginal.value) {
+    return true
+  }
+
+  const hasVisibleTrans = showTrans.value && Boolean(item.trans)
+  const hasVisibleRoma = showRoma.value && Boolean(item.roma)
+
+  return !hasVisibleTrans && !hasVisibleRoma
 }
 
 const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
@@ -59,7 +71,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
           <div v-if="item.roma && showRoma" class="lyric-roma">
             {{ item.roma }}
           </div>
-          <div v-if="showOriginal" class="lyric-main">
+          <div v-if="shouldShowOriginalLine(item)" class="lyric-main">
             {{ item.text }}
           </div>
           <div v-if="item.trans && showTrans" class="lyric-trans">
@@ -145,7 +157,6 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   transition: all 0.3s ease;
   padding: 8px 12px;
   border-left: 3px solid transparent;
-  opacity: 0.4;
 }
 
 .lyric-line:hover,
@@ -158,7 +169,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   background: var(--black);
   color: var(--white);
   border-left-color: var(--accent);
-  opacity: 1;
+  opacity: 1 !important;
   font-weight: 700;
   transform: scale(1.05);
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
@@ -178,6 +189,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   opacity: 0.4;
 }
 
+/* 未播放的歌词行 - 不包括 active 和 passed */
 .lyric-line:not(.active):not(.passed) {
   opacity: 0.5;
 }

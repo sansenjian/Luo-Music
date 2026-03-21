@@ -1,7 +1,6 @@
 ﻿import { contextBridge, ipcRenderer } from 'electron'
 import { SEND_CHANNELS, RECEIVE_CHANNELS, INVOKE_CHANNELS } from '../shared/protocol/channels.ts'
-import type { CacheClearOptions, CacheClearResult } from '../shared/protocol/cache.ts'
-import type { ServiceStatusResponse } from '../ipc/types'
+import { createLegacyElectronAPI, type ElectronAPI } from './legacyElectronApi'
 
 // 导入服务代理
 import { IpcProxy, LogProxy, ConfigProxy, ApiProxy, WindowProxy, PlayerProxy } from './services'
@@ -12,8 +11,6 @@ type SendChannel = (typeof SEND_CHANNELS)[keyof typeof SEND_CHANNELS]
 type ReceiveChannel = (typeof RECEIVE_CHANNELS)[keyof typeof RECEIVE_CHANNELS]
 type InvokeChannel = (typeof INVOKE_CHANNELS)[keyof typeof INVOKE_CHANNELS]
 type Channel = InvokeChannel | SendChannel | ReceiveChannel
-type CacheSizeResult = { httpCache: number; httpCacheFormatted: string; note?: string }
-
 interface ValidatedIpcBridge {
   send: (channel: string, ...args: unknown[]) => void
   on: (channel: string, callback: (...args: unknown[]) => void) => () => void
@@ -24,7 +21,7 @@ interface ValidatedIpcBridge {
  * 服务代理 API 接口
  */
 export interface ServiceAPI {
-  // IPC 鏍稿績
+  // IPC 核心
   invoke: <T>(channel: Channel, ...args: unknown[]) => Promise<T>
   send: (channel: Channel, ...args: unknown[]) => void
   on: (channel: Channel, listener: (...args: unknown[]) => void) => () => void
@@ -32,7 +29,7 @@ export interface ServiceAPI {
   removeListener: (channel: Channel, listener: (...args: unknown[]) => void) => void
   removeAllListeners: (channel?: Channel) => void
 
-  // 鏃ュ織鏈嶅姟
+  // 日志服务
   createLogger: (module: string) => {
     trace: (message: string, data?: unknown) => void
     debug: (message: string, data?: unknown) => void
@@ -42,7 +39,7 @@ export interface ServiceAPI {
     errorWithStack: (error: Error, context?: string) => void
   }
 
-  // 閰嶇疆鏈嶅姟
+  // 配置服务
   config: {
     get: <T extends keyof import('./services').AppConfig>(
       key: T
@@ -59,7 +56,7 @@ export interface ServiceAPI {
     ) => () => void
   }
 
-  // API 鏈嶅姟
+  // API 服务
   api: {
     search: (
       keyword: string,
@@ -86,7 +83,7 @@ export interface ServiceAPI {
     getChart: (platform?: import('./services').MusicPlatform, id?: string) => Promise<unknown[]>
   }
 
-  // 绐楀彛鎺у埗
+  // 窗口控制
   window: {
     minimize: () => void
     toggleMaximize: () => void
@@ -148,39 +145,6 @@ export interface ServiceAPI {
   }
 }
 
-/**
- * 鏃х殑 ElectronAPI 鎺ュ彛锛堜繚鎸佸悜鍚庡吋瀹癸級
- */
-export interface ElectronAPI {
-  minimizeWindow: () => void
-  maximizeWindow: () => void
-  closeWindow: () => void
-  resizeWindow: (dims: { width: number; height: number }) => void
-
-  getCacheSize: () => Promise<CacheSizeResult>
-  clearCache: (options?: CacheClearOptions) => Promise<CacheClearResult>
-  clearAllCache: (keepUserData?: boolean) => Promise<CacheClearResult>
-  getCachePaths: () => Promise<Record<string, string>>
-
-  apiRequest: <T = unknown>(
-    service: string,
-    endpoint: string,
-    params: Record<string, unknown>
-  ) => Promise<T>
-  getServices: () => Promise<string[]>
-
-  getServiceStatus: (serviceId: string) => Promise<ServiceStatusResponse>
-  startService: (serviceId: string) => Promise<void>
-  stopService: (serviceId: string) => Promise<void>
-
-  sendPlayingState: (playing: boolean) => void
-  sendPlayModeChange: (mode: number) => void
-  moveWindow: (x: number, y: number) => void
-
-  send: (channel: string, data: unknown) => void
-  on: (channel: string, callback: (...args: unknown[]) => void) => () => void
-}
-
 function createValidatedIpcBridge(renderer: Electron.IpcRenderer): ValidatedIpcBridge {
   const validSendChannels = new Set<SendChannel>(Object.values(SEND_CHANNELS))
   const validReceiveChannels = new Set<ReceiveChannel>(Object.values(RECEIVE_CHANNELS))
@@ -220,7 +184,7 @@ function createValidatedIpcBridge(renderer: Electron.IpcRenderer): ValidatedIpcB
 }
 
 /**
- * 鍒涘缓鏈嶅姟浠ｇ悊 API
+ * 创建服务代理 API
  */
 function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
   // Initialize proxy services.
@@ -231,7 +195,7 @@ function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
   const playerProxy = new PlayerProxy()
 
   return {
-    // IPC 鏍稿績
+    // IPC 核心
     invoke: (channel: Channel, ...args) => ipcProxy.invoke(channel, ...args),
     send: (channel: Channel, ...args) => ipcProxy.send(channel, ...args),
     on: (channel: Channel, listener) => ipcProxy.on(channel, listener),
@@ -239,10 +203,10 @@ function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
     removeListener: (channel: Channel, listener) => ipcProxy.removeListener(channel, listener),
     removeAllListeners: (channel?: Channel) => ipcProxy.removeAllListeners(channel),
 
-    // 鏃ュ織鏈嶅姟
+    // 日志服务
     createLogger: module => new LogProxy(module),
 
-    // 閰嶇疆鏈嶅姟
+    // 配置服务
     config: {
       get: key => configProxy.get(key),
       getAll: () => configProxy.getAll(),
@@ -252,7 +216,7 @@ function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
       onConfigChange: listener => configProxy.onConfigChange(listener)
     },
 
-    // API 鏈嶅姟
+    // API 服务
     api: {
       search: (keyword, type, platform, page, limit) =>
         apiProxy.search(keyword, type, platform, page, limit),
@@ -267,7 +231,7 @@ function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
       getChart: (platform, id) => apiProxy.getChart(platform, id)
     },
 
-    // 绐楀彛鎺у埗
+    // 窗口控制
     window: {
       minimize: () => windowProxy.minimize(),
       toggleMaximize: () => windowProxy.toggleMaximize(),
@@ -319,38 +283,7 @@ function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
 function exposeAPI(): void {
   const ipc = createValidatedIpcBridge(ipcRenderer)
   const services = createServiceAPI(ipc)
-
-  // 鏃х殑 ElectronAPI 淇濇寔鍚戝悗鍏煎
-  const electronAPI = {
-    minimizeWindow: () => services.window.minimize(),
-    maximizeWindow: () => services.window.toggleMaximize(),
-    closeWindow: () => services.window.close(),
-    resizeWindow: (dims: { width: number; height: number }) =>
-      ipc.send(SEND_CHANNELS.WINDOW_RESIZE, dims),
-
-    getCacheSize: () => ipc.invoke<CacheSizeResult>(INVOKE_CHANNELS.CACHE_GET_SIZE),
-    clearCache: (options: CacheClearOptions = {}) =>
-      ipc.invoke<CacheClearResult>(INVOKE_CHANNELS.CACHE_CLEAR, options),
-    clearAllCache: (keepUserData?: boolean) =>
-      ipc.invoke<CacheClearResult>(INVOKE_CHANNELS.CACHE_CLEAR_ALL, keepUserData),
-    getCachePaths: () => ipc.invoke<Record<string, string>>(INVOKE_CHANNELS.CACHE_GET_PATHS),
-
-    apiRequest: (service: string, endpoint: string, params: Record<string, unknown>) =>
-      services.api.getSongUrl({ id: params.id as string }),
-    getServices: () => ipc.invoke<string[]>(INVOKE_CHANNELS.API_GET_SERVICES),
-
-    getServiceStatus: (serviceId: string) =>
-      ipc.invoke<ServiceStatusResponse>(INVOKE_CHANNELS.SERVICE_GET_STATUS, serviceId),
-    startService: (serviceId: string) => ipc.invoke<void>(INVOKE_CHANNELS.SERVICE_START, serviceId),
-    stopService: (serviceId: string) => ipc.invoke<void>(INVOKE_CHANNELS.SERVICE_STOP, serviceId),
-
-    sendPlayingState: (playing: boolean) => ipc.send(SEND_CHANNELS.MUSIC_PLAYING_CHECK, playing),
-    sendPlayModeChange: (mode: number) => ipc.send(SEND_CHANNELS.MUSIC_PLAYMODE_TRAY_CHANGE, mode),
-    moveWindow: (x: number, y: number) => ipc.send(SEND_CHANNELS.DESKTOP_LYRIC_MOVE, { x, y }),
-
-    send: (channel: string, data: unknown) => ipc.send(channel, data),
-    on: (channel: string, callback: (...args: unknown[]) => void) => ipc.on(channel, callback)
-  }
+  const electronAPI = createLegacyElectronAPI(services.window, ipc)
 
   // Expose both legacy electronAPI and the new services API.
   contextBridge.exposeInMainWorld('electronAPI', electronAPI)

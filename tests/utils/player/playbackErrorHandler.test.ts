@@ -8,10 +8,10 @@ const adapterMock = vi.hoisted(() => ({
   getSongUrl: vi.fn()
 }))
 
-const getMusicAdapterMock = vi.hoisted(() => vi.fn(() => adapterMock))
+const getMusicAccessorMock = vi.hoisted(() => vi.fn(() => adapterMock))
 
-vi.mock('@/platform/music', () => ({
-  getMusicAdapter: getMusicAdapterMock
+vi.mock('@/services/musicAccessor', () => ({
+  getMusicAccessor: getMusicAccessorMock
 }))
 
 function createSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
@@ -52,7 +52,9 @@ describe('playbackErrorHandler', () => {
     const result = await handler.handleAudioError(new Error('decode failed'), state.songList[0])
 
     expect(onStateChange).toHaveBeenCalledWith({ playing: false })
-    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('song-1', { mediaId: undefined })
+    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-1', {
+      mediaId: undefined
+    })
     expect(result).toEqual({
       shouldRetry: true,
       url: 'https://song.test/retry.mp3'
@@ -75,7 +77,9 @@ describe('playbackErrorHandler', () => {
 
     const result = await handler.handleAudioError('unknown', song)
 
-    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('song-2', { mediaId: 'media-2' })
+    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-2', {
+      mediaId: 'media-2'
+    })
     expect(result).toEqual({
       shouldRetry: false,
       shouldSkip: true

@@ -1,89 +1,85 @@
-import { useToastStore } from '../../store/toastStore'
-
-export const ErrorType = {
-  NETWORK: 'network',
-  API: 'api',
-  PLAYER: 'player',
-  VALIDATION: 'validation',
-  UNKNOWN: 'unknown'
-} as const
-
-type ErrorTypeValue = (typeof ErrorType)[keyof typeof ErrorType]
+import { errorCenter } from './center'
+import { AppError, ErrorCode, Errors } from './types'
+import { normalizeApiError, normalizeError, type ErrorContext } from './normalize'
 
 type ErrorOptions = {
-  type?: ErrorTypeValue
+  code?: ErrorCode
   customMessage?: string
-  showToast?: boolean
-  onError?: ((error: unknown) => void) | null
+  recoverable?: boolean
+  emit?: boolean
+  context?: ErrorContext
+  onError?: ((error: AppError) => void) | null
 }
 
-export function handleError(error: unknown, options: ErrorOptions = {}) {
-  const { type = ErrorType.UNKNOWN, customMessage = '', showToast = true, onError = null } = options
-
-  console.error(`[${type.toUpperCase()} Error]:`, error)
-
-  const errorMessage = error instanceof Error ? error.message : ''
-
-  const ErrorMessages: Record<ErrorTypeValue, string> = {
-    [ErrorType.NETWORK]: '网络连接失败，请检查网络设置',
-    [ErrorType.API]: '服务请求失败，请稍后重试',
-    [ErrorType.PLAYER]: '播放出错，请尝试其他歌曲',
-    [ErrorType.VALIDATION]: '输入数据无效',
-    [ErrorType.UNKNOWN]: '发生未知错误'
-  }
-
-  const message = customMessage || errorMessage || ErrorMessages[type]
-
-  if (showToast) {
-    try {
-      const toastStore = useToastStore()
-      toastStore.error(message)
-    } catch {
-      console.error(`[Toast] ${message}`)
-    }
-  }
-
-  if (onError) {
-    onError(error)
-  }
-
-  return {
-    type,
-    message,
-    originalError: error
-  }
+function shouldEmit(error: AppError): boolean {
+  const data = error.data
+  return !data || typeof data !== 'object' || (data as { silent?: boolean }).silent !== true
 }
 
-export function handleApiError(error: unknown, customMessage = '') {
+export function handleError(error: unknown, options: ErrorOptions = {}): AppError {
+  const {
+    code = ErrorCode.UNKNOWN_ERROR,
+    customMessage = 'Unexpected error',
+    recoverable = true,
+    emit = true,
+    context,
+    onError = null
+  } = options
+
+  const appError = normalizeError(error, code, customMessage, context, recoverable)
+
+  if (emit && shouldEmit(appError)) {
+    errorCenter.emit(appError)
+  }
+
+  onError?.(appError)
+  return appError
+}
+
+export function handleApiError(
+  error: unknown,
+  customMessage = '',
+  context?: ErrorContext
+): AppError {
+  const appError = normalizeApiError(error, customMessage || undefined, context)
+
+  if (shouldEmit(appError)) {
+    errorCenter.emit(appError)
+  }
+
+  return appError
+}
+
+export function handlePlayerError(
+  error: unknown,
+  customMessage = '',
+  context?: ErrorContext
+): AppError {
   return handleError(error, {
-    type: ErrorType.API,
-    customMessage: customMessage || '请求失败，请稍后重试'
+    code: ErrorCode.AUDIO_DECODE_FAILED,
+    customMessage: customMessage || 'Player error',
+    context
   })
 }
 
-export function handlePlayerError(error: unknown, customMessage = '') {
+export function handleNetworkError(error: unknown, context?: ErrorContext): AppError {
   return handleError(error, {
-    type: ErrorType.PLAYER,
-    customMessage: customMessage || '播放出错，请尝试其他歌曲'
+    code: ErrorCode.NETWORK_OFFLINE,
+    customMessage: 'Network error',
+    context
   })
 }
 
-export function handleNetworkError(error: unknown) {
-  return handleError(error, {
-    type: ErrorType.NETWORK
-  })
-}
-
-export function withErrorHandling<T extends (...args: never[]) => Promise<unknown>>(
-  fn: T,
+export async function withErrorHandling<T>(
+  fn: () => Promise<T>,
   options: ErrorOptions = {}
-) {
-  return async function (this: unknown, ...args: Parameters<T>) {
-    try {
-      return await fn.apply(this, args)
-    } catch (error) {
-      handleError(error, options)
-      return null
-    }
+): Promise<T | null> {
+  try {
+    return await fn()
+  } catch (error) {
+    handleError(error, options)
+    return null
   }
 }
+
+export { AppError, ErrorCode, Errors }

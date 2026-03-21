@@ -1,9 +1,21 @@
-<script setup>
+<script setup lang="ts">
 import { Analytics } from '@vercel/analytics/vue'
-import { useCommandContext } from './composables/useCommandContext'
 
-const isElectron = window.navigator.userAgent.indexOf('Electron') > -1
-const DEFAULT_PLAYER_STATE = {
+import { useCommandContext } from './composables/useCommandContext'
+import { services } from './services'
+
+type PlayerState = {
+  volume: number
+  playMode: number
+  lyricType: string[]
+  isCompact: boolean
+}
+
+const platformService = services.platform()
+const storageService = services.storage()
+const isElectron = platformService.isElectron()
+const PLAYER_STORAGE_KEY = 'player'
+const DEFAULT_PLAYER_STATE: PlayerState = {
   volume: 0.7,
   playMode: 0,
   lyricType: ['original', 'trans'],
@@ -11,17 +23,20 @@ const DEFAULT_PLAYER_STATE = {
 }
 const VALID_LYRIC_TYPES = new Set(['original', 'trans', 'roma'])
 
-const sanitizeVolume = value => {
+const sanitizeVolume = (value: unknown): number => {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
     ? value
     : DEFAULT_PLAYER_STATE.volume
 }
 
-const sanitizePlayMode = value => {
-  return Number.isInteger(value) && value >= 0 && value <= 3 ? value : DEFAULT_PLAYER_STATE.playMode
+const sanitizePlayMode = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    return DEFAULT_PLAYER_STATE.playMode
+  }
+  return value >= 0 && value <= 3 ? value : DEFAULT_PLAYER_STATE.playMode
 }
 
-const sanitizeLyricType = value => {
+const sanitizeLyricType = (value: unknown): string[] => {
   if (!Array.isArray(value)) {
     return [...DEFAULT_PLAYER_STATE.lyricType]
   }
@@ -31,11 +46,11 @@ const sanitizeLyricType = value => {
   return sanitized.length > 0 ? [...new Set(sanitized)] : [...DEFAULT_PLAYER_STATE.lyricType]
 }
 
-const sanitizeIsCompact = value => {
+const sanitizeIsCompact = (value: unknown): boolean => {
   return typeof value === 'boolean' ? value : DEFAULT_PLAYER_STATE.isCompact
 }
 
-const sanitizePlayerState = value => {
+const sanitizePlayerState = (value: unknown): PlayerState => {
   if (typeof value !== 'object' || value === null) {
     return { ...DEFAULT_PLAYER_STATE }
   }
@@ -51,17 +66,13 @@ const sanitizePlayerState = value => {
 useCommandContext()
 
 if (isElectron) {
-  const playerState = localStorage.getItem('player')
+  const playerState = storageService.getJSON<unknown>(PLAYER_STORAGE_KEY)
 
-  if (playerState) {
-    try {
-      const parsed = JSON.parse(playerState)
-      const sanitized = sanitizePlayerState(parsed)
-      localStorage.setItem('player', JSON.stringify(sanitized))
-    } catch (e) {
-      localStorage.setItem('player', JSON.stringify(DEFAULT_PLAYER_STATE))
-      console.error('Failed to parse player state, reset to defaults:', e)
-    }
+  if (playerState !== null) {
+    storageService.setJSON(PLAYER_STORAGE_KEY, sanitizePlayerState(playerState))
+  } else if (storageService.getItem(PLAYER_STORAGE_KEY)) {
+    storageService.setJSON(PLAYER_STORAGE_KEY, DEFAULT_PLAYER_STATE)
+    console.error('Failed to parse player state, reset to defaults')
   }
 }
 </script>

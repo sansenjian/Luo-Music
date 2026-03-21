@@ -1,16 +1,15 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import {
-  Injector,
   AnnotatedInjector,
   Inject,
-  createInstance,
-  createAnnotatedInstance
+  Injector,
+  createAnnotatedInstance,
+  createInstance
 } from '@/services/injector'
-import { getService, registerService, resetServices } from '@/services/registry'
-import { IApiService, ILoggerService, IConfigService } from '@/services/types'
+import { registerService, resetServices } from '@/services/registry'
+import { IApiService, IConfigService, ILoggerService } from '@/services/types'
 import { LogLevel } from '@/services/loggerService'
-
-// ==================== Mock 服务定义 ====================
 
 class MockLoggerService {
   resource = 'test'
@@ -34,62 +33,36 @@ class MockApiService {
 }
 
 class MockConfigService {
-  private config = {
-    env: {
-      mode: 'test',
-      isDev: true,
-      isProd: false
-    },
-    ports: {
-      qq: 3200,
-      netease: 14532
+  get() {
+    return {
+      env: {
+        mode: 'test',
+        isDev: true,
+        isProd: false
+      },
+      ports: {
+        qq: 3200,
+        netease: 14532
+      }
     }
   }
 
-  get() {
-    return this.config
-  }
-
-  getPort(name: string): number {
+  getPort(_name: string): number {
     return 3000
   }
 }
 
-// ==================== 测试类定义 ====================
-
-/**
- * 无依赖的类
- */
 class NoDepService {
   name = 'NoDepService'
 }
 
-/**
- * 使用默认参数获取依赖的类
- */
-class PlayerService {
+class UnannotatedService {
   constructor(
-    public api?: MockApiService,
-    public logger?: MockLoggerService
-  ) {
-    // 如果未传入依赖，使用 getService 懒加载
-    if (!api) {
-      this.api = getService(IApiService) as MockApiService
-    }
-    if (!logger) {
-      this.logger = getService(ILoggerService) as MockLoggerService
-    }
-  }
-
-  playSong(songId: string): string {
-    this.logger!.info('PlayerService', `Playing song ${songId}`)
-    return `playing-${songId}`
-  }
+    public api: MockApiService,
+    public logger: MockLoggerService
+  ) {}
 }
 
-/**
- * 使用 @Inject 注解的类
- */
 class AnnotatedService {
   constructor(
     @Inject(IApiService) public api: MockApiService,
@@ -102,131 +75,83 @@ class AnnotatedService {
   }
 }
 
-/**
- * 多层依赖的类
- */
-class DownloadService {
-  constructor(
-    @Inject(IApiService) public api: MockApiService,
-    @Inject(ILoggerService) public logger: MockLoggerService
-  ) {}
-
-  async download(songId: string): Promise<string> {
-    this.logger.info('DownloadService', `Downloading ${songId}`)
-    const result = await this.api.request('netease', '/song/url', { id: songId })
-    return result.data?.url || ''
-  }
-}
-
-class DownloadManager {
+class PartiallyAnnotatedService {
   constructor(
     @Inject(ILoggerService) public logger: MockLoggerService,
-    public downloadService: DownloadService
+    public api: MockApiService
   ) {}
-
-  async downloadWithLog(songId: string): Promise<string> {
-    this.logger.info('DownloadManager', 'Starting download')
-    return this.downloadService.download(songId)
-  }
 }
 
-// ==================== 测试用例 ====================
+class ConfiguredService {
+  constructor(
+    @Inject(IConfigService) public config: MockConfigService,
+    @Inject(ILoggerService) public logger: MockLoggerService
+  ) {}
+}
 
 describe('Injector', () => {
   beforeEach(() => {
     resetServices()
-
-    // 注册 Mock 服务
     registerService(IApiService, () => new MockApiService())
     registerService(ILoggerService, () => new MockLoggerService())
     registerService(IConfigService, () => new MockConfigService())
   })
 
-  describe('createInstance', () => {
-    it('should create instance with no dependencies', () => {
-      const injector = new Injector()
-      const instance = injector.createInstance(NoDepService)
+  it('creates classes without constructor dependencies', () => {
+    const injector = new Injector()
+    const instance = injector.createInstance(NoDepService)
 
-      expect(instance).toBeInstanceOf(NoDepService)
-      expect(instance.name).toBe('NoDepService')
-    })
-
-    it('should create instance with default parameter dependencies', () => {
-      const injector = new Injector()
-      const instance = injector.createInstance(PlayerService as any) as PlayerService
-
-      expect(instance).toBeInstanceOf(PlayerService)
-      expect(instance.api).toBeDefined()
-      expect(instance.logger).toBeDefined()
-    })
-
-    it('should inject real services when using @Inject annotations', () => {
-      const injector = new AnnotatedInjector()
-      const instance = injector.createInstance(AnnotatedService as any) as AnnotatedService
-
-      instance.fetchData('123')
-
-      expect(instance.api.request).toBeDefined()
-      expect(instance.logger.info).toHaveBeenCalled()
-    })
-
-    it('should create singleton instance when option is set', () => {
-      const injector = new Injector()
-
-      const instance1 = injector.createInstance(PlayerService as any, {
-        singleton: true
-      }) as PlayerService
-      const instance2 = injector.createInstance(PlayerService as any, {
-        singleton: true
-      }) as PlayerService
-
-      expect(instance1).toBe(instance2)
-    })
-
-    it('should create different instances when singleton is false', () => {
-      const injector = new Injector()
-
-      const instance1 = injector.createInstance(PlayerService as any) as PlayerService
-      const instance2 = injector.createInstance(PlayerService as any) as PlayerService
-
-      expect(instance1).not.toBe(instance2)
-    })
+    expect(instance).toBeInstanceOf(NoDepService)
+    expect(instance.name).toBe('NoDepService')
   })
 
-  describe('createAnnotatedInstance', () => {
-    it('should create instance with @Inject annotations', () => {
-      const instance = createAnnotatedInstance(AnnotatedService as any) as AnnotatedService
+  it('creates classes with explicit @Inject annotations', () => {
+    const injector = new Injector()
+    const instance = injector.createInstance(AnnotatedService as never) as AnnotatedService
 
-      expect(instance).toBeInstanceOf(AnnotatedService)
-      expect(instance.api).toBeDefined()
-      expect(instance.logger).toBeDefined()
-    })
+    expect(instance.api).toBeInstanceOf(MockApiService)
+    expect(instance.logger).toBeInstanceOf(MockLoggerService)
 
-    it('should use mocked services from registry', () => {
-      const instance = createAnnotatedInstance(AnnotatedService as any) as AnnotatedService
-
-      instance.fetchData('456')
-
-      expect(instance.logger.info).toHaveBeenCalled()
-    })
+    instance.fetchData('123')
+    expect(instance.logger.info).toHaveBeenCalledWith('AnnotatedService', 'Fetching data 123')
   })
 
-  describe('nested dependencies', () => {
-    it('should resolve nested dependencies', async () => {
-      const injector = new Injector()
+  it('throws when constructor dependencies are not explicitly annotated', () => {
+    const injector = new Injector()
 
-      // 手动创建依赖
-      const downloadService = createAnnotatedInstance(DownloadService as any) as DownloadService
-      const downloadManager = new DownloadManager(
-        getService(ILoggerService) as MockLoggerService,
-        downloadService
-      )
+    expect(() => injector.createInstance(UnannotatedService as never)).toThrow(
+      /Missing @Inject annotation/
+    )
+  })
 
-      const url = await downloadManager.downloadWithLog('789')
+  it('throws when only part of the constructor is annotated', () => {
+    const injector = new Injector()
 
-      expect(url).toBe('mock-url')
-      expect(downloadManager.logger.info).toHaveBeenCalled()
-    })
+    expect(() => injector.createInstance(PartiallyAnnotatedService as never)).toThrow(
+      /Missing @Inject annotation/
+    )
+  })
+
+  it('supports singleton instances for explicitly annotated classes', () => {
+    const injector = new Injector()
+
+    const first = injector.createInstance(AnnotatedService as never, {
+      singleton: true
+    }) as AnnotatedService
+    const second = injector.createInstance(AnnotatedService as never, {
+      singleton: true
+    }) as AnnotatedService
+
+    expect(first).toBe(second)
+  })
+
+  it('creates fresh instances when singleton caching is disabled', () => {
+    const injector = new Injector()
+
+    const first = injector.createInstance(AnnotatedService as never) as AnnotatedService
+    const second = injector.createInstance(AnnotatedService as never) as AnnotatedService
+
+    expect(first).not.toBe(second)
   })
 })
 
@@ -235,44 +160,37 @@ describe('AnnotatedInjector', () => {
     resetServices()
     registerService(IApiService, () => new MockApiService())
     registerService(ILoggerService, () => new MockLoggerService())
+    registerService(IConfigService, () => new MockConfigService())
   })
 
-  it('should resolve dependencies using @Inject annotations', () => {
+  it('remains compatible with explicit @Inject annotations', () => {
     const injector = new AnnotatedInjector()
-    const instance = injector.createInstance(AnnotatedService as any) as AnnotatedService
+    const instance = injector.createInstance(ConfiguredService as never) as ConfiguredService
 
-    expect(instance.api).toBeInstanceOf(MockApiService)
+    expect(instance.config).toBeInstanceOf(MockConfigService)
     expect(instance.logger).toBeInstanceOf(MockLoggerService)
-  })
-
-  it('should call methods on injected services', () => {
-    const injector = new AnnotatedInjector()
-    const instance = injector.createInstance(AnnotatedService as any) as AnnotatedService
-
-    instance.fetchData('test')
-
-    expect(instance.logger.info).toHaveBeenCalledWith('AnnotatedService', 'Fetching data test')
   })
 })
 
-describe('global injector functions', () => {
+describe('global injector helpers', () => {
   beforeEach(() => {
     resetServices()
     registerService(IApiService, () => new MockApiService())
     registerService(ILoggerService, () => new MockLoggerService())
+    registerService(IConfigService, () => new MockConfigService())
   })
 
-  it('createInstance should use global injector', () => {
-    const instance = createInstance(PlayerService as any) as PlayerService
-
-    expect(instance).toBeInstanceOf(PlayerService)
-    expect(instance.api).toBeDefined()
-    expect(instance.logger).toBeDefined()
-  })
-
-  it('createAnnotatedInstance should use global annotated injector', () => {
-    const instance = createAnnotatedInstance(AnnotatedService as any) as AnnotatedService
+  it('createInstance uses the global injector for explicit dependencies', () => {
+    const instance = createInstance(AnnotatedService as never) as AnnotatedService
 
     expect(instance).toBeInstanceOf(AnnotatedService)
+    expect(instance.api).toBeInstanceOf(MockApiService)
+  })
+
+  it('createAnnotatedInstance uses the global annotated injector', () => {
+    const instance = createAnnotatedInstance(ConfiguredService as never) as ConfiguredService
+
+    expect(instance).toBeInstanceOf(ConfiguredService)
+    expect(instance.config.getPort('qq')).toBe(3000)
   })
 })

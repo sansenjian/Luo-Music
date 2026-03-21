@@ -4,13 +4,19 @@ import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import { createInitialState } from '@/store/player/playerState'
 import { PlaybackActions } from '@/store/player/playbackActions'
 import type { Song } from '@/platform/music/interface'
+import type { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
+
+type MockPlaybackErrorHandler = PlaybackErrorHandler & {
+  markAsUnavailable: ReturnType<typeof vi.fn>
+  playNextSkipUnavailable: ReturnType<typeof vi.fn>
+}
 
 const adapterMock = vi.hoisted(() => ({
   getSongUrl: vi.fn(),
   getLyric: vi.fn()
 }))
 
-const getMusicAdapterMock = vi.hoisted(() => vi.fn(() => adapterMock))
+const getMusicAccessorMock = vi.hoisted(() => vi.fn(() => adapterMock))
 const lyricParseMock = vi.hoisted(() => vi.fn())
 const errorEmitMock = vi.hoisted(() => vi.fn())
 const noCopyrightMock = vi.hoisted(() =>
@@ -27,8 +33,8 @@ const isCanceledRequestErrorMock = vi.hoisted(() =>
   vi.fn((error: unknown) => Boolean((error as { __cancel?: boolean })?.__cancel))
 )
 
-vi.mock('@/platform/music', () => ({
-  getMusicAdapter: getMusicAdapterMock
+vi.mock('@/services/musicAccessor', () => ({
+  getMusicAccessor: getMusicAccessorMock
 }))
 
 vi.mock('@/utils/player/core/lyric', () => ({
@@ -75,10 +81,10 @@ describe('playbackActions', () => {
     const onStateChange = vi.fn((changes: Partial<typeof state>) => Object.assign(state, changes))
     const playSongByIndex = vi.fn().mockResolvedValue(undefined)
     const setLyricsArray = vi.fn()
-    const errorHandler = {
+    const errorHandler: MockPlaybackErrorHandler = {
       markAsUnavailable: vi.fn(),
       playNextSkipUnavailable: vi.fn()
-    }
+    } as unknown as MockPlaybackErrorHandler
 
     const actions = new PlaybackActions({
       getState: () => state,
@@ -173,8 +179,10 @@ describe('playbackActions', () => {
 
     await actions.playSongWithDetails(0)
 
-    expect(getMusicAdapterMock).toHaveBeenCalledWith('qq')
-    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('song-1', { mediaId: 'media-1' })
+    expect(getMusicAccessorMock).toHaveBeenCalled()
+    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-1', {
+      mediaId: 'media-1'
+    })
     expect(song.url).toBe('https://song.test/stream.mp3')
     expect(playSongByIndex).toHaveBeenCalledWith(0)
     expect(setLyricsArray).toHaveBeenCalledWith([

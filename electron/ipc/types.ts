@@ -1,6 +1,6 @@
-﻿/**
- * IPC 閫氶亾绫诲瀷瀹氫箟
- * 涓烘瘡涓€氶亾瀹氫箟鍙傛暟鍜岃繑鍥炵被鍨? */
+/**
+ * IPC 通道类型定义
+ * 为每个通道定义参数和返回类型 */
 
 import type {
   INVOKE_CHANNELS,
@@ -12,10 +12,10 @@ import type { LogEntry } from '../shared/log'
 import type { Song } from '../../src/types/schemas'
 import type { PlayMode as PlayerPlayMode } from '../../src/types/player'
 
-// 瀵煎嚭 PlayMode 绫诲瀷渚?handlers 浣跨敤
+// 导出 PlayMode 类型供 handlers 使用
 export type PlayMode = PlayerPlayMode
 
-// ========== 鍩虹绫诲瀷 ==========
+// ========== 基础类型 ==========
 
 export type { CacheClearOptions, CacheClearResult }
 
@@ -78,7 +78,7 @@ export type LyricTimeUpdate = {
 }
 
 /**
- * IPC 鎾斁鍣ㄧ姸鎬佸搷搴旓紙绠€鍖栫増锛岀敤浜庤法杩涚▼閫氫俊锛? */
+ * IPC 播放器状态响应（简化版，用于跨进程通信） */
 export interface PlayerStateResponse {
   isPlaying: boolean
   isLoading: boolean
@@ -96,10 +96,10 @@ export interface PlayerStateResponse {
   isCompact: boolean
 }
 
-// ========== Invoke 閫氶亾绫诲瀷 ==========
+// ========== Invoke 通道类型 ==========
 
 export interface InvokeChannelMap {
-  // 缂撳瓨绠＄悊
+  // 缓存管理
   [INVOKE_CHANNELS.CACHE_GET_SIZE]: {
     params: []
     result: { httpCache: number; httpCacheFormatted: string; note?: string }
@@ -108,7 +108,7 @@ export interface InvokeChannelMap {
   [INVOKE_CHANNELS.CACHE_CLEAR_ALL]: { params: [keepUserData?: boolean]; result: CacheClearResult }
   [INVOKE_CHANNELS.CACHE_GET_PATHS]: { params: []; result: Record<string, string> }
 
-  // API 缃戝叧
+  // API 网关
   [INVOKE_CHANNELS.API_REQUEST]: {
     params: [
       { service: string; endpoint: string; params: Record<string, unknown>; noCache?: boolean }
@@ -117,7 +117,7 @@ export interface InvokeChannelMap {
   }
   [INVOKE_CHANNELS.API_GET_SERVICES]: { params: []; result: string[] }
 
-  // 鏈嶅姟绠＄悊
+  // 服务管理
   [INVOKE_CHANNELS.SERVICE_GET_STATUS]: {
     params: [serviceId: string]
     result: ServiceStatusResponse
@@ -144,61 +144,74 @@ export interface InvokeChannelMap {
     result: { success: boolean; error?: string }
   }
 
-  // 绐楀彛鎺у埗
+  // 窗口控制
   [INVOKE_CHANNELS.WINDOW_GET_SIZE]: { params: []; result: { width: number; height: number } }
   [INVOKE_CHANNELS.WINDOW_IS_MAXIMIZED]: { params: []; result: boolean }
   [INVOKE_CHANNELS.WINDOW_IS_MINIMIZED]: { params: []; result: boolean }
   [INVOKE_CHANNELS.WINDOW_GET_STATE]: {
     params: []
-    result: { isMaximized: boolean; isMinimized: boolean; isFullScreen: boolean }
+    result: {
+      isMaximized: boolean
+      isMinimized: boolean
+      isFullScreen: boolean
+      isAlwaysOnTop: boolean
+    }
   }
 
-  // 閰嶇疆绠＄悊
+  // 配置管理
   [INVOKE_CHANNELS.CONFIG_GET]: { params: [key: string]; result: unknown }
   [INVOKE_CHANNELS.CONFIG_GET_ALL]: { params: []; result: Record<string, unknown> }
   [INVOKE_CHANNELS.CONFIG_SET]: { params: [key: string, value: unknown]; result: void }
   [INVOKE_CHANNELS.CONFIG_DELETE]: { params: [key: string]; result: void }
   [INVOKE_CHANNELS.CONFIG_RESET]: { params: [key?: string]; result: void }
 
-  // API 鏈嶅姟
+  // API 服务
   [INVOKE_CHANNELS.API_SEARCH]: {
-    params: [keyword: string, type?: string]
+    params: [
+      {
+        keyword: string
+        type?: string
+        platform?: 'netease' | 'qq'
+        page?: number
+        limit?: number
+      }
+    ]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_SONG_URL]: {
-    params: [id: string | number]
+    params: [{ id: string | number; platform?: 'netease' | 'qq'; quality?: number; mediaId?: string }]
     result: { url?: string; error?: string }
   }
   [INVOKE_CHANNELS.API_GET_LYRIC]: {
-    params: [id: string | number]
-    result: { lyric?: string; tlyric?: string; rlyric?: string; error?: string }
+    params: [{ id: string | number; platform?: 'netease' | 'qq' }]
+    result: { lyric?: string; translated?: string; romalrc?: string; error?: string }
   }
   [INVOKE_CHANNELS.API_GET_SONG_DETAIL]: {
-    params: [id: string | number]
+    params: [{ id: string | number; platform?: 'netease' | 'qq' }]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_PLAYLIST_DETAIL]: {
-    params: [id: string | number]
+    params: [{ id: string | number; platform?: 'netease' | 'qq' }]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_ARTIST_DETAIL]: {
-    params: [id: string | number]
+    params: [{ id: string | number; platform?: 'netease' | 'qq' }]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_ALBUM_DETAIL]: {
-    params: [id: string | number]
+    params: [{ id: string | number; platform?: 'netease' | 'qq' }]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_RECOMMENDED_PLAYLISTS]: {
-    params: []
+    params: [{ platform?: 'netease' | 'qq'; limit?: number }]
     result: unknown
   }
   [INVOKE_CHANNELS.API_GET_CHART]: {
-    params: [chartId: string]
+    params: [{ platform?: 'netease' | 'qq'; id?: string }]
     result: unknown
   }
 
-  // 鎾斁鍣ㄦ帶鍒?
+  // 播放器控制
   [INVOKE_CHANNELS.PLAYER_PLAY]: { params: []; result: void }
   [INVOKE_CHANNELS.PLAYER_PAUSE]: { params: []; result: void }
   [INVOKE_CHANNELS.PLAYER_TOGGLE]: { params: []; result: void }
@@ -219,16 +232,16 @@ export interface InvokeChannelMap {
   [INVOKE_CHANNELS.PLAYER_CLEAR_PLAYLIST]: { params: []; result: void }
   [INVOKE_CHANNELS.PLAYER_GET_LYRIC]: { params: []; result: unknown }
 
-  // 姝岃瘝鎺у埗
+  // 歌词控制
   [INVOKE_CHANNELS.LYRIC_TOGGLE]: { params: []; result: void }
   [INVOKE_CHANNELS.LYRIC_SET_ALWAYS_ON_TOP]: { params: [alwaysOnTop: boolean]; result: void }
   [INVOKE_CHANNELS.LYRIC_LOCK]: { params: [locked: boolean]; result: void }
 }
 
-// ========== Send 閫氶亾绫诲瀷 ==========
+// ========== Send 通道类型 ==========
 
 export interface SendChannelMap {
-  // 绐楀彛鎺у埗
+  // 窗口控制
   [SEND_CHANNELS.WINDOW_MINIMIZE]: { params: [] }
   [SEND_CHANNELS.WINDOW_MAXIMIZE]: { params: [] }
   [SEND_CHANNELS.WINDOW_CLOSE]: { params: [] }
@@ -240,11 +253,11 @@ export interface SendChannelMap {
   [SEND_CHANNELS.WINDOW_SHOW]: { params: [] }
   [SEND_CHANNELS.WINDOW_HIDE]: { params: [] }
 
-  // 鎾斁鍣ㄧ姸鎬?
+  // 播放器状态
   [SEND_CHANNELS.MUSIC_PLAYING_CHECK]: { params: [playing: boolean] }
   [SEND_CHANNELS.MUSIC_PLAYMODE_TRAY_CHANGE]: { params: [mode: number] }
 
-  // 妗岄潰姝岃瘝
+  // 桌面歌词
   [SEND_CHANNELS.DESKTOP_LYRIC_TOGGLE]: { params: [] }
   [SEND_CHANNELS.DESKTOP_LYRIC_CONTROL]: { params: [action: string] }
   [SEND_CHANNELS.DESKTOP_LYRIC_TOGGLE_LOCK]: { params: [] }
@@ -252,26 +265,26 @@ export interface SendChannelMap {
   [SEND_CHANNELS.DESKTOP_LYRIC_SET_IGNORE_MOUSE]: { params: [ignore: boolean] }
   [SEND_CHANNELS.LYRIC_TIME_UPDATE]: { params: [LyricTimeUpdate] }
 
-  // 涓嬭浇
+  // 下载
   [SEND_CHANNELS.DOWNLOAD_MUSIC]: { params: [DownloadRequest] }
 
-  // 鏃ュ織
+  // 日志
   [SEND_CHANNELS.LOG_MESSAGE]: { params: [LogMessage] }
 
-  // 閿欒鎶ュ憡
+  // 错误报告
   [SEND_CHANNELS.ERROR_REPORT]: { params: [ErrorReport] }
 }
 
-// ========== Receive 閫氶亾绫诲瀷 ==========
+// ========== Receive 通道类型 ==========
 
 export interface ReceiveChannelMap {
-  // 閫氱敤娑堟伅
+  // 通用消息
   [RECEIVE_CHANNELS.MAIN_PROCESS_MESSAGE]: { payload: string }
 
-  // 缂撳瓨
+  // 缓存
   [RECEIVE_CHANNELS.CACHE_CLEARED]: { payload: CacheClearResult }
 
-  // 鎾斁鍣ㄦ帶鍒?
+  // 播放器控制
   [RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL]: { payload: void }
   [RECEIVE_CHANNELS.MUSIC_SONG_CONTROL]: { payload: 'prev' | 'next' }
   [RECEIVE_CHANNELS.MUSIC_PLAYMODE_CONTROL]: { payload: number }
@@ -280,27 +293,27 @@ export interface ReceiveChannelMap {
   [RECEIVE_CHANNELS.MUSIC_PROCESS_CONTROL]: { payload: 'forward' | 'back' }
   [RECEIVE_CHANNELS.MUSIC_COMPACT_MODE_CONTROL]: { payload: void }
 
-  // 鐣岄潰
+  // 界面
   [RECEIVE_CHANNELS.HIDE_PLAYER]: { payload: void }
 
-  // 姝岃瘝
+  // 歌词
   [RECEIVE_CHANNELS.LYRIC_UPDATE]: { payload: LyricData }
   [RECEIVE_CHANNELS.LYRIC_TIME_UPDATE]: { payload: LyricTimeUpdate }
   [RECEIVE_CHANNELS.DESKTOP_LYRIC_LOCK_STATE]: { payload: { locked: boolean } }
 
-  // 涓嬭浇
+  // 下载
   [RECEIVE_CHANNELS.DOWNLOAD_PROGRESS]: { payload: DownloadProgress }
   [RECEIVE_CHANNELS.DOWNLOAD_COMPLETE]: { payload: DownloadComplete }
   [RECEIVE_CHANNELS.DOWNLOAD_FAILED]: { payload: DownloadFailed }
 }
 
-// ========== 杈呭姪绫诲瀷 ==========
+// ========== 辅助类型 ==========
 
 export type InvokeChannel = keyof InvokeChannelMap
 export type SendChannel = keyof SendChannelMap
 export type ReceiveChannel = keyof ReceiveChannelMap
 
-// 绫诲瀷瀹夊叏鐨?IPC 璋冪敤鍑芥暟
+// 类型安全的 IPC 调用函数
 export type InvokeFunction<T extends InvokeChannel> = (
   ...args: InvokeChannelMap[T]['params']
 ) => Promise<InvokeChannelMap[T]['result']>

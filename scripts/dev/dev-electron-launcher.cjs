@@ -5,7 +5,17 @@ const { spawn } = require('child_process')
 const dotenv = require('dotenv')
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
-const isWindows = process.platform === 'win32'
+
+function resolveElectronViteCli() {
+  const packageJsonPath = require.resolve('electron-vite/package.json')
+  const cliPath = path.join(path.dirname(packageJsonPath), 'bin', 'electron-vite.js')
+
+  if (!fs.existsSync(cliPath)) {
+    throw new Error(`electron-vite CLI not found at ${cliPath}`)
+  }
+
+  return cliPath
+}
 
 function waitForFreshFile(file, startTime) {
   return new Promise((resolve) => {
@@ -69,13 +79,14 @@ function waitForPort(port) {
 function buildElectron() {
   return new Promise((resolve, reject) => {
     console.log('[dev-electron-launcher] Building electron files with electron-vite...')
+    const electronViteCli = resolveElectronViteCli()
     const child = spawn(
-      isWindows ? 'npm.cmd' : 'npm',
-      ['exec', '--', 'electron-vite', 'build', '--config', 'electron.vite.config.ts'],
+      process.execPath,
+      [electronViteCli, 'build', '--config', 'electron.vite.config.ts'],
       {
-      stdio: 'inherit',
-      shell: isWindows,
-      cwd: process.cwd()
+        stdio: 'inherit',
+        shell: false,
+        cwd: process.cwd()
       }
     )
     child.on('exit', (code) => {

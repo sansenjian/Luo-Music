@@ -13,6 +13,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  'close-select': []
   search: []
   'search-keyword-change': [value: string]
   'select-server': [value: string]
@@ -32,6 +33,10 @@ function onSelectServer(value: string): void {
   emit('select-server', value)
 }
 
+function onCloseSelect(): void {
+  emit('close-select')
+}
+
 function onToggleSelect(): void {
   emit('toggle-select')
 }
@@ -44,6 +49,7 @@ function onToggleSelect(): void {
       :selected-server-label="props.selectedServerLabel"
       :servers="props.servers"
       :show-select="props.showSelect"
+      @close-select="onCloseSelect"
       @select-server="onSelectServer"
       @toggle-select="onToggleSelect"
     />

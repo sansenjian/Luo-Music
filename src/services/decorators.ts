@@ -15,6 +15,9 @@ export {
   IConfigService,
   IContextKeyService,
   ICommandService,
+  IPlayerService,
+  IMusicService,
+  IStorageService,
   createDecorator,
   type ServiceIdentifier
 } from './types'
@@ -57,19 +60,19 @@ export function useService<T>(identifier: ServiceIdentifier<T>): T {
 
 /**
  * 创建带依赖注入的服务类
- * 用于需要依赖其他服务的服务
+ * 用于保留服务类声明的统一入口。
+ * 构造函数依赖请使用 `@Inject(...)` 参数装饰器，而不是 `@inject(...)`。
  *
  * 用法：
  * ```typescript
  * const MyService = createService(class {
- *   constructor(
- *     @inject(IApiService) private api: ApiService,
- *     @inject(ILoggerService) private logger: LoggerService
- *   ) {}
+ *   @inject(IApiService) private api!: ApiService
  * })
  * ```
  */
-export function createService<T extends new (...args: unknown[]) => unknown>(ServiceClass: T): T {
+export function createService<TArgs extends unknown[], TInstance>(
+  ServiceClass: new (...args: TArgs) => TInstance
+): new (...args: TArgs) => TInstance {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new Proxy(ServiceClass as any, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

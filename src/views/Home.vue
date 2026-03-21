@@ -15,6 +15,7 @@ const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.v
 const {
   activeTab,
   closeWindow,
+  closeSelect,
   isElectron,
   maximizeWindow,
   minimizeWindow,
@@ -44,6 +45,7 @@ const {
       :selected-server-label="selectedServerLabel"
       :servers="servers"
       :show-select="showSelect"
+      @close-select="closeSelect"
       @close-window="closeWindow"
       @maximize-window="maximizeWindow"
       @minimize-window="minimizeWindow"

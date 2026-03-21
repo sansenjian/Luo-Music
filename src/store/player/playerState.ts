@@ -7,8 +7,6 @@
 
 import type { LyricLine } from '@/utils/player/core/lyric'
 import type { Song } from '@/platform/music/interface'
-import type { ErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
-import type { LyricEngine } from '@/utils/player/core/lyric'
 
 /**
  * 播放器状态接口
@@ -54,14 +52,8 @@ export interface PlayerState {
   loading: boolean
   /** 是否紧凑模式 */
   isCompact: boolean
-  /** 错误处理器 */
-  errorHandler: ErrorHandler | null
-  /** 歌词引擎 */
-  lyricEngine: LyricEngine | null
   /** IPC 是否已初始化 */
   ipcInitialized: boolean
-  /** IPC 取消订阅函数列表 */
-  ipcUnsubscribers: Array<() => void>
 }
 
 /**
@@ -104,10 +96,7 @@ export function createInitialState(): PlayerState {
     initialized: false,
     loading: false,
     isCompact: false,
-    errorHandler: null,
-    lyricEngine: null,
-    ipcInitialized: false,
-    ipcUnsubscribers: []
+    ipcInitialized: false
   }
 }
 

@@ -28,8 +28,8 @@ const adapterMock = {
   search: vi.fn()
 }
 
-vi.mock('../../src/platform/music', () => ({
-  getMusicAdapter: vi.fn(() => adapterMock)
+vi.mock('../../src/services/musicAccessor', () => ({
+  getMusicAccessor: vi.fn(() => adapterMock)
 }))
 
 describe('searchStore', () => {
@@ -79,7 +79,7 @@ describe('searchStore', () => {
     const first = createDeferred<{ list: Song[]; total: number }>()
     const second = createDeferred<{ list: Song[]; total: number }>()
 
-    adapterMock.search.mockImplementation((keyword: string) => {
+    adapterMock.search.mockImplementation((_platform: string, keyword: string) => {
       if (keyword === 'first') return first.promise
       if (keyword === 'second') return second.promise
       throw new Error(`Unexpected keyword: ${keyword}`)
@@ -132,6 +132,48 @@ describe('searchStore', () => {
 
     expect(store.results).toHaveLength(1)
     expect(store.results[0].id).toBe('second-song')
+    expect(store.isLoading).toBe(false)
+  })
+
+  it('treats superseded search failures as cancellation and keeps latest state', async () => {
+    const first = createDeferred<{ list: Song[]; total: number }>()
+    const second = createDeferred<{ list: Song[]; total: number }>()
+
+    adapterMock.search.mockImplementation((_platform: string, keyword: string) => {
+      if (keyword === 'first') return first.promise
+      if (keyword === 'second') return second.promise
+      throw new Error(`Unexpected keyword: ${keyword}`)
+    })
+
+    const store = useSearchStore()
+    const firstRequest = store.search('first')
+    const secondRequest = store.search('second')
+
+    second.resolve({
+      list: [
+        {
+          id: 'second-song',
+          name: 'Second',
+          artists: [{ id: 1, name: 'Artist B' }],
+          album: { id: 2, name: 'Album B', picUrl: 'b.jpg' },
+          duration: 180000,
+          mvid: 0,
+          platform: 'netease',
+          originalId: 'second-song'
+        }
+      ],
+      total: 1
+    })
+
+    await secondRequest
+
+    first.reject(new Error('stale search failed'))
+
+    await expect(firstRequest).resolves.toBeUndefined()
+    expect(store.keyword).toBe('second')
+    expect(store.results).toHaveLength(1)
+    expect(store.results[0].id).toBe('second-song')
+    expect(store.error).toBeNull()
     expect(store.isLoading).toBe(false)
   })
 

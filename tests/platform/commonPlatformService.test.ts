@@ -97,14 +97,23 @@ describe('platform/common/platformService', () => {
     })
 
     it('returns false when electron api is absent', () => {
-      delete (window as Window & { electronAPI?: unknown }).electronAPI
+      Object.defineProperty(window, 'electronAPI', {
+        configurable: true,
+        value: undefined
+      })
       expect(detectElectron()).toBe(false)
     })
 
     it('returns true when electron api exists', () => {
-      ;(window as Window & { electronAPI?: unknown }).electronAPI = {}
+      Object.defineProperty(window, 'electronAPI', {
+        configurable: true,
+        value: {} as unknown
+      })
       expect(detectElectron()).toBe(true)
-      delete (window as Window & { electronAPI?: unknown }).electronAPI
+      Object.defineProperty(window, 'electronAPI', {
+        configurable: true,
+        value: undefined
+      })
     })
   })
 

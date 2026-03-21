@@ -82,7 +82,7 @@ describe('platform index', () => {
     expect(service.sendPlayModeChange).toHaveBeenCalledWith(2)
 
     unsubscribe()
-    expect(service.getPlatform()).toBe(Platform.Web)
+    expect((service.getPlatform as () => Platform)()).toBe(Platform.Web)
     expect(platform.isElectron()).toBe(false)
     expect(platform.isMobile()).toBe(false)
     expect(platform.getName()).toBe('mock')

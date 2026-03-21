@@ -405,6 +405,12 @@ class ContextKeyServiceImpl implements ContextKeyService {
     return Object.fromEntries(this.values.entries())
   }
 
+  dispose(): void {
+    this.values.clear()
+    this.expressionCache.clear()
+    this.onDidChangeContextEmitter.dispose()
+  }
+
   private getOrParseExpression(expression: string): AstNode {
     const cached = this.expressionCache.get(expression)
     if (cached) {

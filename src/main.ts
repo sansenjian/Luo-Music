@@ -54,6 +54,13 @@ setupServices()
 
 // 初始化性能监控
 performanceMonitor.init()
+window.addEventListener(
+  'pagehide',
+  () => {
+    performanceMonitor.dispose()
+  },
+  { once: true }
+)
 
 function clearCookies(): void {
   try {

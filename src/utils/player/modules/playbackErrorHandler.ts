@@ -1,6 +1,6 @@
-import { getMusicAdapter } from '../../../platform/music'
 import { PLAY_MODE } from '../constants/playMode'
 import type { Song } from '../../../platform/music/interface'
+import { getMusicAccessor } from '../../../services/musicAccessor'
 
 interface ErrorHandlerOptions {
   getState?: () => {
@@ -74,7 +74,6 @@ export class PlaybackErrorHandler implements ErrorHandler {
 
   async retryGetMusicUrl(song: Song): Promise<{ url: string } | null> {
     const platform = song.platform || 'netease'
-    const adapter = getMusicAdapter(platform)
     const mediaId =
       typeof song.mediaId === 'string'
         ? song.mediaId
@@ -83,7 +82,7 @@ export class PlaybackErrorHandler implements ErrorHandler {
           : undefined
 
     try {
-      const url = await adapter.getSongUrl(song.id, { mediaId })
+      const url = await getMusicAccessor().getSongUrl(platform, song.id, { mediaId })
       if (url) {
         return { url }
       }

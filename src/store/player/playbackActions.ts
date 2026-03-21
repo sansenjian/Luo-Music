@@ -11,7 +11,7 @@
  */
 
 import type { Song } from '@/platform/music/interface'
-import { getMusicAdapter } from '@/platform/music'
+import { getMusicAccessor } from '@/services/musicAccessor'
 import { LyricParser } from '@/utils/player/core/lyric'
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import { errorCenter, Errors } from '@/utils/error'
@@ -150,8 +150,8 @@ export class PlaybackActions {
     this.deps.onStateChange({ loading: true })
 
     // 获取平台适配器
-    const platformKey = song.platform || (song as { server?: string }).server
-    const adapter = getMusicAdapter(platformKey)
+    const platformKey = song.platform || (song as { server?: string }).server || 'netease'
+    const musicService = getMusicAccessor()
 
     console.log(`[Player] Playing song: ${song.name} (ID: ${song.id}, Platform: ${platformKey})`)
 
@@ -161,7 +161,7 @@ export class PlaybackActions {
         try {
           console.log('[Player] Fetching URL for song:', song.id)
           const mediaId = (song as Song & { mediaId?: string }).mediaId
-          const url = await adapter.getSongUrl(song.id, { mediaId })
+          const url = await musicService.getSongUrl(platformKey, song.id, { mediaId })
           console.log('[Player] Got URL:', url ? 'Success' : 'Failed')
 
           if (url) {
@@ -187,7 +187,7 @@ export class PlaybackActions {
 
       // 3. 获取歌词
       try {
-        const lyricData = await adapter.getLyric(song.id)
+        const lyricData = await musicService.getLyric(platformKey, song.id)
         const lrcText = lyricData.lrc || ''
         const tlyricText = lyricData.tlyric || ''
         const rlyricText = lyricData.romalrc || ''

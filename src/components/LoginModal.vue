@@ -43,14 +43,42 @@ const status = ref<LoginStatus>('loading')
 const statusText = ref('正在加载二维码...')
 
 let pollingTimer: ReturnType<typeof setInterval> | null = null
+let closeTimer: ReturnType<typeof setTimeout> | null = null
 let isChecking = false
+let activeAttemptId = 0
+
+function clearCloseTimer(): void {
+  if (closeTimer) {
+    clearTimeout(closeTimer)
+    closeTimer = null
+  }
+}
+
+function isAttemptCurrent(attemptId: number): boolean {
+  return attemptId === activeAttemptId
+}
+
+function invalidateActiveAttempt(): void {
+  activeAttemptId += 1
+  isChecking = false
+  stopPolling()
+  clearCloseTimer()
+}
 
 async function fetchQRCode(): Promise<void> {
+  const attemptId = ++activeAttemptId
+
+  stopPolling()
+  clearCloseTimer()
+  isChecking = false
   status.value = 'loading'
   statusText.value = '正在加载二维码...'
 
   try {
     const keyRes = (await getQRKey()) as QrKeyResponse
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
     const unikey = keyRes.data?.unikey
     if (!unikey) {
       throw new Error('Missing QR key')
@@ -59,6 +87,9 @@ async function fetchQRCode(): Promise<void> {
     qrKey.value = unikey
 
     const qrRes = (await getQRCode(qrKey.value)) as QrImageResponse
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
     const qrimg = qrRes.data?.qrimg
     if (!qrimg) {
       throw new Error('Missing QR image')
@@ -67,8 +98,12 @@ async function fetchQRCode(): Promise<void> {
     qrImage.value = qrimg
     status.value = 'waiting'
     statusText.value = '请使用网易云音乐 App 扫码登录'
-    startPolling()
+    startPolling(attemptId)
   } catch (error) {
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+
     logger.error('Failed to load Netease login QR code', error)
     status.value = 'error'
     statusText.value = '加载二维码失败，请稍后重试'
@@ -76,10 +111,15 @@ async function fetchQRCode(): Promise<void> {
   }
 }
 
-function startPolling(): void {
+function startPolling(attemptId: number): void {
   stopPolling()
 
   pollingTimer = setInterval(async () => {
+    if (!isAttemptCurrent(attemptId)) {
+      stopPolling()
+      return
+    }
+
     if (isChecking) {
       return
     }
@@ -87,6 +127,9 @@ function startPolling(): void {
     isChecking = true
     try {
       const res = (await checkQRStatus(qrKey.value)) as QrCheckResponse
+      if (!isAttemptCurrent(attemptId)) {
+        return
+      }
 
       switch (res.code) {
         case 800:
@@ -106,15 +149,21 @@ function startPolling(): void {
           status.value = 'success'
           statusText.value = '登录成功'
           stopPolling()
-          await handleLoginSuccess(res.cookie ?? '')
+          await handleLoginSuccess(res.cookie ?? '', attemptId)
           break
         default:
           break
       }
     } catch (error) {
+      if (!isAttemptCurrent(attemptId)) {
+        return
+      }
+
       logger.warn('Failed to poll Netease QR login status', error)
     } finally {
-      isChecking = false
+      if (isAttemptCurrent(attemptId)) {
+        isChecking = false
+      }
     }
   }, 3000)
 }
@@ -126,20 +175,38 @@ function stopPolling(): void {
   }
 }
 
-async function handleLoginSuccess(cookie: string): Promise<void> {
+async function handleLoginSuccess(cookie: string, attemptId: number): Promise<void> {
   try {
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+
     userStore.setCookie(cookie)
 
     const userRes = (await getUserAccount()) as UserAccountResponse
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+
     if (!userRes.profile) {
       throw new Error('Missing user profile')
     }
 
     userStore.login(userRes.profile, cookie)
-    setTimeout(() => {
+    clearCloseTimer()
+    closeTimer = setTimeout(() => {
+      if (!isAttemptCurrent(attemptId)) {
+        return
+      }
+
       emit('close')
+      closeTimer = null
     }, 500)
   } catch (error) {
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+
     logger.error('Failed to load Netease user profile after login', error)
     userStore.logout()
     status.value = 'error'
@@ -149,12 +216,12 @@ async function handleLoginSuccess(cookie: string): Promise<void> {
 }
 
 function refreshQRCode(): void {
-  stopPolling()
+  invalidateActiveAttempt()
   void fetchQRCode()
 }
 
 function close(): void {
-  stopPolling()
+  invalidateActiveAttempt()
   emit('close')
 }
 
@@ -163,7 +230,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  stopPolling()
+  invalidateActiveAttempt()
 })
 </script>
 

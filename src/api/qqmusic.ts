@@ -1,45 +1,29 @@
-import axios from 'axios'
 import { QQMusicAdapter } from './adapter'
 import { services } from '../services'
 import type { ILogger } from '../services/loggerService'
 import { useUserStore } from '../store/userStore'
+import {
+  createCachedCookieResolver,
+  createTransport
+} from '../utils/http/transportFactory'
+import { isElectronRenderer } from '../utils/http/transportShared'
+import { HTTP_COOKIE_CACHE_TTL, QQ_API_SERVER } from '@/constants/http'
 
 const DEFAULT_QQ_MUSIC_BASE_URL = '/qq-api'
-const isElectronRenderer = () =>
-  typeof window !== 'undefined' && window.navigator.userAgent.includes('Electron')
 
 let cachedQQBaseURL: string | null = null
 let resolvingQQBaseURL: Promise<string> | null = null
-let cachedQQCookie: string | null = null
-let lastQQCookieCheck = 0
 
-const QQ_COOKIE_CACHE_TTL = 5000
+const QQ_COOKIE_CACHE_TTL = HTTP_COOKIE_CACHE_TTL
 const QQ_LOGIN_CHECK_PATH = '/user/getCookie'
 
-// 懒加载 logger，避免循环依赖
 let _logger: ILogger | undefined
+
 function getLogger() {
   if (_logger === undefined) {
     _logger = services.logger().createLogger('qqMusicApi')
   }
   return _logger
-}
-
-function getQQCookie(): string | null {
-  const now = Date.now()
-  if (cachedQQCookie !== null && now - lastQQCookieCheck < QQ_COOKIE_CACHE_TTL) {
-    return cachedQQCookie
-  }
-
-  try {
-    const userStore = useUserStore()
-    cachedQQCookie = userStore.qqCookie || null
-  } catch {
-    cachedQQCookie = null
-  }
-
-  lastQQCookieCheck = now
-  return cachedQQCookie
 }
 
 async function resolveQQMusicBaseURL(): Promise<string> {
@@ -65,15 +49,13 @@ async function resolveQQMusicBaseURL(): Promise<string> {
         // ignore and fall back
       }
 
-      cachedQQBaseURL = 'http://localhost:3200'
+      cachedQQBaseURL = QQ_API_SERVER
       return cachedQQBaseURL
     })()
   }
 
   return resolvingQQBaseURL
 }
-
-// 开发模式下的调试日志 - 已移除，使用统一的日志系统
 
 export interface QQApiWrappedResponse<T> {
   response?: string | T
@@ -163,95 +145,128 @@ export type QQSongInfoResponse = QQApiWrappedResponse<QQSongInfoData>
 export type QQMusicPlayResponse = QQApiWrappedResponse<QQMusicPlayData>
 export type QQLyricResponse = QQApiWrappedResponse<QQLyricPayload>
 
-const qqRequest = axios.create({
-  baseURL: DEFAULT_QQ_MUSIC_BASE_URL,
-  timeout: 30000
-})
+const qqCookieResolver = createCachedCookieResolver(() => {
+  const userStore = useUserStore()
+  return userStore.qqCookie || null
+}, QQ_COOKIE_CACHE_TTL)
 
-qqRequest.interceptors.request.use(async config => {
-  if (isElectronRenderer() && import.meta.env.PROD) {
-    config.baseURL = await resolveQQMusicBaseURL()
+function getQQCookie(): string | null {
+  return qqCookieResolver.getCookie()
+}
+
+function isRecoverableQQLoginError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
   }
 
-  const cookie = getQQCookie()
-  if (cookie) {
-    const params =
-      config.params && typeof config.params === 'object'
-        ? (config.params as Record<string, unknown>)
-        : {}
-
-    if (typeof params.cookie !== 'string' || params.cookie.length === 0) {
-      params.cookie = cookie
-    }
-    config.params = params
-
-    config.headers = config.headers || {}
-    if (!('X-Custom-Cookie' in config.headers) && !('x-custom-cookie' in config.headers)) {
-      config.headers['X-Custom-Cookie'] = cookie
+  const record = error as {
+    data?: {
+      code?: unknown
+      status?: unknown
     }
   }
 
-  return config
-})
+  const code = typeof record.data?.code === 'string' ? record.data.code : null
+  const status = typeof record.data?.status === 'number' ? record.data.status : null
 
-qqRequest.interceptors.response.use(
-  response => {
-    if (response && response.data) {
-      return response.data
-    }
-    return response
+  return (
+    status === 500 ||
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNRESET' ||
+    code === 'ERR_NETWORK' ||
+    code === 'ECONNABORTED'
+  )
+}
+
+function isLikelyQQNetworkError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const record = error as {
+    code?: unknown
+    message?: unknown
+    response?: unknown
+  }
+
+  const code = typeof record.code === 'string' ? record.code : ''
+  const message = typeof record.message === 'string' ? record.message : ''
+
+  if (['ERR_NETWORK', 'ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN'].includes(code)) {
+    return true
+  }
+
+  if (record.response) {
+    return false
+  }
+
+  return /network error|failed to fetch|service .* not available|socket hang up/i.test(message)
+}
+
+const qqRequest = createTransport({
+  service: 'qq',
+  baseURL: resolveQQMusicBaseURL,
+  timeout: 30000,
+  cookie: {
+    resolver: qqCookieResolver,
+    injectIntoParams: true,
+    injectIntoHeaders: true,
+    headerName: 'X-Custom-Cookie'
   },
-  error => {
-    const requestUrl =
-      typeof error?.config?.url === 'string' ? error.config.url : String(error?.config?.url ?? '')
+  unwrapData: true,
+  extend(client) {
+    client.interceptors.response.use(undefined, error => {
+      const requestUrl =
+        typeof error?.config?.url === 'string'
+          ? error.config.url
+          : String(error?.config?.url ?? '')
 
-    // 检查是否是 QQ 登录验证请求
-    const isQQLoginCheck = requestUrl.includes(QQ_LOGIN_CHECK_PATH)
+      const isQQLoginCheck = requestUrl.includes(QQ_LOGIN_CHECK_PATH)
 
-    // 对于 QQ 登录检查，静默处理网络错误和超时
-    if (
-      isQQLoginCheck &&
-      (error.code === 'ETIMEDOUT' ||
-        error.code === 'ECONNRESET' ||
-        error.code === 'ERR_NETWORK' ||
-        error.code === 'ECONNABORTED' ||
-        !error.response)
-    ) {
-      getLogger().debug('QQ login check network error, ignoring', {
-        url: requestUrl,
-        code: error.code,
-        message: error.message
-      })
-      // 返回空响应，让 checkQQMusicLogin 处理
+      if (
+        isQQLoginCheck &&
+        (error.code === 'ETIMEDOUT' ||
+          error.code === 'ECONNRESET' ||
+          error.code === 'ERR_NETWORK' ||
+          error.code === 'ECONNABORTED' ||
+          !error.response)
+      ) {
+        getLogger().debug('QQ login check network error, ignoring', {
+          url: requestUrl,
+          code: error.code,
+          message: error.message
+        })
+        return Promise.reject(error)
+      }
+
+      if (!isQQLoginCheck) {
+        getLogger().error('QQ Music API request failed', {
+          url: requestUrl,
+          status: error?.response?.status,
+          code: error?.code,
+          message: error?.message,
+          responseData: error?.response?.data
+        })
+      }
+
+      if (isLikelyQQNetworkError(error)) {
+        getLogger().warn('QQ Music API network request failed', {
+          url: requestUrl,
+          code: error?.code,
+          message: error?.message
+        })
+        console.warn('[QQMusic] 网络错误，请检查 QQ 音乐 API 服务是否正常运行')
+      }
+
       return Promise.reject(error)
-    }
-
-    if (!isQQLoginCheck) {
-      getLogger().error('QQ Music API request failed', {
-        url: requestUrl,
-        status: error?.response?.status,
-        code: error?.code,
-        message: error?.message
-      })
-    }
-
-    if (error.code === 'ERR_NETWORK' || !error.response) {
-      getLogger().warn('QQ Music API network request failed', {
-        url: requestUrl,
-        code: error?.code
-      })
-      console.warn('[QQMusic] 网络错误，请检查 QQ 音乐 API 服务是否正常运行')
-      return Promise.reject(error)
-    }
-    return Promise.reject(error)
+    })
   }
-)
+})
 
 export const qqMusicAdapter = new QQMusicAdapter(qqRequest)
 
 export function clearQQCookieCache(): void {
-  cachedQQCookie = null
-  lastQQCookieCheck = 0
+  qqCookieResolver.clear()
 }
 
 export const qqMusicApi = {
@@ -442,9 +457,6 @@ export const qqMusicApi = {
 
     try {
       const response = await qqRequest.get(QQ_LOGIN_CHECK_PATH)
-      // 统一返回格式：确保始终返回 { data: { cookie: string } }
-      // 如果 response 已经是 { cookie: ... } 格式，则包装一层
-      // 如果 response 已经是 { data: { cookie: ... } } 格式，则直接返回
       if (
         response &&
         typeof response === 'object' &&
@@ -455,30 +467,20 @@ export const qqMusicApi = {
       ) {
         return response
       }
-      // response 可能是 { cookie: '...' } 格式（被 axios 拦截器解包）
+
       return {
         data: {
           cookie: (response as { cookie?: string }).cookie || ''
         }
       }
     } catch (error) {
-      // 处理 500 错误或网络超时，返回空 cookie 表示未登录
-      if (axios.isAxiosError(error)) {
-        if (
-          error.response?.status === 500 ||
-          error.code === 'ETIMEDOUT' ||
-          error.code === 'ECONNRESET' ||
-          error.code === 'ERR_NETWORK' ||
-          error.code === 'ECONNABORTED'
-        ) {
-          getLogger().warn('QQ login check failed, treating as not logged in', {
-            code: error.code,
-            message: error.message
-          })
-          return {
-            data: {
-              cookie: ''
-            }
+      if (isRecoverableQQLoginError(error)) {
+        getLogger().warn('QQ login check failed, treating as not logged in', {
+          error
+        })
+        return {
+          data: {
+            cookie: ''
           }
         }
       }

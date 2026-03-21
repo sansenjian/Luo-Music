@@ -60,7 +60,7 @@ const rendererManualChunks: ManualChunksOption = (id: string) => {
     return 'vendor-utils'
   }
 
-  return 'vendor-libs'
+  return undefined
 }
 
 export default defineConfig({

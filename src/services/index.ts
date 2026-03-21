@@ -6,6 +6,9 @@ import { createConfigService, type ConfigService } from './configService'
 import { createContextKeyService, type ContextKeyService } from './contextKeyService'
 import { createPlatformService, type PlatformService } from './platformService'
 import { createCommandService, type CommandService } from './commandService'
+import { createPlayerService, type PlayerService } from './playerService'
+import { createMusicService, type MusicService } from './musicService'
+import { createStorageService, type StorageService } from './storageService'
 import {
   IPlatformService,
   IApiService,
@@ -13,7 +16,11 @@ import {
   IErrorService,
   IConfigService,
   IContextKeyService,
-  ICommandService
+  ICommandService,
+  IPlayerService,
+  IMusicService,
+  IStorageService,
+  type ServiceIdentifier
 } from './types'
 
 // 导出装饰器相关（从 decorators.ts 导出）
@@ -29,7 +36,9 @@ export {
   IConfigService,
   IContextKeyService,
   ICommandService,
-  type ServiceIdentifier
+  IPlayerService,
+  IMusicService,
+  IStorageService
 } from './decorators'
 
 // 导出依赖注入容器
@@ -54,15 +63,97 @@ export type ServiceOverrides = Partial<{
   config: ConfigService
   context: ContextKeyService
   command: CommandService
+  player: PlayerService
+  music: MusicService
+  storage: StorageService
 }>
 
 /**
- * 注册服务 - 支持两种调用方式
- * @param overrides 覆盖服务（可选）
- * @param useNewApi 是否使用新的 ServiceIdentifier API（默认 true）
+ * 服务注册配置
  */
-export function setupServices(overrides: ServiceOverrides = {}, useNewApi: boolean = true): void {
+interface ServiceConfig<T> {
+  identifier: ServiceIdentifier<T>
+  factory: () => T
+  overrideKey: keyof ServiceOverrides
+}
+
+/**
+ * 服务注册表 - 单一数据源
+ */
+const SERVICE_REGISTRY: ServiceConfig<unknown>[] = [
+  {
+    identifier: IPlatformService,
+    factory: createPlatformService,
+    overrideKey: 'platform'
+  },
+  {
+    identifier: IApiService,
+    factory: createApiService,
+    overrideKey: 'api'
+  },
+  {
+    identifier: ILoggerService,
+    factory: createLoggerService,
+    overrideKey: 'logger'
+  },
+  {
+    identifier: IErrorService,
+    factory: createErrorService,
+    overrideKey: 'error'
+  },
+  {
+    identifier: IConfigService,
+    factory: createConfigService,
+    overrideKey: 'config'
+  },
+  {
+    identifier: IContextKeyService,
+    factory: createContextKeyService,
+    overrideKey: 'context'
+  },
+  {
+    identifier: ICommandService,
+    factory: createCommandService,
+    overrideKey: 'command'
+  },
+  {
+    identifier: IPlayerService,
+    factory: createPlayerService,
+    overrideKey: 'player'
+  },
+  {
+    identifier: IMusicService,
+    factory: createMusicService,
+    overrideKey: 'music'
+  },
+  {
+    identifier: IStorageService,
+    factory: createStorageService,
+    overrideKey: 'storage'
+  }
+]
+
+/**
+ * 注册所有服务
+ */
+function registerAllServices(overrides: ServiceOverrides): void {
+  for (const config of SERVICE_REGISTRY) {
+    const override = overrides[config.overrideKey]
+    if (override) {
+      registerService(config.identifier, () => override)
+    } else {
+      registerService(config.identifier, config.factory)
+    }
+  }
+}
+
+/**
+ * 注册服务
+ * @param overrides 覆盖服务（可选）
+ */
+export function setupServices(overrides: ServiceOverrides = {}): void {
   const hasOverrides = Object.keys(overrides).length > 0
+
   if (initialized && !hasOverrides) {
     return
   }
@@ -72,70 +163,7 @@ export function setupServices(overrides: ServiceOverrides = {}, useNewApi: boole
     initialized = false
   }
 
-  // 使用新的 ServiceIdentifier API（类型安全）
-  if (useNewApi) {
-    registerService(IPlatformService, createPlatformService)
-    registerService(IApiService, createApiService)
-    registerService(ILoggerService, createLoggerService)
-    registerService(IErrorService, createErrorService)
-    registerService(IConfigService, createConfigService)
-    registerService(IContextKeyService, createContextKeyService)
-    registerService(ICommandService, createCommandService)
-
-    if (overrides.platform) {
-      registerService(IPlatformService, () => overrides.platform as PlatformService)
-    }
-    if (overrides.api) {
-      registerService(IApiService, () => overrides.api as ApiService)
-    }
-    if (overrides.logger) {
-      registerService(ILoggerService, () => overrides.logger as LoggerService)
-    }
-    if (overrides.error) {
-      registerService(IErrorService, () => overrides.error as ErrorService)
-    }
-    if (overrides.config) {
-      registerService(IConfigService, () => overrides.config as ConfigService)
-    }
-    if (overrides.context) {
-      registerService(IContextKeyService, () => overrides.context as ContextKeyService)
-    }
-    if (overrides.command) {
-      registerService(ICommandService, () => overrides.command as CommandService)
-    }
-  } else {
-    // 向后兼容：使用字符串 ID
-    registerService('platform', createPlatformService)
-    registerService('api', createApiService)
-    registerService('logger', createLoggerService)
-    registerService('error', createErrorService)
-    registerService('config', createConfigService)
-    registerService('context', createContextKeyService)
-    registerService('command', createCommandService)
-
-    if (overrides.platform) {
-      registerService('platform', () => overrides.platform as PlatformService)
-    }
-    if (overrides.api) {
-      registerService('api', () => overrides.api as ApiService)
-    }
-    if (overrides.logger) {
-      registerService('logger', () => overrides.logger as LoggerService)
-    }
-    if (overrides.error) {
-      registerService('error', () => overrides.error as ErrorService)
-    }
-    if (overrides.config) {
-      registerService('config', () => overrides.config as ConfigService)
-    }
-    if (overrides.context) {
-      registerService('context', () => overrides.context as ContextKeyService)
-    }
-    if (overrides.command) {
-      registerService('command', () => overrides.command as CommandService)
-    }
-  }
-
+  registerAllServices(overrides)
   initialized = true
 }
 
@@ -146,7 +174,10 @@ export type {
   ContextKeyService,
   ErrorService,
   LoggerService,
-  PlatformService
+  MusicService,
+  PlatformService,
+  PlayerService,
+  StorageService
 }
 export { getService }
 
@@ -164,35 +195,27 @@ export {
 } from './performanceMonitor'
 
 /**
- * 服务访问助手 - 使用新的 ServiceIdentifier API（类型安全）
+ * 创建服务访问器函数
+ */
+function createServiceAccessor<T>(identifier: ServiceIdentifier<T>, init: () => void): () => T {
+  return () => {
+    init()
+    return getService<T>(identifier)
+  }
+}
+
+/**
+ * 服务访问助手 - 使用 ServiceIdentifier API（类型安全）
  */
 export const services = {
-  platform: (): PlatformService => {
-    setupServices()
-    return getService<PlatformService>(IPlatformService)
-  },
-  api: (): ApiService => {
-    setupServices()
-    return getService<ApiService>(IApiService)
-  },
-  error: (): ErrorService => {
-    setupServices()
-    return getService<ErrorService>(IErrorService)
-  },
-  config: (): ConfigService => {
-    setupServices()
-    return getService<ConfigService>(IConfigService)
-  },
-  context: (): ContextKeyService => {
-    setupServices()
-    return getService<ContextKeyService>(IContextKeyService)
-  },
-  logger: (): LoggerService => {
-    setupServices()
-    return getService<LoggerService>(ILoggerService)
-  },
-  commands: (): CommandService => {
-    setupServices()
-    return getService<CommandService>(ICommandService)
-  }
+  platform: createServiceAccessor(IPlatformService, setupServices),
+  api: createServiceAccessor(IApiService, setupServices),
+  error: createServiceAccessor(IErrorService, setupServices),
+  config: createServiceAccessor(IConfigService, setupServices),
+  context: createServiceAccessor(IContextKeyService, setupServices),
+  logger: createServiceAccessor(ILoggerService, setupServices),
+  commands: createServiceAccessor(ICommandService, setupServices),
+  player: createServiceAccessor(IPlayerService, setupServices),
+  music: createServiceAccessor(IMusicService, setupServices),
+  storage: createServiceAccessor(IStorageService, setupServices)
 }

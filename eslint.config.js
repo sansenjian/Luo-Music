@@ -10,7 +10,6 @@ export default [
       'build/**',
       'release/**',
       'node_modules/**',
-      '.pnpm-store/**',
       '.vite_cache/**',
       'docs/.vitepress/**',
       'src/auto-imports.d.ts',

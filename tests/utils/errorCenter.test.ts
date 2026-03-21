@@ -3,11 +3,13 @@ import { errorCenter } from '../../src/utils/error/center'
 import { AppError, ErrorCode } from '../../src/utils/error/types'
 
 // Mock platform 模块
-vi.mock('../../src/platform', () => ({
-  default: {
-    isElectron: () => false,
-    send: vi.fn()
-  }
+const platformServiceMock = vi.hoisted(() => ({
+  isElectron: vi.fn(() => false),
+  send: vi.fn()
+}))
+
+vi.mock('../../src/services/platformAccessor', () => ({
+  getPlatformAccessor: () => platformServiceMock
 }))
 
 describe('error/center', () => {

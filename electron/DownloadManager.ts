@@ -1,21 +1,33 @@
-import path from 'node:path'
 import fs from 'node:fs'
-import type { BrowserWindow as BrowserWindowType, Event, DownloadItem, WebContents } from 'electron'
-
-// 在 Electron 主进程中直接使用全局 require
-const { app, ipcMain, session } = require('electron')
+import path from 'node:path'
+import { app, ipcMain, session } from 'electron'
+import type { BrowserWindow as BrowserWindowType, DownloadItem, Event, WebContents } from 'electron'
 
 export class DownloadManager {
   private downloadPath: string | null = null
   private window: BrowserWindowType | null = null
   private isInitialized = false
+  private listenersRegistered = false
 
-  constructor() {
-    // 延迟初始化 downloadPath，等待 app.ready 后再获取
-    this.initDownloadPath()
+  private readonly willDownloadListener = (
+    _event: Event,
+    item: DownloadItem,
+    _webContents: WebContents
+  ): void => {
+    void this.handleWillDownload(item)
   }
 
-  private async initDownloadPath() {
+  private readonly internalDownloadListener = (_event: Event, url: string): void => {
+    if (this.window) {
+      this.window.webContents.downloadURL(url)
+    }
+  }
+
+  constructor() {
+    void this.initDownloadPath()
+  }
+
+  private async initDownloadPath(): Promise<void> {
     await app.whenReady()
     this.downloadPath = path.join(app.getPath('downloads'), 'LuoMusic')
     if (!fs.existsSync(this.downloadPath)) {
@@ -24,81 +36,93 @@ export class DownloadManager {
     this.isInitialized = true
   }
 
-  setWindow(win: BrowserWindowType) {
-    this.window = win
+  private async waitForDownloadPath(): Promise<string> {
+    while (!this.isInitialized || !this.downloadPath) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+
+    return this.downloadPath
   }
 
-  init() {
-    // 监听下载事件
-    session.defaultSession.on(
-      'will-download',
-      (event: Event, item: DownloadItem, _webContents: WebContents) => {
-        // 获取文件名
-        const fileName = item.getFilename()
-        // 等待 downloadPath 初始化完成
-        const waitForPath = setInterval(() => {
-          if (this.isInitialized && this.downloadPath) {
-            clearInterval(waitForPath)
-            const filePath = path.join(this.downloadPath, fileName)
+  private async handleWillDownload(item: DownloadItem): Promise<void> {
+    const fileName = item.getFilename()
+    const downloadPath = await this.waitForDownloadPath()
+    const filePath = path.join(downloadPath, fileName)
 
-            // 设置保存路径，不显示保存对话框
-            item.setSavePath(filePath)
+    item.setSavePath(filePath)
 
-            item.on('updated', (event: Event, state: 'progressing' | 'interrupted') => {
-              if (state === 'interrupted') {
-                console.log('Download is interrupted but can be resumed')
-              } else if (state === 'progressing') {
-                if (item.isPaused()) {
-                  console.log('Download is paused')
-                } else {
-                  // 发送进度到渲染进程
-                  if (this.window) {
-                    const progress = item.getReceivedBytes() / item.getTotalBytes()
-                    this.window.webContents.send('download-progress', {
-                      filename: fileName,
-                      progress,
-                      received: item.getReceivedBytes(),
-                      total: item.getTotalBytes()
-                    })
-                  }
-                }
-              }
-            })
-
-            item.once('done', (event: Event, state: 'completed' | 'cancelled' | 'interrupted') => {
-              if (state === 'completed') {
-                console.log('Download successfully')
-                if (this.window) {
-                  this.window.webContents.send('download-complete', {
-                    filename: fileName,
-                    path: filePath
-                  })
-                }
-              } else {
-                console.log(`Download failed: ${state}`)
-                if (this.window) {
-                  this.window.webContents.send('download-failed', {
-                    filename: fileName,
-                    error: state
-                  })
-                }
-              }
-            })
-          }
-        }, 100)
+    item.on('updated', (_event: Event, state: 'progressing' | 'interrupted') => {
+      if (state === 'interrupted') {
+        console.log('Download is interrupted but can be resumed')
+        return
       }
-    )
 
-    // 内部使用的 IPC，不对外公开暴露给 UI 直接调用下载
-    // 仅用于接收下载指令（如果需要的话，比如从其他模块触发）
-    ipcMain.on('internal-download', (event: Event, url: string) => {
+      if (state === 'progressing') {
+        if (item.isPaused()) {
+          console.log('Download is paused')
+          return
+        }
+
+        if (this.window) {
+          const progress = item.getReceivedBytes() / item.getTotalBytes()
+          this.window.webContents.send('download-progress', {
+            filename: fileName,
+            progress,
+            received: item.getReceivedBytes(),
+            total: item.getTotalBytes()
+          })
+        }
+      }
+    })
+
+    item.once('done', (_event: Event, state: 'completed' | 'cancelled' | 'interrupted') => {
+      if (state === 'completed') {
+        console.log('Download successfully')
+        if (this.window) {
+          this.window.webContents.send('download-complete', {
+            filename: fileName,
+            path: filePath
+          })
+        }
+        return
+      }
+
+      console.log(`Download failed: ${state}`)
       if (this.window) {
-        this.window.webContents.downloadURL(url)
+        this.window.webContents.send('download-failed', {
+          filename: fileName,
+          error: state
+        })
       }
     })
   }
 
-  download(url: string) {
+  setWindow(win: BrowserWindowType): void {
+    this.window = win
+  }
+
+  init(): void {
+    if (this.listenersRegistered) {
+      return
+    }
+
+    session.defaultSession.on('will-download', this.willDownloadListener)
+    ipcMain.on('internal-download', this.internalDownloadListener)
+    this.listenersRegistered = true
+  }
+
+  dispose(): void {
+    if (!this.listenersRegistered) {
+      return
+    }
+
+    session.defaultSession.removeListener('will-download', this.willDownloadListener)
+    ipcMain.removeListener('internal-download', this.internalDownloadListener)
+    this.listenersRegistered = false
+    this.window = null
+  }
+
+  download(url: string): void {
     if (this.window) {
       this.window.webContents.downloadURL(url)
     }

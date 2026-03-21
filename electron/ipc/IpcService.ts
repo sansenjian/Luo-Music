@@ -8,6 +8,7 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron'
+import type { IpcMainEvent } from 'electron'
 import logger from '../logger'
 
 import { INVOKE_CHANNELS, SEND_CHANNELS } from '../shared/protocol/channels.ts'
@@ -63,6 +64,10 @@ export class IpcService {
 
   private invokeHandlers = new Map<keyof InvokeChannelMap, InvokeFunction<keyof InvokeChannelMap>>()
   private sendHandlers = new Map<keyof SendChannelMap, SendFunction<keyof SendChannelMap>>()
+  private sendListenerWrappers = new Map<
+    keyof SendChannelMap,
+    (event: IpcMainEvent, ...args: unknown[]) => void | Promise<void>
+  >()
   private receiveHandlers = new Map<
     keyof ReceiveChannelMap,
     Set<ReceiveCallback<keyof ReceiveChannelMap>>
@@ -200,7 +205,12 @@ export class IpcService {
   }
 
   private setupSendHandler<T extends keyof SendChannelMap>(channel: T): void {
-    ipcMain.on(channel, async (event, ...args: unknown[]) => {
+    const previousWrapper = this.sendListenerWrappers.get(channel)
+    if (previousWrapper) {
+      ipcMain.removeListener(channel, previousWrapper)
+    }
+
+    const wrapper = async (event: IpcMainEvent, ...args: unknown[]) => {
       const requestId = generateRequestId()
       const startTime = Date.now()
       const context: IpcMiddlewareContext = { requestId, startTime, channel: channel as string }
@@ -226,7 +236,10 @@ export class IpcService {
       } catch (error) {
         logger.error(`[IpcService] Send error on ${channel}:`, error)
       }
-    })
+    }
+
+    this.sendListenerWrappers.set(channel, wrapper)
+    ipcMain.on(channel, wrapper)
   }
 
   // ========== Receive 处理器注册 ==========
@@ -330,8 +343,13 @@ export class IpcService {
       ipcMain.removeHandler(channel)
     }
 
+    for (const [channel, wrapper] of this.sendListenerWrappers) {
+      ipcMain.removeListener(channel, wrapper)
+    }
+
     this.invokeHandlers.clear()
     this.sendHandlers.clear()
+    this.sendListenerWrappers.clear()
     this.receiveHandlers.clear()
     this.middleware = []
     this.initialized = false

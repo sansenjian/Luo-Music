@@ -106,6 +106,7 @@ export const SEND_CHANNELS = {
   DESKTOP_LYRIC_TOGGLE_LOCK: 'toggle-desktop-lyric-lock',
   DESKTOP_LYRIC_MOVE: 'desktop-lyric-move',
   DESKTOP_LYRIC_SET_IGNORE_MOUSE: 'desktop-lyric-set-ignore-mouse',
+  DESKTOP_LYRIC_READY: 'desktop-lyric-ready',
   LYRIC_TIME_UPDATE: 'lyric-time-update',
 
   // 下载

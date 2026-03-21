@@ -1,6 +1,6 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-import platform from '../platform'
+import { services } from '../services'
 import { usePlayerStore } from '../store/playerStore'
 import type { LyricLine } from '../utils/player/core/lyric'
 
@@ -23,6 +23,7 @@ interface IpcLyricPayload {
 export function useActiveLyricState(options: UseActiveLyricStateOptions = {}) {
   const { source = 'store', emptyText = '' } = options
   const playerStore = source === 'store' ? usePlayerStore() : null
+  const platformService = services.platform()
 
   const ipcLyricIndex = ref(-1)
   const ipcLyricText = ref(emptyText)
@@ -69,18 +70,19 @@ export function useActiveLyricState(options: UseActiveLyricStateOptions = {}) {
   const showRoma = computed(() => (playerStore ? playerStore.lyricType.includes('roma') : true))
 
   onMounted(() => {
-    if (source !== 'ipc' || !platform.isElectron()) {
+    if (source !== 'ipc' || !platformService.isElectron()) {
       return
     }
 
     unsubscribers.push(
-      platform.on<IpcLyricPayload>('lyric-time-update', data => {
-        ipcLyricIndex.value = data.index ?? -1
-        ipcLyricText.value = data.text || emptyText
-        ipcLyricTrans.value = data.trans || ''
-        ipcLyricRoma.value = data.roma || data.romalrc || ''
-        if (typeof data.playing === 'boolean') {
-          ipcIsPlaying.value = data.playing
+      platformService.on('lyric-time-update', data => {
+        const payload = data as IpcLyricPayload
+        ipcLyricIndex.value = payload.index ?? -1
+        ipcLyricText.value = payload.text || emptyText
+        ipcLyricTrans.value = payload.trans || ''
+        ipcLyricRoma.value = payload.roma || payload.romalrc || ''
+        if (typeof payload.playing === 'boolean') {
+          ipcIsPlaying.value = payload.playing
         }
       })
     )

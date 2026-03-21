@@ -29,6 +29,36 @@ describe('LyricParser', () => {
       { time: 63.25, text: 'Line two', trans: '', roma: '' }
     ])
   })
+
+  it('merges nearby translated and romanized timestamps into the original line', () => {
+    const lyrics = LyricParser.parse(
+      '[00:01.00]Hello\n[00:02.00]World',
+      '[00:01.04]你好\n[00:02.07]世界',
+      '[00:01.06]ni hao'
+    )
+
+    expect(lyrics).toEqual([
+      { time: 1, text: 'Hello', trans: '你好', roma: 'ni hao' },
+      { time: 2, text: 'World', trans: '世界', roma: '' }
+    ])
+  })
+
+  it('appends same-timestamp content instead of overwriting it', () => {
+    const lyrics = LyricParser.parse(
+      '[00:01.00]Line A\n[00:01.00]Line B',
+      '[00:01.00]译文 A\n[00:01.00]译文 B',
+      '[00:01.00]roma A'
+    )
+
+    expect(lyrics).toEqual([
+      {
+        time: 1,
+        text: 'Line A\nLine B',
+        trans: '译文 A\n译文 B',
+        roma: 'roma A'
+      }
+    ])
+  })
 })
 
 describe('LyricEngine', () => {

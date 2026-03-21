@@ -1,8 +1,9 @@
-import platform from '../platform'
 import { COMMANDS, COMMAND_ENABLEMENT } from '../core/commands/commands'
+import { EventEmitter } from '../base/common/event/event'
+import { DisposableStore } from '../base/common/lifecycle/disposable'
 import { usePlayerStore } from '../store/playerStore'
 import { getService } from './registry'
-import { IContextKeyService } from './types'
+import { IContextKeyService, IPlatformService } from './types'
 import type { Event } from '../base/common/event/event'
 
 export type CommandHandler<TPayload = unknown> = (payload?: TPayload) => void | Promise<void>
@@ -46,33 +47,17 @@ type SeekPayload = {
 const DEFAULT_VOLUME_STEP = 0.1
 const DEFAULT_SEEK_SECONDS = 5
 
-function createEmitter<T>() {
-  const listeners = new Set<(event: T) => void>()
-  return {
-    event: ((listener: (event: T) => void) => {
-      listeners.add(listener)
-      return {
-        dispose: () => {
-          listeners.delete(listener)
-        }
-      }
-    }) as Event<T>,
-    fire: (event: T) => {
-      for (const listener of [...listeners]) {
-        listener(event)
-      }
-    }
-  }
-}
-
 export function createCommandService(): CommandService {
   const handlers = new Map<string, RegisteredCommand>()
   const contextKeyService = getService(IContextKeyService)
-  const enablementEmitter = createEmitter<{ id?: string }>()
+  const enablementEmitter = new EventEmitter<{ id?: string }>()
+  const disposables = new DisposableStore()
 
-  contextKeyService.onDidChangeContext(() => {
-    enablementEmitter.fire({})
-  })
+  disposables.add(
+    contextKeyService.onDidChangeContext(() => {
+      enablementEmitter.fire({})
+    })
+  )
 
   const register = <TPayload = unknown>(
     id: string,
@@ -118,6 +103,7 @@ export function createCommandService(): CommandService {
   }
 
   const getPlayerStore = () => usePlayerStore()
+  const getPlatformService = () => getService(IPlatformService)
 
   register(
     COMMANDS.PLAYER_TOGGLE_PLAY,
@@ -202,8 +188,9 @@ export function createCommandService(): CommandService {
   register(
     COMMANDS.DESKTOP_LYRIC_TOGGLE,
     () => {
-      if (platform.isElectron()) {
-        platform.send('toggle-desktop-lyric', undefined)
+      const platformService = getPlatformService()
+      if (platformService.isElectron()) {
+        platformService.send('toggle-desktop-lyric', undefined)
       }
     },
     {
@@ -212,7 +199,7 @@ export function createCommandService(): CommandService {
   )
 
   return {
-    onDidChangeCommandEnablement: enablementEmitter.event,
+    onDidChangeCommandEnablement: enablementEmitter.event as Event<{ id?: string }>,
     execute,
     canExecute,
     register,
@@ -225,6 +212,11 @@ export function createCommandService(): CommandService {
     },
     list(): string[] {
       return [...handlers.keys()]
+    },
+    dispose(): void {
+      handlers.clear()
+      disposables.dispose()
+      enablementEmitter.dispose()
     }
   }
 }

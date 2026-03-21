@@ -3,18 +3,25 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { CONTEXT_KEYS } from '../../src/core/context/contextKeys'
 import { COMMANDS } from '../../src/core/commands/commands'
-import platform from '../../src/platform'
 import { createCommandService } from '../../src/services/commandService'
 import { createContextKeyService } from '../../src/services/contextKeyService'
 import { registerService, resetServices } from '../../src/services/registry'
-import { IContextKeyService } from '../../src/services/types'
+import type { PlatformService } from '../../src/services/platformService'
+import { IContextKeyService, IPlatformService } from '../../src/services/types'
 import { usePlayerStore } from '../../src/store/playerStore'
 
-vi.mock('../../src/platform', () => ({
-  default: {
-    isElectron: vi.fn(() => true),
-    send: vi.fn()
-  }
+const platformServiceMock = vi.hoisted(() => ({
+  isElectron: vi.fn(() => true),
+  isMobile: vi.fn(() => false),
+  minimizeWindow: vi.fn(),
+  maximizeWindow: vi.fn(),
+  closeWindow: vi.fn(),
+  send: vi.fn(),
+  sendPlayingState: vi.fn(),
+  sendPlayModeChange: vi.fn(),
+  on: vi.fn(() => () => {}),
+  getCacheSize: vi.fn().mockResolvedValue({}),
+  clearCache: vi.fn().mockResolvedValue({})
 }))
 
 describe('commandService', () => {
@@ -22,8 +29,9 @@ describe('commandService', () => {
     setActivePinia(createPinia())
     resetServices()
     registerService(IContextKeyService, createContextKeyService)
-    vi.mocked(platform.isElectron).mockReturnValue(true)
-    vi.mocked(platform.send).mockClear()
+    registerService(IPlatformService, () => platformServiceMock as PlatformService)
+    platformServiceMock.isElectron.mockReturnValue(true)
+    platformServiceMock.send.mockClear()
   })
 
   it('executes built-in player commands through the store', async () => {
@@ -141,6 +149,8 @@ describe('commandService', () => {
     const context = createContextKeyService()
     resetServices()
     registerService(IContextKeyService, () => context)
+    // 清除之前测试中可能调用的 send mock
+    platformServiceMock.send.mockClear()
 
     const commandService = createCommandService()
     const playerStore = usePlayerStore()
@@ -157,13 +167,15 @@ describe('commandService', () => {
     await commandService.execute(COMMANDS.PLAYER_SEEK_BACK, { seconds: 20 })
     expect(playerStore.progress).toBe(0)
 
-    vi.mocked(platform.isElectron).mockReturnValue(false)
+    platformServiceMock.isElectron.mockReturnValue(false)
+    // 清除 seek 操作期间可能发送的歌词更新
+    platformServiceMock.send.mockClear()
     await commandService.execute(COMMANDS.DESKTOP_LYRIC_TOGGLE)
-    expect(platform.send).not.toHaveBeenCalled()
+    expect(platformServiceMock.send).not.toHaveBeenCalled()
 
-    vi.mocked(platform.isElectron).mockReturnValue(true)
+    platformServiceMock.isElectron.mockReturnValue(true)
     await commandService.execute(COMMANDS.DESKTOP_LYRIC_TOGGLE)
-    expect(platform.send).toHaveBeenCalledWith('toggle-desktop-lyric', undefined)
+    expect(platformServiceMock.send).toHaveBeenCalledWith('toggle-desktop-lyric', undefined)
   })
 
   it('throws when executing a missing command', async () => {

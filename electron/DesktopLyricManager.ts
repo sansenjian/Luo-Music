@@ -1,7 +1,6 @@
 import path from 'node:path'
-import type { BrowserWindow, IpcMainEvent } from 'electron'
+import type { BrowserWindow } from 'electron'
 
-import { windowManager } from './WindowManager'
 import { MAIN_DIST, RENDERER_DIST } from './utils/paths'
 
 const getElectron = (): typeof import('electron') =>
@@ -46,11 +45,34 @@ export class DesktopLyricManager {
   private win: BrowserWindow | null = null
   private isLocked = false
   private lastPosition: { x: number; y: number } | null = null
+  private lastLyric: LyricUpdateData | null = null
   private shouldShowOnReady = false
   private isWindowReady = false
+  private isRendererReady = false
+
+  private sendToRenderer(channel: string, payload: unknown): boolean {
+    if (!this.win || this.win.isDestroyed()) {
+      return false
+    }
+
+    try {
+      this.win.webContents.send(channel, payload)
+      return true
+    } catch (error) {
+      console.error(`[DesktopLyricManager] Failed to send ${channel}`, error)
+      return false
+    }
+  }
+
+  private maybeReplayLastLyric(): void {
+    if (!this.isWindowReady || !this.isRendererReady) {
+      return
+    }
+
+    this.replayLastLyric()
+  }
 
   constructor() {
-    this.initIpc()
     const position = getStore().get('desktopLyricPosition') as { x: number; y: number } | undefined
 
     if (position) {
@@ -71,6 +93,7 @@ export class DesktopLyricManager {
 
     this.shouldShowOnReady = showOnReady
     this.isWindowReady = false
+    this.isRendererReady = false
 
     const { BrowserWindow, screen } = getElectron()
     const primaryDisplay = screen.getPrimaryDisplay()
@@ -109,6 +132,7 @@ export class DesktopLyricManager {
       if (!win.isDestroyed() && this.shouldShowOnReady) {
         win.show()
       }
+      this.maybeReplayLastLyric()
     })
 
     if (process.env.VITE_DEV_SERVER_URL) {
@@ -119,6 +143,7 @@ export class DesktopLyricManager {
 
     win.on('closed', () => {
       this.isWindowReady = false
+      this.isRendererReady = false
       this.win = null
     })
 
@@ -154,6 +179,9 @@ export class DesktopLyricManager {
 
     this.shouldShowOnReady = true
     if (this.isWindowReady) {
+      if (this.isRendererReady) {
+        this.replayLastLyric()
+      }
       this.win.show()
     }
   }
@@ -171,7 +199,7 @@ export class DesktopLyricManager {
     }
 
     this.win.setIgnoreMouseEvents(locked, { forward: true })
-    this.win.webContents.send('desktop-lyric-lock-state', { locked })
+    this.sendToRenderer('desktop-lyric-lock-state', { locked })
   }
 
   setAlwaysOnTop(alwaysOnTop: boolean): void {
@@ -182,10 +210,17 @@ export class DesktopLyricManager {
     this.win.setAlwaysOnTop(alwaysOnTop, alwaysOnTop ? 'screen-saver' : 'normal')
   }
 
-  sendLyric(data: LyricUpdateData): void {
-    if (this.win && !this.win.isDestroyed()) {
-      this.win.webContents.send('lyric-time-update', data)
+  private replayLastLyric(): void {
+    if (!this.lastLyric) {
+      return
     }
+
+    this.sendToRenderer('lyric-time-update', this.lastLyric)
+  }
+
+  sendLyric(data: LyricUpdateData): void {
+    this.lastLyric = data
+    this.sendToRenderer('lyric-time-update', data)
   }
 
   toggle(): void {
@@ -197,7 +232,6 @@ export class DesktopLyricManager {
     this.show()
   }
 
-  // Methods for IPC handlers
   toggleLock(): void {
     this.setLocked(!this.isLocked)
   }
@@ -217,16 +251,9 @@ export class DesktopLyricManager {
     this.win.setIgnoreMouseEvents(ignore, { forward: true })
   }
 
-  initIpc(): void {
-    const { ipcMain } = getElectron()
-
-    ipcMain.on('music-playing-control', (_event: IpcMainEvent, ...args: unknown[]) => {
-      windowManager.send('music-playing-control', ...args)
-    })
-
-    ipcMain.on('music-song-control', (_event: IpcMainEvent, ...args: unknown[]) => {
-      windowManager.send('music-song-control', ...args)
-    })
+  onRendererReady(): void {
+    this.isRendererReady = true
+    this.maybeReplayLastLyric()
   }
 }
 

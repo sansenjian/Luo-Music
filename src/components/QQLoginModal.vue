@@ -56,6 +56,27 @@ const status = ref<LoginStatus>('loading')
 const statusText = ref('正在加载二维码...')
 
 let checkInterval: ReturnType<typeof setInterval> | null = null
+let closeTimer: ReturnType<typeof setTimeout> | null = null
+let isChecking = false
+let activeAttemptId = 0
+
+function clearCloseTimer(): void {
+  if (closeTimer) {
+    clearTimeout(closeTimer)
+    closeTimer = null
+  }
+}
+
+function isAttemptCurrent(attemptId: number): boolean {
+  return attemptId === activeAttemptId
+}
+
+function invalidateActiveAttempt(): void {
+  activeAttemptId += 1
+  isChecking = false
+  stopCheck()
+  clearCloseTimer()
+}
 
 watch(
   () => props.modelValue,
@@ -65,7 +86,7 @@ watch(
       return
     }
 
-    stopCheck()
+    invalidateActiveAttempt()
   }
 )
 
@@ -76,7 +97,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  stopCheck()
+  invalidateActiveAttempt()
 })
 
 function stopCheck(): void {
@@ -103,11 +124,20 @@ function extractSessionCookie(payload: QQLoginPayload | null | undefined): strin
 }
 
 async function loadQRCode(): Promise<void> {
+  const attemptId = ++activeAttemptId
+
+  stopCheck()
+  clearCloseTimer()
+  isChecking = false
   status.value = 'loading'
   statusText.value = '正在加载二维码...'
 
   try {
     const res = (await qqMusicApi.getQQLoginQr()) as QQLoginPayload
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+
     const data = res.body || res
 
     if (!data?.img || !data.ptqrtoken || !data.qrsig) {
@@ -119,8 +149,12 @@ async function loadQRCode(): Promise<void> {
     qrsig.value = data.qrsig
     status.value = 'waiting'
     statusText.value = '请使用 QQ 音乐 App 扫码登录'
-    startCheck()
+    startCheck(attemptId)
   } catch (error) {
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+
     logger.error('Failed to load QQ Music login QR code', error)
     status.value = 'error'
     statusText.value = '加载二维码失败，请稍后重试'
@@ -128,12 +162,25 @@ async function loadQRCode(): Promise<void> {
   }
 }
 
-function startCheck(): void {
+function startCheck(attemptId: number): void {
   stopCheck()
 
   checkInterval = setInterval(async () => {
+    if (!isAttemptCurrent(attemptId)) {
+      stopCheck()
+      return
+    }
+
+    if (isChecking) {
+      return
+    }
+
+    isChecking = true
     try {
       const res = (await qqMusicApi.checkQQLoginQr(ptqrtoken.value, qrsig.value)) as QQLoginPayload
+      if (!isAttemptCurrent(attemptId)) {
+        return
+      }
 
       if (res?.isOk) {
         const sessionCookie = extractSessionCookie(res)
@@ -147,9 +194,15 @@ function startCheck(): void {
         toastStore.success('QQ 音乐登录成功')
         stopCheck()
 
-        setTimeout(() => {
+        clearCloseTimer()
+        closeTimer = setTimeout(() => {
+          if (!isAttemptCurrent(attemptId)) {
+            return
+          }
+
           emit('login-success')
           emit('update:modelValue', false)
+          closeTimer = null
         }, 500)
       } else if (res?.refresh) {
         status.value = 'expired'
@@ -158,18 +211,26 @@ function startCheck(): void {
         stopCheck()
       }
     } catch (error) {
+      if (!isAttemptCurrent(attemptId)) {
+        return
+      }
+
       logger.warn('Failed to poll QQ Music QR login status', error)
+    } finally {
+      if (isAttemptCurrent(attemptId)) {
+        isChecking = false
+      }
     }
   }, 2000)
 }
 
 function refreshQRCode(): void {
-  stopCheck()
+  invalidateActiveAttempt()
   void loadQRCode()
 }
 
 function closeModal(): void {
-  stopCheck()
+  invalidateActiveAttempt()
   emit('update:modelValue', false)
 }
 </script>

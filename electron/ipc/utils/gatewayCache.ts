@@ -1,5 +1,6 @@
 ﻿import { CACHE_DEFAULTS, GATEWAY_CACHEABLE_ENDPOINTS } from '../../shared/protocol/cache.ts'
 import logger from '../../logger'
+import { HTTP_DEFAULT_RETRY_COUNT, HTTP_DEFAULT_RETRY_DELAY } from '../../../src/constants/http'
 
 const CACHE_CONFIG = {
   TTL: CACHE_DEFAULTS.TTL,
@@ -18,11 +19,22 @@ const gatewayCache = new Map<
 >()
 
 const RETRY_CONFIG = {
-  MAX_RETRIES: 3,
-  INITIAL_DELAY: 1000,
+  MAX_RETRIES: HTTP_DEFAULT_RETRY_COUNT,
+  INITIAL_DELAY: HTTP_DEFAULT_RETRY_DELAY,
   MAX_DELAY: 10000,
   BACKOFF_MULTIPLIER: 2
 }
+
+const RETRYABLE_ERROR_CODES = new Set(['ECONNREFUSED', 'ECONNABORTED', 'ETIMEDOUT', 'ENOTFOUND'])
+const RETRYABLE_RESPONSE_STATUSES = new Set([408, 429, 502, 503, 504])
+const RETRYABLE_MESSAGE_PATTERNS = [
+  /\bNetwork Error\b/i,
+  /\bRequest timeout\b/i,
+  /\btimeout of \d+ms exceeded\b/i,
+  /\btimed out\b/i,
+  /\bService .* not available\b/i,
+  /\bsocket hang up\b/i
+]
 
 function generateCacheKey(
   service: string,
@@ -125,21 +137,27 @@ function shouldRetry(error: unknown, retryCount: number): boolean {
     return false
   }
 
-  const err = error as Error & { code?: string }
+  const err = error as Error & {
+    code?: string
+    response?: {
+      status?: number
+    }
+  }
 
   if (err.name === 'AbortError' || err.name === 'CanceledError') {
     return false
   }
 
-  return (
-    err.code === 'ECONNREFUSED' ||
-    err.code === 'ECONNABORTED' ||
-    err.code === 'ETIMEDOUT' ||
-    err.code === 'ENOTFOUND' ||
-    err.message?.includes('Network Error') ||
-    err.message?.includes('timeout') ||
-    err.message?.includes('Service is not available')
-  )
+  if (typeof err.code === 'string' && RETRYABLE_ERROR_CODES.has(err.code)) {
+    return true
+  }
+
+  if (typeof err.response?.status === 'number') {
+    return RETRYABLE_RESPONSE_STATUSES.has(err.response.status)
+  }
+
+  const message = typeof err.message === 'string' ? err.message : ''
+  return RETRYABLE_MESSAGE_PATTERNS.some(pattern => pattern.test(message))
 }
 
 function delay(ms: number): Promise<void> {

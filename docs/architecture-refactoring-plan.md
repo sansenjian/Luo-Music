@@ -402,8 +402,8 @@ export const IPC_CHANNELS = {
 - [ ] 编写 platform 服务接口测试
 - [ ] 编写 IPC 通信集成测试
 - [ ] 运行完整测试套件确保无回归
-- [ ] 执行 `pnpm build:web` 验证 Web 构建
-- [ ] 执行 `pnpm build:electron` 验证 Electron 构建
+- [ ] 执行 `npm run build:web` 验证 Web 构建
+- [ ] 执行 `npm run build:electron` 验证 Electron 构建
 - [ ] 手动测试核心功能
 
 ---

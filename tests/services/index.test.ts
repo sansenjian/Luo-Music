@@ -11,6 +11,9 @@ const createErrorServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'error' }))
 const createConfigServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'config' })))
 const createContextKeyServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'context' })))
 const createCommandServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'command' })))
+const createPlayerServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'player' })))
+const createMusicServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'music' })))
+const createStorageServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'storage' })))
 
 const ids = vi.hoisted(() => ({
   IPlatformService: Symbol('platform'),
@@ -20,6 +23,9 @@ const ids = vi.hoisted(() => ({
   IConfigService: Symbol('config'),
   IContextKeyService: Symbol('context'),
   ICommandService: Symbol('command'),
+  IPlayerService: Symbol('player'),
+  IMusicService: Symbol('music'),
+  IStorageService: Symbol('storage'),
   createDecorator: vi.fn()
 }))
 
@@ -57,6 +63,18 @@ vi.mock('@/services/commandService', () => ({
   createCommandService: createCommandServiceMock
 }))
 
+vi.mock('@/services/playerService', () => ({
+  createPlayerService: createPlayerServiceMock
+}))
+
+vi.mock('@/services/musicService', () => ({
+  createMusicService: createMusicServiceMock
+}))
+
+vi.mock('@/services/storageService', () => ({
+  createStorageService: createStorageServiceMock
+}))
+
 vi.mock('@/services/types', () => ids)
 
 describe('services index', () => {
@@ -71,42 +89,55 @@ describe('services index', () => {
     module.setupServices()
     module.setupServices()
 
-    expect(registerServiceMock).toHaveBeenCalledTimes(7)
+    expect(registerServiceMock).toHaveBeenCalledTimes(10)
     expect(registerServiceMock).toHaveBeenCalledWith(
       ids.IPlatformService,
       createPlatformServiceMock
     )
     expect(registerServiceMock).toHaveBeenCalledWith(ids.IApiService, createApiServiceMock)
     expect(registerServiceMock).toHaveBeenCalledWith(ids.ILoggerService, createLoggerServiceMock)
+    expect(registerServiceMock).toHaveBeenCalledWith(ids.IPlayerService, createPlayerServiceMock)
+    expect(registerServiceMock).toHaveBeenCalledWith(ids.IMusicService, createMusicServiceMock)
+    expect(registerServiceMock).toHaveBeenCalledWith(ids.IStorageService, createStorageServiceMock)
   })
 
-  it('supports overrides and legacy string registrations', async () => {
+  it('supports overrides with typed identifiers', async () => {
     vi.resetModules()
     const module = await import('@/services')
     const platformOverride = { kind: 'override-platform' }
     const commandOverride = { kind: 'override-command' }
+    const playerOverride = { kind: 'override-player' }
+    const musicOverride = { kind: 'override-music' }
+    const storageOverride = { kind: 'override-storage' }
 
-    module.setupServices(
-      {
-        platform: platformOverride as never,
-        command: commandOverride as never
-      },
-      false
-    )
+    module.setupServices({
+      platform: platformOverride as never,
+      command: commandOverride as never,
+      player: playerOverride as never,
+      music: musicOverride as never,
+      storage: storageOverride as never
+    })
 
     expect(resetServicesMock).toHaveBeenCalled()
-    expect(registerServiceMock).toHaveBeenCalledWith('platform', createPlatformServiceMock)
-    expect(registerServiceMock).toHaveBeenCalledWith('command', createCommandServiceMock)
 
-    const platformOverrideCall = registerServiceMock.mock.calls.find(
-      ([id, factory]) => id === 'platform' && factory !== createPlatformServiceMock
-    )
-    const commandOverrideCall = registerServiceMock.mock.calls.find(
-      ([id, factory]) => id === 'command' && factory !== createCommandServiceMock
-    )
+    const findOverrideFactory = (identifier: unknown, defaultFactory: unknown) =>
+      registerServiceMock.mock.calls.find(
+        ([id, factory]) => id === identifier && factory !== defaultFactory
+      )?.[1]
 
-    expect(platformOverrideCall?.[1]()).toBe(platformOverride)
-    expect(commandOverrideCall?.[1]()).toBe(commandOverride)
+    expect(findOverrideFactory(ids.IPlatformService, createPlatformServiceMock)?.()).toBe(
+      platformOverride
+    )
+    expect(findOverrideFactory(ids.ICommandService, createCommandServiceMock)?.()).toBe(
+      commandOverride
+    )
+    expect(findOverrideFactory(ids.IPlayerService, createPlayerServiceMock)?.()).toBe(
+      playerOverride
+    )
+    expect(findOverrideFactory(ids.IMusicService, createMusicServiceMock)?.()).toBe(musicOverride)
+    expect(findOverrideFactory(ids.IStorageService, createStorageServiceMock)?.()).toBe(
+      storageOverride
+    )
   })
 
   it('applies typed overrides for all service identifiers', async () => {
@@ -119,7 +150,10 @@ describe('services index', () => {
       error: { kind: 'override-error' },
       config: { kind: 'override-config' },
       context: { kind: 'override-context' },
-      command: { kind: 'override-command' }
+      command: { kind: 'override-command' },
+      player: { kind: 'override-player' },
+      music: { kind: 'override-music' },
+      storage: { kind: 'override-storage' }
     }
 
     module.setupServices(overrides as never)
@@ -150,6 +184,15 @@ describe('services index', () => {
     expect(findOverrideFactory(ids.ICommandService, createCommandServiceMock)?.()).toBe(
       overrides.command
     )
+    expect(findOverrideFactory(ids.IPlayerService, createPlayerServiceMock)?.()).toBe(
+      overrides.player
+    )
+    expect(findOverrideFactory(ids.IMusicService, createMusicServiceMock)?.()).toBe(
+      overrides.music
+    )
+    expect(findOverrideFactory(ids.IStorageService, createStorageServiceMock)?.()).toBe(
+      overrides.storage
+    )
   })
 
   it('resolves helper accessors through getService', async () => {
@@ -164,5 +207,8 @@ describe('services index', () => {
     expect(module.services.context()).toEqual({ identifier: ids.IContextKeyService })
     expect(module.services.logger()).toEqual({ identifier: ids.ILoggerService })
     expect(module.services.commands()).toEqual({ identifier: ids.ICommandService })
+    expect(module.services.player()).toEqual({ identifier: ids.IPlayerService })
+    expect(module.services.music()).toEqual({ identifier: ids.IMusicService })
+    expect(module.services.storage()).toEqual({ identifier: ids.IStorageService })
   })
 })
