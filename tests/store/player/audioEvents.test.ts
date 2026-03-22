@@ -217,6 +217,61 @@ describe('audioEvents', () => {
     expect(callbacks.onTimeUpdate).not.toHaveBeenCalled()
   })
 
+  it('syncs lyric index even when UI updates are throttled and broadcasts immediately on line change', () => {
+    const state = createInitialState()
+    state.currentLyricIndex = -1
+    state.playing = true
+
+    const callbacks = {
+      onTimeUpdate: vi.fn()
+    }
+    const platform = {
+      isElectron: vi.fn(() => true),
+      send: vi.fn()
+    }
+
+    const syncLyricIndex = vi.fn((time: number) => {
+      const nextIndex = time >= 5 ? 1 : -1
+      const changed = state.currentLyricIndex !== nextIndex
+      state.currentLyricIndex = nextIndex
+      return changed
+    })
+
+    const handler = createAudioEventHandler(state, callbacks, platform)
+    handler.init({
+      uiUpdateInterval: 1_000,
+      ipcBroadcastInterval: 5_000,
+      syncLyricIndex,
+      getCurrentLyricLine: () =>
+        state.currentLyricIndex === 1 ? { text: 'Line 2', trans: 'Second', roma: '' } : null
+    })
+
+    playerCoreMock.setCurrentTime(4)
+    vi.setSystemTime(new Date('2026-03-17T00:00:00.100Z'))
+    playerCoreMock.emit('timeupdate')
+
+    callbacks.onTimeUpdate.mockClear()
+    platform.send.mockClear()
+    syncLyricIndex.mockClear()
+
+    playerCoreMock.setCurrentTime(5)
+    vi.setSystemTime(new Date('2026-03-17T00:00:00.150Z'))
+    playerCoreMock.emit('timeupdate')
+
+    expect(syncLyricIndex).toHaveBeenCalledWith(5)
+    expect(callbacks.onTimeUpdate).not.toHaveBeenCalled()
+    expect(platform.send).toHaveBeenCalledWith(
+      'lyric-time-update',
+      expect.objectContaining({
+        time: 5,
+        index: 1,
+        text: 'Line 2',
+        trans: 'Second',
+        playing: true
+      })
+    )
+  })
+
   it('supports config and callback replacement, and guards reinit after dispose', () => {
     const state = createInitialState()
     const callbacks = {

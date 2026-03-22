@@ -64,6 +64,7 @@ type LegacyPlatform = {
   closeWindow(): void
   on<T = unknown>(channel: string, callback: (data: T) => void): () => void
   send(channel: string, data: unknown): void
+  supportsSendChannel(channel: string): boolean
   sendPlayingState(playing: boolean): void
   sendPlayModeChange(mode: number): void
   getPlatform(): Platform
@@ -95,6 +96,10 @@ const platform: LegacyPlatform = {
 
   send(channel: string, data: unknown): void {
     getPlatformService().send(channel, data)
+  },
+
+  supportsSendChannel(channel: string): boolean {
+    return getPlatformService().supportsSendChannel(channel)
   },
 
   sendPlayingState(playing: boolean): void {

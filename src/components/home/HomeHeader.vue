@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MusicServerOption } from '../../composables/useHomePage'
+import type { MusicServerOption } from '@/composables/useHomePage'
 
 import HomeSearchBar from './HomeSearchBar.vue'
 import HomeWindowControls from './HomeWindowControls.vue'

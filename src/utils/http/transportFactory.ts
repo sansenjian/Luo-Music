@@ -15,7 +15,7 @@ import {
   HTTP_DEFAULT_RETRY_DELAY,
   HTTP_DEFAULT_TIMEOUT
 } from '@/constants/http'
-import { services } from '../../services'
+import { services } from '@/services'
 
 type ErrorService = typeof services.error extends () => infer R ? R : never
 

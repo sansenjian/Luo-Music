@@ -1,7 +1,7 @@
 import { onCLS, onFCP, onINP, onLCP, onTTFB, type Metric } from 'web-vitals'
 
-import { EventEmitter, type Event } from '../../base/common/event/event'
-import { Disposable, DisposableStore } from '../../base/common/lifecycle/disposable'
+import { EventEmitter, type Event } from '@/base/common/event/event'
+import { Disposable, DisposableStore } from '@/base/common/lifecycle/disposable'
 
 interface ExtendedPerformance extends Performance {
   memory?: {

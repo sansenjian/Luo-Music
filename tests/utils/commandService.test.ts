@@ -17,6 +17,7 @@ const platformServiceMock = vi.hoisted(() => ({
   maximizeWindow: vi.fn(),
   closeWindow: vi.fn(),
   send: vi.fn(),
+  supportsSendChannel: vi.fn(() => true),
   sendPlayingState: vi.fn(),
   sendPlayModeChange: vi.fn(),
   on: vi.fn(() => () => {}),

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MusicServerOption } from '../../composables/useHomePage'
+import type { MusicServerOption } from '@/composables/useHomePage'
 
 import HomeServerSelect from './HomeServerSelect.vue'
 

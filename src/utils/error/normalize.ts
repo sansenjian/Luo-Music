@@ -118,7 +118,7 @@ function resolveApiErrorCode(error: unknown): ErrorCode {
     return ErrorCode.SERVICE_UNAVAILABLE
   }
 
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
     return ErrorCode.NETWORK_OFFLINE
   }
 

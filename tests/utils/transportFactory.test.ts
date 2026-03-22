@@ -148,7 +148,7 @@ describe('transportFactory', () => {
     expect(config?.adapter).toBeTypeOf('function')
     expect(config?.adapter).not.toBe(transport.defaults.adapter)
 
-    const response = await config?.adapter?.(config as InternalAxiosRequestConfig)
+    const response = await (config?.adapter as ((config: InternalAxiosRequestConfig) => Promise<unknown>) | undefined)?.(config as InternalAxiosRequestConfig) as { data: unknown }
     expect(apiRequest).toHaveBeenCalledWith('qq', 'getSearchByKey', {
       key: 'jay'
     })
@@ -188,8 +188,9 @@ describe('transportFactory', () => {
       adapter: customAdapter,
       params: {
         key: 'jay'
-      }
-    } as InternalAxiosRequestConfig)
+      },
+      headers: new AxiosHeaders()
+    } as unknown as InternalAxiosRequestConfig)
 
     expect(config?.adapter).toBe(customAdapter)
     expect(apiRequest).not.toHaveBeenCalled()

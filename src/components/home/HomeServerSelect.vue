@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 
-import type { MusicServerOption } from '../../composables/useHomePage'
+import type { MusicServerOption } from '@/composables/useHomePage'
 
 const props = defineProps<{
   selectedServer: string

@@ -11,6 +11,7 @@ const platformState = vi.hoisted(() => {
     listeners,
     platformServiceMock: {
       isElectron: vi.fn(() => true),
+      supportsSendChannel: vi.fn(() => true),
       send: vi.fn(),
       on: vi.fn((channel: string, callback: (data: unknown) => void) => {
         const channelListeners = listeners.get(channel) ?? new Set<(data: unknown) => void>()
@@ -63,6 +64,8 @@ describe('LyricFloat', () => {
     vi.useFakeTimers()
     platformState.listeners.clear()
     platformState.platformServiceMock.on.mockClear()
+    platformState.platformServiceMock.supportsSendChannel.mockReset()
+    platformState.platformServiceMock.supportsSendChannel.mockReturnValue(true)
     platformState.platformServiceMock.send.mockReset()
     playerState.playerServiceMock.play.mockClear()
     playerState.playerServiceMock.pause.mockClear()
@@ -105,11 +108,7 @@ describe('LyricFloat', () => {
   })
 
   it('ignores a stale preload that does not recognize the ready channel', async () => {
-    platformState.platformServiceMock.send.mockImplementation((channel: string) => {
-      if (channel === 'desktop-lyric-ready') {
-        throw new Error('Invalid send channel: desktop-lyric-ready')
-      }
-    })
+    platformState.platformServiceMock.supportsSendChannel.mockReturnValue(false)
 
     const wrapper = mount(LyricFloat)
     await nextTick()
@@ -123,6 +122,10 @@ describe('LyricFloat', () => {
     })
     await nextTick()
 
+    expect(platformState.platformServiceMock.send).not.toHaveBeenCalledWith(
+      'desktop-lyric-ready',
+      undefined
+    )
     expect(wrapper.find('.lrc-main').text()).toBe('Main Line')
   })
 

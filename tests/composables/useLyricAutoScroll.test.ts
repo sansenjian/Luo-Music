@@ -179,4 +179,35 @@ describe('useLyricAutoScroll', () => {
       behavior: 'smooth'
     })
   })
+
+  it('cancels a pending auto-resume when the user starts scrolling again', async () => {
+    const context = await mountHarness()
+    wrappers.push(context.wrapper)
+
+    context.scrollToMock.mockClear()
+    context.exposed.api.scrollToActiveLine('smooth')
+    context.scrollToMock.mockClear()
+
+    context.exposed.api.handleUserScrollStart()
+    context.exposed.api.handleScroll()
+
+    vi.advanceTimersByTime(USER_SCROLL_END_DEBOUNCE - 20)
+
+    context.exposed.api.handleUserScrollStart()
+    context.exposed.api.handleScroll()
+
+    vi.advanceTimersByTime(USER_SCROLL_END_DEBOUNCE + USER_SCROLL_IDLE_DELAY - 1)
+    await nextTick()
+
+    expect(context.scrollToMock).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(2)
+    await nextTick()
+
+    expect(context.scrollToMock).toHaveBeenCalledTimes(1)
+    expect(context.scrollToMock).toHaveBeenLastCalledWith({
+      top: 180,
+      behavior: 'smooth'
+    })
+  })
 })

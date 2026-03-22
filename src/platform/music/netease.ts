@@ -7,9 +7,9 @@ import {
   type Song,
   type SongUrlOptions
 } from './interface'
-import { neteaseAdapter } from '../../api/netease'
-import { validateSearchResponse } from '../../api/responseHandler'
-import { getBitrateByLevel, DEFAULT_AUDIO_BITRATE } from '../../constants/audio'
+import { neteaseAdapter } from '@/api/netease'
+import { validateSearchResponse } from '@/api/responseHandler'
+import { getBitrateByLevel, DEFAULT_AUDIO_BITRATE } from '@/constants/audio'
 
 interface NeteaseSongData {
   id?: number

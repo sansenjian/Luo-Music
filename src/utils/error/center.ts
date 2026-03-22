@@ -1,5 +1,5 @@
 import { AppError, ErrorCode } from './types'
-import { getPlatformAccessor } from '../../services/platformAccessor'
+import { getPlatformAccessor } from '@/services/platformAccessor'
 
 type ErrorHandler = (error: AppError) => void | Promise<void>
 

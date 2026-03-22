@@ -15,9 +15,7 @@ const LikedSongsView = defineAsyncComponent(() => import('../components/user/Lik
 const PlaylistsView = defineAsyncComponent(() => import('../components/user/PlaylistsView.vue'))
 const EventsView = defineAsyncComponent(() => import('../components/user/EventsView.vue'))
 
-const USER_TABS = ['liked', 'playlist', 'events'] as const
-
-type UserTab = (typeof USER_TABS)[number]
+type UserTab = 'liked' | 'playlist' | 'events'
 
 const router = useRouter()
 const userStore = useUserStore()

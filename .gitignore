@@ -140,6 +140,7 @@ electron/ipc/handlers/player.handler.js
 electron/ipc/utils/gatewayCache.js
 electron/main/index.js
 electron.vite.config.js
+vite.config.js
 
 # Vercel
 .vercel

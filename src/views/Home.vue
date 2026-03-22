@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
+import { onMounted, ref } from 'vue'
 
+import ErrorToast from '../components/ErrorToast.vue'
 import HomeFooter from '../components/home/HomeFooter.vue'
 import HomeHeader from '../components/home/HomeHeader.vue'
 import HomeWorkspace from '../components/home/HomeWorkspace.vue'
+import LyricDisplay from '../components/LyricDisplay.vue'
+import Player from '../components/Player.vue'
+import Playlist from '../components/Playlist.vue'
+import Toast from '../components/Toast.vue'
 import { useHomePage } from '../composables/useHomePage'
-
-const LyricDisplay = defineAsyncComponent(() => import('../components/LyricDisplay.vue'))
-const Player = defineAsyncComponent(() => import('../components/Player.vue'))
-const Playlist = defineAsyncComponent(() => import('../components/Playlist.vue'))
-const Toast = defineAsyncComponent(() => import('../components/Toast.vue'))
-const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.vue'))
 
 const {
   activeTab,
@@ -33,6 +32,21 @@ const {
   toggleSelect,
   isLoading
 } = useHomePage()
+
+const isCoreMounted = ref(false)
+
+onMounted(() => {
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(() => {
+      isCoreMounted.value = true
+    })
+    return
+  }
+
+  setTimeout(() => {
+    isCoreMounted.value = true
+  }, 0)
+})
 </script>
 
 <template>
@@ -57,15 +71,17 @@ const {
 
     <main class="main">
       <section class="left-panel">
-        <Player :loading="playerStore.loading" />
+        <Player v-if="isCoreMounted" :loading="playerStore.loading" />
+        <div v-else class="panel-placeholder" aria-hidden="true"></div>
       </section>
 
       <HomeWorkspace :active-tab="activeTab" @change-tab="switchTab">
         <template #lyric>
-          <LyricDisplay :active="activeTab === 'lyric'" />
+          <LyricDisplay v-if="isCoreMounted" :active="activeTab === 'lyric'" />
+          <div v-else class="workspace-placeholder" aria-hidden="true"></div>
         </template>
         <template #playlist>
-          <Playlist @play-song="playSong" />
+          <Playlist v-if="isCoreMounted" @play-song="playSong" />
         </template>
       </HomeWorkspace>
     </main>
@@ -76,12 +92,13 @@ const {
       :track-count="playerStore.songList.length"
     >
       <template #compact-player>
-        <Player :loading="playerStore.loading" :compact="true" />
+        <Player v-if="isCoreMounted" :loading="playerStore.loading" :compact="true" />
+        <div v-else class="compact-placeholder" aria-hidden="true"></div>
       </template>
     </HomeFooter>
 
-    <Toast />
-    <ErrorToast />
+    <Toast v-if="isCoreMounted" />
+    <ErrorToast v-if="isCoreMounted" />
   </div>
 </template>
 
@@ -129,6 +146,35 @@ const {
   min-height: 0;
   background: var(--white);
   z-index: 10;
+}
+
+.panel-placeholder,
+.workspace-placeholder,
+.compact-placeholder {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.015)),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(0, 0, 0, 0.025),
+      rgba(0, 0, 0, 0.025) 8px,
+      transparent 8px,
+      transparent 16px
+    );
+}
+
+.panel-placeholder {
+  flex: 1;
+  min-height: 0;
+}
+
+.workspace-placeholder {
+  flex: 1;
+  min-height: 0;
+}
+
+.compact-placeholder {
+  height: 100%;
 }
 
 @media (max-width: 900px) {

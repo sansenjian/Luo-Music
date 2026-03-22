@@ -96,7 +96,8 @@ export class Injector {
       } catch (error) {
         const className = target.name || 'AnonymousClass'
         throw new Error(
-          `[Injector] Failed to resolve ${identifier.name} for ${className} constructor parameter #${parameterIndex}: ${String(error)}`
+          `[Injector] Failed to resolve ${identifier.name} for ${className} constructor parameter #${parameterIndex}: ${String(error)}`,
+          { cause: error }
         )
       }
     })

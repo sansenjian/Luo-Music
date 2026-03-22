@@ -263,6 +263,7 @@ export interface SendChannelMap {
   [SEND_CHANNELS.DESKTOP_LYRIC_TOGGLE_LOCK]: { params: [] }
   [SEND_CHANNELS.DESKTOP_LYRIC_MOVE]: { params: [{ x: number; y: number }] }
   [SEND_CHANNELS.DESKTOP_LYRIC_SET_IGNORE_MOUSE]: { params: [ignore: boolean] }
+  [SEND_CHANNELS.DESKTOP_LYRIC_READY]: { params: [] }
   [SEND_CHANNELS.LYRIC_TIME_UPDATE]: { params: [LyricTimeUpdate] }
 
   // 下载
@@ -323,3 +324,17 @@ export type SendFunction<T extends SendChannel> = (...args: SendChannelMap[T]['p
 export type ReceiveCallback<T extends ReceiveChannel> = (
   payload: ReceiveChannelMap[T]['payload']
 ) => void
+
+// ========== Protocol Contract Assertions ==========
+
+type Assert<T extends true> = T
+type IsExactKeySet<Expected extends PropertyKey, Actual extends PropertyKey> = [Exclude<
+  Expected,
+  Actual
+>] extends [never]
+  ? ([Exclude<Actual, Expected>] extends [never] ? true : false)
+  : false
+
+type ProtocolSendChannel = (typeof SEND_CHANNELS)[keyof typeof SEND_CHANNELS]
+
+type _AssertSendChannelMapKeys = Assert<IsExactKeySet<ProtocolSendChannel, keyof SendChannelMap>>

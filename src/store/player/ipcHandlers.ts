@@ -94,7 +94,7 @@ export class IpcEventHandler implements IDisposable {
         return
       }
 
-      if (typeof command === 'object' && command !== null) {
+      if (typeof command === 'object') {
         const cmd = command as { type?: string; volume?: number }
         if (cmd.type === 'volume' && typeof cmd.volume === 'number') {
           this.deps.setVolume(cmd.volume)

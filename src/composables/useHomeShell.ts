@@ -50,13 +50,14 @@ export function useHomeShell() {
     return platformService.isMobile()
   }
 
-  onMounted(() => {
-    const userPreferenceSet = storageService.getItem(COMPACT_MODE_PREFERENCE_KEY)
-    if (isMobile() && !playerStore.isCompact && !userPreferenceSet) {
-      playerStore.toggleCompactMode()
-    }
+  const userPreferenceSet = storageService.getItem(COMPACT_MODE_PREFERENCE_KEY)
+  if (isMobile() && !playerStore.isCompact && !userPreferenceSet) {
+    playerStore.isCompact = true
+    storageService.setItem(COMPACT_MODE_PREFERENCE_KEY, 'true')
+  }
 
-    if (isElectron.value) {
+  onMounted(() => {
+    if (isElectron.value && !playerStore.ipcInitialized) {
       playerStore.setupIpcListeners()
     }
   })

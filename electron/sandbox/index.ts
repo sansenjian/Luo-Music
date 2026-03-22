@@ -15,6 +15,7 @@ interface ValidatedIpcBridge {
   send: (channel: string, ...args: unknown[]) => void
   on: (channel: string, callback: (...args: unknown[]) => void) => () => void
   invoke: <T = unknown>(channel: string, ...args: unknown[]) => Promise<T>
+  supportsSendChannel: (channel: string) => channel is SendChannel
 }
 
 /**
@@ -24,6 +25,7 @@ export interface ServiceAPI {
   // IPC 核心
   invoke: <T>(channel: Channel, ...args: unknown[]) => Promise<T>
   send: (channel: Channel, ...args: unknown[]) => void
+  supportsSendChannel: (channel: string) => boolean
   on: (channel: Channel, listener: (...args: unknown[]) => void) => () => void
   once: (channel: Channel, listener: (...args: unknown[]) => void) => void
   removeListener: (channel: Channel, listener: (...args: unknown[]) => void) => void
@@ -179,6 +181,10 @@ function createValidatedIpcBridge(renderer: Electron.IpcRenderer): ValidatedIpcB
         throw new Error(`Invalid invoke channel: ${channel}`)
       }
       return renderer.invoke(channel as InvokeChannel, ...args) as Promise<T>
+    },
+
+    supportsSendChannel(channel: string): channel is SendChannel {
+      return validSendChannels.has(channel as SendChannel)
     }
   }
 }
@@ -186,7 +192,7 @@ function createValidatedIpcBridge(renderer: Electron.IpcRenderer): ValidatedIpcB
 /**
  * 创建服务代理 API
  */
-function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
+function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPI {
   // Initialize proxy services.
   const ipcProxy = new IpcProxy()
   const configProxy = new ConfigProxy()
@@ -198,6 +204,7 @@ function createServiceAPI(_ipc: ValidatedIpcBridge): ServiceAPI {
     // IPC 核心
     invoke: (channel: Channel, ...args) => ipcProxy.invoke(channel, ...args),
     send: (channel: Channel, ...args) => ipcProxy.send(channel, ...args),
+    supportsSendChannel: (channel: string) => ipc.supportsSendChannel(channel),
     on: (channel: Channel, listener) => ipcProxy.on(channel, listener),
     once: (channel: Channel, listener) => ipcProxy.once(channel, listener),
     removeListener: (channel: Channel, listener) => ipcProxy.removeListener(channel, listener),

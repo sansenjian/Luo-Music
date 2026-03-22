@@ -115,6 +115,18 @@ describe('platform/common/platformService', () => {
         value: undefined
       })
     })
+
+    it('returns true when services bridge exists', () => {
+      Object.defineProperty(window, 'services', {
+        configurable: true,
+        value: {} as unknown
+      })
+      expect(detectElectron()).toBe(true)
+      Object.defineProperty(window, 'services', {
+        configurable: true,
+        value: undefined
+      })
+    })
   })
 
   describe('PlatformServiceBase', () => {

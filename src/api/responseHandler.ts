@@ -1,5 +1,3 @@
-import { z } from 'zod'
-
 import type { SearchValidationResult } from '@/types/schemas'
 import { normalizeApiError } from '@/utils/error/normalize'
 import type { AppError } from '@/utils/error/types'
@@ -78,7 +76,7 @@ export function parseResponse<T>(
   let data: unknown = response
   if (dataPath) {
     data = getValueByPath(response, dataPath)
-  } else if (typeof response === 'object' && response !== null) {
+  } else if (typeof response === 'object') {
     const record = response as Record<string, unknown>
     data = record.data ?? record.result ?? record.response ?? response
   }
@@ -147,48 +145,52 @@ export function handleApiError(error: unknown, context?: string): AppError {
 
 export type { SearchValidationResult }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+  return Array.isArray(value)
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
 export function validateSearchResponse(data: unknown): SearchValidationResult {
-  const qqMusicSchema = z.object({
-    song: z.object({
-      list: z.array(z.unknown()),
-      totalnum: z.number()
-    })
-  })
-
-  const qqResult = qqMusicSchema.safeParse(data)
-  if (qqResult.success) {
-    return {
-      valid: true,
-      list: qqResult.data.song.list,
-      total: qqResult.data.song.totalnum
+  if (isRecord(data) && isRecord(data.song)) {
+    const list = data.song.list
+    const totalnum = data.song.totalnum
+    if (isUnknownArray(list) && isFiniteNumber(totalnum)) {
+      return {
+        valid: true,
+        list,
+        total: totalnum
+      }
     }
   }
 
-  const neteaseSchema = z.object({
-    songs: z.array(z.unknown()),
-    songCount: z.number()
-  })
-
-  const neteaseResult = neteaseSchema.safeParse(data)
-  if (neteaseResult.success) {
-    return {
-      valid: true,
-      list: neteaseResult.data.songs,
-      total: neteaseResult.data.songCount
+  if (isRecord(data)) {
+    const songs = data.songs
+    const songCount = data.songCount
+    if (isUnknownArray(songs) && isFiniteNumber(songCount)) {
+      return {
+        valid: true,
+        list: songs,
+        total: songCount
+      }
     }
   }
 
-  const genericSchema = z.object({
-    list: z.array(z.unknown()),
-    total: z.number()
-  })
-
-  const genericResult = genericSchema.safeParse(data)
-  if (genericResult.success) {
-    return {
-      valid: true,
-      list: genericResult.data.list,
-      total: genericResult.data.total
+  if (isRecord(data)) {
+    const list = data.list
+    const total = data.total
+    if (isUnknownArray(list) && isFiniteNumber(total)) {
+      return {
+        valid: true,
+        list,
+        total
+      }
     }
   }
 

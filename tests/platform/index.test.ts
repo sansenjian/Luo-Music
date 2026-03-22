@@ -10,6 +10,7 @@ type MockPlatformService = {
   closeWindow: ReturnType<typeof vi.fn>
   on: ReturnType<typeof vi.fn>
   send: ReturnType<typeof vi.fn>
+  supportsSendChannel: ReturnType<typeof vi.fn>
   sendPlayingState: ReturnType<typeof vi.fn>
   sendPlayModeChange: ReturnType<typeof vi.fn>
   getPlatform: ReturnType<typeof vi.fn>
@@ -31,6 +32,7 @@ function createMockPlatformService(withClearAll = true): MockPlatformService {
       dispose: vi.fn()
     })),
     send: vi.fn(),
+    supportsSendChannel: vi.fn(() => true),
     sendPlayingState: vi.fn(),
     sendPlayModeChange: vi.fn(),
     getPlatform: vi.fn(() => Platform.Web),

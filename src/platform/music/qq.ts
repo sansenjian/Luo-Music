@@ -15,8 +15,8 @@ import {
   type QQSearchSongItem,
   type QQSongInfoData,
   type QQSongInfoTrack
-} from '../../api/qqmusic'
-import { validateSearchResponse } from '../../api/responseHandler'
+} from '@/api/qqmusic'
+import { validateSearchResponse } from '@/api/responseHandler'
 
 interface QQMusicPlayOptions {
   mediaId?: string

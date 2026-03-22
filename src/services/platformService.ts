@@ -8,6 +8,7 @@ export type PlatformService = {
   maximizeWindow(): void
   closeWindow(): void
   send(channel: string, data: unknown): void
+  supportsSendChannel(channel: string): boolean
   sendPlayingState(playing: boolean): void
   sendPlayModeChange(mode: number): void
   on(channel: string, handler: (data: unknown) => void): () => void
@@ -43,6 +44,10 @@ export function createPlatformService(): PlatformService {
 
     send(channel: string, data: unknown): void {
       platform.send(channel, data)
+    },
+
+    supportsSendChannel(channel: string): boolean {
+      return platform.supportsSendChannel(channel)
     },
 
     sendPlayingState(playing: boolean): void {

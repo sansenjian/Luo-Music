@@ -1,4 +1,4 @@
-import { INVOKE_CHANNELS, SEND_CHANNELS } from '../shared/protocol/channels.ts'
+import { INVOKE_CHANNELS, SEND_CHANNELS, isValidSendChannel } from '../shared/protocol/channels.ts'
 import type { CacheClearOptions, CacheClearResult } from '../shared/protocol/cache.ts'
 import type { ServiceStatusResponse } from '../ipc/types'
 
@@ -59,6 +59,7 @@ export interface ElectronAPI {
   stopService: (serviceId: string) => Promise<void>
   sendPlayingState: (playing: boolean) => void
   sendPlayModeChange: (mode: number) => void
+  supportsSendChannel: (channel: string) => boolean
   moveWindow: (x: number, y: number) => void
   send: (channel: string, data: unknown) => void
   on: (channel: string, callback: (...args: unknown[]) => void) => () => void
@@ -144,6 +145,7 @@ export function createLegacyElectronAPI(
     stopService: (serviceId: string) => ipc.invoke<void>(INVOKE_CHANNELS.SERVICE_STOP, serviceId),
     sendPlayingState: (playing: boolean) => ipc.send(SEND_CHANNELS.MUSIC_PLAYING_CHECK, playing),
     sendPlayModeChange: (mode: number) => ipc.send(SEND_CHANNELS.MUSIC_PLAYMODE_TRAY_CHANGE, mode),
+    supportsSendChannel: (channel: string) => isValidSendChannel(channel),
     moveWindow: (x: number, y: number) => ipc.send(SEND_CHANNELS.DESKTOP_LYRIC_MOVE, { x, y }),
     send: (channel: string, data: unknown) => ipc.send(channel, data),
     on: (channel: string, callback: (...args: unknown[]) => void) => ipc.on(channel, callback)

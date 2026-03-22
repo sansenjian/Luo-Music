@@ -52,6 +52,11 @@ function isUnsupportedReadyChannelError(error: unknown): boolean {
 }
 
 function notifyRendererReady() {
+  if (!platformService.supportsSendChannel('desktop-lyric-ready')) {
+    console.info('[LyricFloat] desktop-lyric-ready channel is unavailable in current preload')
+    return
+  }
+
   try {
     platformService.send('desktop-lyric-ready', undefined)
   } catch (error) {

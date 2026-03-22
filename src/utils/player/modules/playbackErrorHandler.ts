@@ -1,6 +1,6 @@
 import { PLAY_MODE } from '../constants/playMode'
-import type { Song } from '../../../platform/music/interface'
-import { getMusicAccessor } from '../../../services/musicAccessor'
+import type { Song } from '@/platform/music/interface'
+import { getMusicAccessor } from '@/services/musicAccessor'
 
 interface ErrorHandlerOptions {
   getState?: () => {

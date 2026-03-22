@@ -71,6 +71,18 @@ function createSong(overrides: Partial<Song> & Record<string, unknown> = {}): So
   }
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve
+    reject = nextReject
+  })
+
+  return { promise, resolve, reject }
+}
+
 describe('playbackActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -192,7 +204,7 @@ describe('playbackActions', () => {
     expect(onStateChange).toHaveBeenLastCalledWith({ loading: false })
   })
 
-  it('clears lyrics when lyric loading is cancelled', async () => {
+  it('keeps current lyrics when lyric loading is cancelled', async () => {
     const { actions, state, setLyricsArray } = createSubject()
     state.songList = [createSong({ url: 'https://song.test/ready.mp3' })]
     adapterMock.getLyric.mockRejectedValue({ __cancel: true })
@@ -200,7 +212,52 @@ describe('playbackActions', () => {
     await actions.playSongWithDetails(0)
 
     expect(isCanceledRequestErrorMock).toHaveBeenCalled()
-    expect(setLyricsArray).toHaveBeenCalledWith([])
+    expect(setLyricsArray).not.toHaveBeenCalled()
+  })
+
+  it('ignores stale lyric responses from superseded playback requests', async () => {
+    const { actions, state, setLyricsArray } = createSubject()
+    state.songList = [
+      createSong({ id: 'song-1', url: 'https://song.test/1.mp3' }),
+      createSong({ id: 'song-2', url: 'https://song.test/2.mp3' })
+    ]
+
+    const firstLyric = createDeferred<{ lrc: string; tlyric: string; romalrc: string }>()
+    const secondLyric = createDeferred<{ lrc: string; tlyric: string; romalrc: string }>()
+
+    adapterMock.getLyric
+      .mockImplementationOnce(() => firstLyric.promise)
+      .mockImplementationOnce(() => secondLyric.promise)
+    lyricParseMock.mockImplementation((lrc: string) => [
+      {
+        time: 0,
+        text: lrc.includes('New line') ? 'New line' : 'Old line',
+        trans: '',
+        roma: ''
+      }
+    ])
+
+    const firstPlayback = actions.playSongWithDetails(0)
+    const secondPlayback = actions.playSongWithDetails(1)
+
+    secondLyric.resolve({
+      lrc: '[00:00.00]New line',
+      tlyric: '',
+      romalrc: ''
+    })
+    await secondPlayback
+
+    firstLyric.resolve({
+      lrc: '[00:00.00]Old line',
+      tlyric: '',
+      romalrc: ''
+    })
+    await firstPlayback
+
+    expect(setLyricsArray).toHaveBeenCalledTimes(1)
+    expect(setLyricsArray).toHaveBeenCalledWith([
+      { time: 0, text: 'New line', trans: '', roma: '' }
+    ])
   })
 
   it('marks songs unavailable and rethrows when auto skip is disabled', async () => {

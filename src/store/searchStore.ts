@@ -192,6 +192,7 @@ export const useSearchStore = defineStore(
 
     function clearResults() {
       activeSearch.cancel()
+      isLoading.value = false
       results.value = []
       error.value = null
       keyword.value = ''

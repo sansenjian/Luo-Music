@@ -1,4 +1,5 @@
 const fs = require('fs')
+const http = require('http')
 const net = require('net')
 const path = require('path')
 const { spawn } = require('child_process')
@@ -76,6 +77,44 @@ function waitForPort(port) {
   })
 }
 
+function waitForHttpReady(url, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeoutMs
+
+    const retry = (reason) => {
+      if (Date.now() >= deadline) {
+        reject(new Error(`Dev server HTTP warmup timeout after ${timeoutMs}ms (${reason})`))
+        return
+      }
+      setTimeout(check, 300)
+    }
+
+    const check = () => {
+      const req = http.get(url, (res) => {
+        res.resume()
+
+        const statusCode = res.statusCode ?? 0
+        if (statusCode >= 200 && statusCode < 500) {
+          resolve()
+          return
+        }
+
+        retry(`status ${statusCode}`)
+      })
+
+      req.on('error', (error) => {
+        retry(error.message)
+      })
+
+      req.setTimeout(2000, () => {
+        req.destroy(new Error('request timeout'))
+      })
+    }
+
+    check()
+  })
+}
+
 function buildElectron() {
   return new Promise((resolve, reject) => {
     console.log('[dev-electron-launcher] Building electron files with electron-vite...')
@@ -102,6 +141,8 @@ function buildElectron() {
 
 async function main() {
   await waitForPort(5173)
+  console.log('[dev-electron-launcher] Warming Vite index response...')
+  await waitForHttpReady('http://127.0.0.1:5173/')
 
   const mainFile = 'build/electron/main.cjs'
   const preloadFile = 'build/electron/preload.cjs'
@@ -142,7 +183,7 @@ async function main() {
 
   const electronBinary = require('electron')
   const appPath = path.resolve('.')
-  const viteDevServerUrl = 'http://localhost:5173'
+  const viteDevServerUrl = 'http://127.0.0.1:5173'
 
   const child = spawn(electronBinary, ['.'], {
     stdio: 'inherit',

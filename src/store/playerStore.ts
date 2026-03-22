@@ -196,7 +196,8 @@ export const usePlayerStore = defineStore('player', {
         {
           uiUpdateInterval: 250,
           ipcBroadcastInterval: 500,
-          getCurrentLyricLine: () => getCurrentLyricLine(store)
+          getCurrentLyricLine: () => getCurrentLyricLine(store),
+          syncLyricIndex: (time: number) => syncLyricIndex(store, time)
         },
         {
           isElectron: () => getPlatformService().isElectron(),
@@ -300,8 +301,9 @@ export const usePlayerStore = defineStore('player', {
       )
     },
 
-    updateLyricIndex(time = this.progress): boolean {
-      return syncLyricIndex(this as unknown as PlayerStoreInstance, time)
+    updateLyricIndex(time?: number): boolean {
+      const store = this as unknown as PlayerStoreInstance
+      return syncLyricIndex(store, time ?? this.progress)
     },
 
     setSongList(songs: Song[]): void {

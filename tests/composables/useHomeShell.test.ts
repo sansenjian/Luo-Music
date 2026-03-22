@@ -17,7 +17,7 @@ const platformServiceMock = vi.hoisted(() => ({
 }))
 
 const storageServiceMock = vi.hoisted(() => ({
-  getItem: vi.fn(() => null),
+  getItem: vi.fn<(key: string) => string | null>(() => null),
   getJSON: vi.fn(() => null),
   removeItem: vi.fn(),
   setItem: vi.fn(),
@@ -128,34 +128,28 @@ describe('useHomeShell', () => {
     expect(setupIpcListeners).toHaveBeenCalledTimes(1)
   })
 
-  it('enables compact mode on first mobile mount without user preference', async () => {
+  it('enables compact mode before first paint on mobile without user preference', () => {
     platformServiceMock.isMobile.mockReturnValue(true)
 
     const playerStore = usePlayerStore()
     playerStore.isCompact = false
-    const toggleCompactMode = vi
-      .spyOn(playerStore, 'toggleCompactMode')
-      .mockImplementation(() => {})
 
     mountShell()
-    await nextTick()
 
-    expect(toggleCompactMode).toHaveBeenCalledTimes(1)
+    expect(playerStore.isCompact).toBe(true)
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith('compactModeUserToggled', 'true')
   })
 
-  it('does not force compact mode after the user has already chosen a preference', async () => {
+  it('does not force compact mode after the user has already chosen a preference', () => {
     platformServiceMock.isMobile.mockReturnValue(true)
     storageServiceMock.getItem.mockReturnValue('1')
 
     const playerStore = usePlayerStore()
     playerStore.isCompact = false
-    const toggleCompactMode = vi
-      .spyOn(playerStore, 'toggleCompactMode')
-      .mockImplementation(() => {})
 
     mountShell()
-    await nextTick()
 
-    expect(toggleCompactMode).not.toHaveBeenCalled()
+    expect(playerStore.isCompact).toBe(false)
+    expect(storageServiceMock.setItem).not.toHaveBeenCalled()
   })
 })

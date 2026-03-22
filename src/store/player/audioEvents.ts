@@ -16,6 +16,7 @@ export interface TimeUpdateConfig {
   uiUpdateInterval: number
   ipcBroadcastInterval: number
   getCurrentLyricLine?: () => { text: string; trans: string; roma: string } | null
+  syncLyricIndex?: (time: number) => boolean
 }
 
 export class AudioEventHandler implements IDisposable {
@@ -26,7 +27,8 @@ export class AudioEventHandler implements IDisposable {
   private config: TimeUpdateConfig = {
     uiUpdateInterval: 250,
     ipcBroadcastInterval: 500,
-    getCurrentLyricLine: undefined
+    getCurrentLyricLine: undefined,
+    syncLyricIndex: undefined
   }
   private disposedState = false
 
@@ -92,13 +94,17 @@ export class AudioEventHandler implements IDisposable {
   private handleProgressUpdate(force = false): void {
     const now = Date.now()
     const currentTime = Number(playerCore.currentTime) || 0
+    const lyricIndexChanged = this.config.syncLyricIndex?.(currentTime) ?? false
 
     if (force || now - this.lastUiUpdateTime >= this.config.uiUpdateInterval) {
       this.lastUiUpdateTime = now
       this.callbacks.onTimeUpdate?.(currentTime)
     }
 
-    if (this.platform && (force || now - this.lastBroadcastTime >= this.config.ipcBroadcastInterval)) {
+    if (
+      this.platform &&
+      (lyricIndexChanged || force || now - this.lastBroadcastTime >= this.config.ipcBroadcastInterval)
+    ) {
       this.lastBroadcastTime = now
       this.broadcastLyricUpdate()
     }

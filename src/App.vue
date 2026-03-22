@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Analytics } from '@vercel/analytics/vue'
+import { defineAsyncComponent, onMounted, ref } from 'vue'
 
 import { useCommandContext } from './composables/useCommandContext'
 import { services } from './services'
@@ -14,6 +14,10 @@ type PlayerState = {
 const platformService = services.platform()
 const storageService = services.storage()
 const isElectron = platformService.isElectron()
+const showAnalytics = ref(false)
+const Analytics = defineAsyncComponent(() =>
+  import('@vercel/analytics/vue').then(module => module.Analytics)
+)
 const PLAYER_STORAGE_KEY = 'player'
 const DEFAULT_PLAYER_STATE: PlayerState = {
   volume: 0.7,
@@ -55,15 +59,26 @@ const sanitizePlayerState = (value: unknown): PlayerState => {
     return { ...DEFAULT_PLAYER_STATE }
   }
 
+  const record = value as Partial<PlayerState>
+
   return {
-    volume: sanitizeVolume(value.volume),
-    playMode: sanitizePlayMode(value.playMode),
-    lyricType: sanitizeLyricType(value.lyricType),
-    isCompact: sanitizeIsCompact(value.isCompact)
+    volume: sanitizeVolume(record.volume),
+    playMode: sanitizePlayMode(record.playMode),
+    lyricType: sanitizeLyricType(record.lyricType),
+    isCompact: sanitizeIsCompact(record.isCompact)
   }
 }
 
 useCommandContext()
+
+function scheduleIdle(task: () => void): void {
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    window.requestIdleCallback(() => task())
+    return
+  }
+
+  setTimeout(task, 0)
+}
 
 if (isElectron) {
   const playerState = storageService.getJSON<unknown>(PLAYER_STORAGE_KEY)
@@ -75,10 +90,20 @@ if (isElectron) {
     console.error('Failed to parse player state, reset to defaults')
   }
 }
+
+onMounted(() => {
+  if (isElectron) {
+    return
+  }
+
+  scheduleIdle(() => {
+    showAnalytics.value = true
+  })
+})
 </script>
 
 <template>
-  <Analytics v-if="!isElectron" />
+  <Analytics v-if="!isElectron && showAnalytics" />
   <router-view />
 </template>
 

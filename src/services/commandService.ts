@@ -1,10 +1,9 @@
 import { COMMANDS, COMMAND_ENABLEMENT } from '../core/commands/commands'
-import { EventEmitter } from '../base/common/event/event'
+import { EventEmitter, type Event } from '../base/common/event/event'
 import { DisposableStore } from '../base/common/lifecycle/disposable'
 import { usePlayerStore } from '../store/playerStore'
 import { getService } from './registry'
 import { IContextKeyService, IPlatformService } from './types'
-import type { Event } from '../base/common/event/event'
 
 export type CommandHandler<TPayload = unknown> = (payload?: TPayload) => void | Promise<void>
 
@@ -29,6 +28,7 @@ export type CommandService = {
   get(id: string): CommandDefinition | undefined
   has(id: string): boolean
   list(): string[]
+  dispose(): void
 }
 
 type RegisteredCommand = {

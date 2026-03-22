@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-import { services } from '../../services'
-import { useUserStore } from '../../store/userStore'
+import { services } from '@/services'
+import { useUserStore } from '@/store/userStore'
 import {
   AUTH_REQUEST_CACHE_NAMESPACE,
   clearCache as clearRequestCacheInternal,
@@ -38,7 +38,7 @@ import {
   HTTP_DEFAULT_TIMEOUT,
   DEV_API_SERVER
 } from '@/constants/http'
-import type { ILogger } from '../../services/loggerService'
+import type { ILogger } from '@/services/loggerService'
 
 type ErrorService = typeof services.error extends () => infer R ? R : never
 

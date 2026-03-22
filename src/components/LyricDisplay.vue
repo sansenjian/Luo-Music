@@ -17,7 +17,7 @@ const playerStore = usePlayerStore()
 const lyricScrollArea = ref(null)
 const { lyrics, currentLyricIndex, showOriginal, showTrans, showRoma } = useActiveLyricState()
 
-function handleLyricClick(time) {
+function handleLyricClick(time: number) {
   playerStore.seek(time)
 }
 
@@ -142,10 +142,6 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   font-size: 16px;
 }
 
-:global(.player-compact) .lyric-line.active .lyric-main {
-  font-size: 18px;
-}
-
 :global(.player-compact) .lyric-trans,
 :global(.player-compact) .lyric-roma {
   font-size: 11px;
@@ -154,7 +150,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 .lyric-line {
   margin-bottom: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
   padding: 8px 12px;
   border-left: 3px solid transparent;
 }
@@ -171,7 +167,6 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   border-left-color: var(--accent);
   opacity: 1 !important;
   font-weight: 700;
-  transform: scale(1.05);
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
 }
 
@@ -205,12 +200,8 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   font-size: 18px;
   font-weight: 600;
   line-height: 1.4;
-  transition: font-size 0.3s;
+  transition: color 0.2s ease;
   word-break: break-word;
-}
-
-.lyric-line.active .lyric-main {
-  font-size: 20px;
 }
 
 .lyric-trans {
@@ -230,10 +221,6 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   .lyric-main {
     font-size: 16px;
   }
-
-  .lyric-line.active .lyric-main {
-    font-size: 18px;
-  }
 }
 
 @media (max-width: 600px) {
@@ -243,10 +230,6 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 
   .lyric-main {
     font-size: 15px;
-  }
-
-  .lyric-line.active .lyric-main {
-    font-size: 17px;
   }
 
   .lyric-trans {

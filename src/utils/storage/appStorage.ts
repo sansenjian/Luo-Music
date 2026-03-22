@@ -62,7 +62,10 @@ function sanitizeVolume(value: unknown): number {
 }
 
 function sanitizePlayMode(value: unknown): number {
-  return Number.isInteger(value) && value >= 0 && value <= 3 ? value : DEFAULT_PLAYER_STATE.playMode
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    return DEFAULT_PLAYER_STATE.playMode
+  }
+  return value >= 0 && value <= 3 ? value : DEFAULT_PLAYER_STATE.playMode
 }
 
 function sanitizeLyricType(value: unknown): string[] {

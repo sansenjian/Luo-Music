@@ -1,5 +1,5 @@
 <script setup>
-import { formatDuration } from '../../utils/songFormatter'
+import { formatDuration } from '@/utils/songFormatter'
 
 defineProps({
   likeSongs: {

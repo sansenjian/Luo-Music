@@ -205,4 +205,43 @@ describe('searchStore', () => {
     expect((playerStore.songList[0] as Song & { mediaId?: string }).mediaId).toBe('media-mid')
     expect(playSongWithDetails).toHaveBeenCalledWith(0)
   })
+
+  it('clears loading state when canceling an in-flight search via clearResults', async () => {
+    const searchDeferred = createDeferred<{ list: Song[]; total: number }>()
+
+    adapterMock.search.mockReturnValue(searchDeferred.promise)
+
+    const store = useSearchStore()
+    const searchPromise = store.search('test')
+
+    expect(store.isLoading).toBe(true)
+
+    store.clearResults()
+
+    expect(store.isLoading).toBe(false)
+    expect(store.results).toHaveLength(0)
+    expect(store.keyword).toBe('')
+    expect(store.error).toBeNull()
+
+    searchDeferred.resolve({
+      list: [
+        {
+          id: 'test-song',
+          name: 'Test',
+          artists: [{ id: 1, name: 'Artist' }],
+          album: { id: 1, name: 'Album', picUrl: 'test.jpg' },
+          duration: 180000,
+          mvid: 0,
+          platform: 'netease',
+          originalId: 'test-song'
+        }
+      ],
+      total: 1
+    })
+
+    await searchPromise
+
+    expect(store.results).toHaveLength(0)
+    expect(store.isLoading).toBe(false)
+  })
 })

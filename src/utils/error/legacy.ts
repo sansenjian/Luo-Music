@@ -13,7 +13,7 @@ type ErrorOptions = {
 
 function shouldEmit(error: AppError): boolean {
   const data = error.data
-  return !data || typeof data !== 'object' || (data as { silent?: boolean }).silent !== true
+  return !data || typeof data !== 'object' || !(data as { silent?: boolean }).silent
 }
 
 export function handleError(error: unknown, options: ErrorOptions = {}): AppError {

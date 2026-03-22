@@ -20,7 +20,6 @@ declare global {
   const animateVolumeIcon: typeof import('./composables/useAnimations').animateVolumeIcon
   const asyncComputed: typeof import('@vueuse/core').asyncComputed
   const autoResetRef: typeof import('@vueuse/core').autoResetRef
-  const clearSearch: typeof import('./composables/useSearch').clearSearch
   const computed: typeof import('vue').computed
   const computedAsync: typeof import('@vueuse/core').computedAsync
   const computedEager: typeof import('@vueuse/core').computedEager
@@ -53,15 +52,11 @@ declare global {
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
-  const getResultsForPlaylist: typeof import('./composables/useSearch').getResultsForPlaylist
-  const getSongAt: typeof import('./composables/useSearch').getSongAt
   const h: typeof import('vue').h
-  const hasResults: typeof import('./composables/useSearch').hasResults
   const ignorableWatch: typeof import('@vueuse/core').ignorableWatch
   const inject: typeof import('vue').inject
   const injectLocal: typeof import('@vueuse/core').injectLocal
   const isDefined: typeof import('@vueuse/core').isDefined
-  const isLoading: typeof import('./composables/useSearch').isLoading
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive
   const isReadonly: typeof import('vue').isReadonly
@@ -97,9 +92,7 @@ declare global {
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
   const pausableWatch: typeof import('@vueuse/core').pausableWatch
-  const performSearch: typeof import('./composables/useSearch').performSearch
   const pinia: typeof import('./store/pinia').default
-  const platform: typeof import('./composables/useSearch').platform
   const provide: typeof import('vue').provide
   const provideLocal: typeof import('@vueuse/core').provideLocal
   const reactify: typeof import('@vueuse/core').reactify
@@ -118,14 +111,9 @@ declare global {
   const refWithControl: typeof import('@vueuse/core').refWithControl
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveRef: typeof import('@vueuse/core').resolveRef
-  const searchError: typeof import('./composables/useSearch').searchError
-  const searchKeyword: typeof import('./composables/useSearch').searchKeyword
   const searchResultItemToSong: typeof import('./store/searchStore').searchResultItemToSong
-  const searchResults: typeof import('./composables/useSearch').searchResults
-  const searchTotal: typeof import('./composables/useSearch').searchTotal
   const setActivePinia: typeof import('pinia').setActivePinia
   const setMapStoreSuffix: typeof import('pinia').setMapStoreSuffix
-  const setSearchPlatform: typeof import('./composables/useSearch').setSearchPlatform
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
@@ -261,6 +249,7 @@ declare global {
   const usePerformanceObserver: typeof import('@vueuse/core').usePerformanceObserver
   const usePermission: typeof import('@vueuse/core').usePermission
   const usePlayerStore: typeof import('./store/playerStore').usePlayerStore
+  const usePlayerViewModel: typeof import('./composables/usePlayerViewModel').usePlayerViewModel
   const usePlaylistStore: typeof import('./store/playlistStore').usePlaylistStore
   const usePointer: typeof import('@vueuse/core').usePointer
   const usePointerLock: typeof import('@vueuse/core').usePointerLock
@@ -655,6 +644,7 @@ declare module 'vue' {
     readonly usePerformanceObserver: UnwrapRef<typeof import('@vueuse/core')['usePerformanceObserver']>
     readonly usePermission: UnwrapRef<typeof import('@vueuse/core')['usePermission']>
     readonly usePlayerStore: UnwrapRef<typeof import('./store/playerStore')['usePlayerStore']>
+    readonly usePlayerViewModel: UnwrapRef<typeof import('./composables/usePlayerViewModel')['usePlayerViewModel']>
     readonly usePlaylistStore: UnwrapRef<typeof import('./store/playlistStore')['usePlaylistStore']>
     readonly usePointer: UnwrapRef<typeof import('@vueuse/core')['usePointer']>
     readonly usePointerLock: UnwrapRef<typeof import('@vueuse/core')['usePointerLock']>

@@ -1,6 +1,6 @@
 import { QQMusicAdapter } from './adapter'
-import { services } from '../services'
-import type { ILogger } from '../services/loggerService'
+import { services } from '@/services'
+import type { ILogger } from '@/services/loggerService'
 import { useUserStore } from '../store/userStore'
 import {
   createCachedCookieResolver,
