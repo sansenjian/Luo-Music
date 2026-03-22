@@ -1,11 +1,9 @@
 import { QQMusicAdapter } from './adapter'
 import { services } from '@/services'
 import type { ILogger } from '@/services/loggerService'
+import { ErrorCode } from '@/utils/error/types'
 import { useUserStore } from '../store/userStore'
-import {
-  createCachedCookieResolver,
-  createTransport
-} from '../utils/http/transportFactory'
+import { createCachedCookieResolver, createTransport } from '../utils/http/transportFactory'
 import { isElectronRenderer } from '../utils/http/transportShared'
 import { HTTP_COOKIE_CACHE_TTL, QQ_API_SERVER } from '@/constants/http'
 
@@ -154,27 +152,72 @@ function getQQCookie(): string | null {
   return qqCookieResolver.getCookie()
 }
 
-function isRecoverableQQLoginError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') {
-    return false
+type QQLoginErrorLike = {
+  code?: unknown
+  cause?: {
+    code?: unknown
+    status?: unknown
+    response?: {
+      status?: unknown
+    }
   }
-
-  const record = error as {
-    data?: {
+  data?: {
+    code?: unknown
+    status?: unknown
+    responseData?: {
       code?: unknown
       status?: unknown
     }
   }
+}
 
-  const code = typeof record.data?.code === 'string' ? record.data.code : null
-  const status = typeof record.data?.status === 'number' ? record.data.status : null
+const RECOVERABLE_QQ_LOGIN_ERROR_CODES = new Set([
+  'ETIMEDOUT',
+  'ECONNRESET',
+  'ERR_NETWORK',
+  'ECONNABORTED',
+  'ECONNREFUSED',
+  'ENOTFOUND',
+  'EAI_AGAIN'
+])
 
-  return (
-    status === 500 ||
-    code === 'ETIMEDOUT' ||
-    code === 'ECONNRESET' ||
-    code === 'ERR_NETWORK' ||
-    code === 'ECONNABORTED'
+const RECOVERABLE_QQ_LOGIN_APP_ERROR_CODES = new Set([
+  ErrorCode.SERVICE_UNAVAILABLE,
+  ErrorCode.API_TIMEOUT,
+  ErrorCode.NETWORK_OFFLINE
+])
+
+export function isRecoverableQQLoginError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const record = error as QQLoginErrorLike
+  const appErrorCode = typeof record.code === 'number' ? record.code : null
+  if (appErrorCode !== null && RECOVERABLE_QQ_LOGIN_APP_ERROR_CODES.has(appErrorCode)) {
+    return true
+  }
+
+  const codes: string[] = [
+    record.code,
+    record.data?.code,
+    record.data?.responseData?.code,
+    record.cause?.code
+  ].filter((value): value is string => typeof value === 'string')
+
+  if (codes.some(code => RECOVERABLE_QQ_LOGIN_ERROR_CODES.has(code))) {
+    return true
+  }
+
+  const statuses: number[] = [
+    record.data?.status,
+    record.data?.responseData?.status,
+    record.cause?.status,
+    record.cause?.response?.status
+  ].filter((value): value is number => typeof value === 'number')
+
+  return statuses.some(
+    status => status === 500 || status === 502 || status === 503 || status === 504
   )
 }
 
@@ -217,9 +260,7 @@ const qqRequest = createTransport({
   extend(client) {
     client.interceptors.response.use(undefined, error => {
       const requestUrl =
-        typeof error?.config?.url === 'string'
-          ? error.config.url
-          : String(error?.config?.url ?? '')
+        typeof error?.config?.url === 'string' ? error.config.url : String(error?.config?.url ?? '')
 
       const isQQLoginCheck = requestUrl.includes(QQ_LOGIN_CHECK_PATH)
 

@@ -77,7 +77,7 @@ function waitForPort(port) {
   })
 }
 
-function waitForHttpReady(url, timeoutMs = 15000) {
+function waitForHttpReady(url, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs
 
@@ -86,7 +86,7 @@ function waitForHttpReady(url, timeoutMs = 15000) {
         reject(new Error(`Dev server HTTP warmup timeout after ${timeoutMs}ms (${reason})`))
         return
       }
-      setTimeout(check, 300)
+      setTimeout(check, 500)
     }
 
     const check = () => {
@@ -106,7 +106,7 @@ function waitForHttpReady(url, timeoutMs = 15000) {
         retry(error.message)
       })
 
-      req.setTimeout(2000, () => {
+      req.setTimeout(5000, () => {
         req.destroy(new Error('request timeout'))
       })
     }

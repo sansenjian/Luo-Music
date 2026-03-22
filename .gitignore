@@ -141,6 +141,7 @@ electron/ipc/utils/gatewayCache.js
 electron/main/index.js
 electron.vite.config.js
 vite.config.js
+config/vite.shared.js
 
 # Vercel
 .vercel

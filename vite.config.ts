@@ -2,7 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
-import { createSharedDevProxy, createSrcAlias, webManualChunks } from './config/vite.shared'
+import { createSharedDevProxy, createSrcAlias, webManualChunks } from './config/vite.shared.ts'
 
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -15,12 +15,7 @@ export default defineConfig(async ({ mode }) => {
   const plugins = [
     vue(),
     AutoImport({
-      imports: [
-        'vue',
-        'vue-router',
-        'pinia',
-        '@vueuse/core'
-      ],
+      imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
       dts: 'src/auto-imports.d.ts',
       dirs: ['src/composables', 'src/store'],
       vueTemplate: true

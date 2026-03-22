@@ -7,17 +7,15 @@ import {
   createSharedDevProxy,
   createSrcAlias,
   electronRendererManualChunks
-} from './config/vite.shared'
-
+} from './config/vite.shared.ts'
 const rootDir = __dirname
 loadDotEnv({ path: resolve(rootDir, '.env') })
 loadDotEnv({ path: resolve(rootDir, '.env.sentry-build-plugin') })
 
-const sentryRelease = process.env.SENTRY_RELEASE || `luo-music@${process.env.npm_package_version ?? '0.0.0'}`
+const sentryRelease =
+  process.env.SENTRY_RELEASE || `luo-music@${process.env.npm_package_version ?? '0.0.0'}`
 const sentryUploadEnabled = Boolean(
-  process.env.SENTRY_AUTH_TOKEN &&
-  process.env.SENTRY_ORG &&
-  process.env.SENTRY_PROJECT
+  process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
 )
 
 const rendererPlugins = [vue()]
@@ -123,12 +121,7 @@ export default defineConfig({
       proxy: createSharedDevProxy()
     },
     optimizeDeps: {
-      include: [
-        'vue',
-        'pinia',
-        '@tanstack/vue-query',
-        'animejs'
-      ],
+      include: ['vue', 'pinia', '@tanstack/vue-query', 'animejs'],
       exclude: ['electron']
     },
     build: {
