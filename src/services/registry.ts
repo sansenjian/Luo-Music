@@ -126,13 +126,15 @@ function startInstanceDeactivation(
   const activationPromise =
     getActivationOperation(identifier, instance)?.promise ?? Promise.resolve()
 
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+
   const promise = activationPromise
     .catch(() => {})
     .then(() => {
       const deactivationPromise = runLifecycleHook(identifier.name, instance, 'onDeactivate')
-      // Windows平台：添加超时保护，防止onDeactivate挂起
+      // Windows 平台：添加超时保护，防止 onDeactivate 挂起
       const timeoutPromise = new Promise<void>((_, reject) => {
-        setTimeout(() => {
+        timeoutHandle = setTimeout(() => {
           reject(new Error(`onDeactivate timeout after ${DEACTIVATION_TIMEOUT_MS}ms`))
         }, DEACTIVATION_TIMEOUT_MS)
       })
@@ -140,9 +142,14 @@ function startInstanceDeactivation(
     })
     .catch(error => {
       console.warn(`[Services] onDeactivate failed for "${identifier.name}":`, error)
-      // 超时或失败时继续清理，不阻塞dispose
+      // 超时或失败时继续清理，不阻塞 dispose
     })
     .finally(() => {
+      // 清除定时器，防止事件循环无法退出
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+      }
+
       clearActiveInstance(identifier, instance)
 
       if (getDeactivationOperation(identifier, instance)) {
