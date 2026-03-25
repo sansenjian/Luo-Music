@@ -1,6 +1,8 @@
-import { onCLS, onINP, onLCP, onFCP, onTTFB, type Metric } from 'web-vitals'
+import { onCLS, onFCP, onINP, onLCP, onTTFB, type Metric } from 'web-vitals'
 
-// 扩展 Performance 接口以包含 Chrome 的非标准 memory 属性
+import { EventEmitter, type Event } from '@/base/common/event/event'
+import { Disposable, DisposableStore } from '@/base/common/lifecycle/disposable'
+
 interface ExtendedPerformance extends Performance {
   memory?: {
     usedJSHeapSize: number
@@ -9,13 +11,33 @@ interface ExtendedPerformance extends Performance {
   }
 }
 
+export type PerformanceMemorySnapshot = {
+  usedJSHeapSize: number
+  totalJSHeapSize: number
+}
+
+export type PerformanceMetricsSnapshot = Record<
+  string,
+  number | PerformanceMemorySnapshot | null
+> & {
+  fps: number
+  memory: PerformanceMemorySnapshot | null
+}
+
 export class PerformanceMonitor {
   private static instance: PerformanceMonitor
-  private fps: number = 0
-  private frameCount: number = 0
-  private lastTime: number = performance.now()
-  private isMonitoring: boolean = false
+
+  private readonly onDidChangeMetricsEmitter = new EventEmitter<PerformanceMetricsSnapshot>()
+
+  private fps = 0
+  private frameCount = 0
+  private lastTime = performance.now()
+  private isMonitoring = false
   private metrics: Record<string, number> = {}
+  private frameRequestId: number | null = null
+  private memoryIntervalId: ReturnType<typeof setInterval> | null = null
+  private webVitalsInitialized = false
+  private runtimeDisposables: DisposableStore | null = null
 
   private constructor() {}
 
@@ -23,43 +45,62 @@ export class PerformanceMonitor {
     if (!PerformanceMonitor.instance) {
       PerformanceMonitor.instance = new PerformanceMonitor()
     }
+
     return PerformanceMonitor.instance
   }
 
-  public init() {
-    if (this.isMonitoring) return
+  public readonly onDidChangeMetrics: Event<PerformanceMetricsSnapshot> =
+    this.onDidChangeMetricsEmitter.event
+
+  public init(): void {
+    if (this.isMonitoring) {
+      return
+    }
+
     this.isMonitoring = true
+    this.runtimeDisposables = new DisposableStore()
 
-    // 1. Web Vitals 指标监控
-    this.initWebVitals()
+    if (!this.webVitalsInitialized) {
+      this.initWebVitals()
+      this.webVitalsInitialized = true
+    }
 
-    // 2. FPS 监控
     this.startFPSMonitor()
-
-    // 3. 内存监控 (每 10 秒检查一次)
     this.startMemoryMonitor()
 
     console.log('[Performance] Monitor initialized')
   }
 
-  private initWebVitals() {
+  public stop(): void {
+    if (!this.isMonitoring && this.runtimeDisposables === null) {
+      return
+    }
+
+    this.isMonitoring = false
+    this.runtimeDisposables?.dispose()
+    this.runtimeDisposables = null
+  }
+
+  public dispose(): void {
+    this.stop()
+    this.fps = 0
+    this.frameCount = 0
+    this.lastTime = performance.now()
+  }
+
+  private initWebVitals(): void {
     const reportHandler = (metric: Metric) => {
       this.metrics[metric.name] = metric.value
+      this.emitMetrics()
 
-      // 在开发环境下输出指标，或者当指标较差时告警
       if (process.env.NODE_ENV === 'development') {
         console.groupCollapsed(`[Performance] ${metric.name}`)
         console.log(`Value: ${Math.round(metric.value)}`)
-        console.log(`Rating: ${metric.rating}`) // 'good' | 'needs-improvement' | 'poor'
+        console.log(`Rating: ${metric.rating}`)
         console.log(`Delta: ${Math.round(metric.delta)}`)
         console.log(`ID: ${metric.id}`)
         console.groupEnd()
       }
-
-      // 如果需要，可以通过 IPC 发送给主进程记录日志
-      // if (window.electron) {
-      //   window.electron.send('performance-metric', metric);
-      // }
     }
 
     onCLS(reportHandler)
@@ -69,62 +110,89 @@ export class PerformanceMonitor {
     onTTFB(reportHandler)
   }
 
-  private startFPSMonitor() {
-    const measureFPS = (currentTime: number) => {
-      if (!this.isMonitoring) return
+  private startFPSMonitor(): void {
+    if (!this.runtimeDisposables) {
+      return
+    }
 
-      this.frameCount++
+    const measureFPS = (currentTime: number) => {
+      if (!this.isMonitoring) {
+        this.frameRequestId = null
+        return
+      }
+
+      this.frameCount += 1
       const elapsed = currentTime - this.lastTime
 
       if (elapsed >= 1000) {
         this.fps = Math.round((this.frameCount * 1000) / elapsed)
         this.frameCount = 0
         this.lastTime = currentTime
+        this.emitMetrics()
 
-        // 如果 FPS 过低 (比如低于 30)，可以发出警告
         if (this.fps < 30 && document.visibilityState === 'visible') {
           console.warn(`[Performance] Low FPS detected: ${this.fps}`)
         }
       }
 
-      requestAnimationFrame(measureFPS)
+      this.frameRequestId = requestAnimationFrame(measureFPS)
     }
 
-    requestAnimationFrame(measureFPS)
+    this.frameRequestId = requestAnimationFrame(measureFPS)
+    this.runtimeDisposables.add(
+      Disposable.from(() => {
+        if (this.frameRequestId !== null) {
+          cancelAnimationFrame(this.frameRequestId)
+          this.frameRequestId = null
+        }
+      })
+    )
   }
 
-  private startMemoryMonitor() {
+  private startMemoryMonitor(): void {
+    if (!this.runtimeDisposables) {
+      return
+    }
+
     if (!(performance as ExtendedPerformance).memory) {
       console.warn('[Performance] Memory API not supported in this browser environment')
       return
     }
 
-    setInterval(() => {
-      if (!this.isMonitoring) return
+    this.memoryIntervalId = setInterval(() => {
+      if (!this.isMonitoring) {
+        return
+      }
 
       const memory = (performance as ExtendedPerformance).memory
-      if (memory) {
-        const usedMB = Math.round(memory.usedJSHeapSize / 1024 / 1024)
-        const limitMB = Math.round(memory.jsHeapSizeLimit / 1024 / 1024)
-
-        // 如果内存使用率过高 (比如超过 80% limit 或绝对值过大)，发出警告
-        const usageRatio = memory.usedJSHeapSize / memory.jsHeapSizeLimit
-
-        if (process.env.NODE_ENV === 'development') {
-          // 开发模式下定期输出内存状态，方便观察泄漏
-          // console.debug(`[Performance] Memory: ${usedMB}MB / ${totalMB}MB (Limit: ${limitMB}MB)`);
-        }
-
-        if (usageRatio > 0.8) {
-          console.warn(
-            `[Performance] High memory usage: ${usedMB}MB / ${limitMB}MB (${Math.round(usageRatio * 100)}%)`
-          )
-        }
+      if (!memory) {
+        return
       }
-    }, 10000) // 每 10 秒检查一次
+
+      const usedMB = Math.round(memory.usedJSHeapSize / 1024 / 1024)
+      const limitMB = Math.round(memory.jsHeapSizeLimit / 1024 / 1024)
+      const usageRatio = memory.usedJSHeapSize / memory.jsHeapSizeLimit
+
+      this.emitMetrics()
+
+      if (usageRatio > 0.8) {
+        console.warn(
+          `[Performance] High memory usage: ${usedMB}MB / ${limitMB}MB (${Math.round(usageRatio * 100)}%)`
+        )
+      }
+    }, 10000)
+
+    this.runtimeDisposables.add(
+      Disposable.from(() => {
+        if (this.memoryIntervalId !== null) {
+          clearInterval(this.memoryIntervalId)
+          this.memoryIntervalId = null
+        }
+      })
+    )
   }
 
-  public getMetrics() {
+  public getMetrics(): PerformanceMetricsSnapshot {
     return {
       fps: this.fps,
       ...this.metrics,
@@ -135,6 +203,10 @@ export class PerformanceMonitor {
           }
         : null
     }
+  }
+
+  private emitMetrics(): void {
+    this.onDidChangeMetricsEmitter.fire(this.getMetrics())
   }
 }
 

@@ -1,3 +1,14 @@
+import { normalizeApiError } from '../utils/error/normalize'
+import {
+  createTimeoutController,
+  isTimeoutError,
+  getTimeoutForEndpoint,
+  resolveTimeoutKey
+} from '@/utils/http/timeoutConfig'
+
+// Re-export for test compatibility
+export { resolveTimeoutKey }
+
 export type ApiService = {
   request(service: string, endpoint: string, params?: Record<string, unknown>): Promise<unknown>
 }
@@ -42,16 +53,43 @@ export function createApiService(): ApiService {
       const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
       const url = `${basePath}${normalizedEndpoint}${buildQuery(params)}`
 
-      const response = await fetch(url, {
-        method: 'GET',
-        credentials: 'include'
-      })
+      const { controller, timeoutId } = createTimeoutController(normalizedEndpoint)
 
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`)
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          credentials: 'include',
+          signal: controller.signal
+        })
+
+        if (!response.ok) {
+          throw normalizeApiError(
+            {
+              response: {
+                status: response.status
+              },
+              message: `API request failed: ${response.status}`
+            },
+            service
+          )
+        }
+
+        try {
+          return await response.json()
+        } catch (error) {
+          throw normalizeApiError(error, service, { endpoint: normalizedEndpoint })
+        }
+      } catch (error) {
+        if (isTimeoutError(error)) {
+          const timeout = getTimeoutForEndpoint(normalizedEndpoint)
+          throw normalizeApiError({ message: `Request timeout after ${timeout}ms` }, service, {
+            endpoint: normalizedEndpoint
+          })
+        }
+        throw error
+      } finally {
+        clearTimeout(timeoutId)
       }
-
-      return response.json()
     }
   }
 }

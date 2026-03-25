@@ -76,10 +76,10 @@ describe('configService / errorService / decorators', () => {
 
   it('injects and resolves services through decorators helpers', async () => {
     const injectedService = { name: 'api-service' }
-    const token = Symbol('service')
     getServiceMock.mockReturnValue(injectedService)
 
-    const { inject, useService, createService } = await import('@/services/decorators')
+    const { inject, useService, createService, createDecorator } = await import('@/services/decorators')
+    const token = createDecorator<typeof injectedService>('ITestService')
 
     class Example {
       declare api: typeof injectedService

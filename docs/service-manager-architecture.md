@@ -8,13 +8,13 @@
 
 ### 设计目标
 
-| 目标 | 说明 |
-|------|------|
-| **统一服务管理** | 通过 ServiceManager 统一管理多个音乐平台服务 |
-| **动态 IPC 注册** | 支持服务启动后动态注册 IPC 通道 |
-| **配置热重载** | 支持运行时设置变更，无需重启应用 |
-| **服务发现机制** | 渲染进程通过 Pinia Store 实现服务状态感知 |
-| **UI 自适应渲染** | 根据服务状态自动调整界面展示 |
+| 目标              | 说明                                         |
+| ----------------- | -------------------------------------------- |
+| **统一服务管理**  | 通过 ServiceManager 统一管理多个音乐平台服务 |
+| **动态 IPC 注册** | 支持服务启动后动态注册 IPC 通道              |
+| **配置热重载**    | 支持运行时设置变更，无需重启应用             |
+| **服务发现机制**  | 渲染进程通过 Pinia Store 实现服务状态感知    |
+| **UI 自适应渲染** | 根据服务状态自动调整界面展示                 |
 
 ---
 
@@ -59,11 +59,11 @@
 }
 ```
 
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
-| `services.qq` | QQ 音乐服务配置 | `enabled: true, port: 3300` |
-| `services.netease` | 网易云音乐服务配置 | `enabled: false, port: 3000` |
-| `services.pythonAI` | Python AI 服务配置 | `enabled: true, port: 5000` |
+| 配置项              | 说明               | 默认值                       |
+| ------------------- | ------------------ | ---------------------------- |
+| `services.qq`       | QQ 音乐服务配置    | `enabled: true, port: 3300`  |
+| `services.netease`  | 网易云音乐服务配置 | `enabled: false, port: 3000` |
+| `services.pythonAI` | Python AI 服务配置 | `enabled: true, port: 5000`  |
 
 ### 2. ServiceManager 初始化
 
@@ -72,10 +72,10 @@ ServiceManager 负责服务生命周期管理与 IPC 协调：
 ```typescript
 // electron/ServiceManager.ts
 class ServiceManager {
-  private configMap: Map<string, ServiceConfig>      // 配置表
-  private spawnQueue: Array<() => Promise<void>>     // 启动队列
-  private activeProcs: Map<string, ChildProcess>     // 运行中进程
-  
+  private configMap: Map<string, ServiceConfig> // 配置表
+  private spawnQueue: Array<() => Promise<void>> // 启动队列
+  private activeProcs: Map<string, ChildProcess> // 运行中进程
+
   async initialize(config: ServiceConfig): Promise<void>
   async startService(serviceId: string): Promise<void>
   async stopService(serviceId: string): Promise<void>
@@ -140,6 +140,7 @@ ipcMain.handle('api:services', () => serviceManager.getAvailableServices())
 ```
 
 **优势**：
+
 - 新增服务时无需修改 IPC 注册逻辑
 - 避免 `ipcMain.handle` 重复注册冲突
 - 统一错误处理和日志记录
@@ -172,22 +173,25 @@ export const useServiceStore = defineStore('service', {
   state: () => ({
     availableServices: {} as Record<string, ServiceStatus | null>
   }),
-  
+
   actions: {
     async init() {
       // 应用启动时获取可用服务列表
       const services = await ipcRenderer.invoke('api:services')
       this.availableServices = services
     },
-    
+
     async fetchServiceStatus(serviceId: string) {
       return await ipcRenderer.invoke('service:status', serviceId)
     },
-    
+
     subscribeServiceUpdates() {
-      ipcRenderer.on('service:update', (_, update: { serviceId: string, status: ServiceStatus }) => {
-        this.availableServices[update.serviceId] = update.status
-      })
+      ipcRenderer.on(
+        'service:update',
+        (_, update: { serviceId: string; status: ServiceStatus }) => {
+          this.availableServices[update.serviceId] = update.status
+        }
+      )
     }
   }
 })
@@ -225,12 +229,8 @@ export const useServiceStore = defineStore('service', {
 <!-- Home.vue 示例 -->
 <template>
   <div class="search-platforms">
-    <button v-if="serviceStore.availableServices.qq" @click="search('qq')">
-      QQ 音乐搜索
-    </button>
-    <button v-if="serviceStore.availableServices.pythonAI" @click="showAIFeature()">
-      AI 推荐
-    </button>
+    <button v-if="serviceStore.availableServices.qq" @click="search('qq')">QQ 音乐搜索</button>
+    <button v-if="serviceStore.availableServices.pythonAI" @click="showAIFeature()">AI 推荐</button>
     <!-- Netease 未启用时不渲染 -->
   </div>
 </template>
@@ -266,12 +266,12 @@ const serviceStore = useServiceStore()
 
 ### 配置类型与生效策略
 
-| 配置类型 | 生效方案 | 实现难度 | 示例 |
-|----------|----------|----------|------|
-| UI 偏好 | 热重载 | 简单 | 主题、语言、字体大小 |
-| 服务开关 | 热重载（kill/spawn） | 中等 | 启用/禁用某平台服务 |
-| 端口配置 | 下次启动生效 | 简单 | 端口号修改 |
-| 缓存策略 | 热重载 | 简单 | 缓存大小、清理策略 |
+| 配置类型 | 生效方案             | 实现难度 | 示例                 |
+| -------- | -------------------- | -------- | -------------------- |
+| UI 偏好  | 热重载               | 简单     | 主题、语言、字体大小 |
+| 服务开关 | 热重载（kill/spawn） | 中等     | 启用/禁用某平台服务  |
+| 端口配置 | 下次启动生效         | 简单     | 端口号修改           |
+| 缓存策略 | 热重载               | 简单     | 缓存大小、清理策略   |
 
 > **注意**：端口变更热重载需要 kill 子进程 → 等待端口释放 → spawn 新进程 → 重新注册 IPC，过程中所有进行中的请求会中断。**建议端口配置采用"下次启动生效"策略**。
 
@@ -290,17 +290,17 @@ import { NeteaseService } from './services/NeteaseService'
 export class ServiceManager {
   private services: Map<string, BaseService>
   private config: ServiceConfig
-  
+
   constructor(config: ServiceConfig) {
     this.config = config
     this.services = new Map()
   }
-  
+
   async initialize(): Promise<void> {
     // 1. 注册内置服务
     this.registerService('qq', new QQService())
     this.registerService('netease', new NeteaseService())
-    
+
     // 2. 根据配置启动服务
     for (const [serviceId, service] of this.services) {
       if (this.config.services[serviceId]?.enabled) {
@@ -309,7 +309,7 @@ export class ServiceManager {
       }
     }
   }
-  
+
   private registerIPC(serviceId: string, service: BaseService): void {
     // 动态注册 IPC 通道
     service.getIPCHandlers().forEach((handler, channel) => {
@@ -351,6 +351,7 @@ stopped → starting → running → stopping → stopped
 ```
 
 **状态说明**：
+
 - `pending`: 初始状态，等待启动
 - `starting`: 正在启动中，避免用户重复点击
 - `running`: 服务正常运行
@@ -386,28 +387,29 @@ ipcMain.handle('api:request', async (_, { service, endpoint, params }) => {
 ```
 
 **优势**：
+
 - 新增服务时无需修改 IPC 注册逻辑
 - 避免 `ipcMain.handle` 重复注册冲突（Electron 不允许重复注册同名 channel）
 - 统一错误处理和日志记录
 
 ### 服务管理 IPC 通道
 
-| 通道名称 | 说明 | 参数 |
-|----------|------|------|
-| `service:status` | 获取服务状态 | `serviceId: string` |
-| `service:status:all` | 获取所有服务状态 | 无 |
-| `service:start` | 启动服务 | `serviceId: string` |
-| `service:stop` | 停止服务 | `serviceId: string` |
-| `service:restart` | 重启服务 | `serviceId: string` |
-| `service:health` | 健康检查 | `serviceId: string` |
-| `service:update-config` | 更新服务配置 | `serviceId: string, config: object` |
+| 通道名称                | 说明             | 参数                                |
+| ----------------------- | ---------------- | ----------------------------------- |
+| `service:status`        | 获取服务状态     | `serviceId: string`                 |
+| `service:status:all`    | 获取所有服务状态 | 无                                  |
+| `service:start`         | 启动服务         | `serviceId: string`                 |
+| `service:stop`          | 停止服务         | `serviceId: string`                 |
+| `service:restart`       | 重启服务         | `serviceId: string`                 |
+| `service:health`        | 健康检查         | `serviceId: string`                 |
+| `service:update-config` | 更新服务配置     | `serviceId: string, config: object` |
 
 ### 渲染进程 ← 主进程（事件）
 
-| 事件名称 | 说明 | 数据 |
-|----------|------|------|
-| `service:update` | 服务状态更新 | `ServiceStatus` |
-| `settings:updated` | 配置已更新 | `ServiceConfig` |
+| 事件名称           | 说明         | 数据            |
+| ------------------ | ------------ | --------------- |
+| `service:update`   | 服务状态更新 | `ServiceStatus` |
+| `settings:updated` | 配置已更新   | `ServiceConfig` |
 
 ---
 
@@ -506,12 +508,13 @@ const store = new Store<ServiceConfig>({
 })
 
 // 监听变更，触发服务重启
-store.onDidChange('services.qq.enabled', (newVal) => {
+store.onDidChange('services.qq.enabled', newVal => {
   newVal ? serviceManager.startService('qq') : serviceManager.stopService('qq')
 })
 ```
 
 **优势**：
+
 - 自动处理 JSON 读写、类型校验、默认值
 - 支持 `onDidChange` 监听，方便热重载
 - 加密敏感字段（如用户 Cookie）
@@ -529,14 +532,17 @@ export class ServiceManager {
   constructor() {
     // 正常退出清理
     process.on('exit', () => this.killAll())
-    process.on('SIGINT', () => { this.killAll(); process.exit(0) })
-    
+    process.on('SIGINT', () => {
+      this.killAll()
+      process.exit(0)
+    })
+
     // Windows 下额外处理
     if (process.platform === 'win32') {
       process.on('SIGHUP', () => this.killAll())
     }
   }
-  
+
   private killAll(): void {
     for (const [name, proc] of this.activeProcs) {
       try {
@@ -554,13 +560,13 @@ export class ServiceManager {
 
 ## 📝 后续工作
 
-| 优先级 | 任务 | 说明 |
-|--------|------|------|
-| P0 | 实现 ServiceManager 核心类 | 服务注册与生命周期管理、IPC 动态注册机制 |
-| P0 | 创建服务状态 Store | Pinia Store 实现、IPC 通信封装 |
-| P1 | 开发设置面板组件 | 服务开关控制、配置编辑与保存 |
-| P1 | 实现热重载机制 | 配置变更检测、动态应用策略 |
-| P2 | 补充单元测试 | ServiceManager 测试、IPC 通道测试、Store 状态管理测试 |
+| 优先级 | 任务                       | 说明                                                  |
+| ------ | -------------------------- | ----------------------------------------------------- |
+| P0     | 实现 ServiceManager 核心类 | 服务注册与生命周期管理、IPC 动态注册机制              |
+| P0     | 创建服务状态 Store         | Pinia Store 实现、IPC 通信封装                        |
+| P1     | 开发设置面板组件           | 服务开关控制、配置编辑与保存                          |
+| P1     | 实现热重载机制             | 配置变更检测、动态应用策略                            |
+| P2     | 补充单元测试               | ServiceManager 测试、IPC 通道测试、Store 状态管理测试 |
 
 ---
 
@@ -570,7 +576,7 @@ export class ServiceManager {
 - [Pinia 官方文档](https://pinia.vuejs.org/)
 - [`electron-store`](https://github.com/sindresorhus/electron-store)
 - [项目概述](./PROJECT.md)
-- [Electron 迁移指南](./electron-vite-migration.md)
+- [构建指南](./build.md)
 
 ---
 

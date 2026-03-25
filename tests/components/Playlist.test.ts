@@ -6,7 +6,7 @@ import Playlist from '../../src/components/Playlist.vue'
 import { usePlayerStore } from '../../src/store/playerStore.ts'
 import type { Song } from '../../src/platform/music/interface'
 
-Element.prototype.scrollIntoView = vi.fn()
+HTMLElement.prototype.scrollTo = vi.fn()
 
 function createMockSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
   return {
@@ -120,7 +120,57 @@ describe('Playlist.vue', () => {
     const wrapper = mount(Playlist)
     store.currentIndex = 2
     await wrapper.vm.$nextTick()
+    await Promise.resolve()
 
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+    expect(HTMLElement.prototype.scrollTo).toHaveBeenCalled()
+  })
+
+  it('virtualizes large playlists instead of rendering the full list at once', () => {
+    const store = usePlayerStore()
+    store.songList = Array.from({ length: 200 }, (_, index) =>
+      createMockSong({
+        id: index + 1,
+        name: `Song ${index + 1}`
+      })
+    )
+
+    const wrapper = mount(Playlist)
+    const items = wrapper.findAll('.list-item')
+
+    expect(items.length).toBeGreaterThan(0)
+    expect(items.length).toBeLessThan(store.songList.length)
+  })
+
+  it('clamps scroll position when the playlist shrinks after a deep scroll', async () => {
+    const store = usePlayerStore()
+    store.songList = Array.from({ length: 200 }, (_, index) =>
+      createMockSong({
+        id: index + 1,
+        name: `Song ${index + 1}`
+      })
+    )
+
+    const wrapper = mount(Playlist, {
+      attachTo: document.body
+    })
+    const listElement = wrapper.get('.playlist').element as HTMLElement
+
+    listElement.scrollTop = 9000
+    await wrapper.get('.playlist').trigger('scroll')
+
+    store.songList = [
+      createMockSong({ id: 1, name: 'Song 1' }),
+      createMockSong({ id: 2, name: 'Song 2' })
+    ]
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    const items = wrapper.findAll('.list-item')
+
+    expect(listElement.scrollTop).toBe(0)
+    expect(items).toHaveLength(2)
+    expect(items[0].attributes('data-index')).toBe('0')
+
+    wrapper.unmount()
   })
 })

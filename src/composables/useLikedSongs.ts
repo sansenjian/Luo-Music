@@ -2,6 +2,8 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue'
 
 import { getLikelist, getSongDetail } from '../api/song'
 import type { Song } from '../platform/music/interface'
+import { isCanceledRequestError } from '../utils/http/cancelError'
+import { createLatestRequestController } from '../utils/http/requestScope'
 import { formatSongs, type FormattedSong } from '../utils/songFormatter'
 
 interface LikeListResponse {
@@ -18,6 +20,7 @@ export interface UseLikedSongsReturn {
   count: ComputedRef<number>
   loading: Ref<boolean>
   error: Ref<unknown>
+  resetLikedSongs: () => void
   loadLikedSongs: (userId: string | number) => Promise<void>
 }
 
@@ -25,12 +28,26 @@ export function useLikedSongs(): UseLikedSongsReturn {
   const likeSongs = ref<Song[]>([])
   const loading = ref(false)
   const error = ref<unknown>(null)
+  const requestController = createLatestRequestController()
 
   const formattedSongs = computed(() => formatSongs(likeSongs.value))
   const count = computed(() => likeSongs.value.length)
 
+  const resetLikedSongs = (): void => {
+    requestController.cancel()
+    likeSongs.value = []
+    loading.value = false
+    error.value = null
+  }
+
   const loadLikedSongs = async (userId: string | number): Promise<void> => {
+    const task = requestController.start()
+
     if (!userId) {
+      task.commit(() => {
+        likeSongs.value = []
+        loading.value = false
+      })
       return
     }
 
@@ -38,25 +55,39 @@ export function useLikedSongs(): UseLikedSongsReturn {
     error.value = null
 
     try {
-      const likeList = (await getLikelist(Number(userId))) as LikeListResponse
+      const likeList = (await task.guard(getLikelist(Number(userId)))) as LikeListResponse
 
       if (!likeList.ids?.length) {
-        likeSongs.value = []
+        task.commit(() => {
+          likeSongs.value = []
+        })
         return
       }
 
       const ids = likeList.ids.slice(0, 100)
-      const detail = (await getSongDetail(ids.join(','))) as SongDetailResponse
+      const detail = (await task.guard(getSongDetail(ids.join(',')))) as SongDetailResponse
       const songs = detail.songs ?? []
       const songMap = new Map(songs.map(song => [song.id, song]))
 
-      likeSongs.value = ids.map(id => songMap.get(id)).filter((song): song is Song => Boolean(song))
+      task.commit(() => {
+        likeSongs.value = ids
+          .map(id => songMap.get(id))
+          .filter((song): song is Song => Boolean(song))
+      })
     } catch (requestError) {
-      console.error('获取喜欢歌曲失败:', requestError)
-      error.value = requestError
-      likeSongs.value = []
+      if (isCanceledRequestError(requestError)) {
+        return
+      }
+
+      console.error('Failed to load liked songs:', requestError)
+      task.commit(() => {
+        error.value = requestError
+        likeSongs.value = []
+      })
     } finally {
-      loading.value = false
+      task.commit(() => {
+        loading.value = false
+      })
     }
   }
 
@@ -66,6 +97,7 @@ export function useLikedSongs(): UseLikedSongsReturn {
     count,
     loading,
     error,
+    resetLikedSongs,
     loadLikedSongs
   }
 }

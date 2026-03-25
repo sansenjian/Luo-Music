@@ -1,5 +1,5 @@
 import { AppError, ErrorCode } from './types'
-import platform from '../../platform'
+import { getPlatformAccessor } from '@/services/platformAccessor'
 
 type ErrorHandler = (error: AppError) => void | Promise<void>
 
@@ -47,7 +47,7 @@ class ErrorCenter {
     // 3. 执行处理链
     handlers.forEach(h => {
       try {
-        h(appError)
+        void Promise.resolve(h(appError))
       } catch (e) {
         console.error('Error handler failed:', e)
       }
@@ -61,8 +61,9 @@ class ErrorCenter {
 
   // 发送到主进程记录日志（Electron）
   private reportToMain(error: AppError) {
-    if (platform.isElectron()) {
-      platform.send('error-report', {
+    const platformService = getPlatformAccessor()
+    if (platformService.isElectron()) {
+      void platformService.send('error-report', {
         code: error.code,
         message: error.message,
         stack: error.stack,

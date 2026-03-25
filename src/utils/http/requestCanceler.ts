@@ -104,7 +104,7 @@ export function isRequestActive(config: AxiosRequestConfig): boolean {
  * @param requestFn - 请求函数
  * @returns 包含请求和取消方法的对象
  */
-export function createCancellableRequest<T = any>(
+export function createCancellableRequest<T = unknown>(
   requestFn: (config: AxiosRequestConfig) => Promise<T>
 ) {
   const controller = new AbortController()
@@ -127,7 +127,7 @@ export function createCancellableRequest<T = any>(
  * @param autoCancel - 是否自动取消之前的请求
  * @returns 装饰后的请求函数
  */
-export function dedupeRequest<T = any>(
+export function dedupeRequest<T = unknown>(
   requestFn: (config: AxiosRequestConfig) => Promise<T>,
   autoCancel = true
 ) {

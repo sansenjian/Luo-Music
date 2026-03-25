@@ -4,7 +4,6 @@
     "test-results/**": true,
     "**/*.map": true,
     "release/**": true,
-    ".pnpm-store/**": true,
     ".vite_cache/**": true
   },
   "search.exclude": {

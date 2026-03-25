@@ -1,3 +1,5 @@
+import { NETEASE_API_PORT, QQ_API_PORT } from '@/constants/http'
+
 export type AppConfig = {
   env: {
     mode: string
@@ -22,8 +24,8 @@ const DEFAULT_CONFIG: AppConfig = {
     isProd: import.meta.env.PROD
   },
   ports: {
-    qq: 3200,
-    netease: 14532
+    qq: QQ_API_PORT,
+    netease: NETEASE_API_PORT
   }
 }
 

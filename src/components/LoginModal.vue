@@ -5,29 +5,19 @@ import { services } from '../services'
 import { getQRCode, getQRKey, getUserAccount, checkQRStatus } from '../api/user'
 import { useToastStore } from '../store/toastStore'
 import { useUserStore } from '../store/userStore'
+import {
+  extractQrCookie,
+  extractQrImage,
+  extractQrKey,
+  extractQrStatusCode,
+  extractUserProfile,
+  type QrCheckResponse,
+  type QrImageResponse,
+  type QrKeyResponse,
+  type UserAccountResponse
+} from './loginModal.utils'
 
 type LoginStatus = 'loading' | 'waiting' | 'scanned' | 'expired' | 'success' | 'error'
-
-type QrKeyResponse = {
-  data?: {
-    unikey?: string
-  }
-}
-
-type QrImageResponse = {
-  data?: {
-    qrimg?: string
-  }
-}
-
-type QrCheckResponse = {
-  code?: number
-  cookie?: string
-}
-
-type UserAccountResponse = {
-  profile?: Record<string, unknown>
-}
 
 const emit = defineEmits<{
   close: []
@@ -43,15 +33,63 @@ const status = ref<LoginStatus>('loading')
 const statusText = ref('正在加载二维码...')
 
 let pollingTimer: ReturnType<typeof setInterval> | null = null
+let closeTimer: ReturnType<typeof setTimeout> | null = null
 let isChecking = false
+let activeAttemptId = 0
+
+function clearCloseTimer(): void {
+  if (closeTimer) {
+    clearTimeout(closeTimer)
+    closeTimer = null
+  }
+}
+
+function isAttemptCurrent(attemptId: number): boolean {
+  return attemptId === activeAttemptId
+}
+
+function invalidateActiveAttempt(): void {
+  activeAttemptId += 1
+  isChecking = false
+  stopPolling()
+  clearCloseTimer()
+}
+
+function resolveBrowserCookie(): string {
+  if (typeof document === 'undefined' || typeof document.cookie !== 'string') {
+    return ''
+  }
+
+  return document.cookie.trim()
+}
+
+function resolveSessionCookie(cookie: string): string {
+  if (cookie.trim().length > 0) {
+    return cookie.trim()
+  }
+
+  if (typeof userStore.cookie === 'string' && userStore.cookie.trim().length > 0) {
+    return userStore.cookie.trim()
+  }
+
+  return resolveBrowserCookie()
+}
 
 async function fetchQRCode(): Promise<void> {
+  const attemptId = ++activeAttemptId
+
+  stopPolling()
+  clearCloseTimer()
+  isChecking = false
   status.value = 'loading'
   statusText.value = '正在加载二维码...'
 
   try {
     const keyRes = (await getQRKey()) as QrKeyResponse
-    const unikey = keyRes.data?.unikey
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+    const unikey = extractQrKey(keyRes)
     if (!unikey) {
       throw new Error('Missing QR key')
     }
@@ -59,7 +97,10 @@ async function fetchQRCode(): Promise<void> {
     qrKey.value = unikey
 
     const qrRes = (await getQRCode(qrKey.value)) as QrImageResponse
-    const qrimg = qrRes.data?.qrimg
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+    const qrimg = extractQrImage(qrRes)
     if (!qrimg) {
       throw new Error('Missing QR image')
     }
@@ -67,8 +108,12 @@ async function fetchQRCode(): Promise<void> {
     qrImage.value = qrimg
     status.value = 'waiting'
     statusText.value = '请使用网易云音乐 App 扫码登录'
-    startPolling()
+    startPolling(attemptId)
   } catch (error) {
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+
     logger.error('Failed to load Netease login QR code', error)
     status.value = 'error'
     statusText.value = '加载二维码失败，请稍后重试'
@@ -76,10 +121,15 @@ async function fetchQRCode(): Promise<void> {
   }
 }
 
-function startPolling(): void {
+function startPolling(attemptId: number): void {
   stopPolling()
 
   pollingTimer = setInterval(async () => {
+    if (!isAttemptCurrent(attemptId)) {
+      stopPolling()
+      return
+    }
+
     if (isChecking) {
       return
     }
@@ -88,7 +138,28 @@ function startPolling(): void {
     try {
       const res = (await checkQRStatus(qrKey.value)) as QrCheckResponse
 
-      switch (res.code) {
+      // 解包 IPC 响应格式 { success: true, data: {...} }
+      const unwrapped =
+        res && typeof res === 'object' && 'success' in res && 'data' in res
+          ? (res as { success: boolean; data: QrCheckResponse }).data
+          : res
+
+      if (!isAttemptCurrent(attemptId)) {
+        return
+      }
+
+      const sessionCookie = extractQrCookie(unwrapped)
+
+      // 调试日志
+      logger.debug('Netease QR login check response:', {
+        rawStatusCode: extractQrStatusCode(unwrapped),
+        hasCookie: !!sessionCookie,
+        fullResponse: JSON.stringify(unwrapped)
+      })
+
+      const statusCode = extractQrStatusCode(unwrapped)
+
+      switch (statusCode) {
         case 800:
           status.value = 'expired'
           statusText.value = '二维码已过期，请刷新后重新扫码'
@@ -106,15 +177,21 @@ function startPolling(): void {
           status.value = 'success'
           statusText.value = '登录成功'
           stopPolling()
-          await handleLoginSuccess(res.cookie ?? '')
+          await handleLoginSuccess(sessionCookie, attemptId)
           break
         default:
           break
       }
     } catch (error) {
+      if (!isAttemptCurrent(attemptId)) {
+        return
+      }
+
       logger.warn('Failed to poll Netease QR login status', error)
     } finally {
-      isChecking = false
+      if (isAttemptCurrent(attemptId)) {
+        isChecking = false
+      }
     }
   }, 3000)
 }
@@ -126,20 +203,43 @@ function stopPolling(): void {
   }
 }
 
-async function handleLoginSuccess(cookie: string): Promise<void> {
+async function handleLoginSuccess(cookie: string, attemptId: number): Promise<void> {
   try {
-    userStore.setCookie(cookie)
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+
+    const initialCookie = resolveSessionCookie(cookie)
+    if (initialCookie) {
+      userStore.setCookie(initialCookie)
+    }
 
     const userRes = (await getUserAccount()) as UserAccountResponse
-    if (!userRes.profile) {
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+
+    const profile = extractUserProfile(userRes)
+    if (!profile) {
       throw new Error('Missing user profile')
     }
 
-    userStore.login(userRes.profile, cookie)
-    setTimeout(() => {
+    userStore.login(profile, resolveSessionCookie(initialCookie))
+    toastStore.success('网易云登录成功')
+    clearCloseTimer()
+    closeTimer = setTimeout(() => {
+      if (!isAttemptCurrent(attemptId)) {
+        return
+      }
+
       emit('close')
+      closeTimer = null
     }, 500)
   } catch (error) {
+    if (!isAttemptCurrent(attemptId)) {
+      return
+    }
+
     logger.error('Failed to load Netease user profile after login', error)
     userStore.logout()
     status.value = 'error'
@@ -149,12 +249,12 @@ async function handleLoginSuccess(cookie: string): Promise<void> {
 }
 
 function refreshQRCode(): void {
-  stopPolling()
+  invalidateActiveAttempt()
   void fetchQRCode()
 }
 
 function close(): void {
-  stopPolling()
+  invalidateActiveAttempt()
   emit('close')
 }
 
@@ -163,7 +263,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  stopPolling()
+  invalidateActiveAttempt()
 })
 </script>
 

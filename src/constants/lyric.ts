@@ -1,0 +1,34 @@
+/**
+ * 歌词滚动相关常量定义
+ *
+ * 统一管理歌词自动滚动的时间参数和阈值
+ */
+
+/**
+ * 用户滚动后恢复自动滚动的延迟时间 (毫秒)
+ *
+ * 当用户手动滚动歌词区域后，等待此时间后恢复自动滚动
+ * 避免用户操作与自动滚动冲突
+ */
+export const USER_SCROLL_IDLE_DELAY = 900
+
+/**
+ * 用户滚动结束防抖时间 (毫秒)
+ *
+ * 检测用户滚动操作结束后的防抖时间
+ */
+export const USER_SCROLL_END_DEBOUNCE = 120
+
+/**
+ * 程序化滚动保护阈值 (毫秒)
+ *
+ * 用于检测是否为程序化滚动操作的时间阈值
+ */
+export const PROGRAMMATIC_SCROLL_GUARD = 380
+
+/**
+ * 默认刷新间隔 (毫秒)
+ *
+ * 歌词位置计算的默认刷新间隔
+ */
+export const DEFAULT_LYRIC_UPDATE_INTERVAL = 100

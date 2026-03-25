@@ -4,7 +4,6 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
 lerna-debug.log*
 
 # Runtime data
@@ -74,7 +73,6 @@ test-results/
 # Cache directories
 .electron_cache/
 .vite_cache/
-.pnpm-store/
 
 # Qodana
 .qodana/

@@ -1,72 +1,77 @@
-/**
- * 播放业务逻辑模块
- *
- * 负责处理播放相关的核心业务逻辑：
- * - 播放歌曲（含 URL 获取和歌词加载）
- * - 播放列表导航（上一首/下一首）
- * - 随机播放逻辑
- * - 错误处理和自动跳过
- *
- * 借鉴 VSCode 的命令模式：将业务逻辑封装为独立的动作处理器
- */
-
-import type { Song } from '@/platform/music/interface'
-import { getMusicAdapter } from '@/platform/music'
-import { LyricParser } from '@/utils/player/core/lyric'
-import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import type { Song } from '@/types/schemas'
+import { services } from '@/services'
 import { errorCenter, Errors } from '@/utils/error'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
+import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import { LyricParser } from '@/utils/player/core/lyric'
+
 import type { PlayerState } from './playerState'
 
-/**
- * 播放动作处理器依赖接口
- */
 export interface PlaybackActionsDeps {
-  /** 获取播放器状态 */
   getState: () => PlayerState
-  /** 状态变更回调 */
   onStateChange: (changes: Partial<PlayerState>) => void
-  /** 播放歌曲（内部方法） */
   playSongByIndex: (index: number) => Promise<void>
-  /** 设置歌词数组 */
   setLyricsArray: (lyrics: import('@/utils/player/core/lyric').LyricLine[]) => void
-  /** 创建错误处理器 */
   createErrorHandler: () => import('@/utils/player/modules/playbackErrorHandler').PlaybackErrorHandler
-  /** 获取错误处理器（可能为 null） */
   getErrorHandler: () =>
     | import('@/utils/player/modules/playbackErrorHandler').PlaybackErrorHandler
     | null
-  /** 平台检查 */
   platform: {
     isElectron: () => boolean
   }
 }
 
-/**
- * 播放动作处理器
- */
 export class PlaybackActions {
+  private lyricRequestId = 0
+
   constructor(private readonly deps: PlaybackActionsDeps) {}
 
-  /**
-   * 统一的随机播放辅助函数
-   */
+  private isSameSong(left: Song | null | undefined, right: Song | null | undefined): boolean {
+    if (!left || !right) {
+      return false
+    }
+
+    return this.createSongRequestKey(left) === this.createSongRequestKey(right)
+  }
+
+  private createSongRequestKey(song: Song): string {
+    return `${song.platform || (song as { server?: string }).server || 'netease'}:${song.id}`
+  }
+
+  private startLyricRequest(song: Song): { requestId: number; songKey: string } {
+    this.lyricRequestId += 1
+
+    return {
+      requestId: this.lyricRequestId,
+      songKey: this.createSongRequestKey(song)
+    }
+  }
+
+  private isCurrentLyricRequest(requestId: number, songKey: string): boolean {
+    if (requestId !== this.lyricRequestId) {
+      return false
+    }
+
+    const currentSong = this.deps.getState().currentSong
+    if (!currentSong) {
+      return false
+    }
+
+    return this.createSongRequestKey(currentSong) === songKey
+  }
+
   getRandomIndex(excludeCurrent = true): number {
     const state = this.deps.getState()
     if (state.songList.length === 0) return -1
     if (state.songList.length === 1) return 0
 
     let newIndex = Math.floor(Math.random() * state.songList.length)
-    // 避免重复播放当前歌曲
     if (excludeCurrent && newIndex === state.currentIndex) {
       newIndex = (newIndex + 1) % state.songList.length
     }
     return newIndex
   }
 
-  /**
-   * 播放上一首
-   */
   playPrev(): void {
     const state = this.deps.getState()
     if (state.songList.length === 0) return
@@ -86,9 +91,6 @@ export class PlaybackActions {
     })
   }
 
-  /**
-   * 播放下一首
-   */
   playNext(): void {
     const state = this.deps.getState()
     if (state.songList.length === 0) return
@@ -111,9 +113,6 @@ export class PlaybackActions {
     })
   }
 
-  /**
-   * 播放歌曲（简化版，用于内部调用）
-   */
   async playSongByIndex(index: number): Promise<void> {
     const state = this.deps.getState()
     if (index < 0 || index >= state.songList.length) return
@@ -124,19 +123,19 @@ export class PlaybackActions {
       throw new Error('No URL for song')
     }
 
-    // 更新状态
+    if (!this.isSameSong(state.currentSong, song)) {
+      this.deps.setLyricsArray([])
+    }
+
     this.deps.onStateChange({
       currentIndex: index,
-      currentSong: song
+      currentSong: song,
+      currentLyricIndex: -1
     })
 
-    // 调用底层播放
     await this.deps.playSongByIndex(index)
   }
 
-  /**
-   * 播放歌曲（完整版，含 URL 获取和歌词加载）
-   */
   async playSongWithDetails(index: number, autoSkip = true): Promise<void> {
     const state = this.deps.getState()
     const song = state.songList[index]
@@ -146,22 +145,19 @@ export class PlaybackActions {
       return
     }
 
-    // 设置加载中状态
     this.deps.onStateChange({ loading: true })
 
-    // 获取平台适配器
-    const platformKey = song.platform || (song as { server?: string }).server
-    const adapter = getMusicAdapter(platformKey)
+    const platformKey = song.platform || (song as { server?: string }).server || 'netease'
+    const musicService = services.music()
 
     console.log(`[Player] Playing song: ${song.name} (ID: ${song.id}, Platform: ${platformKey})`)
 
     try {
-      // 1. 获取 URL（如果缺失）
       if (!song.url) {
         try {
           console.log('[Player] Fetching URL for song:', song.id)
           const mediaId = (song as Song & { mediaId?: string }).mediaId
-          const url = await adapter.getSongUrl(song.id, { mediaId })
+          const url = await musicService.getSongUrl(platformKey, song.id, { mediaId })
           console.log('[Player] Got URL:', url ? 'Success' : 'Failed')
 
           if (url) {
@@ -182,34 +178,43 @@ export class PlaybackActions {
         }
       }
 
-      // 2. 播放歌曲
       await this.playSongByIndex(index)
 
-      // 3. 获取歌词
-      try {
-        const lyricData = await adapter.getLyric(song.id)
-        const lrcText = lyricData.lrc || ''
-        const tlyricText = lyricData.tlyric || ''
-        const rlyricText = lyricData.romalrc || ''
+      const lyricRequest = this.startLyricRequest(song)
 
-        const lyrics = LyricParser.parse(lrcText, tlyricText, rlyricText)
+      try {
+        const lyricData = await musicService.getLyric(platformKey, song.id)
+        const lyrics = LyricParser.parse(
+          lyricData.lrc || '',
+          lyricData.tlyric || '',
+          lyricData.romalrc || ''
+        )
+
+        if (!this.isCurrentLyricRequest(lyricRequest.requestId, lyricRequest.songKey)) {
+          return
+        }
+
         this.deps.setLyricsArray(lyrics)
       } catch (lyricError) {
-        if (!isCanceledRequestError(lyricError)) {
-          console.error('Failed to get lyrics:', lyricError)
+        if (!this.isCurrentLyricRequest(lyricRequest.requestId, lyricRequest.songKey)) {
+          return
         }
+
+        if (isCanceledRequestError(lyricError)) {
+          return
+        }
+
+        console.error('Failed to get lyrics:', lyricError)
         this.deps.setLyricsArray([])
       }
     } catch (error: unknown) {
       console.error('Playback failed:', error)
 
-      // 获取或创建错误处理器
       let errorHandler = this.deps.getErrorHandler()
       if (!errorHandler) {
         errorHandler = this.deps.createErrorHandler()
       }
 
-      // 标记为不可用
       const message =
         error instanceof Error &&
         error.name === 'AppError' &&
@@ -219,12 +224,10 @@ export class PlaybackActions {
           : '该歌曲无法播放（可能需要 VIP 或受版权限制）'
       errorHandler.markAsUnavailable(song, message)
 
-      // 如果 autoSkip 为 false，抛出错误让调用者处理
       if (!autoSkip) {
         throw error
       }
 
-      // 自动跳过尝试播放下一首
       try {
         await this.playNextSkipUnavailable()
         return
@@ -236,9 +239,6 @@ export class PlaybackActions {
     }
   }
 
-  /**
-   * 播放下一首（跳过不可用歌曲）
-   */
   async playNextSkipUnavailable(): Promise<void> {
     let errorHandler = this.deps.getErrorHandler()
     if (!errorHandler) {
@@ -251,9 +251,6 @@ export class PlaybackActions {
   }
 }
 
-/**
- * 创建播放动作处理器
- */
 export function createPlaybackActions(deps: PlaybackActionsDeps): PlaybackActions {
   return new PlaybackActions(deps)
 }

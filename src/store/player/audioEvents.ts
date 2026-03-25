@@ -1,16 +1,8 @@
-/**
- * 音频事件处理器
- *
- * 负责管理 HTMLAudioElement 的所有事件监听
- * 借鉴 VSCode 的 Disposable 模式，实现资源的自动释放
- */
-
+import { Disposable, DisposableStore, type IDisposable } from '@/base/common/lifecycle/disposable'
 import { playerCore } from '@/utils/player/core/playerCore'
+
 import type { PlayerState } from './playerState'
 
-/**
- * 音频事件回调类型
- */
 export interface AudioEventCallbacks {
   onTimeUpdate?: (time: number) => void
   onLoadedMetadata?: (duration: number) => void
@@ -20,38 +12,29 @@ export interface AudioEventCallbacks {
   onError?: (error: unknown) => void
 }
 
-/**
- * 时间更新事件配置
- */
 export interface TimeUpdateConfig {
-  /** 本地 UI 更新间隔 (ms) */
   uiUpdateInterval: number
-  /** IPC 广播间隔 (ms) */
   ipcBroadcastInterval: number
-  /** 获取当前歌词行的回调 */
   getCurrentLyricLine?: () => { text: string; trans: string; roma: string } | null
+  syncLyricIndex?: (time: number) => boolean
 }
 
-/**
- * 可释放资源接口
- */
-interface IDisposable {
-  dispose(): void
-}
-
-/**
- * 音频事件处理器
- */
-export class AudioEventHandler {
-  private _eventDisposables: IDisposable[] = []
-  private _lastUiUpdateTime = 0
-  private _lastBroadcastTime = 0
-  private _config: TimeUpdateConfig = {
+export class AudioEventHandler implements IDisposable {
+  private readonly eventDisposables = new DisposableStore()
+  private lastUiUpdateTime = 0
+  private lastBroadcastTime = 0
+  private progressSyncTimer: ReturnType<typeof setInterval> | null = null
+  private config: TimeUpdateConfig = {
     uiUpdateInterval: 250,
     ipcBroadcastInterval: 500,
-    getCurrentLyricLine: undefined
+    getCurrentLyricLine: undefined,
+    syncLyricIndex: undefined
   }
-  private _disposed = false
+  private disposedState = false
+  // 用于差量检查的状态
+  private lastBroadcastLyricIndex = -1
+  private lastBroadcastLyricData: { text: string; trans: string; roma: string } | null = null
+  private lastBroadcastPlaying: boolean | null = null
 
   constructor(
     private readonly state: PlayerState,
@@ -63,56 +46,71 @@ export class AudioEventHandler {
   ) {}
 
   init(config?: TimeUpdateConfig): void {
-    if (this._disposed) {
+    if (this.disposedState) {
       console.warn('[AudioEventHandler] Cannot init after dispose')
       return
     }
 
     if (config) {
-      this._config = { ...this._config, ...config }
+      this.config = { ...this.config, ...config }
     }
 
-    this._cleanupEvents()
-    this._registerTimeUpdateListener()
-    this._registerMetadataListener()
-    this._registerEndedListener()
-    this._registerPlayListener()
-    this._registerPauseListener()
-    this._registerErrorListener()
+    this.cleanupEvents()
+    this.registerTimeUpdateListener()
+    this.registerMetadataListener()
+    this.registerEndedListener()
+    this.registerPlayListener()
+    this.registerPauseListener()
+    this.registerErrorListener()
   }
 
   setTimeUpdateConfig(config: Partial<TimeUpdateConfig>): void {
-    Object.assign(this._config, config)
+    Object.assign(this.config, config)
   }
 
   setCallbacks(callbacks: Partial<AudioEventCallbacks>): void {
     Object.assign(this.callbacks, callbacks)
   }
 
-  private _cleanupEvents(): void {
-    playerCore.off('timeupdate')
-    playerCore.off('loadedmetadata')
-    playerCore.off('ended')
-    playerCore.off('play')
-    playerCore.off('pause')
-    playerCore.off('error')
-
-    for (const d of this._eventDisposables) {
-      d.dispose()
-    }
-    this._eventDisposables = []
-    this._lastUiUpdateTime = 0
-    this._lastBroadcastTime = 0
+  private cleanupEvents(): void {
+    this.eventDisposables.clear()
+    this.stopProgressSyncLoop()
+    this.lastUiUpdateTime = 0
+    this.lastBroadcastTime = 0
+    // 重置差量检查状态
+    this.lastBroadcastLyricIndex = -1
+    this.lastBroadcastLyricData = null
+    this.lastBroadcastPlaying = null
   }
 
-  private _broadcastLyricUpdate(): void {
+  private broadcastLyricUpdate(): void {
     if (!this.platform) {
       return
     }
 
-    const currentLyricLine = this._config.getCurrentLyricLine?.()
+    const currentLyricLine = this.config.getCurrentLyricLine?.()
+    const currentTime = Number(playerCore.currentTime) || this.state.progress
+
+    // 差量检查：只有当歌词索引或内容真正变化时才发送
+    const hasIndexChanged = this.state.currentLyricIndex !== this.lastBroadcastLyricIndex
+    const hasContentChanged = !currentLyricLine
+      ? this.lastBroadcastLyricData !== null
+      : currentLyricLine.text !== this.lastBroadcastLyricData?.text ||
+        currentLyricLine.trans !== this.lastBroadcastLyricData?.trans ||
+        currentLyricLine.roma !== this.lastBroadcastLyricData?.roma
+    const hasPlayingChanged = this.lastBroadcastPlaying !== this.state.playing
+
+    if (!hasIndexChanged && !hasContentChanged && !hasPlayingChanged) {
+      return
+    }
+
+    // 更新缓存状态
+    this.lastBroadcastLyricIndex = this.state.currentLyricIndex
+    this.lastBroadcastLyricData = currentLyricLine ? { ...currentLyricLine } : null
+    this.lastBroadcastPlaying = this.state.playing
+
     this.platform.send('lyric-time-update', {
-      time: Number(playerCore.currentTime) || this.state.progress,
+      time: currentTime,
       index: this.state.currentLyricIndex,
       text: currentLyricLine?.text || '',
       trans: currentLyricLine?.trans || '',
@@ -121,82 +119,133 @@ export class AudioEventHandler {
     })
   }
 
-  private _registerTimeUpdateListener(): void {
+  private handleProgressUpdate(force = false): void {
+    const now = Date.now()
+    const currentTime = Number(playerCore.currentTime) || 0
+    const lyricIndexChanged = this.config.syncLyricIndex?.(currentTime) ?? false
+
+    if (force || now - this.lastUiUpdateTime >= this.config.uiUpdateInterval) {
+      this.lastUiUpdateTime = now
+      this.callbacks.onTimeUpdate?.(currentTime)
+    }
+
+    if (
+      this.platform &&
+      (lyricIndexChanged ||
+        force ||
+        now - this.lastBroadcastTime >= this.config.ipcBroadcastInterval)
+    ) {
+      this.lastBroadcastTime = now
+      this.broadcastLyricUpdate()
+    }
+  }
+
+  private getProgressSyncInterval(): number {
+    const intervals = [this.config.uiUpdateInterval, this.config.ipcBroadcastInterval].filter(
+      value => Number.isFinite(value) && value > 0
+    )
+
+    if (intervals.length === 0) {
+      return 250
+    }
+
+    return Math.max(80, Math.min(...intervals, 250))
+  }
+
+  private startProgressSyncLoop(): void {
+    if (this.progressSyncTimer || this.disposedState) {
+      return
+    }
+
+    this.progressSyncTimer = setInterval(() => {
+      this.handleProgressUpdate()
+    }, this.getProgressSyncInterval())
+
+    // 防止定时器阻止进程退出
+    if (
+      typeof this.progressSyncTimer === 'object' &&
+      this.progressSyncTimer !== null &&
+      'unref' in this.progressSyncTimer &&
+      typeof this.progressSyncTimer.unref === 'function'
+    ) {
+      this.progressSyncTimer.unref()
+    }
+  }
+
+  private stopProgressSyncLoop(): void {
+    if (this.progressSyncTimer) {
+      clearInterval(this.progressSyncTimer)
+      this.progressSyncTimer = null
+    }
+  }
+
+  private registerTimeUpdateListener(): void {
     const handler = () => {
-      const now = Date.now()
-
-      if (now - this._lastUiUpdateTime >= this._config.uiUpdateInterval) {
-        this._lastUiUpdateTime = now
-        const currentTime = Number(playerCore.currentTime) || 0
-        this.callbacks.onTimeUpdate?.(currentTime)
-
-        if (this.state.lyricEngine) {
-          this.state.lyricEngine.update(currentTime)
-        }
-      }
-
-      if (this.platform && now - this._lastBroadcastTime >= this._config.ipcBroadcastInterval) {
-        this._lastBroadcastTime = now
-        this._broadcastLyricUpdate()
-      }
+      this.handleProgressUpdate()
     }
 
     const unsubscribe = playerCore.on('timeupdate', handler)
-    this._eventDisposables.push({ dispose: unsubscribe })
+    this.eventDisposables.add(Disposable.from(unsubscribe))
   }
 
-  private _registerMetadataListener(): void {
-    const handler = () => {
-      const duration = playerCore.duration
-      this.callbacks.onLoadedMetadata?.(duration)
-    }
-    const unsubscribe = playerCore.on('loadedmetadata', handler)
-    this._eventDisposables.push({ dispose: unsubscribe })
+  private registerMetadataListener(): void {
+    const unsubscribe = playerCore.on('loadedmetadata', () => {
+      this.callbacks.onLoadedMetadata?.(playerCore.duration)
+    })
+
+    this.eventDisposables.add(Disposable.from(unsubscribe))
   }
 
-  private _registerEndedListener(): void {
-    const handler = () => {
+  private registerEndedListener(): void {
+    const unsubscribe = playerCore.on('ended', () => {
+      this.stopProgressSyncLoop()
       this.callbacks.onEnded?.()
-    }
-    const unsubscribe = playerCore.on('ended', handler)
-    this._eventDisposables.push({ dispose: unsubscribe })
+    })
+
+    this.eventDisposables.add(Disposable.from(unsubscribe))
   }
 
-  private _registerPlayListener(): void {
-    const handler = () => {
+  private registerPlayListener(): void {
+    const unsubscribe = playerCore.on('play', () => {
       this.callbacks.onPlay?.()
-      this._broadcastLyricUpdate()
-    }
-    const unsubscribe = playerCore.on('play', handler)
-    this._eventDisposables.push({ dispose: unsubscribe })
+      this.handleProgressUpdate(true)
+      this.startProgressSyncLoop()
+    })
+
+    this.eventDisposables.add(Disposable.from(unsubscribe))
   }
 
-  private _registerPauseListener(): void {
-    const handler = () => {
+  private registerPauseListener(): void {
+    const unsubscribe = playerCore.on('pause', () => {
+      this.stopProgressSyncLoop()
       this.callbacks.onPause?.()
-      this._broadcastLyricUpdate()
-    }
-    const unsubscribe = playerCore.on('pause', handler)
-    this._eventDisposables.push({ dispose: unsubscribe })
+      this.broadcastLyricUpdate()
+    })
+
+    this.eventDisposables.add(Disposable.from(unsubscribe))
   }
 
-  private _registerErrorListener(): void {
-    const handler = (error: unknown) => {
+  private registerErrorListener(): void {
+    const unsubscribe = playerCore.on('error', (error: unknown) => {
       console.error('[AudioEventHandler] Audio error:', error)
       this.callbacks.onError?.(error)
-    }
-    const unsubscribe = playerCore.on('error', handler)
-    this._eventDisposables.push({ dispose: unsubscribe })
+    })
+
+    this.eventDisposables.add(Disposable.from(unsubscribe))
   }
 
   dispose(): void {
-    if (this._disposed) return
-    this._cleanupEvents()
-    this._disposed = true
+    if (this.disposedState) {
+      return
+    }
+
+    this.cleanupEvents()
+    this.eventDisposables.dispose()
+    this.disposedState = true
   }
 
   get disposed(): boolean {
-    return this._disposed
+    return this.disposedState
   }
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 
 import HomeWorkspace from '../../../src/components/home/HomeWorkspace.vue'
 
@@ -16,22 +17,39 @@ function createWrapper(activeTab: 'lyric' | 'playlist') {
 }
 
 describe('HomeWorkspace', () => {
-  it('shows lyric slot and hides playlist slot when activeTab is lyric', () => {
+  it('shows lyric slot and does not mount playlist slot when activeTab is lyric', () => {
     const wrapper = createWrapper('lyric')
 
     const lyricView = wrapper.find('.lyric-view')
     const playlistView = wrapper.find('.playlist-view')
 
+    expect(lyricView.exists()).toBe(true)
     expect(lyricView.isVisible()).toBe(true)
-    expect(playlistView.isVisible()).toBe(false)
+    expect(playlistView.exists()).toBe(false)
   })
 
-  it('shows playlist slot and hides lyric slot when activeTab is playlist', () => {
+  it('shows playlist slot and does not mount lyric slot when activeTab is playlist', () => {
     const wrapper = createWrapper('playlist')
 
     const lyricView = wrapper.find('.lyric-view')
     const playlistView = wrapper.find('.playlist-view')
 
+    expect(lyricView.exists()).toBe(false)
+    expect(playlistView.exists()).toBe(true)
+    expect(playlistView.isVisible()).toBe(true)
+  })
+
+  it('keeps visited panels mounted and toggles visibility after tab switch', async () => {
+    const wrapper = createWrapper('lyric')
+
+    await wrapper.setProps({ activeTab: 'playlist' })
+    await nextTick()
+
+    const lyricView = wrapper.find('.lyric-view')
+    const playlistView = wrapper.find('.playlist-view')
+
+    expect(lyricView.exists()).toBe(true)
+    expect(playlistView.exists()).toBe(true)
     expect(lyricView.isVisible()).toBe(false)
     expect(playlistView.isVisible()).toBe(true)
   })

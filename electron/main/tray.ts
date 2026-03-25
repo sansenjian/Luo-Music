@@ -29,12 +29,17 @@ let windowManager: {
 /**
  * 获取托盘图标路径
  */
-function getIconPath(): string | null {
-  const possiblePaths = [
-    path.join(VITE_PUBLIC as string, 'electron-vite.svg'),
-    path.join(__dirname, '../public/electron-vite.svg'),
-    path.join(process.resourcesPath, 'app.asar', 'public', 'electron-vite.svg')
+export function getIconPath(): string | null {
+  const fileNames = ['tray.ico', 'tray.png', 'favicon.svg', 'electron-vite.svg']
+  const basePaths = [
+    VITE_PUBLIC as string,
+    path.join(__dirname, '../public'),
+    path.join(process.resourcesPath, 'app.asar', 'public')
   ]
+
+  const possiblePaths = basePaths.flatMap(basePath =>
+    fileNames.map(fileName => path.join(basePath, fileName))
+  )
 
   for (const p of possiblePaths) {
     if (fs.existsSync(p)) return p

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 
+import { storageAdapter } from '@/services/storageService'
 import { clearQQCookieCache } from '@/api/qqmusic'
 import { AUTH_REQUEST_CACHE_NAMESPACE, clearCacheNamespaces, clearCookieCache } from '@/utils/http'
 
@@ -82,7 +83,7 @@ export const useUserStore = defineStore('user', {
     }
   },
   persist: {
-    storage: localStorage,
+    storage: storageAdapter,
     pick: ['userInfo', 'cookie', 'qqCookie'],
     afterHydrate: context => {
       const store = context.store as unknown as {

@@ -79,8 +79,8 @@ function findJsonObjectEnd(str: string, start: number): number {
 export function parseRequestKey(key: string): {
   method: string
   url: string
-  params: Record<string, any>
-  data: Record<string, any>
+  params: Record<string, unknown>
+  data: Record<string, unknown>
 } {
   if (!key) {
     return { method: 'UNKNOWN', url: '', params: {}, data: {} }

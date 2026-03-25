@@ -80,4 +80,4 @@ export type PlayerControlCommand =
 /**
  * 播放模式控制命令的联合类型
  */
-export type PlayModeControlCommand = PlayModeCommand | PlayModeCommand
+export type PlayModeControlCommand = PlayModeCommand

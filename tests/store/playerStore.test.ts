@@ -133,6 +133,14 @@ describe('playerStore', () => {
       expect(store.volume).toBe(0.5)
     })
 
+    it('setPlayMode falls back to sequential for invalid numeric input', () => {
+      const store = usePlayerStore()
+
+      store.setPlayMode(Number.NaN as never)
+
+      expect(store.playMode).toBe(PLAY_MODE.SEQUENTIAL)
+    })
+
     it('seek updates progress', () => {
       const store = usePlayerStore()
       store.duration = 180

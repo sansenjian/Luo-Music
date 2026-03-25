@@ -1,23 +1,24 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import platform from '../platform'
+import { services } from '../services'
 
+const platformService = services.platform()
 const cacheSize = ref({ httpCache: 0, httpCacheFormatted: '0 B' })
 const loading = ref(false)
 const isElectron = ref(false)
 const emit = defineEmits(['notify'])
 
 onMounted(async () => {
-  isElectron.value = platform.isElectron()
+  isElectron.value = platformService.isElectron()
   if (isElectron.value) {
     await loadCacheSize()
   }
 })
 
 async function loadCacheSize() {
-  if (!platform.isElectron()) return
+  if (!platformService.isElectron()) return
   try {
-    cacheSize.value = await platform.getCacheSize()
+    cacheSize.value = await platformService.getCacheSize()
   } catch (error) {
     console.error('Failed to get cache size:', error)
   }
@@ -28,7 +29,7 @@ function notify(message, type = 'info') {
 }
 
 async function clearCache(options, message = '确定要清理缓存吗？') {
-  if (!platform.isElectron()) {
+  if (!platformService.isElectron()) {
     notify('此功能仅在 Electron 应用中可用', 'warning')
     return
   }
@@ -39,7 +40,7 @@ async function clearCache(options, message = '确定要清理缓存吗？') {
 
   loading.value = true
   try {
-    const result = await platform.clearCache(options)
+    const result = await platformService.clearCache(options)
 
     if (result.failed.length === 0) {
       notify('缓存清理成功', 'success')

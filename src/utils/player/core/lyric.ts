@@ -18,6 +18,8 @@ export interface LyricLine {
 }
 
 export class LyricParser {
+  private static readonly MERGE_TOLERANCE_MS = 80
+
   private static parseTime(timeStr: string): number {
     // Format: mm:ss.xx or mm:ss:xx
     const normalized = timeStr.replace(/:(\d+)$/, '.$1')
@@ -33,10 +35,59 @@ export class LyricParser {
     return min * 60 + sec + ms
   }
 
+  private static mergeField(current: string, next: string): string {
+    if (!next) {
+      return current
+    }
+
+    if (!current) {
+      return next
+    }
+
+    const existingLines = new Set(current.split('\n'))
+    const nextLines = next.split('\n').filter(line => !existingLines.has(line))
+
+    return nextLines.length > 0 ? `${current}\n${nextLines.join('\n')}` : current
+  }
+
+  private static findMatchingKey(
+    linesMap: Map<number, LyricLine>,
+    key: number,
+    type: 'text' | 'trans' | 'roma'
+  ): number | null {
+    if (linesMap.has(key)) {
+      return key
+    }
+
+    if (type === 'text') {
+      return null
+    }
+
+    let matchedKey: number | null = null
+    let smallestDiff = Number.POSITIVE_INFINITY
+
+    for (const [candidateKey, candidateLine] of linesMap.entries()) {
+      if (!candidateLine.text) {
+        continue
+      }
+
+      const diff = Math.abs(candidateKey - key)
+      if (
+        diff <= LyricParser.MERGE_TOLERANCE_MS &&
+        (diff < smallestDiff ||
+          (diff === smallestDiff && matchedKey !== null && candidateKey < matchedKey))
+      ) {
+        matchedKey = candidateKey
+        smallestDiff = diff
+      }
+    }
+
+    return matchedKey
+  }
+
   static parse(lrc: string, tlyric?: string, rlyric?: string): LyricLine[] {
     if (!lrc) return []
 
-    // Use Map to merge by time (integer ms key)
     const linesMap = new Map<number, LyricLine>()
 
     const parseContent = (text: string, type: 'text' | 'trans' | 'roma') => {
@@ -49,16 +100,20 @@ export class LyricParser {
         const timeMatches = [...line.matchAll(/\[(\d+:\d+(?:[.:]\d+)?)\]/g)]
         if (timeMatches.length > 0) {
           const content = line.replace(/\[\d+:\d+(?:[.:]\d+)?\]/g, '').trim()
+          if (!content) {
+            return
+          }
 
           timeMatches.forEach(match => {
             const timeStr = match[1]
-            // Fix: ensure parseTime returns number
             const time = LyricParser.parseTime(timeStr) || 0
-            const key = Math.round(time * 1000)
+            const rawKey = Math.round(time * 1000)
+            const matchedKey = LyricParser.findMatchingKey(linesMap, rawKey, type)
+            const key = matchedKey ?? rawKey
 
             if (!linesMap.has(key)) {
               linesMap.set(key, {
-                time,
+                time: key / 1000,
                 text: '',
                 trans: '',
                 roma: ''
@@ -66,9 +121,13 @@ export class LyricParser {
             }
 
             const entry = linesMap.get(key)!
-            if (type === 'text') entry.text = content
-            else if (type === 'trans') entry.trans = content
-            else if (type === 'roma') entry.roma = content
+            if (type === 'text') {
+              entry.text = LyricParser.mergeField(entry.text, content)
+            } else if (type === 'trans') {
+              entry.trans = LyricParser.mergeField(entry.trans, content)
+            } else if (type === 'roma') {
+              entry.roma = LyricParser.mergeField(entry.roma, content)
+            }
           })
         }
       })

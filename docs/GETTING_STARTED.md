@@ -14,6 +14,7 @@
 ## 1️⃣ 安装 Node.js
 
 ### 检查是否已安装
+
 ```bash
 node --version
 npm --version
@@ -22,6 +23,7 @@ npm --version
 如果显示版本号（>= 16.0.0），则已安装，跳到步骤 2。
 
 ### 下载安装
+
 访问 [Node.js 官网](https://nodejs.org/) 下载并安装 LTS 版本。
 
 ## 2️⃣ 安装项目依赖
@@ -42,21 +44,25 @@ npm install
 在 luo_music 目录下运行：
 
 ### Windows (CMD)
+
 ```cmd
 npm run dev
 ```
 
 ### Windows (PowerShell)
+
 ```powershell
 npm run dev
 ```
 
 ### macOS / Linux
+
 ```bash
 npm run dev
 ```
 
 看到以下信息表示启动成功：
+
 ```
   VITE v7.x.x  ready in xxx ms
 
@@ -68,7 +74,7 @@ npm run dev
 
 ## 4️⃣ 开始使用
 
-1. 打开浏览器访问 `http://localhost:5173`
+1. 打开浏览器访问 `localhost:5173`
 2. 在搜索框输入歌曲名称，如"你的猫咪"
 3. 点击"搜索"按钮
 4. 点击搜索结果中的歌曲开始播放
@@ -77,8 +83,9 @@ npm run dev
 ## 5️⃣ 成功！
 
 现在你应该看到：
-- ✅ API 服务运行在 http://localhost:36530
-- ✅ 前端应用运行在 http://localhost:5173
+
+- ✅ API 服务运行在 `localhost:36530`
+- ✅ 前端应用运行在 `localhost:5173`
 - ✅ 可以搜索和播放音乐
 - ✅ 可以查看实时同步的歌词
 
@@ -89,11 +96,13 @@ npm run dev
 **错误信息**：`Error: listen EADDRINUSE: address already in use :::36530`
 
 **解决方法**：端口 36530 被占用，更换端口：
+
 ```bash
 PORT=36531 node app.js
 ```
 
 然后修改 `luo_music/src/utils/request.js` 中的 `baseURL`:
+
 ```javascript
 baseURL: 'http://localhost:36531'
 ```
@@ -103,6 +112,7 @@ baseURL: 'http://localhost:36531'
 **错误信息**：`npm ERR! code ENOENT`
 
 **解决方法**：
+
 ```bash
 # 删除 node_modules 和 package-lock.json
 rm -rf node_modules package-lock.json
@@ -114,23 +124,27 @@ npm install
 ### 问题 3：无法播放音乐
 
 **可能原因**：
+
 1. API 服务未启动
 2. API 地址配置错误
 3. 网络问题
 
 **解决方法**：
-1. 检查 API 服务是否运行：访问 http://localhost:36530
+
+1. 检查 API 服务是否运行：访问 `localhost:36530`
 2. 检查浏览器控制台是否有错误
 3. 尝试重启 API 服务和前端服务
 
 ### 问题 4：搜索无结果
 
 **可能原因**：
+
 1. 关键词不正确
 2. API 服务异常
 3. 网络连接问题
 
 **解决方法**：
+
 1. 尝试更换搜索关键词
 2. 检查 API 服务日志
 3. 检查网络连接
@@ -138,10 +152,12 @@ npm install
 ### 问题 5：歌词不显示
 
 **可能原因**：
+
 1. 该歌曲没有歌词
 2. API 返回数据异常
 
 **解决方法**：
+
 1. 尝试播放其他歌曲
 2. 查看浏览器控制台错误信息
 3. 检查 API 响应数据
@@ -165,11 +181,13 @@ npm install
 ## 💡 小贴士
 
 ### 开发技巧
+
 - 使用 Vue DevTools 浏览器扩展调试
 - 修改代码后会自动热重载
 - 使用 `console.log()` 调试问题
 
 ### 推荐搜索关键词
+
 - 你的猫咪
 - 晴天
 - 七里香
@@ -177,6 +195,7 @@ npm install
 - 夜曲
 
 ### 快捷键（计划中）
+
 - `Space` - 播放/暂停
 - `→` - 下一曲
 - `←` - 上一曲

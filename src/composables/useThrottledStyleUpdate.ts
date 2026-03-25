@@ -51,7 +51,7 @@ export function useThrottledStyleUpdate(options: UseThrottledStyleUpdateOptions)
 
       // 直接更新样式
       const value = usePercent ? `${newVal}%` : `${newVal}`
-      targetRef.value.style[property as any] = value
+      targetRef.value.style.setProperty(property, value)
     },
     { flush: 'post' }
   )

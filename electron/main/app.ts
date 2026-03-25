@@ -94,7 +94,8 @@ export function registerAppLifecycle(callbacks: AppLifecycleCallbacks): void {
     callbacks.onSecondInstance()
   })
 
-  app.whenReady().then(async () => {
+  // 使用 void 操作符显式标记未处理的 Promise
+  void app.whenReady().then(async () => {
     logger.info('=== App Ready ===')
     await callbacks.onReady()
   })

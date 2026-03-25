@@ -86,6 +86,14 @@ export const IContextKeyService =
 export const ICommandService =
   createDecorator<import('./commandService').CommandService>('ICommandService')
 
+export const IPlayerService =
+  createDecorator<import('./playerService').PlayerService>('IPlayerService')
+
+export const IMusicService = createDecorator<import('./musicService').MusicService>('IMusicService')
+
+export const IStorageService =
+  createDecorator<import('./storageService').StorageService>('IStorageService')
+
 /**
  * 所有核心服务的联合类型
  */
@@ -97,6 +105,9 @@ export type CoreServices = {
   config: typeof IConfigService
   context: typeof IContextKeyService
   command: typeof ICommandService
+  player: typeof IPlayerService
+  music: typeof IMusicService
+  storage: typeof IStorageService
 }
 
 /**
@@ -114,7 +125,10 @@ export const SERVICE_ID_MAP: Record<ServiceId, ServiceIdentifier<unknown>> = {
   error: IErrorService,
   config: IConfigService,
   context: IContextKeyService,
-  command: ICommandService
+  command: ICommandService,
+  player: IPlayerService,
+  music: IMusicService,
+  storage: IStorageService
 }
 
 /**
@@ -128,7 +142,10 @@ const REVERSE_SERVICE_ID_MAP = new Map<ServiceIdentifier<unknown>, ServiceId>([
   [IErrorService, 'error'],
   [IConfigService, 'config'],
   [IContextKeyService, 'context'],
-  [ICommandService, 'command']
+  [ICommandService, 'command'],
+  [IPlayerService, 'player'],
+  [IMusicService, 'music'],
+  [IStorageService, 'storage']
 ])
 
 /**

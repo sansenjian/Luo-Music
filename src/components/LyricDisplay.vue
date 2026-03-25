@@ -1,9 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 
 import { useActiveLyricState } from '../composables/useActiveLyricState'
 import { useLyricAutoScroll } from '../composables/useLyricAutoScroll'
 import { usePlayerStore } from '../store/playerStore'
+import type { LyricLine } from '../utils/player/core/lyric'
 
 const props = defineProps({
   active: {
@@ -16,8 +17,19 @@ const playerStore = usePlayerStore()
 const lyricScrollArea = ref(null)
 const { lyrics, currentLyricIndex, showOriginal, showTrans, showRoma } = useActiveLyricState()
 
-function handleLyricClick(time) {
+function handleLyricClick(time: number) {
   playerStore.seek(time)
+}
+
+function shouldShowOriginalLine(item: LyricLine) {
+  if (showOriginal.value) {
+    return true
+  }
+
+  const hasVisibleTrans = showTrans.value && Boolean(item.trans)
+  const hasVisibleRoma = showRoma.value && Boolean(item.roma)
+
+  return !hasVisibleTrans && !hasVisibleRoma
 }
 
 const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
@@ -59,7 +71,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
           <div v-if="item.roma && showRoma" class="lyric-roma">
             {{ item.roma }}
           </div>
-          <div v-if="showOriginal" class="lyric-main">
+          <div v-if="shouldShowOriginalLine(item)" class="lyric-main">
             {{ item.text }}
           </div>
           <div v-if="item.trans && showTrans" class="lyric-trans">
@@ -130,10 +142,6 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   font-size: 16px;
 }
 
-:global(.player-compact) .lyric-line.active .lyric-main {
-  font-size: 18px;
-}
-
 :global(.player-compact) .lyric-trans,
 :global(.player-compact) .lyric-roma {
   font-size: 11px;
@@ -142,10 +150,9 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 .lyric-line {
   margin-bottom: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
   padding: 8px 12px;
   border-left: 3px solid transparent;
-  opacity: 0.4;
 }
 
 .lyric-line:hover,
@@ -158,9 +165,8 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   background: var(--black);
   color: var(--white);
   border-left-color: var(--accent);
-  opacity: 1;
+  opacity: 1 !important;
   font-weight: 700;
-  transform: scale(1.05);
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
 }
 
@@ -178,6 +184,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   opacity: 0.4;
 }
 
+/* 未播放的歌词行 - 不包括 active 和 passed */
 .lyric-line:not(.active):not(.passed) {
   opacity: 0.5;
 }
@@ -193,12 +200,8 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   font-size: 18px;
   font-weight: 600;
   line-height: 1.4;
-  transition: font-size 0.3s;
+  transition: color 0.2s ease;
   word-break: break-word;
-}
-
-.lyric-line.active .lyric-main {
-  font-size: 20px;
 }
 
 .lyric-trans {
@@ -218,10 +221,6 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   .lyric-main {
     font-size: 16px;
   }
-
-  .lyric-line.active .lyric-main {
-    font-size: 18px;
-  }
 }
 
 @media (max-width: 600px) {
@@ -231,10 +230,6 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 
   .lyric-main {
     font-size: 15px;
-  }
-
-  .lyric-line.active .lyric-main {
-    font-size: 17px;
   }
 
   .lyric-trans {

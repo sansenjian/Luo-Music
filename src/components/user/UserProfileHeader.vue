@@ -1,5 +1,5 @@
 <script setup>
-import { useUserDataQuery } from '../../composables/useUserDataQuery'
+import { useUserDataQuery } from '@/composables/useUserDataQuery'
 
 const props = defineProps({
   userId: {

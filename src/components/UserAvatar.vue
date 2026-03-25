@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 
 import { logout } from '../api/user'
 import { qqMusicApi } from '../api/qqmusic'
-import { isElectron } from '../platform'
 import { services } from '../services'
 import { useUserStore } from '../store/userStore'
 import LoginModal from './LoginModal.vue'
@@ -23,6 +22,7 @@ type QQLoginStatusResponse = {
 
 const router = useRouter()
 const logger = services.logger().createLogger('userAvatar')
+const platformService = services.platform()
 const userStore = useUserStore()
 
 const showLoginModal = ref(false)
@@ -109,7 +109,7 @@ function handleQQLoginSuccess(): void {
 }
 
 onMounted(() => {
-  if (isElectron) {
+  if (platformService.isElectron()) {
     void checkQQMusicLoginStatus()
   }
 })

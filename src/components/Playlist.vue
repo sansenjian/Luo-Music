@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { usePlayerStore } from '../store/playerStore.ts'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
@@ -7,8 +7,13 @@ import type { Song } from '../platform/music/interface'
 
 const playerStore = usePlayerStore()
 const listRef = ref<HTMLElement | null>(null)
+const scrollTop = ref(0)
+const containerHeight = ref(560)
 
 const emit = defineEmits(['play-song'])
+
+const ITEM_HEIGHT = 74
+const OVERSCAN = 6
 
 type PlaylistItem = {
   id: Song['id']
@@ -30,58 +35,127 @@ const songs = computed<PlaylistItem[]>(() =>
   }))
 )
 const currentIndex = computed(() => playerStore.currentIndex)
+const totalHeight = computed(() => songs.value.length * ITEM_HEIGHT)
+const maxScrollTop = computed(() => Math.max(0, totalHeight.value - containerHeight.value))
+const effectiveScrollTop = computed(() => Math.min(scrollTop.value, maxScrollTop.value))
+const visibleCount = computed(() =>
+  Math.max(1, Math.ceil(containerHeight.value / ITEM_HEIGHT) + OVERSCAN * 2)
+)
+const startIndex = computed(() =>
+  Math.max(0, Math.floor(effectiveScrollTop.value / ITEM_HEIGHT) - OVERSCAN)
+)
+const endIndex = computed(() => Math.min(songs.value.length, startIndex.value + visibleCount.value))
+const offsetY = computed(() => startIndex.value * ITEM_HEIGHT)
+const visibleSongs = computed(() =>
+  songs.value.slice(startIndex.value, endIndex.value).map((song, offset) => ({
+    index: startIndex.value + offset,
+    song
+  }))
+)
 
 watch(currentIndex, newIndex => {
   if (newIndex === -1) return
-  const el = listRef.value?.querySelector(`[data-index="${newIndex}"]`)
-  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  void nextTick(() => {
+    const listElement = listRef.value
+    if (!listElement) {
+      return
+    }
+
+    const targetTop = Math.max(
+      0,
+      newIndex * ITEM_HEIGHT - (containerHeight.value - ITEM_HEIGHT) / 2
+    )
+    listElement.scrollTo({
+      top: targetTop,
+      behavior: 'smooth'
+    })
+  })
 })
 
 function playSong(index: number): void {
   emit('play-song', index)
 }
+
+function syncContainerHeight(): void {
+  containerHeight.value = listRef.value?.clientHeight || 560
+}
+
+function syncScrollPosition(nextScrollTop: number): void {
+  scrollTop.value = nextScrollTop
+
+  const listElement = listRef.value
+  if (listElement && listElement.scrollTop !== nextScrollTop) {
+    listElement.scrollTop = nextScrollTop
+  }
+}
+
+function clampScrollPosition(): void {
+  syncScrollPosition(Math.min(scrollTop.value, maxScrollTop.value))
+}
+
+function handleScroll(): void {
+  scrollTop.value = listRef.value?.scrollTop || 0
+}
+
+watch([totalHeight, containerHeight], () => {
+  void nextTick(() => {
+    clampScrollPosition()
+  })
+})
+
+onMounted(() => {
+  syncContainerHeight()
+  clampScrollPosition()
+  window.addEventListener('resize', syncContainerHeight)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', syncContainerHeight)
+})
 </script>
 
 <template>
-  <div ref="listRef" class="playlist">
+  <div ref="listRef" class="playlist" @scroll="handleScroll">
     <div v-if="songs.length === 0" class="empty-state">
       <div class="empty-icon">[]</div>
       <div>NO TRACKS LOADED</div>
     </div>
 
-    <div v-else class="track-list">
-      <div
-        v-for="(song, index) in songs"
-        :key="song.id"
-        class="list-item"
-        :class="{ active: index === currentIndex }"
-        :data-index="index"
-        @click="playSong(index)"
-      >
-        <div v-if="song.cover" class="list-cover">
-          <img :src="song.cover" :alt="song.name" loading="lazy" />
-        </div>
-        <div class="list-num">
-          <span v-if="!(index === currentIndex && playerStore.playing)">
-            {{ String(index + 1).padStart(2, '0') }}
-          </span>
-          <div v-else class="playing-indicator">
-            <span></span>
-            <span></span>
-            <span></span>
+    <div v-else class="track-list" :style="{ height: `${totalHeight}px` }">
+      <div class="track-list-window" :style="{ transform: `translateY(${offsetY}px)` }">
+        <div
+          v-for="{ song, index } in visibleSongs"
+          :key="`${song.id}-${index}`"
+          class="list-item"
+          :class="{ active: index === currentIndex }"
+          :data-index="index"
+          @click="playSong(index)"
+        >
+          <div v-if="song.cover" class="list-cover">
+            <img :src="song.cover" :alt="song.name" loading="lazy" />
           </div>
-        </div>
-        <div class="list-info">
-          <div class="list-title">
-            {{ song.name }}
-            <span class="server-badge" :class="song.isQQ ? 'qq' : 'netease'">
-              {{ song.isQQ ? 'QQ' : 'Netease' }}
+          <div class="list-num">
+            <span v-if="!(index === currentIndex && playerStore.playing)">
+              {{ String(index + 1).padStart(2, '0') }}
             </span>
+            <div v-else class="playing-indicator">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </div>
-          <div class="list-artist">{{ song.artistText }}</div>
-        </div>
-        <div class="list-duration">
-          {{ formatTime(song.duration) }}
+          <div class="list-info">
+            <div class="list-title">
+              {{ song.name }}
+              <span class="server-badge" :class="song.isQQ ? 'qq' : 'netease'">
+                {{ song.isQQ ? 'QQ' : 'Netease' }}
+              </span>
+            </div>
+            <div class="list-artist">{{ song.artistText }}</div>
+          </div>
+          <div class="list-duration">
+            {{ formatTime(song.duration) }}
+          </div>
         </div>
       </div>
     </div>
@@ -110,8 +184,15 @@ function playSong(index: number): void {
 }
 
 .track-list {
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  min-height: 100%;
+}
+
+.track-list-window {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 
 .list-item {
@@ -120,6 +201,7 @@ function playSong(index: number): void {
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
+  height: 74px;
   cursor: pointer;
   border: 2px solid transparent;
   transition: all 0.1s;

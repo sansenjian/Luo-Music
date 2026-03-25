@@ -1,142 +1,332 @@
-const fs = require('fs')
-const net = require('net')
-const path = require('path')
-const { spawn } = require('child_process')
+const http = require('node:http')
+const { existsSync, readdirSync, statSync } = require('node:fs')
+const { connect } = require('node:net')
+const path = require('node:path')
+const { spawn, execSync } = require('node:child_process')
 const dotenv = require('dotenv')
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env') })
-const isWindows = process.platform === 'win32'
+const ROOT = path.resolve(__dirname, '../..')
 
-function waitForFreshFile(file, startTime) {
-  return new Promise((resolve) => {
+dotenv.config({ path: path.resolve(ROOT, '.env') })
+
+// ============ 配置常量 ============
+const CONFIG = {
+  vitePorts: [5173, 5174, 5175, 5176, 5177],
+  pollIntervalMs: 300,
+  socketTimeoutMs: 2000,
+  httpTimeoutMs: 5000,
+  httpWarmupTimeoutMs: 30000,
+  buildOutput: {
+    main: 'build/electron/main.cjs',
+    preload: 'build/electron/preload.cjs'
+  },
+  electronSourcePatterns: ['.ts', '.js'],
+  electronConfig: 'electron.vite.config.ts'
+}
+
+// ============ 日志工具 ============
+const colors = {
+  reset: '\x1b[0m',
+  gray: '\x1b[90m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+  red: '\x1b[31m'
+}
+
+function log(tag, message, color = colors.reset) {
+  console.log(`${color}[${tag}]${colors.reset} ${message}`)
+}
+
+function logInfo(message) {
+  log('dev-launcher', message, colors.blue)
+}
+
+function logSuccess(message) {
+  log('dev-launcher', message, colors.green)
+}
+
+function logWarn(message) {
+  log('dev-launcher', message, colors.yellow)
+}
+
+function logError(message) {
+  log('dev-launcher', message, colors.red)
+}
+
+function logDebug(message) {
+  if (process.env.DEBUG === 'dev-launcher') {
+    log('dev-launcher:debug', message, colors.gray)
+  }
+}
+
+// ============ 等待工具 ============
+async function waitForCondition(condition, { interval = CONFIG.pollIntervalMs, timeout = 0, description = 'condition' } = {}) {
+  return new Promise((resolve, reject) => {
+    const deadline = timeout > 0 ? Date.now() + timeout : Infinity
+
     const check = () => {
-      if (fs.existsSync(file)) {
-        const stat = fs.statSync(file)
-        if (stat.mtimeMs >= startTime) {
-          resolve()
-          return
-        }
+      if (Date.now() >= deadline) {
+        reject(new Error(`Timeout waiting for ${description}`))
+        return
       }
-      setTimeout(check, 300)
-    }
-    check()
-  })
-}
 
-function getLatestMTime(targetPath, predicate = () => true) {
-  if (!fs.existsSync(targetPath)) {
-    return 0
-  }
-
-  const stat = fs.statSync(targetPath)
-  if (stat.isFile()) {
-    return predicate(targetPath) ? stat.mtimeMs : 0
-  }
-
-  if (!stat.isDirectory()) {
-    return 0
-  }
-
-  let latest = 0
-  const entries = fs.readdirSync(targetPath, { withFileTypes: true })
-  for (const entry of entries) {
-    const fullPath = path.join(targetPath, entry.name)
-    const childLatest = getLatestMTime(fullPath, predicate)
-    if (childLatest > latest) {
-      latest = childLatest
-    }
-  }
-
-  return latest
-}
-
-function waitForPort(port) {
-  return new Promise((resolve) => {
-    const check = () => {
-      const socket = net.connect(port, '127.0.0.1')
-      socket.on('connect', () => {
-        socket.end()
+      const result = condition()
+      if (result instanceof Promise) {
+        result.then(testResolve => {
+          if (testResolve) {
+            resolve()
+          } else {
+            setTimeout(check, interval)
+          }
+        }).catch(() => {
+          setTimeout(check, interval)
+        })
+      } else if (result) {
         resolve()
-      })
-      socket.on('error', () => {
-        setTimeout(check, 300)
-      })
+      } else {
+        setTimeout(check, interval)
+      }
     }
+
     check()
   })
+}
+
+async function waitForPort(port) {
+  logDebug(`Waiting for port ${port}...`)
+  return waitForCondition(
+    () => {
+      return new Promise((testResolve) => {
+        const socket = connect(port, '127.0.0.1')
+        socket.on('connect', () => {
+          socket.end()
+          testResolve(true)
+        })
+        socket.on('error', () => testResolve(false))
+      })
+    },
+    { description: `port ${port} to be available` }
+  )
+}
+
+async function waitForHttpReady(url, timeoutMs = CONFIG.httpWarmupTimeoutMs) {
+  logDebug(`Waiting for HTTP ready: ${url}`)
+  return waitForCondition(
+    () => {
+      return new Promise((testResolve) => {
+        const req = http.get(url, (res) => {
+          res.resume()
+          const statusCode = res.statusCode ?? 0
+          testResolve(statusCode >= 200 && statusCode < 500)
+        })
+        req.on('error', () => testResolve(false))
+        req.setTimeout(CONFIG.httpTimeoutMs, () => {
+          req.destroy()
+          testResolve(false)
+        })
+      })
+    },
+    { timeout: timeoutMs, description: `HTTP server at ${url} to be ready` }
+  )
+}
+
+// ============ 文件工具 ============
+function getLatestMTime(targetPath, predicate = () => true) {
+  if (!existsSync(targetPath)) {
+    return 0
+  }
+
+  try {
+    const stat = statSync(targetPath)
+    if (stat.isFile()) {
+      return predicate(targetPath) ? stat.mtimeMs : 0
+    }
+
+    if (!stat.isDirectory()) {
+      return 0
+    }
+
+    let latest = 0
+    const entries = readdirSync(targetPath, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = path.join(targetPath, entry.name)
+      const childLatest = getLatestMTime(fullPath, predicate)
+      if (childLatest > latest) {
+        latest = childLatest
+      }
+    }
+
+    return latest
+  } catch {
+    return 0
+  }
+}
+
+function needsRebuild() {
+  const { main, preload } = CONFIG.buildOutput
+  const mainPath = path.resolve(ROOT, main)
+  const preloadPath = path.resolve(ROOT, preload)
+
+  if (!existsSync(mainPath) || !existsSync(preloadPath)) {
+    logDebug('Build output files not found')
+    return true
+  }
+
+  try {
+    const mainStat = statSync(mainPath)
+    const preloadStat = statSync(preloadPath)
+    const latestBuiltTime = Math.min(mainStat.mtimeMs, preloadStat.mtimeMs)
+
+    const latestElectronSourceTime = getLatestMTime(
+      path.resolve(ROOT, 'electron'),
+      filePath => CONFIG.electronSourcePatterns.some(ext => filePath.endsWith(ext))
+    )
+    const latestConfigTime = getLatestMTime(path.resolve(ROOT, CONFIG.electronConfig))
+    const latestSourceTime = Math.max(latestElectronSourceTime, latestConfigTime)
+
+    const needs = latestSourceTime > latestBuiltTime
+    logDebug(`Source time: ${latestSourceTime}, Built time: ${latestBuiltTime}, Needs rebuild: ${needs}`)
+    return needs
+  } catch (error) {
+    logDebug(`Error checking rebuild necessity: ${error.message}`)
+    return true
+  }
+}
+
+// ============ 进程管理 ============
+function killOldElectronInstances() {
+  return new Promise((resolve) => {
+    logInfo('Checking for old Electron instances...')
+
+    try {
+      const command = process.platform === 'win32'
+        ? 'taskkill /F /IM electron.exe'
+        : 'pkill -f electron'
+
+      execSync(command, { stdio: 'ignore' })
+      logSuccess('Killed old Electron instances')
+    } catch {
+      logInfo('No old Electron instances found')
+    }
+
+    resolve()
+  })
+}
+
+function resolveElectronViteCli() {
+  try {
+    const packageJsonPath = require.resolve('electron-vite/package.json')
+    const cliPath = path.join(path.dirname(packageJsonPath), 'bin', 'electron-vite.js')
+
+    if (!existsSync(cliPath)) {
+      throw new Error(`electron-vite CLI not found at ${cliPath}`)
+    }
+
+    return cliPath
+  } catch (error) {
+    logError(`Failed to resolve electron-vite CLI: ${error.message}`)
+    process.exit(1)
+  }
 }
 
 function buildElectron() {
   return new Promise((resolve, reject) => {
-    console.log('[dev-electron-launcher] Building electron files with electron-vite...')
+    logInfo('Building electron files with electron-vite...')
+
+    const electronViteCli = resolveElectronViteCli()
     const child = spawn(
-      isWindows ? 'npm.cmd' : 'npm',
-      ['exec', '--', 'electron-vite', 'build', '--config', 'electron.vite.config.ts'],
+      process.execPath,
+      [electronViteCli, 'build', '--config', CONFIG.electronConfig],
       {
-      stdio: 'inherit',
-      shell: isWindows,
-      cwd: process.cwd()
+        stdio: 'inherit',
+        shell: false,
+        cwd: ROOT
       }
     )
+
     child.on('exit', (code) => {
       if (code === 0) {
+        logSuccess('Electron build completed')
         resolve()
       } else {
         reject(new Error(`Build failed with code ${code}`))
       }
     })
+
     child.on('error', reject)
   })
 }
 
-async function main() {
-  await waitForPort(5173)
-
-  const mainFile = 'build/electron/main.cjs'
-  const preloadFile = 'build/electron/preload.cjs'
-
-  const needsRebuild = () => {
-    if (!fs.existsSync(mainFile) || !fs.existsSync(preloadFile)) {
-      return true
-    }
-
+// ============ 端口检测 ============
+async function findVitePort() {
+  for (const port of CONFIG.vitePorts) {
     try {
-      const mainStat = fs.statSync(mainFile)
-      const preloadStat = fs.statSync(preloadFile)
-      const latestBuiltTime = Math.min(mainStat.mtimeMs, preloadStat.mtimeMs)
-
-      const latestElectronSourceTime = getLatestMTime(
-        path.resolve('electron'),
-        filePath => filePath.endsWith('.ts') || filePath.endsWith('.js')
-      )
-      const latestConfigTime = getLatestMTime(path.resolve('electron.vite.config.ts'))
-
-      const latestSourceTime = Math.max(latestElectronSourceTime, latestConfigTime)
-      if (latestSourceTime > latestBuiltTime) {
-        return true
-      }
+      await waitForHttpReady(`http://127.0.0.1:${port}/`, CONFIG.socketTimeoutMs)
+      logSuccess(`Found Vite dev server on port ${port}`)
+      return port
     } catch {
-      return true
+      logDebug(`Port ${port} not available`)
     }
-
-    return false
   }
 
-  const needBuild = needsRebuild()
+  logWarn('No Vite port found, using default 5173')
+  return 5173
+}
 
-  if (needBuild) {
-    console.log('[dev-electron-launcher] Electron files not found, building...')
-    await buildElectron()
+// ============ 主函数 ============
+async function main() {
+  logInfo('Starting Electron development launcher...')
+
+  // 1. 清理旧实例
+  await killOldElectronInstances()
+
+  // 2. 等待 Vite 服务器启动
+  logInfo('Waiting for Vite dev server...')
+  try {
+    await waitForPort(5173)
+    logSuccess('Vite dev server detected')
+  } catch (error) {
+    logError(`Vite dev server not responding: ${error.message}`)
+    process.exit(1)
   }
+
+  // 3. 查找实际端口并预热
+  const vitePort = await findVitePort()
+  const viteDevServerUrl = `http://127.0.0.1:${vitePort}`
+
+  logInfo(`Warming Vite index response on port ${vitePort}...`)
+  try {
+    await waitForHttpReady(`${viteDevServerUrl}/`)
+    logSuccess('Vite server ready')
+  } catch (error) {
+    logError(`Failed to warm up Vite server: ${error.message}`)
+    process.exit(1)
+  }
+
+  // 4. 检查是否需要构建
+  if (needsRebuild()) {
+    logInfo('Electron files need rebuild...')
+    try {
+      await buildElectron()
+    } catch (error) {
+      logError(`Build failed: ${error.message}`)
+      process.exit(1)
+    }
+  } else {
+    logSuccess('Electron files are up to date')
+  }
+
+  // 5. 启动 Electron
+  logInfo(`Launching Electron app...`)
+  logDebug(`Vite URL: ${viteDevServerUrl}`)
 
   const electronBinary = require('electron')
-  const appPath = path.resolve('.')
-  const viteDevServerUrl = 'http://localhost:5173'
-
   const child = spawn(electronBinary, ['.'], {
     stdio: 'inherit',
     shell: false,
-    cwd: appPath,
+    cwd: ROOT,
     env: {
       ...process.env,
       NODE_ENV: 'development',
@@ -144,17 +334,33 @@ async function main() {
     }
   })
 
+  // 6. 处理进程事件
+  child.on('error', (error) => {
+    logError(`Failed to start Electron: ${error.message}`)
+    process.exit(1)
+  })
+
   child.on('exit', (code) => {
+    logInfo(`Electron exited with code ${code}`)
     process.exit(code ?? 0)
   })
 
-  child.on('error', (error) => {
-    console.error(error)
-    process.exit(1)
-  })
+  // 7. 优雅退出处理
+  const cleanup = () => {
+    logInfo('Shutting down...')
+    if (!child.killed) {
+      child.kill()
+    }
+  }
+
+  process.on('SIGINT', cleanup)
+  process.on('SIGTERM', cleanup)
+  process.on('exit', cleanup)
 }
 
+// 启动
 main().catch((error) => {
-  console.error(error)
+  logError(error.message)
+  console.error(error.stack)
   process.exit(1)
 })

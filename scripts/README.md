@@ -27,20 +27,20 @@ scripts/
 
 ```bash
 # 清理构建产物
-pnpm clean
+npm run clean
 
 # 清理所有（包括 node_modules）
-pnpm clean:all
+npm run clean:all
 ```
 
 ### 工具脚本
 
 ```bash
 # 分析依赖
-pnpm analyze:deps
+npm run analyze:deps
 
 # 检查未使用依赖
-pnpm check:unused
+npm run check:unused
 ```
 
 ### 开发脚本
@@ -49,10 +49,10 @@ pnpm check:unused
 
 ```bash
 # 启动开发服务器（包含 API 服务）
-pnpm dev:server
+npm run dev:server
 
 # 启动 Electron 开发环境
-pnpm dev:electron
+npm run dev:electron
 ```
 
 ## 📝 脚本详细说明
@@ -185,19 +185,19 @@ const projectRoot = path.resolve(__dirname, "..", "..");
 
 ```bash
 # 查看依赖分析报告
-pnpm analyze:deps
+npm run analyze:deps
 
 # 更新依赖版本
-pnpm update:deps
+npm run update:deps
 
 # 检查未使用依赖
-pnpm check:unused
+npm run check:unused
 
 # 清理构建产物
-pnpm clean
+npm run clean
 
 # 完全清理（包括 node_modules）
-pnpm clean:all
+npm run clean:all
 ```
 
 ## ⚠️ 注意事项

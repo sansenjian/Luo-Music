@@ -1,114 +1,84 @@
-/**
- * IPC 通信处理模块
- *
- * 负责处理与 Electron 主进程的 IPC 通信：
- * - 全局快捷键事件监听
- * - 系统托盘事件处理
- * - 桌面歌词控制
- * - 窗口控制命令
- *
- * 借鉴 VSCode 的 IPC 通道模式：统一管理事件订阅和资源释放
- */
+import { Disposable, DisposableStore, type IDisposable } from '@/base/common/lifecycle/disposable'
+import type { Song } from '@/types/schemas'
+import type { PlayMode } from '@/utils/player/constants/playMode'
 
 import type { PlayerState } from './playerState'
 
-/**
- * IPC 处理器依赖接口
- */
 export interface IpcHandlersDeps {
-  /** 获取播放器状态 */
   getState: () => PlayerState
-  /** 状态变更回调 */
   onStateChange: (changes: Partial<PlayerState>) => void
-  /** 切换播放 */
   togglePlay: () => void
+  toggleMute: () => void
   play?: () => void
   pause?: () => void
-  /** 播放上一首 */
   playPrev: () => void
-  /** 播放下一首 */
   playNext: () => void
-  /** 设置播放模式 */
-  setPlayMode: (mode: number) => void
-  /** 设置音量 */
+  playSong: (song: Song, playlist?: Song[]) => void
+  playSongById: (id: string | number, platform?: 'netease' | 'qq') => Promise<void> | void
+  addToNext: (song: Song) => void
+  removeFromPlaylist: (index: number) => void
+  clearPlaylist: () => void
+  setPlayMode: (mode: PlayMode) => void
+  seek: (time: number) => void
   setVolume: (vol: number) => void
-  /** 切换紧凑模式 */
   toggleCompactMode: () => void
-  /** 平台 API */
   platform: {
     isElectron: () => boolean
     on: (channel: string, callback: (...args: unknown[]) => void) => () => void
   }
 }
 
-/**
- * 可释放资源接口
- */
-interface IDisposable {
-  dispose(): void
-}
-
-/**
- * IPC 事件处理器
- */
 export class IpcEventHandler implements IDisposable {
-  private _disposables: IDisposable[] = []
-  private _disposed = false
+  private readonly disposables = new DisposableStore()
+  private disposedState = false
 
   constructor(private readonly deps: IpcHandlersDeps) {}
 
-  /**
-   * 初始化 IPC 监听器
-   */
+  private clearListeners(): void {
+    this.disposables.clear()
+  }
+
   init(): void {
-    if (this._disposed) {
+    if (this.disposedState) {
       console.warn('[IpcEventHandler] Cannot init after dispose')
       return
     }
 
-    // 防止重复初始化
-    if (this._disposables.length > 0) {
-      this.dispose()
+    if (this.disposables.size > 0) {
+      this.clearListeners()
     }
 
-    // 平台检查
     if (!this.deps.platform.isElectron()) {
       return
     }
 
-    // 注册所有 IPC 监听器
-    this._registerMusicPlayingControl()
-    this._registerSongControl()
-    this._registerPlayModeControl()
-    this._registerVolumeControl()
-    this._registerProcessControl()
-    this._registerCompactModeControl()
-    this._registerHidePlayer()
+    this.registerMusicPlayingControl()
+    this.registerSongControl()
+    this.registerPlayModeControl()
+    this.registerVolumeControl()
+    this.registerProcessControl()
+    this.registerCompactModeControl()
+    this.registerHidePlayer()
   }
 
-  /**
-   * 释放所有资源
-   */
   dispose(): void {
-    if (this._disposed) return
-
-    for (const d of this._disposables) {
-      d.dispose()
+    if (this.disposedState) {
+      return
     }
-    this._disposables = []
-    this._disposed = true
+
+    this.clearListeners()
+    this.disposables.dispose()
+    this.disposedState = true
   }
 
-  private _registerListener(channel: string, callback: (...args: unknown[]) => void): void {
+  private registerListener(channel: string, callback: (...args: unknown[]) => void): void {
     const unsubscribe = this.deps.platform.on(channel, callback)
-    this._disposables.push({ dispose: unsubscribe })
+    this.disposables.add(Disposable.from(unsubscribe))
   }
 
-  private _registerMusicPlayingControl(): void {
-    this._registerListener('music-playing-control', (command: unknown) => {
-      // Handle different command types
+  private registerMusicPlayingControl(): void {
+    this.registerListener('music-playing-control', (command: unknown) => {
       if (!command) {
-        // No command = toggle play/pause (legacy behavior)
         this.deps.togglePlay()
         return
       }
@@ -129,115 +99,147 @@ export class IpcEventHandler implements IDisposable {
         } else if (command === 'toggle') {
           this.deps.togglePlay()
         } else if (command === 'toggle-mute') {
-          // Toggle mute - not in deps interface, would need extension
+          this.deps.toggleMute()
         }
+
         return
       }
 
-      if (typeof command === 'object' && command !== null) {
+      if (typeof command === 'object') {
         const cmd = command as { type?: string; time?: number; volume?: number }
         if (cmd.type === 'seek' && typeof cmd.time === 'number') {
-          // Seek command - would need seek function in deps
-        } else if (cmd.type === 'volume' && typeof cmd.volume === 'number') {
-          // Volume command
+          this.deps.seek(cmd.time)
+          return
+        }
+
+        if (cmd.type === 'volume' && typeof cmd.volume === 'number') {
           this.deps.setVolume(cmd.volume)
         }
       }
     })
   }
 
-  private _registerSongControl(): void {
-    this._registerListener('music-song-control', (direction: unknown) => {
-      const dir = direction as string
-      if (dir === 'prev') {
+  private registerSongControl(): void {
+    this.registerListener('music-song-control', (direction: unknown) => {
+      if (direction === 'prev') {
         this.deps.playPrev()
-      } else if (dir === 'next') {
+        return
+      }
+
+      if (direction === 'next') {
         this.deps.playNext()
+        return
+      }
+
+      if (!direction || typeof direction !== 'object') {
+        return
+      }
+
+      const command = direction as
+        | { type: 'play-song'; song: Song; playlist?: Song[] }
+        | { type: 'play-song-by-id'; id: string | number; platform?: 'netease' | 'qq' }
+        | { type: 'add-to-next'; song: Song }
+        | { type: 'remove-from-playlist'; index: number }
+        | { type: 'clear-playlist' }
+
+      if (command.type === 'play-song') {
+        this.deps.playSong(command.song, command.playlist)
+        return
+      }
+
+      if (command.type === 'play-song-by-id') {
+        void this.deps.playSongById(command.id, command.platform)
+        return
+      }
+
+      if (command.type === 'add-to-next') {
+        this.deps.addToNext(command.song)
+        return
+      }
+
+      if (command.type === 'remove-from-playlist') {
+        this.deps.removeFromPlaylist(command.index)
+        return
+      }
+
+      if (command.type === 'clear-playlist') {
+        this.deps.clearPlaylist()
       }
     })
   }
 
-  private _registerPlayModeControl(): void {
-    this._registerListener('music-playmode-control', (mode: unknown) => {
+  private registerPlayModeControl(): void {
+    this.registerListener('music-playmode-control', (mode: unknown) => {
       if (mode === 'toggle') {
-        // Toggle play mode - cycle through modes
-        this.deps.setPlayMode((this.deps.getState().playMode + 1) % 4)
-      } else {
-        // Set specific mode
-        this.deps.setPlayMode(mode as number)
+        this.deps.setPlayMode(((this.deps.getState().playMode + 1) % 4) as PlayMode)
+        return
+      }
+
+      if (typeof mode === 'number' && Number.isInteger(mode) && mode >= 0 && mode <= 3) {
+        this.deps.setPlayMode(mode as PlayMode)
       }
     })
   }
 
-  private _registerVolumeControl(): void {
-    this._registerListener('music-volume-up', () => {
+  private registerVolumeControl(): void {
+    this.registerListener('music-volume-up', () => {
       const state = this.deps.getState()
       this.deps.setVolume(Math.min(1, state.volume + 0.1))
     })
 
-    this._registerListener('music-volume-down', () => {
+    this.registerListener('music-volume-down', () => {
       const state = this.deps.getState()
       this.deps.setVolume(Math.max(0, state.volume - 0.1))
     })
   }
 
-  private _registerProcessControl(): void {
-    this._registerListener('music-process-control', (direction: unknown) => {
-      const dir = direction as string
-
-      if (dir === 'back') {
-        // 快退逻辑在 playerStore 中处理
-      } else if (dir === 'forward') {
-        // 快进逻辑在 playerStore 中处理
-      }
+  private registerProcessControl(): void {
+    this.registerListener('music-process-control', (_direction: unknown) => {
+      // Seek control still stays in playerStore for now.
     })
   }
 
-  private _registerCompactModeControl(): void {
-    this._registerListener('music-compact-mode-control', () => {
+  private registerCompactModeControl(): void {
+    this.registerListener('music-compact-mode-control', () => {
       this.deps.toggleCompactMode()
     })
   }
 
-  private _registerHidePlayer(): void {
-    this._registerListener('hide-player', () => {
+  private registerHidePlayer(): void {
+    this.registerListener('hide-player', () => {
       this.deps.toggleCompactMode()
     })
   }
 }
 
-/**
- * IPC 通信处理器
- */
-export class IpcHandlers {
-  private _eventHandler: IpcEventHandler | null = null
+export class IpcHandlers implements IDisposable {
+  private eventHandler: IpcEventHandler | null = null
 
   constructor(private readonly deps: IpcHandlersDeps) {}
 
-  /**
-   * 设置 IPC 监听器
-   */
   setup(): void {
-    if (!this.deps.platform.isElectron()) return
+    this.teardown()
 
-    this._eventHandler = new IpcEventHandler(this.deps)
-    this._eventHandler.init()
+    if (!this.deps.platform.isElectron()) {
+      return
+    }
+
+    this.eventHandler = new IpcEventHandler(this.deps)
+    this.eventHandler.init()
   }
 
-  /**
-   * 销毁 IPC 监听器
-   */
   teardown(): void {
-    if (this._eventHandler) {
-      this._eventHandler.dispose()
-      this._eventHandler = null
+    if (this.eventHandler) {
+      this.eventHandler.dispose()
+      this.eventHandler = null
     }
+  }
+
+  dispose(): void {
+    this.teardown()
   }
 }
 
-/**
- * 创建 IPC 通信处理器
- */
 export function createIpcHandlers(deps: IpcHandlersDeps): IpcHandlers {
   return new IpcHandlers(deps)
 }

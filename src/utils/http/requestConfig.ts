@@ -1,4 +1,9 @@
 import { CACHE_DEFAULTS } from '../../../electron/shared/protocol/cache'
+import {
+  HTTP_DEFAULT_RETRY_COUNT,
+  HTTP_DEFAULT_RETRY_DELAY,
+  HTTP_DEFAULT_TIMEOUT
+} from '@/constants/http'
 
 interface CacheConfig {
   enabled: boolean
@@ -58,8 +63,8 @@ const createDefaultConfig = (): RequestConfigType => ({
   },
   retry: {
     enabled: true,
-    max_retries: 3,
-    initial_delay: 1000,
+    max_retries: HTTP_DEFAULT_RETRY_COUNT,
+    initial_delay: HTTP_DEFAULT_RETRY_DELAY,
     max_delay: 10000,
     backoff: 2,
     statuses: [null, 500, 502, 503, 504],
@@ -71,7 +76,7 @@ const createDefaultConfig = (): RequestConfigType => ({
     cancel_on_unmount: true
   },
   timeout: {
-    default: 30000,
+    default: HTTP_DEFAULT_TIMEOUT,
     download: 60000,
     upload: 60000
   },

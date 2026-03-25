@@ -26,12 +26,12 @@ export type NonNullable<T> = T extends null | undefined ? never : T
 /**
  * 获取函数参数类型
  */
-export type Parameters<T> = T extends (...args: infer P) => any ? P : never
+export type Parameters<T> = T extends (...args: infer P) => unknown ? P : never
 
 /**
  * 获取函数返回类型
  */
-export type ReturnType<T> = T extends (...args: any) => infer R ? R : never
+export type ReturnType<T> = T extends (...args: unknown[]) => infer R ? R : never
 
 /**
  * 获取 Promise 解析后的类型
@@ -97,7 +97,7 @@ export type EventCallback<T = unknown> = (data: T) => void
 /**
  * 异步函数类型
  */
-export type AsyncFunction<T = void, Args extends any[] = []> = (...args: Args) => Promise<T>
+export type AsyncFunction<T = void, Args extends unknown[] = []> = (...args: Args) => Promise<T>
 
 /**
  * 比较两个类型是否相等
@@ -120,17 +120,17 @@ export function createBrand<T, B>(value: T): Brand<T, B> {
 /**
  * 任意对象类型
  */
-export type AnyRecord = Record<string, any>
+export type AnyRecord = Record<string, unknown>
 
 /**
  * 构造函数类型
  */
-export type Constructor<T = any> = new (...args: any[]) => T
+export type Constructor<T = unknown> = new (...args: unknown[]) => T
 
 /**
  * 抽象构造函数类型
  */
-export type AbstractConstructor<T = any> = abstract new (...args: any[]) => T
+export type AbstractConstructor<T = unknown> = abstract new (...args: unknown[]) => T
 
 /**
  * 混合类型
@@ -175,7 +175,7 @@ export function isObject(value: unknown): value is Record<string, unknown> {
 /**
  * 类型守卫：检查值是否为函数
  */
-export function isFunction(value: unknown): value is (...args: any[]) => any {
+export function isFunction(value: unknown): value is (...args: unknown[]) => unknown {
   return typeof value === 'function'
 }
 
@@ -218,5 +218,8 @@ export function isError(value: unknown): value is Error {
  * 类型守卫：检查值是否为 Promise
  */
 export function isPromise<T = unknown>(value: unknown): value is Promise<T> {
-  return value instanceof Promise || (isObject(value) && isFunction((value as any).then))
+  return (
+    value instanceof Promise ||
+    (isObject(value) && 'then' in value && isFunction((value as { then: unknown }).then))
+  )
 }

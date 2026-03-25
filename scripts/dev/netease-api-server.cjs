@@ -30,8 +30,6 @@ async function start() {
     // 等待确认服务真的启动了
     await waitForServer(port, host, 10000)
     
-    console.log(`[Netease API] ✅ Server confirmed running on http://${host}:${port}`)
-    
     // 通知父进程已就绪
     if (process.send) {
       process.send({ type: 'ready', port })
