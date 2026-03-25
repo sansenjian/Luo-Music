@@ -32,9 +32,8 @@ const deactivationOperations = new Map<ServiceIdentifier<unknown>, LifecycleOper
 const activatedInstances = new Map<ServiceIdentifier<unknown>, unknown>()
 const disposedInstances = new WeakSet<object>()
 
-// 使用 Map 隔离不同解析链路的栈，避免异步污染
-const resolutionStacks = new Map<number, string[]>()
-let currentResolutionId = 0
+// 全局解析栈，用于检测循环依赖
+const resolutionStack: string[] = []
 
 function isDisposableLike(value: unknown): value is DisposableLike {
   return typeof value === 'object' && value !== null && 'dispose' in value
@@ -203,15 +202,9 @@ export function getService<T>(id: ServiceIdentifier<T> | ServiceId): T {
 
   const idName = identifier.name
 
-  // 分配新的解析 ID 和独立栈
-  const resolutionId = ++currentResolutionId
-  const stack = resolutionStacks.get(resolutionId) ?? []
-  resolutionStacks.set(resolutionId, stack)
-
-  if (stack.includes(idName)) {
-    const cycle = [...stack, idName]
-    // 清理当前解析栈
-    resolutionStacks.delete(resolutionId)
+  // 检查循环依赖
+  if (resolutionStack.includes(idName)) {
+    const cycle = [...resolutionStack, idName]
     throw new Error(
       `[Services] Circular dependency detected: ${cycle.join(' -> ')}\n` +
         'Consider refactoring services to avoid circular dependencies.'
@@ -220,12 +213,10 @@ export function getService<T>(id: ServiceIdentifier<T> | ServiceId): T {
 
   const factory = factories.get(identifier)
   if (!factory) {
-    // 清理当前解析栈
-    resolutionStacks.delete(resolutionId)
     throw new Error(`[Services] Service "${idName}" is not registered`)
   }
 
-  stack.push(idName)
+  resolutionStack.push(idName)
 
   try {
     trackServiceInit(idName)
@@ -238,11 +229,7 @@ export function getService<T>(id: ServiceIdentifier<T> | ServiceId): T {
 
     return instance as T
   } finally {
-    stack.pop()
-    // 如果栈为空，清理该解析上下文
-    if (stack.length === 0) {
-      resolutionStacks.delete(resolutionId)
-    }
+    resolutionStack.pop()
   }
 }
 
@@ -313,9 +300,7 @@ export function resetServices(): void {
   }
 
   instances.clear()
-  // 清理所有解析栈
-  resolutionStacks.clear()
-  currentResolutionId = 0
+  resolutionStack.length = 0 // 清理解析栈
   resetMetrics()
 }
 

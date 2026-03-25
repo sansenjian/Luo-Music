@@ -9,6 +9,9 @@ import {
 } from '@/services/registry'
 import { createDecorator } from '@/services/types'
 
+const IServiceA = createDecorator<unknown>('IServiceA')
+const IServiceB = createDecorator<unknown>('IServiceB')
+
 type LifecycleService = {
   onActivate?: () => Promise<void> | void
   onDeactivate?: () => Promise<void> | void
@@ -156,5 +159,37 @@ describe('service registry lifecycle', () => {
     await flushLifecycleTasks()
 
     expect(calls).toEqual(['deactivate:start', 'deactivate:end', 'dispose'])
+  })
+
+  it('throws an error when circular dependency is detected', () => {
+    registerService(IServiceA, () => {
+      // ServiceA depends on ServiceB
+      getService(IServiceB)
+      return { name: 'A' }
+    })
+
+    registerService(IServiceB, () => {
+      // ServiceB depends on ServiceA (circular)
+      getService(IServiceA)
+      return { name: 'B' }
+    })
+
+    expect(() => getService(IServiceA)).toThrow(
+      '[Services] Circular dependency detected: IServiceA -> IServiceB -> IServiceA'
+    )
+  })
+
+  it('correctly resolves non-circular dependencies', () => {
+    const serviceBInstance = { name: 'B' }
+    registerService(IServiceB, () => serviceBInstance)
+
+    registerService(IServiceA, () => {
+      // ServiceA depends on ServiceB (no circular)
+      const serviceB = getService(IServiceB)
+      return { name: 'A', dependsOn: serviceB }
+    })
+
+    const serviceA = getService(IServiceA)
+    expect(serviceA).toEqual({ name: 'A', dependsOn: { name: 'B' } })
   })
 })
