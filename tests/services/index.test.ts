@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const registerServiceMock = vi.hoisted(() => vi.fn())
 const getServiceMock = vi.hoisted(() => vi.fn())
 const resetServicesMock = vi.hoisted(() => vi.fn())
+const activateRegisteredServicesMock = vi.hoisted(() => vi.fn())
+const activateRegisteredServiceMock = vi.hoisted(() => vi.fn())
+const deactivateRegisteredServicesMock = vi.hoisted(() => vi.fn())
+const deactivateRegisteredServiceMock = vi.hoisted(() => vi.fn())
+const resetServicesAsyncMock = vi.hoisted(() => vi.fn())
 
 const createPlatformServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'platform' })))
 const createApiServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'api' })))
@@ -30,9 +35,14 @@ const ids = vi.hoisted(() => ({
 }))
 
 vi.mock('@/services/registry', () => ({
+  activateRegisteredServices: activateRegisteredServicesMock,
+  activateService: activateRegisteredServiceMock,
+  deactivateRegisteredServices: deactivateRegisteredServicesMock,
+  deactivateService: deactivateRegisteredServiceMock,
   getService: getServiceMock,
   registerService: registerServiceMock,
-  resetServices: resetServicesMock
+  resetServices: resetServicesMock,
+  resetServicesAsync: resetServicesAsyncMock
 }))
 
 vi.mock('@/services/platformService', () => ({
@@ -172,9 +182,7 @@ describe('services index', () => {
     expect(findOverrideFactory(ids.ILoggerService, createLoggerServiceMock)?.()).toBe(
       overrides.logger
     )
-    expect(findOverrideFactory(ids.IErrorService, createErrorServiceMock)?.()).toBe(
-      overrides.error
-    )
+    expect(findOverrideFactory(ids.IErrorService, createErrorServiceMock)?.()).toBe(overrides.error)
     expect(findOverrideFactory(ids.IConfigService, createConfigServiceMock)?.()).toBe(
       overrides.config
     )
@@ -187,9 +195,7 @@ describe('services index', () => {
     expect(findOverrideFactory(ids.IPlayerService, createPlayerServiceMock)?.()).toBe(
       overrides.player
     )
-    expect(findOverrideFactory(ids.IMusicService, createMusicServiceMock)?.()).toBe(
-      overrides.music
-    )
+    expect(findOverrideFactory(ids.IMusicService, createMusicServiceMock)?.()).toBe(overrides.music)
     expect(findOverrideFactory(ids.IStorageService, createStorageServiceMock)?.()).toBe(
       overrides.storage
     )
@@ -210,5 +216,31 @@ describe('services index', () => {
     expect(module.services.player()).toEqual({ identifier: ids.IPlayerService })
     expect(module.services.music()).toEqual({ identifier: ids.IMusicService })
     expect(module.services.storage()).toEqual({ identifier: ids.IStorageService })
+  })
+
+  it('supports async initialization orchestration with lifecycle-aware activation', async () => {
+    vi.resetModules()
+    const module = await import('@/services')
+
+    await module.initializeServices({}, ['music', 'player'])
+
+    expect(activateRegisteredServicesMock).toHaveBeenCalledWith([
+      ids.IMusicService,
+      ids.IPlayerService
+    ])
+  })
+
+  it('supports scoped service deactivation and async teardown', async () => {
+    vi.resetModules()
+    const module = await import('@/services')
+
+    await module.deactivateServices(['music', 'player'])
+    expect(deactivateRegisteredServicesMock).toHaveBeenCalledWith([
+      ids.IMusicService,
+      ids.IPlayerService
+    ])
+
+    await module.resetServicesAsync()
+    expect(resetServicesAsyncMock).toHaveBeenCalledTimes(1)
   })
 })

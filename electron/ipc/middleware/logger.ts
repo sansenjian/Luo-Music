@@ -11,6 +11,6 @@ export const loggerMiddleware: IpcMiddleware<'invoke' | 'send' | 'receive'> = {
 
   process(channel, data, next, context) {
     logger.debug(`[IPC] ${channel} [${context.requestId}]:`, JSON.stringify(data))
-    next()
+    void next()
   }
 }

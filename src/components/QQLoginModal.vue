@@ -34,6 +34,7 @@ type QQLoginPayload = {
   qrsig?: string
   isOk?: boolean
   refresh?: boolean
+  message?: string
 }
 
 const props = defineProps<{
@@ -120,6 +121,22 @@ function extractSessionCookie(payload: QQLoginPayload | null | undefined): strin
     payload.cookie ||
     ''
 
+  logger.debug('Extracted session cookie:', {
+    hasValue: !!value,
+    valueLength: value.length,
+    extractedFrom: payload.session?.cookie
+      ? 'session.cookie'
+      : payload.data?.session?.cookie
+        ? 'data.session.cookie'
+        : payload.body?.session?.cookie
+          ? 'body.session.cookie'
+          : payload.body?.data?.cookie
+            ? 'body.data.cookie'
+            : payload.cookie
+              ? 'cookie'
+              : 'none'
+  })
+
   return typeof value === 'string' ? value : ''
 }
 
@@ -134,11 +151,24 @@ async function loadQRCode(): Promise<void> {
 
   try {
     const res = (await qqMusicApi.getQQLoginQr()) as QQLoginPayload
+
+    // 解包 IPC 响应格式 { success: true, data: {...} }
+    const unwrapped =
+      res && typeof res === 'object' && 'success' in res && 'data' in res
+        ? (res as { success: boolean; data: QQLoginPayload }).data
+        : res
+
+    logger.debug('QQ Login QR load response:', {
+      hasSuccess: 'success' in (res ?? {}),
+      unwrapped,
+      rawResponse: JSON.stringify(res)
+    })
+
     if (!isAttemptCurrent(attemptId)) {
       return
     }
 
-    const data = res.body || res
+    const data = unwrapped.body || unwrapped
 
     if (!data?.img || !data.ptqrtoken || !data.qrsig) {
       throw new Error('Missing QR login payload')
@@ -178,12 +208,29 @@ function startCheck(attemptId: number): void {
     isChecking = true
     try {
       const res = (await qqMusicApi.checkQQLoginQr(ptqrtoken.value, qrsig.value)) as QQLoginPayload
+
+      // 解包 IPC 响应格式 { success: true, data: {...} }
+      const unwrapped =
+        res && typeof res === 'object' && 'success' in res && 'data' in res
+          ? (res as { success: boolean; data: QQLoginPayload }).data
+          : res
+
       if (!isAttemptCurrent(attemptId)) {
         return
       }
 
-      if (res?.isOk) {
-        const sessionCookie = extractSessionCookie(res)
+      // 调试日志：打印实际返回的数据格式
+      logger.debug('QQ Login check response:', {
+        isOk: unwrapped?.isOk,
+        refresh: unwrapped?.refresh,
+        message: unwrapped?.message,
+        hasSession: !!unwrapped?.session,
+        hasCookie: !!unwrapped?.session?.cookie,
+        fullResponse: JSON.stringify(unwrapped)
+      })
+
+      if (unwrapped?.isOk) {
+        const sessionCookie = extractSessionCookie(unwrapped)
         if (!sessionCookie) {
           throw new Error('Missing QQ session cookie')
         }
@@ -204,7 +251,7 @@ function startCheck(attemptId: number): void {
           emit('update:modelValue', false)
           closeTimer = null
         }, 500)
-      } else if (res?.refresh) {
+      } else if (unwrapped?.refresh) {
         status.value = 'expired'
         statusText.value = '二维码已过期，请刷新后重新扫码'
         toastStore.warning('二维码已过期，请刷新后重试')

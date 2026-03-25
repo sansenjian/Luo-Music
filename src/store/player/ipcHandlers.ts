@@ -1,4 +1,6 @@
 import { Disposable, DisposableStore, type IDisposable } from '@/base/common/lifecycle/disposable'
+import type { Song } from '@/types/schemas'
+import type { PlayMode } from '@/utils/player/constants/playMode'
 
 import type { PlayerState } from './playerState'
 
@@ -6,11 +8,18 @@ export interface IpcHandlersDeps {
   getState: () => PlayerState
   onStateChange: (changes: Partial<PlayerState>) => void
   togglePlay: () => void
+  toggleMute: () => void
   play?: () => void
   pause?: () => void
   playPrev: () => void
   playNext: () => void
-  setPlayMode: (mode: number) => void
+  playSong: (song: Song, playlist?: Song[]) => void
+  playSongById: (id: string | number, platform?: 'netease' | 'qq') => Promise<void> | void
+  addToNext: (song: Song) => void
+  removeFromPlaylist: (index: number) => void
+  clearPlaylist: () => void
+  setPlayMode: (mode: PlayMode) => void
+  seek: (time: number) => void
   setVolume: (vol: number) => void
   toggleCompactMode: () => void
   platform: {
@@ -89,13 +98,20 @@ export class IpcEventHandler implements IDisposable {
           }
         } else if (command === 'toggle') {
           this.deps.togglePlay()
+        } else if (command === 'toggle-mute') {
+          this.deps.toggleMute()
         }
 
         return
       }
 
       if (typeof command === 'object') {
-        const cmd = command as { type?: string; volume?: number }
+        const cmd = command as { type?: string; time?: number; volume?: number }
+        if (cmd.type === 'seek' && typeof cmd.time === 'number') {
+          this.deps.seek(cmd.time)
+          return
+        }
+
         if (cmd.type === 'volume' && typeof cmd.volume === 'number') {
           this.deps.setVolume(cmd.volume)
         }
@@ -107,8 +123,47 @@ export class IpcEventHandler implements IDisposable {
     this.registerListener('music-song-control', (direction: unknown) => {
       if (direction === 'prev') {
         this.deps.playPrev()
-      } else if (direction === 'next') {
+        return
+      }
+
+      if (direction === 'next') {
         this.deps.playNext()
+        return
+      }
+
+      if (!direction || typeof direction !== 'object') {
+        return
+      }
+
+      const command = direction as
+        | { type: 'play-song'; song: Song; playlist?: Song[] }
+        | { type: 'play-song-by-id'; id: string | number; platform?: 'netease' | 'qq' }
+        | { type: 'add-to-next'; song: Song }
+        | { type: 'remove-from-playlist'; index: number }
+        | { type: 'clear-playlist' }
+
+      if (command.type === 'play-song') {
+        this.deps.playSong(command.song, command.playlist)
+        return
+      }
+
+      if (command.type === 'play-song-by-id') {
+        void this.deps.playSongById(command.id, command.platform)
+        return
+      }
+
+      if (command.type === 'add-to-next') {
+        this.deps.addToNext(command.song)
+        return
+      }
+
+      if (command.type === 'remove-from-playlist') {
+        this.deps.removeFromPlaylist(command.index)
+        return
+      }
+
+      if (command.type === 'clear-playlist') {
+        this.deps.clearPlaylist()
       }
     })
   }
@@ -116,11 +171,13 @@ export class IpcEventHandler implements IDisposable {
   private registerPlayModeControl(): void {
     this.registerListener('music-playmode-control', (mode: unknown) => {
       if (mode === 'toggle') {
-        this.deps.setPlayMode((this.deps.getState().playMode + 1) % 4)
+        this.deps.setPlayMode(((this.deps.getState().playMode + 1) % 4) as PlayMode)
         return
       }
 
-      this.deps.setPlayMode(mode as number)
+      if (typeof mode === 'number' && Number.isInteger(mode) && mode >= 0 && mode <= 3) {
+        this.deps.setPlayMode(mode as PlayMode)
+      }
     })
   }
 

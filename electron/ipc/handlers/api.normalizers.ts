@@ -1,5 +1,5 @@
-import { getNeteaseSearchType } from '../../../src/platform/music/netease.constants'
-import { DEFAULT_AUDIO_BITRATE } from '../../../src/constants/audio'
+import { DEFAULT_AUDIO_BITRATE } from '../../shared/audio'
+import { getNeteaseSearchType } from '../../shared/netease'
 import type { MusicPlatform } from './api.contract'
 
 function mapQualityToBitrate(quality?: number): number {

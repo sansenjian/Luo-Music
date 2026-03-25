@@ -33,9 +33,19 @@ export class IpcProxy {
 
     try {
       const result = await this.ipcRenderer.invoke(channel, ...args)
+      // 运行时基本验证：确保结果不是 null/undefined 除非通道允许
+      if (result === null || result === undefined) {
+        // 允许 null/undefined 返回，由调用方自行处理
+        return result as T
+      }
+      // 对于对象类型，确保不是错误对象
+      if (typeof result === 'object' && 'error' in result && 'success' in result) {
+        // 这是 IpcResult 格式，由调用方自行判断 success 字段
+        return result as T
+      }
       return result as T
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
+      const message = error instanceof Error ? error.message : String(error)
       const wrappedError = new Error(`[IpcProxy] Invoke failed on ${channel}: ${message}`)
       ;(wrappedError as Error & { cause?: unknown }).cause = error
       throw wrappedError

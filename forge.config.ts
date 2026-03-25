@@ -131,7 +131,7 @@ const config: ForgeConfigWithAsar = {
       const sourceNodeModulesRoot = path.join(projectRoot, 'node_modules')
       const buildNodeModulesRoot = path.join(buildPath, 'node_modules')
       const visitedPackages = new Set<string>()
-      const rootPackageJson = await fs.readJson(path.join(projectRoot, 'package.json')) as {
+      const rootPackageJson = (await fs.readJson(path.join(projectRoot, 'package.json'))) as {
         dependencies?: Record<string, string>
       }
       const packageNamesToRepair = Object.keys(rootPackageJson.dependencies ?? {})
@@ -155,7 +155,9 @@ const config: ForgeConfigWithAsar = {
         }
 
         if (!fs.existsSync(buildPackageDir)) {
-          console.warn(`Warning: packaged dependency directory missing for ${packageName}, copying package directory`)
+          console.warn(
+            `Warning: packaged dependency directory missing for ${packageName}, copying package directory`
+          )
         }
 
         await fs.copy(sourcePackageDir, buildPackageDir, {
@@ -171,7 +173,7 @@ const config: ForgeConfigWithAsar = {
 
         console.log(`Synced runtime files for ${packageName}`)
 
-        const packageJson = await fs.readJson(sourcePackageJsonPath) as {
+        const packageJson = (await fs.readJson(sourcePackageJsonPath)) as {
           dependencies?: Record<string, string>
           optionalDependencies?: Record<string, string>
         }

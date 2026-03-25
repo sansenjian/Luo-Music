@@ -1,4 +1,13 @@
-import { getService, registerService, resetServices } from './registry'
+import {
+  activateRegisteredServices,
+  activateService as activateRegisteredService,
+  deactivateRegisteredServices,
+  deactivateService as deactivateRegisteredService,
+  getService,
+  registerService,
+  resetServices,
+  resetServicesAsync as resetRegisteredServicesAsync
+} from './registry'
 import { createApiService, type ApiService } from './apiService'
 import { createLoggerService, type LoggerService } from './loggerService'
 import { createErrorService, type ErrorService } from './errorService'
@@ -24,6 +33,7 @@ import {
 } from './types'
 
 // 导出装饰器相关（从 decorators.ts 导出）
+// inject = 属性注入装饰器 (PropertyDecorator)
 export {
   createDecorator,
   inject,
@@ -41,15 +51,16 @@ export {
   IStorageService
 } from './decorators'
 
-// 导出依赖注入容器
+// 导出依赖注入容器（injector.ts）
+// injectParam = 构造函数参数注入装饰器 (ParameterDecorator)
 export {
   Injector,
   AnnotatedInjector,
-  Inject,
   getInjector,
   getAnnotatedInjector,
   createInstance,
   createAnnotatedInstance,
+  injectParam,
   type InstantiateOptions
 } from './injector'
 
@@ -67,6 +78,8 @@ export type ServiceOverrides = Partial<{
   music: MusicService
   storage: StorageService
 }>
+
+type ServiceKey = keyof ServiceOverrides
 
 /**
  * 服务注册配置
@@ -133,6 +146,19 @@ const SERVICE_REGISTRY: ServiceConfig<unknown>[] = [
   }
 ]
 
+const SERVICE_IDENTIFIERS: Record<ServiceKey, ServiceIdentifier<unknown>> = {
+  platform: IPlatformService,
+  api: IApiService,
+  logger: ILoggerService,
+  error: IErrorService,
+  config: IConfigService,
+  context: IContextKeyService,
+  command: ICommandService,
+  player: IPlayerService,
+  music: IMusicService,
+  storage: IStorageService
+}
+
 /**
  * 注册所有服务
  */
@@ -180,6 +206,43 @@ export type {
   StorageService
 }
 export { getService }
+export type { ServiceLifecycle } from './registry'
+export {
+  activateRegisteredServices,
+  activateRegisteredService,
+  deactivateRegisteredServices,
+  deactivateRegisteredService
+}
+
+function resolveServiceIdentifiers(serviceKeys?: ServiceKey[]): ServiceIdentifier<unknown>[] {
+  if (!serviceKeys || serviceKeys.length === 0) {
+    return Object.values(SERVICE_IDENTIFIERS)
+  }
+
+  return serviceKeys.map(serviceKey => SERVICE_IDENTIFIERS[serviceKey])
+}
+
+export async function activateServices(serviceKeys?: ServiceKey[]): Promise<void> {
+  setupServices()
+  await activateRegisteredServices(resolveServiceIdentifiers(serviceKeys))
+}
+
+export async function deactivateServices(serviceKeys?: ServiceKey[]): Promise<void> {
+  await deactivateRegisteredServices(resolveServiceIdentifiers(serviceKeys))
+}
+
+export async function initializeServices(
+  overrides: ServiceOverrides = {},
+  serviceKeys?: ServiceKey[]
+): Promise<void> {
+  setupServices(overrides)
+  await activateRegisteredServices(resolveServiceIdentifiers(serviceKeys))
+}
+
+export async function resetServicesAsync(): Promise<void> {
+  await resetRegisteredServicesAsync()
+  initialized = false
+}
 
 // 导出性能监控功能
 export {
@@ -198,9 +261,33 @@ export {
  * 创建服务访问器函数
  */
 function createServiceAccessor<T>(identifier: ServiceIdentifier<T>, init: () => void): () => T {
+  let initialized = false
+  let instance: T | null = null
+
   return () => {
-    init()
-    return getService<T>(identifier)
+    try {
+      // 如果已初始化，直接返回缓存实例
+      if (initialized && instance !== null) {
+        return instance
+      }
+
+      // 初始化服务
+      init()
+
+      // 获取服务实例
+      instance = getService<T>(identifier)
+      initialized = true
+
+      return instance
+    } catch (error) {
+      const serviceName = typeof identifier === 'string' ? identifier : identifier.name
+      const wrappedError = new Error(
+        `[Services] Failed to access service "${serviceName}": ` +
+          (error instanceof Error ? error.message : String(error))
+      )
+      wrappedError.cause = error
+      throw wrappedError
+    }
   }
 }
 

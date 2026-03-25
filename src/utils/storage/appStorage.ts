@@ -8,9 +8,11 @@ export type PersistedPlayerState = {
   isCompact: boolean
 }
 
+import { PLAY_MODE } from '../player/constants/playMode'
+
 const DEFAULT_PLAYER_STATE: PersistedPlayerState = {
   volume: 0.7,
-  playMode: 0,
+  playMode: PLAY_MODE.SEQUENTIAL,
   lyricType: ['original', 'trans'],
   isCompact: false
 }
@@ -73,9 +75,7 @@ function sanitizeLyricType(value: unknown): string[] {
     return [...DEFAULT_PLAYER_STATE.lyricType]
   }
 
-  const sanitized = value.filter(
-    item => typeof item === 'string' && VALID_LYRIC_TYPES.has(item)
-  )
+  const sanitized = value.filter(item => typeof item === 'string' && VALID_LYRIC_TYPES.has(item))
 
   return sanitized.length > 0 ? [...new Set(sanitized)] : [...DEFAULT_PLAYER_STATE.lyricType]
 }
@@ -92,10 +92,10 @@ export function sanitizePersistedPlayerState(value: unknown): PersistedPlayerSta
   const record = value as Partial<PersistedPlayerState>
 
   return {
-    volume: sanitizeVolume(record.volume),
-    playMode: sanitizePlayMode(record.playMode),
-    lyricType: sanitizeLyricType(record.lyricType),
-    isCompact: sanitizeIsCompact(record.isCompact)
+    volume: sanitizeVolume(record.volume as unknown),
+    playMode: sanitizePlayMode(record.playMode as unknown),
+    lyricType: sanitizeLyricType(record.lyricType as unknown),
+    isCompact: sanitizeIsCompact(record.isCompact as unknown)
   }
 }
 

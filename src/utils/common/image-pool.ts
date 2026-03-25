@@ -75,12 +75,12 @@ export class ImagePool {
       // 简单的排序，保持高优先级在前
       this.queue.sort((a, b) => (b.priority || 0) - (a.priority || 0))
 
-      this.processQueue()
+      void this.processQueue()
     })
 
     // 记录进行中的任务，完成后清除
     this.pending.set(key, promise)
-    promise.finally(() => {
+    void promise.finally(() => {
       this.pending.delete(key)
     })
 
@@ -121,7 +121,7 @@ export class ImagePool {
     } finally {
       this.activeCount--
       // 继续处理下一个任务
-      this.processQueue()
+      void this.processQueue()
     }
   }
 

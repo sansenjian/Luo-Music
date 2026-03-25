@@ -26,7 +26,11 @@ export default [
       '**/*.mjs',
       '**/vendor-*.js',
       '**/chunk-*.js',
-      'coverage/**'
+      'coverage/**',
+      'config/vite.shared.ts',
+      'docs/injector-example.ts',
+      'electron/external.d.ts',
+      'server/index.ts'
     ]
   },
   // 基础错误预防规则
@@ -130,21 +134,36 @@ export default [
     files: ['**/*.vue'],
     languageOptions: {
       parserOptions: {
-        parser: tseslint.parser
+        parser: tseslint.parser,
+        extraFileExtensions: ['.vue']
       }
     }
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.vue'],
+    languageOptions: {
+      parserOptions: {
+        parser: tseslint.parser,
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+        extraFileExtensions: ['.vue'],
+        allowDefaultProject: ['*.ts', '*.js', '*.vue']
+      }
+    },
     rules: {
       // === 错误预防规则（只保留逻辑相关，格式全部交给 Prettier）===
       // TypeScript 逻辑规则
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+      ],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/no-require-imports': 'off',
+      // 检测未处理的 Promise（missing await）
+      '@typescript-eslint/no-floating-promises': 'error',
       // Vue 逻辑规则（关闭所有格式相关）
       'vue/multi-word-component-names': 'off',
       'vue/no-v-html': 'off',

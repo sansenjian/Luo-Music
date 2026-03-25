@@ -36,8 +36,14 @@ const songs = computed<PlaylistItem[]>(() =>
 )
 const currentIndex = computed(() => playerStore.currentIndex)
 const totalHeight = computed(() => songs.value.length * ITEM_HEIGHT)
-const visibleCount = computed(() => Math.max(1, Math.ceil(containerHeight.value / ITEM_HEIGHT) + OVERSCAN * 2))
-const startIndex = computed(() => Math.max(0, Math.floor(scrollTop.value / ITEM_HEIGHT) - OVERSCAN))
+const maxScrollTop = computed(() => Math.max(0, totalHeight.value - containerHeight.value))
+const effectiveScrollTop = computed(() => Math.min(scrollTop.value, maxScrollTop.value))
+const visibleCount = computed(() =>
+  Math.max(1, Math.ceil(containerHeight.value / ITEM_HEIGHT) + OVERSCAN * 2)
+)
+const startIndex = computed(() =>
+  Math.max(0, Math.floor(effectiveScrollTop.value / ITEM_HEIGHT) - OVERSCAN)
+)
 const endIndex = computed(() => Math.min(songs.value.length, startIndex.value + visibleCount.value))
 const offsetY = computed(() => startIndex.value * ITEM_HEIGHT)
 const visibleSongs = computed(() =>
@@ -55,7 +61,10 @@ watch(currentIndex, newIndex => {
       return
     }
 
-    const targetTop = Math.max(0, newIndex * ITEM_HEIGHT - (containerHeight.value - ITEM_HEIGHT) / 2)
+    const targetTop = Math.max(
+      0,
+      newIndex * ITEM_HEIGHT - (containerHeight.value - ITEM_HEIGHT) / 2
+    )
     listElement.scrollTo({
       top: targetTop,
       behavior: 'smooth'
@@ -71,12 +80,32 @@ function syncContainerHeight(): void {
   containerHeight.value = listRef.value?.clientHeight || 560
 }
 
+function syncScrollPosition(nextScrollTop: number): void {
+  scrollTop.value = nextScrollTop
+
+  const listElement = listRef.value
+  if (listElement && listElement.scrollTop !== nextScrollTop) {
+    listElement.scrollTop = nextScrollTop
+  }
+}
+
+function clampScrollPosition(): void {
+  syncScrollPosition(Math.min(scrollTop.value, maxScrollTop.value))
+}
+
 function handleScroll(): void {
   scrollTop.value = listRef.value?.scrollTop || 0
 }
 
+watch([totalHeight, containerHeight], () => {
+  void nextTick(() => {
+    clampScrollPosition()
+  })
+})
+
 onMounted(() => {
   syncContainerHeight()
+  clampScrollPosition()
   window.addEventListener('resize', syncContainerHeight)
 })
 
@@ -93,17 +122,14 @@ onUnmounted(() => {
     </div>
 
     <div v-else class="track-list" :style="{ height: `${totalHeight}px` }">
-      <div
-        class="track-list-window"
-        :style="{ transform: `translateY(${offsetY}px)` }"
-      >
+      <div class="track-list-window" :style="{ transform: `translateY(${offsetY}px)` }">
         <div
           v-for="{ song, index } in visibleSongs"
           :key="`${song.id}-${index}`"
-        class="list-item"
-        :class="{ active: index === currentIndex }"
-        :data-index="index"
-        @click="playSong(index)"
+          class="list-item"
+          :class="{ active: index === currentIndex }"
+          :data-index="index"
+          @click="playSong(index)"
         >
           <div v-if="song.cover" class="list-cover">
             <img :src="song.cover" :alt="song.name" loading="lazy" />

@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const audioEventHandlerMocks = vi.hoisted(() => {
   const instances: Array<{
@@ -57,7 +57,8 @@ const playerCoreMocks = vi.hoisted(() => ({
   pause: vi.fn(),
   toggle: vi.fn(),
   seek: vi.fn(),
-  setVolume: vi.fn()
+  setVolume: vi.fn(),
+  getMuted: vi.fn(() => false)
 }))
 
 vi.mock('@/store/player/audioEvents', () => ({
@@ -86,6 +87,10 @@ describe('playerStore lifecycle', () => {
     platformAccessorMocks.on.mockReturnValue(() => {})
     localStorage.clear()
     setActivePinia(createPinia())
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('recreates runtime handlers after cleanup and tears them down on dispose', async () => {
@@ -191,5 +196,58 @@ describe('playerStore lifecycle', () => {
       roma: '',
       playing: false
     })
+  })
+
+  it('emits clone-safe player snapshot payloads during playback sync', async () => {
+    const { usePlayerStore } = await import('@/store/playerStore')
+
+    platformAccessorMocks.send.mockImplementation((_channel: string, payload: unknown) => {
+      structuredClone(payload)
+    })
+
+    const store = usePlayerStore()
+    store.initAudio()
+
+    expect(() => {
+      store.setSongList([
+        {
+          id: 1,
+          name: 'Clone Safe Song',
+          artists: [{ id: 1, name: 'Artist' }],
+          album: { id: 1, name: 'Album', picUrl: '' },
+          duration: 180000,
+          mvid: 0,
+          platform: 'netease',
+          originalId: 1,
+          extra: {
+            // Functions are not IPC-cloneable and should be removed before sync.
+            resolver: () => 'non-cloneable'
+          }
+        }
+      ])
+    }).not.toThrow()
+  })
+
+  it('throttles full player snapshot sync for rapid progress updates', async () => {
+    vi.useFakeTimers()
+    const { usePlayerStore } = await import('@/store/playerStore')
+
+    const store = usePlayerStore()
+    store.initAudio()
+    platformAccessorMocks.send.mockClear()
+
+    store.progress = 1
+    await Promise.resolve()
+    store.progress = 2
+    await Promise.resolve()
+    store.progress = 3
+    await Promise.resolve()
+
+    expect(platformAccessorMocks.send).toHaveBeenCalledTimes(1)
+
+    vi.advanceTimersByTime(500)
+    await Promise.resolve()
+
+    expect(platformAccessorMocks.send).toHaveBeenCalledTimes(2)
   })
 })

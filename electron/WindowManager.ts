@@ -142,10 +142,10 @@ export class WindowManager {
     })
 
     if (devServerUrl) {
-      win.loadURL(devServerUrl)
+      void win.loadURL(devServerUrl)
       win.webContents.openDevTools()
     } else {
-      win.loadFile(indexPath)
+      void win.loadFile(indexPath)
     }
 
     win.on('show', () => {

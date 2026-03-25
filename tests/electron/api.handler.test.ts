@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const registerInvokeMock = vi.hoisted(() => vi.fn())
 const executeWithRetryMock = vi.hoisted(() => vi.fn())
 const getCacheMock = vi.hoisted(() => vi.fn(() => null))
-const setCacheMock = vi.hoisted(() => vi.fn())
+const setCacheMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 const loggerErrorMock = vi.hoisted(() => vi.fn())
 const loggerWarnMock = vi.hoisted(() => vi.fn())
 
@@ -35,9 +35,11 @@ describe('api.handler', () => {
 
   it('registers specific API handlers and maps search to the correct backend endpoint', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
 
     const serviceManager = {
       handleRequest: vi.fn().mockResolvedValue({ song: { list: [] } }),
@@ -69,9 +71,11 @@ describe('api.handler', () => {
 
   it('maps netease search type strings to numeric API codes', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
 
     const serviceManager = {
       handleRequest: vi.fn().mockResolvedValue({ result: { artists: [] } }),
@@ -100,9 +104,11 @@ describe('api.handler', () => {
 
   it('normalizes song url responses for both platforms', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
 
     const serviceManager = {
       handleRequest: vi
@@ -145,9 +151,11 @@ describe('api.handler', () => {
 
   it('normalizes QQ lyric payloads when nested lyric objects are returned', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
 
     const serviceManager = {
       handleRequest: vi.fn().mockResolvedValue({
@@ -172,9 +180,11 @@ describe('api.handler', () => {
 
   it('falls back to the legacy netease song url endpoint when v1 returns no url', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
 
     const serviceManager = {
       handleRequest: vi
@@ -208,9 +218,11 @@ describe('api.handler', () => {
 
   it('strips leading slashes for the generic API gateway route', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
 
     const serviceManager = {
       handleRequest: vi.fn().mockResolvedValue({ ok: true }),
@@ -240,9 +252,11 @@ describe('api.handler', () => {
 
   it('returns structured error details for failed gateway requests', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
 
     const upstreamError = Object.assign(new Error('gateway timeout'), {
       code: 'ECONNABORTED',
@@ -280,9 +294,11 @@ describe('api.handler', () => {
 
   it('validates service parameter in API request', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
 
     const serviceManager = {
       handleRequest: vi.fn(),
@@ -311,9 +327,11 @@ describe('api.handler', () => {
 
   it('blocks dangerous endpoint patterns', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
 
     const serviceManager = {
       handleRequest: vi.fn(),
@@ -342,9 +360,11 @@ describe('api.handler', () => {
 
   it('validates required parameters for search', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
 
     const serviceManager = {
       handleRequest: vi.fn(),

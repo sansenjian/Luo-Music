@@ -2,16 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
-import type { Song } from '@/platform/music/interface'
+import type { Song } from '@/types/schemas'
+import { TEST_BASE_DATE, TIME_OFFSETS, getTestDate } from '../../utils/testConstants'
 
-const adapterMock = vi.hoisted(() => ({
+const musicServiceMock = {
   getSongUrl: vi.fn()
+}
+
+const servicesMock = vi.hoisted(() => ({
+  music: vi.fn(() => musicServiceMock)
 }))
 
-const getMusicAccessorMock = vi.hoisted(() => vi.fn(() => adapterMock))
-
-vi.mock('@/services/musicAccessor', () => ({
-  getMusicAccessor: getMusicAccessorMock
+vi.mock('@/services', () => ({
+  services: servicesMock
 }))
 
 function createSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
@@ -32,7 +35,7 @@ describe('playbackErrorHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-03-17T00:00:00.000Z'))
+    vi.setSystemTime(TEST_BASE_DATE)
   })
 
   it('retries fetching the song url on the first audio error', async () => {
@@ -42,7 +45,7 @@ describe('playbackErrorHandler', () => {
       playMode: PLAY_MODE.LIST_LOOP
     }
     const onStateChange = vi.fn()
-    adapterMock.getSongUrl.mockResolvedValue('https://song.test/retry.mp3')
+    musicServiceMock.getSongUrl.mockResolvedValue('https://song.test/retry.mp3')
 
     const handler = new PlaybackErrorHandler({
       getState: () => state,
@@ -52,7 +55,8 @@ describe('playbackErrorHandler', () => {
     const result = await handler.handleAudioError(new Error('decode failed'), state.songList[0])
 
     expect(onStateChange).toHaveBeenCalledWith({ playing: false })
-    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-1', {
+    expect(servicesMock.music).toHaveBeenCalled()
+    expect(musicServiceMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-1', {
       mediaId: undefined
     })
     expect(result).toEqual({
@@ -69,7 +73,7 @@ describe('playbackErrorHandler', () => {
       currentIndex: 0,
       playMode: PLAY_MODE.LIST_LOOP
     }
-    adapterMock.getSongUrl.mockResolvedValue(null)
+    musicServiceMock.getSongUrl.mockResolvedValue(null)
 
     const handler = new PlaybackErrorHandler({
       getState: () => state
@@ -77,7 +81,8 @@ describe('playbackErrorHandler', () => {
 
     const result = await handler.handleAudioError('unknown', song)
 
-    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-2', {
+    expect(servicesMock.music).toHaveBeenCalled()
+    expect(musicServiceMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-2', {
       mediaId: 'media-2'
     })
     expect(result).toEqual({
@@ -116,15 +121,15 @@ describe('playbackErrorHandler', () => {
     expect(handler.shouldStopSkipping()).toBe(true)
 
     handler.reset()
-    vi.setSystemTime(new Date('2026-03-17T00:00:00.100Z'))
+    vi.setSystemTime(getTestDate(TIME_OFFSETS.MS_100))
     expect(handler.shouldStopSkipping()).toBe(false)
-    vi.setSystemTime(new Date('2026-03-17T00:00:00.200Z'))
+    vi.setSystemTime(getTestDate(TIME_OFFSETS.MS_200))
     expect(handler.shouldStopSkipping()).toBe(false)
-    vi.setSystemTime(new Date('2026-03-17T00:00:00.300Z'))
+    vi.setSystemTime(getTestDate(TIME_OFFSETS.MS_300))
     expect(handler.shouldStopSkipping()).toBe(false)
-    vi.setSystemTime(new Date('2026-03-17T00:00:00.400Z'))
+    vi.setSystemTime(getTestDate(TIME_OFFSETS.MS_400))
     expect(handler.shouldStopSkipping()).toBe(false)
-    vi.setSystemTime(new Date('2026-03-17T00:00:00.500Z'))
+    vi.setSystemTime(getTestDate(TIME_OFFSETS.MS_500))
     expect(handler.shouldStopSkipping()).toBe(true)
   })
 

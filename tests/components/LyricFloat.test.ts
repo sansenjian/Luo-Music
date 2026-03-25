@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 import LyricFloat from '../../src/components/LyricFloat.vue'
+import { TIME_OFFSETS } from '../utils/testConstants'
 
 const platformState = vi.hoisted(() => {
   const listeners = new Map<string, Set<(data: unknown) => void>>()
@@ -33,7 +34,50 @@ const playerState = vi.hoisted(() => {
       pause: vi.fn(),
       toggle: vi.fn(),
       skipToPrevious: vi.fn(),
-      skipToNext: vi.fn()
+      skipToNext: vi.fn(),
+      playSong: vi.fn(),
+      playSongById: vi.fn(),
+      seekTo: vi.fn(),
+      setVolume: vi.fn(),
+      toggleMute: vi.fn(),
+      setPlayMode: vi.fn(),
+      togglePlayMode: vi.fn(),
+      getState: vi.fn(),
+      getCurrentSong: vi.fn(),
+      getPlaylist: vi.fn(),
+      addToNext: vi.fn(),
+      removeFromPlaylist: vi.fn(),
+      clearPlaylist: vi.fn(),
+      getLyric: vi.fn(),
+      onPlayStateChange: vi.fn(),
+      onSongChange: vi.fn(),
+      onLyricUpdate: vi.fn(),
+      onPlayError: vi.fn()
+    },
+    playerBridgeMock: {
+      play: vi.fn(),
+      pause: vi.fn(),
+      toggle: vi.fn(),
+      playSong: vi.fn(),
+      playSongById: vi.fn(),
+      skipToPrevious: vi.fn(),
+      skipToNext: vi.fn(),
+      seekTo: vi.fn(),
+      setVolume: vi.fn(),
+      toggleMute: vi.fn(),
+      setPlayMode: vi.fn(),
+      togglePlayMode: vi.fn(),
+      getState: vi.fn(),
+      getCurrentSong: vi.fn(),
+      getPlaylist: vi.fn(),
+      addToNext: vi.fn(),
+      removeFromPlaylist: vi.fn(),
+      clearPlaylist: vi.fn(),
+      getLyric: vi.fn(),
+      onPlayStateChange: vi.fn(),
+      onSongChange: vi.fn(),
+      onLyricUpdate: vi.fn(),
+      onPlayError: vi.fn()
     }
   }
 })
@@ -72,6 +116,20 @@ describe('LyricFloat', () => {
     playerState.playerServiceMock.toggle.mockClear()
     playerState.playerServiceMock.skipToPrevious.mockClear()
     playerState.playerServiceMock.skipToNext.mockClear()
+    playerState.playerBridgeMock.getState.mockReset()
+    playerState.playerBridgeMock.getCurrentSong.mockReset()
+    playerState.playerBridgeMock.getLyric.mockReset()
+    playerState.playerBridgeMock.getState.mockResolvedValue({
+      isPlaying: false,
+      currentIndex: -1,
+      currentSong: null,
+      currentLyricIndex: -1
+    })
+    playerState.playerBridgeMock.getCurrentSong.mockResolvedValue(null)
+    playerState.playerBridgeMock.getLyric.mockResolvedValue([])
+    ;(window as unknown as Record<string, unknown>).services = {
+      player: playerState.playerBridgeMock
+    }
     rafQueue.length = 0
 
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
@@ -85,6 +143,7 @@ describe('LyricFloat', () => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
     vi.restoreAllMocks()
+    ;(window as Partial<Window & { services?: unknown }>).services = undefined
   })
 
   it('renders lyric updates from IPC through the shared lyric state', async () => {
@@ -105,6 +164,39 @@ describe('LyricFloat', () => {
 
     expect(wrapper.find('.lrc-main').text()).toBe('Main Line')
     expect(wrapper.find('.lrc-sub').text()).toBe('Translated Line')
+  })
+
+  it('hydrates the current lyric line from player snapshot before push updates arrive', async () => {
+    playerState.playerBridgeMock.getState.mockResolvedValue({
+      isPlaying: true,
+      currentIndex: 0,
+      currentSong: {
+        id: 1,
+        name: 'Song',
+        artists: [{ id: 1, name: 'Artist' }],
+        album: { id: 1, name: 'Album', picUrl: '' },
+        duration: 180000,
+        mvid: 0,
+        platform: 'netease',
+        originalId: 1
+      },
+      currentLyricIndex: 1
+    })
+    playerState.playerBridgeMock.getLyric.mockResolvedValue([
+      { time: 0, text: 'Line 1', trans: '', roma: '' },
+      { time: 5, text: 'Line 2', trans: 'Second', roma: '' }
+    ])
+
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    expect(playerState.playerBridgeMock.getState).toHaveBeenCalledTimes(1)
+    expect(playerState.playerBridgeMock.getLyric).toHaveBeenCalledWith(1, 'netease')
+    expect(wrapper.find('.lrc-main').text()).toBe('Line 2')
+    expect(wrapper.find('.lrc-sub').text()).toBe('Second')
+    expect(wrapper.find('button[title="Pause"]').exists()).toBe(true)
   })
 
   it('ignores a stale preload that does not recognize the ready channel', async () => {
@@ -193,7 +285,7 @@ describe('LyricFloat', () => {
     await nextTick()
 
     // Advance time for guard delay (need to use Date.now mock)
-    vi.setSystemTime(Date.now() + 200)
+    vi.setSystemTime(Date.now() + TIME_OFFSETS.MS_200)
 
     // Now click should trigger unlock
     await unlockButton.trigger('click')

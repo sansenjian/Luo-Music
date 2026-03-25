@@ -115,6 +115,7 @@ export const SEND_CHANNELS = {
   // 播放器状态
   MUSIC_PLAYING_CHECK: 'music-playing-check',
   MUSIC_PLAYMODE_TRAY_CHANGE: 'music-playmode-tray-change',
+  PLAYER_SYNC_STATE: 'player:sync-state',
 
   // 日志
   LOG_MESSAGE: 'log-message',

@@ -19,8 +19,11 @@ import {
   ipcService,
   errorMiddleware,
   loggerMiddleware,
+  performanceMiddleware,
+  disposePerformanceMonitor,
   registerWindowHandlers,
   registerCacheHandlers,
+  registerConfigHandlers,
   registerPlayerHandlers,
   registerServiceHandlers,
   registerApiHandlers,
@@ -64,6 +67,11 @@ const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
 async function initializeApp(): Promise<void> {
   initializeIpcService()
 
+  logger.info('Initializing services via ServiceManager...')
+  await serviceManager.initialize(DEFAULT_SERVICE_CONFIG)
+  const allStatus = serviceManager.getAllServiceStatus()
+  logger.info('Service status:', JSON.stringify(allStatus, null, 2))
+
   windowManager.createWindow()
   windowManager.getWindow()?.webContents.once('did-finish-load', () => {
     desktopLyricManager.prewarmWindow()
@@ -71,28 +79,23 @@ async function initializeApp(): Promise<void> {
 
   createTray()
   registerShortcuts(DEFAULT_SHORTCUTS)
-
-  logger.info('Warming services via ServiceManager in background...')
-  void serviceManager
-    .initialize(DEFAULT_SERVICE_CONFIG)
-    .then(() => {
-      const allStatus = serviceManager.getAllServiceStatus()
-      logger.info('Service status:', JSON.stringify(allStatus, null, 2))
-    })
-    .catch(error => {
-      logger.error('Background service warmup failed:', error)
-    })
 }
 
 function initializeIpcService(): void {
-  ipcService.configure({ defaultTimeout: 10000 })
+  ipcService.configure({
+    defaultTimeout: 10000,
+    slowRequestThreshold: 1000,
+    enablePerformanceMonitoring: true
+  })
 
   ipcService.use(errorMiddleware)
   ipcService.use(loggerMiddleware)
+  ipcService.use(performanceMiddleware)
 
   registerWindowHandlers(windowManager)
   registerCacheHandlers()
-  registerPlayerHandlers(windowManager)
+  registerConfigHandlers()
+  registerPlayerHandlers(windowManager, serviceManager)
   registerServiceHandlers(serviceManager)
   registerApiHandlers(serviceManager)
   registerLyricHandlers()
@@ -130,6 +133,7 @@ function main(): void {
     onWillQuit: async () => {
       unregisterAllShortcuts()
       downloadManager.dispose()
+      disposePerformanceMonitor()
       await serviceManager.stopAllServices()
     },
 

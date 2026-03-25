@@ -34,11 +34,13 @@ npm run lint:fix         # Auto-fix issues
 The codebase uses a dual-abstraction pattern for cross-platform support:
 
 **Music Platforms** (`src/platform/music/`):
+
 - `interface.ts` - Base `MusicPlatformAdapter` class defining `search`, `getSongUrl`, `getLyric`, `getPlaylistDetail`
 - `netease.ts` / `qq.ts` - Platform-specific implementations
 - `index.ts` - `getMusicAdapter(platform)` factory function
 
 **Runtime Platforms** (`src/platform/`):
+
 - `common/platformService.ts` - `PlatformServiceBase` with `IPlatformService` interface
 - `electron/electronPlatformService.ts` - Electron-specific (window controls, IPC, cache)
 - `web/webPlatformService.ts` - Browser fallback
@@ -82,6 +84,7 @@ All API calls go through adapters; do not call `axios` directly from components.
 ### State Management
 
 Pinia stores in `src/store/`:
+
 - `playerStore.ts` - Playback state, playlist, lyrics, IPC
 - `searchStore.ts` - Search results, platform selection
 - `userStore.ts` - User profile, login state
@@ -94,13 +97,13 @@ Stores use `pinia-plugin-persistedstate` for localStorage persistence of specifi
 
 **electron-vite** handles Electron builds:
 
-| Target | Tool | Output |
-|--------|------|--------|
-| Renderer | Vite | `build/` |
-| Main process | electron-vite | `build/electron/main.cjs` |
-| Preload | electron-vite | `build/electron/preload.cjs` |
-| API server | tsup | `build/server/server.cjs` |
-| Package | Electron Forge | `release/` |
+| Target       | Tool           | Output                       |
+| ------------ | -------------- | ---------------------------- |
+| Renderer     | Vite           | `build/`                     |
+| Main process | electron-vite  | `build/electron/main.cjs`    |
+| Preload      | electron-vite  | `build/electron/preload.cjs` |
+| API server   | tsup           | `build/server/server.cjs`    |
+| Package      | Electron Forge | `release/`                   |
 
 Path utilities are centralized in `electron/utils/paths.ts` - never use `__dirname` directly.
 
@@ -124,9 +127,10 @@ Path utilities are centralized in `electron/utils/paths.ts` - never use `__dirna
 
 ### Adding IPC between main/renderer
 
-1. Define channel in `electron/ipc.ts`
-2. Expose via `electron/sandbox/index.ts` using `contextBridge.exposeInMainWorld`
-3. Handle in `src/platform/electron/electronPlatformService.ts`
+1. Define channel in `electron/shared/protocol/channels.ts`
+2. Add type mapping in `electron/ipc/types.ts`
+3. Register handler in `electron/ipc/handlers/` directory
+4. Expose via `electron/sandbox/index.ts` using `contextBridge.exposeInMainWorld`
 
 ### Running tests for specific areas
 

@@ -74,23 +74,23 @@ export abstract class BaseService {
    * 等待服务就绪（IPC 消息 + 端口检测双重保障）
    */
   protected async waitForReady(timeout: number = 15000): Promise<void> {
-    // 使用 Promise.race 时，需要确保两个 promise 都被正确处理
-    // waitForPort 的递归轮询可能产生未处理的 rejection，所以我们在 race 中捕获它
-    const errors: Error[] = []
-
-    await Promise.race([
-      this.waitForIpcMessage(timeout).catch(err => {
-        errors.push(err)
-      }),
-      this.waitForPort(timeout).catch(err => {
-        errors.push(err)
-      })
+    // 使用 Promise.allSettled 确保两个 promise 都能完成，不会静默吞错
+    const results = await Promise.allSettled([
+      this.waitForIpcMessage(timeout),
+      this.waitForPort(timeout)
     ])
 
-    // 如果两个都失败，抛出聚合错误
-    if (errors.length === 2) {
-      throw new Error(`Service startup failed: ${errors.map(e => e.message).join(', ')}`)
+    // 检查是否至少有一个成功
+    const hasSuccess = results.some(r => r.status === 'fulfilled')
+    if (hasSuccess) {
+      return
     }
+
+    // 两个都失败，聚合错误信息
+    const failures = results
+      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      .map(r => String(r.reason?.message ?? r.reason))
+    throw new Error(`Service startup failed: ${failures.join(', ')}`)
   }
 
   /**
@@ -158,7 +158,8 @@ export abstract class BaseService {
             timeout: 2000
           },
           _res => {
-            // 任何响应都表示服务已启动
+            // 任何响应都表示服务已启动，清理请求
+            req.destroy()
             resolve()
           }
         )

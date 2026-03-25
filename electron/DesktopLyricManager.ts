@@ -41,6 +41,23 @@ interface CreateWindowOptions {
   showOnReady?: boolean
 }
 
+export const DESKTOP_LYRIC_HASH_ROUTE = '/desktop-lyric'
+
+export function getDesktopLyricWindowRoute(devServerUrl?: string): {
+  url?: string
+  hash?: string
+} {
+  if (devServerUrl) {
+    return {
+      url: `${devServerUrl}#${DESKTOP_LYRIC_HASH_ROUTE}`
+    }
+  }
+
+  return {
+    hash: DESKTOP_LYRIC_HASH_ROUTE
+  }
+}
+
 export class DesktopLyricManager {
   private win: BrowserWindow | null = null
   private isLocked = false
@@ -119,7 +136,7 @@ export class DesktopLyricManager {
         preload: path.join(MAIN_DIST, 'preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
-        webSecurity: false,
+        webSecurity: true,
         allowRunningInsecureContent: false
       }
     })
@@ -135,10 +152,12 @@ export class DesktopLyricManager {
       this.maybeReplayLastLyric()
     })
 
-    if (process.env.VITE_DEV_SERVER_URL) {
-      win.loadURL(`${process.env.VITE_DEV_SERVER_URL}#/desktop-lyric`)
+    const route = getDesktopLyricWindowRoute(process.env.VITE_DEV_SERVER_URL)
+
+    if (route.url) {
+      void win.loadURL(route.url)
     } else {
-      win.loadFile(path.join(RENDERER_DIST, 'index.html'), { hash: 'desktop-lyric' })
+      void win.loadFile(path.join(RENDERER_DIST, 'index.html'), { hash: route.hash })
     }
 
     win.on('closed', () => {
@@ -179,9 +198,9 @@ export class DesktopLyricManager {
 
     this.shouldShowOnReady = true
     if (this.isWindowReady) {
-      if (this.isRendererReady) {
-        this.replayLastLyric()
-      }
+      // Replay eagerly when reusing a warm window so the current line is visible
+      // even if the ready handshake was missed or comes from an older preload.
+      this.replayLastLyric()
       this.win.show()
     }
   }

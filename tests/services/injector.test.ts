@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   AnnotatedInjector,
-  Inject,
+  injectParam,
   Injector,
   createAnnotatedInstance,
   createInstance
@@ -65,8 +65,8 @@ class UnannotatedService {
 
 class AnnotatedService {
   constructor(
-    @Inject(IApiService) public api: MockApiService,
-    @Inject(ILoggerService) public logger: MockLoggerService
+    @injectParam(IApiService) public api: MockApiService,
+    @injectParam(ILoggerService) public logger: MockLoggerService
   ) {}
 
   fetchData(id: string): string {
@@ -77,15 +77,15 @@ class AnnotatedService {
 
 class PartiallyAnnotatedService {
   constructor(
-    @Inject(ILoggerService) public logger: MockLoggerService,
+    @injectParam(ILoggerService) public logger: MockLoggerService,
     public api: MockApiService
   ) {}
 }
 
 class ConfiguredService {
   constructor(
-    @Inject(IConfigService) public config: MockConfigService,
-    @Inject(ILoggerService) public logger: MockLoggerService
+    @injectParam(IConfigService) public config: MockConfigService,
+    @injectParam(ILoggerService) public logger: MockLoggerService
   ) {}
 }
 
@@ -105,7 +105,7 @@ describe('Injector', () => {
     expect(instance.name).toBe('NoDepService')
   })
 
-  it('creates classes with explicit @Inject annotations', () => {
+  it('creates classes with explicit @inject annotations', () => {
     const injector = new Injector()
     const instance = injector.createInstance(AnnotatedService as never) as AnnotatedService
 
@@ -120,7 +120,7 @@ describe('Injector', () => {
     const injector = new Injector()
 
     expect(() => injector.createInstance(UnannotatedService as never)).toThrow(
-      /Missing @Inject annotation/
+      /Missing @inject annotation/
     )
   })
 
@@ -128,7 +128,7 @@ describe('Injector', () => {
     const injector = new Injector()
 
     expect(() => injector.createInstance(PartiallyAnnotatedService as never)).toThrow(
-      /Missing @Inject annotation/
+      /Missing @inject annotation/
     )
   })
 
@@ -163,7 +163,7 @@ describe('AnnotatedInjector', () => {
     registerService(IConfigService, () => new MockConfigService())
   })
 
-  it('remains compatible with explicit @Inject annotations', () => {
+  it('remains compatible with explicit @inject annotations', () => {
     const injector = new AnnotatedInjector()
     const instance = injector.createInstance(ConfiguredService as never) as ConfiguredService
 

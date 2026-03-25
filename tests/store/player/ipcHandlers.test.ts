@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  createIpcHandlers,
-  IpcEventHandler
-} from '../../../src/store/player/ipcHandlers'
+import { createIpcHandlers, IpcEventHandler } from '../../../src/store/player/ipcHandlers'
 import { createInitialState } from '../../../src/store/player/playerState'
+import type { Song } from '../../../src/platform/music/interface'
 
 type Listener = (...args: unknown[]) => void
 
@@ -18,8 +16,15 @@ describe('ipcHandlers music-playing-control', () => {
   const pause = vi.fn()
   const playPrev = vi.fn()
   const playNext = vi.fn()
+  const playSong = vi.fn()
+  const playSongById = vi.fn()
+  const addToNext = vi.fn()
+  const removeFromPlaylist = vi.fn()
+  const clearPlaylist = vi.fn()
   const setPlayMode = vi.fn()
+  const seek = vi.fn()
   const setVolume = vi.fn()
+  const toggleMute = vi.fn()
   const toggleCompactMode = vi.fn()
 
   const platform = {
@@ -41,8 +46,15 @@ describe('ipcHandlers music-playing-control', () => {
     pause,
     playPrev,
     playNext,
+    playSong,
+    playSongById,
+    addToNext,
+    removeFromPlaylist,
+    clearPlaylist,
     setPlayMode,
+    seek,
     setVolume,
+    toggleMute,
     toggleCompactMode,
     platform,
     ...overrides
@@ -56,8 +68,15 @@ describe('ipcHandlers music-playing-control', () => {
     pause.mockClear()
     playPrev.mockClear()
     playNext.mockClear()
+    playSong.mockClear()
+    playSongById.mockClear()
+    addToNext.mockClear()
+    removeFromPlaylist.mockClear()
+    clearPlaylist.mockClear()
     setPlayMode.mockClear()
+    seek.mockClear()
     setVolume.mockClear()
+    toggleMute.mockClear()
     toggleCompactMode.mockClear()
     platform.on.mockClear()
     platform.isElectron.mockClear()
@@ -112,7 +131,7 @@ describe('ipcHandlers music-playing-control', () => {
     expect(togglePlay).toHaveBeenCalledTimes(2)
   })
 
-  it('handles legacy toggle and volume commands on music-playing-control', () => {
+  it('handles legacy toggle, mute, seek and volume commands on music-playing-control', () => {
     const handlers = createIpcHandlers(createDeps())
 
     handlers.setup()
@@ -127,18 +146,40 @@ describe('ipcHandlers music-playing-control', () => {
     listener?.({ type: 'volume', volume: 0.25 })
 
     expect(togglePlay).toHaveBeenCalledTimes(2)
+    expect(toggleMute).toHaveBeenCalledTimes(1)
+    expect(seek).toHaveBeenCalledTimes(1)
+    expect(seek).toHaveBeenCalledWith(12)
     expect(setVolume).toHaveBeenCalledTimes(1)
     expect(setVolume).toHaveBeenCalledWith(0.25)
   })
 
   it('handles song, playmode, volume, compact and hide-player channels', () => {
     const handlers = createIpcHandlers(createDeps())
+    const song = {
+      id: 'song-1',
+      name: 'Song 1',
+      artists: [{ id: 'artist-1', name: 'Artist 1' }],
+      album: { id: 'album-1', name: 'Album 1', picUrl: '' },
+      duration: 180000,
+      mvid: 0,
+      platform: 'netease',
+      originalId: 'song-1'
+    } satisfies Song
 
     handlers.setup()
 
     listeners.get('music-song-control')?.('prev')
     listeners.get('music-song-control')?.('next')
     listeners.get('music-song-control')?.('noop')
+    listeners.get('music-song-control')?.({ type: 'play-song', song, playlist: [song] })
+    listeners.get('music-song-control')?.({
+      type: 'play-song-by-id',
+      id: 'song-2',
+      platform: 'qq'
+    })
+    listeners.get('music-song-control')?.({ type: 'add-to-next', song })
+    listeners.get('music-song-control')?.({ type: 'remove-from-playlist', index: 2 })
+    listeners.get('music-song-control')?.({ type: 'clear-playlist' })
 
     state.playMode = 3
     listeners.get('music-playmode-control')?.('toggle')
@@ -156,11 +197,28 @@ describe('ipcHandlers music-playing-control', () => {
 
     expect(playPrev).toHaveBeenCalledTimes(1)
     expect(playNext).toHaveBeenCalledTimes(1)
+    expect(playSong).toHaveBeenCalledWith(song, [song])
+    expect(playSongById).toHaveBeenCalledWith('song-2', 'qq')
+    expect(addToNext).toHaveBeenCalledWith(song)
+    expect(removeFromPlaylist).toHaveBeenCalledWith(2)
+    expect(clearPlaylist).toHaveBeenCalledTimes(1)
     expect(setPlayMode).toHaveBeenNthCalledWith(1, 0)
     expect(setPlayMode).toHaveBeenNthCalledWith(2, 2)
     expect(setVolume).toHaveBeenNthCalledWith(1, 1)
     expect(setVolume).toHaveBeenNthCalledWith(2, 0)
     expect(toggleCompactMode).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores invalid music-playmode-control payloads', () => {
+    const handlers = createIpcHandlers(createDeps())
+
+    handlers.setup()
+
+    listeners.get('music-playmode-control')?.('invalid')
+    listeners.get('music-playmode-control')?.(Number.NaN)
+    listeners.get('music-playmode-control')?.(4)
+
+    expect(setPlayMode).not.toHaveBeenCalled()
   })
 
   it('skips setup outside electron and tears down registered listeners', () => {

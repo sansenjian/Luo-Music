@@ -2,7 +2,7 @@ const fs = require('fs')
 const http = require('http')
 const net = require('net')
 const path = require('path')
-const { spawn } = require('child_process')
+const { spawn, execSync } = require('child_process')
 const dotenv = require('dotenv')
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -115,6 +115,29 @@ function waitForHttpReady(url, timeoutMs = 30000) {
   })
 }
 
+function killOldElectronInstances() {
+  return new Promise((resolve) => {
+    console.log('[dev-electron-launcher] Checking for old Electron instances...')
+
+    try {
+      if (process.platform === 'win32') {
+        // Windows: use taskkill to find and kill electron.exe processes
+        execSync('taskkill /F /IM electron.exe', { stdio: 'ignore' })
+        console.log('[dev-electron-launcher] Killed old Electron instances')
+      } else {
+        // Unix-like: use pkill
+        execSync('pkill -f electron', { stdio: 'ignore' })
+        console.log('[dev-electron-launcher] Killed old Electron instances')
+      }
+    } catch (error) {
+      // No processes found or permission error - not fatal
+      console.log('[dev-electron-launcher] No old Electron instances found')
+    }
+
+    resolve()
+  })
+}
+
 function buildElectron() {
   return new Promise((resolve, reject) => {
     console.log('[dev-electron-launcher] Building electron files with electron-vite...')
@@ -139,10 +162,35 @@ function buildElectron() {
   })
 }
 
+async function findVitePort() {
+  const ports = [5173, 5174, 5175, 5176, 5177]
+
+  for (const port of ports) {
+    try {
+      await waitForHttpReady(`http://127.0.0.1:${port}/`, 2000)
+      console.log(`[dev-electron-launcher] Found Vite dev server on port ${port}`)
+      return port
+    } catch {
+      // Try next port
+    }
+  }
+
+  // Fallback to default
+  return 5173
+}
+
 async function main() {
+  // Kill any existing Electron instances first
+  await killOldElectronInstances()
+
   await waitForPort(5173)
   console.log('[dev-electron-launcher] Warming Vite index response...')
-  await waitForHttpReady('http://127.0.0.1:5173/')
+
+  // Find the actual Vite port
+  const vitePort = await findVitePort()
+  const viteDevServerUrl = `http://127.0.0.1:${vitePort}`
+
+  await waitForHttpReady(`${viteDevServerUrl}/`)
 
   const mainFile = 'build/electron/main.cjs'
   const preloadFile = 'build/electron/preload.cjs'
@@ -183,7 +231,6 @@ async function main() {
 
   const electronBinary = require('electron')
   const appPath = path.resolve('.')
-  const viteDevServerUrl = 'http://127.0.0.1:5173'
 
   const child = spawn(electronBinary, ['.'], {
     stdio: 'inherit',

@@ -124,6 +124,13 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
       }
 
       const targetPlatform = resolvePlatform(platform)
+
+      // 验证平台是否受支持
+      if (targetPlatform !== 'qq' && targetPlatform !== 'netease') {
+        logger.error(`[API] Unsupported platform: ${targetPlatform}`)
+        return { url: '', error: `Unsupported platform: ${targetPlatform}` }
+      }
+
       if (targetPlatform === 'qq') {
         const response = await requestService(serviceManager, 'qq', 'getMusicPlay', {
           songmid: id,

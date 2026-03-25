@@ -31,6 +31,10 @@ export class AudioEventHandler implements IDisposable {
     syncLyricIndex: undefined
   }
   private disposedState = false
+  // 用于差量检查的状态
+  private lastBroadcastLyricIndex = -1
+  private lastBroadcastLyricData: { text: string; trans: string; roma: string } | null = null
+  private lastBroadcastPlaying: boolean | null = null
 
   constructor(
     private readonly state: PlayerState,
@@ -73,6 +77,10 @@ export class AudioEventHandler implements IDisposable {
     this.stopProgressSyncLoop()
     this.lastUiUpdateTime = 0
     this.lastBroadcastTime = 0
+    // 重置差量检查状态
+    this.lastBroadcastLyricIndex = -1
+    this.lastBroadcastLyricData = null
+    this.lastBroadcastPlaying = null
   }
 
   private broadcastLyricUpdate(): void {
@@ -81,8 +89,28 @@ export class AudioEventHandler implements IDisposable {
     }
 
     const currentLyricLine = this.config.getCurrentLyricLine?.()
+    const currentTime = Number(playerCore.currentTime) || this.state.progress
+
+    // 差量检查：只有当歌词索引或内容真正变化时才发送
+    const hasIndexChanged = this.state.currentLyricIndex !== this.lastBroadcastLyricIndex
+    const hasContentChanged = !currentLyricLine
+      ? this.lastBroadcastLyricData !== null
+      : currentLyricLine.text !== this.lastBroadcastLyricData?.text ||
+        currentLyricLine.trans !== this.lastBroadcastLyricData?.trans ||
+        currentLyricLine.roma !== this.lastBroadcastLyricData?.roma
+    const hasPlayingChanged = this.lastBroadcastPlaying !== this.state.playing
+
+    if (!hasIndexChanged && !hasContentChanged && !hasPlayingChanged) {
+      return
+    }
+
+    // 更新缓存状态
+    this.lastBroadcastLyricIndex = this.state.currentLyricIndex
+    this.lastBroadcastLyricData = currentLyricLine ? { ...currentLyricLine } : null
+    this.lastBroadcastPlaying = this.state.playing
+
     this.platform.send('lyric-time-update', {
-      time: Number(playerCore.currentTime) || this.state.progress,
+      time: currentTime,
       index: this.state.currentLyricIndex,
       text: currentLyricLine?.text || '',
       trans: currentLyricLine?.trans || '',
@@ -103,7 +131,9 @@ export class AudioEventHandler implements IDisposable {
 
     if (
       this.platform &&
-      (lyricIndexChanged || force || now - this.lastBroadcastTime >= this.config.ipcBroadcastInterval)
+      (lyricIndexChanged ||
+        force ||
+        now - this.lastBroadcastTime >= this.config.ipcBroadcastInterval)
     ) {
       this.lastBroadcastTime = now
       this.broadcastLyricUpdate()
@@ -130,6 +160,16 @@ export class AudioEventHandler implements IDisposable {
     this.progressSyncTimer = setInterval(() => {
       this.handleProgressUpdate()
     }, this.getProgressSyncInterval())
+
+    // 防止定时器阻止进程退出
+    if (
+      typeof this.progressSyncTimer === 'object' &&
+      this.progressSyncTimer !== null &&
+      'unref' in this.progressSyncTimer &&
+      typeof this.progressSyncTimer.unref === 'function'
+    ) {
+      this.progressSyncTimer.unref()
+    }
   }
 
   private stopProgressSyncLoop(): void {
@@ -167,9 +207,9 @@ export class AudioEventHandler implements IDisposable {
 
   private registerPlayListener(): void {
     const unsubscribe = playerCore.on('play', () => {
+      this.callbacks.onPlay?.()
       this.handleProgressUpdate(true)
       this.startProgressSyncLoop()
-      this.callbacks.onPlay?.()
     })
 
     this.eventDisposables.add(Disposable.from(unsubscribe))

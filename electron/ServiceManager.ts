@@ -2,25 +2,101 @@ import type { AvailableService, ServiceConfig, ServiceStatus } from './types/ser
 import logger from './logger'
 import { BaseService } from './service/baseService'
 import { NeteaseService, QQService } from './service/musicServices'
+import { Mutex } from 'async-mutex'
 
 export { BaseService, NeteaseService, QQService }
+
+/**
+ * 服务工厂函数类型
+ */
+export type ServiceFactory = (port: number) => BaseService
+
+/**
+ * 服务注册表接口
+ */
+export interface ServiceRegistry {
+  register(serviceId: string, factory: ServiceFactory): void
+  get(serviceId: string): BaseService | undefined
+  has(serviceId: string): boolean
+  getAll(): Map<string, BaseService>
+  getFactory(serviceId: string): ServiceFactory | undefined
+}
+
+/**
+ * 默认服务注册表实现
+ */
+export class DefaultServiceRegistry implements ServiceRegistry {
+  private factories: Map<string, ServiceFactory> = new Map()
+  private instances: Map<string, BaseService> = new Map()
+
+  register(serviceId: string, factory: ServiceFactory): void {
+    this.factories.set(serviceId, factory)
+    logger.info(`[ServiceRegistry] Registered service factory: ${serviceId}`)
+  }
+
+  get(serviceId: string): BaseService | undefined {
+    const existing = this.instances.get(serviceId)
+    if (existing) {
+      return existing
+    }
+
+    const factory = this.factories.get(serviceId)
+    if (!factory) {
+      return undefined
+    }
+
+    // 使用默认端口创建实例
+    const service = factory(0)
+    this.instances.set(serviceId, service)
+    return service
+  }
+
+  has(serviceId: string): boolean {
+    return this.factories.has(serviceId)
+  }
+
+  getAll(): Map<string, BaseService> {
+    return new Map(this.instances)
+  }
+
+  getFactory(serviceId: string): ServiceFactory | undefined {
+    return this.factories.get(serviceId)
+  }
+}
 
 /**
  * 服务管理器 - 统一管理所有音乐平台服务
  */
 export class ServiceManager {
+  private registry: ServiceRegistry
   private services: Map<string, BaseService> = new Map()
   private config: ServiceConfig | null = null
   private startTasks: Map<string, Promise<void>> = new Map()
+  private startTaskMutex = new Mutex() // 启动任务互斥锁
 
-  private ensureBuiltInServices(config: ServiceConfig): void {
-    if (!this.services.has('qq')) {
-      this.registerService('qq', new QQService(config.services.qq?.port || 3200))
-    }
+  constructor(registry?: ServiceRegistry) {
+    this.registry = registry || new DefaultServiceRegistry()
+    this.registerBuiltInServices()
+  }
 
-    if (!this.services.has('netease')) {
-      this.registerService('netease', new NeteaseService(config.services.netease?.port || 14532))
-    }
+  /**
+   * 注册内置服务（使用工厂模式）
+   */
+  private registerBuiltInServices(): void {
+    // QQ 音乐服务工厂
+    this.registry.register('qq', (port: number) => new QQService(port || 3200))
+
+    // 网易云音乐服务工厂
+    this.registry.register('netease', (port: number) => new NeteaseService(port || 14532))
+  }
+
+  /**
+   * 注册外部服务（支持服务发现）
+   * @param serviceId 服务标识
+   * @param factory 服务工厂函数
+   */
+  registerService(serviceId: string, factory: ServiceFactory): void {
+    this.registry.register(serviceId, factory)
   }
 
   private isServiceEnabled(serviceId: string): boolean {
@@ -34,7 +110,17 @@ export class ServiceManager {
     this.config = config
     logger.info('[ServiceManager] Initializing...')
 
-    this.ensureBuiltInServices(config)
+    // 为配置中的每个服务创建实例（使用工厂模式）
+    for (const [serviceId, serviceConfig] of Object.entries(config.services)) {
+      if (!this.services.has(serviceId) && this.registry.has(serviceId)) {
+        const factory = this.registry.getFactory(serviceId)
+        if (factory) {
+          const service = factory(serviceConfig?.port || 0)
+          this.services.set(serviceId, service)
+          logger.info(`[ServiceManager] Created service instance: ${serviceId}`)
+        }
+      }
+    }
 
     const startupTasks = Object.entries(config.services)
       .filter(([, serviceConfig]) => serviceConfig.enabled)
@@ -52,40 +138,47 @@ export class ServiceManager {
   }
 
   /**
-   * 注册服务
-   */
-  private registerService(serviceId: string, service: BaseService): void {
-    this.services.set(serviceId, service)
-    logger.info(`[ServiceManager] Registered service: ${serviceId}`)
-  }
-
-  /**
-   * 启动服务
+   * 启动服务 - 使用互斥锁保护避免竞态条件
    */
   async startService(serviceId: string): Promise<void> {
-    const service = this.services.get(serviceId)
-    if (!service) {
-      throw new Error(`Service ${serviceId} not found`)
-    }
+    // 使用互斥锁保护检查-然后-执行模式
+    const startTask = await this.startTaskMutex.runExclusive(async () => {
+      // 先检查是否已有进行中的启动任务
+      const pendingStart = this.startTasks.get(serviceId)
+      if (pendingStart) {
+        return pendingStart
+      }
 
-    const pendingStart = this.startTasks.get(serviceId)
-    if (pendingStart) {
-      return pendingStart
-    }
+      let service = this.services.get(serviceId)
+      if (!service) {
+        // 尝试从注册表获取并创建实例
+        const factory = this.registry.getFactory(serviceId)
+        if (factory) {
+          const port = this.config?.services[serviceId]?.port || 0
+          service = factory(port)
+          this.services.set(serviceId, service)
+          logger.info(`[ServiceManager] Created and starting service instance: ${serviceId}`)
+        } else {
+          throw new Error(`Service ${serviceId} not found`)
+        }
+      }
 
-    const { status } = service.getStatus()
-    if (status === 'starting' || status === 'running') {
-      logger.warn(
-        `[ServiceManager] Skip duplicate start for ${serviceId}, current status: ${status}`
-      )
-      return
-    }
+      const { status } = service.getStatus()
+      if (status === 'starting' || status === 'running') {
+        logger.warn(
+          `[ServiceManager] Skip duplicate start for ${serviceId}, current status: ${status}`
+        )
+        return Promise.resolve()
+      }
 
-    const startTask = service.start().finally(() => {
-      this.startTasks.delete(serviceId)
+      const task = service.start().finally(() => {
+        this.startTasks.delete(serviceId)
+      })
+
+      this.startTasks.set(serviceId, task)
+      return task
     })
 
-    this.startTasks.set(serviceId, startTask)
     await startTask
   }
 

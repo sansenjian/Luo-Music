@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { resetServices } from '../../src/services/registry'
-import { setupServices } from '../../src/services'
+import { setupServices, services } from '../../src/services'
 import type { Song } from '../../src/platform/music/interface'
 import { usePlayerStore } from '../../src/store/playerStore'
 import { searchResultItemToSong, useSearchStore } from '../../src/store/searchStore'
@@ -28,9 +28,16 @@ const adapterMock = {
   search: vi.fn()
 }
 
-vi.mock('../../src/services/musicAccessor', () => ({
-  getMusicAccessor: vi.fn(() => adapterMock)
-}))
+vi.mock('../../src/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('../../src/services')>()
+  return {
+    ...actual,
+    services: {
+      ...actual.services,
+      music: vi.fn(() => adapterMock)
+    }
+  }
+})
 
 describe('searchStore', () => {
   beforeEach(() => {

@@ -2,9 +2,18 @@ import { Disposable, DisposableStore } from '@/base/common/lifecycle/disposable'
 import type { LyricEngine } from '@/utils/player/core/lyric'
 import type { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
 
-import { createAudioEventHandler, type AudioEventCallbacks, type AudioEventHandler, type TimeUpdateConfig } from './audioEvents'
+import {
+  createAudioEventHandler,
+  type AudioEventCallbacks,
+  type AudioEventHandler,
+  type TimeUpdateConfig
+} from './audioEvents'
 import { createIpcHandlers, type IpcHandlers, type IpcHandlersDeps } from './ipcHandlers'
-import { createPlaybackActions, type PlaybackActions, type PlaybackActionsDeps } from './playbackActions'
+import {
+  createPlaybackActions,
+  type PlaybackActions,
+  type PlaybackActionsDeps
+} from './playbackActions'
 import type { PlayerState } from './playerState'
 
 export type CurrentLyricLine = {
@@ -25,6 +34,10 @@ export class PlayerStoreRuntime extends Disposable {
   private errorHandler: PlaybackErrorHandler | null = null
   private lyricEngine: LyricEngine | null = null
   private currentLyricLineProvider: (() => CurrentLyricLine) | null = null
+  private stateSyncRegistered = false
+  private stateSyncNotify: (() => void) | null = null
+  private stateSyncTimer: ReturnType<typeof setTimeout> | null = null
+  private lastStateSyncTime = 0
 
   setCurrentLyricLineProvider(provider: (() => CurrentLyricLine) | null): void {
     this.currentLyricLineProvider = provider
@@ -96,23 +109,104 @@ export class PlayerStoreRuntime extends Disposable {
     return this.ipcHandlers
   }
 
+  ensureStateSync(
+    register: (notify: () => void) => () => void,
+    notify: () => void,
+    interval: number
+  ): void {
+    if (this.stateSyncRegistered) {
+      return
+    }
+
+    this.stateSyncNotify = notify
+
+    const scheduleSync = () => {
+      const now = Date.now()
+      const elapsed = now - this.lastStateSyncTime
+
+      if (elapsed >= interval) {
+        this.flushStateSync()
+        return
+      }
+
+      if (this.stateSyncTimer) {
+        return
+      }
+
+      this.stateSyncTimer = setTimeout(
+        () => {
+          this.flushStateSync()
+        },
+        Math.max(0, interval - elapsed)
+      )
+
+      if (
+        typeof this.stateSyncTimer === 'object' &&
+        this.stateSyncTimer !== null &&
+        'unref' in this.stateSyncTimer &&
+        typeof this.stateSyncTimer.unref === 'function'
+      ) {
+        this.stateSyncTimer.unref()
+      }
+    }
+
+    const unsubscribe = register(scheduleSync)
+    this.stateSyncRegistered = true
+    this.resources.add(
+      Disposable.from(() => {
+        this.stateSyncRegistered = false
+        this.stateSyncNotify = null
+        this.clearStateSyncTimer()
+        unsubscribe()
+      })
+    )
+  }
+
   teardownIpcHandlers(): void {
     this.ipcHandlers?.teardown()
   }
 
   reset(): void {
+    // Windows平台：验证资源清理状态，防止内存泄漏
+    if (this.audioEventHandler && this.resources.size > 0) {
+      console.warn('[PlayerStoreRuntime] AudioEventHandler not disposed before reset')
+    }
+    if (this.ipcHandlers && this.resources.size > 0) {
+      console.warn('[PlayerStoreRuntime] IpcHandlers not disposed before reset')
+    }
+    if (this.playbackActions && this.resources.size > 0) {
+      console.warn('[PlayerStoreRuntime] PlaybackActions not disposed before reset')
+    }
+
     this.resources.clear()
+    this.clearStateSyncTimer()
+    this.lastStateSyncTime = 0
+    this.stateSyncNotify = null
     this.audioEventHandler = null
     this.playbackActions = null
     this.ipcHandlers = null
     this.errorHandler = null
     this.lyricEngine = null
     this.currentLyricLineProvider = null
+    this.stateSyncRegistered = false
   }
 
   override dispose(): void {
     this.reset()
     super.dispose()
+  }
+
+  private clearStateSyncTimer(): void {
+    if (this.stateSyncTimer) {
+      clearTimeout(this.stateSyncTimer)
+      this.stateSyncTimer = null
+    }
+  }
+
+  private flushStateSync(): void {
+    this.clearStateSyncTimer()
+    this.lastStateSyncTime = Date.now()
+    this.stateSyncNotify?.()
   }
 }
 

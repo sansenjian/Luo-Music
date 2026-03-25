@@ -5,29 +5,19 @@ import { services } from '../services'
 import { getQRCode, getQRKey, getUserAccount, checkQRStatus } from '../api/user'
 import { useToastStore } from '../store/toastStore'
 import { useUserStore } from '../store/userStore'
+import {
+  extractQrCookie,
+  extractQrImage,
+  extractQrKey,
+  extractQrStatusCode,
+  extractUserProfile,
+  type QrCheckResponse,
+  type QrImageResponse,
+  type QrKeyResponse,
+  type UserAccountResponse
+} from './loginModal.utils'
 
 type LoginStatus = 'loading' | 'waiting' | 'scanned' | 'expired' | 'success' | 'error'
-
-type QrKeyResponse = {
-  data?: {
-    unikey?: string
-  }
-}
-
-type QrImageResponse = {
-  data?: {
-    qrimg?: string
-  }
-}
-
-type QrCheckResponse = {
-  code?: number
-  cookie?: string
-}
-
-type UserAccountResponse = {
-  profile?: Record<string, unknown>
-}
 
 const emit = defineEmits<{
   close: []
@@ -65,6 +55,26 @@ function invalidateActiveAttempt(): void {
   clearCloseTimer()
 }
 
+function resolveBrowserCookie(): string {
+  if (typeof document === 'undefined' || typeof document.cookie !== 'string') {
+    return ''
+  }
+
+  return document.cookie.trim()
+}
+
+function resolveSessionCookie(cookie: string): string {
+  if (cookie.trim().length > 0) {
+    return cookie.trim()
+  }
+
+  if (typeof userStore.cookie === 'string' && userStore.cookie.trim().length > 0) {
+    return userStore.cookie.trim()
+  }
+
+  return resolveBrowserCookie()
+}
+
 async function fetchQRCode(): Promise<void> {
   const attemptId = ++activeAttemptId
 
@@ -79,7 +89,7 @@ async function fetchQRCode(): Promise<void> {
     if (!isAttemptCurrent(attemptId)) {
       return
     }
-    const unikey = keyRes.data?.unikey
+    const unikey = extractQrKey(keyRes)
     if (!unikey) {
       throw new Error('Missing QR key')
     }
@@ -90,7 +100,7 @@ async function fetchQRCode(): Promise<void> {
     if (!isAttemptCurrent(attemptId)) {
       return
     }
-    const qrimg = qrRes.data?.qrimg
+    const qrimg = extractQrImage(qrRes)
     if (!qrimg) {
       throw new Error('Missing QR image')
     }
@@ -127,11 +137,29 @@ function startPolling(attemptId: number): void {
     isChecking = true
     try {
       const res = (await checkQRStatus(qrKey.value)) as QrCheckResponse
+
+      // 解包 IPC 响应格式 { success: true, data: {...} }
+      const unwrapped =
+        res && typeof res === 'object' && 'success' in res && 'data' in res
+          ? (res as { success: boolean; data: QrCheckResponse }).data
+          : res
+
       if (!isAttemptCurrent(attemptId)) {
         return
       }
 
-      switch (res.code) {
+      const sessionCookie = extractQrCookie(unwrapped)
+
+      // 调试日志
+      logger.debug('Netease QR login check response:', {
+        rawStatusCode: extractQrStatusCode(unwrapped),
+        hasCookie: !!sessionCookie,
+        fullResponse: JSON.stringify(unwrapped)
+      })
+
+      const statusCode = extractQrStatusCode(unwrapped)
+
+      switch (statusCode) {
         case 800:
           status.value = 'expired'
           statusText.value = '二维码已过期，请刷新后重新扫码'
@@ -149,7 +177,7 @@ function startPolling(attemptId: number): void {
           status.value = 'success'
           statusText.value = '登录成功'
           stopPolling()
-          await handleLoginSuccess(res.cookie ?? '', attemptId)
+          await handleLoginSuccess(sessionCookie, attemptId)
           break
         default:
           break
@@ -181,18 +209,23 @@ async function handleLoginSuccess(cookie: string, attemptId: number): Promise<vo
       return
     }
 
-    userStore.setCookie(cookie)
+    const initialCookie = resolveSessionCookie(cookie)
+    if (initialCookie) {
+      userStore.setCookie(initialCookie)
+    }
 
     const userRes = (await getUserAccount()) as UserAccountResponse
     if (!isAttemptCurrent(attemptId)) {
       return
     }
 
-    if (!userRes.profile) {
+    const profile = extractUserProfile(userRes)
+    if (!profile) {
       throw new Error('Missing user profile')
     }
 
-    userStore.login(userRes.profile, cookie)
+    userStore.login(profile, resolveSessionCookie(initialCookie))
+    toastStore.success('网易云登录成功')
     clearCloseTimer()
     closeTimer = setTimeout(() => {
       if (!isAttemptCurrent(attemptId)) {

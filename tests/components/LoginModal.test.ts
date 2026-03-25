@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useUserStore } from '../../src/store/userStore'
 
 type Deferred<T> = {
   promise: Promise<T>
@@ -24,6 +25,7 @@ const apiMocks = vi.hoisted(() => ({
 }))
 
 const loggerMocks = vi.hoisted(() => ({
+  debug: vi.fn(),
   error: vi.fn(),
   warn: vi.fn()
 }))
@@ -52,8 +54,10 @@ describe('LoginModal.vue', () => {
     apiMocks.getQRCode.mockReset()
     apiMocks.checkQRStatus.mockReset()
     apiMocks.getUserAccount.mockReset()
+    loggerMocks.debug.mockReset()
     loggerMocks.error.mockReset()
     loggerMocks.warn.mockReset()
+    document.cookie = 'MUSIC_U=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/'
   })
 
   afterEach(() => {
@@ -92,5 +96,32 @@ describe('LoginModal.vue', () => {
     await vi.advanceTimersByTimeAsync(500)
 
     expect(wrapper.emitted('close')).toBeUndefined()
+  })
+
+  it('marks login successful when QR status is deeply wrapped and cookie falls back to the browser session', async () => {
+    document.cookie = 'MUSIC_U=browser-cookie; path=/'
+
+    apiMocks.getQRKey.mockResolvedValue({ data: { data: { unikey: 'qr-key' } } })
+    apiMocks.getQRCode.mockResolvedValue({ body: { data: { qrimg: 'data:image/png;base64,qr' } } })
+    apiMocks.checkQRStatus.mockResolvedValue({ data: { data: { code: '803' } } })
+    apiMocks.getUserAccount.mockResolvedValue({
+      data: {
+        data: {
+          profile: { nickname: 'tester' }
+        }
+      }
+    })
+
+    const { default: LoginModal } = await import('../../src/components/LoginModal.vue')
+    mount(LoginModal)
+
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(3000)
+    await flushPromises()
+
+    const userStore = useUserStore()
+    expect(userStore.isLoggedIn).toBe(true)
+    expect(userStore.cookie).toContain('MUSIC_U=browser-cookie')
+    expect(userStore.nickname).toBe('tester')
   })
 })

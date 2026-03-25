@@ -2,6 +2,7 @@ import type { ServiceManager } from '../../ServiceManager'
 import { executeWithRetry, getCache, setCache } from '../utils/gatewayCache.ts'
 import type { GatewayErrorDetails } from './api.contract'
 import { normalizeEndpoint } from './api.validation'
+import logger from '../../logger'
 
 export async function requestServiceWithCache(
   serviceManager: ServiceManager,
@@ -26,7 +27,10 @@ export async function requestServiceWithCache(
   )
 
   if (!noCache) {
-    setCache(service, normalizedEndpoint, params, result)
+    // 异步设置缓存，不阻塞返回结果，但处理潜在错误
+    setCache(service, normalizedEndpoint, params, result).catch(error => {
+      logger.warn(`[API Gateway] Failed to set cache: ${error}`)
+    })
   }
 
   return { result, cached: false }
@@ -39,7 +43,13 @@ export async function requestService(
   params: Record<string, unknown>,
   noCache: boolean = false
 ): Promise<unknown> {
-  const { result } = await requestServiceWithCache(serviceManager, service, endpoint, params, noCache)
+  const { result } = await requestServiceWithCache(
+    serviceManager,
+    service,
+    endpoint,
+    params,
+    noCache
+  )
   return result
 }
 

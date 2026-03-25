@@ -1,5 +1,5 @@
-import type { Song } from '@/platform/music/interface'
-import { getMusicAccessor } from '@/services/musicAccessor'
+import type { Song } from '@/types/schemas'
+import { services } from '@/services'
 import { errorCenter, Errors } from '@/utils/error'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
@@ -25,6 +25,14 @@ export class PlaybackActions {
   private lyricRequestId = 0
 
   constructor(private readonly deps: PlaybackActionsDeps) {}
+
+  private isSameSong(left: Song | null | undefined, right: Song | null | undefined): boolean {
+    if (!left || !right) {
+      return false
+    }
+
+    return this.createSongRequestKey(left) === this.createSongRequestKey(right)
+  }
 
   private createSongRequestKey(song: Song): string {
     return `${song.platform || (song as { server?: string }).server || 'netease'}:${song.id}`
@@ -115,9 +123,14 @@ export class PlaybackActions {
       throw new Error('No URL for song')
     }
 
+    if (!this.isSameSong(state.currentSong, song)) {
+      this.deps.setLyricsArray([])
+    }
+
     this.deps.onStateChange({
       currentIndex: index,
-      currentSong: song
+      currentSong: song,
+      currentLyricIndex: -1
     })
 
     await this.deps.playSongByIndex(index)
@@ -135,7 +148,7 @@ export class PlaybackActions {
     this.deps.onStateChange({ loading: true })
 
     const platformKey = song.platform || (song as { server?: string }).server || 'netease'
-    const musicService = getMusicAccessor()
+    const musicService = services.music()
 
     console.log(`[Player] Playing song: ${song.name} (ID: ${song.id}, Platform: ${platformKey})`)
 

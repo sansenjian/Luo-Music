@@ -34,13 +34,16 @@ export function toRequestRecord(value: unknown): Record<string, unknown> {
 
   if (typeof FormData !== 'undefined' && value instanceof FormData) {
     const formDataRecord: Record<string, unknown> = {}
+    // Use forEach for better type compatibility with FormData
     value.forEach((entry, key) => {
       formDataRecord[key] = entry
     })
     return formDataRecord
   }
 
-  return typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+  return typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
 }
 
 export function normalizeRequestParams(params: unknown): Record<string, unknown> {

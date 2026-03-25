@@ -140,4 +140,37 @@ describe('Playlist.vue', () => {
     expect(items.length).toBeGreaterThan(0)
     expect(items.length).toBeLessThan(store.songList.length)
   })
+
+  it('clamps scroll position when the playlist shrinks after a deep scroll', async () => {
+    const store = usePlayerStore()
+    store.songList = Array.from({ length: 200 }, (_, index) =>
+      createMockSong({
+        id: index + 1,
+        name: `Song ${index + 1}`
+      })
+    )
+
+    const wrapper = mount(Playlist, {
+      attachTo: document.body
+    })
+    const listElement = wrapper.get('.playlist').element as HTMLElement
+
+    listElement.scrollTop = 9000
+    await wrapper.get('.playlist').trigger('scroll')
+
+    store.songList = [
+      createMockSong({ id: 1, name: 'Song 1' }),
+      createMockSong({ id: 2, name: 'Song 2' })
+    ]
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    const items = wrapper.findAll('.list-item')
+
+    expect(listElement.scrollTop).toBe(0)
+    expect(items).toHaveLength(2)
+    expect(items[0].attributes('data-index')).toBe('0')
+
+    wrapper.unmount()
+  })
 })

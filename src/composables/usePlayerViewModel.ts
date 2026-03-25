@@ -1,6 +1,6 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { COMMANDS } from '../core/commands/commands'
-import type { Song } from '../platform/music/interface'
+import type { Song } from '../types/schemas'
 import { services } from '../services'
 import { usePlayerStore } from '../store/playerStore'
 import {
@@ -33,7 +33,12 @@ const PLAY_MODE_ICONS: PlayModeSvgElement[][] = [
   ]
 ]
 
-const PLAY_MODE_TEXT = ['\u987a\u5e8f\u64ad\u653e', '\u5217\u8868\u5faa\u73af', '\u5355\u66f2\u5faa\u73af', '\u968f\u673a\u64ad\u653e'] as const
+const PLAY_MODE_TEXT = [
+  '\u987a\u5e8f\u64ad\u653e',
+  '\u5217\u8868\u5faa\u73af',
+  '\u5355\u66f2\u5faa\u73af',
+  '\u968f\u673a\u64ad\u653e'
+] as const
 
 function resolveCoverUrl(url?: string): string {
   if (!url) return DEFAULT_COVER
@@ -81,8 +86,7 @@ export function usePlayerViewModel() {
   )
   const canTogglePlayMode = computed(
     () =>
-      playerStore.songList.length > 0 &&
-      commandService.canExecute(COMMANDS.PLAYER_TOGGLE_PLAY_MODE)
+      playerStore.songList.length > 0 && commandService.canExecute(COMMANDS.PLAYER_TOGGLE_PLAY_MODE)
   )
   const canToggleDesktopLyric = computed(() =>
     commandService.canExecute(COMMANDS.DESKTOP_LYRIC_TOGGLE)
@@ -131,7 +135,7 @@ export function usePlayerViewModel() {
   watch(
     () => playerStore.currentSong,
     () => {
-      nextTick(() => coverImgRef.value && animateAlbumCover(coverImgRef.value))
+      void nextTick(() => coverImgRef.value && animateAlbumCover(coverImgRef.value))
     },
     { immediate: true }
   )

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import { createInitialState } from '@/store/player/playerState'
 import { PlaybackActions } from '@/store/player/playbackActions'
-import type { Song } from '@/platform/music/interface'
+import type { Song } from '@/types/schemas'
 import type { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
 
 type MockPlaybackErrorHandler = PlaybackErrorHandler & {
@@ -16,7 +16,10 @@ const adapterMock = vi.hoisted(() => ({
   getLyric: vi.fn()
 }))
 
-const getMusicAccessorMock = vi.hoisted(() => vi.fn(() => adapterMock))
+const servicesMock = vi.hoisted(() => ({
+  music: vi.fn(() => adapterMock)
+}))
+
 const lyricParseMock = vi.hoisted(() => vi.fn())
 const errorEmitMock = vi.hoisted(() => vi.fn())
 const noCopyrightMock = vi.hoisted(() =>
@@ -33,9 +36,16 @@ const isCanceledRequestErrorMock = vi.hoisted(() =>
   vi.fn((error: unknown) => Boolean((error as { __cancel?: boolean })?.__cancel))
 )
 
-vi.mock('@/services/musicAccessor', () => ({
-  getMusicAccessor: getMusicAccessorMock
-}))
+vi.mock('@/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services')>()
+  return {
+    ...actual,
+    services: {
+      ...actual.services,
+      music: servicesMock.music
+    }
+  }
+})
 
 vi.mock('@/utils/player/core/lyric', () => ({
   LyricParser: {
@@ -165,7 +175,8 @@ describe('playbackActions', () => {
 
     expect(onStateChange).toHaveBeenCalledWith({
       currentIndex: 0,
-      currentSong: state.songList[0]
+      currentSong: state.songList[0],
+      currentLyricIndex: -1
     })
     expect(playSongByIndex).toHaveBeenCalledWith(0)
   })
@@ -191,7 +202,7 @@ describe('playbackActions', () => {
 
     await actions.playSongWithDetails(0)
 
-    expect(getMusicAccessorMock).toHaveBeenCalled()
+    expect(servicesMock.music).toHaveBeenCalled()
     expect(adapterMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-1', {
       mediaId: 'media-1'
     })
@@ -212,7 +223,10 @@ describe('playbackActions', () => {
     await actions.playSongWithDetails(0)
 
     expect(isCanceledRequestErrorMock).toHaveBeenCalled()
-    expect(setLyricsArray).not.toHaveBeenCalled()
+    // setLyricsArray is called once to clear lyrics when song starts (playSongByIndex)
+    // but not called again when lyric request is cancelled
+    expect(setLyricsArray).toHaveBeenCalledTimes(1)
+    expect(setLyricsArray).toHaveBeenCalledWith([])
   })
 
   it('ignores stale lyric responses from superseded playback requests', async () => {
@@ -228,6 +242,9 @@ describe('playbackActions', () => {
     adapterMock.getLyric
       .mockImplementationOnce(() => firstLyric.promise)
       .mockImplementationOnce(() => secondLyric.promise)
+
+    // Reset lyricParseMock to ensure clean state
+    lyricParseMock.mockClear()
     lyricParseMock.mockImplementation((lrc: string) => [
       {
         time: 0,
@@ -254,10 +271,21 @@ describe('playbackActions', () => {
     })
     await firstPlayback
 
-    expect(setLyricsArray).toHaveBeenCalledTimes(1)
-    expect(setLyricsArray).toHaveBeenCalledWith([
+    // setLyricsArray is called:
+    // 1. Empty array when first song starts (playSongByIndex)
+    // 2. Empty array when second song starts (playSongByIndex) - clears previous lyrics
+    // 3. Parsed lyrics from second (current) song's lyric request
+    expect(setLyricsArray).toHaveBeenCalledTimes(3)
+    // Verify the last call is with the new lyrics (not the old/stale ones)
+    expect(setLyricsArray).toHaveBeenLastCalledWith([
       { time: 0, text: 'New line', trans: '', roma: '' }
     ])
+    // Verify setLyricsArray was never called with the old/stale lyrics
+    const callsWithOldLyrics = setLyricsArray.mock.calls.filter((call: unknown[]) => {
+      const arg = call[0] as Array<{ text: string }>
+      return arg.length > 0 && arg[0].text === 'Old line'
+    })
+    expect(callsWithOldLyrics).toHaveLength(0)
   })
 
   it('marks songs unavailable and rethrows when auto skip is disabled', async () => {

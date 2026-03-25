@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import type { Song } from '../platform/music/interface'
-import { getMusicAccessor } from '../services/musicAccessor'
 import { services } from '../services'
 import { storageAdapter } from '../services/storageService'
 import { isCanceledRequestError } from '../utils/http/cancelError'
@@ -106,7 +105,9 @@ export const useSearchStore = defineStore(
       })
 
       try {
-        const response = await task.guard(getMusicAccessor().search(server.value, trimmedKeyword, 30, 1))
+        const response = await task.guard(
+          services.music().search(server.value, trimmedKeyword, 30, 1)
+        )
 
         services.logger().debug('searchStore', 'Search result', response)
 
@@ -196,6 +197,7 @@ export const useSearchStore = defineStore(
       results.value = []
       error.value = null
       keyword.value = ''
+      totalResults.value = 0
       services.logger().info('searchStore', 'Results cleared')
     }
 

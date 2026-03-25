@@ -6,7 +6,8 @@
  */
 
 import type { LyricLine } from '@/utils/player/core/lyric'
-import type { Song } from '@/platform/music/interface'
+import type { Song } from '@/types/schemas'
+import { PLAY_MODE, type PlayMode } from '@/utils/player/constants/playMode'
 
 /**
  * 播放器状态接口
@@ -21,7 +22,7 @@ export interface PlayerState {
   /** 音量 (0-1) */
   volume: number
   /** 播放模式 */
-  playMode: number
+  playMode: PlayMode
   /** 播放列表 */
   songList: Song[]
   /** 当前歌曲索引 */
@@ -64,7 +65,7 @@ export interface PlayerStateChanges {
   progress?: number
   duration?: number
   volume?: number
-  playMode?: number
+  playMode?: PlayMode
   currentIndex?: number
   currentSong?: Song | null
   currentLyricIndex?: number
@@ -80,7 +81,7 @@ export function createInitialState(): PlayerState {
     progress: 0,
     duration: 0,
     volume: 0.7,
-    playMode: 0,
+    playMode: PLAY_MODE.SEQUENTIAL,
     songList: [],
     currentIndex: -1,
     currentSong: null,

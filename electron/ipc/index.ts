@@ -27,10 +27,22 @@ export * from './types'
 // 中间件
 export { errorMiddleware } from './middleware/error'
 export { loggerMiddleware } from './middleware/logger'
+export { performanceMiddleware } from './middleware/performance'
+
+// 性能监控 API
+export {
+  getPerformanceMetrics,
+  getSlowRequests,
+  getPerformanceReport,
+  resetPerformanceMetrics,
+  disposePerformanceMonitor
+} from './middleware'
+export type { PerformanceMetrics, SlowRequestEvent } from './middleware'
 
 // 处理器
 export { registerWindowHandlers } from './handlers/window.handler'
 export { registerCacheHandlers } from './handlers/cache.handler'
+export { registerConfigHandlers } from './handlers/config.handler'
 export { registerPlayerHandlers } from './handlers/player.handler'
 export { registerServiceHandlers } from './handlers/service.handler'
 export { registerApiHandlers } from './handlers/api.handler'

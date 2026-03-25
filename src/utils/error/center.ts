@@ -47,7 +47,7 @@ class ErrorCenter {
     // 3. 执行处理链
     handlers.forEach(h => {
       try {
-        h(appError)
+        void Promise.resolve(h(appError))
       } catch (e) {
         console.error('Error handler failed:', e)
       }
@@ -63,7 +63,7 @@ class ErrorCenter {
   private reportToMain(error: AppError) {
     const platformService = getPlatformAccessor()
     if (platformService.isElectron()) {
-      platformService.send('error-report', {
+      void platformService.send('error-report', {
         code: error.code,
         message: error.message,
         stack: error.stack,

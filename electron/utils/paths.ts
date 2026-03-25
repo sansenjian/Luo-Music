@@ -28,7 +28,7 @@ export const RENDERER_DIST = BUILD_DIR
 export const VITE_PUBLIC = process.env.VITE_PUBLIC || path.join(PROJECT_ROOT, 'public')
 
 export function getScriptPath(scriptName: string): string {
-  // 打包后脚本位于 resources/ 目录（extraResource 直接复制文件名）
+  // 打包后脚本位于 resources/ 根目录（extraResource 直接复制文件名）
   // 开发模式位于 scripts/dev/
   const scriptPath = isPackaged
     ? path.join(process.resourcesPath, scriptName)

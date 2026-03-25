@@ -3,6 +3,7 @@ import { defineAsyncComponent, onMounted, ref } from 'vue'
 
 import { useCommandContext } from './composables/useCommandContext'
 import { services } from './services'
+import { PLAY_MODE } from './utils/player/constants/playMode'
 
 type PlayerState = {
   volume: number
@@ -21,7 +22,7 @@ const Analytics = defineAsyncComponent(() =>
 const PLAYER_STORAGE_KEY = 'player'
 const DEFAULT_PLAYER_STATE: PlayerState = {
   volume: 0.7,
-  playMode: 0,
+  playMode: PLAY_MODE.SEQUENTIAL,
   lyricType: ['original', 'trans'],
   isCompact: false
 }
@@ -62,10 +63,10 @@ const sanitizePlayerState = (value: unknown): PlayerState => {
   const record = value as Partial<PlayerState>
 
   return {
-    volume: sanitizeVolume(record.volume),
-    playMode: sanitizePlayMode(record.playMode),
-    lyricType: sanitizeLyricType(record.lyricType),
-    isCompact: sanitizeIsCompact(record.isCompact)
+    volume: sanitizeVolume(record.volume as unknown),
+    playMode: sanitizePlayMode(record.playMode as unknown),
+    lyricType: sanitizeLyricType(record.lyricType as unknown),
+    isCompact: sanitizeIsCompact(record.isCompact as unknown)
   }
 }
 

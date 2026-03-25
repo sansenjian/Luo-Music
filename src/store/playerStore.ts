@@ -1,15 +1,13 @@
-import { defineStore } from 'pinia'
-import { markRaw } from 'vue'
+import { defineStore, type StoreGeneric } from 'pinia'
+import { markRaw, toRaw } from 'vue'
 
+import { SEND_CHANNELS } from '../../electron/shared/protocol/channels'
+import type { PlayerStateSnapshot } from '../../electron/ipc/types'
 import type { Song } from '../platform/music/interface'
 import { services } from '../services'
 import { getPlatformAccessor } from '../services/platformAccessor'
 import { storageAdapter } from '../services/storageService'
-import {
-  createInitialState,
-  PLAY_MODE_TEXTS,
-  type PlayerState
-} from './player/playerState'
+import { createInitialState, PLAY_MODE_TEXTS, type PlayerState } from './player/playerState'
 import {
   ensurePlayerStoreRuntime,
   getPlayerStoreRuntime,
@@ -45,8 +43,9 @@ export type PlayerStoreActions = {
   handleSongEnd: () => void
   resetErrorHandler: () => void
   setVolume: (vol: number) => void
+  toggleMute: () => void
   togglePlayMode: () => void
-  setPlayMode: (mode: number) => void
+  setPlayMode: (mode: PlayerState['playMode']) => void
   setLyric: (lyric: unknown) => void
   toggleCompactMode: () => void
   setLyricsArray: (lyrics: LyricLine[]) => void
@@ -57,7 +56,7 @@ type PlayerStoreInstance = PlayerState &
   PlayerStoreActions &
   PlayerStoreOwner & {
     $state: PlayerState
-  }
+  } & StoreGeneric
 
 function getPlatformService() {
   return getPlatformAccessor()
@@ -85,6 +84,209 @@ function notifyLyricTimeUpdate(store: PlayerStoreInstance, time = store.progress
   })
 }
 
+function toIpcSerializable(value: unknown, seen = new WeakMap<object, unknown>()): unknown {
+  if (value == null) {
+    return value
+  }
+
+  const valueType = typeof value
+  if (valueType === 'bigint') {
+    return value.toString()
+  }
+
+  if (valueType === 'function' || valueType === 'symbol') {
+    return undefined
+  }
+
+  if (valueType !== 'object') {
+    return value
+  }
+
+  const rawValue = toRaw(value as object)
+  if (seen.has(rawValue)) {
+    return seen.get(rawValue)
+  }
+
+  if (rawValue instanceof Date) {
+    return new Date(rawValue.getTime())
+  }
+
+  if (rawValue instanceof RegExp) {
+    return new RegExp(rawValue.source, rawValue.flags)
+  }
+
+  if (rawValue instanceof Error) {
+    return {
+      name: rawValue.name,
+      message: rawValue.message,
+      stack: rawValue.stack
+    }
+  }
+
+  if (Array.isArray(rawValue)) {
+    const serialized: unknown[] = []
+    seen.set(rawValue, serialized)
+    for (const item of rawValue) {
+      const next = toIpcSerializable(item, seen)
+      serialized.push(next === undefined ? null : next)
+    }
+    return serialized
+  }
+
+  const output: Record<string, unknown> = {}
+  seen.set(rawValue, output)
+
+  for (const [key, item] of Object.entries(rawValue as Record<string, unknown>)) {
+    const next = toIpcSerializable(item, seen)
+    if (next !== undefined) {
+      output[key] = next
+    }
+  }
+
+  return output
+}
+
+function createPlayerStateSnapshot(store: PlayerStoreInstance): PlayerStateSnapshot {
+  return {
+    isPlaying: store.playing,
+    isLoading: store.loading,
+    progress: store.progress,
+    duration: store.duration,
+    volume: store.volume,
+    isMuted:
+      store.initialized && typeof audioManager.getMuted === 'function'
+        ? audioManager.getMuted()
+        : store.volume === 0,
+    playMode: store.playMode,
+    playlist: toIpcSerializable(store.songList) as PlayerStateSnapshot['playlist'],
+    currentIndex: store.currentIndex,
+    currentSong: toIpcSerializable(store.currentSong) as PlayerStateSnapshot['currentSong'],
+    currentLyricIndex: store.currentLyricIndex,
+    showLyric: store.showLyric,
+    showPlaylist: store.showPlaylist,
+    isCompact: store.isCompact,
+    lyrics: toIpcSerializable(store.lyricsArray) as PlayerStateSnapshot['lyrics']
+  }
+}
+
+function notifyPlayerStateSnapshot(store: PlayerStoreInstance): void {
+  const platform = getPlatformService()
+  if (!platform.isElectron()) {
+    return
+  }
+
+  platform.send(SEND_CHANNELS.PLAYER_SYNC_STATE, createPlayerStateSnapshot(store))
+}
+
+type StorePlayMode = PlayerState['playMode']
+const PLAYER_STATE_SYNC_INTERVAL_MS = 500
+
+function toPlayMode(mode: number): StorePlayMode {
+  if (!Number.isFinite(mode) || !Number.isInteger(mode)) {
+    return PLAY_MODE.SEQUENTIAL as StorePlayMode
+  }
+
+  const normalizedMode = ((mode % 4) + 4) % 4
+  return normalizedMode as StorePlayMode
+}
+
+function isSameSong(left: Song, right: Song): boolean {
+  return left.id === right.id && left.platform === right.platform
+}
+
+async function playSongFromIpc(
+  store: PlayerStoreInstance,
+  song: Song,
+  playlist?: Song[]
+): Promise<void> {
+  if (Array.isArray(playlist) && playlist.length > 0) {
+    const songIndex = playlist.findIndex(candidate => isSameSong(candidate, song))
+    const nextPlaylist = songIndex === -1 ? [...playlist, song] : playlist
+
+    store.setSongList(nextPlaylist)
+    await store.playSongWithDetails(songIndex === -1 ? nextPlaylist.length - 1 : songIndex)
+    return
+  }
+
+  const existingIndex = store.songList.findIndex(candidate => isSameSong(candidate, song))
+  if (existingIndex !== -1) {
+    await store.playSongWithDetails(existingIndex)
+    return
+  }
+
+  store.addSong(song)
+  await store.playSongWithDetails(store.songList.length - 1)
+}
+
+async function playSongByIdFromIpc(
+  store: PlayerStoreInstance,
+  id: string | number,
+  platform: 'netease' | 'qq' = 'netease'
+): Promise<void> {
+  const existingIndex = store.songList.findIndex(
+    song => song.id === id && (song.platform ?? 'netease') === platform
+  )
+  if (existingIndex !== -1) {
+    await store.playSongWithDetails(existingIndex)
+    return
+  }
+
+  const song = await services.music().getSongDetail(platform, id)
+  if (!song) {
+    throw new Error(`Unable to load song detail for ${platform}:${String(id)}`)
+  }
+
+  if (!song.platform) {
+    song.platform = platform
+  }
+
+  await playSongFromIpc(store, song)
+}
+
+function addToNextFromIpc(store: PlayerStoreInstance, song: Song): void {
+  const existingIndex = store.songList.findIndex(candidate => isSameSong(candidate, song))
+  if (existingIndex !== -1) {
+    store.songList.splice(existingIndex, 1)
+    if (existingIndex < store.currentIndex) {
+      store.currentIndex -= 1
+    }
+  }
+
+  const insertIndex = Math.max(0, Math.min(store.currentIndex + 1, store.songList.length))
+  store.songList.splice(insertIndex, 0, song)
+  notifyPlayerStateSnapshot(store)
+}
+
+function removeFromPlaylistFromIpc(store: PlayerStoreInstance, index: number): void {
+  if (index < 0 || index >= store.songList.length) {
+    return
+  }
+
+  const removingCurrentSong = index === store.currentIndex
+  store.songList.splice(index, 1)
+
+  if (store.songList.length === 0) {
+    store.clearPlaylist()
+    return
+  }
+
+  if (index < store.currentIndex) {
+    store.currentIndex -= 1
+  } else if (removingCurrentSong) {
+    store.currentIndex = Math.min(index, store.songList.length - 1)
+    store.currentSong = store.songList[store.currentIndex]
+    notifyPlayerStateSnapshot(store)
+    void store.playSongWithDetails(store.currentIndex)
+    return
+  }
+
+  store.currentSong =
+    store.currentIndex >= 0 && store.currentIndex < store.songList.length
+      ? store.songList[store.currentIndex]
+      : null
+  notifyPlayerStateSnapshot(store)
+}
+
 function syncLyricIndex(store: PlayerStoreInstance, time = store.progress): boolean {
   const lyricEngine = getPlayerStoreRuntime(store)?.getLyricEngine()
   if (!lyricEngine) {
@@ -107,6 +309,7 @@ function getPlaybackActions(store: PlayerStoreInstance) {
     getState: () => store.$state,
     onStateChange: changes => {
       Object.assign(store, changes)
+      notifyPlayerStateSnapshot(store)
     },
     playSongByIndex: index => store.playSongByIndex(index),
     setLyricsArray: lyrics => store.setLyricsArray(lyrics),
@@ -216,8 +419,10 @@ export const usePlayerStore = defineStore('player', {
         getState: () => store.$state,
         onStateChange: changes => {
           Object.assign(store, changes)
+          notifyPlayerStateSnapshot(store)
         },
         togglePlay: () => store.togglePlay(),
+        toggleMute: () => store.toggleMute(),
         play: () => {
           if (!store.initialized) {
             if (store.songList.length > 0) {
@@ -242,7 +447,15 @@ export const usePlayerStore = defineStore('player', {
         },
         playPrev: () => store.playPrev(),
         playNext: () => store.playNext(),
+        playSong: (song, playlist) => {
+          void playSongFromIpc(store, song, playlist)
+        },
+        playSongById: (id, platform) => playSongByIdFromIpc(store, id, platform),
+        addToNext: song => addToNextFromIpc(store, song),
+        removeFromPlaylist: index => removeFromPlaylistFromIpc(store, index),
+        clearPlaylist: () => store.clearPlaylist(),
         setPlayMode: mode => store.setPlayMode(mode),
+        seek: time => store.seek(time),
         setVolume: vol => store.setVolume(vol),
         toggleCompactMode: () => store.toggleCompactMode(),
         platform: {
@@ -251,6 +464,13 @@ export const usePlayerStore = defineStore('player', {
         }
       })
 
+      runtime.ensureStateSync(
+        scheduleNotify => store.$subscribe(() => scheduleNotify()),
+        () => notifyPlayerStateSnapshot(store),
+        PLAYER_STATE_SYNC_INTERVAL_MS
+      )
+
+      notifyPlayerStateSnapshot(store)
       this.ipcInitialized = true
     },
 
@@ -406,16 +626,20 @@ export const usePlayerStore = defineStore('player', {
       audioManager.setVolume(this.volume)
     },
 
+    toggleMute(): void {
+      const store = this as unknown as PlayerStoreInstance
+      audioManager.setMuted(!audioManager.getMuted())
+      notifyPlayerStateSnapshot(store)
+    },
+
     togglePlayMode(): void {
-      this.playMode = (this.playMode + 1) % 4
+      this.playMode = toPlayMode(this.playMode + 1)
       this.notifyPlayModeChange()
     },
 
-    setPlayMode(mode: number): void {
-      if (mode >= 0 && mode <= 3) {
-        this.playMode = mode
-        this.notifyPlayModeChange()
-      }
+    setPlayMode(mode: StorePlayMode): void {
+      this.playMode = toPlayMode(mode)
+      this.notifyPlayModeChange()
     },
 
     setLyric(lyric: unknown): void {
@@ -441,8 +665,6 @@ export const usePlayerStore = defineStore('player', {
     clearPlaylist(): void {
       const store = this as unknown as PlayerStoreInstance
 
-      resetPlayerStoreRuntime(store)
-
       this.songList = []
       this.currentIndex = -1
       this.currentSong = null
@@ -458,7 +680,9 @@ export const usePlayerStore = defineStore('player', {
       this.duration = 0
       this.initialized = false
 
+      notifyPlayerStateSnapshot(store)
       notifyLyricTimeUpdate(store, 0)
+      resetPlayerStoreRuntime(store)
     }
   },
 

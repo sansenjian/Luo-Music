@@ -10,7 +10,9 @@ import { usePlayerStore } from '../store/playerStore.ts'
 import { usePlaylistStore } from '../store/playlistStore'
 import { useUserStore } from '../store/userStore'
 
-const UserProfileHeader = defineAsyncComponent(() => import('../components/user/UserProfileHeader.vue'))
+const UserProfileHeader = defineAsyncComponent(
+  () => import('../components/user/UserProfileHeader.vue')
+)
 const LikedSongsView = defineAsyncComponent(() => import('../components/user/LikedSongsView.vue'))
 const PlaylistsView = defineAsyncComponent(() => import('../components/user/PlaylistsView.vue'))
 const EventsView = defineAsyncComponent(() => import('../components/user/EventsView.vue'))
@@ -31,8 +33,13 @@ const loadingMap = ref<Record<UserTab, boolean>>({
 const currentUserId = computed(() => userStore.userId)
 
 useUserDataQuery(() => userStore.userId)
-const { likeSongs, formattedSongs, count: likedCount, loadLikedSongs, resetLikedSongs } =
-  useLikedSongs()
+const {
+  likeSongs,
+  formattedSongs,
+  count: likedCount,
+  loadLikedSongs,
+  resetLikedSongs
+} = useLikedSongs()
 const {
   playlists,
   count: playlistCount,
@@ -112,7 +119,7 @@ const handlePlaylistClick = async (playlistId: string | number) => {
       playerStore.setSongList(songs)
       try {
         await playerStore.playSongWithDetails(0)
-        router.push('/')
+        void router.push('/')
       } catch (playError) {
         console.error('播放失败:', playError)
       }
@@ -131,7 +138,7 @@ const handlePlayAllLiked = async () => {
     playerStore.setSongList(songs)
     try {
       await playerStore.playSongWithDetails(0)
-      router.push('/')
+      void router.push('/')
     } catch (error) {
       console.error('播放失败:', error)
     }
@@ -144,14 +151,14 @@ const handlePlayLikedSong = async (index: number) => {
   playerStore.setSongList(songs)
   try {
     await playerStore.playSongWithDetails(index)
-    router.push('/')
+    void router.push('/')
   } catch (error) {
     console.error('播放失败:', error)
   }
 }
 
 const goBack = () => {
-  router.push('/')
+  void router.push('/')
 }
 </script>
 

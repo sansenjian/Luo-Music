@@ -1,6 +1,7 @@
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
-import { createApp, type App as VueApp } from 'vue'
+import { VueQueryPlugin } from '@tanstack/vue-query'
+import { createApp } from 'vue'
 
 import './assets/main.css'
 import './assets/components/index.css'
@@ -18,29 +19,6 @@ const sentryEnabled = Boolean(sentryDsn) && import.meta.env.PROD && !isLocalhost
 type SentryRendererModule = typeof import('@sentry/electron/renderer')
 
 let sentryRenderer: SentryRendererModule | null = null
-let vueQueryInstalled = false
-let vueQueryInstallPromise: Promise<void> | null = null
-
-function ensureVueQueryPlugin(app: VueApp): Promise<void> {
-  if (vueQueryInstalled) {
-    return Promise.resolve()
-  }
-
-  if (vueQueryInstallPromise) {
-    return vueQueryInstallPromise
-  }
-
-  vueQueryInstallPromise = import('@tanstack/vue-query')
-    .then(({ VueQueryPlugin }) => {
-      app.use(VueQueryPlugin)
-      vueQueryInstalled = true
-    })
-    .finally(() => {
-      vueQueryInstallPromise = null
-    })
-
-  return vueQueryInstallPromise
-}
 
 function captureSentryException(error: unknown): void {
   sentryRenderer?.captureException(error)
@@ -118,27 +96,6 @@ function scheduleNonCriticalInit(task: () => void | Promise<void>): void {
   setTimeout(runTask, 0)
 }
 
-function clearCookies(): void {
-  try {
-    const cookieString = document.cookie
-    if (!cookieString) {
-      return
-    }
-
-    const cookies = cookieString.split(';')
-    cookies.forEach(cookie => {
-      const eqPos = cookie.indexOf('=')
-      const name = (eqPos > -1 ? cookie.slice(0, eqPos) : cookie).trim()
-      if (!name) {
-        return
-      }
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
-    })
-  } catch (error) {
-    getLogger().warn('Main', 'Failed to clear cookies', error)
-  }
-}
-
 const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
 
@@ -168,22 +125,12 @@ window.addEventListener('error', event => {
 })
 
 app.use(pinia)
+app.use(VueQueryPlugin)
 app.use(router)
-
-router.beforeResolve(async to => {
-  if (to.name !== 'UserCenter') {
-    return true
-  }
-
-  await ensureVueQueryPlugin(app)
-  return true
-})
 
 app.mount('#app')
 
 scheduleNonCriticalInit(async () => {
-  clearCookies()
-
   const tasks: Array<Promise<void>> = [initializeSentry()]
 
   if (import.meta.env.DEV) {

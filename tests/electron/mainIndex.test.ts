@@ -30,8 +30,10 @@ const unregisterAllShortcutsMock = vi.hoisted(() => vi.fn())
 const ipcConfigureMock = vi.hoisted(() => vi.fn())
 const ipcUseMock = vi.hoisted(() => vi.fn())
 const ipcInitializeMock = vi.hoisted(() => vi.fn())
+const performanceMiddlewareMock = vi.hoisted(() => Symbol('performanceMiddleware'))
 const registerWindowHandlersMock = vi.hoisted(() => vi.fn())
 const registerCacheHandlersMock = vi.hoisted(() => vi.fn())
+const registerConfigHandlersMock = vi.hoisted(() => vi.fn())
 const registerPlayerHandlersMock = vi.hoisted(() => vi.fn())
 const registerServiceHandlersMock = vi.hoisted(() => vi.fn())
 const registerApiHandlersMock = vi.hoisted(() => vi.fn())
@@ -99,8 +101,10 @@ vi.mock('../../electron/ipc/index', () => ({
   },
   errorMiddleware: Symbol('errorMiddleware'),
   loggerMiddleware: Symbol('loggerMiddleware'),
+  performanceMiddleware: performanceMiddlewareMock,
   registerWindowHandlers: registerWindowHandlersMock,
   registerCacheHandlers: registerCacheHandlersMock,
+  registerConfigHandlers: registerConfigHandlersMock,
   registerPlayerHandlers: registerPlayerHandlersMock,
   registerServiceHandlers: registerServiceHandlersMock,
   registerApiHandlers: registerApiHandlersMock,
@@ -176,23 +180,24 @@ describe('electron/main/index', () => {
     expect(lifecycleCallbacks?.onReady).toBeTypeOf('function')
   })
 
-  it('creates the window before warming services and does not block ready on service warmup', async () => {
+  it('waits for service warmup before creating the window', async () => {
     await import('../../electron/main/index.ts')
 
-    await lifecycleCallbacks?.onReady?.()
+    const readyPromise = lifecycleCallbacks?.onReady?.()
 
-    expect(createWindowMock).toHaveBeenCalledTimes(1)
-    expect(createTrayMock).toHaveBeenCalledTimes(1)
-    expect(registerShortcutsMock).toHaveBeenCalledTimes(1)
     expect(initializeServicesMock).toHaveBeenCalledTimes(1)
-    expect(createWindowMock.mock.invocationCallOrder[0]).toBeLessThan(
-      initializeServicesMock.mock.invocationCallOrder[0]
-    )
+    expect(createWindowMock).not.toHaveBeenCalled()
     expect(serviceWarmupResolved).toBe(false)
 
     resolveInitializeServices?.()
-    await Promise.resolve()
+    await readyPromise
 
     expect(getAllServiceStatusMock).toHaveBeenCalledTimes(1)
+    expect(createWindowMock).toHaveBeenCalledTimes(1)
+    expect(createTrayMock).toHaveBeenCalledTimes(1)
+    expect(registerShortcutsMock).toHaveBeenCalledTimes(1)
+    expect(initializeServicesMock.mock.invocationCallOrder[0]).toBeLessThan(
+      createWindowMock.mock.invocationCallOrder[0]
+    )
   })
 })

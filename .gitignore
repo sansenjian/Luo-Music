@@ -162,6 +162,7 @@ test-results/
 # IDE
 .idea/
 .claude/
+.codex/
 .ai/
 
 # Husky

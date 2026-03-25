@@ -1,9 +1,10 @@
-import { AxiosError, type AxiosAdapter, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import {
-  buildTransportPayload,
-  normalizeEndpoint,
-  type ApiServiceId
-} from './transportShared'
+  AxiosError,
+  type AxiosAdapter,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig
+} from 'axios'
+import { buildTransportPayload, normalizeEndpoint, type ApiServiceId } from './transportShared'
 
 type ElectronApiBridge = {
   apiRequest?: (
@@ -141,6 +142,7 @@ export function createElectronIpcAdapter(service: ApiServiceId): AxiosAdapter | 
     const endpoint = normalizeEndpoint(config.url)
 
     try {
+      // Use non-null assertion since we checked apiRequest exists above
       const data = await apiRequest(service, endpoint, buildTransportPayload(config))
 
       return {
