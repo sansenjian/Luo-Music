@@ -3,8 +3,8 @@
  * 平台服务基类实现，提供默认方法和类型安全
  */
 
-import type { IDisposable } from '../../base/common/lifecycle/disposable'
-import { Disposable } from '../../base/common/lifecycle/disposable'
+import type { IDisposable } from '@/base/common/lifecycle/disposable'
+import { Disposable } from '@/base/common/lifecycle/disposable'
 import type {
   IPlatformService,
   ICacheSize,
@@ -43,7 +43,11 @@ export function detectMobile(): boolean {
  */
 export function detectElectron(): boolean {
   if (typeof window === 'undefined') return false
-  return typeof (window as Window & { electronAPI?: unknown }).electronAPI !== 'undefined'
+  const globalWindow = window as Window & { electronAPI?: unknown; services?: unknown }
+  return (
+    typeof globalWindow.electronAPI !== 'undefined' ||
+    typeof globalWindow.services !== 'undefined'
+  )
 }
 
 /**
@@ -96,6 +100,10 @@ export abstract class PlatformServiceBase implements IPlatformService {
 
   send(_channel: string, _data: unknown): void {
     console.warn('[PlatformService] send not implemented')
+  }
+
+  supportsSendChannel(_channel: string): boolean {
+    return true
   }
 
   sendPlayingState(_playing: boolean): void {

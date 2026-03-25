@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const platformMock = vi.hoisted(() => ({
+  closeWindow: vi.fn(),
   isElectron: vi.fn(),
+  isMobile: vi.fn(),
+  maximizeWindow: vi.fn(),
+  minimizeWindow: vi.fn(),
   send: vi.fn(),
   on: vi.fn(),
   getCacheSize: vi.fn(),
@@ -20,6 +24,7 @@ describe('platformService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     platformMock.isElectron.mockReturnValue(true)
+    platformMock.isMobile.mockReturnValue(false)
     platformMock.getCacheSize.mockResolvedValue({ httpCache: 10 })
     platformMock.clearCache.mockResolvedValue({ success: ['cache'], failed: [] })
     platformMock.on.mockImplementation((_channel: string, handler: (payload: unknown) => void) => ({
@@ -42,6 +47,14 @@ describe('platformService', () => {
 
     expect(initializePlatformServiceMock).toHaveBeenCalled()
     expect(service.isElectron()).toBe(true)
+    expect(service.isMobile()).toBe(false)
+
+    service.minimizeWindow()
+    service.maximizeWindow()
+    service.closeWindow()
+    expect(platformMock.minimizeWindow).toHaveBeenCalledTimes(1)
+    expect(platformMock.maximizeWindow).toHaveBeenCalledTimes(1)
+    expect(platformMock.closeWindow).toHaveBeenCalledTimes(1)
 
     service.send('demo', { ok: true })
     expect(platformMock.send).toHaveBeenCalledWith('demo', { ok: true })

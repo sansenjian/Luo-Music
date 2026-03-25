@@ -10,47 +10,9 @@
 // 导入服务代理
 import { getIpcProxy } from './ipcProxy'
 import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channels'
+import type { AppConfig, ConfigChangeEvent, ConfigKey } from '../../shared/config'
 
-/**
- * 配置项类型定义
- */
-export interface AppConfig {
-  // 播放器配置
-  playMode: 'list' | 'loop' | 'random'
-  defaultVolume: number
-  autoPlay: boolean
-
-  // 歌词配置
-  lyricFontSize: number
-  lyricFontFamily: string
-  showTranslation: boolean
-
-  // 窗口配置
-  enableDesktopLyric: boolean
-  alwaysOnTop: boolean
-
-  // 缓存配置
-  cacheSize: number
-  enableCache: boolean
-
-  // 其他配置
-  theme: 'light' | 'dark' | 'system'
-  language: 'zh-CN' | 'en-US'
-}
-
-/**
- * 配置键类型
- */
-export type ConfigKey = keyof AppConfig
-
-/**
- * 配置变更事件
- */
-export interface ConfigChangeEvent {
-  key: ConfigKey
-  oldValue: unknown
-  newValue: unknown
-}
+export type { AppConfig, ConfigChangeEvent, ConfigKey } from '../../shared/config'
 
 /**
  * 配置服务代理类

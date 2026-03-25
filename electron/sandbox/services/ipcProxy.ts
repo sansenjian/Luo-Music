@@ -1,13 +1,3 @@
-/**
- * IPC 服务代理 - 渲染进程的安全 IPC 调用层
- *
- * 功能：
- * 1. 封装 electron IPC 调用
- * 2. 验证通道名称
- * 3. 统一错误处理
- * 4. 类型安全的调用接口
- */
-
 import { ipcRenderer } from 'electron'
 import {
   isValidInvokeChannel,
@@ -18,34 +8,14 @@ import {
   type ReceiveChannel
 } from '../../shared/protocol/channels'
 
-/**
- * IPC 调用结果类型
- */
 export interface IpcResult<T = unknown> {
   success: boolean
   data?: T
   error?: string
 }
 
-/**
- * 所有通道类型的联合
- */
 export type Channel = InvokeChannel | SendChannel | ReceiveChannel
 
-/**
- * IPC 服务代理类
- *
- * 用法：
- * ```typescript
- * const ipcProxy = new IpcProxy()
- *
- * // Invoke 调用（有返回值）
- * const result = await ipcProxy.invoke<PlaylistData>('player:get-playlist', { id: '123' })
- *
- * // Send 调用（无返回值）
- * ipcProxy.send('window:minimize')
- * ```
- */
 export class IpcProxy {
   private readonly ipcRenderer: Electron.IpcRenderer
 
@@ -56,46 +26,33 @@ export class IpcProxy {
     this.ipcRenderer = ipcRenderer
   }
 
-  /**
-   * Invoke 调用 - 发送请求并等待响应
-   *
-   * @param channel - IPC 通道名
-   * @param args - 参数
-   * @returns Promise 返回结果
-   *
-   * @example
-   * ```typescript
-   * const playlist = await ipcProxy.invoke<PlaylistData>('player:get-playlist', { id: '123' })
-   * ```
-   */
   async invoke<T>(channel: Channel, ...args: unknown[]): Promise<T> {
-    // 验证通道
     if (!isValidInvokeChannel(channel)) {
       throw new Error(`[IpcProxy] Invalid invoke channel: ${channel}`)
     }
 
     try {
       const result = await this.ipcRenderer.invoke(channel, ...args)
+      // 运行时基本验证：确保结果不是 null/undefined 除非通道允许
+      if (result === null || result === undefined) {
+        // 允许 null/undefined 返回，由调用方自行处理
+        return result as T
+      }
+      // 对于对象类型，确保不是错误对象
+      if (typeof result === 'object' && 'error' in result && 'success' in result) {
+        // 这是 IpcResult 格式，由调用方自行判断 success 字段
+        return result as T
+      }
       return result as T
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      throw new Error(`[IpcProxy] Invoke failed on ${channel}: ${message}`, { cause: error })
+      const message = error instanceof Error ? error.message : String(error)
+      const wrappedError = new Error(`[IpcProxy] Invoke failed on ${channel}: ${message}`)
+      ;(wrappedError as Error & { cause?: unknown }).cause = error
+      throw wrappedError
     }
   }
 
-  /**
-   * Send 调用 - 发送消息不等待响应
-   *
-   * @param channel - IPC 通道名
-   * @param args - 参数
-   *
-   * @example
-   * ```typescript
-   * ipcProxy.send('window:minimize')
-   * ```
-   */
   send(channel: Channel, ...args: unknown[]): void {
-    // 验证通道
     if (!isValidSendChannel(channel)) {
       throw new Error(`[IpcProxy] Invalid send channel: ${channel}`)
     }
@@ -103,22 +60,11 @@ export class IpcProxy {
     this.ipcRenderer.send(channel, ...args)
   }
 
-  /**
-   * On 监听 - 接收主进程推送的消息
-   *
-   * @param channel - IPC 通道名
-   * @param listener - 回调函数
-   * @returns 取消监听函数
-   *
-   * @example
-   * ```typescript
-   * const unsubscribe = ipcProxy.on('player:track-changed', (data) => {
-   *   console.log('Track changed:', data)
-   * })
-   * ```
-   */
+  supportsSendChannel(channel: string): channel is SendChannel {
+    return isValidSendChannel(channel)
+  }
+
   on<T>(channel: Channel, listener: (data: T) => void): () => void {
-    // 验证通道
     if (!isValidReceiveChannel(channel)) {
       throw new Error(`[IpcProxy] Invalid receive channel: ${channel}`)
     }
@@ -129,18 +75,11 @@ export class IpcProxy {
 
     this.ipcRenderer.on(channel, wrappedListener)
 
-    // 返回取消监听函数
     return () => {
       this.ipcRenderer.removeListener(channel, wrappedListener)
     }
   }
 
-  /**
-   * Once 监听 - 只监听一次消息
-   *
-   * @param channel - IPC 通道名
-   * @param listener - 回调函数
-   */
   once<T>(channel: Channel, listener: (data: T) => void): void {
     if (!isValidReceiveChannel(channel)) {
       throw new Error(`[IpcProxy] Invalid receive channel: ${channel}`)
@@ -151,21 +90,10 @@ export class IpcProxy {
     })
   }
 
-  /**
-   * RemoveListener - 移除监听器
-   *
-   * @param channel - IPC 通道名
-   * @param listener - 回调函数
-   */
   removeListener(channel: Channel, listener: (...args: unknown[]) => void): void {
     this.ipcRenderer.removeListener(channel, listener)
   }
 
-  /**
-   * RemoveAllListeners - 移除所有监听器
-   *
-   * @param channel - IPC 通道名
-   */
   removeAllListeners(channel?: Channel): void {
     if (channel) {
       this.ipcRenderer.removeAllListeners(channel)
@@ -175,14 +103,8 @@ export class IpcProxy {
   }
 }
 
-/**
- * 全局 IPC 代理实例
- */
 let globalIpcProxy: IpcProxy | null = null
 
-/**
- * 获取全局 IPC 代理
- */
 export function getIpcProxy(): IpcProxy {
   if (!globalIpcProxy) {
     globalIpcProxy = new IpcProxy()

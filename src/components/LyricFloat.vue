@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 
-import platform from '../platform'
 import { useActiveLyricState } from '../composables/useActiveLyricState'
+import { getPlatformAccessor } from '../services/platformAccessor'
+import { getPlayerAccessor } from '../services/playerAccessor'
 
+const platformService = getPlatformAccessor()
+const playerService = getPlayerAccessor()
 const { currentLyric, secondaryLyric, isPlaying } = useActiveLyricState({
   source: 'ipc',
   emptyText: 'Desktop Lyric'
@@ -26,18 +29,6 @@ let dragFrameId: number | null = null
 let pendingMoveX = 0
 let pendingMoveY = 0
 
-function withFallback(operation: () => unknown, fallback: () => void) {
-  Promise.resolve()
-    .then(operation)
-    .catch(() => {
-      try {
-        fallback()
-      } catch {
-        // Ignore fallback errors to avoid breaking lyric window interactions.
-      }
-    })
-}
-
 function onMouseEnter() {
   isHovering.value = true
 }
@@ -46,18 +37,41 @@ function onMouseLeave() {
   isHovering.value = false
 }
 
-function toggleLock() {
-  if (window.services?.window?.lockDesktopLyric) {
-    withFallback(
-      () => window.services.window.lockDesktopLyric(!isLocked.value),
-      () => {
-        void window.services?.invoke?.('lyric:lock', !isLocked.value)
-      }
-    )
+function runAsync(operation: () => Promise<void>) {
+  void Promise.resolve(operation()).catch(error => {
+    console.error('[LyricFloat] Async control operation failed', error)
+  })
+}
+
+function isUnsupportedReadyChannelError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  return /^(?:\[IpcProxy\] )?Invalid send channel: desktop-lyric-ready$/.test(error.message)
+}
+
+function notifyRendererReady() {
+  if (!platformService.supportsSendChannel('desktop-lyric-ready')) {
+    console.info('[LyricFloat] desktop-lyric-ready channel is unavailable in current preload')
     return
   }
 
-  void window.services?.invoke?.('lyric:lock', !isLocked.value)
+  try {
+    platformService.send('desktop-lyric-ready', undefined)
+  } catch (error) {
+    if (isUnsupportedReadyChannelError(error)) {
+      // Legacy preload can still receive lyric updates even without ready handshake support.
+      console.info('[LyricFloat] desktop-lyric-ready channel is unavailable in current preload')
+      return
+    }
+
+    console.error('[LyricFloat] Failed to notify desktop lyric renderer readiness', error)
+  }
+}
+
+function toggleLock() {
+  platformService.send('desktop-lyric-control', isLocked.value ? 'unlock' : 'lock')
 }
 
 function unlockWindow() {
@@ -72,39 +86,7 @@ function unlockWindow() {
 }
 
 function invokePlayerAction(action: 'play' | 'pause') {
-  const invokeChannel = action === 'play' ? 'player:play' : 'player:pause'
-
-  if (action === 'play' && window.services?.player?.play) {
-    withFallback(
-      () => window.services.player.play(),
-      () => {
-        void window.services?.invoke?.(invokeChannel)
-      }
-    )
-    return
-  }
-
-  if (action === 'pause' && window.services?.player?.pause) {
-    withFallback(
-      () => window.services.player.pause(),
-      () => {
-        void window.services?.invoke?.(invokeChannel)
-      }
-    )
-    return
-  }
-
-  if (window.services?.player?.toggle) {
-    withFallback(
-      () => window.services.player.toggle(),
-      () => {
-        void window.services?.invoke?.(invokeChannel)
-      }
-    )
-    return
-  }
-
-  void window.services?.invoke?.(invokeChannel)
+  runAsync(() => (action === 'play' ? playerService.play() : playerService.pause()))
 }
 
 function togglePlay() {
@@ -112,43 +94,15 @@ function togglePlay() {
 }
 
 function playPrev() {
-  if (window.services?.player?.skipToPrevious) {
-    withFallback(
-      () => window.services.player.skipToPrevious(),
-      () => {
-        void window.services?.invoke?.('player:skip-to-previous')
-      }
-    )
-    return
-  }
-
-  void window.services?.invoke?.('player:skip-to-previous')
+  runAsync(() => playerService.skipToPrevious())
 }
 
 function playNext() {
-  if (window.services?.player?.skipToNext) {
-    withFallback(
-      () => window.services.player.skipToNext(),
-      () => {
-        void window.services?.invoke?.('player:skip-to-next')
-      }
-    )
-    return
-  }
-
-  void window.services?.invoke?.('player:skip-to-next')
+  runAsync(() => playerService.skipToNext())
 }
 
 function closeWindow() {
-  if (window.services?.window?.close) {
-    withFallback(
-      () => window.services.window.close(),
-      () => platform.send('desktop-lyric-control', 'close')
-    )
-    return
-  }
-
-  platform.send('desktop-lyric-control', 'close')
+  platformService.send('desktop-lyric-control', 'close')
 }
 
 function onUnlockEnter() {
@@ -191,11 +145,7 @@ function flushPendingDragMove() {
     return
   }
 
-  if (window.services?.send) {
-    window.services.send('desktop-lyric-move', { x: pendingMoveX, y: pendingMoveY })
-  } else {
-    platform.send('desktop-lyric-move', { x: pendingMoveX, y: pendingMoveY })
-  }
+  platformService.send('desktop-lyric-move', { x: pendingMoveX, y: pendingMoveY })
   pendingMoveX = 0
   pendingMoveY = 0
 }
@@ -255,9 +205,8 @@ onMounted(() => {
   document.body.style.backgroundColor = 'transparent'
   document.documentElement.style.backgroundColor = 'transparent'
 
-  const subscribe = window.services?.on ?? platform.on
   unsubscribers.push(
-    subscribe('desktop-lyric-lock-state', payload => {
+    platformService.on('desktop-lyric-lock-state', payload => {
       const data = payload as { locked: boolean }
       if (typeof data.locked !== 'boolean') {
         return
@@ -271,6 +220,9 @@ onMounted(() => {
       }
     })
   )
+
+  // Notify the main process after the lyric window has mounted.
+  notifyRendererReady()
 })
 
 onUnmounted(() => {

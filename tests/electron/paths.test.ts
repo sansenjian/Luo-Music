@@ -75,7 +75,7 @@ describe('electron/utils/paths', () => {
     expect(paths.BUILD_DIR).toBe('/mock/resources/app.asar/build')
     expect(paths.MAIN_DIST).toBe('/mock/resources/app.asar/build/electron')
     expect(paths.RENDERER_DIST).toBe('/mock/resources/app.asar/build')
-    // 打包后脚本直接位于 resources/ 目录下（extraResource 配置）
+    // 打包后脚本位于 resources/ 根目录下（extraResource 直接复制到根目录）
     expect(paths.getScriptPath('qq-api-server.cjs')).toBe('/mock/resources/qq-api-server.cjs')
   })
 })

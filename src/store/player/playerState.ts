@@ -6,9 +6,8 @@
  */
 
 import type { LyricLine } from '@/utils/player/core/lyric'
-import type { Song } from '@/platform/music/interface'
-import type { ErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
-import type { LyricEngine } from '@/utils/player/core/lyric'
+import type { Song } from '@/types/schemas'
+import { PLAY_MODE, type PlayMode } from '@/utils/player/constants/playMode'
 
 /**
  * 播放器状态接口
@@ -23,7 +22,7 @@ export interface PlayerState {
   /** 音量 (0-1) */
   volume: number
   /** 播放模式 */
-  playMode: number
+  playMode: PlayMode
   /** 播放列表 */
   songList: Song[]
   /** 当前歌曲索引 */
@@ -54,14 +53,8 @@ export interface PlayerState {
   loading: boolean
   /** 是否紧凑模式 */
   isCompact: boolean
-  /** 错误处理器 */
-  errorHandler: ErrorHandler | null
-  /** 歌词引擎 */
-  lyricEngine: LyricEngine | null
   /** IPC 是否已初始化 */
   ipcInitialized: boolean
-  /** IPC 取消订阅函数列表 */
-  ipcUnsubscribers: Array<() => void>
 }
 
 /**
@@ -72,7 +65,7 @@ export interface PlayerStateChanges {
   progress?: number
   duration?: number
   volume?: number
-  playMode?: number
+  playMode?: PlayMode
   currentIndex?: number
   currentSong?: Song | null
   currentLyricIndex?: number
@@ -88,7 +81,7 @@ export function createInitialState(): PlayerState {
     progress: 0,
     duration: 0,
     volume: 0.7,
-    playMode: 0,
+    playMode: PLAY_MODE.SEQUENTIAL,
     songList: [],
     currentIndex: -1,
     currentSong: null,
@@ -104,10 +97,7 @@ export function createInitialState(): PlayerState {
     initialized: false,
     loading: false,
     isCompact: false,
-    errorHandler: null,
-    lyricEngine: null,
-    ipcInitialized: false,
-    ipcUnsubscribers: []
+    ipcInitialized: false
   }
 }
 

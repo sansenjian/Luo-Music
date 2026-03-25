@@ -1,26 +1,5 @@
-export interface Artist {
-  id: string | number
-  name: string
-}
-
-export interface Album {
-  id: string | number
-  name: string
-  picUrl: string
-}
-
-export interface Song {
-  id: string | number
-  name: string
-  artists: Artist[]
-  album: Album
-  duration: number
-  mvid: string | number
-  platform: 'netease' | 'qq'
-  originalId: string | number
-  extra?: Record<string, unknown>
-  [key: string]: unknown
-}
+// 从 Zod schema 导出统一类型，避免重复定义
+export type { Song, Artist, Album } from '@/types/schemas'
 
 export interface PlaylistDetail {
   id: string | number

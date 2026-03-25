@@ -2,8 +2,8 @@
  * Web Platform Service Implementation
  */
 
-import type { IDisposable } from '../../base/common/lifecycle/disposable'
-import { Disposable } from '../../base/common/lifecycle/disposable'
+import type { IDisposable } from '@/base/common/lifecycle/disposable'
+import { Disposable } from '@/base/common/lifecycle/disposable'
 import { PlatformServiceBase, formatBytes } from '../common/platformService'
 import type {
   ICacheSize,

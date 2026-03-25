@@ -20,7 +20,13 @@ export const SongSchema = z.object({
   mvid: z.union([z.string(), z.number()]),
   platform: z.enum(['netease', 'qq']),
   originalId: z.union([z.string(), z.number()]),
-  extra: z.record(z.string(), z.unknown()).optional()
+  extra: z.record(z.string(), z.unknown()).optional(),
+  // 运行时属性（非 API 返回）
+  url: z.string().optional(),
+  mediaId: z.union([z.string(), z.number()]).optional(),
+  retryCount: z.number().optional(),
+  unavailable: z.boolean().optional(),
+  errorMessage: z.string().nullable().optional()
 })
 
 export const PlaylistDetailSchema = z.object({

@@ -21,7 +21,7 @@ const selectedServer = computed({
 
 function handleSearch() {
   if (!keyword.value.trim()) return
-  searchStore.search(keyword.value)
+  void searchStore.search(keyword.value)
 }
 
 function handleKeydown(event: KeyboardEvent) {

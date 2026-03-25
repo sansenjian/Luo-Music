@@ -8,8 +8,6 @@ import { ipcService } from '../IpcService'
 import type { WindowManager } from '../../WindowManager'
 
 export function registerWindowHandlers(windowManager: WindowManager): void {
-  // ========== Invoke Handlers ==========
-
   ipcService.registerInvoke(INVOKE_CHANNELS.WINDOW_GET_SIZE, async () => {
     const win = windowManager.getWindow()
     if (!win) {
@@ -29,7 +27,9 @@ export function registerWindowHandlers(windowManager: WindowManager): void {
     return Promise.resolve(win?.isMinimized() ?? false)
   })
 
-  // ========== Send Handlers ==========
+  ipcService.registerInvoke(INVOKE_CHANNELS.WINDOW_GET_STATE, async () => {
+    return Promise.resolve(windowManager.getWindowState())
+  })
 
   ipcService.registerSend(SEND_CHANNELS.WINDOW_MINIMIZE, () => {
     windowManager.minimize()
@@ -41,6 +41,30 @@ export function registerWindowHandlers(windowManager: WindowManager): void {
 
   ipcService.registerSend(SEND_CHANNELS.WINDOW_CLOSE, () => {
     windowManager.close()
+  })
+
+  ipcService.registerSend(SEND_CHANNELS.WINDOW_MINIMIZE_TO_TRAY, () => {
+    windowManager.minimizeToTray()
+  })
+
+  ipcService.registerSend(SEND_CHANNELS.WINDOW_SET_ALWAYS_ON_TOP, (alwaysOnTop: boolean) => {
+    windowManager.setAlwaysOnTop(alwaysOnTop)
+  })
+
+  ipcService.registerSend(SEND_CHANNELS.WINDOW_TOGGLE_FULLSCREEN, () => {
+    windowManager.toggleFullScreen()
+  })
+
+  ipcService.registerSend(SEND_CHANNELS.WINDOW_RESTORE, () => {
+    windowManager.restore()
+  })
+
+  ipcService.registerSend(SEND_CHANNELS.WINDOW_SHOW, () => {
+    windowManager.show()
+  })
+
+  ipcService.registerSend(SEND_CHANNELS.WINDOW_HIDE, () => {
+    windowManager.hide()
   })
 
   ipcService.registerSend(

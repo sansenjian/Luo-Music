@@ -1,8 +1,3 @@
-/**
- * 服务注册表 - 支持 ServiceIdentifier 和字符串 ID 两种方式
- * 参考 VSCode 的 ServiceCollection 实现
- */
-
 import type { ServiceIdentifier, ServiceId } from './types'
 import { SERVICE_ID_MAP } from './types'
 import {
@@ -12,188 +7,213 @@ import {
   resetMetrics
 } from './performanceMonitor'
 
-// 重新导出 ServiceId 类型
 export type { ServiceId }
-
-/**
- * 依赖图 - 用于检测循环依赖
- * 参考 VS Code 的 Graph 实现
- */
-class DependencyGraph {
-  private nodes = new Set<string>()
-  private edges = new Map<string, Set<string>>()
-
-  addNode(node: string): void {
-    if (!this.nodes.has(node)) {
-      this.nodes.add(node)
-      this.edges.set(node, new Set())
-    }
-  }
-
-  addEdge(from: string, to: string): void {
-    this.addNode(from)
-    this.addNode(to)
-    this.edges.get(from)!.add(to)
-  }
-
-  removeNode(node: string): void {
-    this.nodes.delete(node)
-    this.edges.delete(node)
-    this.edges.forEach(deps => deps.delete(node))
-  }
-
-  /**
-   * 检测是否有循环依赖
-   * @returns 循环依赖路径，如果没有则返回 null
-   */
-  detectCycle(): string[] | null {
-    const WHITE = 0 // 未访问
-    const GRAY = 1 // 正在访问
-    const BLACK = 2 // 已完成
-
-    const color = new Map<string, number>()
-    const parent = new Map<string, string>()
-
-    for (const node of this.nodes) {
-      color.set(node, WHITE)
-    }
-
-    for (const startNode of this.nodes) {
-      if (color.get(startNode) !== WHITE) continue
-
-      const stack: string[] = [startNode]
-      while (stack.length > 0) {
-        const node = stack[stack.length - 1]
-
-        if (color.get(node) === WHITE) {
-          color.set(node, GRAY)
-          const deps = this.edges.get(node) || new Set()
-          for (const dep of deps) {
-            if (color.get(dep) === GRAY) {
-              // 找到循环，重建路径
-              const cycle: string[] = [dep]
-              let current = node
-              while (current !== dep) {
-                cycle.push(current)
-                current = parent.get(current)!
-              }
-              cycle.push(dep)
-              return cycle.reverse()
-            }
-            if (color.get(dep) === WHITE) {
-              parent.set(dep, node)
-              stack.push(dep)
-            }
-          }
-        } else if (color.get(node) === GRAY) {
-          color.set(node, BLACK)
-          stack.pop()
-        } else {
-          stack.pop()
-        }
-      }
-    }
-
-    return null
-  }
-
-  /**
-   * 获取拓扑排序结果（依赖创建顺序）
-   */
-  topologicalSort(): string[] {
-    const result: string[] = []
-    const visited = new Set<string>()
-
-    const visit = (node: string) => {
-      if (visited.has(node)) return
-      visited.add(node)
-
-      const deps = this.edges.get(node)
-      if (deps) {
-        for (const dep of deps) {
-          visit(dep)
-        }
-      }
-
-      result.push(node)
-    }
-
-    for (const node of this.nodes) {
-      visit(node)
-    }
-
-    return result
-  }
-
-  clear(): void {
-    this.nodes.clear()
-    this.edges.clear()
-  }
-}
 
 type ServiceFactory<T> = () => T
 
-// 使用 ServiceIdentifier 作为 Key
+type DisposableLike = {
+  dispose(): void
+}
+
+export interface ServiceLifecycle {
+  onActivate?(): void | Promise<void>
+  onDeactivate?(): void | Promise<void>
+}
+
+type LifecycleOperation = {
+  instance: unknown
+  promise: Promise<void>
+}
+
 const factories = new Map<ServiceIdentifier<unknown>, ServiceFactory<unknown>>()
 const instances = new Map<ServiceIdentifier<unknown>, unknown>()
-const graph = new DependencyGraph()
+const activationOperations = new Map<ServiceIdentifier<unknown>, LifecycleOperation>()
+const deactivationOperations = new Map<ServiceIdentifier<unknown>, LifecycleOperation>()
+const activatedInstances = new Map<ServiceIdentifier<unknown>, unknown>()
+const disposedInstances = new WeakSet<object>()
 
-// 当前正在创建的服务栈（用于检测循环依赖）
-const creatingStack: string[] = []
+// 全局解析栈，用于检测循环依赖
+const resolutionStack: string[] = []
 
-/**
- * 注册服务 - 支持 ServiceIdentifier 和字符串 ID 两种方式
- *
- * @example
- * ```typescript
- * // 方式 1：使用 ServiceIdentifier（推荐，类型安全）
- * registerService(IApiService, createApiService)
- *
- * // 方式 2：使用字符串 ID（向后兼容）
- * registerService('api', createApiService)
- * ```
- */
+function isDisposableLike(value: unknown): value is DisposableLike {
+  return typeof value === 'object' && value !== null && 'dispose' in value
+}
+
+function isServiceLifecycleLike(value: unknown): value is ServiceLifecycle {
+  return typeof value === 'object' && value !== null
+}
+
+function disposeServiceInstance(identifierName: string, instance: unknown): void {
+  if (!isDisposableLike(instance) || typeof instance.dispose !== 'function') {
+    return
+  }
+
+  if (typeof instance === 'object' && instance !== null) {
+    if (disposedInstances.has(instance)) {
+      return
+    }
+
+    disposedInstances.add(instance)
+  }
+
+  try {
+    instance.dispose()
+  } catch (error) {
+    console.warn(`[Services] Failed to dispose service "${identifierName}"`, error)
+  }
+}
+
+async function runLifecycleHook(
+  identifierName: string,
+  instance: unknown,
+  hookName: 'onActivate' | 'onDeactivate'
+): Promise<void> {
+  if (!isServiceLifecycleLike(instance)) {
+    return
+  }
+
+  const hook = instance[hookName]
+  if (typeof hook !== 'function') {
+    return
+  }
+
+  try {
+    await hook.call(instance)
+  } catch (error) {
+    throw new Error(`[Services] Failed to ${hookName} service "${identifierName}"`, {
+      cause: error
+    })
+  }
+}
+
+function getActivationOperation(
+  identifier: ServiceIdentifier<unknown>,
+  instance: unknown
+): LifecycleOperation | undefined {
+  const operation = activationOperations.get(identifier)
+  return operation?.instance === instance ? operation : undefined
+}
+
+function getDeactivationOperation(
+  identifier: ServiceIdentifier<unknown>,
+  instance: unknown
+): LifecycleOperation | undefined {
+  const operation = deactivationOperations.get(identifier)
+  return operation?.instance === instance ? operation : undefined
+}
+
+function isActivatedInstance(identifier: ServiceIdentifier<unknown>, instance: unknown): boolean {
+  return activatedInstances.get(identifier) === instance
+}
+
+function clearActiveInstance(identifier: ServiceIdentifier<unknown>, instance: unknown): void {
+  if (activatedInstances.get(identifier) === instance) {
+    activatedInstances.delete(identifier)
+  }
+}
+
+const DEACTIVATION_TIMEOUT_MS = 5000
+
+function startInstanceDeactivation(
+  identifier: ServiceIdentifier<unknown>,
+  instance: unknown
+): Promise<void> {
+  const existingOperation = getDeactivationOperation(identifier, instance)
+  if (existingOperation) {
+    return existingOperation.promise
+  }
+
+  const activationPromise =
+    getActivationOperation(identifier, instance)?.promise ?? Promise.resolve()
+
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+
+  const promise = activationPromise
+    .catch(() => {})
+    .then(() => {
+      const deactivationPromise = runLifecycleHook(identifier.name, instance, 'onDeactivate')
+      // Windows 平台：添加超时保护，防止 onDeactivate 挂起
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error(`onDeactivate timeout after ${DEACTIVATION_TIMEOUT_MS}ms`))
+        }, DEACTIVATION_TIMEOUT_MS)
+      })
+      return Promise.race([deactivationPromise, timeoutPromise])
+    })
+    .catch(error => {
+      console.warn(`[Services] onDeactivate failed for "${identifier.name}":`, error)
+      // 超时或失败时继续清理，不阻塞 dispose
+    })
+    .finally(() => {
+      // 清除定时器，防止事件循环无法退出
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+      }
+
+      clearActiveInstance(identifier, instance)
+
+      if (getDeactivationOperation(identifier, instance)) {
+        deactivationOperations.delete(identifier)
+      }
+    })
+
+  deactivationOperations.set(identifier, { instance, promise })
+  return promise
+}
+
+function teardownServiceInstance(identifier: ServiceIdentifier<unknown>, instance: unknown): void {
+  const hasLifecycleState =
+    isActivatedInstance(identifier, instance) ||
+    !!getActivationOperation(identifier, instance) ||
+    !!getDeactivationOperation(identifier, instance)
+
+  if (!hasLifecycleState) {
+    disposeServiceInstance(identifier.name, instance)
+    return
+  }
+
+  void startInstanceDeactivation(identifier, instance)
+    .catch(error => {
+      console.warn(
+        `[Services] Failed to asynchronously deactivate service "${identifier.name}"`,
+        error
+      )
+    })
+    .finally(() => {
+      disposeServiceInstance(identifier.name, instance)
+    })
+}
+
 export function registerService<T>(
   id: ServiceIdentifier<T> | ServiceId,
   factory: ServiceFactory<T>
 ): void {
   const identifier = toIdentifier(id)
+  const existing = instances.get(identifier)
+
+  if (existing !== undefined) {
+    teardownServiceInstance(identifier, existing)
+  }
+
   factories.set(identifier, factory as ServiceFactory<unknown>)
   instances.delete(identifier)
-
-  // 注册依赖图节点
-  graph.addNode(identifier.name)
 }
 
-/**
- * 获取服务 - 支持 ServiceIdentifier 和字符串 ID 两种方式
- *
- * @example
- * ```typescript
- * // 方式 1：使用 ServiceIdentifier（推荐，类型安全）
- * const api = getService(IApiService)
- *
- * // 方式 2：使用字符串 ID（向后兼容）
- * const api = getService('api')
- * ```
- */
 export function getService<T>(id: ServiceIdentifier<T> | ServiceId): T {
   const identifier = toIdentifier(id)
   const existing = instances.get(identifier)
-  if (existing) {
-    // 记录已存在服务的获取
+  if (existing !== undefined) {
     trackServiceGet(identifier.name)
     return existing as T
   }
 
   const idName = identifier.name
 
-  // 检测循环依赖
-  if (creatingStack.includes(idName)) {
-    const cycle = [...creatingStack, idName]
-    creatingStack.length = 0 // 清空栈
+  // 检查循环依赖
+  if (resolutionStack.includes(idName)) {
+    const cycle = [...resolutionStack, idName]
     throw new Error(
-      `[Services] Circular dependency detected: ${cycle.join(' → ')}\n` +
+      `[Services] Circular dependency detected: ${cycle.join(' -> ')}\n` +
         'Consider refactoring services to avoid circular dependencies.'
     )
   }
@@ -203,50 +223,104 @@ export function getService<T>(id: ServiceIdentifier<T> | ServiceId): T {
     throw new Error(`[Services] Service "${idName}" is not registered`)
   }
 
-  // 记录正在创建的服务
-  creatingStack.push(idName)
+  resolutionStack.push(idName)
 
   try {
-    // 开始追踪初始化时间
     trackServiceInit(idName)
 
     const instance = factory()
     instances.set(identifier, instance)
 
-    // 完成初始化追踪
     completeServiceInit(idName)
-
-    // 记录服务获取
     trackServiceGet(idName)
 
     return instance as T
   } finally {
-    // 创建完成后从栈中移除
-    creatingStack.pop()
+    resolutionStack.pop()
   }
 }
 
-/**
- * 重置所有服务（用于测试）
- */
+export async function activateService<T>(id: ServiceIdentifier<T> | ServiceId): Promise<T> {
+  const identifier = toIdentifier(id)
+  const instance = getService<T>(identifier)
+
+  if (isActivatedInstance(identifier, instance)) {
+    return instance
+  }
+
+  const pending = getActivationOperation(identifier, instance)
+  if (pending) {
+    await pending.promise
+    return instance
+  }
+
+  const activation = runLifecycleHook(identifier.name, instance, 'onActivate')
+    .then(() => {
+      if (instances.get(identifier) === instance) {
+        activatedInstances.set(identifier, instance)
+      }
+    })
+    .finally(() => {
+      if (getActivationOperation(identifier, instance)) {
+        activationOperations.delete(identifier)
+      }
+    })
+
+  activationOperations.set(identifier, { instance, promise: activation })
+  await activation
+
+  return instance
+}
+
+export async function deactivateService<T>(id: ServiceIdentifier<T> | ServiceId): Promise<void> {
+  const identifier = toIdentifier(id)
+  const instance = instances.get(identifier)
+
+  if (instance === undefined) {
+    return
+  }
+
+  await startInstanceDeactivation(identifier, instance)
+}
+
+export async function activateRegisteredServices(
+  ids?: Array<ServiceIdentifier<unknown> | ServiceId>
+): Promise<void> {
+  const identifiers =
+    ids?.map(id => toIdentifier(id)) ?? Array.from(factories.keys(), id => toIdentifier(id))
+
+  await Promise.all(identifiers.map(identifier => activateService(identifier)))
+}
+
+export async function deactivateRegisteredServices(
+  ids?: Array<ServiceIdentifier<unknown> | ServiceId>
+): Promise<void> {
+  const identifiers =
+    ids?.map(id => toIdentifier(id)) ?? Array.from(instances.keys(), id => toIdentifier(id))
+
+  await Promise.all(identifiers.map(identifier => deactivateService(identifier)))
+}
+
 export function resetServices(): void {
+  for (const [identifier, instance] of instances.entries()) {
+    teardownServiceInstance(identifier, instance)
+  }
+
   instances.clear()
-  graph.clear()
-  creatingStack.length = 0
+  resolutionStack.length = 0 // 清理解析栈
   resetMetrics()
 }
 
-/**
- * 获取服务注册状态
- */
+export async function resetServicesAsync(): Promise<void> {
+  await deactivateRegisteredServices()
+  resetServices()
+}
+
 export function isRegistered(id: ServiceIdentifier<unknown> | ServiceId): boolean {
   const identifier = toIdentifier(id)
   return factories.has(identifier)
 }
 
-/**
- * 将 ServiceId 或 ServiceIdentifier 转换为 ServiceIdentifier
- */
 function toIdentifier<T>(id: ServiceIdentifier<T> | ServiceId): ServiceIdentifier<T> {
   if (typeof id === 'string') {
     const identifier = SERVICE_ID_MAP[id as ServiceId]
@@ -258,9 +332,6 @@ function toIdentifier<T>(id: ServiceIdentifier<T> | ServiceId): ServiceIdentifie
   return id
 }
 
-/**
- * 获取已注册服务的名称列表
- */
 export function getRegisteredServices(): string[] {
   return Array.from(factories.keys()).map(id => id.name)
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HomeTab } from '../../composables/useHomeShell'
+import type { HomeTab } from '@/composables/useHomeShell'
 
 const props = defineProps<{
   activeTab: HomeTab

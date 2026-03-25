@@ -9,3 +9,6 @@
 
 export * from './protocol/channels'
 export * from './protocol/cache'
+export * from './config'
+export * from './audio'
+export * from './netease'

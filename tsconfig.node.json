@@ -10,7 +10,11 @@
     "checkJs": false,
     "strict": true,
     "types": ["node", "electron"],
-    "noEmit": true  // ← 添加这行，停止生成 .js 文件
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": [
     "vite.config.ts",

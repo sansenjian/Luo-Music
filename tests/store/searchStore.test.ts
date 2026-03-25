@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { resetServices } from '../../src/services/registry'
-import { setupServices } from '../../src/services'
+import { setupServices, services } from '../../src/services'
 import type { Song } from '../../src/platform/music/interface'
 import { usePlayerStore } from '../../src/store/playerStore'
 import { searchResultItemToSong, useSearchStore } from '../../src/store/searchStore'
@@ -28,9 +28,16 @@ const adapterMock = {
   search: vi.fn()
 }
 
-vi.mock('../../src/platform/music', () => ({
-  getMusicAdapter: vi.fn(() => adapterMock)
-}))
+vi.mock('../../src/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('../../src/services')>()
+  return {
+    ...actual,
+    services: {
+      ...actual.services,
+      music: vi.fn(() => adapterMock)
+    }
+  }
+})
 
 describe('searchStore', () => {
   beforeEach(() => {
@@ -79,7 +86,7 @@ describe('searchStore', () => {
     const first = createDeferred<{ list: Song[]; total: number }>()
     const second = createDeferred<{ list: Song[]; total: number }>()
 
-    adapterMock.search.mockImplementation((keyword: string) => {
+    adapterMock.search.mockImplementation((_platform: string, keyword: string) => {
       if (keyword === 'first') return first.promise
       if (keyword === 'second') return second.promise
       throw new Error(`Unexpected keyword: ${keyword}`)
@@ -135,6 +142,48 @@ describe('searchStore', () => {
     expect(store.isLoading).toBe(false)
   })
 
+  it('treats superseded search failures as cancellation and keeps latest state', async () => {
+    const first = createDeferred<{ list: Song[]; total: number }>()
+    const second = createDeferred<{ list: Song[]; total: number }>()
+
+    adapterMock.search.mockImplementation((_platform: string, keyword: string) => {
+      if (keyword === 'first') return first.promise
+      if (keyword === 'second') return second.promise
+      throw new Error(`Unexpected keyword: ${keyword}`)
+    })
+
+    const store = useSearchStore()
+    const firstRequest = store.search('first')
+    const secondRequest = store.search('second')
+
+    second.resolve({
+      list: [
+        {
+          id: 'second-song',
+          name: 'Second',
+          artists: [{ id: 1, name: 'Artist B' }],
+          album: { id: 2, name: 'Album B', picUrl: 'b.jpg' },
+          duration: 180000,
+          mvid: 0,
+          platform: 'netease',
+          originalId: 'second-song'
+        }
+      ],
+      total: 1
+    })
+
+    await secondRequest
+
+    first.reject(new Error('stale search failed'))
+
+    await expect(firstRequest).resolves.toBeUndefined()
+    expect(store.keyword).toBe('second')
+    expect(store.results).toHaveLength(1)
+    expect(store.results[0].id).toBe('second-song')
+    expect(store.error).toBeNull()
+    expect(store.isLoading).toBe(false)
+  })
+
   it('plays search results through playSongWithDetails after building the playlist', async () => {
     const searchStore = useSearchStore()
     const playerStore = usePlayerStore()
@@ -162,5 +211,44 @@ describe('searchStore', () => {
     expect(playerStore.songList).toHaveLength(1)
     expect((playerStore.songList[0] as Song & { mediaId?: string }).mediaId).toBe('media-mid')
     expect(playSongWithDetails).toHaveBeenCalledWith(0)
+  })
+
+  it('clears loading state when canceling an in-flight search via clearResults', async () => {
+    const searchDeferred = createDeferred<{ list: Song[]; total: number }>()
+
+    adapterMock.search.mockReturnValue(searchDeferred.promise)
+
+    const store = useSearchStore()
+    const searchPromise = store.search('test')
+
+    expect(store.isLoading).toBe(true)
+
+    store.clearResults()
+
+    expect(store.isLoading).toBe(false)
+    expect(store.results).toHaveLength(0)
+    expect(store.keyword).toBe('')
+    expect(store.error).toBeNull()
+
+    searchDeferred.resolve({
+      list: [
+        {
+          id: 'test-song',
+          name: 'Test',
+          artists: [{ id: 1, name: 'Artist' }],
+          album: { id: 1, name: 'Album', picUrl: 'test.jpg' },
+          duration: 180000,
+          mvid: 0,
+          platform: 'netease',
+          originalId: 'test-song'
+        }
+      ],
+      total: 1
+    })
+
+    await searchPromise
+
+    expect(store.results).toHaveLength(0)
+    expect(store.isLoading).toBe(false)
   })
 })

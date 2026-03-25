@@ -1,15 +1,15 @@
-<script setup>
-import { ref, computed, defineAsyncComponent } from 'vue'
+<script setup lang="ts">
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '../store/userStore'
-import { usePlaylistStore } from '../store/playlistStore'
-import { usePlayerStore } from '../store/playerStore.ts'
-import { useUserDataQuery } from '../composables/useUserDataQuery'
-import { useLikedSongs } from '../composables/useLikedSongs'
-import { useUserPlaylists } from '../composables/useUserPlaylists'
-import { useUserEvents } from '../composables/useUserEvents'
 
-// 异步加载用户中心子组件
+import { useLikedSongs } from '../composables/useLikedSongs'
+import { useUserDataQuery } from '../composables/useUserDataQuery'
+import { useUserEvents } from '../composables/useUserEvents'
+import { useUserPlaylists } from '../composables/useUserPlaylists'
+import { usePlayerStore } from '../store/playerStore.ts'
+import { usePlaylistStore } from '../store/playlistStore'
+import { useUserStore } from '../store/userStore'
+
 const UserProfileHeader = defineAsyncComponent(
   () => import('../components/user/UserProfileHeader.vue')
 )
@@ -17,59 +17,100 @@ const LikedSongsView = defineAsyncComponent(() => import('../components/user/Lik
 const PlaylistsView = defineAsyncComponent(() => import('../components/user/PlaylistsView.vue'))
 const EventsView = defineAsyncComponent(() => import('../components/user/EventsView.vue'))
 
+type UserTab = 'liked' | 'playlist' | 'events'
+
 const router = useRouter()
 const userStore = useUserStore()
 const playlistStore = usePlaylistStore()
 const playerStore = usePlayerStore()
 
-const activeTab = ref('liked')
-const loadingMap = ref({
+const activeTab = ref<UserTab>('liked')
+const loadingMap = ref<Record<UserTab, boolean>>({
   liked: false,
   playlist: false,
   events: false
 })
+const currentUserId = computed(() => userStore.userId)
 
-// Use composables for data fetching
-// 使用 Vue Query 获取用户数据，支持响应式 userId
 useUserDataQuery(() => userStore.userId)
-const { likeSongs, formattedSongs, count: likedCount, loadLikedSongs } = useLikedSongs()
-const { playlists, count: playlistCount, loadPlaylists, loadPlaylistSongs } = useUserPlaylists()
-const { events, count: eventsCount, loadEvents } = useUserEvents()
+const {
+  likeSongs,
+  formattedSongs,
+  count: likedCount,
+  loadLikedSongs,
+  resetLikedSongs
+} = useLikedSongs()
+const {
+  playlists,
+  count: playlistCount,
+  loadPlaylists,
+  loadPlaylistSongs,
+  resetPlaylists
+} = useUserPlaylists()
+const { events, count: eventsCount, loadEvents, resetEvents } = useUserEvents()
 
-// Tab counts
 const tabCounts = computed(() => ({
   liked: likedCount.value,
   playlist: playlistCount.value,
   events: eventsCount.value
 }))
 
-// Load all data on mount
-const loadAllData = async () => {
-  if (!userStore.isLoggedIn) {
-    router.push('/')
-    return
-  }
+const activeTabLoading = computed(() => loadingMap.value[activeTab.value])
 
-  const userId = userStore.userId
+let activeLoadId = 0
 
-  // 独立设置每个 tab 的加载状态
+const resetUserContent = () => {
+  activeLoadId += 1
+  loadingMap.value.liked = false
+  loadingMap.value.playlist = false
+  loadingMap.value.events = false
+  resetLikedSongs()
+  resetPlaylists()
+  resetEvents()
+}
+
+const loadAllData = async (userId: string | number) => {
+  const loadId = ++activeLoadId
+
   loadingMap.value.liked = true
   loadingMap.value.playlist = true
   loadingMap.value.events = true
 
   await Promise.all([
-    // loadUserData 由 Vue Query 自动管理
-    loadLikedSongs(userId).finally(() => (loadingMap.value.liked = false)),
-    loadPlaylists(userId).finally(() => (loadingMap.value.playlist = false)),
-    loadEvents(userId).finally(() => (loadingMap.value.events = false))
+    loadLikedSongs(userId).finally(() => {
+      if (loadId === activeLoadId) {
+        loadingMap.value.liked = false
+      }
+    }),
+    loadPlaylists(userId).finally(() => {
+      if (loadId === activeLoadId) {
+        loadingMap.value.playlist = false
+      }
+    }),
+    loadEvents(userId).finally(() => {
+      if (loadId === activeLoadId) {
+        loadingMap.value.events = false
+      }
+    })
   ])
 }
 
-// Initial load
-loadAllData()
+watch(
+  () => [userStore.isLoggedIn, userStore.userId] as const,
+  ([isLoggedIn, userId]) => {
+    resetUserContent()
 
-// Event handlers
-const handlePlaylistClick = async playlistId => {
+    if (!isLoggedIn || !userId) {
+      void router.push('/')
+      return
+    }
+
+    void loadAllData(userId)
+  },
+  { immediate: true }
+)
+
+const handlePlaylistClick = async (playlistId: string | number) => {
   loadingMap.value.playlist = true
   try {
     const songs = await loadPlaylistSongs(playlistId)
@@ -78,10 +119,9 @@ const handlePlaylistClick = async playlistId => {
       playerStore.setSongList(songs)
       try {
         await playerStore.playSongWithDetails(0)
-        router.push('/')
+        void router.push('/')
       } catch (playError) {
         console.error('播放失败:', playError)
-        // 播放失败不跳转，保留当前页面
       }
     }
   } catch (error) {
@@ -98,27 +138,27 @@ const handlePlayAllLiked = async () => {
     playerStore.setSongList(songs)
     try {
       await playerStore.playSongWithDetails(0)
-      router.push('/')
+      void router.push('/')
     } catch (error) {
       console.error('播放失败:', error)
     }
   }
 }
 
-const handlePlayLikedSong = async index => {
+const handlePlayLikedSong = async (index: number) => {
   const songs = likeSongs.value
   playlistStore.setPlaylist(songs)
   playerStore.setSongList(songs)
   try {
     await playerStore.playSongWithDetails(index)
-    router.push('/')
+    void router.push('/')
   } catch (error) {
     console.error('播放失败:', error)
   }
 }
 
 const goBack = () => {
-  router.push('/')
+  void router.push('/')
 }
 </script>
 
@@ -143,7 +183,8 @@ const goBack = () => {
 
     <div class="user-center-content">
       <UserProfileHeader
-        :user-id="userStore.userId"
+        v-if="currentUserId !== null"
+        :user-id="currentUserId"
         :avatar-url="userStore.avatarUrl"
         :nickname="userStore.nickname"
       />
@@ -178,7 +219,7 @@ const goBack = () => {
           </div>
         </div>
 
-        <div v-if="loadingMap[activeTab]" class="loading-container">
+        <div v-if="activeTabLoading" class="loading-container">
           <p>加载中...</p>
         </div>
 

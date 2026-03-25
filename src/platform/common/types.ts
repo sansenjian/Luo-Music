@@ -1,5 +1,5 @@
 ﻿import type { CacheClearOptions, CacheClearResult } from '../../../electron/shared/protocol/cache'
-import type { IDisposable } from '../../base/common/lifecycle/disposable'
+import type { IDisposable } from '@/base/common/lifecycle/disposable'
 
 export const enum Platform {
   Web,
@@ -42,6 +42,7 @@ export interface ICacheService {
 export interface IIPCService {
   on(channel: string, callback: IMessageHandler): IDisposable
   send(channel: string, data: unknown): void
+  supportsSendChannel(channel: string): boolean
   sendPlayingState(playing: boolean): void
   sendPlayModeChange(mode: number): void
 }

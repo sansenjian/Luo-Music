@@ -3,14 +3,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import { createInitialState } from '@/store/player/playerState'
 import { PlaybackActions } from '@/store/player/playbackActions'
-import type { Song } from '@/platform/music/interface'
+import type { Song } from '@/types/schemas'
+import type { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
+
+type MockPlaybackErrorHandler = PlaybackErrorHandler & {
+  markAsUnavailable: ReturnType<typeof vi.fn>
+  playNextSkipUnavailable: ReturnType<typeof vi.fn>
+}
 
 const adapterMock = vi.hoisted(() => ({
   getSongUrl: vi.fn(),
   getLyric: vi.fn()
 }))
 
-const getMusicAdapterMock = vi.hoisted(() => vi.fn(() => adapterMock))
+const servicesMock = vi.hoisted(() => ({
+  music: vi.fn(() => adapterMock)
+}))
+
 const lyricParseMock = vi.hoisted(() => vi.fn())
 const errorEmitMock = vi.hoisted(() => vi.fn())
 const noCopyrightMock = vi.hoisted(() =>
@@ -27,9 +36,16 @@ const isCanceledRequestErrorMock = vi.hoisted(() =>
   vi.fn((error: unknown) => Boolean((error as { __cancel?: boolean })?.__cancel))
 )
 
-vi.mock('@/platform/music', () => ({
-  getMusicAdapter: getMusicAdapterMock
-}))
+vi.mock('@/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services')>()
+  return {
+    ...actual,
+    services: {
+      ...actual.services,
+      music: servicesMock.music
+    }
+  }
+})
 
 vi.mock('@/utils/player/core/lyric', () => ({
   LyricParser: {
@@ -65,6 +81,18 @@ function createSong(overrides: Partial<Song> & Record<string, unknown> = {}): So
   }
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve
+    reject = nextReject
+  })
+
+  return { promise, resolve, reject }
+}
+
 describe('playbackActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -75,10 +103,10 @@ describe('playbackActions', () => {
     const onStateChange = vi.fn((changes: Partial<typeof state>) => Object.assign(state, changes))
     const playSongByIndex = vi.fn().mockResolvedValue(undefined)
     const setLyricsArray = vi.fn()
-    const errorHandler = {
+    const errorHandler: MockPlaybackErrorHandler = {
       markAsUnavailable: vi.fn(),
       playNextSkipUnavailable: vi.fn()
-    }
+    } as unknown as MockPlaybackErrorHandler
 
     const actions = new PlaybackActions({
       getState: () => state,
@@ -147,7 +175,8 @@ describe('playbackActions', () => {
 
     expect(onStateChange).toHaveBeenCalledWith({
       currentIndex: 0,
-      currentSong: state.songList[0]
+      currentSong: state.songList[0],
+      currentLyricIndex: -1
     })
     expect(playSongByIndex).toHaveBeenCalledWith(0)
   })
@@ -173,8 +202,10 @@ describe('playbackActions', () => {
 
     await actions.playSongWithDetails(0)
 
-    expect(getMusicAdapterMock).toHaveBeenCalledWith('qq')
-    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('song-1', { mediaId: 'media-1' })
+    expect(servicesMock.music).toHaveBeenCalled()
+    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-1', {
+      mediaId: 'media-1'
+    })
     expect(song.url).toBe('https://song.test/stream.mp3')
     expect(playSongByIndex).toHaveBeenCalledWith(0)
     expect(setLyricsArray).toHaveBeenCalledWith([
@@ -184,7 +215,7 @@ describe('playbackActions', () => {
     expect(onStateChange).toHaveBeenLastCalledWith({ loading: false })
   })
 
-  it('clears lyrics when lyric loading is cancelled', async () => {
+  it('keeps current lyrics when lyric loading is cancelled', async () => {
     const { actions, state, setLyricsArray } = createSubject()
     state.songList = [createSong({ url: 'https://song.test/ready.mp3' })]
     adapterMock.getLyric.mockRejectedValue({ __cancel: true })
@@ -192,7 +223,69 @@ describe('playbackActions', () => {
     await actions.playSongWithDetails(0)
 
     expect(isCanceledRequestErrorMock).toHaveBeenCalled()
+    // setLyricsArray is called once to clear lyrics when song starts (playSongByIndex)
+    // but not called again when lyric request is cancelled
+    expect(setLyricsArray).toHaveBeenCalledTimes(1)
     expect(setLyricsArray).toHaveBeenCalledWith([])
+  })
+
+  it('ignores stale lyric responses from superseded playback requests', async () => {
+    const { actions, state, setLyricsArray } = createSubject()
+    state.songList = [
+      createSong({ id: 'song-1', url: 'https://song.test/1.mp3' }),
+      createSong({ id: 'song-2', url: 'https://song.test/2.mp3' })
+    ]
+
+    const firstLyric = createDeferred<{ lrc: string; tlyric: string; romalrc: string }>()
+    const secondLyric = createDeferred<{ lrc: string; tlyric: string; romalrc: string }>()
+
+    adapterMock.getLyric
+      .mockImplementationOnce(() => firstLyric.promise)
+      .mockImplementationOnce(() => secondLyric.promise)
+
+    // Reset lyricParseMock to ensure clean state
+    lyricParseMock.mockClear()
+    lyricParseMock.mockImplementation((lrc: string) => [
+      {
+        time: 0,
+        text: lrc.includes('New line') ? 'New line' : 'Old line',
+        trans: '',
+        roma: ''
+      }
+    ])
+
+    const firstPlayback = actions.playSongWithDetails(0)
+    const secondPlayback = actions.playSongWithDetails(1)
+
+    secondLyric.resolve({
+      lrc: '[00:00.00]New line',
+      tlyric: '',
+      romalrc: ''
+    })
+    await secondPlayback
+
+    firstLyric.resolve({
+      lrc: '[00:00.00]Old line',
+      tlyric: '',
+      romalrc: ''
+    })
+    await firstPlayback
+
+    // setLyricsArray is called:
+    // 1. Empty array when first song starts (playSongByIndex)
+    // 2. Empty array when second song starts (playSongByIndex) - clears previous lyrics
+    // 3. Parsed lyrics from second (current) song's lyric request
+    expect(setLyricsArray).toHaveBeenCalledTimes(3)
+    // Verify the last call is with the new lyrics (not the old/stale ones)
+    expect(setLyricsArray).toHaveBeenLastCalledWith([
+      { time: 0, text: 'New line', trans: '', roma: '' }
+    ])
+    // Verify setLyricsArray was never called with the old/stale lyrics
+    const callsWithOldLyrics = setLyricsArray.mock.calls.filter((call: unknown[]) => {
+      const arg = call[0] as Array<{ text: string }>
+      return arg.length > 0 && arg[0].text === 'Old line'
+    })
+    expect(callsWithOldLyrics).toHaveLength(0)
   })
 
   it('marks songs unavailable and rethrows when auto skip is disabled', async () => {

@@ -1,14 +1,14 @@
 ﻿/**
- * IPC 妯″潡缁熶竴瀵煎嚭
+ * IPC 模块统一导出
  *
- * 娉ㄦ剰锛氭鏂囦欢鐢ㄤ簬浠?electron/ 鐩綍瀵煎叆鏃舵彁渚涙纭殑璺緞
+ * 注意：此文件用于从 electron/ 目录导入时提供正确的路径
  */
 
-// 鏍稿績鏈嶅姟
+// 核心服务
 export { ipcService, IpcService } from './IpcService'
 export type { IpcMiddleware, IpcMiddlewareContext, IpcServiceConfig } from './IpcService'
 
-// 閫氶亾瀹氫箟锛堜笌 shared/protocol/channels 淇濇寔涓€鑷达級
+// 通道定义（与 shared/protocol/channels 保持一致）
 export {
   INVOKE_CHANNELS,
   SEND_CHANNELS,
@@ -21,22 +21,35 @@ export {
   isValidInvokeChannel
 } from '../shared/protocol/channels.ts'
 
-// 绫诲瀷瀹氫箟
+// 类型定义
 export * from './types'
 
-// 涓棿浠?
+// 中间件
 export { errorMiddleware } from './middleware/error'
 export { loggerMiddleware } from './middleware/logger'
+export { performanceMiddleware } from './middleware/performance'
 
-// 澶勭悊鍣?
+// 性能监控 API
+export {
+  getPerformanceMetrics,
+  getSlowRequests,
+  getPerformanceReport,
+  resetPerformanceMetrics,
+  disposePerformanceMonitor
+} from './middleware'
+export type { PerformanceMetrics, SlowRequestEvent } from './middleware'
+
+// 处理器
 export { registerWindowHandlers } from './handlers/window.handler'
 export { registerCacheHandlers } from './handlers/cache.handler'
+export { registerConfigHandlers } from './handlers/config.handler'
 export { registerPlayerHandlers } from './handlers/player.handler'
 export { registerServiceHandlers } from './handlers/service.handler'
 export { registerApiHandlers } from './handlers/api.handler'
 export { registerLyricHandlers } from './handlers/lyric.handler'
+export { registerLogHandlers } from './handlers/log.handler'
 
-// 宸ュ叿
+// 工具
 export {
   executeWithRetry,
   getCache,

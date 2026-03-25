@@ -1,20 +1,14 @@
 import {
-  parseQQMusicResponse,
-  parseNeteaseResponse,
   handleApiError,
+  parseNeteaseResponse,
+  parseQQMusicResponse,
   type ApiResponse
 } from './responseHandler'
 
-/**
- * API 请求参数接口
- */
 export interface ApiRequestParams {
   [key: string]: string | number | boolean | undefined
 }
 
-/**
- * HTTP 请求实例接口，定义 get 和 post 方法
- */
 export interface HttpRequestInstance {
   get<T>(endpoint: string, config?: { params?: ApiRequestParams }): Promise<T>
   post<T>(endpoint: string, data?: unknown): Promise<T>
@@ -25,57 +19,49 @@ export abstract class ApiAdapter {
 }
 
 export class QQMusicAdapter extends ApiAdapter {
-  private request: HttpRequestInstance
-
-  constructor(request: HttpRequestInstance) {
+  constructor(private readonly request: HttpRequestInstance) {
     super()
-    this.request = request
   }
 
   async fetch<T>(endpoint: string, params?: ApiRequestParams): Promise<ApiResponse<T>> {
     try {
-      const res = await this.request.get(endpoint, { params })
-      return parseQQMusicResponse<T>(res)
+      const response = await this.request.get(endpoint, { params })
+      return parseQQMusicResponse<T>(response)
     } catch (error) {
-      throw handleApiError(error, 'QQ 音乐')
+      throw handleApiError(error, 'QQ Music')
     }
   }
 
   async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     try {
-      const res = await this.request.post(endpoint, data)
-      return parseQQMusicResponse<T>(res)
+      const response = await this.request.post(endpoint, data)
+      return parseQQMusicResponse<T>(response)
     } catch (error) {
-      throw handleApiError(error, 'QQ 音乐')
+      throw handleApiError(error, 'QQ Music')
     }
   }
 }
 
 export class NeteaseAdapter extends ApiAdapter {
-  private request: HttpRequestInstance
-
-  constructor(request: HttpRequestInstance) {
+  constructor(private readonly request: HttpRequestInstance) {
     super()
-    this.request = request
   }
 
   async fetch<T>(endpoint: string, params?: ApiRequestParams): Promise<ApiResponse<T>> {
     try {
-      const res = await this.request.get(endpoint, { params })
-      return parseNeteaseResponse<T>(res)
+      const response = await this.request.get(endpoint, { params })
+      return parseNeteaseResponse<T>(response)
     } catch (error) {
-      throw handleApiError(error, '网易云音乐')
+      throw handleApiError(error, 'Netease Music')
     }
   }
 
   async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     try {
-      const res = await this.request.post(endpoint, data)
-      return parseNeteaseResponse<T>(res)
+      const response = await this.request.post(endpoint, data)
+      return parseNeteaseResponse<T>(response)
     } catch (error) {
-      throw handleApiError(error, '网易云音乐')
+      throw handleApiError(error, 'Netease Music')
     }
   }
 }
-
-// ApiRequestParams 在本地定义，供外部使用

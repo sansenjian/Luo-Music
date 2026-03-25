@@ -106,6 +106,7 @@ export const SEND_CHANNELS = {
   DESKTOP_LYRIC_TOGGLE_LOCK: 'toggle-desktop-lyric-lock',
   DESKTOP_LYRIC_MOVE: 'desktop-lyric-move',
   DESKTOP_LYRIC_SET_IGNORE_MOUSE: 'desktop-lyric-set-ignore-mouse',
+  DESKTOP_LYRIC_READY: 'desktop-lyric-ready',
   LYRIC_TIME_UPDATE: 'lyric-time-update',
 
   // 下载
@@ -114,6 +115,7 @@ export const SEND_CHANNELS = {
   // 播放器状态
   MUSIC_PLAYING_CHECK: 'music-playing-check',
   MUSIC_PLAYMODE_TRAY_CHANGE: 'music-playmode-tray-change',
+  PLAYER_SYNC_STATE: 'player:sync-state',
 
   // 日志
   LOG_MESSAGE: 'log-message',

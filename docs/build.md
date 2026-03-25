@@ -176,7 +176,7 @@ await serviceManager.stopAll()
 
 ```bash
 # 构建 server.ts 到 build/server/server.cjs
-pnpm build:server
+npm run build:server
 ```
 
 ### Server 打包
@@ -198,10 +198,10 @@ packagerConfig: {
 
 ```bash
 # 清理构建产物
-pnpm clean
+npm run clean
 
 # 清理所有（包括 node_modules）
-pnpm clean:all
+npm run clean:all
 ```
 
 ## 📊 构建模式说明
@@ -255,7 +255,7 @@ outDir: 'build'
 
 ### Web 部署
 
-1. 运行 `pnpm build:web`
+1. 运行 `npm run build:web`
 2. 部署 `build/` 目录到静态服务器
 3. 同时部署并运行 API 服务端：
    ```bash
@@ -265,7 +265,7 @@ outDir: 'build'
 
 ### Electron 部署
 
-1. 运行 `pnpm build:electron`
+1. 运行 `npm run build:electron`
 2. 产物在 `out/make/` 目录
    - `LUO Music-1.0.0 Setup.exe` - Windows 安装程序
    - `LUO Music-1.0.0.zip` - 便携版压缩包
@@ -277,7 +277,7 @@ outDir: 'build'
 
 ```bash
 # 构建
-pnpm build:server
+npm run build:server
 
 # 运行
 node build/server/server.cjs
@@ -312,8 +312,8 @@ node build/server/server.cjs
 
 ```bash
 # 清理并重试
-pnpm clean
-pnpm build:electron
+npm run clean
+npm run build:electron
 ```
 
 ### 端口占用
@@ -328,7 +328,7 @@ taskkill /F /PID <PID>
 
 ```bash
 # 重新构建 server
-pnpm build:server
+npm run build:server
 
 # 检查输出
 ls build/server/
@@ -338,5 +338,5 @@ ls build/server/
 
 ```bash
 # 重新安装依赖
-pnpm install
+npm install
 ```

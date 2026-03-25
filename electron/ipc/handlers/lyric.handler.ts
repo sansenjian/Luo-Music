@@ -79,4 +79,8 @@ export function registerLyricHandlers(): void {
   ipcService.registerSend(SEND_CHANNELS.LYRIC_TIME_UPDATE, (payload: LyricTimeUpdate) => {
     desktopLyricManager.sendLyric(payload)
   })
+
+  ipcService.registerSend(SEND_CHANNELS.DESKTOP_LYRIC_READY, () => {
+    desktopLyricManager.onRendererReady()
+  })
 }

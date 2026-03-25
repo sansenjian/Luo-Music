@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { storageAdapter } from '@/services/storageService'
 
 type PlaylistSong = {
   id: string | number
@@ -86,7 +87,7 @@ export const usePlaylistStore = defineStore('playlistStore', {
     }
   },
   persist: {
-    storage: localStorage,
+    storage: storageAdapter,
     pick: ['currentIndex']
   }
 })

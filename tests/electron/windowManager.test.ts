@@ -163,4 +163,32 @@ describe('electron/WindowManager', () => {
     })
     expect(window?.loadFile).toHaveBeenCalledTimes(2)
   })
+
+  it('syncs playback state into tray menu visibility', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    const contextMenu = {
+      items: [{ visible: true }, { visible: false }, {}, {}, { submenu: { items: [] } }]
+    }
+
+    manager.setTray({} as never, contextMenu as never)
+    manager.syncPlaybackState(true)
+
+    expect(contextMenu.items[0].visible).toBe(false)
+    expect(contextMenu.items[1].visible).toBe(true)
+  })
+
+  it('syncs tray play mode checked state', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    const playModeItems = [{ checked: false }, { checked: false }, { checked: false }]
+    const contextMenu = {
+      items: [{}, {}, {}, {}, { submenu: { items: playModeItems } }]
+    }
+
+    manager.setTray({} as never, contextMenu as never)
+    manager.syncTrayPlayMode(1)
+
+    expect(playModeItems).toEqual([{ checked: false }, { checked: true }, { checked: false }])
+  })
 })

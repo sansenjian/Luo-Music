@@ -1,4 +1,5 @@
 import request from '@/utils/http'
+import { getBitrateByLevel, DEFAULT_AUDIO_BITRATE } from '@/constants/audio'
 
 /** 音乐 URL 响应数据 */
 interface MusicUrlData {
@@ -77,15 +78,7 @@ export async function getMusicUrl(
     throw new Error('No URL returned from v1 API')
   } catch {
     // 降级策略：尝试使用旧版接口
-    // 映射 level 到 br (比特率)
-    const brMap: Record<string, number> = {
-      standard: 128000,
-      higher: 192000,
-      exhigh: 320000,
-      lossless: 999000,
-      hires: 999000
-    }
-    const br = brMap[level] || 128000
+    const br = getBitrateByLevel(level, DEFAULT_AUDIO_BITRATE)
 
     try {
       const fallbackRes = (await request({

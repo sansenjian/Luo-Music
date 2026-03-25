@@ -6,9 +6,11 @@
  * - audioEvents.ts - 音频事件处理
  * - playbackActions.ts - 播放业务逻辑
  * - ipcHandlers.ts - IPC 通信处理
+ * - runtime.ts - 运行时对象与生命周期管理
  */
 
 export * from './playerState'
 export * from './audioEvents'
 export * from './playbackActions'
 export * from './ipcHandlers'
+export * from './runtime'

@@ -1,10 +1,9 @@
 import type {
   BrowserWindow as BrowserWindowType,
-  IpcMainEvent,
   Menu as MenuType,
   Tray as TrayType
 } from 'electron'
-import { BrowserWindow, ipcMain, nativeImage, screen } from 'electron'
+import { BrowserWindow, nativeImage } from 'electron'
 import path from 'node:path'
 
 import { downloadManager } from './DownloadManager'
@@ -40,7 +39,6 @@ export class WindowManager {
   private lastSize: { width: number; height: number } | null = null
 
   constructor() {
-    this.initIpc()
     const size = store.get('windowSize') as { width: number; height: number } | undefined
 
     if (size) {
@@ -144,10 +142,10 @@ export class WindowManager {
     })
 
     if (devServerUrl) {
-      win.loadURL(devServerUrl)
+      void win.loadURL(devServerUrl)
       win.webContents.openDevTools()
     } else {
-      win.loadFile(indexPath)
+      void win.loadFile(indexPath)
     }
 
     win.on('show', () => {
@@ -176,8 +174,16 @@ export class WindowManager {
     this.win?.focus()
   }
 
+  hide(): void {
+    this.win?.hide()
+  }
+
   minimize(): void {
     this.win?.minimize()
+  }
+
+  minimizeToTray(): void {
+    this.hide()
   }
 
   maximize(): void {
@@ -193,12 +199,38 @@ export class WindowManager {
     this.win?.close()
   }
 
+  setAlwaysOnTop(alwaysOnTop: boolean): void {
+    this.win?.setAlwaysOnTop(alwaysOnTop)
+  }
+
+  toggleFullScreen(): void {
+    if (!this.win) {
+      return
+    }
+
+    this.win.setFullScreen(!this.win.isFullScreen())
+  }
+
   restore(): void {
     if (this.win?.isMinimized()) {
       this.win.restore()
     }
 
     this.win?.focus()
+  }
+
+  getWindowState(): {
+    isMaximized: boolean
+    isMinimized: boolean
+    isFullScreen: boolean
+    isAlwaysOnTop: boolean
+  } {
+    return {
+      isMaximized: this.win?.isMaximized() ?? false,
+      isMinimized: this.win?.isMinimized() ?? false,
+      isFullScreen: this.win?.isFullScreen() ?? false,
+      isAlwaysOnTop: this.win?.isAlwaysOnTop() ?? false
+    }
   }
 
   send(channel: string, ...args: unknown[]): void {
@@ -239,46 +271,23 @@ export class WindowManager {
     this.win.setThumbarButtons(buttons)
   }
 
-  initIpc(): void {
-    ipcMain.on('minimize-window', () => this.minimize())
+  syncPlaybackState(playing: boolean): void {
+    this.updateThumbarButtons(playing)
 
-    ipcMain.on(
-      'resize-window',
-      (_event: IpcMainEvent, { width, height }: { width: number; height: number }) => {
-        if (!this.win) {
-          return
-        }
+    if (this.contextMenu && this.contextMenu.items.length >= 2) {
+      this.contextMenu.items[0].visible = !playing
+      this.contextMenu.items[1].visible = playing
+    }
+  }
 
-        const display = screen.getPrimaryDisplay()
-        const { width: maxWidth, height: maxHeight } = display.workAreaSize
-        const validWidth = Math.max(MIN_WIDTH, Math.min(width, maxWidth))
-        const validHeight = Math.max(MIN_HEIGHT, Math.min(height, maxHeight))
+  syncTrayPlayMode(mode: number): void {
+    const playModeMenu = this.contextMenu?.items[4]?.submenu
 
-        this.win.setSize(validWidth, validHeight)
-      }
-    )
-
-    ipcMain.on('maximize-window', () => this.maximize())
-    ipcMain.on('close-window', () => this.close())
-
-    ipcMain.on('music-playing-check', (_event: IpcMainEvent, playing: boolean) => {
-      this.updateThumbarButtons(playing)
-
-      if (this.contextMenu && this.contextMenu.items.length >= 2) {
-        this.contextMenu.items[0].visible = !playing
-        this.contextMenu.items[1].visible = playing
-      }
-    })
-
-    ipcMain.on('music-playmode-tray-change', (_event: IpcMainEvent, mode: number) => {
-      const playModeMenu = this.contextMenu?.items[4]?.submenu
-
-      if (playModeMenu) {
-        playModeMenu.items.forEach((item, index) => {
-          item.checked = index === mode
-        })
-      }
-    })
+    if (playModeMenu) {
+      playModeMenu.items.forEach((item, index) => {
+        item.checked = index === mode
+      })
+    }
   }
 }
 

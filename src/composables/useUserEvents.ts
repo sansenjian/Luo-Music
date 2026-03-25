@@ -1,6 +1,8 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 
 import { getUserEvent } from '../api/user'
+import { isCanceledRequestError } from '../utils/http/cancelError'
+import { createLatestRequestController } from '../utils/http/requestScope'
 
 export interface EventItem {
   json?: string
@@ -14,6 +16,7 @@ export interface UseUserEventsReturn {
   error: Ref<unknown>
   formatEventTime: (timestamp: number | string) => string
   getEventMsg: (event: EventItem) => string
+  resetEvents: () => void
   loadEvents: (userId: string | number, limit?: number) => Promise<void>
 }
 
@@ -22,6 +25,14 @@ export function useUserEvents(): UseUserEventsReturn {
   const loading = ref(false)
   const error = ref<unknown>(null)
   const count = computed(() => events.value.length)
+  const requestController = createLatestRequestController()
+
+  const resetEvents = (): void => {
+    requestController.cancel()
+    events.value = []
+    loading.value = false
+    error.value = null
+  }
 
   const formatEventTime = (timestamp: number | string): string => {
     const date = new Date(timestamp)
@@ -51,7 +62,13 @@ export function useUserEvents(): UseUserEventsReturn {
   }
 
   const loadEvents = async (userId: string | number, limit = 20): Promise<void> => {
+    const task = requestController.start()
+
     if (!userId) {
+      task.commit(() => {
+        events.value = []
+        loading.value = false
+      })
       return
     }
 
@@ -59,13 +76,26 @@ export function useUserEvents(): UseUserEventsReturn {
     error.value = null
 
     try {
-      const response = (await getUserEvent(Number(userId), limit)) as { events?: EventItem[] }
-      events.value = response.events ?? []
+      const response = (await task.guard(getUserEvent(Number(userId), limit))) as {
+        events?: EventItem[]
+      }
+
+      task.commit(() => {
+        events.value = response.events ?? []
+      })
     } catch (requestError) {
-      console.error('获取用户动态失败:', requestError)
-      error.value = requestError
+      if (isCanceledRequestError(requestError)) {
+        return
+      }
+
+      console.error('Failed to load user events:', requestError)
+      task.commit(() => {
+        error.value = requestError
+      })
     } finally {
-      loading.value = false
+      task.commit(() => {
+        loading.value = false
+      })
     }
   }
 
@@ -76,6 +106,7 @@ export function useUserEvents(): UseUserEventsReturn {
     error,
     formatEventTime,
     getEventMsg,
+    resetEvents,
     loadEvents
   }
 }

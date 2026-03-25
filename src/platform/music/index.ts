@@ -1,5 +1,5 @@
-import { services } from '../../services'
-import type { ILogger } from '../../services/loggerService'
+import { services } from '@/services'
+import type { ILogger } from '@/services/loggerService'
 import type { MusicPlatformAdapter } from './interface'
 import { NeteaseAdapter } from './netease'
 import { QQMusicAdapter } from './qq'

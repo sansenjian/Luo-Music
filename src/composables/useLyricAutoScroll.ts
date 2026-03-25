@@ -9,11 +9,34 @@ import {
   type WatchSource
 } from 'vue'
 
-import type { LyricLine } from '../utils/player/core/lyric'
+import {
+  PROGRAMMATIC_SCROLL_GUARD,
+  USER_SCROLL_END_DEBOUNCE,
+  USER_SCROLL_IDLE_DELAY
+} from '@/constants/lyric'
+import type { LyricLine } from '@/utils/player/core/lyric'
 
-const USER_SCROLL_IDLE_DELAY = 900
-const USER_SCROLL_END_DEBOUNCE = 120
-const PROGRAMMATIC_SCROLL_GUARD = 380
+const ACTIVE_LINE_SELECTOR = '.lyric-line.active'
+const SCROLL_ALIGNMENT_TOLERANCE = 2
+const PROGRAMMATIC_SETTLE_NEAR_TARGET_DELAY = 40
+
+type ScrollInteractionState = 'idle' | 'user' | 'programmatic'
+type TimeoutHandle = ReturnType<typeof setTimeout> | null
+
+interface ScrollRuntimeState {
+  pauseActiveTimer: TimeoutHandle
+  scrollEndTimer: TimeoutHandle
+  programmaticSettleTimer: TimeoutHandle
+  programmaticFallbackTimer: TimeoutHandle
+  visibilityObserver: ResizeObserver | null
+  interactionState: ScrollInteractionState
+  programmaticTargetTop: number | null
+}
+
+interface ScrollGeometry {
+  container: HTMLElement
+  targetTop: number
+}
 
 export interface UseLyricAutoScrollOptions {
   scrollArea: Ref<HTMLElement | null>
@@ -34,19 +57,26 @@ export function useLyricAutoScroll(options: UseLyricAutoScrollOptions) {
     resetSources = []
   } = options
 
-  let pauseActiveTimer: ReturnType<typeof setTimeout> | null = null
-  let scrollEndTimer: ReturnType<typeof setTimeout> | null = null
-  let programmaticScrollTimer: ReturnType<typeof setTimeout> | null = null
-  let visibilityObserver: ResizeObserver | null = null
-  let isUserScrolling = false
-  let isProgrammaticScrolling = false
+  const runtime: ScrollRuntimeState = {
+    pauseActiveTimer: null,
+    scrollEndTimer: null,
+    programmaticSettleTimer: null,
+    programmaticFallbackTimer: null,
+    visibilityObserver: null,
+    interactionState: 'idle',
+    programmaticTargetTop: null
+  }
 
-  function clearTimer(timer: ReturnType<typeof setTimeout> | null) {
+  function clearTimer(timer: TimeoutHandle) {
     if (timer) {
       clearTimeout(timer)
     }
 
     return null
+  }
+
+  function getContainer() {
+    return scrollArea.value
   }
 
   function isActive() {
@@ -61,110 +91,189 @@ export function useLyricAutoScroll(options: UseLyricAutoScrollOptions) {
     return toValue(activeIndex)
   }
 
-  function releaseProgrammaticScrollGuard(delay = PROGRAMMATIC_SCROLL_GUARD) {
-    programmaticScrollTimer = clearTimer(programmaticScrollTimer)
+  function clearUserResumeTimers() {
+    runtime.pauseActiveTimer = clearTimer(runtime.pauseActiveTimer)
+    runtime.scrollEndTimer = clearTimer(runtime.scrollEndTimer)
+  }
 
-    if (delay <= 0) {
-      isProgrammaticScrolling = false
+  function clearProgrammaticGuard() {
+    runtime.programmaticSettleTimer = clearTimer(runtime.programmaticSettleTimer)
+    runtime.programmaticFallbackTimer = clearTimer(runtime.programmaticFallbackTimer)
+    runtime.programmaticTargetTop = null
+
+    if (runtime.interactionState === 'programmatic') {
+      runtime.interactionState = 'idle'
+    }
+  }
+
+  function startProgrammaticScroll(targetTop: number, behavior: ScrollBehavior) {
+    clearProgrammaticGuard()
+    runtime.interactionState = 'programmatic'
+    runtime.programmaticTargetTop = targetTop
+
+    const fallbackDelay =
+      behavior === 'smooth'
+        ? PROGRAMMATIC_SCROLL_GUARD
+        : Math.min(PROGRAMMATIC_SCROLL_GUARD, USER_SCROLL_END_DEBOUNCE)
+
+    runtime.programmaticFallbackTimer = setTimeout(() => {
+      clearProgrammaticGuard()
+    }, fallbackDelay)
+  }
+
+  function refreshProgrammaticGuard(delay: number) {
+    if (runtime.interactionState !== 'programmatic') {
       return
     }
 
-    programmaticScrollTimer = setTimeout(() => {
-      isProgrammaticScrolling = false
-      programmaticScrollTimer = null
-    }, delay)
+    const safeDelay = Math.max(0, delay)
+    runtime.programmaticSettleTimer = clearTimer(runtime.programmaticSettleTimer)
+    runtime.programmaticFallbackTimer = clearTimer(runtime.programmaticFallbackTimer)
+
+    runtime.programmaticSettleTimer = setTimeout(() => {
+      clearProgrammaticGuard()
+    }, safeDelay)
+
+    runtime.programmaticFallbackTimer = setTimeout(() => {
+      clearProgrammaticGuard()
+    }, Math.max(PROGRAMMATIC_SCROLL_GUARD, safeDelay))
+  }
+
+  function resolveActiveLineScrollGeometry(): ScrollGeometry | null {
+    const container = getContainer()
+    if (!container || !isActive()) {
+      return null
+    }
+
+    const activeLine = container.querySelector<HTMLElement>(ACTIVE_LINE_SELECTOR)
+    if (!activeLine) {
+      return null
+    }
+
+    const containerHeight = container.clientHeight
+    if (containerHeight <= 0) {
+      return null
+    }
+
+    const maxScrollTop = Math.max(0, container.scrollHeight - containerHeight)
+    const centeredTop = Math.max(
+      0,
+      activeLine.offsetTop - (containerHeight - activeLine.offsetHeight) / 2
+    )
+
+    return {
+      container,
+      targetTop: Math.min(centeredTop, maxScrollTop)
+    }
   }
 
   function scrollToActiveLine(behavior: ScrollBehavior = 'smooth') {
-    if (isUserScrolling || !isActive() || !scrollArea.value) return
-
-    const container = scrollArea.value
-    const activeLine = container.querySelector<HTMLElement>('.lyric-line.active')
-    if (!activeLine) return
-
-    const lineOffsetTop = activeLine.offsetTop
-    const lineHeight = activeLine.offsetHeight
-    const containerHeight = container.clientHeight
-    if (containerHeight <= 0) return
-
-    const maxScrollTop = Math.max(0, container.scrollHeight - containerHeight)
-    const targetScrollTop = Math.max(0, lineOffsetTop - (containerHeight - lineHeight) / 2)
-    const nextScrollTop = Math.min(targetScrollTop, maxScrollTop)
-
-    if (Math.abs(container.scrollTop - nextScrollTop) < 2) {
+    if (runtime.interactionState === 'user') {
       return
     }
 
-    isProgrammaticScrolling = true
-    container.scrollTo({
-      top: nextScrollTop,
+    const geometry = resolveActiveLineScrollGeometry()
+    if (!geometry) {
+      return
+    }
+
+    if (
+      Math.abs(geometry.container.scrollTop - geometry.targetTop) < SCROLL_ALIGNMENT_TOLERANCE
+    ) {
+      return
+    }
+
+    startProgrammaticScroll(geometry.targetTop, behavior)
+    geometry.container.scrollTo({
+      top: geometry.targetTop,
       behavior
     })
-    releaseProgrammaticScrollGuard(behavior === 'smooth' ? PROGRAMMATIC_SCROLL_GUARD : 0)
   }
 
   function scheduleAutoScrollResume() {
-    scrollEndTimer = clearTimer(scrollEndTimer)
-    pauseActiveTimer = clearTimer(pauseActiveTimer)
+    clearUserResumeTimers()
 
-    scrollEndTimer = setTimeout(() => {
-      scrollEndTimer = null
-      pauseActiveTimer = setTimeout(() => {
-        isUserScrolling = false
-        pauseActiveTimer = null
+    runtime.scrollEndTimer = setTimeout(() => {
+      runtime.scrollEndTimer = null
+      runtime.pauseActiveTimer = setTimeout(() => {
+        runtime.interactionState = 'idle'
+        runtime.pauseActiveTimer = null
         scrollToActiveLine()
       }, USER_SCROLL_IDLE_DELAY)
     }, USER_SCROLL_END_DEBOUNCE)
   }
 
   function handleUserScrollStart() {
-    if (isProgrammaticScrolling) {
-      return
-    }
-
-    isUserScrolling = true
-    pauseActiveTimer = clearTimer(pauseActiveTimer)
+    clearProgrammaticGuard()
+    clearUserResumeTimers()
+    runtime.interactionState = 'user'
   }
 
   function handleScroll() {
-    if (isProgrammaticScrolling) {
+    if (runtime.interactionState === 'programmatic') {
+      const container = getContainer()
+      if (!container || runtime.programmaticTargetTop == null) {
+        clearProgrammaticGuard()
+        return
+      }
+
+      const remainingDistance = Math.abs(container.scrollTop - runtime.programmaticTargetTop)
+      refreshProgrammaticGuard(
+        remainingDistance <= SCROLL_ALIGNMENT_TOLERANCE
+          ? PROGRAMMATIC_SETTLE_NEAR_TARGET_DELAY
+          : USER_SCROLL_END_DEBOUNCE
+      )
       return
     }
 
-    isUserScrolling = true
+    runtime.interactionState = 'user'
     scheduleAutoScrollResume()
   }
 
   function resetScrollState() {
-    isUserScrolling = false
-    pauseActiveTimer = clearTimer(pauseActiveTimer)
-    scrollEndTimer = clearTimer(scrollEndTimer)
-    programmaticScrollTimer = clearTimer(programmaticScrollTimer)
-    isProgrammaticScrolling = false
+    runtime.interactionState = 'idle'
+    clearUserResumeTimers()
+    clearProgrammaticGuard()
+  }
+
+  function resetScrollPosition() {
+    const container = getContainer()
+    if (container) {
+      container.scrollTop = 0
+    }
+  }
+
+  function canSyncVisibleActiveLine() {
+    const container = getContainer()
+    if (!container) {
+      return false
+    }
+
+    if (!isActive() || !getLyrics().length || getActiveIndex() < 0) {
+      return false
+    }
+
+    return container.clientHeight > 0
   }
 
   function syncVisibleActiveLine() {
-    if (!isActive() || !scrollArea.value || !getLyrics().length || getActiveIndex() < 0) {
+    if (!canSyncVisibleActiveLine()) {
       return
     }
 
-    if (scrollArea.value.clientHeight <= 0) {
-      return
-    }
-
+    // Wait for post-flush DOM updates before resolving the active line position.
     void nextTick().then(() => {
       scrollToActiveLine('auto')
     })
   }
 
   watch(
-    () => toValue(activeIndex),
-    async (index, previousIndex) => {
-      if (index < 0 || index === previousIndex || !toValue(lyrics).length) {
+    () => getActiveIndex(),
+    (index, previousIndex) => {
+      if (index < 0 || index === previousIndex || !getLyrics().length) {
         return
       }
 
-      await nextTick()
       scrollToActiveLine(previousIndex == null || previousIndex < 0 ? 'auto' : 'smooth')
     },
     { flush: 'post' }
@@ -173,63 +282,48 @@ export function useLyricAutoScroll(options: UseLyricAutoScrollOptions) {
   if (alignSources.length > 0) {
     watch(
       alignSources,
-      async () => {
+      () => {
         if (getActiveIndex() < 0 || !getLyrics().length) {
           return
         }
 
-        await nextTick()
         scrollToActiveLine('auto')
       },
       { flush: 'post' }
     )
   }
 
-  watch(lyrics, _nextLyrics => {
+  watch(lyrics, () => {
     resetScrollState()
-
-    if (!scrollArea.value) {
-      return
-    }
-
-    isProgrammaticScrolling = true
-    scrollArea.value.scrollTop = 0
-    releaseProgrammaticScrollGuard(0)
-
-    if (!toValue(lyrics).length) {
-      return
-    }
+    resetScrollPosition()
   })
 
   if (resetSources.length > 0) {
     watch(resetSources, () => {
       resetScrollState()
-
-      if (scrollArea.value) {
-        scrollArea.value.scrollTop = 0
-      }
+      resetScrollPosition()
     })
   }
 
   watch(
-    () => toValue(active),
-    async isNowActive => {
+    () => isActive(),
+    isNowActive => {
       if (!isNowActive) {
         return
       }
 
-      await nextTick()
       syncVisibleActiveLine()
     },
     { flush: 'post' }
   )
 
   onMounted(() => {
-    if (typeof ResizeObserver === 'undefined' || !scrollArea.value) {
+    const container = getContainer()
+    if (typeof ResizeObserver === 'undefined' || !container) {
       return
     }
 
-    visibilityObserver = new ResizeObserver(entries => {
+    runtime.visibilityObserver = new ResizeObserver(entries => {
       const entry = entries[0]
       if (!entry || entry.contentRect.height <= 0) {
         return
@@ -238,16 +332,16 @@ export function useLyricAutoScroll(options: UseLyricAutoScrollOptions) {
       syncVisibleActiveLine()
     })
 
-    visibilityObserver.observe(scrollArea.value)
+    runtime.visibilityObserver.observe(container)
     syncVisibleActiveLine()
   })
 
   onUnmounted(() => {
     resetScrollState()
 
-    if (visibilityObserver) {
-      visibilityObserver.disconnect()
-      visibilityObserver = null
+    if (runtime.visibilityObserver) {
+      runtime.visibilityObserver.disconnect()
+      runtime.visibilityObserver = null
     }
   })
 

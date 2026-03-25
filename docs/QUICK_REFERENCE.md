@@ -26,11 +26,11 @@ npm run format           # Prettier 格式化
 
 ## 调试配置
 
-| 配置名称 | 用途 | 快捷键 |
-|----------|------|--------|
-| Debug Main Process | 调试 Electron 主进程 | F5 |
-| Debug Renderer (Chrome) | 调试渲染进程 | F5 |
-| Debug Full Electron | 同时调试 | F5 |
+| 配置名称                | 用途                 | 快捷键 |
+| ----------------------- | -------------------- | ------ |
+| Debug Main Process      | 调试 Electron 主进程 | F5     |
+| Debug Renderer (Chrome) | 调试渲染进程         | F5     |
+| Debug Full Electron     | 同时调试             | F5     |
 
 ## Git 提交规范
 
@@ -45,28 +45,30 @@ git commit -m "refactor: 重构用户中心组件"
 
 ### 提交类型
 
-| 类型 | 用途 |
-|------|------|
-| `feat` | 新功能 |
-| `fix` | 修复 bug |
-| `docs` | 文档变更 |
-| `style` | 代码格式 |
-| `refactor` | 重构 |
-| `perf` | 性能优化 |
-| `test` | 测试 |
-| `chore` | 构建/工具 |
-| `ci` | CI 配置 |
-| `build` | 构建系统 |
-| `revert` | 回滚 |
+| 类型       | 用途      |
+| ---------- | --------- |
+| `feat`     | 新功能    |
+| `fix`      | 修复 bug  |
+| `docs`     | 文档变更  |
+| `style`    | 代码格式  |
+| `refactor` | 重构      |
+| `perf`     | 性能优化  |
+| `test`     | 测试      |
+| `chore`    | 构建/工具 |
+| `ci`       | CI 配置   |
+| `build`    | 构建系统  |
+| `revert`   | 回滚      |
 
 ## VSCode 扩展推荐
 
 必装扩展：
+
 - Vue.volar
 - vscode-eslint
 - prettier-vscode
 
 推荐扩展：
+
 - vscode-tailwindcss
 - markdown-preview-github-styles
 - es6-string-html
@@ -102,14 +104,14 @@ luo-music/
 
 ## 文件命名规范
 
-| 类型 | 规范 | 示例 |
-|------|------|------|
-| 组件 | PascalCase | `LyricDisplay.vue` |
-| 组合式函数 | camelCase | `usePlayer.ts` |
-| 工具函数 | camelCase | `formatTime.ts` |
-| 常量 | kebab-case | `player-config.const.ts` |
-| 类型 | 驼峰 + `.types.ts` | `api.types.ts` |
-| 测试 | `.test.ts` | `playerStore.test.ts` |
+| 类型       | 规范               | 示例                     |
+| ---------- | ------------------ | ------------------------ |
+| 组件       | PascalCase         | `LyricDisplay.vue`       |
+| 组合式函数 | camelCase          | `usePlayer.ts`           |
+| 工具函数   | camelCase          | `formatTime.ts`          |
+| 常量       | kebab-case         | `player-config.const.ts` |
+| 类型       | 驼峰 + `.types.ts` | `api.types.ts`           |
+| 测试       | `.test.ts`         | `playerStore.test.ts`    |
 
 ## 环境要求
 
@@ -126,5 +128,5 @@ luo-music/
 ## 相关文档
 
 - [VSCode 配置文档](./vscode-setup.md)
-- [优化总结](./optimization-summary.md)
-- [贡献指南](../CONTRIBUTING.md)
+- [优化总结](/reports/optimization-summary)
+- `CONTRIBUTING.md`（仓库根目录）
