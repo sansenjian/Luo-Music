@@ -1,11 +1,12 @@
 import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  createCachedCookieResolver,
-  createTransport
-} from '../../src/utils/http/transportFactory'
+import { createCachedCookieResolver, createTransport } from '../../src/utils/http/transportFactory'
 import { AppError, ErrorCode } from '../../src/utils/error/types'
+import {
+  createCanceledRequestError,
+  isCanceledRequestError
+} from '../../src/utils/http/cancelError'
 
 function setElectronApi(
   apiRequest?: (
@@ -85,7 +86,9 @@ describe('transportFactory', () => {
     const requestHandlers = (
       transport.interceptors.request as unknown as {
         handlers: Array<{
-          fulfilled?: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>
+          fulfilled?: (
+            config: InternalAxiosRequestConfig
+          ) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>
         }>
       }
     ).handlers
@@ -130,7 +133,9 @@ describe('transportFactory', () => {
     const requestHandlers = (
       transport.interceptors.request as unknown as {
         handlers: Array<{
-          fulfilled?: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>
+          fulfilled?: (
+            config: InternalAxiosRequestConfig
+          ) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>
         }>
       }
     ).handlers
@@ -148,7 +153,9 @@ describe('transportFactory', () => {
     expect(config?.adapter).toBeTypeOf('function')
     expect(config?.adapter).not.toBe(transport.defaults.adapter)
 
-    const response = await (config?.adapter as ((config: InternalAxiosRequestConfig) => Promise<unknown>) | undefined)?.(config as InternalAxiosRequestConfig) as { data: unknown }
+    const response = (await (
+      config?.adapter as ((config: InternalAxiosRequestConfig) => Promise<unknown>) | undefined
+    )?.(config as InternalAxiosRequestConfig)) as { data: unknown }
     expect(apiRequest).toHaveBeenCalledWith('qq', 'getSearchByKey', {
       key: 'jay'
     })
@@ -176,7 +183,9 @@ describe('transportFactory', () => {
     const requestHandlers = (
       transport.interceptors.request as unknown as {
         handlers: Array<{
-          fulfilled?: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>
+          fulfilled?: (
+            config: InternalAxiosRequestConfig
+          ) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>
         }>
       }
     ).handlers
@@ -227,5 +236,26 @@ describe('transportFactory', () => {
 
     resolver.clear()
     expect(resolver.getCookie()).toBe('second')
+  })
+
+  it('preserves canceled request errors without re-wrapping them into AppError', async () => {
+    const transport = createTransport({
+      service: 'netease',
+      baseURL: '/api',
+      unwrapData: true
+    })
+
+    const canceledError = createCanceledRequestError('manual', 'canceled')
+
+    await expect(
+      transport.get('/playlist/detail', {
+        adapter: async () => {
+          throw canceledError
+        }
+      })
+    ).rejects.toSatisfy((err: unknown) => {
+      // 应该是原始的取消错误，而不是被包装成 AppError
+      return isCanceledRequestError(err)
+    })
   })
 })

@@ -9,6 +9,7 @@ import axios, {
 import { normalizeApiError } from '../error/normalize'
 import { createElectronIpcAdapter } from './electronIpcRequest'
 import { normalizeRequestParams, type ApiServiceId } from './transportShared'
+import { isCanceledRequestError } from './cancelError'
 import {
   HTTP_COOKIE_CACHE_TTL,
   HTTP_DEFAULT_RETRY_COUNT,
@@ -166,9 +167,7 @@ export function createTransport(options: TransportFactoryOptions): AxiosInstance
   const request = axios.create({
     baseURL: typeof options.baseURL === 'string' ? options.baseURL : undefined,
     timeout: options.timeout ?? HTTP_DEFAULT_TIMEOUT,
-    withCredentials: options.withCredentials
-      ? resolveConfigValue(options.withCredentials)
-      : false,
+    withCredentials: options.withCredentials ? resolveConfigValue(options.withCredentials) : false,
     retry: options.retry ?? HTTP_DEFAULT_RETRY_COUNT,
     retryDelay: options.retryDelay ?? HTTP_DEFAULT_RETRY_DELAY
   } as AxiosRequestConfig)
@@ -183,7 +182,10 @@ export function createTransport(options: TransportFactoryOptions): AxiosInstance
     }
 
     const electronIpcAdapter = createElectronIpcAdapter(options.service)
-    if (electronIpcAdapter && shouldAttachElectronAdapter(requestConfig.adapter, request.defaults.adapter)) {
+    if (
+      electronIpcAdapter &&
+      shouldAttachElectronAdapter(requestConfig.adapter, request.defaults.adapter)
+    ) {
       requestConfig.adapter = electronIpcAdapter
     }
 
@@ -199,6 +201,11 @@ export function createTransport(options: TransportFactoryOptions): AxiosInstance
   request.interceptors.response.use(
     response => (options.unwrapData ? response.data : response),
     error => {
+      // 取消错误直接返回，保持取消语义
+      if (isCanceledRequestError(error)) {
+        return Promise.reject(error)
+      }
+
       const appError = normalizeApiError(error, undefined, { url: error?.config?.url })
 
       if (options.emitErrors) {

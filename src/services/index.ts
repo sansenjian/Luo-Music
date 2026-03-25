@@ -187,6 +187,7 @@ export function setupServices(overrides: ServiceOverrides = {}): void {
   if (hasOverrides) {
     resetServices()
     initialized = false
+    registrationGeneration++ // 增加注册代数，使缓存的实例失效
   }
 
   registerAllServices(overrides)
@@ -242,6 +243,7 @@ export async function initializeServices(
 export async function resetServicesAsync(): Promise<void> {
   await resetRegisteredServicesAsync()
   initialized = false
+  registrationGeneration++ // 增加注册代数，使缓存的实例失效
 }
 
 // 导出性能监控功能
@@ -258,14 +260,26 @@ export {
 } from './performanceMonitor'
 
 /**
+ * 当前注册版本计数器 - 用于检测服务重置
+ */
+let registrationGeneration = 0
+
+/**
  * 创建服务访问器函数
  */
 function createServiceAccessor<T>(identifier: ServiceIdentifier<T>, init: () => void): () => T {
   let initialized = false
   let instance: T | null = null
+  let cachedGeneration = 0
 
   return () => {
     try {
+      // 检测服务是否被重置（注册代数不匹配）
+      if (initialized && cachedGeneration !== registrationGeneration) {
+        initialized = false
+        instance = null
+      }
+
       // 如果已初始化，直接返回缓存实例
       if (initialized && instance !== null) {
         return instance
@@ -277,6 +291,7 @@ function createServiceAccessor<T>(identifier: ServiceIdentifier<T>, init: () => 
       // 获取服务实例
       instance = getService<T>(identifier)
       initialized = true
+      cachedGeneration = registrationGeneration
 
       return instance
     } catch (error) {

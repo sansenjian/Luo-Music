@@ -192,4 +192,24 @@ describe('service registry lifecycle', () => {
     const serviceA = getService(IServiceA)
     expect(serviceA).toEqual({ name: 'A', dependsOn: { name: 'B' } })
   })
+
+  it('invalidates service accessor cache after resetServicesAsync', async () => {
+    const { services, resetServicesAsync, setupServices } = await import('@/services')
+
+    // 第一次获取服务实例
+    const firstMusicInstance = services.music()
+    expect(firstMusicInstance).toBeDefined()
+
+    // 重置服务
+    await resetServicesAsync()
+
+    // 重新初始化
+    setupServices()
+
+    // 再次获取服务实例 - 应该返回新实例
+    const secondMusicInstance = services.music()
+    expect(secondMusicInstance).toBeDefined()
+    // 由于服务被重新创建，实例应该不同
+    expect(secondMusicInstance).not.toBe(firstMusicInstance)
+  })
 })
