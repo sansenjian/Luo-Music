@@ -83,6 +83,9 @@ export type LyricTimeUpdate = {
   trans: string
   roma: string
   playing?: boolean
+  songId?: string | number | null
+  platform?: 'netease' | 'qq' | null
+  sequence?: number
 }
 
 /**
@@ -105,7 +108,20 @@ export interface PlayerStateResponse {
 }
 
 export interface PlayerStateSnapshot extends PlayerStateResponse {
+  lyricSong: Song | null
   lyrics: PlayerLyricLine[]
+  desktopLyricSequence: number
+}
+
+export interface DesktopLyricSnapshot {
+  currentSong: Song | null
+  currentLyricIndex: number
+  progress: number
+  isPlaying: boolean
+  lyrics: PlayerLyricLine[]
+  songId: string | number | null
+  platform: 'netease' | 'qq' | null
+  sequence: number
 }
 
 export interface PlayerPlaySongPayload {
@@ -312,6 +328,11 @@ type InvokeChannelsDefinition = MergeChannels<
     DefineInvokeChannel<typeof INVOKE_CHANNELS.PLAYER_GET_STATE, [], PlayerStateResponse> &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.PLAYER_GET_CURRENT_SONG, [], Song | null> &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.PLAYER_GET_PLAYLIST, [], Song[]> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.PLAYER_GET_DESKTOP_LYRIC_SNAPSHOT,
+      [],
+      DesktopLyricSnapshot
+    > &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.PLAYER_ADD_TO_NEXT, [Song], void> &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.PLAYER_REMOVE_FROM_PLAYLIST, [index: number], void> &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.PLAYER_CLEAR_PLAYLIST, [], void> &

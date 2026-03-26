@@ -194,7 +194,10 @@ describe('playerStore lifecycle', () => {
       text: '',
       trans: '',
       roma: '',
-      playing: false
+      playing: false,
+      songId: null,
+      platform: null,
+      sequence: 2
     })
   })
 

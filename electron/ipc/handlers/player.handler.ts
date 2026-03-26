@@ -6,6 +6,7 @@ import type { Song } from '../../../src/types/schemas'
 import { LyricParser } from '../../../src/utils/player/core/lyric'
 import { PLAY_MODE } from '../../../src/utils/player/constants/playMode'
 import type {
+  DesktopLyricSnapshot,
   PlayMode,
   PlayerPlaySongByIdPayload,
   PlayerPlaySongPayload,
@@ -29,11 +30,13 @@ const DEFAULT_PLAYER_STATE: PlayerStateSnapshot = {
   playlist: [],
   currentIndex: -1,
   currentSong: null,
+  lyricSong: null,
   currentLyricIndex: -1,
   showLyric: true,
   showPlaylist: false,
   isCompact: false,
-  lyrics: []
+  lyrics: [],
+  desktopLyricSequence: 0
 }
 
 // ========== 状态广播管理器 ==========
@@ -137,7 +140,26 @@ function normalizePlayerState(snapshot: PlayerStateSnapshot | undefined): Player
     ...(snapshot ?? {}),
     playlist: Array.isArray(snapshot?.playlist) ? snapshot.playlist : [],
     currentSong: snapshot?.currentSong ?? null,
-    lyrics: Array.isArray(snapshot?.lyrics) ? snapshot.lyrics : []
+    lyricSong: snapshot?.lyricSong ?? null,
+    lyrics: Array.isArray(snapshot?.lyrics) ? snapshot.lyrics : [],
+    desktopLyricSequence:
+      typeof snapshot?.desktopLyricSequence === 'number' ? snapshot.desktopLyricSequence : 0
+  }
+}
+
+function createDesktopLyricSnapshot(playerState: PlayerStateSnapshot): DesktopLyricSnapshot {
+  const hasCurrentSongLyrics = hasUsableLyricCache(playerState)
+  const currentSong = playerState.currentSong
+
+  return {
+    currentSong,
+    currentLyricIndex: hasCurrentSongLyrics ? playerState.currentLyricIndex : -1,
+    progress: playerState.progress,
+    isPlaying: playerState.isPlaying,
+    lyrics: hasCurrentSongLyrics ? [...playerState.lyrics] : [],
+    songId: currentSong?.id ?? null,
+    platform: currentSong?.platform ?? null,
+    sequence: hasCurrentSongLyrics ? playerState.desktopLyricSequence : 0
   }
 }
 
@@ -169,6 +191,21 @@ function matchesLyricRequest(
     currentSong.id === payload.id &&
     (currentSong.platform ?? 'netease') === (payload.platform ?? 'netease')
   )
+}
+
+function hasUsableLyricCache(
+  playerState: PlayerStateSnapshot,
+  payload?: PlayerPlaySongByIdPayload
+): boolean {
+  if (playerState.lyrics.length === 0 || !playerState.lyricSong) {
+    return false
+  }
+
+  if (payload) {
+    return matchesLyricRequest(playerState.lyricSong, payload)
+  }
+
+  return isSameSong(playerState.lyricSong, playerState.currentSong)
 }
 
 async function fetchLyricsForSong(
@@ -245,6 +282,10 @@ export function registerPlayerHandlers(
     return [...playerState.playlist]
   })
 
+  ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_GET_DESKTOP_LYRIC_SNAPSHOT, async () => {
+    return createDesktopLyricSnapshot(playerState)
+  })
+
   ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_ADD_TO_NEXT, async (song: Song) => {
     windowManager.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, { type: 'add-to-next', song })
   })
@@ -260,7 +301,7 @@ export function registerPlayerHandlers(
   ipcService.registerInvoke(
     INVOKE_CHANNELS.PLAYER_GET_LYRIC,
     async (payload?: PlayerPlaySongByIdPayload) => {
-      if (matchesLyricRequest(playerState.currentSong, payload) && playerState.lyrics.length > 0) {
+      if (hasUsableLyricCache(playerState, payload)) {
         return [...playerState.lyrics]
       }
 

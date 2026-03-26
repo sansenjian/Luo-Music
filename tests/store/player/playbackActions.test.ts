@@ -181,6 +181,25 @@ describe('playbackActions', () => {
     expect(playSongByIndex).toHaveBeenCalledWith(0)
   })
 
+  it('preserves the current lyric index when reselecting the same song', async () => {
+    const { actions, state, onStateChange, playSongByIndex, setLyricsArray } = createSubject()
+    const song = createSong({ id: 'song-1', url: 'https://song.test/1.mp3' })
+    state.songList = [song]
+    state.currentSong = song
+    state.currentIndex = 0
+    state.currentLyricIndex = 12
+
+    await actions.playSongByIndex(0)
+
+    expect(setLyricsArray).not.toHaveBeenCalled()
+    expect(onStateChange).toHaveBeenCalledWith({
+      currentIndex: 0,
+      currentSong: song,
+      currentLyricIndex: 12
+    })
+    expect(playSongByIndex).toHaveBeenCalledWith(0)
+  })
+
   it('throws when playSongByIndex is asked to play a song without a url', async () => {
     const { actions, state } = createSubject()
     state.songList = [createSong()]
@@ -213,6 +232,37 @@ describe('playbackActions', () => {
     ])
     expect(onStateChange).toHaveBeenCalledWith({ loading: true })
     expect(onStateChange).toHaveBeenLastCalledWith({ loading: false })
+  })
+
+  it('refreshes cached urls for netease songs before playback', async () => {
+    const { actions, state, playSongByIndex } = createSubject()
+    const song = createSong({
+      id: 'song-netease',
+      platform: 'netease',
+      url: 'https://stale.example.com/old.mp3',
+      unavailable: true,
+      errorMessage: 'stale',
+      retryCount: 1
+    })
+    state.songList = [song]
+    adapterMock.getSongUrl.mockResolvedValue('https://song.test/fresh.mp3')
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    await actions.playSongWithDetails(0)
+
+    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('netease', 'song-netease', {
+      mediaId: undefined
+    })
+    expect(song.url).toBe('https://song.test/fresh.mp3')
+    expect(song.unavailable).toBe(false)
+    expect(song.errorMessage).toBeNull()
+    expect(song.retryCount).toBe(0)
+    expect(playSongByIndex).toHaveBeenCalledWith(0)
   })
 
   it('keeps current lyrics when lyric loading is cancelled', async () => {

@@ -12,14 +12,21 @@ import {
   ensurePlayerStoreRuntime,
   getPlayerStoreRuntime,
   resetPlayerStoreRuntime,
-  type CurrentLyricLine,
   type PlayerStoreOwner
 } from './player/runtime'
+import {
+  createLyricTimeUpdatePayload,
+  getCurrentLyricLine,
+  getDesktopLyricSequence,
+  notifyLyricTimeUpdate,
+  syncLyricIndex
+} from './player/lyricSync'
 import { playerCore as audioManager } from '../utils/player/core/playerCore'
 import { LyricEngine, type LyricLine } from '../utils/player/core/lyric'
 import { PLAY_MODE } from '../utils/player/constants/playMode'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
 import { PlaybackErrorHandler } from '../utils/player/modules/playbackErrorHandler'
+import { DESKTOP_LYRIC_IPC_INTERVAL, LYRIC_UI_UPDATE_INTERVAL } from '../constants/lyric'
 
 export type PlayerStoreActions = {
   seek: (time: number) => void
@@ -47,6 +54,7 @@ export type PlayerStoreActions = {
   togglePlayMode: () => void
   setPlayMode: (mode: PlayerState['playMode']) => void
   setLyric: (lyric: unknown) => void
+  toggleLyricType: (type: 'trans' | 'roma') => void
   toggleCompactMode: () => void
   setLyricsArray: (lyrics: LyricLine[]) => void
   clearPlaylist: () => void
@@ -60,28 +68,6 @@ type PlayerStoreInstance = PlayerState &
 
 function getPlatformService() {
   return getPlatformAccessor()
-}
-
-function getCurrentLyricLine(store: PlayerStoreInstance): CurrentLyricLine {
-  const line = store.lyricsArray[store.currentLyricIndex]
-  return line ? { text: line.text, trans: line.trans || '', roma: line.roma || '' } : null
-}
-
-function notifyLyricTimeUpdate(store: PlayerStoreInstance, time = store.progress): void {
-  const platform = getPlatformService()
-  if (!platform.isElectron()) {
-    return
-  }
-
-  const line = getCurrentLyricLine(store)
-  platform.send('lyric-time-update', {
-    time,
-    index: store.currentLyricIndex,
-    text: line?.text || '',
-    trans: line?.trans || '',
-    roma: line?.roma || '',
-    playing: store.playing
-  })
 }
 
 function toIpcSerializable(value: unknown, seen = new WeakMap<object, unknown>()): unknown {
@@ -161,11 +147,13 @@ function createPlayerStateSnapshot(store: PlayerStoreInstance): PlayerStateSnaps
     playlist: toIpcSerializable(store.songList) as PlayerStateSnapshot['playlist'],
     currentIndex: store.currentIndex,
     currentSong: toIpcSerializable(store.currentSong) as PlayerStateSnapshot['currentSong'],
+    lyricSong: toIpcSerializable(store.lyricSong) as PlayerStateSnapshot['lyricSong'],
     currentLyricIndex: store.currentLyricIndex,
     showLyric: store.showLyric,
     showPlaylist: store.showPlaylist,
     isCompact: store.isCompact,
-    lyrics: toIpcSerializable(store.lyricsArray) as PlayerStateSnapshot['lyrics']
+    lyrics: toIpcSerializable(store.lyricsArray) as PlayerStateSnapshot['lyrics'],
+    desktopLyricSequence: getDesktopLyricSequence(store)
   }
 }
 
@@ -287,21 +275,6 @@ function removeFromPlaylistFromIpc(store: PlayerStoreInstance, index: number): v
   notifyPlayerStateSnapshot(store)
 }
 
-function syncLyricIndex(store: PlayerStoreInstance, time = store.progress): boolean {
-  const lyricEngine = getPlayerStoreRuntime(store)?.getLyricEngine()
-  if (!lyricEngine) {
-    return false
-  }
-
-  const index = lyricEngine.update(time)
-  if (store.currentLyricIndex === index) {
-    return false
-  }
-
-  store.currentLyricIndex = index
-  return true
-}
-
 function getPlaybackActions(store: PlayerStoreInstance) {
   const runtime = ensurePlayerStoreRuntime(store)
 
@@ -347,7 +320,7 @@ export const usePlayerStore = defineStore('player', {
       audioManager.seek(time)
       this.progress = time
       syncLyricIndex(store, time)
-      notifyLyricTimeUpdate(store, time)
+      notifyLyricTimeUpdate(store, getPlatformService(), time)
     },
 
     async playNextSkipUnavailable(): Promise<void> {
@@ -374,7 +347,7 @@ export const usePlayerStore = defineStore('player', {
           onTimeUpdate: (time: number) => {
             this.progress = time
             if (this.updateLyricIndex(time)) {
-              notifyLyricTimeUpdate(store, time)
+              notifyLyricTimeUpdate(store, getPlatformService(), time)
             }
           },
           onLoadedMetadata: (duration: number) => {
@@ -397,10 +370,11 @@ export const usePlayerStore = defineStore('player', {
           }
         },
         {
-          uiUpdateInterval: 250,
-          ipcBroadcastInterval: 500,
+          uiUpdateInterval: LYRIC_UI_UPDATE_INTERVAL,
+          ipcBroadcastInterval: DESKTOP_LYRIC_IPC_INTERVAL,
           getCurrentLyricLine: () => getCurrentLyricLine(store),
-          syncLyricIndex: (time: number) => syncLyricIndex(store, time)
+          syncLyricIndex: (time: number) => syncLyricIndex(store, time),
+          createLyricUpdatePayload: ({ time }) => createLyricTimeUpdatePayload(store, time)
         },
         {
           isElectron: () => getPlatformService().isElectron(),
@@ -646,6 +620,15 @@ export const usePlayerStore = defineStore('player', {
       this.lyric = lyric
     },
 
+    toggleLyricType(type: 'trans' | 'roma'): void {
+      if (this.lyricType.includes(type)) {
+        this.lyricType = this.lyricType.filter(item => item !== type)
+        return
+      }
+
+      this.lyricType = [...new Set([...this.lyricType, 'original', type])]
+    },
+
     toggleCompactMode(): void {
       this.isCompact = !this.isCompact
       services.storage().setItem('compactModeUserToggled', 'true')
@@ -655,11 +638,12 @@ export const usePlayerStore = defineStore('player', {
       const store = this as unknown as PlayerStoreInstance
 
       this.lyricsArray = markRaw(lyrics) as LyricLine[]
+      this.lyricSong = lyrics.length > 0 ? this.currentSong : null
       this.currentLyricIndex = -1
 
       getPlayerStoreRuntime(store)?.getLyricEngine()?.setLyrics(lyrics)
       this.updateLyricIndex(this.progress)
-      notifyLyricTimeUpdate(store)
+      notifyLyricTimeUpdate(store, getPlatformService())
     },
 
     clearPlaylist(): void {
@@ -668,6 +652,7 @@ export const usePlayerStore = defineStore('player', {
       this.songList = []
       this.currentIndex = -1
       this.currentSong = null
+      this.lyricSong = null
       this.lyric = null
       this.lyricsArray = []
       this.currentLyricIndex = -1
@@ -681,7 +666,7 @@ export const usePlayerStore = defineStore('player', {
       this.initialized = false
 
       notifyPlayerStateSnapshot(store)
-      notifyLyricTimeUpdate(store, 0)
+      notifyLyricTimeUpdate(store, getPlatformService(), 0)
       resetPlayerStoreRuntime(store)
     }
   },

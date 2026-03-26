@@ -72,6 +72,7 @@ export const INVOKE_CHANNELS = {
   PLAYER_GET_STATE: 'player:get-state',
   PLAYER_GET_CURRENT_SONG: 'player:get-current-song',
   PLAYER_GET_PLAYLIST: 'player:get-playlist',
+  PLAYER_GET_DESKTOP_LYRIC_SNAPSHOT: 'player:get-desktop-lyric-snapshot',
   PLAYER_ADD_TO_NEXT: 'player:add-to-next',
   PLAYER_REMOVE_FROM_PLAYLIST: 'player:remove-from-playlist',
   PLAYER_CLEAR_PLAYLIST: 'player:clear-playlist',

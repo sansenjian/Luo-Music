@@ -368,6 +368,51 @@ describe('audioEvents', () => {
     )
   })
 
+  it('uses the configured lyric payload factory when broadcasting desktop lyric updates', () => {
+    const state = createInitialState()
+    state.currentLyricIndex = 1
+    state.playing = true
+
+    const callbacks = {
+      onTimeUpdate: vi.fn()
+    }
+    const platform = {
+      isElectron: vi.fn(() => true),
+      send: vi.fn()
+    }
+
+    const handler = createAudioEventHandler(state, callbacks, platform)
+    handler.init({
+      uiUpdateInterval: 250,
+      ipcBroadcastInterval: 500,
+      getCurrentLyricLine: () => ({ text: 'Line 2', trans: 'Second', roma: '' }),
+      createLyricUpdatePayload: ({ time, index, line, playing }) => ({
+        time,
+        index,
+        text: line?.text || '',
+        trans: line?.trans || '',
+        roma: line?.roma || '',
+        playing,
+        songId: 'song-1',
+        platform: 'netease',
+        sequence: 7
+      })
+    })
+
+    playerCoreMock.setCurrentTime(5)
+    vi.setSystemTime(getTestDate(TIME_OFFSETS.MS_900))
+    playerCoreMock.emit('timeupdate')
+
+    expect(platform.send).toHaveBeenCalledWith(
+      'lyric-time-update',
+      expect.objectContaining({
+        songId: 'song-1',
+        platform: 'netease',
+        sequence: 7
+      })
+    )
+  })
+
   it('supports config and callback replacement, and guards reinit after dispose', () => {
     const state = createInitialState()
     const callbacks = {

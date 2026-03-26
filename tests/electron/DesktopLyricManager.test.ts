@@ -210,6 +210,56 @@ describe('DesktopLyricManager', () => {
     expect(mockWindow.webContents.send).toHaveBeenNthCalledWith(1, 'lyric-time-update', payload)
   })
 
+  it('caches lyric updates for a hidden warm window until it is shown', async () => {
+    const { DesktopLyricManager } = await import('../../electron/DesktopLyricManager')
+    const manager = new DesktopLyricManager()
+    const payload = {
+      time: 18,
+      index: 1,
+      text: 'Cached while hidden',
+      trans: '',
+      roma: '',
+      playing: true
+    }
+    const mockWindow = {
+      isDestroyed: vi.fn(() => false),
+      isVisible: vi.fn(() => false),
+      show: vi.fn(),
+      webContents: {
+        send: vi.fn()
+      }
+    }
+
+    ;(
+      manager as unknown as {
+        win: typeof mockWindow
+        isWindowReady: boolean
+        isRendererReady: boolean
+      }
+    ).win = mockWindow
+    ;(
+      manager as unknown as {
+        isWindowReady: boolean
+      }
+    ).isWindowReady = true
+    ;(
+      manager as unknown as {
+        isRendererReady: boolean
+      }
+    ).isRendererReady = false
+
+    manager.sendLyric(payload)
+
+    expect(mockWindow.webContents.send).not.toHaveBeenCalled()
+
+    mockWindow.isVisible.mockReturnValue(true)
+    manager.show()
+
+    expect(mockWindow.webContents.send).toHaveBeenCalledTimes(1)
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith('lyric-time-update', payload)
+    expect(mockWindow.show).toHaveBeenCalledTimes(1)
+  })
+
   it('builds the desktop lyric route target in development mode', async () => {
     const { DESKTOP_LYRIC_HASH_ROUTE, getDesktopLyricWindowRoute } =
       await import('../../electron/DesktopLyricManager')

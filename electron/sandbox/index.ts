@@ -83,6 +83,7 @@ type PlayerServiceAPI = Pick<
   | 'getState'
   | 'getCurrentSong'
   | 'getPlaylist'
+  | 'getDesktopLyricSnapshot'
   | 'addToNext'
   | 'removeFromPlaylist'
   | 'clearPlaylist'
@@ -252,6 +253,7 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
     getState: () => playerProxy.getState(),
     getCurrentSong: () => playerProxy.getCurrentSong(),
     getPlaylist: () => playerProxy.getPlaylist(),
+    getDesktopLyricSnapshot: () => playerProxy.getDesktopLyricSnapshot(),
     addToNext: song => playerProxy.addToNext(song),
     removeFromPlaylist: index => playerProxy.removeFromPlaylist(index),
     clearPlaylist: () => playerProxy.clearPlaylist(),

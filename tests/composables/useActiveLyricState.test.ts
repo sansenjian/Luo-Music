@@ -136,4 +136,33 @@ describe('useActiveLyricState', () => {
       roma: 'Push roma'
     })
   })
+
+  it('exposes hydrated lyrics for ipc-based consumers', async () => {
+    const hydratedLyrics = [
+      { time: 0, text: 'Line 1', trans: 'Trans 1', roma: 'Roma 1' },
+      { time: 5, text: 'Line 2', trans: '', roma: '' }
+    ]
+
+    Object.defineProperty(window, 'services', {
+      configurable: true,
+      value: {
+        player: {
+          getState: vi.fn().mockResolvedValue({
+            isPlaying: false,
+            currentIndex: 0,
+            currentSong: { id: 'song-1', platform: 'netease' },
+            currentLyricIndex: 0
+          }),
+          getLyric: vi.fn().mockResolvedValue(hydratedLyrics)
+        }
+      } as unknown
+    })
+
+    const wrapper = mountHarness()
+    await flushAsyncState()
+
+    const vm = wrapper.vm as unknown as ReturnType<typeof useActiveLyricState>
+    expect(vm.lyrics).toEqual(hydratedLyrics)
+    expect(vm.currentLine).toEqual(hydratedLyrics[0])
+  })
 })

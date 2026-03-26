@@ -17,6 +17,12 @@ export interface TimeUpdateConfig {
   ipcBroadcastInterval: number
   getCurrentLyricLine?: () => { text: string; trans: string; roma: string } | null
   syncLyricIndex?: (time: number) => boolean
+  createLyricUpdatePayload?: (params: {
+    time: number
+    index: number
+    line: { text: string; trans: string; roma: string } | null
+    playing: boolean
+  }) => Record<string, unknown>
 }
 
 export class AudioEventHandler implements IDisposable {
@@ -88,7 +94,7 @@ export class AudioEventHandler implements IDisposable {
       return
     }
 
-    const currentLyricLine = this.config.getCurrentLyricLine?.()
+    const currentLyricLine = this.config.getCurrentLyricLine?.() ?? null
     const currentTime = Number(playerCore.currentTime) || this.state.progress
 
     // 差量检查：只有当歌词索引或内容真正变化时才发送
@@ -110,12 +116,19 @@ export class AudioEventHandler implements IDisposable {
     this.lastBroadcastPlaying = this.state.playing
 
     this.platform.send('lyric-time-update', {
-      time: currentTime,
-      index: this.state.currentLyricIndex,
-      text: currentLyricLine?.text || '',
-      trans: currentLyricLine?.trans || '',
-      roma: currentLyricLine?.roma || '',
-      playing: this.state.playing
+      ...(this.config.createLyricUpdatePayload?.({
+        time: currentTime,
+        index: this.state.currentLyricIndex,
+        line: currentLyricLine,
+        playing: this.state.playing
+      }) ?? {
+        time: currentTime,
+        index: this.state.currentLyricIndex,
+        text: currentLyricLine?.text || '',
+        trans: currentLyricLine?.trans || '',
+        roma: currentLyricLine?.roma || '',
+        playing: this.state.playing
+      })
     })
   }
 

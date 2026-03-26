@@ -32,3 +32,17 @@ export const PROGRAMMATIC_SCROLL_GUARD = 380
  * 歌词位置计算的默认刷新间隔
  */
 export const DEFAULT_LYRIC_UPDATE_INTERVAL = 100
+
+/**
+ * 播放进度与歌词索引同步的 UI 刷新间隔 (毫秒)
+ *
+ * 用于主界面歌词高亮和进度联动，较低的间隔可以减少视觉滞后。
+ */
+export const LYRIC_UI_UPDATE_INTERVAL = 100
+
+/**
+ * 桌面歌词 IPC 广播间隔 (毫秒)
+ *
+ * 桌面歌词比主界面更依赖主进程广播，这里保持更高频以减少“慢半拍”。
+ */
+export const DESKTOP_LYRIC_IPC_INTERVAL = 160

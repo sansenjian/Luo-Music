@@ -60,6 +60,22 @@ export class PlaybackActions {
     return this.createSongRequestKey(currentSong) === songKey
   }
 
+  private shouldFetchFreshSongUrl(song: Song, platformKey: string): boolean {
+    if (!song.url) {
+      return true
+    }
+
+    // Netease playback URLs are short-lived enough that reusing cached song.url
+    // can fail on later track transitions or playlist loops.
+    return platformKey === 'netease'
+  }
+
+  private clearPlaybackFailureState(song: Song): void {
+    song.retryCount = 0
+    song.unavailable = false
+    song.errorMessage = null
+  }
+
   getRandomIndex(excludeCurrent = true): number {
     const state = this.deps.getState()
     if (state.songList.length === 0) return -1
@@ -118,19 +134,20 @@ export class PlaybackActions {
     if (index < 0 || index >= state.songList.length) return
 
     const song = state.songList[index]
+    const isSwitchingSong = !this.isSameSong(state.currentSong, song)
     if (!song.url) {
       console.error('No URL for song')
       throw new Error('No URL for song')
     }
 
-    if (!this.isSameSong(state.currentSong, song)) {
+    if (isSwitchingSong) {
       this.deps.setLyricsArray([])
     }
 
     this.deps.onStateChange({
       currentIndex: index,
       currentSong: song,
-      currentLyricIndex: -1
+      currentLyricIndex: isSwitchingSong ? -1 : state.currentLyricIndex
     })
 
     await this.deps.playSongByIndex(index)
@@ -153,7 +170,7 @@ export class PlaybackActions {
     console.log(`[Player] Playing song: ${song.name} (ID: ${song.id}, Platform: ${platformKey})`)
 
     try {
-      if (!song.url) {
+      if (this.shouldFetchFreshSongUrl(song, platformKey)) {
         try {
           console.log('[Player] Fetching URL for song:', song.id)
           const mediaId = (song as Song & { mediaId?: string }).mediaId
@@ -162,6 +179,7 @@ export class PlaybackActions {
 
           if (url) {
             song.url = url
+            this.clearPlaybackFailureState(song)
           } else {
             console.warn('Song URL unavailable:', song.id)
             const err = Errors.noCopyright(song.id)
@@ -176,6 +194,8 @@ export class PlaybackActions {
           errorCenter.emit(err)
           throw err
         }
+      } else {
+        this.clearPlaybackFailureState(song)
       }
 
       await this.playSongByIndex(index)

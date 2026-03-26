@@ -17,22 +17,34 @@ export interface LyricLine {
   words?: LyricWord[] // For enhanced lyrics
 }
 
+export function parseLyricTimestamp(timeStr: string): number {
+  const match = timeStr.trim().match(/^(\d+):(\d+)(?:([.:])(\d+))?$/)
+  if (!match) {
+    return 0
+  }
+
+  const minutes = Number.parseInt(match[1], 10)
+  const seconds = Number.parseInt(match[2], 10)
+  const separator = match[3]
+  const fractionRaw = match[4]
+
+  let fraction = 0
+  if (fractionRaw) {
+    if (separator === '.') {
+      fraction = Number.parseFloat(`0.${fractionRaw}`)
+    } else {
+      fraction = Number.parseInt(fractionRaw, 10) / 1000
+    }
+  }
+
+  return minutes * 60 + seconds + fraction
+}
+
 export class LyricParser {
   private static readonly MERGE_TOLERANCE_MS = 80
 
   private static parseTime(timeStr: string): number {
-    // Format: mm:ss.xx or mm:ss:xx
-    const normalized = timeStr.replace(/:(\d+)$/, '.$1')
-    const parts = normalized.match(/(\d+):(\d+)(?:\.(\d+))?/)
-
-    if (!parts) return 0
-
-    const min = parseInt(parts[1], 10)
-    const sec = parseInt(parts[2], 10)
-    const msStr = parts[3] || '0'
-    const ms = parseFloat(`0.${msStr}`)
-
-    return min * 60 + sec + ms
+    return parseLyricTimestamp(timeStr)
   }
 
   private static mergeField(current: string, next: string): string {

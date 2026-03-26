@@ -177,6 +177,19 @@ describe('playerStore', () => {
       const store = usePlayerStore()
       expect(store.lyricType).toEqual(['original', 'trans'])
     })
+
+    it('toggles optional lyric layers without dropping original', () => {
+      const store = usePlayerStore()
+
+      store.toggleLyricType('trans')
+      expect(store.lyricType).toEqual(['original'])
+
+      store.toggleLyricType('roma')
+      expect(store.lyricType).toEqual(['original', 'roma'])
+
+      store.toggleLyricType('trans')
+      expect(store.lyricType).toEqual(['original', 'roma', 'trans'])
+    })
   })
 
   describe('compact mode', () => {

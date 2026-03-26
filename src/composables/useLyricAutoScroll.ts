@@ -293,10 +293,15 @@ export function useLyricAutoScroll(options: UseLyricAutoScrollOptions) {
     )
   }
 
-  watch(lyrics, () => {
-    resetScrollState()
-    resetScrollPosition()
-  })
+  watch(
+    lyrics,
+    () => {
+      resetScrollState()
+      resetScrollPosition()
+      syncVisibleActiveLine()
+    },
+    { flush: 'post' }
+  )
 
   if (resetSources.length > 0) {
     watch(resetSources, () => {

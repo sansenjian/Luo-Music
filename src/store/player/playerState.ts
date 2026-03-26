@@ -29,6 +29,8 @@ export interface PlayerState {
   currentIndex: number
   /** 当前歌曲 */
   currentSong: Song | null
+  /** 当前歌词所属歌曲 */
+  lyricSong: Song | null
   /** 歌词原始数据 */
   lyric: unknown
   /** 歌词解析后的数组 */
@@ -85,6 +87,7 @@ export function createInitialState(): PlayerState {
     songList: [],
     currentIndex: -1,
     currentSong: null,
+    lyricSong: null,
     lyric: null,
     lyricsArray: [],
     currentLyricIndex: -1,

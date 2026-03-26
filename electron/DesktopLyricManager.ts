@@ -35,6 +35,9 @@ interface LyricUpdateData {
   trans: string
   roma: string
   playing?: boolean
+  songId?: string | number | null
+  platform?: 'netease' | 'qq' | null
+  sequence?: number
 }
 
 interface CreateWindowOptions {
@@ -87,6 +90,18 @@ export class DesktopLyricManager {
     }
 
     this.replayLastLyric()
+  }
+
+  private canSendLiveLyric(): boolean {
+    if (!this.win || this.win.isDestroyed() || !this.isWindowReady) {
+      return false
+    }
+
+    if (this.isRendererReady) {
+      return true
+    }
+
+    return typeof this.win.isVisible === 'function' ? this.win.isVisible() : false
   }
 
   constructor() {
@@ -239,6 +254,10 @@ export class DesktopLyricManager {
 
   sendLyric(data: LyricUpdateData): void {
     this.lastLyric = data
+    if (!this.canSendLiveLyric()) {
+      return
+    }
+
     this.sendToRenderer('lyric-time-update', data)
   }
 

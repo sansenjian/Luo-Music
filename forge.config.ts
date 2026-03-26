@@ -66,6 +66,7 @@ const config: ForgeConfigWithAsar = {
       '.idea',
       '.trae',
       '.kilocode',
+      '.userData',
       '.git',
       'release_v2',
       'dist',
