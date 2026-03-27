@@ -30,6 +30,11 @@ const loadingMap = ref<Record<UserTab, boolean>>({
   playlist: false,
   events: false
 })
+const mountedTabs = ref<Record<UserTab, boolean>>({
+  liked: true,
+  playlist: false,
+  events: false
+})
 const currentUserId = computed(() => userStore.userId)
 
 useUserDataQuery(() => userStore.userId)
@@ -59,8 +64,18 @@ const activeTabLoading = computed(() => loadingMap.value[activeTab.value])
 
 let activeLoadId = 0
 
+const resetMountedTabs = () => {
+  mountedTabs.value = {
+    liked: true,
+    playlist: false,
+    events: false
+  }
+}
+
 const resetUserContent = () => {
   activeLoadId += 1
+  activeTab.value = 'liked'
+  resetMountedTabs()
   loadingMap.value.liked = false
   loadingMap.value.playlist = false
   loadingMap.value.events = false
@@ -68,6 +83,14 @@ const resetUserContent = () => {
   resetPlaylists()
   resetEvents()
 }
+
+watch(
+  activeTab,
+  tab => {
+    mountedTabs.value[tab] = true
+  },
+  { immediate: true }
+)
 
 const loadAllData = async (userId: string | number) => {
   const loadId = ++activeLoadId
@@ -225,6 +248,7 @@ const goBack = () => {
 
         <template v-else>
           <LikedSongsView
+            v-if="mountedTabs.liked"
             v-show="activeTab === 'liked'"
             :like-songs="formattedSongs"
             :loading="loadingMap.liked"
@@ -233,6 +257,7 @@ const goBack = () => {
           />
 
           <PlaylistsView
+            v-if="mountedTabs.playlist"
             v-show="activeTab === 'playlist'"
             :playlists="playlists"
             :loading="loadingMap.playlist"
@@ -240,6 +265,7 @@ const goBack = () => {
           />
 
           <EventsView
+            v-if="mountedTabs.events"
             v-show="activeTab === 'events'"
             :events="events"
             :loading="loadingMap.events"

@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   events: {
     type: Array,
     required: true
@@ -24,15 +26,25 @@ const formatEventTime = timestamp => {
   return date.toLocaleDateString('zh-CN')
 }
 
-const getEventMsg = event => {
-  if (!event.json) return ''
-  try {
-    const data = JSON.parse(event.json)
-    return data.msg || ''
-  } catch {
-    return ''
-  }
-}
+const eventCards = computed(() =>
+  props.events.map(event => {
+    let message = ''
+
+    if (event.json) {
+      try {
+        const data = JSON.parse(event.json)
+        message = data.msg || ''
+      } catch {
+        message = ''
+      }
+    }
+
+    return {
+      ...event,
+      message
+    }
+  })
+)
 </script>
 
 <template>
@@ -46,7 +58,7 @@ const getEventMsg = event => {
     </div>
 
     <div v-else class="events-list">
-      <div v-for="event in events" :key="event.eventId" class="event-item">
+      <div v-for="event in eventCards" :key="event.eventId" class="event-item">
         <div class="event-header">
           <img class="event-user-avatar" :src="event.user?.avatarUrl" :alt="event.user?.nickname" />
           <div class="event-user-info">
@@ -54,8 +66,8 @@ const getEventMsg = event => {
             <span class="event-time">{{ formatEventTime(event.eventTime) }}</span>
           </div>
         </div>
-        <div class="event-content" v-if="event.json && getEventMsg(event)">
-          <p>{{ getEventMsg(event) }}</p>
+        <div v-if="event.message" class="event-content">
+          <p>{{ event.message }}</p>
         </div>
         <div class="event-song" v-if="event.song">
           <img class="event-song-cover" :src="event.song.album?.picUrl" :alt="event.song.name" />
