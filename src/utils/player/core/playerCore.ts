@@ -215,7 +215,7 @@ export class PlayerCore {
       const sourceChanged = Boolean(url && this.audio.src !== url)
 
       // If url provided and different, load it
-      if (sourceChanged) {
+      if (url && sourceChanged) {
         // [Leak Fix] Break connection with previous source to help GC
         // When switching songs, explicit load() is crucial.
         this.audio.src = url
