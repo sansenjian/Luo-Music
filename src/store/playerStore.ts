@@ -88,6 +88,7 @@ function getPlatformService() {
  * @param value - The value to serialize for IPC transport.
  * @param seen - Internal WeakMap used to track visited objects and handle cyclic references; callers can omit.
  * @returns A representation of `value` safe for IPC (primitives, arrays, or plain objects), or `undefined` when the input cannot be represented.
+ */
 function toIpcSerializable(value: unknown, seen = new WeakMap<object, unknown>()): unknown {
   if (value == null) {
     return value
