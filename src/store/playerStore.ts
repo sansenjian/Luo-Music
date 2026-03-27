@@ -66,10 +66,28 @@ type PlayerStoreInstance = PlayerState &
     $state: PlayerState
   } & StoreGeneric
 
+/**
+ * Get the application platform accessor used to interact with platform-specific APIs.
+ *
+ * @returns The platform accessor instance used for platform bridging and IPC
+ */
 function getPlatformService() {
   return getPlatformAccessor()
 }
 
+/**
+ * Convert a value into an IPC-safe representation suitable for sending between processes.
+ *
+ * Recursively transforms the input into primitives, plain objects, and arrays while handling cycles.
+ * Special cases:
+ * - `bigint` is converted to its decimal string.
+ * - `function` and `symbol` values are dropped (`undefined`); when appearing in arrays they become `null`.
+ * - `Date` and `RegExp` are converted to new equivalent instances.
+ * - `Error` is converted to an object with `name`, `message`, and `stack`.
+ *
+ * @param value - The value to serialize for IPC transport.
+ * @param seen - Internal WeakMap used to track visited objects and handle cyclic references; callers can omit.
+ * @returns A representation of `value` safe for IPC (primitives, arrays, or plain objects), or `undefined` when the input cannot be represented.
 function toIpcSerializable(value: unknown, seen = new WeakMap<object, unknown>()): unknown {
   if (value == null) {
     return value
@@ -132,6 +150,12 @@ function toIpcSerializable(value: unknown, seen = new WeakMap<object, unknown>()
   return output
 }
 
+/**
+ * Build a serializable snapshot of the player's current UI and playback state for IPC.
+ *
+ * @param store - The player store instance to snapshot
+ * @returns An object containing playback/UI/lyric/playlist state suitable for IPC transport; fields include `isPlaying`, `isLoading`, `progress`, `duration`, `volume`, `isMuted`, `playMode`, `playlist`, `currentIndex`, `currentSong`, `lyricSong`, `currentLyricIndex`, `showLyric`, `showPlaylist`, `isCompact`, `lyrics`, and `desktopLyricSequence`
+ */
 function createPlayerStateSnapshot(store: PlayerStoreInstance): PlayerStateSnapshot {
   return {
     isPlaying: store.playing,
@@ -245,6 +269,13 @@ function addToNextFromIpc(store: PlayerStoreInstance, song: Song): void {
   notifyPlayerStateSnapshot(store)
 }
 
+/**
+ * Remove a song at the given playlist index and update playback state accordingly.
+ *
+ * If the index is out of bounds the function does nothing. If removal makes the playlist empty, the playlist is cleared. When the removed entry is the currently playing song, the current index and current song are advanced (clamped) and playback is started for the new current index. If the removed entry is before the current index, the current index is decremented. The player state snapshot is notified after state changes.
+ *
+ * @param index - The zero-based position in the playlist to remove
+ */
 function removeFromPlaylistFromIpc(store: PlayerStoreInstance, index: number): void {
   if (index < 0 || index >= store.songList.length) {
     return
@@ -275,6 +306,12 @@ function removeFromPlaylistFromIpc(store: PlayerStoreInstance, index: number): v
   notifyPlayerStateSnapshot(store)
 }
 
+/**
+ * Create and bind playback action handlers to the given player store for use by the playback runtime.
+ *
+ * @param store - The player store instance whose state and actions will be exposed to the playback runtime
+ * @returns The playback actions interface tied to the provided store
+ */
 function getPlaybackActions(store: PlayerStoreInstance) {
   const runtime = ensurePlayerStoreRuntime(store)
 

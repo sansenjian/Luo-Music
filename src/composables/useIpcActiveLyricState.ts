@@ -32,6 +32,11 @@ interface PlayerBridge {
   onSongChange?: (listener: (data: { song: Song | null; index: number }) => void) => () => void
 }
 
+/**
+ * Retrieve the optional PlayerBridge exposed on window.services when available.
+ *
+ * @returns The `PlayerBridge` found at `window.services.player`, or `undefined` if `window` is not present or the bridge is missing.
+ */
 function getPlayerBridge(): PlayerBridge | undefined {
   if (typeof window === 'undefined') {
     return undefined
@@ -40,6 +45,12 @@ function getPlayerBridge(): PlayerBridge | undefined {
   return (window as Window).services?.player
 }
 
+/**
+ * Create a LyricLine from an IPC lyric payload when the payload carries a valid lyric index.
+ *
+ * @param payload - IPC lyric payload; used to populate lyric text, translation, and romanization
+ * @returns A `LyricLine` with `time` set to `0` and `text`/`trans`/`roma` taken from the payload, or `null` if `payload.index` is negative or missing
+ */
 function createLyricLineFromPayload(payload: IpcLyricPayload): LyricLine | null {
   const index = payload.index ?? -1
   if (index < 0) {
@@ -54,6 +65,13 @@ function createLyricLineFromPayload(payload: IpcLyricPayload): LyricLine | null 
   }
 }
 
+/**
+ * Finds the index of the last lyric line whose timestamp is less than or equal to the given time.
+ *
+ * @param lyrics - An array of lyric lines sorted by ascending `time`
+ * @param currentTime - Playback time (in seconds)
+ * @returns The largest index `i` such that `lyrics[i].time <= currentTime`, or `-1` if no such index exists
+ */
 function resolveLyricIndexByTime(lyrics: LyricLine[], currentTime: number): number {
   if (lyrics.length === 0) {
     return -1
@@ -76,6 +94,14 @@ function resolveLyricIndexByTime(lyrics: LyricLine[], currentTime: number): numb
   return index
 }
 
+/**
+ * Determines whether the provided song matches the given song ID and platform.
+ *
+ * @param song - The song object to compare; may be `null`.
+ * @param songId - The expected song identifier; when `null` or `undefined`, the function returns `false`.
+ * @param platform - The expected platform (`'netease'` or `'qq'`). If omitted or `null`, `'netease'` is assumed; if `song.platform` is missing, it is treated as `'netease'`.
+ * @returns `true` if `song` is non-null, `song.id === songId`, and the resolved platforms are equal; `false` otherwise.
+ */
 function isSameSong(
   song: Song | null,
   songId?: string | number | null,
@@ -90,10 +116,24 @@ function isSameSong(
 
 const DESKTOP_LYRIC_DEBUG_STORAGE_KEY = 'luo.desktopLyricDebug'
 
+/**
+ * Determine if a desktop lyric debug flag string indicates debug is enabled.
+ *
+ * @param flag - Flag string to evaluate; recognized values are "1", "true", "on", or "debug" (case-insensitive)
+ * @returns `true` if the flag matches one of the recognized values, `false` otherwise.
+ */
 function isDesktopLyricDebugFlagEnabled(flag?: string | null): boolean {
   return /^(1|true|on|debug)$/i.test(flag ?? '')
 }
 
+/**
+ * Determines whether desktop lyric debug logging is enabled.
+ *
+ * Checks the `VITE_DESKTOP_LYRIC_DEBUG` environment variable first, enables debug in development mode
+ * (unless MODE === 'test'), and falls back to the `luo.desktopLyricDebug` localStorage key when available.
+ *
+ * @returns `true` if desktop lyric debug logging is enabled, `false` otherwise.
+ */
 function isDesktopLyricDebugEnabled(): boolean {
   if (isDesktopLyricDebugFlagEnabled(import.meta.env.VITE_DESKTOP_LYRIC_DEBUG)) {
     return true
@@ -116,6 +156,13 @@ function isDesktopLyricDebugEnabled(): boolean {
   }
 }
 
+/**
+ * Logs a desktop-lyric debug message when desktop lyric debugging is enabled.
+ *
+ * @param source - Origin of the debug message: `'snapshot'`, `'push'`, or `'fallback'`
+ * @param event - A short, descriptive event name
+ * @param details - Additional contextual properties to include with the log
+ */
 function logDesktopLyricDebug(
   source: 'snapshot' | 'push' | 'fallback',
   event: string,
@@ -131,6 +178,21 @@ function logDesktopLyricDebug(
   })
 }
 
+/**
+ * Provides a reactive Vue state object that synchronizes the currently active lyric line with desktop IPC and player events (Electron).
+ *
+ * @param emptyText - Text to use when there is no lyric text available (defaults to `''`)
+ * @returns An object containing reactive lyric state:
+ * - `lyrics`: cached full lyric lines
+ * - `currentLyricIndex`: active lyric index (or `-1` when unknown)
+ * - `currentLine`: the active `LyricLine` or `null`
+ * - `currentLyric`: displayed original lyric text (falls back to `emptyText`)
+ * - `currentTrans`: displayed translated lyric text
+ * - `currentRoma`: displayed romanization text
+ * - `secondaryLyric`: `currentTrans` or `currentRoma`, whichever is present
+ * - `isPlaying`: whether playback is currently active
+ * - `showOriginal`, `showTrans`, `showRoma`: display flags (always `true`)
+ */
 export function useIpcActiveLyricState(emptyText = '') {
   const RECENT_LYRIC_PUSH_GUARD_MS = 1200
   const platformService = services.platform()

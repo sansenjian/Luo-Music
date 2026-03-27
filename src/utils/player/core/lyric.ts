@@ -17,6 +17,12 @@ export interface LyricLine {
   words?: LyricWord[] // For enhanced lyrics
 }
 
+/**
+ * Parse a lyric timestamp string (minutes:seconds with an optional fractional part) into a seconds value.
+ *
+ * @param timeStr - Timestamp in the form `mm:ss`, optionally followed by a fractional part using `.` as a decimal fraction (e.g., `01:23.45`) or `:` as milliseconds-like fraction (e.g., `01:23:450`)
+ * @returns The total time in seconds represented by `timeStr`; returns `0` if `timeStr` does not match the expected format
+ */
 export function parseLyricTimestamp(timeStr: string): number {
   const match = timeStr.trim().match(/^(\d+):(\d+)(?:([.:])(\d+))?$/)
   if (!match) {

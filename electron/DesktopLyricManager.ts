@@ -48,10 +48,26 @@ interface CreateWindowOptions {
 
 export const DESKTOP_LYRIC_HASH_ROUTE = '/desktop-lyric'
 
+/**
+ * Determines whether a given flag string enables desktop lyric debugging.
+ *
+ * @param flag - The flag value to evaluate (commonly an environment variable); recognized enabling values are `1`, `true`, `on`, and `debug` (case-insensitive).
+ * @returns `true` if `flag` matches one of the recognized enabling values, `false` otherwise.
+ */
 function isDesktopLyricDebugFlagEnabled(flag?: string | null): boolean {
   return /^(1|true|on|debug)$/i.test(flag ?? '')
 }
 
+/**
+ * Determine whether desktop lyric debug logging is enabled.
+ *
+ * Debug is enabled if the environment variables `LUO_DESKTOP_LYRIC_DEBUG` or
+ * `VITE_DESKTOP_LYRIC_DEBUG` contain a debug flag (e.g., `1`, `true`, `on`, `debug`, case-insensitive).
+ * If `NODE_ENV` equals `test`, debugging is disabled. Otherwise debugging is enabled when
+ * `NODE_ENV` equals `development` or `VITE_DEV_SERVER_URL` is set.
+ *
+ * @returns `true` if debug logging should be active, `false` otherwise.
+ */
 function isDesktopLyricDebugEnabled(): boolean {
   if (
     isDesktopLyricDebugFlagEnabled(process.env.LUO_DESKTOP_LYRIC_DEBUG) ||
@@ -67,6 +83,12 @@ function isDesktopLyricDebugEnabled(): boolean {
   return process.env.NODE_ENV === 'development' || Boolean(process.env.VITE_DEV_SERVER_URL)
 }
 
+/**
+ * Emit a debug log for DesktopLyricManager events when debug mode is enabled.
+ *
+ * @param event - A short identifier or description of the event to log
+ * @param details - Optional additional metadata to include with the log
+ */
 function logDesktopLyricDebug(event: string, details: Record<string, unknown> = {}): void {
   if (!isDesktopLyricDebugEnabled()) {
     return
@@ -75,6 +97,12 @@ function logDesktopLyricDebug(event: string, details: Record<string, unknown> = 
   console.debug('[DesktopLyricManager]', event, details)
 }
 
+/**
+ * Build the route used to load the desktop lyric renderer.
+ *
+ * @param devServerUrl - Optional development server base URL; when provided the result contains a `url` combining this base with the desktop lyric hash route
+ * @returns An object with either `url` (full load URL including the desktop lyric hash) when `devServerUrl` is provided, or `hash` (the desktop lyric route fragment) for production file loading
+ */
 export function getDesktopLyricWindowRoute(devServerUrl?: string): {
   url?: string
   hash?: string
