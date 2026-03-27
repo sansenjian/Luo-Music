@@ -113,6 +113,19 @@ describe('PlayerCore', () => {
       expect(audio.src).toBe('test.mp3')
     })
 
+    it('should continue playback when switching to a new URL while the previous song is playing', async () => {
+      const audio = (player as any).audio
+      audio.src = 'https://song.test/old.mp3'
+      audio.readyState = 4
+      audio.paused = false
+      audio.play = vi.fn().mockResolvedValue(undefined)
+
+      await player.play('https://song.test/new.mp3')
+
+      expect(audio.src).toBe('https://song.test/new.mp3')
+      expect(audio.play).toHaveBeenCalledTimes(1)
+    })
+
     it('should reset currentTime when replaying ended audio', async () => {
       await player.play('test.mp3')
       const audio = (player as any).audio
@@ -187,6 +200,24 @@ describe('PlayerCore', () => {
       }
 
       await expect(playPromise).resolves.toBeUndefined()
+    })
+
+    it('should let a newer play request replace an older request that is still waiting for canplay', async () => {
+      const audio = (player as any).audio
+      audio.readyState = 0
+      audio.play = vi.fn().mockResolvedValue(undefined)
+      audio.load = vi.fn()
+
+      const firstPlayPromise = player.play('https://song.test/old.mp3')
+      const secondPlayPromise = player.play('https://song.test/new.mp3')
+
+      audio.readyState = 4
+      audio.trigger('canplay', new Event('canplay'))
+
+      await expect(firstPlayPromise).resolves.toBeUndefined()
+      await expect(secondPlayPromise).resolves.toBeUndefined()
+      expect(audio.src).toBe('https://song.test/new.mp3')
+      expect(audio.play).toHaveBeenCalledTimes(1)
     })
 
     it('should resume suspended AudioContext', async () => {

@@ -301,6 +301,10 @@ export const usePlayerStore = defineStore('player', {
     hasSongs: state => state.songList.length > 0,
 
     currentSongInfo: (state): Song | null => {
+      if (state.currentSong) {
+        return state.currentSong
+      }
+
       if (state.currentIndex >= 0 && state.currentIndex < state.songList.length) {
         return state.songList[state.currentIndex]
       }
@@ -525,16 +529,15 @@ export const usePlayerStore = defineStore('player', {
 
       this.initAudio()
 
-      this.currentIndex = index
-      this.currentSong = this.songList[index]
+      const song = this.songList[index]
 
-      if (!this.currentSong.url) {
+      if (!song.url) {
         console.error('No URL for song')
         throw new Error('No URL for song')
       }
 
       try {
-        await audioManager.play(String(this.currentSong.url))
+        await audioManager.play(String(song.url))
         this.playing = true
       } catch (error) {
         console.error('Playback failed:', error)

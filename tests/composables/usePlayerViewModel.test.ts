@@ -77,7 +77,7 @@ describe('usePlayerViewModel', () => {
         album: { id: 1, name: 'Album', picUrl: 'javascript:alert(1)' }
       })
     ]
-    store.currentIndex = 0
+    store.currentSong = store.songList[0]
     await nextTick()
 
     const coverUrl = getVmValue<string>((wrapper.vm as any).coverUrl)
@@ -94,7 +94,7 @@ describe('usePlayerViewModel', () => {
         album: { id: 2, name: 'Album', picUrl: url }
       })
     ]
-    store.currentIndex = 0
+    store.currentSong = store.songList[0]
     await nextTick()
 
     expect(getVmValue<string>((wrapper.vm as any).coverUrl)).toBe(url)
@@ -105,9 +105,8 @@ describe('usePlayerViewModel', () => {
     const store = usePlayerStore()
 
     store.songList = [createSong()]
-    store.currentIndex = 0
+    store.currentSong = store.songList[0]
     await nextTick()
-
     ;(wrapper.vm as any).onPlayButtonClick()
     expect(executeMock).toHaveBeenCalledWith(COMMANDS.PLAYER_TOGGLE_PLAY)
   })
@@ -119,9 +118,8 @@ describe('usePlayerViewModel', () => {
     const store = usePlayerStore()
 
     store.songList = [createSong()]
-    store.currentIndex = 0
+    store.currentSong = store.songList[0]
     await nextTick()
-
     ;(wrapper.vm as any).onPlayButtonClick()
     expect(executeMock).not.toHaveBeenCalledWith(COMMANDS.PLAYER_TOGGLE_PLAY)
   })
@@ -133,8 +131,6 @@ describe('usePlayerViewModel', () => {
     store.playMode = 2
     await nextTick()
 
-    expect(getVmValue<string>((wrapper.vm as any).playModeText)).toBe(
-      '单曲循环'
-    )
+    expect(getVmValue<string>((wrapper.vm as any).playModeText)).toBe('单曲循环')
   })
 })

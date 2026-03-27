@@ -61,7 +61,7 @@ export function usePlayerViewModel() {
   const coverImgRef = ref<HTMLImageElement | null>(null)
   const volumeFillRef = ref<HTMLDivElement | null>(null)
 
-  const currentSong = computed<Song | null>(() => playerStore.currentSongInfo)
+  const currentSong = computed<Song | null>(() => playerStore.currentSong)
   const progressPercent = computed(() =>
     playerStore.duration ? (playerStore.progress / playerStore.duration) * 100 : 0
   )

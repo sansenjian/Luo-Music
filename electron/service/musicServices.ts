@@ -145,7 +145,9 @@ export class NeteaseService extends NodeApiService {
       loggerScope: 'NeteaseService',
       requestServiceName: 'Netease',
       unavailableMessage: 'Netease Service is not available',
-      methodResolver: () => 'POST'
+      // The local Netease API used by Electron matches the web adapter and
+      // expects query-string GET requests for endpoints like song/detail.
+      methodResolver: () => 'GET'
     })
   }
 }

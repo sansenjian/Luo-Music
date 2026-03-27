@@ -70,6 +70,18 @@ describe('playerStore', () => {
       expect(store.formattedDuration).toBe('00:00')
       expect(store.playModeText).toBe('顺序播放')
     })
+
+    it('prefers committed currentSong over playlist index for currentSongInfo', () => {
+      const store = usePlayerStore()
+      const currentSong = createMockSong({ id: 9, name: 'Playing Song' })
+      const indexedSong = createMockSong({ id: 10, name: 'Indexed Song' })
+
+      store.songList = [indexedSong]
+      store.currentIndex = 0
+      store.currentSong = currentSong
+
+      expect(store.currentSongInfo).toStrictEqual(currentSong)
+    })
   })
 
   describe('playlist management', () => {
