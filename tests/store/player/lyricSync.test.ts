@@ -100,7 +100,8 @@ describe('lyricSync', () => {
           playing: true,
           songId: 1,
           platform: 'netease',
-          sequence: 1
+          sequence: 1,
+          cause: 'interval'
         }
       }
     ])
@@ -119,12 +120,30 @@ describe('lyricSync', () => {
     expect(createLyricTimeUpdatePayload(store, 2.5)).toMatchObject({
       songId: 'song-1',
       platform: 'qq',
-      sequence: 1
+      sequence: 1,
+      cause: 'interval'
     })
     expect(createLyricTimeUpdatePayload(store, 3)).toMatchObject({
       songId: 'song-1',
       platform: 'qq',
-      sequence: 2
+      sequence: 2,
+      cause: 'interval'
+    })
+  })
+
+  it('allows callers to tag desktop lyric payloads with a specific update cause', () => {
+    const store = createStore({
+      lyricsArray: [{ time: 5, text: 'Seek line', trans: '', roma: '' }],
+      currentLyricIndex: 0,
+      progress: 5,
+      playing: true
+    })
+
+    expect(createLyricTimeUpdatePayload(store, 5, 'seek')).toMatchObject({
+      time: 5,
+      index: 0,
+      cause: 'seek',
+      sequence: 1
     })
   })
 

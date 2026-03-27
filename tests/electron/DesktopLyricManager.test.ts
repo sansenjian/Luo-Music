@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const storeData = new Map<string, unknown>()
+const originalNodeEnv = process.env.NODE_ENV
 
 vi.mock('electron-store', () => ({
   default: class {
@@ -19,7 +20,9 @@ describe('DesktopLyricManager', () => {
     vi.resetModules()
     vi.clearAllMocks()
     storeData.clear()
+    process.env.NODE_ENV = originalNodeEnv
     delete process.env.VITE_DEV_SERVER_URL
+    delete process.env.LUO_DESKTOP_LYRIC_DEBUG
   })
 
   it('replays the last cached lyric when an existing ready window is shown', async () => {
@@ -276,5 +279,136 @@ describe('DesktopLyricManager', () => {
     expect(getDesktopLyricWindowRoute(undefined)).toEqual({
       hash: '/desktop-lyric'
     })
+  })
+
+  it('emits debug traces for cached replay flow when desktop lyric debug is enabled', async () => {
+    process.env.LUO_DESKTOP_LYRIC_DEBUG = '1'
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
+    const { DesktopLyricManager } = await import('../../electron/DesktopLyricManager')
+    const manager = new DesktopLyricManager()
+    const payload = {
+      time: 36,
+      index: 2,
+      text: 'Warm line',
+      trans: '',
+      roma: '',
+      playing: true,
+      songId: 'song-1',
+      platform: 'netease' as const,
+      sequence: 4,
+      cause: 'seek' as const
+    }
+    const mockWindow = {
+      isDestroyed: vi.fn(() => false),
+      isVisible: vi.fn(() => false),
+      show: vi.fn(),
+      webContents: {
+        send: vi.fn()
+      }
+    }
+
+    ;(
+      manager as unknown as {
+        win: typeof mockWindow
+        isWindowReady: boolean
+        isRendererReady: boolean
+      }
+    ).win = mockWindow
+    ;(
+      manager as unknown as {
+        isWindowReady: boolean
+      }
+    ).isWindowReady = true
+
+    manager.sendLyric(payload)
+    mockWindow.isVisible.mockReturnValue(true)
+    manager.show()
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      '[DesktopLyricManager]',
+      'cache-lyric-until-ready',
+      expect.objectContaining({
+        source: 'push',
+        cause: 'seek',
+        sequence: 4,
+        songId: 'song-1'
+      })
+    )
+    expect(debugSpy).toHaveBeenCalledWith(
+      '[DesktopLyricManager]',
+      'replay-last-lyric',
+      expect.objectContaining({
+        source: 'push',
+        cause: 'seek',
+        sequence: 4,
+        currentLyricIndex: 2
+      })
+    )
+  })
+
+  it('emits debug traces for cached replay flow in development mode without an explicit flag', async () => {
+    process.env.NODE_ENV = 'development'
+    process.env.VITE_DEV_SERVER_URL = 'http://127.0.0.1:5173'
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
+    const { DesktopLyricManager } = await import('../../electron/DesktopLyricManager')
+    const manager = new DesktopLyricManager()
+    const payload = {
+      time: 48,
+      index: 3,
+      text: 'Dev line',
+      trans: '',
+      roma: '',
+      playing: true,
+      songId: 'song-dev',
+      platform: 'qq' as const,
+      sequence: 5,
+      cause: 'lyric-change' as const
+    }
+    const mockWindow = {
+      isDestroyed: vi.fn(() => false),
+      isVisible: vi.fn(() => false),
+      show: vi.fn(),
+      webContents: {
+        send: vi.fn()
+      }
+    }
+
+    ;(
+      manager as unknown as {
+        win: typeof mockWindow
+        isWindowReady: boolean
+        isRendererReady: boolean
+      }
+    ).win = mockWindow
+    ;(
+      manager as unknown as {
+        isWindowReady: boolean
+      }
+    ).isWindowReady = true
+
+    manager.sendLyric(payload)
+    mockWindow.isVisible.mockReturnValue(true)
+    manager.show()
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      '[DesktopLyricManager]',
+      'cache-lyric-until-ready',
+      expect.objectContaining({
+        source: 'push',
+        cause: 'lyric-change',
+        sequence: 5,
+        songId: 'song-dev'
+      })
+    )
+    expect(debugSpy).toHaveBeenCalledWith(
+      '[DesktopLyricManager]',
+      'replay-last-lyric',
+      expect.objectContaining({
+        source: 'push',
+        cause: 'lyric-change',
+        sequence: 5,
+        currentLyricIndex: 3
+      })
+    )
   })
 })

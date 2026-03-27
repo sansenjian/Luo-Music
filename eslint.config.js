@@ -18,6 +18,7 @@ export default [
       'scripts/**',
       'playwright.config.js',
       'vitest.config.js',
+      'vitest.config.ts',
       'forge.config.js',
       'forge.config.ts',
       'vite.config.ts',

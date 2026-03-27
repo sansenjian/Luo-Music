@@ -76,6 +76,14 @@ export type LyricData = {
   roma: string
 }
 
+export type DesktopLyricUpdateCause =
+  | 'interval'
+  | 'lyric-change'
+  | 'play-state'
+  | 'seek'
+  | 'lyrics-load'
+  | 'reset'
+
 export type LyricTimeUpdate = {
   time: number
   index: number
@@ -86,6 +94,7 @@ export type LyricTimeUpdate = {
   songId?: string | number | null
   platform?: 'netease' | 'qq' | null
   sequence?: number
+  cause?: DesktopLyricUpdateCause
 }
 
 /**

@@ -1,6 +1,6 @@
 import type { Song } from '@/types/schemas'
 import type { LyricLine } from '@/utils/player/core/lyric'
-import type { LyricTimeUpdate } from '../../../electron/ipc/types'
+import type { DesktopLyricUpdateCause, LyricTimeUpdate } from '../../../electron/ipc/types'
 
 import { getPlayerStoreRuntime, type CurrentLyricLine, type PlayerStoreOwner } from './runtime'
 
@@ -22,7 +22,9 @@ export type LyricSyncStore = PlayerStoreOwner & LyricSyncState
 
 const desktopLyricSequences = new WeakMap<LyricSyncStore, number>()
 
-export function getDesktopLyricSong(store: Pick<LyricSyncState, 'lyricSong' | 'currentSong'>): Song | null {
+export function getDesktopLyricSong(
+  store: Pick<LyricSyncState, 'lyricSong' | 'currentSong'>
+): Song | null {
   return store.lyricSong ?? store.currentSong
 }
 
@@ -38,7 +40,8 @@ export function getDesktopLyricSequence(store: LyricSyncStore): number {
 
 export function createLyricTimeUpdatePayload(
   store: LyricSyncStore,
-  time = store.progress
+  time = store.progress,
+  cause: DesktopLyricUpdateCause = 'interval'
 ): LyricTimeUpdate {
   const line = getCurrentLyricLine(store)
   const lyricSong = getDesktopLyricSong(store)
@@ -52,7 +55,8 @@ export function createLyricTimeUpdatePayload(
     playing: store.playing,
     songId: lyricSong?.id ?? null,
     platform: lyricSong?.platform ?? null,
-    sequence: nextDesktopLyricSequence(store)
+    sequence: nextDesktopLyricSequence(store),
+    cause
   }
 }
 
@@ -81,11 +85,12 @@ export function syncLyricIndex(store: LyricSyncStore, time = store.progress): bo
 export function notifyLyricTimeUpdate(
   store: LyricSyncStore,
   platform: LyricSyncPlatform,
-  time = store.progress
+  time = store.progress,
+  cause: DesktopLyricUpdateCause = 'interval'
 ): void {
   if (!platform.isElectron()) {
     return
   }
 
-  platform.send('lyric-time-update', createLyricTimeUpdatePayload(store, time))
+  platform.send('lyric-time-update', createLyricTimeUpdatePayload(store, time, cause))
 }

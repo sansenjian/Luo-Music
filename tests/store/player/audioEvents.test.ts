@@ -110,7 +110,8 @@ describe('audioEvents', () => {
         text: 'hello',
         trans: '你好',
         roma: 'ni hao',
-        playing: true
+        playing: true,
+        cause: 'interval'
       })
     )
   })
@@ -192,7 +193,8 @@ describe('audioEvents', () => {
       expect.objectContaining({
         index: 3,
         text: 'same line',
-        playing: false
+        playing: false,
+        cause: 'play-state'
       })
     )
 
@@ -205,7 +207,8 @@ describe('audioEvents', () => {
       expect.objectContaining({
         index: 3,
         text: 'same line',
-        playing: true
+        playing: true,
+        cause: 'play-state'
       })
     )
   })
@@ -248,7 +251,8 @@ describe('audioEvents', () => {
       expect.objectContaining({
         time: currentTime,
         index: 1,
-        text: `line${currentTime}`
+        text: `line${currentTime}`,
+        cause: 'play-state'
       })
     )
 
@@ -268,7 +272,8 @@ describe('audioEvents', () => {
       expect.objectContaining({
         time: currentTime,
         index: 1,
-        text: `line${currentTime}`
+        text: `line${currentTime}`,
+        cause: 'interval'
       })
     )
 
@@ -363,7 +368,8 @@ describe('audioEvents', () => {
         index: 1,
         text: 'Line 2',
         trans: 'Second',
-        playing: true
+        playing: true,
+        cause: 'lyric-change'
       })
     )
   })
@@ -386,7 +392,7 @@ describe('audioEvents', () => {
       uiUpdateInterval: 250,
       ipcBroadcastInterval: 500,
       getCurrentLyricLine: () => ({ text: 'Line 2', trans: 'Second', roma: '' }),
-      createLyricUpdatePayload: ({ time, index, line, playing }) => ({
+      createLyricUpdatePayload: ({ time, index, line, playing, cause }) => ({
         time,
         index,
         text: line?.text || '',
@@ -395,7 +401,8 @@ describe('audioEvents', () => {
         playing,
         songId: 'song-1',
         platform: 'netease',
-        sequence: 7
+        sequence: 7,
+        cause
       })
     })
 
@@ -408,7 +415,8 @@ describe('audioEvents', () => {
       expect.objectContaining({
         songId: 'song-1',
         platform: 'netease',
-        sequence: 7
+        sequence: 7,
+        cause: 'interval'
       })
     )
   })

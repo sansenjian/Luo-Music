@@ -79,10 +79,12 @@ const playerState = vi.hoisted(() => {
       removeFromPlaylist: vi.fn(),
       clearPlaylist: vi.fn(),
       getLyric: vi.fn(),
-      onPlayStateChange: vi.fn((listener: (data: { isPlaying: boolean; currentTime: number }) => void) => {
-        playStateListeners.add(listener)
-        return () => playStateListeners.delete(listener)
-      }),
+      onPlayStateChange: vi.fn(
+        (listener: (data: { isPlaying: boolean; currentTime: number }) => void) => {
+          playStateListeners.add(listener)
+          return () => playStateListeners.delete(listener)
+        }
+      ),
       onSongChange: vi.fn((listener: (data: { song: unknown; index: number }) => void) => {
         songChangeListeners.add(listener)
         return () => songChangeListeners.delete(listener)
@@ -117,6 +119,7 @@ describe('LyricFloat', () => {
 
   beforeEach(() => {
     vi.useFakeTimers()
+    window.localStorage.removeItem('luo.desktopLyricDebug')
     platformState.listeners.clear()
     platformState.platformServiceMock.on.mockClear()
     platformState.platformServiceMock.supportsSendChannel.mockReset()
@@ -161,6 +164,7 @@ describe('LyricFloat', () => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
     vi.restoreAllMocks()
+    window.localStorage.removeItem('luo.desktopLyricDebug')
     ;(window as Partial<Window & { services?: unknown }>).services = undefined
   })
 
@@ -430,6 +434,80 @@ describe('LyricFloat', () => {
 
     expect(wrapper.find('.lrc-main').text()).toBe('Line 2')
     expect(wrapper.find('.lrc-sub').text()).toBe('Second')
+  })
+
+  it('writes diagnostic traces for snapshot hydration and ignored stale pushes when debug is enabled', async () => {
+    window.localStorage.setItem('luo.desktopLyricDebug', '1')
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
+    ;(
+      playerState.playerBridgeMock as {
+        getDesktopLyricSnapshot?: ReturnType<typeof vi.fn>
+      }
+    ).getDesktopLyricSnapshot = vi.fn().mockResolvedValue({
+      currentSong: {
+        id: 1,
+        name: 'Song',
+        artists: [{ id: 1, name: 'Artist' }],
+        album: { id: 1, name: 'Album', picUrl: '' },
+        duration: 180000,
+        mvid: 0,
+        platform: 'netease',
+        originalId: 1
+      },
+      currentLyricIndex: 1,
+      progress: 6,
+      isPlaying: true,
+      songId: 1,
+      platform: 'netease',
+      sequence: 10,
+      lyrics: [
+        { time: 0, text: 'Line 1', trans: '', roma: '' },
+        { time: 5, text: 'Line 2', trans: 'Second', roma: '' }
+      ]
+    })
+
+    mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    platformState.listeners.get('lyric-time-update')?.forEach(listener => {
+      listener({
+        index: 0,
+        time: 2,
+        text: 'Line 1',
+        trans: '',
+        roma: '',
+        playing: true,
+        songId: 1,
+        platform: 'netease',
+        sequence: 9,
+        cause: 'interval'
+      })
+    })
+    await nextTick()
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      '[DesktopLyric]',
+      'hydrate-desktop-lyric-snapshot',
+      expect.objectContaining({
+        source: 'snapshot',
+        songId: 1,
+        sequence: 10,
+        currentLyricIndex: 1
+      })
+    )
+    expect(debugSpy).toHaveBeenCalledWith(
+      '[DesktopLyric]',
+      'ignore-out-of-order-push',
+      expect.objectContaining({
+        source: 'push',
+        songId: 1,
+        sequence: 9,
+        lastAcceptedSequence: 10,
+        cause: 'interval'
+      })
+    )
   })
 
   it('ignores lyric pushes from a previous song after song change', async () => {

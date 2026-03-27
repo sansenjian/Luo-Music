@@ -18,6 +18,7 @@
   },
   "include": [
     "vite.config.ts",
+    "vitest.config.ts",
     "forge.config.ts",
     "server/**/*.ts",
     "server/**/*.d.ts",

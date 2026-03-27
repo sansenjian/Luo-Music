@@ -1,5 +1,6 @@
 import path from 'node:path'
 import type { BrowserWindow } from 'electron'
+import type { DesktopLyricUpdateCause } from './ipc/types'
 
 import { MAIN_DIST, RENDERER_DIST } from './utils/paths'
 
@@ -38,6 +39,7 @@ interface LyricUpdateData {
   songId?: string | number | null
   platform?: 'netease' | 'qq' | null
   sequence?: number
+  cause?: DesktopLyricUpdateCause
 }
 
 interface CreateWindowOptions {
@@ -45,6 +47,33 @@ interface CreateWindowOptions {
 }
 
 export const DESKTOP_LYRIC_HASH_ROUTE = '/desktop-lyric'
+
+function isDesktopLyricDebugFlagEnabled(flag?: string | null): boolean {
+  return /^(1|true|on|debug)$/i.test(flag ?? '')
+}
+
+function isDesktopLyricDebugEnabled(): boolean {
+  if (
+    isDesktopLyricDebugFlagEnabled(process.env.LUO_DESKTOP_LYRIC_DEBUG) ||
+    isDesktopLyricDebugFlagEnabled(process.env.VITE_DESKTOP_LYRIC_DEBUG)
+  ) {
+    return true
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return false
+  }
+
+  return process.env.NODE_ENV === 'development' || Boolean(process.env.VITE_DEV_SERVER_URL)
+}
+
+function logDesktopLyricDebug(event: string, details: Record<string, unknown> = {}): void {
+  if (!isDesktopLyricDebugEnabled()) {
+    return
+  }
+
+  console.debug('[DesktopLyricManager]', event, details)
+}
 
 export function getDesktopLyricWindowRoute(devServerUrl?: string): {
   url?: string
@@ -89,6 +118,9 @@ export class DesktopLyricManager {
       return
     }
 
+    logDesktopLyricDebug('replay-ready', {
+      hasCachedLyric: this.lastLyric !== null
+    })
     this.replayLastLyric()
   }
 
@@ -249,15 +281,42 @@ export class DesktopLyricManager {
       return
     }
 
+    logDesktopLyricDebug('replay-last-lyric', {
+      source: 'push',
+      cause: this.lastLyric.cause ?? 'interval',
+      sequence: this.lastLyric.sequence ?? 0,
+      songId: this.lastLyric.songId ?? null,
+      platform: this.lastLyric.platform ?? null,
+      currentTime: this.lastLyric.time,
+      currentLyricIndex: this.lastLyric.index
+    })
     this.sendToRenderer('lyric-time-update', this.lastLyric)
   }
 
   sendLyric(data: LyricUpdateData): void {
     this.lastLyric = data
     if (!this.canSendLiveLyric()) {
+      logDesktopLyricDebug('cache-lyric-until-ready', {
+        source: 'push',
+        cause: data.cause ?? 'interval',
+        sequence: data.sequence ?? 0,
+        songId: data.songId ?? null,
+        platform: data.platform ?? null,
+        currentTime: data.time,
+        currentLyricIndex: data.index
+      })
       return
     }
 
+    logDesktopLyricDebug('send-live-lyric', {
+      source: 'push',
+      cause: data.cause ?? 'interval',
+      sequence: data.sequence ?? 0,
+      songId: data.songId ?? null,
+      platform: data.platform ?? null,
+      currentTime: data.time,
+      currentLyricIndex: data.index
+    })
     this.sendToRenderer('lyric-time-update', data)
   }
 
@@ -291,6 +350,10 @@ export class DesktopLyricManager {
 
   onRendererReady(): void {
     this.isRendererReady = true
+    logDesktopLyricDebug('renderer-ready', {
+      isWindowReady: this.isWindowReady,
+      hasCachedLyric: this.lastLyric !== null
+    })
     this.maybeReplayLastLyric()
   }
 }

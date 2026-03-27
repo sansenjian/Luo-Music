@@ -3,7 +3,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { services } from '../services'
 import type { Song } from '../types/schemas'
 import type { LyricLine } from '../utils/player/core/lyric'
-import type { DesktopLyricSnapshot, LyricTimeUpdate } from '../../electron/ipc/types'
+import type {
+  DesktopLyricSnapshot,
+  DesktopLyricUpdateCause,
+  LyricTimeUpdate
+} from '../../electron/ipc/types'
 
 interface IpcLyricPayload extends Partial<LyricTimeUpdate> {
   romalrc?: string
@@ -22,7 +26,9 @@ interface PlayerBridge {
   getState?: () => Promise<PlayerStateSnapshot>
   getCurrentSong?: () => Promise<Song | null>
   getLyric?: (songId: string | number, platform?: 'netease' | 'qq') => Promise<LyricLine[]>
-  onPlayStateChange?: (listener: (data: { isPlaying: boolean; currentTime: number }) => void) => () => void
+  onPlayStateChange?: (
+    listener: (data: { isPlaying: boolean; currentTime: number }) => void
+  ) => () => void
   onSongChange?: (listener: (data: { song: Song | null; index: number }) => void) => () => void
 }
 
@@ -82,6 +88,49 @@ function isSameSong(
   return song.id === songId && (song.platform ?? 'netease') === (platform ?? 'netease')
 }
 
+const DESKTOP_LYRIC_DEBUG_STORAGE_KEY = 'luo.desktopLyricDebug'
+
+function isDesktopLyricDebugFlagEnabled(flag?: string | null): boolean {
+  return /^(1|true|on|debug)$/i.test(flag ?? '')
+}
+
+function isDesktopLyricDebugEnabled(): boolean {
+  if (isDesktopLyricDebugFlagEnabled(import.meta.env.VITE_DESKTOP_LYRIC_DEBUG)) {
+    return true
+  }
+
+  if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
+    return true
+  }
+
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  try {
+    return isDesktopLyricDebugFlagEnabled(
+      window.localStorage.getItem(DESKTOP_LYRIC_DEBUG_STORAGE_KEY)
+    )
+  } catch {
+    return false
+  }
+}
+
+function logDesktopLyricDebug(
+  source: 'snapshot' | 'push' | 'fallback',
+  event: string,
+  details: Record<string, unknown> = {}
+): void {
+  if (!isDesktopLyricDebugEnabled()) {
+    return
+  }
+
+  console.debug('[DesktopLyric]', event, {
+    source,
+    ...details
+  })
+}
+
 export function useIpcActiveLyricState(emptyText = '') {
   const RECENT_LYRIC_PUSH_GUARD_MS = 1200
   const platformService = services.platform()
@@ -120,7 +169,11 @@ export function useIpcActiveLyricState(emptyText = '') {
     ipcLyricRoma.value = line?.roma || ''
   }
 
-  function resolveCurrentLine(lyrics: LyricLine[], index: number, progress: number): LyricLine | null {
+  function resolveCurrentLine(
+    lyrics: LyricLine[],
+    index: number,
+    progress: number
+  ): LyricLine | null {
     if (index >= 0) {
       return lyrics[index] ?? null
     }
@@ -157,6 +210,15 @@ export function useIpcActiveLyricState(emptyText = '') {
         snapshotProgress = snapshot.progress ?? 0
         snapshotPlaying = snapshot.isPlaying ?? false
         lastAcceptedSequence = snapshot.sequence ?? 0
+
+        logDesktopLyricDebug('snapshot', 'hydrate-desktop-lyric-snapshot', {
+          songId: snapshot.songId ?? snapshot.currentSong?.id ?? null,
+          platform: snapshot.platform ?? snapshot.currentSong?.platform ?? null,
+          currentTime: snapshot.progress ?? 0,
+          currentLyricIndex: snapshot.currentLyricIndex ?? -1,
+          sequence: snapshot.sequence ?? 0,
+          lyricCount: snapshot.lyrics?.length ?? 0
+        })
       } else if (playerBridge.getState && playerBridge.getLyric) {
         const state = await playerBridge.getState()
 
@@ -173,6 +235,15 @@ export function useIpcActiveLyricState(emptyText = '') {
         if (snapshotSong) {
           snapshotLyrics = await playerBridge.getLyric(snapshotSong.id, snapshotSong.platform)
         }
+
+        logDesktopLyricDebug('fallback', 'hydrate-player-state-fallback', {
+          songId: snapshotSong?.id ?? null,
+          platform: snapshotSong?.platform ?? null,
+          currentTime: snapshotProgress,
+          currentLyricIndex: snapshotIndex,
+          sequence: 0,
+          lyricCount: snapshotLyrics.length
+        })
       }
 
       if (nextHydrationVersion !== hydrationVersion) {
@@ -187,6 +258,14 @@ export function useIpcActiveLyricState(emptyText = '') {
       if (!snapshotSong) {
         cachedLyrics.value = []
         resetCurrentLine()
+        logDesktopLyricDebug(
+          playerBridge.getDesktopLyricSnapshot ? 'snapshot' : 'fallback',
+          'hydrate-empty',
+          {
+            currentTime: snapshotProgress,
+            currentLyricIndex: snapshotIndex
+          }
+        )
         return
       }
 
@@ -214,12 +293,26 @@ export function useIpcActiveLyricState(emptyText = '') {
           ipcProgress.value = data.currentTime
 
           if (!currentSong.value || cachedLyrics.value.length === 0) {
+            logDesktopLyricDebug('fallback', 'rehydrate-after-play-state', {
+              songId: currentSong.value?.id ?? null,
+              platform: currentSong.value?.platform ?? null,
+              currentTime: data.currentTime,
+              currentLyricIndex: ipcLyricIndex.value,
+              sequence: lastAcceptedSequence
+            })
             void hydrateCurrentLyricFromPlayer()
             return
           }
 
           if (Date.now() - lastLyricPushAt > RECENT_LYRIC_PUSH_GUARD_MS) {
             refreshDisplayFromCachedLyrics()
+            logDesktopLyricDebug('fallback', 'refresh-from-play-state', {
+              songId: currentSong.value?.id ?? null,
+              platform: currentSong.value?.platform ?? null,
+              currentTime: data.currentTime,
+              currentLyricIndex: ipcLyricIndex.value,
+              sequence: lastAcceptedSequence
+            })
           }
         })
       )
@@ -233,6 +326,13 @@ export function useIpcActiveLyricState(emptyText = '') {
           lastLyricPushAt = 0
           lastAcceptedSequence = 0
           resetCurrentLine()
+          logDesktopLyricDebug('fallback', 'song-change-reset', {
+            songId: data.song?.id ?? null,
+            platform: data.song?.platform ?? null,
+            currentTime: ipcProgress.value,
+            currentLyricIndex: -1,
+            sequence: 0
+          })
           void hydrateCurrentLyricFromPlayer()
         })
       )
@@ -250,10 +350,27 @@ export function useIpcActiveLyricState(emptyText = '') {
           payloadSongId != null &&
           !isSameSong(currentSong.value, payloadSongId, payloadPlatform)
         ) {
+          logDesktopLyricDebug('push', 'ignore-push-song-mismatch', {
+            songId: payloadSongId,
+            platform: payloadPlatform,
+            currentTime: payload.time ?? ipcProgress.value,
+            currentLyricIndex: payload.index ?? -1,
+            sequence: payloadSequence,
+            cause: payload.cause ?? 'interval'
+          })
           return
         }
 
         if (payloadSequence > 0 && payloadSequence <= lastAcceptedSequence) {
+          logDesktopLyricDebug('push', 'ignore-out-of-order-push', {
+            songId: payloadSongId,
+            platform: payloadPlatform,
+            currentTime: payload.time ?? ipcProgress.value,
+            currentLyricIndex: payload.index ?? -1,
+            sequence: payloadSequence,
+            cause: payload.cause ?? 'interval',
+            lastAcceptedSequence
+          })
           return
         }
 
@@ -262,6 +379,14 @@ export function useIpcActiveLyricState(emptyText = '') {
         if (payloadSequence > 0) {
           lastAcceptedSequence = payloadSequence
         }
+        logDesktopLyricDebug('push', 'apply-lyric-push', {
+          songId: payloadSongId,
+          platform: payloadPlatform,
+          currentTime: payload.time ?? ipcProgress.value,
+          currentLyricIndex: payload.index ?? -1,
+          sequence: payloadSequence,
+          cause: payload.cause ?? ('interval' as DesktopLyricUpdateCause)
+        })
         ipcLyricIndex.value = payload.index ?? -1
         ipcProgress.value = payload.time ?? ipcProgress.value
         ipcLyricText.value = payload.text || emptyText
@@ -271,7 +396,11 @@ export function useIpcActiveLyricState(emptyText = '') {
         const payloadLine = createLyricLineFromPayload(payload)
         const derivedLine =
           payloadLine ??
-          resolveCurrentLine(cachedLyrics.value, payload.index ?? -1, payload.time ?? ipcProgress.value)
+          resolveCurrentLine(
+            cachedLyrics.value,
+            payload.index ?? -1,
+            payload.time ?? ipcProgress.value
+          )
 
         setCurrentLine(derivedLine)
         if (!payload.text && !payload.trans && !payload.roma && !payload.romalrc) {

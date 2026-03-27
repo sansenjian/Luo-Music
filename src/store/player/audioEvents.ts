@@ -1,5 +1,6 @@
 import { Disposable, DisposableStore, type IDisposable } from '@/base/common/lifecycle/disposable'
 import { playerCore } from '@/utils/player/core/playerCore'
+import type { DesktopLyricUpdateCause } from '../../../electron/ipc/types'
 
 import type { PlayerState } from './playerState'
 
@@ -22,6 +23,7 @@ export interface TimeUpdateConfig {
     index: number
     line: { text: string; trans: string; roma: string } | null
     playing: boolean
+    cause: DesktopLyricUpdateCause
   }) => Record<string, unknown>
 }
 
@@ -89,7 +91,7 @@ export class AudioEventHandler implements IDisposable {
     this.lastBroadcastPlaying = null
   }
 
-  private broadcastLyricUpdate(): void {
+  private broadcastLyricUpdate(cause: DesktopLyricUpdateCause = 'interval'): void {
     if (!this.platform) {
       return
     }
@@ -120,19 +122,21 @@ export class AudioEventHandler implements IDisposable {
         time: currentTime,
         index: this.state.currentLyricIndex,
         line: currentLyricLine,
-        playing: this.state.playing
+        playing: this.state.playing,
+        cause
       }) ?? {
         time: currentTime,
         index: this.state.currentLyricIndex,
         text: currentLyricLine?.text || '',
         trans: currentLyricLine?.trans || '',
         roma: currentLyricLine?.roma || '',
-        playing: this.state.playing
+        playing: this.state.playing,
+        cause
       })
     })
   }
 
-  private handleProgressUpdate(force = false): void {
+  private handleProgressUpdate(force = false, forcedCause?: DesktopLyricUpdateCause): void {
     const now = Date.now()
     const currentTime = Number(playerCore.currentTime) || 0
     const lyricIndexChanged = this.config.syncLyricIndex?.(currentTime) ?? false
@@ -149,7 +153,9 @@ export class AudioEventHandler implements IDisposable {
         now - this.lastBroadcastTime >= this.config.ipcBroadcastInterval)
     ) {
       this.lastBroadcastTime = now
-      this.broadcastLyricUpdate()
+      this.broadcastLyricUpdate(
+        forcedCause ?? (lyricIndexChanged ? 'lyric-change' : force ? 'play-state' : 'interval')
+      )
     }
   }
 
@@ -221,7 +227,7 @@ export class AudioEventHandler implements IDisposable {
   private registerPlayListener(): void {
     const unsubscribe = playerCore.on('play', () => {
       this.callbacks.onPlay?.()
-      this.handleProgressUpdate(true)
+      this.handleProgressUpdate(true, 'play-state')
       this.startProgressSyncLoop()
     })
 
@@ -232,7 +238,7 @@ export class AudioEventHandler implements IDisposable {
     const unsubscribe = playerCore.on('pause', () => {
       this.stopProgressSyncLoop()
       this.callbacks.onPause?.()
-      this.broadcastLyricUpdate()
+      this.broadcastLyricUpdate('play-state')
     })
 
     this.eventDisposables.add(Disposable.from(unsubscribe))

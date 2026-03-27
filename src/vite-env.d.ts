@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_PUBLIC: string
   readonly VITE_DEV_SERVER_URL: string
+  readonly VITE_DESKTOP_LYRIC_DEBUG?: string
   readonly SENTRY_DSN?: string
 }
 

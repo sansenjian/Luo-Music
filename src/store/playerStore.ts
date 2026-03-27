@@ -320,7 +320,7 @@ export const usePlayerStore = defineStore('player', {
       audioManager.seek(time)
       this.progress = time
       syncLyricIndex(store, time)
-      notifyLyricTimeUpdate(store, getPlatformService(), time)
+      notifyLyricTimeUpdate(store, getPlatformService(), time, 'seek')
     },
 
     async playNextSkipUnavailable(): Promise<void> {
@@ -347,7 +347,7 @@ export const usePlayerStore = defineStore('player', {
           onTimeUpdate: (time: number) => {
             this.progress = time
             if (this.updateLyricIndex(time)) {
-              notifyLyricTimeUpdate(store, getPlatformService(), time)
+              notifyLyricTimeUpdate(store, getPlatformService(), time, 'lyric-change')
             }
           },
           onLoadedMetadata: (duration: number) => {
@@ -374,7 +374,8 @@ export const usePlayerStore = defineStore('player', {
           ipcBroadcastInterval: DESKTOP_LYRIC_IPC_INTERVAL,
           getCurrentLyricLine: () => getCurrentLyricLine(store),
           syncLyricIndex: (time: number) => syncLyricIndex(store, time),
-          createLyricUpdatePayload: ({ time }) => createLyricTimeUpdatePayload(store, time)
+          createLyricUpdatePayload: ({ time, cause }) =>
+            createLyricTimeUpdatePayload(store, time, cause)
         },
         {
           isElectron: () => getPlatformService().isElectron(),
@@ -643,7 +644,7 @@ export const usePlayerStore = defineStore('player', {
 
       getPlayerStoreRuntime(store)?.getLyricEngine()?.setLyrics(lyrics)
       this.updateLyricIndex(this.progress)
-      notifyLyricTimeUpdate(store, getPlatformService())
+      notifyLyricTimeUpdate(store, getPlatformService(), this.progress, 'lyrics-load')
     },
 
     clearPlaylist(): void {
@@ -666,7 +667,7 @@ export const usePlayerStore = defineStore('player', {
       this.initialized = false
 
       notifyPlayerStateSnapshot(store)
-      notifyLyricTimeUpdate(store, getPlatformService(), 0)
+      notifyLyricTimeUpdate(store, getPlatformService(), 0, 'reset')
       resetPlayerStoreRuntime(store)
     }
   },
