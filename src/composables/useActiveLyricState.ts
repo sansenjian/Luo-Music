@@ -11,6 +11,13 @@ export interface UseActiveLyricStateOptions {
   emptyText?: string
 }
 
+/**
+ * Finds the index of the last lyric line whose timestamp is less than or equal to the provided playback time.
+ *
+ * @param lyrics - Sorted array of lyric lines (ascending `time`).
+ * @param currentTime - Current playback time to resolve against the lyric timestamps.
+ * @returns The greatest index `i` such that `lyrics[i].time <= currentTime`, or `-1` if no such index exists.
+ */
 function resolveLyricIndexByTime(lyrics: LyricLine[], currentTime: number): number {
   if (lyrics.length === 0) {
     return -1
@@ -33,6 +40,25 @@ function resolveLyricIndexByTime(lyrics: LyricLine[], currentTime: number): numb
   return index
 }
 
+/**
+ * Provides reactive state for the currently active lyric lines and display flags.
+ *
+ * @param options - Configuration for the composer
+ * @param options.source - Source of lyric state; when set to `'ipc'` this function delegates to the IPC-backed state and returns its result immediately. Defaults to `'store'`.
+ * @param options.emptyText - Text to use when there is no current original lyric line. Defaults to `''`.
+ * @returns An object of computed properties:
+ * - `lyrics`: the full array of lyric lines
+ * - `currentLyricIndex`: index of the active lyric line, or `-1` if none
+ * - `currentLine`: the active `LyricLine` or `null` if out of range
+ * - `currentLyric`: text of the active original lyric or `emptyText` when absent
+ * - `currentTrans`: translation text of the active line or an empty string
+ * - `currentRoma`: romanization text of the active line or an empty string
+ * - `secondaryLyric`: prefers translation over romanization (translation if present, otherwise romanization)
+ * - `isPlaying`: `true` when playback is active, `false` otherwise
+ * - `showOriginal`: `true` when original lyrics should be shown
+ * - `showTrans`: `true` when translations should be shown
+ * - `showRoma`: `true` when romanizations should be shown
+ */
 export function useActiveLyricState(options: UseActiveLyricStateOptions = {}) {
   const { source = 'store', emptyText = '' } = options
   if (source === 'ipc') {

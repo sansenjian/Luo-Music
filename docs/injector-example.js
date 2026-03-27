@@ -8,7 +8,13 @@
  * 3. Injector 自动注入 - 最灵活，适合复杂场景
  */
 var __esDecorate = (this && this.__esDecorate) || function (ctor, descriptorIn, decorators, contextIn, initializers, extraInitializers) {
-    function accept(f) { if (f !== void 0 && typeof f !== "function") throw new TypeError("Function expected"); return f; }
+    /**
+ * Validate that a value is a function (or undefined) and return it.
+ * @param {*} f - The value to validate; may be a function or `undefined`.
+ * @returns {Function|undefined} The provided function, or `undefined` if none was provided.
+ * @throws {TypeError} If `f` is provided and is not a function.
+ */
+function accept(f) { if (f !== void 0 && typeof f !== "function") throw new TypeError("Function expected"); return f; }
     var kind = contextIn.kind, key = kind === "getter" ? "get" : kind === "setter" ? "set" : "value";
     var target = !descriptorIn && ctor ? contextIn["static"] ? ctor : ctor.prototype : null;
     var descriptor = descriptorIn || (target ? Object.getOwnPropertyDescriptor(target, contextIn.name) : {});
@@ -42,18 +48,47 @@ var __runInitializers = (this && this.__runInitializers) || function (thisArg, i
     return useValue ? value : void 0;
 };
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    /**
+ * Ensures the given value is an instance of the Promise-like constructor `P`.
+ * @param {*} value - The value to adopt.
+ * @returns {*} `value` if it is an instance of `P`, otherwise a new `P` that resolves to `value`.
+ */
+function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        /**
+ * Advance the wrapped generator by passing it a fulfilled value and reject if the generator throws.
+ * @param {*} value - The value to send into `generator.next`.
+ */
+function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        /**
+ * Injects a thrown value into the active generator and advances its execution; if advancing throws synchronously, forwards that exception to the rejection callback.
+ * @param {*} value - The value or error to throw into the generator.
+ */
+function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        /**
+ * Process a generator result: resolve with its value if finished, otherwise adopt the yielded value and attach continuation handlers.
+ * @param {{ done: boolean, value: any }} result - The iterator result object with `done` indicating completion and `value` being the yielded or return value.
+ */
+function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
 var __generator = (this && this.__generator) || function (thisArg, body) {
     var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
     return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
+    /**
+ * Create a function that invokes `step` using a fixed verb code and a provided value.
+ * @param {number} n - The verb code to pair with the value when calling `step`.
+ * @returns {function(*): *} A function that takes a value `v` and returns the result of calling `step([n, v])`.
+ */
+function verb(n) { return function (v) { return step([n, v]); }; }
+    /**
+     * Advances the internal state machine for a compiled generator, performing the requested operation and returning the resulting iterator record.
+     *
+     * @param {Array} op - Operation tuple where the first element is the opcode and the second is an optional value/argument for the operation.
+     * @returns {{value: any, done: boolean}} An iterator result object reflecting the generator's yielded value (if any) and completion state.
+     * @throws {TypeError} If the generator is re-entered while already executing.
+     */
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
         while (g && (g = 0, op[0] && (_ = 0)), _) try {
@@ -86,6 +121,13 @@ var injector_1 = require("./injector");
 // ==================== 方式 1: 直接 getService ====================
 // 最简单直接，适合快速开发
 var SimpleService = /** @class */ (function () {
+    /**
+     * Simple service that acquires the shared API and logger services from the registry.
+     *
+     * @constructor
+     * @property {any} api - The resolved API service instance.
+     * @property {any} logger - The resolved logger service instance.
+     */
     function SimpleService() {
         this.api = (0, registry_1.getService)('api');
         this.logger = (0, registry_1.getService)('logger');
@@ -109,6 +151,13 @@ var DecoratedService = function () {
     var _logger_initializers = [];
     var _logger_extraInitializers = [];
     return _a = /** @class */ (function () {
+            /**
+             * Service that receives its `api` and `logger` dependencies via field decorators.
+             *
+             * @constructor
+             * @property {any} api - Injected API service used to make HTTP requests.
+             * @property {any} logger - Injected logger used for informational and debug messages.
+             */
             function DecoratedService() {
                 this.api = __runInitializers(this, _api_initializers, void 0);
                 this.logger = (__runInitializers(this, _api_extraInitializers), __runInitializers(this, _logger_initializers, void 0));
@@ -157,6 +206,12 @@ export default defineComponent({
  * 参数默认值使用 getService() 获取服务
  */
 var PlayerService = /** @class */ (function () {
+    /**
+     * Constructor for PlayerService that assigns API and logger dependencies.
+     * @constructor
+     * @param {any} [api] - API service used to make requests; defaults to the service registered as `'api'`.
+     * @param {any} [logger] - Logger service used for logging; defaults to the service registered as `'logger'`.
+     */
     function PlayerService(api, logger) {
         if (api === void 0) { api = (0, registry_1.getService)('api'); }
         if (logger === void 0) { logger = (0, registry_1.getService)('logger'); }
@@ -176,6 +231,11 @@ var _playerExample = new PlayerService();
  * 类型更安全，依赖关系更明确
  */
 var AnnotatedPlayerService = /** @class */ (function () {
+    /**
+     * Player service constructed with explicit `api` and `logger` dependencies used to play songs.
+     * @param {object} api - API service implementing `request(service, endpoint, params)` to fetch song data.
+     * @param {object} logger - Logger service exposing `info`, `warn`, `error`, and `debug` methods for logging.
+     */
     function AnnotatedPlayerService(api, logger) {
         this.api = api;
         this.logger = logger;
@@ -187,7 +247,9 @@ var AnnotatedPlayerService = /** @class */ (function () {
     return AnnotatedPlayerService;
 }());
 exports.AnnotatedPlayerService = AnnotatedPlayerService;
-// ==================== 使用示例 ====================
+/**
+ * Demonstrates three dependency-injection patterns (direct service lookup, decorator field injection, and constructor/Injector-based injection) by instantiating example services and exercising their methods, including verifying Injector singleton behavior.
+ */
 function demonstrateDI() {
     // 方式 1: 直接实例化（依赖在内部获取）
     var simple = new SimpleService();
@@ -215,6 +277,11 @@ function demonstrateDI() {
  * 下载服务依赖 API 服务和日志服务
  */
 var DownloadService = /** @class */ (function () {
+    /**
+     * Creates a DownloadService that performs song downloads using the provided API and logs progress.
+     * @param {object} api - Service exposing a `request(service, endpoint, params)` method for HTTP calls.
+     * @param {object} logger - Logger implementing methods such as `info`, `warn`, `error`, and `debug`.
+     */
     function DownloadService(api, logger) {
         this.api = api;
         this.logger = logger;
@@ -245,6 +312,10 @@ exports.DownloadService = DownloadService;
  * 缓存服务依赖日志服务
  */
 var CacheService = /** @class */ (function () {
+    /**
+     * Provides simple key/value caching backed by localStorage and emits debug messages via the supplied logger.
+     * @param {{debug: function(string, string):void}} logger - Logger used for debug output; should implement a `debug(module, message)` method.
+     */
     function CacheService(logger) {
         this.logger = logger;
     }
@@ -264,6 +335,12 @@ exports.CacheService = CacheService;
  * DownloadManager 依赖 DownloadService 和 CacheService
  */
 var DownloadManager = /** @class */ (function () {
+    /**
+     * Creates a download manager that retrieves song URLs, caches results, and logs operations.
+     * @param {object} logger - Logger implementing info/warn/error/debug used for operational messages.
+     * @param {DownloadService} [downloadService] - Service that performs song downloads; defaults to an annotated DownloadService instance when omitted.
+     * @param {CacheService} [cacheService] - Service that stores and retrieves cached values; defaults to an annotated CacheService instance when omitted.
+     */
     function DownloadManager(logger, downloadService, cacheService) {
         if (downloadService === void 0) { downloadService = (0, injector_1.createAnnotatedInstance)(DownloadService); }
         if (cacheService === void 0) { cacheService = (0, injector_1.createAnnotatedInstance)(CacheService); }
@@ -301,6 +378,14 @@ exports.DownloadManager = DownloadManager;
  * Mock API 服务用于测试
  */
 var MockApiService = /** @class */ (function () {
+    /**
+     * Mock API service for tests and examples that simulates network requests.
+     *
+     * Instances provide a `request(service, endpoint, params)` method which logs the call
+     * to the console prefixed with `[MockAPI]` and returns a Promise resolving to
+     * an object shaped like `{ data: { url: 'mock-url' } }`.
+     * @constructor
+     */
     function MockApiService() {
     }
     MockApiService.prototype.request = function (service, endpoint, params) {
@@ -314,6 +399,12 @@ exports.MockApiService = MockApiService;
  * Mock 日志服务用于测试
  */
 var MockLoggerService = /** @class */ (function () {
+    /**
+     * Lightweight logger implementation that forwards `info`, `warn`, `error`, and `debug` calls to the browser console.
+     *
+     * Provides the logging methods expected by consumer services and test doubles; each method delegates to the corresponding `console` method.
+     * @constructor
+     */
     function MockLoggerService() {
     }
     MockLoggerService.prototype.info = function (module, message) {

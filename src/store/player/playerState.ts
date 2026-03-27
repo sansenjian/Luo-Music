@@ -75,7 +75,9 @@ export interface PlayerStateChanges {
 }
 
 /**
- * 创建初始播放器状态
+ * Create the initial PlayerState with sensible defaults for playback, playlist, lyrics, UI, and lifecycle.
+ *
+ * @returns A PlayerState object with default values (playing false, progress 0, duration 0, volume 0.7, playMode PLAY_MODE.SEQUENTIAL, empty songList, currentSong and lyricSong null, null raw lyric, empty lyricsArray, default lyric sizes and types, and UI/lifecycle flags initialized).
  */
 export function createInitialState(): PlayerState {
   return {

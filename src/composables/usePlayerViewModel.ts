@@ -50,6 +50,19 @@ function resolveCoverUrl(url?: string): string {
   }
 }
 
+/**
+ * Creates a Vue Composition API view-model for the player UI, exposing reactive state, element refs, sliders, and UI handlers used by the player component.
+ *
+ * The returned view-model wires store state, command permissions, animations, and throttled style updates so the component can bind UI elements and invoke player actions.
+ *
+ * @returns An object containing:
+ * - `playerStore` — the player store instance
+ * - element refs: `playButtonRef`, `prevButtonRef`, `nextButtonRef`, `loopButtonRef`, `coverImgRef`, `volumeFillRef`
+ * - computed values: `currentSong`, `progressPercent`, `volumePercent`, `volumeDisplay`, `artistText`, `coverUrl`, `playModeSvg`, `playModeText`
+ * - permission flags: `canTogglePlay`, `canNavigatePlaylist`, `canTogglePlayMode`, `canToggleDesktopLyric`
+ * - sliders: `progressSlider`, `volumeSlider`
+ * - UI handlers: `onPlayButtonClick`, `onPrevButtonClick`, `onNextButtonClick`, `toggleDesktopLyric`, `onLoopButtonClick`
+ */
 export function usePlayerViewModel() {
   const commandService = services.commands()
   const playerStore = usePlayerStore()

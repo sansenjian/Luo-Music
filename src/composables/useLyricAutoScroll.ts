@@ -47,6 +47,25 @@ export interface UseLyricAutoScrollOptions {
   resetSources?: WatchSource<unknown>[]
 }
 
+/**
+ * Coordinates automatic scrolling of a lyric container so the active lyric line remains aligned and visible.
+ *
+ * The composable observes active index, lyric list changes, alignment/reset triggers, container size, and user scroll interactions;
+ * it differentiates programmatic scrolling from user-initiated scrolling to avoid feedback loops and to resume auto-scroll after user activity ceases.
+ *
+ * @param options - Configuration and reactive inputs:
+ *   - scrollArea: A ref to the scrollable container element that holds lyric lines.
+ *   - lyrics: A ref to the array of lyric entries.
+ *   - activeIndex: A ref to the current active lyric index.
+ *   - active: Optional boolean or ref that enables/disables auto-scroll (defaults to `true`).
+ *   - alignSources: Optional array of reactive sources that, when changed, trigger alignment to the active line.
+ *   - resetSources: Optional array of reactive sources that, when changed, reset scroll state and position.
+ * @returns An object with control functions:
+ *   - handleScroll: Call from the container's scroll handler to update internal user/programmatic state.
+ *   - handleUserScrollStart: Mark the start of a user interaction (e.g., on `wheel` or `touchstart`) to temporarily suspend auto-scroll.
+ *   - scrollToActiveLine: Programmatically align the container to the active lyric line; accepts an optional `ScrollBehavior`.
+ *   - syncVisibleActiveLine: After DOM updates, attempts to align the active lyric line when synchronization prerequisites are met.
+ */
 export function useLyricAutoScroll(options: UseLyricAutoScrollOptions) {
   const {
     scrollArea,

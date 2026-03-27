@@ -20,28 +20,44 @@ export interface LyricLine {
 }
 
 /**
- * 格式化歌词时间戳为秒数
- * @param timeStr - 时间戳字符串，如 "00:05.50" 或 "01:05.500"
- * @returns 秒数
+ * Convert a lyric timestamp string into a number of seconds.
+ *
+ * @param timeStr - Timestamp string (e.g. "00:05.50", "01:05.500")
+ * @returns The timestamp expressed in seconds
  */
 export function formatLyricTime(timeStr: string): number {
   return parseLyricTimestamp(timeStr)
 }
 
+/**
+ * Determines whether the given lyric text indicates pure music ('纯音乐').
+ *
+ * @param text - The lyric line or metadata text to examine
+ * @returns `true` if `text` contains '纯音乐', `false` otherwise
+ */
 function shouldTreatAsPureMusic(text: string): boolean {
   return text.includes('纯音乐')
 }
 
+/**
+ * Detects whether a lyric line is a metadata line indicating lyricist or composer.
+ *
+ * @param text - The lyric line text to inspect
+ * @returns `true` if `text` contains '作词' or '作曲', `false` otherwise.
+ */
 function shouldDropMetaLine(text: string): boolean {
   return text.includes('作词') || text.includes('作曲')
 }
 
 /**
- * 解析歌词（兼容旧字段：lyric/tlyric/rlyric）
- * @param lrcText - 原文歌词
- * @param tlyricText - 翻译歌词
- * @param rlyricText - 罗马音歌词
- * @returns 解析后的歌词数组
+ * Parse lyric text into an array of legacy-formatted lyric lines.
+ *
+ * When `lrcText` indicates pure music, returns a single entry at time 0 with `PURE_MUSIC_HINT`.
+ *
+ * @param lrcText - Original lyric text (may be null)
+ * @param tlyricText - Translated lyric text (may be null)
+ * @param rlyricText - Romanized lyric text (may be null)
+ * @returns An array of `LyricLine` objects, each with `time`, `lyric`, `tlyric`, and `rlyric` fields
  */
 export function parseLyric(
   lrcText: string | null,
@@ -67,11 +83,12 @@ export function parseLyric(
 }
 
 /**
- * 查找当前应该高亮的歌词索引
- * @param lyrics - 歌词数组
- * @param currentTime - 当前播放时间（秒）
- * @param offset - 提前量（秒），默认 LYRIC_OFFSET
- * @returns 歌词索引
+ * Determine the index of the lyric line that should be highlighted for the given playback time.
+ *
+ * @param lyrics - Array of `LyricLine` entries sorted by `time` in ascending order
+ * @param currentTime - Current playback time in seconds
+ * @param offset - Lead time in seconds to advance the highlight (defaults to `LYRIC_OFFSET`)
+ * @returns The index of the last lyric whose `time` is less than or equal to `currentTime + offset`, or `-1` if no such line exists
  */
 export function findCurrentLyricIndex(
   lyrics: LyricLine[],
