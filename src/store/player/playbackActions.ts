@@ -219,7 +219,11 @@ export class PlaybackActions {
     })
   }
 
-  async playSongByIndex(index: number, playbackSong?: Song): Promise<void> {
+  async playSongByIndex(
+    index: number,
+    playbackSong?: Song,
+    playbackRequestId?: number
+  ): Promise<void> {
     const state = this.deps.getState()
     if (index < 0 || index >= state.songList.length) return
 
@@ -233,6 +237,10 @@ export class PlaybackActions {
     }
 
     await this.deps.playSongByIndex(index)
+
+    if (playbackRequestId !== undefined && !this.isCurrentPlaybackRequest(playbackRequestId)) {
+      return
+    }
 
     this.deps.onStateChange({
       currentIndex: index,
@@ -302,7 +310,7 @@ export class PlaybackActions {
       this.syncPlaybackRuntimeFields(song, playbackSong)
 
       try {
-        await this.playSongByIndex(index, playbackSong)
+        await this.playSongByIndex(index, playbackSong, playbackRequestId)
 
         if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
           return
@@ -326,7 +334,7 @@ export class PlaybackActions {
           }
 
           this.syncPlaybackRuntimeFields(song, playbackSong)
-          await this.playSongByIndex(index, playbackSong)
+          await this.playSongByIndex(index, playbackSong, playbackRequestId)
           if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
             return
           }

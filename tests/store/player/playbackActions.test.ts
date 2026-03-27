@@ -477,6 +477,44 @@ describe('playbackActions', () => {
     expect(switchedToFirstSong).toBe(false)
   })
 
+  it('skips state updates when an older playback promise resolves after a newer switch', async () => {
+    const { actions, state, playSongByIndex, onStateChange } = createSubject()
+    state.songList = [
+      createSong({ id: 'song-1', url: 'https://song.test/1.mp3' }),
+      createSong({ id: 'song-2', url: 'https://song.test/2.mp3' })
+    ]
+
+    const firstPlaybackCommit = createDeferred<void>()
+    const secondPlaybackCommit = createDeferred<void>()
+
+    playSongByIndex.mockImplementation((index: number) => {
+      return index === 0 ? firstPlaybackCommit.promise : secondPlaybackCommit.promise
+    })
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    const firstPlayback = actions.playSongWithDetails(0)
+    const secondPlayback = actions.playSongWithDetails(1)
+
+    secondPlaybackCommit.resolve()
+    await secondPlayback
+
+    firstPlaybackCommit.resolve()
+    await firstPlayback
+
+    expect(state.currentSong?.id).toBe('song-2')
+    expect(state.currentIndex).toBe(1)
+
+    const switchedToFirstSong = onStateChange.mock.calls.some(
+      ([changes]) => (changes as { currentSong?: Song | null }).currentSong?.id === 'song-1'
+    )
+    expect(switchedToFirstSong).toBe(false)
+  })
+
   it('marks songs unavailable and rethrows when auto skip is disabled', async () => {
     const { actions, state, errorHandler } = createSubject()
     state.songList = [createSong({ id: 'vip-song' })]
