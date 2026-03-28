@@ -99,6 +99,20 @@ describe('playerStore', () => {
       expect(store.currentIndex).toBe(-1)
     })
 
+    it('clears stale currentSong when the new playlist no longer contains it', () => {
+      const store = usePlayerStore()
+      store.currentSong = createMockSong({ id: 99, name: 'Stale Song' })
+
+      store.setSongList([
+        createMockSong({ id: 1, name: 'Song 1' }),
+        createMockSong({ id: 2, name: 'Song 2' })
+      ])
+
+      expect(store.currentIndex).toBe(-1)
+      expect(store.currentSong).toBeNull()
+      expect(store.currentSongInfo).toBeNull()
+    })
+
     it('addSong appends a song', () => {
       const store = usePlayerStore()
       const song = createMockSong({ id: 1, name: 'New Song' })

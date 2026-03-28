@@ -570,6 +570,9 @@ export const usePlayerStore = defineStore('player', {
       if (this.currentSong) {
         const newIndex = songs.findIndex(song => song.id === this.currentSong!.id)
         this.currentIndex = newIndex
+        if (newIndex === -1) {
+          this.currentSong = null
+        }
       } else {
         this.currentIndex = -1
       }
