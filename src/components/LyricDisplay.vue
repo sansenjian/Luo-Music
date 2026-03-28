@@ -62,6 +62,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
           v-for="(item, index) in lyrics"
           :key="`${item.time}-${index}`"
           class="lyric-line"
+          :aria-current="index === currentLyricIndex ? 'true' : undefined"
           :class="{
             active: index === currentLyricIndex,
             passed: index < currentLyricIndex
@@ -153,6 +154,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
   padding: 8px 12px;
   border-left: 3px solid transparent;
+  position: relative;
 }
 
 .lyric-line:hover,
@@ -170,9 +172,14 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
 }
 
+.lyric-line.active .lyric-main {
+  color: var(--white);
+}
+
+.lyric-line.active .lyric-roma,
 .lyric-line.active .lyric-trans {
   color: var(--gray-light);
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 .lyric-line.passed {

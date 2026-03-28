@@ -3,6 +3,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PlayerCore, PlayerState } from '@/utils/player/core/playerCore'
 import { VOLUME, AUDIO_CONFIG } from '@/utils/player/constants/volume'
 
+type MockAudioElement = Omit<
+  HTMLAudioElement,
+  'readyState' | 'paused' | 'ended' | 'duration' | 'buffered'
+> & {
+  readyState: number
+  paused: boolean
+  ended: boolean
+  duration: number
+  buffered: TimeRanges
+  trigger: (event: string, payload: Event) => void
+}
+
+type PlayerCoreTestInternals = {
+  audio: MockAudioElement
+  audioContext: MockAudioContext | null
+  analyser: MockAnalyserNode | null
+  gainNode: MockGainNode | null
+  source: MockMediaElementSourceNode | null
+  callbacks: Map<string, Set<(value: unknown) => void>>
+  _boundHandlers: Map<string, EventListener>
+  _setState: (state: PlayerState) => void
+}
+
+function getInternals(instance: PlayerCore): PlayerCoreTestInternals {
+  return instance as unknown as PlayerCoreTestInternals
+}
+
 // Mock AudioContext
 class MockAnalyserNode {
   fftSize = 2048
@@ -96,14 +123,14 @@ describe('PlayerCore', () => {
 
   describe('playback control', () => {
     it('should play audio with URL', async () => {
-      const playSpy = vi.spyOn(player as any, 'play')
+      const playSpy = vi.spyOn(player, 'play')
       await player.play('test.mp3')
       expect(playSpy).toHaveBeenCalledWith('test.mp3')
     })
 
     it('should not reload same URL if already loaded', async () => {
       await player.play('test.mp3')
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.src = 'test.mp3'
       audio.readyState = 4
       audio.paused = false
@@ -113,9 +140,22 @@ describe('PlayerCore', () => {
       expect(audio.src).toBe('test.mp3')
     })
 
+    it('should continue playback when switching to a new URL while the previous song is playing', async () => {
+      const { audio } = getInternals(player)
+      audio.src = 'https://song.test/old.mp3'
+      audio.readyState = 4
+      audio.paused = false
+      audio.play = vi.fn().mockResolvedValue(undefined)
+
+      await player.play('https://song.test/new.mp3')
+
+      expect(audio.src).toBe('https://song.test/new.mp3')
+      expect(audio.play).toHaveBeenCalledTimes(1)
+    })
+
     it('should reset currentTime when replaying ended audio', async () => {
       await player.play('test.mp3')
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.ended = true
 
       await player.play('test.mp3')
@@ -124,12 +164,12 @@ describe('PlayerCore', () => {
 
     it('should pause audio', () => {
       player.pause()
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       expect(audio.paused).toBe(true)
     })
 
     it('should toggle playback state', async () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.paused = true
       audio.readyState = 4
 
@@ -142,7 +182,7 @@ describe('PlayerCore', () => {
     })
 
     it('should handle play error', async () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.play = vi.fn().mockRejectedValue(new Error('Play failed'))
       audio.readyState = 4
 
@@ -150,7 +190,7 @@ describe('PlayerCore', () => {
     })
 
     it('should ignore AbortError during rapid switching', async () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.readyState = 4
       audio.play = vi.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError'))
 
@@ -160,7 +200,7 @@ describe('PlayerCore', () => {
     })
 
     it('should wait for canplay if not ready', async () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.readyState = 0
       audio.src = ''
 
@@ -189,10 +229,28 @@ describe('PlayerCore', () => {
       await expect(playPromise).resolves.toBeUndefined()
     })
 
+    it('should let a newer play request replace an older request that is still waiting for canplay', async () => {
+      const { audio } = getInternals(player)
+      audio.readyState = 0
+      audio.play = vi.fn().mockResolvedValue(undefined)
+      audio.load = vi.fn()
+
+      const firstPlayPromise = player.play('https://song.test/old.mp3')
+      const secondPlayPromise = player.play('https://song.test/new.mp3')
+
+      audio.readyState = 4
+      audio.trigger('canplay', new Event('canplay'))
+
+      await expect(firstPlayPromise).resolves.toBeUndefined()
+      await expect(secondPlayPromise).resolves.toBeUndefined()
+      expect(audio.src).toBe('https://song.test/new.mp3')
+      expect(audio.play).toHaveBeenCalledTimes(1)
+    })
+
     it('should resume suspended AudioContext', async () => {
       await player.play('test.mp3')
-      const audioContext = (player as any).audioContext
-      expect(audioContext.state).toBe('running')
+      const { audioContext } = getInternals(player)
+      expect(audioContext?.state).toBe('running')
     })
   })
 
@@ -253,25 +311,25 @@ describe('PlayerCore', () => {
       player.on('seek', callback)
 
       player.seek(50)
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       expect(audio.currentTime).toBe(50)
       expect(callback).toHaveBeenCalledWith(50)
     })
 
     it('should clamp seek time to 0', () => {
       player.seek(-10)
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       expect(audio.currentTime).toBe(0)
     })
 
     it('should clamp seek time to duration', () => {
       player.seek(150)
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       expect(audio.currentTime).toBe(100) // duration
     })
 
     it('should not seek if duration is not set', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.duration = NaN
 
       player.seek(50)
@@ -280,7 +338,7 @@ describe('PlayerCore', () => {
 
     it('should not seek after destroy', () => {
       player.destroy()
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       const initialTime = audio.currentTime
 
       player.seek(50)
@@ -386,35 +444,35 @@ describe('PlayerCore', () => {
 
     it('should handle ended event and change state to PAUSED', () => {
       player.state = PlayerState.PLAYING
-      const audio: any = (player as any).audio
+      const { audio } = getInternals(player)
       audio.trigger('ended', new Event('ended'))
       expect(player.state).toBe(PlayerState.PAUSED)
     })
 
     it('should handle error event and change state to ERROR', () => {
       player.state = PlayerState.PLAYING
-      const audio: any = (player as any).audio
+      const { audio } = getInternals(player)
       audio.trigger('error', new Event('error'))
       expect(player.state).toBe(PlayerState.ERROR)
     })
 
     it('should handle waiting event and change state to LOADING', () => {
       player.state = PlayerState.PLAYING
-      const audio: any = (player as any).audio
+      const { audio } = getInternals(player)
       audio.trigger('waiting', new Event('waiting'))
       expect(player.state).toBe(PlayerState.LOADING)
     })
 
     it('should handle playing event and change state to PLAYING', () => {
       player.state = PlayerState.PAUSED
-      const audio: any = (player as any).audio
+      const { audio } = getInternals(player)
       audio.trigger('playing', new Event('playing'))
       expect(player.state).toBe(PlayerState.PLAYING)
     })
 
     it('should handle pause event and change state to PAUSED', () => {
       player.state = PlayerState.PLAYING
-      const audio: any = (player as any).audio
+      const { audio } = getInternals(player)
       audio.trigger('pause', new Event('pause'))
       expect(player.state).toBe(PlayerState.PAUSED)
     })
@@ -422,31 +480,31 @@ describe('PlayerCore', () => {
 
   describe('getters', () => {
     it('should return current time', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.currentTime = 25.5
       expect(player.currentTime).toBe(25.5)
     })
 
     it('should return duration', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.duration = 180
       expect(player.duration).toBe(180)
     })
 
     it('should return paused state', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.paused = false
       expect(player.paused).toBe(false)
     })
 
     it('should return ended state', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.ended = true
       expect(player.ended).toBe(true)
     })
 
     it('should return src', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.src = 'test.mp3'
       expect(player.src).toBe('test.mp3')
     })
@@ -479,7 +537,7 @@ describe('PlayerCore', () => {
 
   describe('buffered', () => {
     it('should return buffered TimeRanges', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       const mockBuffered = {
         length: 1,
         start: (index: number) => (index === 0 ? 0 : 0),
@@ -495,7 +553,7 @@ describe('PlayerCore', () => {
     })
 
     it('should calculate bufferedPercent', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.duration = 100
       audio.buffered = {
         length: 1,
@@ -506,7 +564,7 @@ describe('PlayerCore', () => {
     })
 
     it('should return 0 for bufferedPercent if no buffered data', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.duration = 100
       audio.buffered = { length: 0 } as TimeRanges
       expect(player.bufferedPercent).toBe(0)
@@ -521,20 +579,20 @@ describe('PlayerCore', () => {
   describe('AudioContext and visualization', () => {
     it('should create AudioContext on first play', async () => {
       await player.play('test.mp3')
-      const audioContext = (player as any).audioContext
+      const { audioContext } = getInternals(player)
       expect(audioContext).toBeDefined()
     })
 
     it('should create analyser node', async () => {
       await player.play('test.mp3')
-      const analyser = (player as any).analyser
+      const { analyser } = getInternals(player)
       expect(analyser).toBeDefined()
-      expect(analyser.fftSize).toBe(2048)
+      expect(analyser?.fftSize).toBe(2048)
     })
 
     it('should create gain node', async () => {
       await player.play('test.mp3')
-      const gainNode = (player as any).gainNode
+      const { gainNode } = getInternals(player)
       expect(gainNode).toBeDefined()
     })
 
@@ -583,11 +641,12 @@ describe('PlayerCore', () => {
   describe('destroy', () => {
     it('should cleanup AudioContext', async () => {
       await player.play('test.mp3')
-      const closeSpy = vi.spyOn((player as any).audioContext, 'close')
+      const { audioContext } = getInternals(player)
+      const closeSpy = vi.spyOn(audioContext!, 'close')
 
       player.destroy()
       expect(closeSpy).toHaveBeenCalled()
-      expect((player as any).audioContext).toBeNull()
+      expect(getInternals(player).audioContext).toBeNull()
     })
 
     it('should clear all event listeners', () => {
@@ -602,16 +661,16 @@ describe('PlayerCore', () => {
     it('should clear callbacks map', () => {
       player.on('timeupdate', vi.fn())
       player.destroy()
-      expect((player as any).callbacks.size).toBe(0)
+      expect(getInternals(player).callbacks.size).toBe(0)
     })
 
     it('should clear bound handlers', () => {
       player.destroy()
-      expect((player as any)._boundHandlers.size).toBe(0)
+      expect(getInternals(player)._boundHandlers.size).toBe(0)
     })
 
     it('should pause audio on destroy', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.paused = false
 
       player.destroy()
@@ -619,7 +678,7 @@ describe('PlayerCore', () => {
     })
 
     it('should remove src attribute on destroy', () => {
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       audio.src = 'test.mp3'
 
       player.destroy()
@@ -629,29 +688,30 @@ describe('PlayerCore', () => {
     it('should set audio context to null', async () => {
       await player.play('test.mp3')
       player.destroy()
-      expect((player as any).audioContext).toBeNull()
+      expect(getInternals(player).audioContext).toBeNull()
     })
 
     it('should set analyser to null', async () => {
       await player.play('test.mp3')
       player.destroy()
-      expect((player as any).analyser).toBeNull()
+      expect(getInternals(player).analyser).toBeNull()
     })
 
     it('should set gainNode to null', async () => {
       await player.play('test.mp3')
       player.destroy()
-      expect((player as any).gainNode).toBeNull()
+      expect(getInternals(player).gainNode).toBeNull()
     })
 
     it('should set source to null', async () => {
       await player.play('test.mp3')
       player.destroy()
-      expect((player as any).source).toBeNull()
+      expect(getInternals(player).source).toBeNull()
     })
 
     it('should prevent multiple destroy calls', () => {
-      const spy = vi.spyOn((player as any).audio, 'pause')
+      const { audio } = getInternals(player)
+      const spy = vi.spyOn(audio, 'pause')
       player.destroy()
       player.destroy()
       expect(spy).toHaveBeenCalledTimes(1)
@@ -677,7 +737,7 @@ describe('PlayerCore', () => {
   describe('cross-origin setup', () => {
     it('should setup crossOrigin attribute in constructor', () => {
       // Verify the crossOrigin is set during initialization
-      const audio = (player as any).audio
+      const { audio } = getInternals(player)
       expect(audio.crossOrigin).toBe(AUDIO_CONFIG.CROSS_ORIGIN)
     })
   })
@@ -688,7 +748,7 @@ describe('PlayerCore', () => {
       player.on('statechange', callback)
 
       player.state = PlayerState.IDLE
-      ;(player as any)._setState(PlayerState.IDLE)
+      getInternals(player)._setState(PlayerState.IDLE)
 
       expect(callback).not.toHaveBeenCalled()
     })
@@ -698,7 +758,7 @@ describe('PlayerCore', () => {
       player.on('statechange', callback)
 
       player.state = PlayerState.IDLE
-      ;(player as any)._setState(PlayerState.PLAYING)
+      getInternals(player)._setState(PlayerState.PLAYING)
 
       expect(callback).toHaveBeenCalledWith(PlayerState.PLAYING)
       expect(player.state).toBe(PlayerState.PLAYING)

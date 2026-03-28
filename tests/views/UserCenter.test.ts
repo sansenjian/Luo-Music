@@ -21,6 +21,16 @@ const resetPlaylistsMock = vi.hoisted(() => vi.fn())
 const loadEventsMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 const resetEventsMock = vi.hoisted(() => vi.fn())
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+
+  const promise = new Promise<T>(nextResolve => {
+    resolve = nextResolve
+  })
+
+  return { promise, resolve }
+}
+
 type UserStoreState = {
   isLoggedIn: boolean
   userId: string | null
@@ -177,5 +187,46 @@ describe('UserCenter', () => {
     expect(loadPlaylistsMock).not.toHaveBeenCalled()
     expect(loadEventsMock).not.toHaveBeenCalled()
     expect(pushMock).toHaveBeenCalledWith('/')
+  })
+
+  it('keeps the active tab component mounted while its data is still loading', async () => {
+    const likedDeferred = createDeferred<void>()
+    loadLikedSongsMock.mockImplementationOnce(() => likedDeferred.promise)
+    loadPlaylistsMock.mockImplementationOnce(() => Promise.resolve())
+    loadEventsMock.mockImplementationOnce(() => Promise.resolve())
+
+    const likedLifecycle = {
+      mounted: vi.fn(),
+      unmounted: vi.fn()
+    }
+
+    const UserCenter = (await import('../../src/views/UserCenter.vue')).default
+    mount(UserCenter, {
+      global: {
+        stubs: {
+          UserProfileHeader: true,
+          LikedSongsView: {
+            props: ['loading'],
+            mounted() {
+              likedLifecycle.mounted()
+            },
+            unmounted() {
+              likedLifecycle.unmounted()
+            },
+            template: '<div class="liked-view-stub">{{ loading ? "loading" : "ready" }}</div>'
+          },
+          PlaylistsView: true,
+          EventsView: true
+        }
+      }
+    })
+
+    await nextTick()
+
+    expect(likedLifecycle.mounted).toHaveBeenCalledTimes(1)
+    expect(likedLifecycle.unmounted).not.toHaveBeenCalled()
+
+    likedDeferred.resolve()
+    await flushPromises()
   })
 })

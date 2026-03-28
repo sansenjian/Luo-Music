@@ -72,7 +72,7 @@ async function mountHarness(): Promise<HarnessContext> {
         activeIndex
       })
 
-      return () => h('div')
+      return () => h('div', `${lyrics.value.length}:${activeIndex.value}`)
     }
   })
 
@@ -210,4 +210,5 @@ describe('useLyricAutoScroll', () => {
       behavior: 'smooth'
     })
   })
+
 })

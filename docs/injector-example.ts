@@ -1,15 +1,28 @@
 /**
  * 依赖注入使用示例
  *
- * 本项目提供了三种依赖注入方式：
- * 1. 直接 getService() - 最简单，适合快速开发
- * 2. @inject 装饰器 - 适合类组件
- * 3. Injector 自动注入 - 最灵活，适合复杂场景
+ * 本文件是文档示例，展示仓库内真实的 DI API 用法：
+ * - `getService()`：快速获取已注册服务
+ * - `@inject(...)`：属性注入
+ * - `@injectParam(...)` + `Injector`：构造函数注入
+ *
+ * 说明：
+ * - 该示例引用真实源码模块路径，便于和实现保持一致
+ * - 文件内不执行顶层实例化副作用，示例对象通过函数返回
  */
 
-import { getService } from './registry'
-import { inject /* , useService */ } from './decorators'
-import { Injector, Inject, createInstance, createAnnotatedInstance } from './injector'
+import { inject } from '../src/services/decorators'
+import {
+  createAnnotatedInstance,
+  createInstance,
+  Injector,
+  injectParam
+} from '../src/services/injector'
+import { getService } from '../src/services/registry'
+import { IApiService, ILoggerService } from '../src/services/types'
+
+import type { ApiService } from '../src/services/apiService'
+import type { LoggerService } from '../src/services/loggerService'
 
 // ==================== 方式 1: 直接 getService ====================
 // 最简单直接，适合快速开发
@@ -24,14 +37,16 @@ export class SimpleService {
   }
 }
 
-const _simpleExample = new SimpleService()
+export function createSimpleServiceExample(): SimpleService {
+  return new SimpleService()
+}
 
 // ==================== 方式 2: 使用装饰器 @inject ====================
 // 适合 Vue 组件和需要明确依赖的类
 
 export class DecoratedService {
-  @inject(IApiService) private api!: import('./apiService').ApiService
-  @inject(ILoggerService) private logger!: import('./loggerService').LoggerService
+  @inject(IApiService) private api!: ApiService
+  @inject(ILoggerService) private logger!: LoggerService
 
   fetchData(id: string): void {
     this.logger.info('DecoratedService', `Fetching data for ${id}`)
@@ -39,11 +54,14 @@ export class DecoratedService {
   }
 }
 
-const _decoratedExample = new DecoratedService()
+export function createDecoratedServiceExample(): DecoratedService {
+  return new DecoratedService()
+}
 
 // Vue 组件示例
 /*
 import { defineComponent } from 'vue'
+import { useService } from '../src/services/decorators'
 
 export default defineComponent({
   setup() {
@@ -64,7 +82,7 @@ export default defineComponent({
 // 最灵活，支持构造函数注入和单例模式
 
 /**
- * 使用构造函数的类
+ * 使用构造函数默认参数的类
  * 参数默认值使用 getService() 获取服务
  */
 export class PlayerService {
@@ -79,16 +97,18 @@ export class PlayerService {
   }
 }
 
-const _playerExample = new PlayerService()
+export function createPlayerServiceExample(): PlayerService {
+  return new PlayerService()
+}
 
 /**
- * 使用 @Inject 注解的类
+ * 使用 @injectParam 注解的类
  * 类型更安全，依赖关系更明确
  */
 export class AnnotatedPlayerService {
   constructor(
-    @Inject(IApiService) private api: import('./apiService').ApiService,
-    @Inject(ILoggerService) private logger: import('./loggerService').LoggerService
+    @injectParam(IApiService) private api: ApiService,
+    @injectParam(ILoggerService) private logger: LoggerService
   ) {}
 
   playSong(songId: string): void {
@@ -101,11 +121,11 @@ export class AnnotatedPlayerService {
 
 export function demonstrateDI(): void {
   // 方式 1: 直接实例化（依赖在内部获取）
-  const simple = new SimpleService()
+  const simple = createSimpleServiceExample()
   simple.fetchData('123')
 
   // 方式 2: 装饰器方式（需要 TypeScript 启用 experimentalDecorators）
-  const decorated = new DecoratedService()
+  const decorated = createDecoratedServiceExample()
   decorated.fetchData('456')
 
   // 方式 3a: 使用 Injector 自动解析
@@ -118,7 +138,7 @@ export function demonstrateDI(): void {
   const player3 = injector.createInstance(PlayerService, { singleton: true })
   console.log(player2 === player3) // true，同一个实例
 
-  // 方式 3c: 使用 AnnotatedInjector + @Inject 注解
+  // 方式 3c: 使用 createAnnotatedInstance + @injectParam 注解
   const annotatedPlayer = createAnnotatedInstance(AnnotatedPlayerService)
   annotatedPlayer.playSong('012')
 
@@ -134,8 +154,8 @@ export function demonstrateDI(): void {
  */
 export class DownloadService {
   constructor(
-    @Inject(IApiService) private api: import('./apiService').ApiService,
-    @Inject(ILoggerService) private logger: import('./loggerService').LoggerService
+    @injectParam(IApiService) private api: ApiService,
+    @injectParam(ILoggerService) private logger: LoggerService
   ) {}
 
   async downloadSong(songId: string): Promise<string> {
@@ -146,7 +166,7 @@ export class DownloadService {
       level: 'standard'
     })
 
-    return response.data?.url || ''
+    return (response as { data?: { url?: string } })?.data?.url || ''
   }
 }
 
@@ -154,9 +174,7 @@ export class DownloadService {
  * 缓存服务依赖日志服务
  */
 export class CacheService {
-  constructor(
-    @Inject(ILoggerService) private logger: import('./loggerService').LoggerService
-  ) {}
+  constructor(@injectParam(ILoggerService) private logger: LoggerService) {}
 
   get(key: string): string | null {
     this.logger.debug('CacheService', `Getting cache key: ${key}`)
@@ -175,20 +193,18 @@ export class CacheService {
  */
 export class DownloadManager {
   constructor(
-    @Inject(ILoggerService) private logger: import('./loggerService').LoggerService,
+    @injectParam(ILoggerService) private logger: LoggerService,
     private downloadService: DownloadService = createAnnotatedInstance(DownloadService),
     private cacheService: CacheService = createAnnotatedInstance(CacheService)
   ) {}
 
   async downloadWithCache(songId: string): Promise<string> {
-    // 先尝试从缓存获取
     const cached = this.cacheService.get(`song:${songId}`)
     if (cached) {
       this.logger.info('DownloadManager', `Cache hit for ${songId}`)
       return cached
     }
 
-    // 缓存未命中，下载并缓存
     this.logger.info('DownloadManager', `Cache miss for ${songId}, downloading...`)
     const url = await this.downloadService.downloadSong(songId)
     this.cacheService.set(`song:${songId}`, url)
@@ -216,12 +232,15 @@ export class MockLoggerService {
   info(module: string, message: string): void {
     console.log(`[MockLogger][${module}] ${message}`)
   }
+
   warn(module: string, message: string): void {
     console.warn(`[MockLogger][${module}] ${message}`)
   }
+
   error(module: string, message: string): void {
     console.error(`[MockLogger][${module}] ${message}`)
   }
+
   debug(module: string, message: string): void {
     console.debug(`[MockLogger][${module}] ${message}`)
   }

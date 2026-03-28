@@ -1,4 +1,4 @@
-﻿import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { SEND_CHANNELS, RECEIVE_CHANNELS, INVOKE_CHANNELS } from '../shared/protocol/channels.ts'
 import { createLegacyElectronAPI, type ElectronAPI } from './legacyElectronApi'
 
@@ -83,6 +83,7 @@ type PlayerServiceAPI = Pick<
   | 'getState'
   | 'getCurrentSong'
   | 'getPlaylist'
+  | 'getDesktopLyricSnapshot'
   | 'addToNext'
   | 'removeFromPlaylist'
   | 'clearPlaylist'
@@ -173,8 +174,10 @@ function createValidatedIpcBridge(renderer: Electron.IpcRenderer): ValidatedIpcB
 }
 
 /**
- * 创建服务代理 API
- * 直接使用 ValidatedIpcBridge，避免双层代理冗余
+ * Create the consolidated service API exposed to the renderer, combining validated IPC operations with proxy-backed service namespaces.
+ *
+ * @param ipc - The validated IPC bridge used to route and validate IPC calls
+ * @returns An object exposing core IPC methods plus logger creation and the `config`, `api`, `window`, and `player` service namespaces
  */
 function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
   // Initialize proxy services.
@@ -252,6 +255,7 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
     getState: () => playerProxy.getState(),
     getCurrentSong: () => playerProxy.getCurrentSong(),
     getPlaylist: () => playerProxy.getPlaylist(),
+    getDesktopLyricSnapshot: () => playerProxy.getDesktopLyricSnapshot(),
     addToNext: song => playerProxy.addToNext(song),
     removeFromPlaylist: index => playerProxy.removeFromPlaylist(index),
     clearPlaylist: () => playerProxy.clearPlaylist(),

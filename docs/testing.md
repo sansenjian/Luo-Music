@@ -6,12 +6,12 @@
 
 项目使用以下测试工具：
 
-| 工具 | 用途 |
-|------|------|
-| [Vitest](https://vitest.dev/) | 单元测试框架 |
-| [@vue/test-utils](https://test-utils.vuejs.org/) | Vue 组件测试 |
-| [Playwright](https://playwright.dev/) | E2E 测试 |
-| [jsdom](https://github.com/jsdom/jsdom) | 浏览器环境模拟 |
+| 工具                                             | 用途           |
+| ------------------------------------------------ | -------------- |
+| [Vitest](https://vitest.dev/)                    | 单元测试框架   |
+| [@vue/test-utils](https://test-utils.vuejs.org/) | Vue 组件测试   |
+| [Playwright](https://playwright.dev/)            | E2E 测试       |
+| [jsdom](https://github.com/jsdom/jsdom)          | 浏览器环境模拟 |
 
 ## 📋 测试命令
 
@@ -49,12 +49,12 @@ tests/
 
 项目配置的覆盖率阈值：
 
-| 指标 | 阈值 |
-|------|------|
-| Lines | 60% |
-| Functions | 60% |
-| Branches | 50% |
-| Statements | 60% |
+| 指标       | 阈值 |
+| ---------- | ---- |
+| Lines      | 60%  |
+| Functions  | 60%  |
+| Branches   | 50%  |
+| Statements | 60%  |
 
 ### 查看覆盖率报告
 
@@ -70,7 +70,7 @@ open coverage/index.html
 
 ### Vitest 配置
 
-在 `vitest.config.js` 中配置：
+在 `vitest.config.ts` 中配置：
 
 ```javascript
 import { defineConfig } from 'vitest/config'

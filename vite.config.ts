@@ -2,13 +2,19 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
-import { createSharedDevProxy, createSrcAlias, webManualChunks } from './config/vite.shared.ts'
+import {
+  createSharedDevProxy,
+  createSrcAlias,
+  resolveViteDevServerPort,
+  webManualChunks
+} from './config/vite.shared.ts'
 
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const sentryDsn = env.SENTRY_DSN ?? ''
   const sentryRelease = env.SENTRY_RELEASE ?? ''
   const isProduction = mode === 'production'
+  const devServerPort = resolveViteDevServerPort(env.VITE_DEV_SERVER_PORT)
 
   const outputDir = isProduction ? 'build' : 'dist'
 
@@ -36,7 +42,7 @@ export default defineConfig(async ({ mode }) => {
       'import.meta.env.SENTRY_RELEASE': JSON.stringify(sentryRelease)
     },
     server: {
-      port: 5173,
+      port: devServerPort,
       host: '127.0.0.1',
       proxy: createSharedDevProxy({ withQqTimeout: true })
     },

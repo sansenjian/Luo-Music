@@ -153,7 +153,8 @@ describe('playerStore lifecycle', () => {
         index: 2,
         text: 'Line 3',
         roma: 'san',
-        playing: true
+        playing: true,
+        cause: 'seek'
       })
     )
   })
@@ -180,7 +181,8 @@ describe('playerStore lifecycle', () => {
         index: 1,
         text: 'Line 2',
         trans: 'Second',
-        playing: true
+        playing: true,
+        cause: 'lyrics-load'
       })
     )
 
@@ -194,7 +196,11 @@ describe('playerStore lifecycle', () => {
       text: '',
       trans: '',
       roma: '',
-      playing: false
+      playing: false,
+      songId: null,
+      platform: null,
+      sequence: 2,
+      cause: 'reset'
     })
   })
 

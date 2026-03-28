@@ -64,6 +64,7 @@ features:
 | ---------------------------------------------------- | -------------------- |
 | [架构重构计划](/plans/architecture-refactoring-plan) | 架构层面的重构计划   |
 | [首页重构计划](/plans/home-refactor-plan)            | 首页相关改造方案     |
+| [歌词系统重构过程](/plans/lyric-system-refactor-process) | 歌词链路重构执行说明 |
 | [Player Store 重构](/plans/player-store-refactoring) | 播放器状态层改造计划 |
 | [统一 IPC 方案](/plans/unified-ipc-plan)             | IPC 统一化设计方案   |
 | [常量重构](/plans/refactoring/constants-refactoring) | 常量整理与收敛计划   |

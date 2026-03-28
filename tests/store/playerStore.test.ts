@@ -70,6 +70,18 @@ describe('playerStore', () => {
       expect(store.formattedDuration).toBe('00:00')
       expect(store.playModeText).toBe('顺序播放')
     })
+
+    it('prefers committed currentSong over playlist index for currentSongInfo', () => {
+      const store = usePlayerStore()
+      const currentSong = createMockSong({ id: 9, name: 'Playing Song' })
+      const indexedSong = createMockSong({ id: 10, name: 'Indexed Song' })
+
+      store.songList = [indexedSong]
+      store.currentIndex = 0
+      store.currentSong = currentSong
+
+      expect(store.currentSongInfo).toStrictEqual(currentSong)
+    })
   })
 
   describe('playlist management', () => {
@@ -85,6 +97,20 @@ describe('playerStore', () => {
       expect(store.songList).toHaveLength(2)
       expect(store.songList[0].name).toBe('Song 1')
       expect(store.currentIndex).toBe(-1)
+    })
+
+    it('clears stale currentSong when the new playlist no longer contains it', () => {
+      const store = usePlayerStore()
+      store.currentSong = createMockSong({ id: 99, name: 'Stale Song' })
+
+      store.setSongList([
+        createMockSong({ id: 1, name: 'Song 1' }),
+        createMockSong({ id: 2, name: 'Song 2' })
+      ])
+
+      expect(store.currentIndex).toBe(-1)
+      expect(store.currentSong).toBeNull()
+      expect(store.currentSongInfo).toBeNull()
     })
 
     it('addSong appends a song', () => {
@@ -176,6 +202,31 @@ describe('playerStore', () => {
     it('uses default lyricType', () => {
       const store = usePlayerStore()
       expect(store.lyricType).toEqual(['original', 'trans'])
+    })
+
+    it('toggles optional lyric layers without dropping original', () => {
+      const store = usePlayerStore()
+
+      store.toggleLyricType('trans')
+      expect(store.lyricType).toEqual(['original'])
+
+      store.toggleLyricType('roma')
+      expect(store.lyricType).toEqual(['original', 'roma'])
+
+      store.toggleLyricType('trans')
+      expect(store.lyricType).toEqual(['original', 'roma', 'trans'])
+    })
+
+    it('restores original lyrics when toggling from a corrupted persisted lyricType state', () => {
+      const store = usePlayerStore()
+
+      store.lyricType = ['trans'] as Array<'original' | 'trans' | 'roma'>
+      store.toggleLyricType('trans')
+      expect(store.lyricType).toEqual(['original'])
+
+      store.lyricType = ['roma'] as Array<'original' | 'trans' | 'roma'>
+      store.toggleLyricType('trans')
+      expect(store.lyricType).toEqual(['original', 'roma', 'trans'])
     })
   })
 

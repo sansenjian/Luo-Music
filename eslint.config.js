@@ -18,6 +18,7 @@ export default [
       'scripts/**',
       'playwright.config.js',
       'vitest.config.js',
+      'vitest.config.ts',
       'forge.config.js',
       'forge.config.ts',
       'vite.config.ts',
@@ -28,7 +29,9 @@ export default [
       '**/chunk-*.js',
       'coverage/**',
       'config/vite.shared.ts',
+      'config/vite.shared.js',
       'docs/injector-example.ts',
+      'docs/injector-example.js',
       'electron/external.d.ts',
       'server/index.ts'
     ]
@@ -178,6 +181,18 @@ export default [
       'vue/no-shared-component-data': 'error',
       'vue/no-side-effects-in-computed-properties': 'error',
       'vue/no-async-in-computed-properties': 'error'
+    }
+  },
+  {
+    files: ['playwright.config.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+        project: null
+      }
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'off'
     }
   },
   {

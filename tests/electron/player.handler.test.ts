@@ -102,11 +102,13 @@ describe('player.handler', () => {
       playlist: [song],
       currentIndex: 0,
       currentSong: song,
+      lyricSong: song,
       currentLyricIndex: 0,
       showLyric: true,
       showPlaylist: false,
       isCompact: false,
-      lyrics: [{ time: 42, text: 'line', trans: '', roma: '' }]
+      lyrics: [{ time: 42, text: 'line', trans: '', roma: '' }],
+      desktopLyricSequence: 3
     })
 
     // 刷新待处理的广播（节流策略需要）
@@ -121,6 +123,16 @@ describe('player.handler', () => {
     })
     await expect(invokeHandlers.get('player:get-current-song')?.()).resolves.toEqual(song)
     await expect(invokeHandlers.get('player:get-playlist')?.()).resolves.toEqual([song])
+    await expect(invokeHandlers.get('player:get-desktop-lyric-snapshot')?.()).resolves.toEqual({
+      currentSong: song,
+      currentLyricIndex: 0,
+      progress: 42,
+      isPlaying: true,
+      lyrics: [{ time: 42, text: 'line', trans: '', roma: '' }],
+      songId: 'song-1',
+      platform: 'netease',
+      sequence: 3
+    })
     await expect(
       invokeHandlers.get('player:get-lyric')?.({ id: 'song-1', platform: 'netease' })
     ).resolves.toEqual([{ time: 42, text: 'line', trans: '', roma: '' }])
@@ -194,11 +206,13 @@ describe('player.handler', () => {
       playlist: [currentSong],
       currentIndex: 0,
       currentSong,
+      lyricSong: currentSong,
       currentLyricIndex: 0,
       showLyric: true,
       showPlaylist: false,
       isCompact: false,
-      lyrics: [{ time: 42, text: 'current line', trans: '', roma: '' }]
+      lyrics: [{ time: 42, text: 'current line', trans: '', roma: '' }],
+      desktopLyricSequence: 1
     })
 
     await expect(
@@ -264,11 +278,13 @@ describe('player.handler', () => {
       playlist: [currentSong],
       currentIndex: 0,
       currentSong,
+      lyricSong: null,
       currentLyricIndex: -1,
       showLyric: true,
       showPlaylist: false,
       isCompact: false,
-      lyrics: []
+      lyrics: [],
+      desktopLyricSequence: 0
     })
 
     await expect(
@@ -277,6 +293,170 @@ describe('player.handler', () => {
 
     expect(serviceManager.handleRequest).toHaveBeenCalledWith('netease', 'lyric', {
       id: 'song-1'
+    })
+  })
+
+  it('refetches current-song lyrics when the cached lyrics belong to a previous song', async () => {
+    const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    const sendHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
+    registerSendMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        sendHandlers.set(channel, handler)
+      }
+    )
+
+    const { registerPlayerHandlers } = await import('../../electron/ipc/handlers/player.handler')
+
+    const staleLyricSong = {
+      id: 'song-1',
+      name: 'Song 1',
+      artists: [{ id: 'artist-1', name: 'Artist 1' }],
+      album: { id: 'album-1', name: 'Album 1', picUrl: '' },
+      duration: 180000,
+      mvid: 0,
+      platform: 'netease',
+      originalId: 'song-1'
+    } as const
+
+    const currentSong = {
+      id: 'song-2',
+      name: 'Song 2',
+      artists: [{ id: 'artist-2', name: 'Artist 2' }],
+      album: { id: 'album-2', name: 'Album 2', picUrl: '' },
+      duration: 180000,
+      mvid: 0,
+      platform: 'netease',
+      originalId: 'song-2'
+    } as const
+
+    const windowManager = {
+      send: vi.fn(),
+      syncPlaybackState: vi.fn(),
+      syncTrayPlayMode: vi.fn()
+    }
+
+    const serviceManager = {
+      handleRequest: vi.fn().mockResolvedValue({
+        lrc: { lyric: '[00:01.00]Fresh current line' },
+        tlyric: { lyric: '' },
+        romalrc: { lyric: '' }
+      })
+    }
+
+    registerPlayerHandlers(windowManager as never, serviceManager as never)
+
+    sendHandlers.get('player:sync-state')?.({
+      isPlaying: true,
+      isLoading: false,
+      progress: 42,
+      duration: 180,
+      volume: 0.8,
+      isMuted: false,
+      playMode: 1,
+      playlist: [currentSong],
+      currentIndex: 0,
+      currentSong,
+      lyricSong: staleLyricSong,
+      currentLyricIndex: 0,
+      showLyric: true,
+      showPlaylist: false,
+      isCompact: false,
+      lyrics: [{ time: 42, text: 'stale line', trans: '', roma: '' }],
+      desktopLyricSequence: 9
+    })
+
+    await expect(
+      invokeHandlers.get('player:get-lyric')?.({ id: 'song-2', platform: 'netease' })
+    ).resolves.toEqual([{ time: 1, text: 'Fresh current line', trans: '', roma: '' }])
+
+    expect(serviceManager.handleRequest).toHaveBeenCalledWith('netease', 'lyric', {
+      id: 'song-2'
+    })
+  })
+
+  it('does not expose stale cached lyrics through the desktop lyric snapshot', async () => {
+    const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    const sendHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
+    registerSendMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        sendHandlers.set(channel, handler)
+      }
+    )
+
+    const { registerPlayerHandlers } = await import('../../electron/ipc/handlers/player.handler')
+
+    const staleLyricSong = {
+      id: 'song-1',
+      name: 'Song 1',
+      artists: [{ id: 'artist-1', name: 'Artist 1' }],
+      album: { id: 'album-1', name: 'Album 1', picUrl: '' },
+      duration: 180000,
+      mvid: 0,
+      platform: 'netease',
+      originalId: 'song-1'
+    } as const
+
+    const currentSong = {
+      id: 'song-2',
+      name: 'Song 2',
+      artists: [{ id: 'artist-2', name: 'Artist 2' }],
+      album: { id: 'album-2', name: 'Album 2', picUrl: '' },
+      duration: 180000,
+      mvid: 0,
+      platform: 'netease',
+      originalId: 'song-2'
+    } as const
+
+    registerPlayerHandlers(
+      {
+        send: vi.fn(),
+        syncPlaybackState: vi.fn(),
+        syncTrayPlayMode: vi.fn()
+      } as never,
+      {
+        handleRequest: vi.fn()
+      } as never
+    )
+
+    sendHandlers.get('player:sync-state')?.({
+      isPlaying: true,
+      isLoading: false,
+      progress: 42,
+      duration: 180,
+      volume: 0.8,
+      isMuted: false,
+      playMode: 1,
+      playlist: [currentSong],
+      currentIndex: 0,
+      currentSong,
+      lyricSong: staleLyricSong,
+      currentLyricIndex: 0,
+      showLyric: true,
+      showPlaylist: false,
+      isCompact: false,
+      lyrics: [{ time: 42, text: 'stale line', trans: '', roma: '' }],
+      desktopLyricSequence: 9
+    })
+
+    await expect(invokeHandlers.get('player:get-desktop-lyric-snapshot')?.()).resolves.toEqual({
+      currentSong,
+      currentLyricIndex: -1,
+      progress: 42,
+      isPlaying: true,
+      lyrics: [],
+      songId: 'song-2',
+      platform: 'netease',
+      sequence: 0
     })
   })
 })

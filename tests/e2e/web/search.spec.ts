@@ -2,6 +2,7 @@ import { test, expect, type Page, type Route } from '@playwright/test'
 
 // Mock API responses
 interface MockSearchResult {
+  code: number
   result: {
     songs: Array<{
       id: number
@@ -10,10 +11,12 @@ interface MockSearchResult {
       al: { name: string; picUrl: string }
       dt: number
     }>
+    songCount: number
   }
 }
 
 const mockSearchResponse: MockSearchResult = {
+  code: 200,
   result: {
     songs: [
       {
@@ -23,7 +26,8 @@ const mockSearchResponse: MockSearchResult = {
         al: { name: 'Test Album', picUrl: 'https://example.com/cover.jpg' },
         dt: 180000
       }
-    ]
+    ],
+    songCount: 1
   }
 }
 
@@ -34,7 +38,9 @@ test.describe('Search Functionality', () => {
       const url = new URL(route.request().url())
       const keywords = url.searchParams.get('keywords')
       const body: MockSearchResult =
-        keywords === 'nonexistent' ? { result: { songs: [] } } : mockSearchResponse
+        keywords === 'nonexistent'
+          ? { code: 200, result: { songs: [], songCount: 0 } }
+          : mockSearchResponse
 
       await route.fulfill({
         status: 200,
@@ -56,10 +62,6 @@ test.describe('Search Functionality', () => {
     await searchInput.fill('test song')
     await searchInput.press('Enter')
 
-    // Wait for results
-    await page.waitForTimeout(500)
-
-    // Check if results are displayed
     const results = page.locator('.playlist .list-item')
     await expect(results).toHaveCount(1)
   })
@@ -69,11 +71,8 @@ test.describe('Search Functionality', () => {
     await searchInput.fill('nonexistent')
     await searchInput.press('Enter')
 
-    await page.waitForTimeout(500)
-
-    // Check for empty state
-    const emptyState = page.locator('.playlist .empty-state')
-    await expect(emptyState).toBeVisible()
+    const toast = page.locator('.toast-message')
+    await expect(toast).toContainText('No songs found for the current keyword')
   })
 
   test('should show error toast for empty search', async ({ page }: { page: Page }) => {
@@ -91,7 +90,6 @@ test.describe('Search Functionality', () => {
     await searchInput.fill('test song')
     await executeButton.click()
 
-    await page.waitForTimeout(500)
     const results = page.locator('.playlist .list-item')
     await expect(results).toHaveCount(1)
   })
@@ -144,7 +142,7 @@ test.describe('Responsive Design', () => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/')
 
-    const player = page.locator('.player-section')
+    const player = page.locator('.player-section.is-compact')
     await expect(player).toBeVisible()
   })
 
@@ -152,7 +150,7 @@ test.describe('Responsive Design', () => {
     await page.setViewportSize({ width: 768, height: 1024 })
     await page.goto('/')
 
-    const player = page.locator('.player-section')
+    const player = page.locator('.player-section.is-compact')
     await expect(player).toBeVisible()
   })
 })

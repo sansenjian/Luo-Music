@@ -6,6 +6,7 @@ import type { Song } from '../../../src/types/schemas'
 import { LyricParser } from '../../../src/utils/player/core/lyric'
 import { PLAY_MODE } from '../../../src/utils/player/constants/playMode'
 import type {
+  DesktopLyricSnapshot,
   PlayMode,
   PlayerPlaySongByIdPayload,
   PlayerPlaySongPayload,
@@ -29,11 +30,13 @@ const DEFAULT_PLAYER_STATE: PlayerStateSnapshot = {
   playlist: [],
   currentIndex: -1,
   currentSong: null,
+  lyricSong: null,
   currentLyricIndex: -1,
   showLyric: true,
   showPlaylist: false,
   isCompact: false,
-  lyrics: []
+  lyrics: [],
+  desktopLyricSequence: 0
 }
 
 // ========== 状态广播管理器 ==========
@@ -131,13 +134,44 @@ export function flushStateBroadcasts(): void {
   }
 }
 
+/**
+ * Produce a complete PlayerStateSnapshot by merging an optional partial snapshot onto the default state.
+ *
+ * @param snapshot - Optional partial state to merge; specific normalizations applied: `playlist` becomes `[]` if not an array, `currentSong` and `lyricSong` default to `null` if absent, `lyrics` becomes `[]` if not an array, and `desktopLyricSequence` defaults to `0` if not a number.
+ * @returns The normalized PlayerStateSnapshot with all required fields populated.
+ */
 function normalizePlayerState(snapshot: PlayerStateSnapshot | undefined): PlayerStateSnapshot {
   return {
     ...DEFAULT_PLAYER_STATE,
     ...(snapshot ?? {}),
     playlist: Array.isArray(snapshot?.playlist) ? snapshot.playlist : [],
     currentSong: snapshot?.currentSong ?? null,
-    lyrics: Array.isArray(snapshot?.lyrics) ? snapshot.lyrics : []
+    lyricSong: snapshot?.lyricSong ?? null,
+    lyrics: Array.isArray(snapshot?.lyrics) ? snapshot.lyrics : [],
+    desktopLyricSequence:
+      typeof snapshot?.desktopLyricSequence === 'number' ? snapshot.desktopLyricSequence : 0
+  }
+}
+
+/**
+ * Builds a DesktopLyricSnapshot representing the current lyric state for the desktop lyric UI.
+ *
+ * @param playerState - The player state snapshot to derive the desktop lyric snapshot from.
+ * @returns A snapshot containing `currentSong`, `progress`, `isPlaying`, and lyric-related fields; if the lyric cache is not usable the `lyrics` array will be empty, `currentLyricIndex` will be `-1`, and `sequence` will be `0`.
+ */
+function createDesktopLyricSnapshot(playerState: PlayerStateSnapshot): DesktopLyricSnapshot {
+  const hasCurrentSongLyrics = hasUsableLyricCache(playerState)
+  const currentSong = playerState.currentSong
+
+  return {
+    currentSong,
+    currentLyricIndex: hasCurrentSongLyrics ? playerState.currentLyricIndex : -1,
+    progress: playerState.progress,
+    isPlaying: playerState.isPlaying,
+    lyrics: hasCurrentSongLyrics ? [...playerState.lyrics] : [],
+    songId: currentSong?.id ?? null,
+    platform: currentSong?.platform ?? null,
+    sequence: hasCurrentSongLyrics ? playerState.desktopLyricSequence : 0
   }
 }
 
@@ -153,6 +187,13 @@ function isSameSong(left: Song | null, right: Song | null): boolean {
   return left.id === right.id && left.platform === right.platform
 }
 
+/**
+ * Determines whether the current song corresponds to a requested song identifier.
+ *
+ * @param currentSong - The currently loaded song, or `null` if none is loaded
+ * @param payload - Optional song identifier to compare against (`id` and optional `platform`)
+ * @returns `true` if `payload` is not provided, or if `currentSong` is non-null and has the same `id` and the same `platform` (treating a missing `platform` as `'netease'`); `false` otherwise
+ */
 function matchesLyricRequest(
   currentSong: Song | null,
   payload?: PlayerPlaySongByIdPayload
@@ -171,6 +212,36 @@ function matchesLyricRequest(
   )
 }
 
+/**
+ * Determines whether the player's cached lyrics can be used to satisfy a lyric request.
+ *
+ * If the lyric cache is empty or there is no cached lyric song, the cache is considered unusable.
+ *
+ * @param playerState - Current player state containing cached lyrics and the cached lyric song
+ * @param payload - Optional song identifier to check cache validity against
+ * @returns `true` if the player has a non-empty lyric cache for a song and that cached song matches the provided payload (when given) or the current song (when no payload is provided), `false` otherwise.
+ */
+function hasUsableLyricCache(
+  playerState: PlayerStateSnapshot,
+  payload?: PlayerPlaySongByIdPayload
+): boolean {
+  if (playerState.lyrics.length === 0 || !playerState.lyricSong) {
+    return false
+  }
+
+  if (payload) {
+    return matchesLyricRequest(playerState.lyricSong, payload)
+  }
+
+  return isSameSong(playerState.lyricSong, playerState.currentSong)
+}
+
+/**
+ * Fetches lyrics for the given song identifier from the specified platform and parses them.
+ *
+ * @param payload - Object containing the song `id` and optional `platform` (defaults to `'netease'`)
+ * @returns The parsed lyric structure including timing, original lines, translations, and romanizations as produced by `LyricParser.parse`
+ */
 async function fetchLyricsForSong(
   serviceManager: Pick<ServiceManager, 'handleRequest'>,
   payload: PlayerPlaySongByIdPayload
@@ -185,6 +256,14 @@ async function fetchLyricsForSong(
   return LyricParser.parse(normalized.lyric, normalized.translated, normalized.romalrc)
 }
 
+/**
+ * Register IPC handlers that forward player controls, expose player state and lyrics, and handle state synchronization and cleanup.
+ *
+ * Sets up invoke handlers that forward playback, volume, seek, play-mode, playlist and song requests to the provided WindowManager, provides read-only accessors for current player state, playlist, current song and a desktop lyric snapshot, and returns cached or fetched lyrics as needed. Registers send handlers to accept player state synchronization, playback checks, and tray play-mode changes; uses a throttled StateBroadcastManager to broadcast high-frequency state, track, and lyric updates. Ensures the StateBroadcastManager is disposed when the WindowManager is cleaned up or the process exits.
+ *
+ * @param windowManager - WindowManager used to forward control messages, synchronize UI state, and register cleanup hooks.
+ * @param serviceManager - Partial ServiceManager (requires `handleRequest`) used to fetch lyrics from platform services when cache is unavailable.
+ */
 export function registerPlayerHandlers(
   windowManager: WindowManager,
   serviceManager: Pick<ServiceManager, 'handleRequest'>
@@ -245,6 +324,10 @@ export function registerPlayerHandlers(
     return [...playerState.playlist]
   })
 
+  ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_GET_DESKTOP_LYRIC_SNAPSHOT, async () => {
+    return createDesktopLyricSnapshot(playerState)
+  })
+
   ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_ADD_TO_NEXT, async (song: Song) => {
     windowManager.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, { type: 'add-to-next', song })
   })
@@ -260,7 +343,7 @@ export function registerPlayerHandlers(
   ipcService.registerInvoke(
     INVOKE_CHANNELS.PLAYER_GET_LYRIC,
     async (payload?: PlayerPlaySongByIdPayload) => {
-      if (matchesLyricRequest(playerState.currentSong, payload) && playerState.lyrics.length > 0) {
+      if (hasUsableLyricCache(playerState, payload)) {
         return [...playerState.lyrics]
       }
 

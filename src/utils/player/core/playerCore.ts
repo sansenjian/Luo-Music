@@ -44,8 +44,9 @@ export class PlayerCore {
   public state: PlayerState = PlayerState.IDLE
   private callbacks: Map<string, Set<SafeCallback>> = new Map()
   private _boundHandlers: Map<string, EventListener> = new Map()
-  private _isPlayingInProgress = false
   private _isDestroyed = false
+  private _playRequestId = 0
+  private _cancelPendingPlay: (() => void) | null = null
 
   constructor() {
     this.audio = new Audio()
@@ -194,6 +195,10 @@ export class PlayerCore {
       return
     }
 
+    const requestId = ++this._playRequestId
+    this._cancelPendingPlay?.()
+    this._cancelPendingPlay = null
+
     // Initialize AudioContext on first user interaction (play)
     this._initAudioContext()
 
@@ -202,15 +207,15 @@ export class PlayerCore {
       await this.audioContext.resume()
     }
 
-    // 防止重入调用
-    if (this._isPlayingInProgress) {
+    if (requestId !== this._playRequestId) {
       return
     }
 
     try {
+      const sourceChanged = Boolean(url && this.audio.src !== url)
+
       // If url provided and different, load it
-      if (url && this.audio.src !== url) {
-        this._isPlayingInProgress = true
+      if (url && sourceChanged) {
         // [Leak Fix] Break connection with previous source to help GC
         // When switching songs, explicit load() is crucial.
         this.audio.src = url
@@ -220,8 +225,9 @@ export class PlayerCore {
         this.audio.currentTime = 0
       }
 
-      // If we are already playing the same URL, do nothing or just ensure playing
-      if (!this.audio.paused && this.audio.src === url) {
+      // If we are already playing the same URL, do nothing or just ensure playing.
+      // When the source just changed we must continue and start the new track.
+      if (!sourceChanged && !this.audio.paused && this.audio.src === url) {
         return
       }
 
@@ -230,39 +236,57 @@ export class PlayerCore {
         await this.audio.play()
       } else {
         return new Promise((resolve, reject) => {
-          let isResolved = false
+          let isSettled = false
 
           const cleanup = () => {
-            if (isResolved) return
-            isResolved = true
+            if (isSettled) return
+            isSettled = true
             this.audio.removeEventListener('canplay', onCanPlay)
             this.audio.removeEventListener('error', onError)
-            this._isPlayingInProgress = false
+            if (this._cancelPendingPlay === cancelPendingPlay) {
+              this._cancelPendingPlay = null
+            }
           }
           const onCanPlay = () => {
-            if (isResolved) return
+            if (isSettled) return
+
+            if (requestId !== this._playRequestId) {
+              cleanup()
+              resolve()
+              return
+            }
+
             cleanup()
             this.audio.play().then(resolve).catch(reject)
           }
           const onError = (e: Event) => {
-            if (isResolved) return
+            if (isSettled) return
+
             cleanup()
+            if (requestId !== this._playRequestId) {
+              resolve()
+              return
+            }
+
             reject(e)
           }
+          const cancelPendingPlay = () => {
+            cleanup()
+            resolve()
+          }
+
+          this._cancelPendingPlay = cancelPendingPlay
 
           this.audio.addEventListener('canplay', onCanPlay)
           this.audio.addEventListener('error', onError)
         })
       }
     } catch (error: unknown) {
-      this._isPlayingInProgress = false
       if (error instanceof DOMException && error.name === 'AbortError') {
         // Ignore AbortError caused by rapid switching
         return
       }
       throw error
-    } finally {
-      this._isPlayingInProgress = false
     }
   }
 
@@ -412,6 +436,8 @@ export class PlayerCore {
     this._isDestroyed = true
 
     // 移除所有事件监听器
+    this._cancelPendingPlay?.()
+    this._cancelPendingPlay = null
     this._boundHandlers.forEach((handler, event) => {
       this.audio.removeEventListener(event, handler)
     })

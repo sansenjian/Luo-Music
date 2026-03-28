@@ -9,13 +9,25 @@ const ROOT = path.resolve(__dirname, '../..')
 
 dotenv.config({ path: path.resolve(ROOT, '.env') })
 
+function resolveVitePort(value, fallback = 5173) {
+  const parsed = Number.parseInt(value ?? '', 10)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function createVitePortCandidates(basePort, count = 5) {
+  return Array.from({ length: count }, (_, index) => basePort + index)
+}
+
+const configuredVitePort = resolveVitePort(process.env.VITE_DEV_SERVER_PORT)
+
 // ============ 配置常量 ============
 const CONFIG = {
-  vitePorts: [5173, 5174, 5175, 5176, 5177],
+  vitePorts: createVitePortCandidates(configuredVitePort),
   pollIntervalMs: 300,
   socketTimeoutMs: 2000,
-  httpTimeoutMs: 5000,
-  httpWarmupTimeoutMs: 30000,
+  httpTimeoutMs: 15000,
+  httpWarmupTimeoutMs: 90000,
+  viteStartupTimeoutMs: 90000,
   buildOutput: {
     main: 'build/electron/main.cjs',
     preload: 'build/electron/preload.cjs'
@@ -94,7 +106,7 @@ async function waitForCondition(condition, { interval = CONFIG.pollIntervalMs, t
   })
 }
 
-async function waitForPort(port) {
+async function waitForPort(port, timeoutMs = CONFIG.viteStartupTimeoutMs) {
   logDebug(`Waiting for port ${port}...`)
   return waitForCondition(
     () => {
@@ -107,19 +119,47 @@ async function waitForPort(port) {
         socket.on('error', () => testResolve(false))
       })
     },
-    { description: `port ${port} to be available` }
+    { timeout: timeoutMs, description: `port ${port} to be available` }
   )
 }
 
-async function waitForHttpReady(url, timeoutMs = CONFIG.httpWarmupTimeoutMs) {
+function isLikelyViteHtmlResponse(body) {
+  return body.includes('/@vite/client') || body.includes('__vite') || body.includes('id="app"')
+}
+
+async function waitForHttpReady(
+  url,
+  timeoutMs = CONFIG.httpWarmupTimeoutMs,
+  { requireViteHtml = false } = {}
+) {
   logDebug(`Waiting for HTTP ready: ${url}`)
   return waitForCondition(
     () => {
       return new Promise((testResolve) => {
         const req = http.get(url, (res) => {
-          res.resume()
           const statusCode = res.statusCode ?? 0
-          testResolve(statusCode >= 200 && statusCode < 500)
+          if (statusCode < 200 || statusCode >= 500) {
+            res.resume()
+            testResolve(false)
+            return
+          }
+
+          if (!requireViteHtml) {
+            res.resume()
+            testResolve(true)
+            return
+          }
+
+          let body = ''
+          res.setEncoding('utf8')
+          res.on('data', chunk => {
+            if (body.length < 8192) {
+              body += chunk
+            }
+          })
+          res.on('end', () => {
+            testResolve(isLikelyViteHtmlResponse(body))
+          })
         })
         req.on('error', () => testResolve(false))
         req.setTimeout(CONFIG.httpTimeoutMs, () => {
@@ -263,7 +303,9 @@ function buildElectron() {
 async function findVitePort() {
   for (const port of CONFIG.vitePorts) {
     try {
-      await waitForHttpReady(`http://127.0.0.1:${port}/`, CONFIG.socketTimeoutMs)
+      await waitForHttpReady(`http://127.0.0.1:${port}/`, CONFIG.socketTimeoutMs, {
+        requireViteHtml: true
+      })
       logSuccess(`Found Vite dev server on port ${port}`)
       return port
     } catch {
@@ -271,8 +313,25 @@ async function findVitePort() {
     }
   }
 
-  logWarn('No Vite port found, using default 5173')
-  return 5173
+  return null
+}
+
+async function waitForVitePort() {
+  let detectedPort = null
+
+  await waitForCondition(
+    async () => {
+      detectedPort = await findVitePort()
+      return detectedPort !== null
+    },
+    {
+      interval: CONFIG.pollIntervalMs,
+      timeout: CONFIG.viteStartupTimeoutMs,
+      description: `Vite dev server on ports ${CONFIG.vitePorts.join(', ')}`
+    }
+  )
+
+  return detectedPort
 }
 
 // ============ 主函数 ============
@@ -283,22 +342,31 @@ async function main() {
   await killOldElectronInstances()
 
   // 2. 等待 Vite 服务器启动
-  logInfo('Waiting for Vite dev server...')
+  logInfo(`Waiting for Vite dev server on ports ${CONFIG.vitePorts.join(', ')}...`)
   try {
-    await waitForPort(5173)
-    logSuccess('Vite dev server detected')
+    await waitForPort(CONFIG.vitePorts[0])
+    logSuccess(`Detected an open socket on base port ${CONFIG.vitePorts[0]}`)
   } catch (error) {
     logError(`Vite dev server not responding: ${error.message}`)
     process.exit(1)
   }
 
   // 3. 查找实际端口并预热
-  const vitePort = await findVitePort()
+  let vitePort
+  try {
+    vitePort = await waitForVitePort()
+  } catch (error) {
+    logError(`Failed to detect a ready Vite server: ${error.message}`)
+    process.exit(1)
+  }
+
   const viteDevServerUrl = `http://127.0.0.1:${vitePort}`
 
   logInfo(`Warming Vite index response on port ${vitePort}...`)
   try {
-    await waitForHttpReady(`${viteDevServerUrl}/`)
+    await waitForHttpReady(`${viteDevServerUrl}/`, CONFIG.httpWarmupTimeoutMs, {
+      requireViteHtml: true
+    })
     logSuccess('Vite server ready')
   } catch (error) {
     logError(`Failed to warm up Vite server: ${error.message}`)

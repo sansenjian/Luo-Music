@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { LyricEngine, LyricParser } from '@/utils/player/core/lyric'
+import { LyricEngine, LyricParser, parseLyricTimestamp } from '@/utils/player/core/lyric'
+
+describe('parseLyricTimestamp', () => {
+  it('supports minute-second, dotted fractional, and colon millisecond formats', () => {
+    expect(parseLyricTimestamp('01:05')).toBe(65)
+    expect(parseLyricTimestamp('01:05.50')).toBeCloseTo(65.5)
+    expect(parseLyricTimestamp('01:05:500')).toBeCloseTo(65.5)
+    expect(parseLyricTimestamp('01:05:50')).toBeCloseTo(65.05)
+    expect(parseLyricTimestamp('bad')).toBe(0)
+  })
+})
 
 describe('LyricParser', () => {
   it('returns empty array for empty lyrics', () => {
@@ -25,7 +35,7 @@ describe('LyricParser', () => {
     const lyrics = LyricParser.parse('[01:02:50]Line one\n[bad]ignored\n[01:03.25]Line two')
 
     expect(lyrics).toEqual([
-      { time: 62.5, text: 'Line one', trans: '', roma: '' },
+      { time: 62.05, text: 'Line one', trans: '', roma: '' },
       { time: 63.25, text: 'Line two', trans: '', roma: '' }
     ])
   })

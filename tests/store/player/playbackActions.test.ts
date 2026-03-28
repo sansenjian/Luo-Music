@@ -13,6 +13,7 @@ type MockPlaybackErrorHandler = PlaybackErrorHandler & {
 
 const adapterMock = vi.hoisted(() => ({
   getSongUrl: vi.fn(),
+  getSongDetail: vi.fn(),
   getLyric: vi.fn()
 }))
 
@@ -102,7 +103,11 @@ describe('playbackActions', () => {
     const state = createInitialState()
     const onStateChange = vi.fn((changes: Partial<typeof state>) => Object.assign(state, changes))
     const playSongByIndex = vi.fn().mockResolvedValue(undefined)
-    const setLyricsArray = vi.fn()
+    const setLyricsArray = vi.fn((lyrics: typeof state.lyricsArray) => {
+      state.lyricsArray = lyrics
+      state.lyricSong = lyrics.length > 0 ? state.currentSong : null
+      state.currentLyricIndex = lyrics.length > 0 ? 0 : -1
+    })
     const errorHandler: MockPlaybackErrorHandler = {
       markAsUnavailable: vi.fn(),
       playNextSkipUnavailable: vi.fn()
@@ -181,6 +186,25 @@ describe('playbackActions', () => {
     expect(playSongByIndex).toHaveBeenCalledWith(0)
   })
 
+  it('preserves the current lyric index when reselecting the same song', async () => {
+    const { actions, state, onStateChange, playSongByIndex, setLyricsArray } = createSubject()
+    const song = createSong({ id: 'song-1', url: 'https://song.test/1.mp3' })
+    state.songList = [song]
+    state.currentSong = song
+    state.currentIndex = 0
+    state.currentLyricIndex = 12
+
+    await actions.playSongByIndex(0)
+
+    expect(setLyricsArray).not.toHaveBeenCalled()
+    expect(onStateChange).toHaveBeenCalledWith({
+      currentIndex: 0,
+      currentSong: song,
+      currentLyricIndex: 12
+    })
+    expect(playSongByIndex).toHaveBeenCalledWith(0)
+  })
+
   it('throws when playSongByIndex is asked to play a song without a url', async () => {
     const { actions, state } = createSubject()
     state.songList = [createSong()]
@@ -215,6 +239,135 @@ describe('playbackActions', () => {
     expect(onStateChange).toHaveBeenLastCalledWith({ loading: false })
   })
 
+  it('hydrates netease search-result songs before fetching the playback url', async () => {
+    const { actions, state } = createSubject()
+    const song = createSong({
+      id: 'song-netease-search',
+      platform: 'netease',
+      name: 'Search Name',
+      artists: [{ id: 1, name: 'Search Artist' }],
+      album: { id: 1, name: 'Search Album', picUrl: 'search-cover' }
+    })
+
+    state.songList = [song]
+    adapterMock.getSongDetail.mockResolvedValue(
+      createSong({
+        id: 'song-netease-search',
+        platform: 'netease',
+        name: 'Detail Name',
+        artists: [{ id: 2, name: 'Detail Artist' }],
+        album: { id: 3, name: 'Detail Album', picUrl: 'detail-cover' }
+      })
+    )
+    adapterMock.getSongUrl.mockResolvedValue('https://song.test/netease.mp3')
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    await actions.playSongWithDetails(0)
+
+    expect(adapterMock.getSongDetail).toHaveBeenCalledWith('netease', 'song-netease-search')
+    expect(song.name).toBe('Detail Name')
+    expect(song.artists[0]?.name).toBe('Detail Artist')
+    expect(song.album.picUrl).toBe('detail-cover')
+    expect(song.url).toBe('https://song.test/netease.mp3')
+    expect(state.currentSong?.name).toBe('Detail Name')
+    expect(state.currentSong?.artists[0]?.name).toBe('Detail Artist')
+    expect(state.currentSong?.album.picUrl).toBe('detail-cover')
+  })
+
+  it('reuses cached urls for netease songs during playback transitions', async () => {
+    const { actions, state, playSongByIndex } = createSubject()
+    const song = createSong({
+      id: 'song-netease',
+      platform: 'netease',
+      url: 'https://stale.example.com/old.mp3',
+      unavailable: true,
+      errorMessage: 'stale',
+      retryCount: 1
+    })
+    state.songList = [song]
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    await actions.playSongWithDetails(0)
+
+    expect(adapterMock.getSongUrl).not.toHaveBeenCalled()
+    expect(song.url).toBe('https://stale.example.com/old.mp3')
+    expect(song.unavailable).toBe(false)
+    expect(song.errorMessage).toBeNull()
+    expect(song.retryCount).toBe(0)
+    expect(playSongByIndex).toHaveBeenCalledWith(0)
+  })
+
+  it('restores the previous song state when a manual switch fails before playback starts', async () => {
+    const { actions, state, playSongByIndex } = createSubject()
+    const previousSong = createSong({
+      id: 'song-prev',
+      platform: 'qq',
+      url: 'https://song.test/prev.mp3'
+    })
+    const nextSong = createSong({
+      id: 'song-next',
+      platform: 'qq',
+      url: 'https://song.test/next.mp3'
+    })
+
+    state.songList = [previousSong, nextSong]
+    state.currentIndex = 0
+    state.currentSong = previousSong
+    state.lyricSong = previousSong
+    state.lyricsArray = [{ time: 0, text: 'previous lyric', trans: '', roma: '' }]
+    state.currentLyricIndex = 0
+
+    playSongByIndex.mockRejectedValueOnce(new Error('playback failed'))
+
+    await expect(actions.playSongWithDetails(1, false)).rejects.toThrow('playback failed')
+
+    expect(state.currentIndex).toBe(0)
+    expect(state.currentSong).toBe(previousSong)
+    expect(state.lyricSong).toBe(previousSong)
+    expect(state.lyricsArray).toEqual([{ time: 0, text: 'previous lyric', trans: '', roma: '' }])
+  })
+
+  it('refreshes cached netease urls after an initial playback failure and retries once', async () => {
+    const { actions, state, playSongByIndex } = createSubject()
+    const song = createSong({
+      id: 'song-netease-retry',
+      platform: 'netease',
+      url: 'https://stale.example.com/old.mp3'
+    })
+
+    state.songList = [song]
+    playSongByIndex
+      .mockRejectedValueOnce(new Error('stale cached url'))
+      .mockResolvedValueOnce(undefined)
+    adapterMock.getSongUrl.mockResolvedValue('https://song.test/fresh-retry.mp3')
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    await actions.playSongWithDetails(0)
+
+    expect(adapterMock.getSongUrl).toHaveBeenCalledWith('netease', 'song-netease-retry', {
+      mediaId: undefined
+    })
+    expect(song.url).toBe('https://song.test/fresh-retry.mp3')
+    expect(playSongByIndex).toHaveBeenCalledTimes(2)
+    expect(playSongByIndex).toHaveBeenNthCalledWith(1, 0)
+    expect(playSongByIndex).toHaveBeenNthCalledWith(2, 0)
+  })
+
   it('keeps current lyrics when lyric loading is cancelled', async () => {
     const { actions, state, setLyricsArray } = createSubject()
     state.songList = [createSong({ url: 'https://song.test/ready.mp3' })]
@@ -239,9 +392,9 @@ describe('playbackActions', () => {
     const firstLyric = createDeferred<{ lrc: string; tlyric: string; romalrc: string }>()
     const secondLyric = createDeferred<{ lrc: string; tlyric: string; romalrc: string }>()
 
-    adapterMock.getLyric
-      .mockImplementationOnce(() => firstLyric.promise)
-      .mockImplementationOnce(() => secondLyric.promise)
+    adapterMock.getLyric.mockImplementation((_: string, songId: string | number) => {
+      return songId === 'song-1' ? firstLyric.promise : secondLyric.promise
+    })
 
     // Reset lyricParseMock to ensure clean state
     lyricParseMock.mockClear()
@@ -271,11 +424,9 @@ describe('playbackActions', () => {
     })
     await firstPlayback
 
-    // setLyricsArray is called:
-    // 1. Empty array when first song starts (playSongByIndex)
-    // 2. Empty array when second song starts (playSongByIndex) - clears previous lyrics
-    // 3. Parsed lyrics from second (current) song's lyric request
-    expect(setLyricsArray).toHaveBeenCalledTimes(3)
+    // Under the atomic switch flow the first request can be superseded before it commits.
+    // Only the current song clears lyrics and then applies the fresh lyric payload.
+    expect(setLyricsArray).toHaveBeenCalledTimes(2)
     // Verify the last call is with the new lyrics (not the old/stale ones)
     expect(setLyricsArray).toHaveBeenLastCalledWith([
       { time: 0, text: 'New line', trans: '', roma: '' }
@@ -286,6 +437,82 @@ describe('playbackActions', () => {
       return arg.length > 0 && arg[0].text === 'Old line'
     })
     expect(callsWithOldLyrics).toHaveLength(0)
+  })
+
+  it('ignores stale playback requests before they can replace the current song', async () => {
+    const { actions, state, playSongByIndex, onStateChange } = createSubject()
+    state.songList = [
+      createSong({ id: 'song-1', url: undefined }),
+      createSong({ id: 'song-2', url: undefined })
+    ]
+
+    const firstUrl = createDeferred<string | null>()
+    const secondUrl = createDeferred<string | null>()
+
+    adapterMock.getSongUrl
+      .mockImplementationOnce(() => firstUrl.promise)
+      .mockImplementationOnce(() => secondUrl.promise)
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    const firstPlayback = actions.playSongWithDetails(0)
+    const secondPlayback = actions.playSongWithDetails(1)
+
+    secondUrl.resolve('https://song.test/2.mp3')
+    await secondPlayback
+
+    firstUrl.resolve('https://song.test/1.mp3')
+    await firstPlayback
+
+    expect(playSongByIndex).toHaveBeenCalledTimes(1)
+    expect(playSongByIndex).toHaveBeenCalledWith(1)
+
+    const switchedToFirstSong = onStateChange.mock.calls.some(
+      ([changes]) => (changes as { currentSong?: Song | null }).currentSong?.id === 'song-1'
+    )
+    expect(switchedToFirstSong).toBe(false)
+  })
+
+  it('skips state updates when an older playback promise resolves after a newer switch', async () => {
+    const { actions, state, playSongByIndex, onStateChange } = createSubject()
+    state.songList = [
+      createSong({ id: 'song-1', url: 'https://song.test/1.mp3' }),
+      createSong({ id: 'song-2', url: 'https://song.test/2.mp3' })
+    ]
+
+    const firstPlaybackCommit = createDeferred<void>()
+    const secondPlaybackCommit = createDeferred<void>()
+
+    playSongByIndex.mockImplementation((index: number) => {
+      return index === 0 ? firstPlaybackCommit.promise : secondPlaybackCommit.promise
+    })
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    const firstPlayback = actions.playSongWithDetails(0)
+    const secondPlayback = actions.playSongWithDetails(1)
+
+    secondPlaybackCommit.resolve()
+    await secondPlayback
+
+    firstPlaybackCommit.resolve()
+    await firstPlayback
+
+    expect(state.currentSong?.id).toBe('song-2')
+    expect(state.currentIndex).toBe(1)
+
+    const switchedToFirstSong = onStateChange.mock.calls.some(
+      ([changes]) => (changes as { currentSong?: Song | null }).currentSong?.id === 'song-1'
+    )
+    expect(switchedToFirstSong).toBe(false)
   })
 
   it('marks songs unavailable and rethrows when auto skip is disabled', async () => {

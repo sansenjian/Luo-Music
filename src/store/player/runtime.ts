@@ -38,6 +38,7 @@ export class PlayerStoreRuntime extends Disposable {
   private stateSyncNotify: (() => void) | null = null
   private stateSyncTimer: ReturnType<typeof setTimeout> | null = null
   private lastStateSyncTime = 0
+  private desktopLyricSequence = 0
 
   setCurrentLyricLineProvider(provider: (() => CurrentLyricLine) | null): void {
     this.currentLyricLineProvider = provider
@@ -49,6 +50,15 @@ export class PlayerStoreRuntime extends Disposable {
 
   getLyricEngine(): LyricEngine | null {
     return this.lyricEngine
+  }
+
+  nextDesktopLyricSequence(): number {
+    this.desktopLyricSequence += 1
+    return this.desktopLyricSequence
+  }
+
+  getDesktopLyricSequence(): number {
+    return this.desktopLyricSequence
   }
 
   ensureErrorHandler(factory: () => PlaybackErrorHandler): PlaybackErrorHandler {
@@ -189,6 +199,7 @@ export class PlayerStoreRuntime extends Disposable {
     this.lyricEngine = null
     this.currentLyricLineProvider = null
     this.stateSyncRegistered = false
+    this.desktopLyricSequence = 0
   }
 
   override dispose(): void {

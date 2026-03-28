@@ -30,6 +30,11 @@ const loadingMap = ref<Record<UserTab, boolean>>({
   playlist: false,
   events: false
 })
+const mountedTabs = ref<Record<UserTab, boolean>>({
+  liked: true,
+  playlist: false,
+  events: false
+})
 const currentUserId = computed(() => userStore.userId)
 
 useUserDataQuery(() => userStore.userId)
@@ -55,12 +60,20 @@ const tabCounts = computed(() => ({
   events: eventsCount.value
 }))
 
-const activeTabLoading = computed(() => loadingMap.value[activeTab.value])
-
 let activeLoadId = 0
+
+const resetMountedTabs = () => {
+  mountedTabs.value = {
+    liked: true,
+    playlist: false,
+    events: false
+  }
+}
 
 const resetUserContent = () => {
   activeLoadId += 1
+  activeTab.value = 'liked'
+  resetMountedTabs()
   loadingMap.value.liked = false
   loadingMap.value.playlist = false
   loadingMap.value.events = false
@@ -68,6 +81,14 @@ const resetUserContent = () => {
   resetPlaylists()
   resetEvents()
 }
+
+watch(
+  activeTab,
+  tab => {
+    mountedTabs.value[tab] = true
+  },
+  { immediate: true }
+)
 
 const loadAllData = async (userId: string | number) => {
   const loadId = ++activeLoadId
@@ -219,32 +240,29 @@ const goBack = () => {
           </div>
         </div>
 
-        <div v-if="activeTabLoading" class="loading-container">
-          <p>加载中...</p>
-        </div>
+        <LikedSongsView
+          v-if="mountedTabs.liked"
+          v-show="activeTab === 'liked'"
+          :like-songs="formattedSongs"
+          :loading="loadingMap.liked"
+          @play-all="handlePlayAllLiked"
+          @play-song="handlePlayLikedSong"
+        />
 
-        <template v-else>
-          <LikedSongsView
-            v-show="activeTab === 'liked'"
-            :like-songs="formattedSongs"
-            :loading="loadingMap.liked"
-            @play-all="handlePlayAllLiked"
-            @play-song="handlePlayLikedSong"
-          />
+        <PlaylistsView
+          v-if="mountedTabs.playlist"
+          v-show="activeTab === 'playlist'"
+          :playlists="playlists"
+          :loading="loadingMap.playlist"
+          @playlist-click="handlePlaylistClick"
+        />
 
-          <PlaylistsView
-            v-show="activeTab === 'playlist'"
-            :playlists="playlists"
-            :loading="loadingMap.playlist"
-            @playlist-click="handlePlaylistClick"
-          />
-
-          <EventsView
-            v-show="activeTab === 'events'"
-            :events="events"
-            :loading="loadingMap.events"
-          />
-        </template>
+        <EventsView
+          v-if="mountedTabs.events"
+          v-show="activeTab === 'events'"
+          :events="events"
+          :loading="loadingMap.events"
+        />
       </section>
     </div>
   </div>
@@ -351,13 +369,6 @@ const goBack = () => {
 .tab-btn.active .count {
   background: var(--accent);
   color: var(--white);
-}
-
-.loading-container {
-  text-align: center;
-  padding: 60px 20px;
-  font-size: 16px;
-  color: var(--gray);
 }
 
 @media (max-width: 768px) {

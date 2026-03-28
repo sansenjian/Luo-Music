@@ -4,7 +4,11 @@ import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channel
 import type { Song } from '../../../src/types/schemas'
 import type { PlayMode, PlayerStateResponse } from '../../../src/types/player'
 import type { LyricLine } from '../../../src/utils/player/core/lyric'
-import type { PlayerPlaySongByIdPayload, PlayerPlaySongPayload } from '../../ipc/types'
+import type {
+  DesktopLyricSnapshot,
+  PlayerPlaySongByIdPayload,
+  PlayerPlaySongPayload
+} from '../../ipc/types'
 
 export type PlayerState = PlayerStateResponse
 
@@ -78,6 +82,12 @@ export class PlayerProxy {
 
   async getPlaylist(): Promise<Song[]> {
     return this.ipcProxy.invoke<Song[]>(INVOKE_CHANNELS.PLAYER_GET_PLAYLIST)
+  }
+
+  async getDesktopLyricSnapshot(): Promise<DesktopLyricSnapshot> {
+    return this.ipcProxy.invoke<DesktopLyricSnapshot>(
+      INVOKE_CHANNELS.PLAYER_GET_DESKTOP_LYRIC_SNAPSHOT
+    )
   }
 
   async addToNext(song: Song): Promise<void> {

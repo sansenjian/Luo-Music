@@ -122,7 +122,7 @@ function onToggleSelect(): void {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--bg-dark);
 }
 
 .dropdown-option:last-child {

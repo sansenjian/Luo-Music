@@ -86,30 +86,32 @@ describe('electron/ServiceManager', () => {
       let capturedOptions: unknown
       let writtenBody: string | null = null
 
-      requestMock.mockImplementation((options: unknown, callback: (response: EventEmitter) => void) => {
-        capturedOptions = options
+      requestMock.mockImplementation(
+        (options: unknown, callback: (response: EventEmitter) => void) => {
+          capturedOptions = options
 
-        const req = new EventEmitter() as EventEmitter & {
-          write: (chunk: string) => void
-          end: () => void
-        }
-        req.write = (chunk: string) => {
-          writtenBody = chunk
-        }
-        req.end = () => {
-          const res = new EventEmitter() as EventEmitter & {
-            statusCode?: number
-            headers: Record<string, string>
+          const req = new EventEmitter() as EventEmitter & {
+            write: (chunk: string) => void
+            end: () => void
           }
-          res.statusCode = 200
-          res.headers = { 'content-type': 'application/json' }
-          callback(res)
-          res.emit('data', JSON.stringify({ response: { song: { list: [] } } }))
-          res.emit('end')
-        }
+          req.write = (chunk: string) => {
+            writtenBody = chunk
+          }
+          req.end = () => {
+            const res = new EventEmitter() as EventEmitter & {
+              statusCode?: number
+              headers: Record<string, string>
+            }
+            res.statusCode = 200
+            res.headers = { 'content-type': 'application/json' }
+            callback(res)
+            res.emit('data', JSON.stringify({ response: { song: { list: [] } } }))
+            res.emit('end')
+          }
 
-        return req
-      })
+          return req
+        }
+      )
 
       const module = await import('../../electron/ServiceManager')
       const service = new module.QQService(3200)
@@ -143,30 +145,32 @@ describe('electron/ServiceManager', () => {
       let capturedOptions: unknown
       let writtenBody: string | null = null
 
-      requestMock.mockImplementation((options: unknown, callback: (response: EventEmitter) => void) => {
-        capturedOptions = options
+      requestMock.mockImplementation(
+        (options: unknown, callback: (response: EventEmitter) => void) => {
+          capturedOptions = options
 
-        const req = new EventEmitter() as EventEmitter & {
-          write: (chunk: string) => void
-          end: () => void
-        }
-        req.write = (chunk: string) => {
-          writtenBody = chunk
-        }
-        req.end = () => {
-          const res = new EventEmitter() as EventEmitter & {
-            statusCode?: number
-            headers: Record<string, string>
+          const req = new EventEmitter() as EventEmitter & {
+            write: (chunk: string) => void
+            end: () => void
           }
-          res.statusCode = 200
-          res.headers = { 'content-type': 'application/json' }
-          callback(res)
-          res.emit('data', JSON.stringify({ code: 0, response: { ok: true } }))
-          res.emit('end')
-        }
+          req.write = (chunk: string) => {
+            writtenBody = chunk
+          }
+          req.end = () => {
+            const res = new EventEmitter() as EventEmitter & {
+              statusCode?: number
+              headers: Record<string, string>
+            }
+            res.statusCode = 200
+            res.headers = { 'content-type': 'application/json' }
+            callback(res)
+            res.emit('data', JSON.stringify({ code: 0, response: { ok: true } }))
+            res.emit('end')
+          }
 
-        return req
-      })
+          return req
+        }
+      )
 
       const module = await import('../../electron/ServiceManager')
       const service = new module.QQService(3200)
@@ -188,26 +192,28 @@ describe('electron/ServiceManager', () => {
     })
 
     it('surfaces non-JSON error responses with their HTTP status', async () => {
-      requestMock.mockImplementation((options: unknown, callback: (response: EventEmitter) => void) => {
-        const req = new EventEmitter() as EventEmitter & {
-          write: (chunk: string) => void
-          end: () => void
-        }
-        req.write = () => {}
-        req.end = () => {
-          const res = new EventEmitter() as EventEmitter & {
-            statusCode?: number
-            headers: Record<string, string>
+      requestMock.mockImplementation(
+        (options: unknown, callback: (response: EventEmitter) => void) => {
+          const req = new EventEmitter() as EventEmitter & {
+            write: (chunk: string) => void
+            end: () => void
           }
-          res.statusCode = 405
-          res.headers = { 'content-type': 'text/plain' }
-          callback(res)
-          res.emit('data', 'Method Not Allowed')
-          res.emit('end')
-        }
+          req.write = () => {}
+          req.end = () => {
+            const res = new EventEmitter() as EventEmitter & {
+              statusCode?: number
+              headers: Record<string, string>
+            }
+            res.statusCode = 405
+            res.headers = { 'content-type': 'text/plain' }
+            callback(res)
+            res.emit('data', 'Method Not Allowed')
+            res.emit('end')
+          }
 
-        return req
-      })
+          return req
+        }
+      )
 
       const module = await import('../../electron/ServiceManager')
       const service = new module.QQService(3200)
@@ -224,20 +230,73 @@ describe('electron/ServiceManager', () => {
     })
   })
 
+  describe('NeteaseService request forwarding', () => {
+    it('forwards song detail requests as GET with query params', async () => {
+      let capturedOptions: unknown
+      let writtenBody: string | null = null
+
+      requestMock.mockImplementation(
+        (options: unknown, callback: (response: EventEmitter) => void) => {
+          capturedOptions = options
+
+          const req = new EventEmitter() as EventEmitter & {
+            write: (chunk: string) => void
+            end: () => void
+          }
+          req.write = (chunk: string) => {
+            writtenBody = chunk
+          }
+          req.end = () => {
+            const res = new EventEmitter() as EventEmitter & {
+              statusCode?: number
+              headers: Record<string, string>
+            }
+            res.statusCode = 200
+            res.headers = { 'content-type': 'application/json' }
+            callback(res)
+            res.emit(
+              'data',
+              JSON.stringify({ songs: [{ id: 1948694501, name: '就忘了吧' }], code: 200 })
+            )
+            res.emit('end')
+          }
+
+          return req
+        }
+      )
+
+      const module = await import('../../electron/ServiceManager')
+      const service = new module.NeteaseService(14532)
+      service.markAsRunning(14532)
+      ;(service as unknown as { process: unknown }).process = {}
+
+      await expect(service.handleRequest('song/detail', { ids: '1948694501' })).resolves.toEqual({
+        songs: [{ id: 1948694501, name: '就忘了吧' }],
+        code: 200
+      })
+
+      expect(capturedOptions).toMatchObject({
+        host: 'localhost',
+        port: 14532,
+        method: 'GET',
+        path: '/song/detail?ids=1948694501'
+      })
+      expect(writtenBody).toBeNull()
+    })
+  })
+
   describe('initialize', () => {
     it('starts enabled services in parallel instead of serially awaiting each one', async () => {
       const module = await import('../../electron/ServiceManager')
       const manager = new module.ServiceManager()
       const resolvers = new Map<string, () => void>()
 
-      const startServiceSpy = vi
-        .spyOn(manager, 'startService')
-        .mockImplementation(
-          serviceId =>
-            new Promise<void>(resolve => {
-              resolvers.set(serviceId, resolve)
-            })
-        )
+      const startServiceSpy = vi.spyOn(manager, 'startService').mockImplementation(
+        serviceId =>
+          new Promise<void>(resolve => {
+            resolvers.set(serviceId, resolve)
+          })
+      )
 
       const initializePromise = manager.initialize({
         services: {

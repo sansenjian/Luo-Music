@@ -110,7 +110,8 @@ describe('audioEvents', () => {
         text: 'hello',
         trans: '你好',
         roma: 'ni hao',
-        playing: true
+        playing: true,
+        cause: 'interval'
       })
     )
   })
@@ -192,7 +193,8 @@ describe('audioEvents', () => {
       expect.objectContaining({
         index: 3,
         text: 'same line',
-        playing: false
+        playing: false,
+        cause: 'play-state'
       })
     )
 
@@ -205,7 +207,8 @@ describe('audioEvents', () => {
       expect.objectContaining({
         index: 3,
         text: 'same line',
-        playing: true
+        playing: true,
+        cause: 'play-state'
       })
     )
   })
@@ -248,7 +251,8 @@ describe('audioEvents', () => {
       expect.objectContaining({
         time: currentTime,
         index: 1,
-        text: `line${currentTime}`
+        text: `line${currentTime}`,
+        cause: 'play-state'
       })
     )
 
@@ -268,7 +272,8 @@ describe('audioEvents', () => {
       expect.objectContaining({
         time: currentTime,
         index: 1,
-        text: `line${currentTime}`
+        text: `line${currentTime}`,
+        cause: 'interval'
       })
     )
 
@@ -363,7 +368,55 @@ describe('audioEvents', () => {
         index: 1,
         text: 'Line 2',
         trans: 'Second',
-        playing: true
+        playing: true,
+        cause: 'lyric-change'
+      })
+    )
+  })
+
+  it('uses the configured lyric payload factory when broadcasting desktop lyric updates', () => {
+    const state = createInitialState()
+    state.currentLyricIndex = 1
+    state.playing = true
+
+    const callbacks = {
+      onTimeUpdate: vi.fn()
+    }
+    const platform = {
+      isElectron: vi.fn(() => true),
+      send: vi.fn()
+    }
+
+    const handler = createAudioEventHandler(state, callbacks, platform)
+    handler.init({
+      uiUpdateInterval: 250,
+      ipcBroadcastInterval: 500,
+      getCurrentLyricLine: () => ({ text: 'Line 2', trans: 'Second', roma: '' }),
+      createLyricUpdatePayload: ({ time, index, line, playing, cause }) => ({
+        time,
+        index,
+        text: line?.text || '',
+        trans: line?.trans || '',
+        roma: line?.roma || '',
+        playing,
+        songId: 'song-1',
+        platform: 'netease',
+        sequence: 7,
+        cause
+      })
+    })
+
+    playerCoreMock.setCurrentTime(5)
+    vi.setSystemTime(getTestDate(TIME_OFFSETS.MS_900))
+    playerCoreMock.emit('timeupdate')
+
+    expect(platform.send).toHaveBeenCalledWith(
+      'lyric-time-update',
+      expect.objectContaining({
+        songId: 'song-1',
+        platform: 'netease',
+        sequence: 7,
+        cause: 'interval'
       })
     )
   })

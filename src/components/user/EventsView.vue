@@ -1,19 +1,21 @@
-<script setup>
-defineProps({
-  events: {
-    type: Array,
-    required: true
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
-})
+<script setup lang="ts">
+import type { EventItem } from '@/composables/useUserEvents'
 
-const formatEventTime = timestamp => {
+interface EventsViewProps {
+  events: EventItem[]
+  loading?: boolean
+}
+
+defineProps<EventsViewProps>()
+
+const formatEventTime = (timestamp: number | string | undefined): string => {
+  if (timestamp === undefined) {
+    return ''
+  }
+
   const date = new Date(timestamp)
   const now = new Date()
-  const diff = now - date
+  const diff = now.getTime() - date.getTime()
   const minutes = Math.floor(diff / 60000)
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
@@ -22,16 +24,6 @@ const formatEventTime = timestamp => {
   if (hours < 24) return `${hours}小时前`
   if (days < 30) return `${days}天前`
   return date.toLocaleDateString('zh-CN')
-}
-
-const getEventMsg = event => {
-  if (!event.json) return ''
-  try {
-    const data = JSON.parse(event.json)
-    return data.msg || ''
-  } catch {
-    return ''
-  }
 }
 </script>
 
@@ -54,8 +46,8 @@ const getEventMsg = event => {
             <span class="event-time">{{ formatEventTime(event.eventTime) }}</span>
           </div>
         </div>
-        <div class="event-content" v-if="event.json && getEventMsg(event)">
-          <p>{{ getEventMsg(event) }}</p>
+        <div v-if="event.message" class="event-content">
+          <p>{{ event.message }}</p>
         </div>
         <div class="event-song" v-if="event.song">
           <img class="event-song-cover" :src="event.song.album?.picUrl" :alt="event.song.name" />

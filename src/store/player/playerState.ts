@@ -29,6 +29,8 @@ export interface PlayerState {
   currentIndex: number
   /** 当前歌曲 */
   currentSong: Song | null
+  /** 当前歌词所属歌曲 */
+  lyricSong: Song | null
   /** 歌词原始数据 */
   lyric: unknown
   /** 歌词解析后的数组 */
@@ -73,7 +75,9 @@ export interface PlayerStateChanges {
 }
 
 /**
- * 创建初始播放器状态
+ * Create the initial PlayerState with sensible defaults for playback, playlist, lyrics, UI, and lifecycle.
+ *
+ * @returns A PlayerState object with default values (playing false, progress 0, duration 0, volume 0.7, playMode PLAY_MODE.SEQUENTIAL, empty songList, currentSong and lyricSong null, null raw lyric, empty lyricsArray, default lyric sizes and types, and UI/lifecycle flags initialized).
  */
 export function createInitialState(): PlayerState {
   return {
@@ -85,6 +89,7 @@ export function createInitialState(): PlayerState {
     songList: [],
     currentIndex: -1,
     currentSong: null,
+    lyricSong: null,
     lyric: null,
     lyricsArray: [],
     currentLyricIndex: -1,
