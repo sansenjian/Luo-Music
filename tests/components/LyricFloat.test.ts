@@ -332,6 +332,42 @@ describe('LyricFloat', () => {
     expect(wrapper.find('.lrc-sub').text()).toBe('Second')
   })
 
+  it('recomputes the lyric index from playback progress when cached index is stale', async () => {
+    playerState.playerBridgeMock.getState.mockResolvedValue({
+      isPlaying: true,
+      currentIndex: 0,
+      currentSong: {
+        id: 1,
+        name: 'Song',
+        artists: [{ id: 1, name: 'Artist' }],
+        album: { id: 1, name: 'Album', picUrl: '' },
+        duration: 180000,
+        mvid: 0,
+        platform: 'netease',
+        originalId: 1
+      },
+      currentLyricIndex: 0,
+      progress: 0
+    })
+    playerState.playerBridgeMock.getLyric.mockResolvedValue([
+      { time: 0, text: 'Line 1', trans: '', roma: '' },
+      { time: 5, text: 'Line 2', trans: 'Second', roma: '' }
+    ])
+
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.playStateListeners.forEach(listener => {
+      listener({ isPlaying: true, currentTime: 6 })
+    })
+    await nextTick()
+
+    expect(wrapper.find('.lrc-main').text()).toBe('Line 2')
+    expect(wrapper.find('.lrc-sub').text()).toBe('Second')
+  })
+
   it('does not let delayed player state updates override a newer lyric push', async () => {
     playerState.playerBridgeMock.getState.mockResolvedValue({
       isPlaying: true,

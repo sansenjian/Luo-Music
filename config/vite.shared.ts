@@ -12,13 +12,30 @@ type ProxyEntry = {
   timeout?: number
 }
 
+export const DEFAULT_VITE_DEV_SERVER_PORT = 5173
+
+export function resolveViteDevServerPort(
+  value: string | undefined,
+  fallback = DEFAULT_VITE_DEV_SERVER_PORT
+): number {
+  const parsed = Number.parseInt(value ?? '', 10)
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return fallback
+  }
+
+  return parsed
+}
+
 export function createSrcAlias(rootDir: string): Record<'@', string> {
   return {
     '@': resolve(rootDir, 'src')
   }
 }
 
-export function createSharedDevProxy(options: { withQqTimeout?: boolean } = {}): Record<string, ProxyEntry> {
+export function createSharedDevProxy(
+  options: { withQqTimeout?: boolean } = {}
+): Record<string, ProxyEntry> {
   const qqProxy: ProxyEntry = {
     target: 'http://localhost:3200',
     changeOrigin: true,

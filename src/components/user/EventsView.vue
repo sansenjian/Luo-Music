@@ -1,21 +1,21 @@
-<script setup>
-import { computed } from 'vue'
+<script setup lang="ts">
+import type { EventItem } from '@/composables/useUserEvents'
 
-const props = defineProps({
-  events: {
-    type: Array,
-    required: true
-  },
-  loading: {
-    type: Boolean,
-    default: false
+interface EventsViewProps {
+  events: EventItem[]
+  loading?: boolean
+}
+
+defineProps<EventsViewProps>()
+
+const formatEventTime = (timestamp: number | string | undefined): string => {
+  if (timestamp === undefined) {
+    return ''
   }
-})
 
-const formatEventTime = timestamp => {
   const date = new Date(timestamp)
   const now = new Date()
-  const diff = now - date
+  const diff = now.getTime() - date.getTime()
   const minutes = Math.floor(diff / 60000)
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
@@ -25,26 +25,6 @@ const formatEventTime = timestamp => {
   if (days < 30) return `${days}天前`
   return date.toLocaleDateString('zh-CN')
 }
-
-const eventCards = computed(() =>
-  props.events.map(event => {
-    let message = ''
-
-    if (event.json) {
-      try {
-        const data = JSON.parse(event.json)
-        message = data.msg || ''
-      } catch {
-        message = ''
-      }
-    }
-
-    return {
-      ...event,
-      message
-    }
-  })
-)
 </script>
 
 <template>
@@ -58,7 +38,7 @@ const eventCards = computed(() =>
     </div>
 
     <div v-else class="events-list">
-      <div v-for="event in eventCards" :key="event.eventId" class="event-item">
+      <div v-for="event in events" :key="event.eventId" class="event-item">
         <div class="event-header">
           <img class="event-user-avatar" :src="event.user?.avatarUrl" :alt="event.user?.nickname" />
           <div class="event-user-info">

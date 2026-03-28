@@ -6,11 +6,13 @@ import { config as loadDotEnv } from 'dotenv'
 import {
   createSharedDevProxy,
   createSrcAlias,
-  electronRendererManualChunks
+  electronRendererManualChunks,
+  resolveViteDevServerPort
 } from './config/vite.shared.ts'
 const rootDir = __dirname
 loadDotEnv({ path: resolve(rootDir, '.env') })
 loadDotEnv({ path: resolve(rootDir, '.env.sentry-build-plugin') })
+const devServerPort = resolveViteDevServerPort(process.env.VITE_DEV_SERVER_PORT)
 
 const sentryRelease =
   process.env.SENTRY_RELEASE || `luo-music@${process.env.npm_package_version ?? '0.0.0'}`
@@ -116,7 +118,7 @@ export default defineConfig({
       alias: createSrcAlias(__dirname)
     },
     server: {
-      port: 5173,
+      port: devServerPort,
       host: '127.0.0.1',
       proxy: createSharedDevProxy()
     },

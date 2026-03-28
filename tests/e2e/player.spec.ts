@@ -6,19 +6,17 @@ test.describe('播放器功能测试', () => {
   })
 
   test('播放/暂停按钮应该存在', async ({ page }) => {
-    const playButton = page.getByRole('button', { name: /播放|暂停/i })
+    const playButton = page.locator('.ctrl-main').first()
     await expect(playButton).toBeVisible()
   })
 
   test('音量控制应该存在', async ({ page }) => {
-    // 查找音量控件（根据实际 DOM 调整选择器）
-    const volumeControl = page.getByTestId('volume-control')
+    const volumeControl = page.locator('.volume-row').first()
     await expect(volumeControl).toBeVisible()
   })
 
   test('进度条应该存在', async ({ page }) => {
-    // 查找进度条（根据实际 DOM 调整选择器）
-    const progressBar = page.getByTestId('progress-bar')
+    const progressBar = page.locator('.progress-bar').first()
     await expect(progressBar).toBeVisible()
   })
 })

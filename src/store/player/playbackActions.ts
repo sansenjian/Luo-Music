@@ -111,6 +111,8 @@ export class PlaybackActions {
   }
 
   private syncPlaybackRuntimeFields(sourceSong: Song, playbackSong: Song): void {
+    this.mergeSongDetail(sourceSong, playbackSong)
+
     if (playbackSong.url) {
       sourceSong.url = playbackSong.url
     }

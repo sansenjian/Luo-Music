@@ -38,7 +38,7 @@ export const DEFAULT_LYRIC_UPDATE_INTERVAL = 100
  *
  * 用于主界面歌词高亮和进度联动，较低的间隔可以减少视觉滞后。
  */
-export const LYRIC_UI_UPDATE_INTERVAL = 100
+export const LYRIC_UI_UPDATE_INTERVAL = DEFAULT_LYRIC_UPDATE_INTERVAL
 
 /**
  * 桌面歌词 IPC 广播间隔 (毫秒)

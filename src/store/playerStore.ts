@@ -19,7 +19,7 @@ import {
   getCurrentLyricLine,
   getDesktopLyricSequence,
   notifyLyricTimeUpdate,
-  syncLyricIndex
+  resolveLyricIndex
 } from './player/lyricSync'
 import { playerCore as audioManager } from '../utils/player/core/playerCore'
 import { LyricEngine, type LyricLine } from '../utils/player/core/lyric'
@@ -38,6 +38,7 @@ export type PlayerStoreActions = {
   notifyPlayModeChange: () => void
   handleAudioError: (error: unknown) => Promise<void>
   createErrorHandler: () => PlaybackErrorHandler
+  applyResolvedLyricIndex: (time?: number) => boolean
   updateLyricIndex: (time?: number) => boolean
   setSongList: (songs: Song[]) => void
   addSong: (song: Song) => void
@@ -207,6 +208,15 @@ function isSameSong(left: Song, right: Song): boolean {
   return left.id === right.id && left.platform === right.platform
 }
 
+function normalizeLyricTypes(value: unknown): Array<'original' | 'trans' | 'roma'> {
+  const allowedOptionalTypes: Array<'trans' | 'roma'> = ['trans', 'roma']
+  const nextOptionalTypes = Array.isArray(value)
+    ? allowedOptionalTypes.filter(type => value.includes(type))
+    : ['trans']
+
+  return ['original', ...nextOptionalTypes] as Array<'original' | 'trans' | 'roma'>
+}
+
 async function playSongFromIpc(
   store: PlayerStoreInstance,
   song: Song,
@@ -356,12 +366,24 @@ export const usePlayerStore = defineStore('player', {
   },
 
   actions: {
+    applyResolvedLyricIndex(this: PlayerStoreInstance, time = this.progress): boolean {
+      const store = this as unknown as PlayerStoreInstance
+      const nextIndex = resolveLyricIndex(store, time)
+
+      if (nextIndex === null || this.currentLyricIndex === nextIndex) {
+        return false
+      }
+
+      this.currentLyricIndex = nextIndex
+      return true
+    },
+
     seek(time: number): void {
       const store = this as unknown as PlayerStoreInstance
 
       audioManager.seek(time)
       this.progress = time
-      syncLyricIndex(store, time)
+      this.applyResolvedLyricIndex(time)
       notifyLyricTimeUpdate(store, getPlatformService(), time, 'seek')
     },
 
@@ -415,7 +437,7 @@ export const usePlayerStore = defineStore('player', {
           uiUpdateInterval: LYRIC_UI_UPDATE_INTERVAL,
           ipcBroadcastInterval: DESKTOP_LYRIC_IPC_INTERVAL,
           getCurrentLyricLine: () => getCurrentLyricLine(store),
-          syncLyricIndex: (time: number) => syncLyricIndex(store, time),
+          syncLyricIndex: (time: number) => this.applyResolvedLyricIndex(time),
           createLyricUpdatePayload: ({ time, cause }) =>
             createLyricTimeUpdatePayload(store, time, cause)
         },
@@ -539,8 +561,7 @@ export const usePlayerStore = defineStore('player', {
     },
 
     updateLyricIndex(time?: number): boolean {
-      const store = this as unknown as PlayerStoreInstance
-      return syncLyricIndex(store, time ?? this.progress)
+      return this.applyResolvedLyricIndex(time ?? this.progress)
     },
 
     setSongList(songs: Song[]): void {
@@ -663,12 +684,12 @@ export const usePlayerStore = defineStore('player', {
     },
 
     toggleLyricType(type: 'trans' | 'roma'): void {
-      if (this.lyricType.includes(type)) {
-        this.lyricType = this.lyricType.filter(item => item !== type)
-        return
-      }
+      const currentTypes = normalizeLyricTypes(this.lyricType)
+      const nextOptionalTypes = currentTypes.includes(type)
+        ? currentTypes.filter(item => item !== 'original' && item !== type)
+        : [...currentTypes.filter(item => item !== 'original'), type]
 
-      this.lyricType = [...new Set([...this.lyricType, 'original', type])]
+      this.lyricType = ['original', ...new Set(nextOptionalTypes)]
     },
 
     toggleCompactMode(): void {
@@ -734,9 +755,7 @@ export const usePlayerStore = defineStore('player', {
         store.playMode = 0
       }
 
-      if (!Array.isArray(store.lyricType) || store.lyricType.length === 0) {
-        store.lyricType = ['original', 'trans']
-      }
+      store.lyricType = normalizeLyricTypes(store.lyricType)
     }
   }
 })

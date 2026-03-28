@@ -21,4 +21,10 @@ describe('qq Vercel function url normalization', () => {
   it('keeps already normalized paths unchanged', () => {
     expect(normalizeQQRequestUrl('/getHotkey')).toBe('/getHotkey')
   })
+
+  it('preserves everything after the first query delimiter', () => {
+    expect(normalizeQQRequestUrl('/api/qq/getSearchByKey?keyword=what?is?love&format=json')).toBe(
+      '/getSearchByKey?keyword=what?is?love&format=json'
+    )
+  })
 })

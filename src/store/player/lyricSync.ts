@@ -20,8 +20,6 @@ type LyricSyncPlatform = {
 
 export type LyricSyncStore = PlayerStoreOwner & LyricSyncState
 
-const desktopLyricSequences = new WeakMap<LyricSyncStore, number>()
-
 /**
  * Selects the song to use for desktop lyric updates, preferring the store's `lyricSong` and falling back to `currentSong`.
  *
@@ -34,24 +32,12 @@ export function getDesktopLyricSong(
 }
 
 /**
- * Increment the desktop lyric sequence counter for the given store and return the new value.
- *
- * @param store - The lyric sync store whose desktop sequence will be advanced
- * @returns The updated (incremented) sequence number for `store`
- */
-function nextDesktopLyricSequence(store: LyricSyncStore): number {
-  const next = (desktopLyricSequences.get(store) ?? 0) + 1
-  desktopLyricSequences.set(store, next)
-  return next
-}
-
-/**
  * Retrieve the current desktop lyric update sequence number for the given store.
  *
  * @returns The stored sequence number for `store`, or `0` if none is set.
  */
 export function getDesktopLyricSequence(store: LyricSyncStore): number {
-  return desktopLyricSequences.get(store) ?? 0
+  return getPlayerStoreRuntime(store)?.getDesktopLyricSequence() ?? 0
 }
 
 /**
@@ -68,6 +54,7 @@ export function createLyricTimeUpdatePayload(
 ): LyricTimeUpdate {
   const line = getCurrentLyricLine(store)
   const lyricSong = getDesktopLyricSong(store)
+  const sequence = getPlayerStoreRuntime(store)?.nextDesktopLyricSequence() ?? 0
 
   return {
     time,
@@ -78,7 +65,7 @@ export function createLyricTimeUpdatePayload(
     playing: store.playing,
     songId: lyricSong?.id ?? null,
     platform: lyricSong?.platform ?? null,
-    sequence: nextDesktopLyricSequence(store),
+    sequence,
     cause
   }
 }
@@ -97,24 +84,18 @@ export function getCurrentLyricLine(
 }
 
 /**
- * Update the store's current lyric index to match the lyric engine for a given playback time.
+ * Resolve the lyric index that matches the lyric engine for a given playback time.
  *
  * @param time - Playback time used to compute the new lyric index (defaults to `store.progress`)
- * @returns `true` if `store.currentLyricIndex` was changed, `false` otherwise
+ * @returns The next lyric index, or `null` if no lyric engine runtime is available
  */
-export function syncLyricIndex(store: LyricSyncStore, time = store.progress): boolean {
+export function resolveLyricIndex(store: LyricSyncStore, time = store.progress): number | null {
   const lyricEngine = getPlayerStoreRuntime(store)?.getLyricEngine()
   if (!lyricEngine) {
-    return false
+    return null
   }
 
-  const nextIndex = lyricEngine.update(time)
-  if (store.currentLyricIndex === nextIndex) {
-    return false
-  }
-
-  store.currentLyricIndex = nextIndex
-  return true
+  return lyricEngine.update(time)
 }
 
 /**

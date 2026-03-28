@@ -226,9 +226,9 @@ export function useIpcActiveLyricState(emptyText = '') {
   }
 
   function setDisplayLyricsFromLine(line: LyricLine | null) {
-    ipcLyricText.value = line?.text || emptyText
-    ipcLyricTrans.value = line?.trans || ''
-    ipcLyricRoma.value = line?.roma || ''
+    ipcLyricText.value = line?.text ?? emptyText
+    ipcLyricTrans.value = line?.trans ?? ''
+    ipcLyricRoma.value = line?.roma ?? ''
   }
 
   function resolveCurrentLine(
@@ -245,7 +245,9 @@ export function useIpcActiveLyricState(emptyText = '') {
   }
 
   function refreshDisplayFromCachedLyrics() {
-    const line = resolveCurrentLine(cachedLyrics.value, ipcLyricIndex.value, ipcProgress.value)
+    const nextIndex = resolveLyricIndexByTime(cachedLyrics.value, ipcProgress.value)
+    ipcLyricIndex.value = nextIndex
+    const line = nextIndex >= 0 ? (cachedLyrics.value[nextIndex] ?? null) : null
     setCurrentLine(line)
     setDisplayLyricsFromLine(line)
   }
@@ -263,6 +265,7 @@ export function useIpcActiveLyricState(emptyText = '') {
       let snapshotIndex = -1
       let snapshotProgress = 0
       let snapshotPlaying = false
+      let snapshotSequence = 0
 
       if (playerBridge.getDesktopLyricSnapshot) {
         const snapshot = await playerBridge.getDesktopLyricSnapshot()
@@ -271,14 +274,14 @@ export function useIpcActiveLyricState(emptyText = '') {
         snapshotIndex = snapshot.currentLyricIndex ?? -1
         snapshotProgress = snapshot.progress ?? 0
         snapshotPlaying = snapshot.isPlaying ?? false
-        lastAcceptedSequence = snapshot.sequence ?? 0
+        snapshotSequence = snapshot.sequence ?? 0
 
         logDesktopLyricDebug('snapshot', 'hydrate-desktop-lyric-snapshot', {
           songId: snapshot.songId ?? snapshot.currentSong?.id ?? null,
           platform: snapshot.platform ?? snapshot.currentSong?.platform ?? null,
           currentTime: snapshot.progress ?? 0,
           currentLyricIndex: snapshot.currentLyricIndex ?? -1,
-          sequence: snapshot.sequence ?? 0,
+          sequence: snapshotSequence,
           lyricCount: snapshot.lyrics?.length ?? 0
         })
       } else if (playerBridge.getState && playerBridge.getLyric) {
@@ -292,7 +295,6 @@ export function useIpcActiveLyricState(emptyText = '') {
         snapshotIndex = state.currentLyricIndex ?? -1
         snapshotProgress = state.progress ?? 0
         snapshotPlaying = state.isPlaying ?? false
-        lastAcceptedSequence = 0
 
         if (snapshotSong) {
           snapshotLyrics = await playerBridge.getLyric(snapshotSong.id, snapshotSong.platform)
@@ -312,6 +314,7 @@ export function useIpcActiveLyricState(emptyText = '') {
         return
       }
 
+      lastAcceptedSequence = snapshotSequence
       ipcLyricIndex.value = snapshotIndex
       ipcProgress.value = snapshotProgress
       ipcIsPlaying.value = snapshotPlaying
@@ -385,6 +388,7 @@ export function useIpcActiveLyricState(emptyText = '') {
         playerBridge.onSongChange(data => {
           currentSong.value = data.song
           cachedLyrics.value = []
+          ipcLyricIndex.value = -1
           lastLyricPushAt = 0
           lastAcceptedSequence = 0
           resetCurrentLine()
@@ -482,7 +486,7 @@ export function useIpcActiveLyricState(emptyText = '') {
     }
   })
 
-  const currentLyric = computed(() => ipcLyricText.value || emptyText)
+  const currentLyric = computed(() => ipcLyricText.value ?? emptyText)
   const currentTrans = computed(() => ipcLyricTrans.value)
   const currentRoma = computed(() => ipcLyricRoma.value)
   const secondaryLyric = computed(() => currentTrans.value || currentRoma.value)

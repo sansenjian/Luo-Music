@@ -60,8 +60,6 @@ const tabCounts = computed(() => ({
   events: eventsCount.value
 }))
 
-const activeTabLoading = computed(() => loadingMap.value[activeTab.value])
-
 let activeLoadId = 0
 
 const resetMountedTabs = () => {
@@ -242,35 +240,29 @@ const goBack = () => {
           </div>
         </div>
 
-        <div v-if="activeTabLoading" class="loading-container">
-          <p>加载中...</p>
-        </div>
+        <LikedSongsView
+          v-if="mountedTabs.liked"
+          v-show="activeTab === 'liked'"
+          :like-songs="formattedSongs"
+          :loading="loadingMap.liked"
+          @play-all="handlePlayAllLiked"
+          @play-song="handlePlayLikedSong"
+        />
 
-        <template v-else>
-          <LikedSongsView
-            v-if="mountedTabs.liked"
-            v-show="activeTab === 'liked'"
-            :like-songs="formattedSongs"
-            :loading="loadingMap.liked"
-            @play-all="handlePlayAllLiked"
-            @play-song="handlePlayLikedSong"
-          />
+        <PlaylistsView
+          v-if="mountedTabs.playlist"
+          v-show="activeTab === 'playlist'"
+          :playlists="playlists"
+          :loading="loadingMap.playlist"
+          @playlist-click="handlePlaylistClick"
+        />
 
-          <PlaylistsView
-            v-if="mountedTabs.playlist"
-            v-show="activeTab === 'playlist'"
-            :playlists="playlists"
-            :loading="loadingMap.playlist"
-            @playlist-click="handlePlaylistClick"
-          />
-
-          <EventsView
-            v-if="mountedTabs.events"
-            v-show="activeTab === 'events'"
-            :events="events"
-            :loading="loadingMap.events"
-          />
-        </template>
+        <EventsView
+          v-if="mountedTabs.events"
+          v-show="activeTab === 'events'"
+          :events="events"
+          :loading="loadingMap.events"
+        />
       </section>
     </div>
   </div>
@@ -377,13 +369,6 @@ const goBack = () => {
 .tab-btn.active .count {
   background: var(--accent);
   color: var(--white);
-}
-
-.loading-container {
-  text-align: center;
-  padding: 60px 20px;
-  font-size: 16px;
-  color: var(--gray);
 }
 
 @media (max-width: 768px) {

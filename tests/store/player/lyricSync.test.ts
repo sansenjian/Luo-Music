@@ -6,7 +6,7 @@ import {
   createLyricTimeUpdatePayload,
   getCurrentLyricLine,
   notifyLyricTimeUpdate,
-  syncLyricIndex,
+  resolveLyricIndex,
   type LyricSyncStore
 } from '@/store/player/lyricSync'
 
@@ -37,17 +37,17 @@ describe('lyricSync', () => {
     })
   })
 
-  it('returns false when no lyric engine runtime is available', () => {
+  it('returns null when no lyric engine runtime is available', () => {
     const store = createStore({
       lyricsArray: [{ time: 1, text: 'Line', trans: '', roma: '' }],
       progress: 1
     })
 
-    expect(syncLyricIndex(store)).toBe(false)
+    expect(resolveLyricIndex(store)).toBeNull()
     expect(store.currentLyricIndex).toBe(-1)
   })
 
-  it('updates lyric index from runtime lyric engine', () => {
+  it('resolves lyric index from runtime lyric engine without mutating store state', () => {
     const lyrics: LyricLine[] = [
       { time: 1, text: 'L1', trans: '', roma: '' },
       { time: 3, text: 'L2', trans: '', roma: '' }
@@ -59,8 +59,8 @@ describe('lyricSync', () => {
     const runtime = ensurePlayerStoreRuntime(store)
     runtime.setLyricEngine(new LyricEngine(lyrics))
 
-    expect(syncLyricIndex(store)).toBe(true)
-    expect(store.currentLyricIndex).toBe(1)
+    expect(resolveLyricIndex(store)).toBe(1)
+    expect(store.currentLyricIndex).toBe(-1)
 
     resetPlayerStoreRuntime(store)
   })
@@ -74,6 +74,7 @@ describe('lyricSync', () => {
       currentSong: { id: 1, platform: 'netease' } as never,
       lyricSong: { id: 1, platform: 'netease' } as never
     })
+    ensurePlayerStoreRuntime(store)
     const send = (channel: string, data: unknown) => {
       sent.push({ channel, data })
     }
@@ -105,6 +106,8 @@ describe('lyricSync', () => {
         }
       }
     ])
+
+    resetPlayerStoreRuntime(store)
   })
 
   it('increments sequence across desktop lyric payloads', () => {
@@ -116,6 +119,7 @@ describe('lyricSync', () => {
       currentSong: { id: 'song-1', platform: 'qq' } as never,
       lyricSong: { id: 'song-1', platform: 'qq' } as never
     })
+    ensurePlayerStoreRuntime(store)
 
     expect(createLyricTimeUpdatePayload(store, 2.5)).toMatchObject({
       songId: 'song-1',
@@ -129,6 +133,8 @@ describe('lyricSync', () => {
       sequence: 2,
       cause: 'interval'
     })
+
+    resetPlayerStoreRuntime(store)
   })
 
   it('allows callers to tag desktop lyric payloads with a specific update cause', () => {
@@ -138,6 +144,7 @@ describe('lyricSync', () => {
       progress: 5,
       playing: true
     })
+    ensurePlayerStoreRuntime(store)
 
     expect(createLyricTimeUpdatePayload(store, 5, 'seek')).toMatchObject({
       time: 5,
@@ -145,6 +152,8 @@ describe('lyricSync', () => {
       cause: 'seek',
       sequence: 1
     })
+
+    resetPlayerStoreRuntime(store)
   })
 
   it('skips lyric payload broadcast outside electron environment', () => {

@@ -84,7 +84,7 @@ export function useActiveLyricState(options: UseActiveLyricStateOptions = {}) {
     return lyrics.value[index] ?? null
   })
 
-  const currentLyric = computed(() => currentLine.value?.text || emptyText)
+  const currentLyric = computed(() => currentLine.value?.text ?? emptyText)
   const currentTrans = computed(() => currentLine.value?.trans || '')
   const currentRoma = computed(() => currentLine.value?.roma || '')
   const secondaryLyric = computed(() => currentTrans.value || currentRoma.value)

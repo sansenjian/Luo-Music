@@ -58,6 +58,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * Determines whether an unknown error payload matches the narrow response shape used by NCM route modules.
+ *
+ * @param value - Value thrown by a module handler
+ * @returns `true` when the value carries at least one supported module response field with the expected type
+ */
+function isNcmModuleResponse(value: unknown): value is NcmModuleResponse {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  const hasBody = 'body' in value
+  const hasStatus = typeof value.status === 'number'
+  const hasCookie = Array.isArray(value.cookie)
+
+  return hasBody || hasStatus || hasCookie
+}
+
+/**
  * Normalize a query parameter value to a single string.
  *
  * @param value - The query value which may be a string, an array of strings, or other types
@@ -246,7 +264,10 @@ async function loadRuntime(): Promise<RuntimeState> {
  */
 async function ensureRuntime(): Promise<RuntimeState> {
   if (!runtimePromise) {
-    runtimePromise = loadRuntime()
+    runtimePromise = loadRuntime().catch(error => {
+      runtimePromise = null
+      throw error
+    })
   }
 
   return runtimePromise
@@ -301,14 +322,20 @@ export default async function handler(
 
     sendJson(res, moduleResponse.status || 200, moduleResponse.body ?? {})
   } catch (error) {
-    const moduleResponse = isRecord(error) ? (error as NcmModuleResponse) : {}
+    const moduleResponse = isNcmModuleResponse(error) ? error : null
 
-    if (Array.isArray(moduleResponse.cookie) && !query.noCookie) {
+    if (Array.isArray(moduleResponse?.cookie) && !query.noCookie) {
       res.setHeader('Set-Cookie', moduleResponse.cookie)
     }
 
-    if (!moduleResponse.body) {
-      sendJson(res, 404, { code: 404, msg: 'Not Found', data: null })
+    if (!moduleResponse) {
+      sendJson(res, 500, { code: 500, msg: 'Internal Server Error', data: null })
+      return
+    }
+
+    if (moduleResponse.body === undefined) {
+      const status = moduleResponse.status || 404
+      sendJson(res, status, { code: status, msg: 'Not Found', data: null })
       return
     }
 

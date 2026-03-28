@@ -270,9 +270,9 @@ describe('playbackActions', () => {
     await actions.playSongWithDetails(0)
 
     expect(adapterMock.getSongDetail).toHaveBeenCalledWith('netease', 'song-netease-search')
-    expect(song.name).toBe('Search Name')
-    expect(song.artists[0]?.name).toBe('Search Artist')
-    expect(song.album.picUrl).toBe('search-cover')
+    expect(song.name).toBe('Detail Name')
+    expect(song.artists[0]?.name).toBe('Detail Artist')
+    expect(song.album.picUrl).toBe('detail-cover')
     expect(song.url).toBe('https://song.test/netease.mp3')
     expect(state.currentSong?.name).toBe('Detail Name')
     expect(state.currentSong?.artists[0]?.name).toBe('Detail Artist')

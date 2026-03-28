@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils'
 import EventsView from '../../../src/components/user/EventsView.vue'
 
 describe('EventsView', () => {
-  it('renders parsed event messages from json payloads', () => {
+  it('renders pre-parsed event messages from the view model', () => {
     const wrapper = mount(EventsView, {
       props: {
         loading: false,
@@ -12,7 +12,7 @@ describe('EventsView', () => {
           {
             eventId: 1,
             eventTime: Date.now(),
-            json: JSON.stringify({ msg: 'test event message' }),
+            message: 'test event message',
             user: {
               nickname: 'tester',
               avatarUrl: ''
@@ -26,7 +26,7 @@ describe('EventsView', () => {
     expect(wrapper.text()).toContain('test event message')
   })
 
-  it('ignores invalid event json without breaking the list render', () => {
+  it('renders the list without requiring raw event json parsing in the component', () => {
     const wrapper = mount(EventsView, {
       props: {
         loading: false,
@@ -34,7 +34,6 @@ describe('EventsView', () => {
           {
             eventId: 2,
             eventTime: Date.now(),
-            json: '{invalid json',
             user: {
               nickname: 'tester',
               avatarUrl: ''

@@ -202,6 +202,18 @@ describe('playerStore', () => {
       store.toggleLyricType('trans')
       expect(store.lyricType).toEqual(['original', 'roma', 'trans'])
     })
+
+    it('restores original lyrics when toggling from a corrupted persisted lyricType state', () => {
+      const store = usePlayerStore()
+
+      store.lyricType = ['trans'] as Array<'original' | 'trans' | 'roma'>
+      store.toggleLyricType('trans')
+      expect(store.lyricType).toEqual(['original'])
+
+      store.lyricType = ['roma'] as Array<'original' | 'trans' | 'roma'>
+      store.toggleLyricType('trans')
+      expect(store.lyricType).toEqual(['original', 'roma', 'trans'])
+    })
   })
 
   describe('compact mode', () => {

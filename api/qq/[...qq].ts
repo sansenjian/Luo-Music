@@ -42,7 +42,9 @@ function trimPrefix(pathname: string, prefix: string): string {
  * @returns The normalized URL whose pathname has `/api/qq` and `/qq-api` prefixes trimmed and which includes the original query string if present
  */
 export function normalizeQQRequestUrl(requestUrl: string = '/'): string {
-  const [pathname = '/', search = ''] = requestUrl.split('?')
+  const queryStart = requestUrl.indexOf('?')
+  const pathname = queryStart >= 0 ? requestUrl.slice(0, queryStart) : requestUrl
+  const search = queryStart >= 0 ? requestUrl.slice(queryStart + 1) : ''
   const normalizedPath = trimPrefix(
     trimPrefix(pathname || '/', QQ_FUNCTION_PREFIX),
     QQ_PUBLIC_PREFIX

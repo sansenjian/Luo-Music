@@ -14,16 +14,14 @@ test.describe('Luo-Music 基础测试', () => {
   test('搜索框应该存在', async ({ page }) => {
     await page.goto('/')
 
-    // 查找搜索输入框（根据实际 DOM 调整选择器）
-    const searchInput = page.getByPlaceholder(/搜索/)
+    const searchInput = page.locator('.cyber-input')
     await expect(searchInput).toBeVisible()
   })
 
   test('播放器应该存在', async ({ page }) => {
     await page.goto('/')
 
-    // 查找播放器控件（根据实际 DOM 调整选择器）
-    const player = page.getByTestId('player')
+    const player = page.locator('.player-section').first()
     await expect(player).toBeVisible()
   })
 })

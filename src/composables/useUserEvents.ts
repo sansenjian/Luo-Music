@@ -4,8 +4,32 @@ import { getUserEvent } from '../api/user'
 import { isCanceledRequestError } from '../utils/http/cancelError'
 import { createLatestRequestController } from '../utils/http/requestScope'
 
+export interface EventUser {
+  nickname?: string
+  avatarUrl?: string
+}
+
+export interface EventArtist {
+  name: string
+}
+
+export interface EventAlbum {
+  picUrl?: string
+}
+
+export interface EventSong {
+  name?: string
+  album?: EventAlbum | null
+  artists?: EventArtist[]
+}
+
 export interface EventItem {
+  eventId?: string | number
+  eventTime?: number | string
   json?: string
+  message?: string
+  user?: EventUser | null
+  song?: EventSong | null
   [key: string]: unknown
 }
 
@@ -49,6 +73,10 @@ export function useUserEvents(): UseUserEventsReturn {
   }
 
   const getEventMsg = (event: EventItem): string => {
+    if (typeof event.message === 'string') {
+      return event.message
+    }
+
     if (!event.json) {
       return ''
     }
@@ -60,6 +88,11 @@ export function useUserEvents(): UseUserEventsReturn {
       return ''
     }
   }
+
+  const normalizeEvent = (event: EventItem): EventItem => ({
+    ...event,
+    message: getEventMsg(event)
+  })
 
   const loadEvents = async (userId: string | number, limit = 20): Promise<void> => {
     const task = requestController.start()
@@ -81,7 +114,7 @@ export function useUserEvents(): UseUserEventsReturn {
       }
 
       task.commit(() => {
-        events.value = response.events ?? []
+        events.value = (response.events ?? []).map(normalizeEvent)
       })
     } catch (requestError) {
       if (isCanceledRequestError(requestError)) {

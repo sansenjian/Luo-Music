@@ -123,7 +123,7 @@ npm run test:run -- tests/store/playerStore.test.ts
 
 ### 工作项
 
-- 约束 `useActiveLyricState` 只做状态聚合，不承载业务分支蔓延
+- 约束 `useActiveLyricState` 只做状态聚合，不继续吸纳业务分支逻辑
 - `LyricDisplay.vue` 与 `useLyricAutoScroll.ts` 保持“展示/滚动策略”边界
 - `LyricFloat.vue` 仅保留窗口交互与控制命令发送，不重复播放器业务逻辑
 

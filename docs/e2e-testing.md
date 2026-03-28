@@ -99,7 +99,7 @@ export { expect } from '@playwright/test'
 
 ### 3. API Mock 策略
 
-使用 `route.intercept()` mock 后端 API，确保测试稳定性和可重复性：
+使用 `page.route()` mock 后端 API，确保测试稳定性和可重复性：
 
 ```typescript
 // tests/e2e/utils/api-mock.ts
@@ -143,9 +143,7 @@ import { mockSearchApi } from '../utils/api-mock'
 test.describe('Main App Flow', () => {
   test('should complete search and play flow', async ({ homePage, playerPage }) => {
     // Mock API 响应
-    await mockSearchApi(homePage.page, [
-      { id: '1', name: 'Test Song', artist: 'Test Artist' }
-    ])
+    await mockSearchApi(homePage.page, [{ id: '1', name: 'Test Song', artist: 'Test Artist' }])
 
     // 执行搜索
     await homePage.search('test')
