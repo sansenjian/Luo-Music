@@ -83,7 +83,7 @@ async function initializeApp(): Promise<void> {
 
 function initializeIpcService(): void {
   ipcService.configure({
-    defaultTimeout: 10000,
+    defaultTimeout: 15000,
     slowRequestThreshold: 1000,
     enablePerformanceMonitoring: true
   })

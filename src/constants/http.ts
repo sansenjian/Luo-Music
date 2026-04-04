@@ -18,8 +18,9 @@ export const HTTP_DEFAULT_TIMEOUT = 30000
 
 /**
  * 默认重试次数
+ * 减少重试以避免在外部服务不可用时长时间占用 IPC 通道，导致后续请求排队超时
  */
-export const HTTP_DEFAULT_RETRY_COUNT = 3
+export const HTTP_DEFAULT_RETRY_COUNT = 1
 
 /**
  * 默认重试延迟 (毫秒)
