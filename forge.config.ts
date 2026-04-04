@@ -39,6 +39,7 @@ const config: ForgeConfig = {
     extraResource: [
       'build/server',
       'scripts/dev/qq-api-server.cjs',
+      'scripts/dev/qq-search-fallback.cjs',
       'scripts/dev/netease-api-server.cjs'
     ],
     download: {
