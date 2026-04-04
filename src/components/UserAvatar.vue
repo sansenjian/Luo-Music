@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { logout } from '../api/user'
@@ -26,9 +26,12 @@ const platformService = services.platform()
 const userStore = useUserStore()
 
 const wrapperRef = ref<HTMLElement | null>(null)
+const triggerButtonRef = ref<HTMLButtonElement | null>(null)
+const dropdownRef = ref<HTMLElement | null>(null)
 const showLoginModal = ref(false)
 const showQQLoginModal = ref(false)
 const showDropdown = ref(false)
+let shouldRestoreTriggerFocus = true
 
 const isQQMusicLoggedIn = computed(() => userStore.isQQMusicLoggedIn)
 
@@ -61,31 +64,42 @@ async function handleLogout(): Promise<void> {
     logger.warn('Netease logout request failed, clearing local session', error)
   } finally {
     userStore.logout()
-    closeDropdown()
+    closeDropdown({ restoreFocus: false })
   }
 }
 
 function openLogin(): void {
   showLoginModal.value = true
-  closeDropdown()
+  closeDropdown({ restoreFocus: false })
 }
 
 function openQQLogin(): void {
   showQQLoginModal.value = true
-  closeDropdown()
+  closeDropdown({ restoreFocus: false })
 }
 
 function openUserCenter(): void {
   void router.push('/user')
-  closeDropdown()
+  closeDropdown({ restoreFocus: false })
 }
 
-function closeDropdown(): void {
+function closeDropdown(options: { restoreFocus?: boolean } = {}): void {
+  shouldRestoreTriggerFocus = options.restoreFocus ?? true
   showDropdown.value = false
 }
 
+function openDropdown(): void {
+  shouldRestoreTriggerFocus = true
+  showDropdown.value = true
+}
+
 function toggleDropdown(): void {
-  showDropdown.value = !showDropdown.value
+  if (showDropdown.value) {
+    closeDropdown()
+    return
+  }
+
+  openDropdown()
 }
 
 function handleTriggerClick(): void {
@@ -102,11 +116,20 @@ function handleDocumentPointerDown(event: PointerEvent): void {
     return
   }
 
+  closeDropdown({ restoreFocus: false })
+}
+
+function handleDocumentKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || !showDropdown.value) {
+    return
+  }
+
+  event.preventDefault()
   closeDropdown()
 }
 
 function handleQQLoginSuccess(): void {
-  showDropdown.value = true
+  openDropdown()
 }
 
 onMounted(() => {
@@ -115,16 +138,34 @@ onMounted(() => {
   }
 
   document.addEventListener('pointerdown', handleDocumentPointerDown)
+  document.addEventListener('keydown', handleDocumentKeydown)
 })
 
 onUnmounted(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
+  document.removeEventListener('keydown', handleDocumentKeydown)
+})
+
+watch(showDropdown, async (isOpen, wasOpen) => {
+  if (isOpen) {
+    await nextTick()
+    dropdownRef.value?.querySelector<HTMLButtonElement>('.menu-btn')?.focus()
+    return
+  }
+
+  if (wasOpen && shouldRestoreTriggerFocus) {
+    await nextTick()
+    triggerButtonRef.value?.focus()
+  }
+
+  shouldRestoreTriggerFocus = true
 })
 </script>
 
 <template>
   <div ref="wrapperRef" class="user-avatar-wrapper">
     <button
+      ref="triggerButtonRef"
       class="user-trigger"
       type="button"
       aria-haspopup="menu"
@@ -156,7 +197,7 @@ onUnmounted(() => {
     </button>
 
     <Transition name="dropdown">
-      <div v-if="showDropdown" class="dropdown">
+      <div v-if="showDropdown" ref="dropdownRef" class="dropdown">
         <div class="dropdown-header">
           <template v-if="userStore.isLoggedIn">
             <img

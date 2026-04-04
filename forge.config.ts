@@ -17,7 +17,7 @@ const packagingIgnorePatterns = [
 ] as const
 
 const makers = FAST_MAKE_MODE
-  ? [new MakerZIP({}, ['win32'])]
+  ? [new MakerZIP({}, ['darwin', 'linux', 'win32'])]
   : [
       new MakerSquirrel({
         name: 'LUO_Music'

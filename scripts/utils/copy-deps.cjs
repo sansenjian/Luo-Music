@@ -94,17 +94,28 @@ function copyDir(src, dest, sourceRoot = src, destRoot = dest, visitedRealPaths 
     }
 
     if (entry.isSymbolicLink()) {
-      const realPath = ensurePathWithinBase(sourceRoot, fs.realpathSync(srcPath), 'symlink target')
-      if (visitedRealPaths.has(realPath)) {
+      let realPath
+      try {
+        realPath = fs.realpathSync(srcPath)
+      } catch (error) {
+        if (error && typeof error === 'object' && error.code === 'ENOENT') {
+          console.warn(`[copy-deps] skip broken symlink: ${srcPath}`)
+          continue
+        }
+        throw error
+      }
+
+      const safeRealPath = ensurePathWithinBase(sourceRoot, realPath, 'symlink target')
+      if (visitedRealPaths.has(safeRealPath)) {
         continue
       }
-      visitedRealPaths.add(realPath)
-      const realStat = fs.statSync(realPath)
+      visitedRealPaths.add(safeRealPath)
+      const realStat = fs.statSync(safeRealPath)
       if (realStat.isDirectory()) {
-        copyDir(realPath, destPath, sourceRoot, destRoot, visitedRealPaths)
+        copyDir(safeRealPath, destPath, sourceRoot, destRoot, visitedRealPaths)
       } else {
         ensureDir(path.dirname(destPath))
-        fs.copyFileSync(realPath, destPath)
+        fs.copyFileSync(safeRealPath, destPath)
       }
       continue
     }

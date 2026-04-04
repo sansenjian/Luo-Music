@@ -22,7 +22,12 @@ function toPositiveInteger(value, fallbackValue) {
 
 function extractQQSearchParams(requestUrl) {
   const url = new URL(requestUrl, 'http://127.0.0.1')
-  const pathKeyword = decodeURIComponent(url.pathname.replace(/^\/getSearchByKey\/?/, '')).trim()
+  let pathKeyword = ''
+  try {
+    pathKeyword = decodeURIComponent(url.pathname.replace(/^\/getSearchByKey\/?/, '')).trim()
+  } catch {
+    pathKeyword = ''
+  }
   const queryKeyword = url.searchParams.get('key')?.trim()
   const keyword = (queryKeyword || pathKeyword || '').trim()
 
@@ -131,12 +136,10 @@ async function handleQQSearchRequest(request, response) {
     const result = await requestQQMusicuSearch(keyword, limit, page)
     writeJson(response, 200, result)
   } catch (error) {
-    // Log detailed error information on the server for debugging,
-    // but do not expose internal details to the client.
-    console.error('QQ search fallback error:', error)
+    console.error('[qq-search-fallback] request failed', error instanceof Error ? error.stack || error : error)
     writeJson(response, 500, {
       error: {
-        message: 'QQ search failed'
+        message: 'Internal server error while searching'
       }
     })
   }

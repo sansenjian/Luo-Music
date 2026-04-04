@@ -17,27 +17,33 @@ const emit = defineEmits<{
   'play-song': [index: number]
 }>()
 
+const rootRef = ref<HTMLElement | null>(null)
 const listRef = ref<HTMLElement | null>(null)
 const scrollTop = ref(0)
 const containerHeight = ref(640)
+const itemHeight = ref(88)
+const activeIndex = ref(0)
 let resizeObserver: ResizeObserver | null = null
 
-const ITEM_HEIGHT = 88
+const DEFAULT_ITEM_HEIGHT = 88
 const OVERSCAN = 6
 
-const totalHeight = computed(() => props.likeSongs.length * ITEM_HEIGHT)
+const totalHeight = computed(() => props.likeSongs.length * itemHeight.value)
 const maxScrollTop = computed(() => Math.max(0, totalHeight.value - containerHeight.value))
 const effectiveScrollTop = computed(() => Math.min(scrollTop.value, maxScrollTop.value))
 const visibleCount = computed(() =>
-  Math.max(1, Math.ceil(containerHeight.value / ITEM_HEIGHT) + OVERSCAN * 2)
+  Math.max(1, Math.ceil(containerHeight.value / itemHeight.value) + OVERSCAN * 2)
+)
+const visibleRowCount = computed(() =>
+  Math.max(1, Math.ceil(containerHeight.value / itemHeight.value))
 )
 const startIndex = computed(() =>
-  Math.max(0, Math.floor(effectiveScrollTop.value / ITEM_HEIGHT) - OVERSCAN)
+  Math.max(0, Math.floor(effectiveScrollTop.value / itemHeight.value) - OVERSCAN)
 )
 const endIndex = computed(() =>
   Math.min(props.likeSongs.length, startIndex.value + visibleCount.value)
 )
-const offsetY = computed(() => startIndex.value * ITEM_HEIGHT)
+const offsetY = computed(() => startIndex.value * itemHeight.value)
 const visibleSongs = computed(() =>
   props.likeSongs.slice(startIndex.value, endIndex.value).map((song, offset) => ({
     index: startIndex.value + offset,
@@ -50,24 +56,202 @@ function handlePlayAll(): void {
 }
 
 function handlePlaySong(index: number): void {
+  activeIndex.value = clampIndex(index)
   emit('play-song', index)
+}
+
+function readItemHeight(): number {
+  if (!rootRef.value) {
+    return DEFAULT_ITEM_HEIGHT
+  }
+
+  const cssValue = Number.parseInt(
+    window.getComputedStyle(rootRef.value).getPropertyValue('--item-height'),
+    10
+  )
+
+  return Number.isFinite(cssValue) && cssValue > 0 ? cssValue : DEFAULT_ITEM_HEIGHT
+}
+
+function clampIndex(index: number): number {
+  if (props.likeSongs.length === 0) {
+    return 0
+  }
+
+  return Math.min(Math.max(index, 0), props.likeSongs.length - 1)
+}
+
+function syncItemHeight(): void {
+  itemHeight.value = readItemHeight()
 }
 
 function syncContainerHeight(): void {
   containerHeight.value = listRef.value?.clientHeight || 640
 }
 
+function syncListMetrics(): void {
+  syncItemHeight()
+  syncContainerHeight()
+}
+
+function getVisibleRange(scrollPosition = effectiveScrollTop.value): {
+  first: number
+  last: number
+} {
+  if (props.likeSongs.length === 0) {
+    return { first: 0, last: 0 }
+  }
+
+  const first = Math.max(0, Math.floor(scrollPosition / itemHeight.value))
+  const last = Math.min(props.likeSongs.length - 1, first + visibleRowCount.value - 1)
+
+  return { first, last }
+}
+
+function syncActiveIndexToViewport(scrollPosition = effectiveScrollTop.value): void {
+  if (props.likeSongs.length === 0) {
+    activeIndex.value = 0
+    return
+  }
+
+  const { first, last } = getVisibleRange(scrollPosition)
+  activeIndex.value = Math.min(Math.max(activeIndex.value, first), last)
+}
+
+function focusActiveSong(): void {
+  if (props.likeSongs.length === 0) {
+    return
+  }
+
+  void nextTick(() => {
+    const activeButton = listRef.value?.querySelector<HTMLButtonElement>(
+      `.song-item[data-index="${activeIndex.value}"]`
+    )
+    activeButton?.focus({ preventScroll: true })
+  })
+}
+
+function setListScrollTop(nextScrollTop: number): void {
+  const clampedScrollTop = Math.max(0, Math.min(nextScrollTop, maxScrollTop.value))
+  scrollTop.value = clampedScrollTop
+
+  const listElement = listRef.value
+  if (listElement && listElement.scrollTop !== clampedScrollTop) {
+    listElement.scrollTop = clampedScrollTop
+  }
+}
+
+function scrollSongIntoView(index: number): void {
+  const listElement = listRef.value
+  if (!listElement || props.likeSongs.length === 0) {
+    return
+  }
+
+  const songTop = index * itemHeight.value
+  const songBottom = songTop + itemHeight.value
+  const viewportTop = effectiveScrollTop.value
+  const viewportBottom = viewportTop + containerHeight.value
+
+  if (songTop < viewportTop) {
+    setListScrollTop(songTop)
+    return
+  }
+
+  if (songBottom > viewportBottom) {
+    setListScrollTop(songBottom - containerHeight.value)
+  }
+}
+
+function bindResizeObserver(element: HTMLElement | null): void {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+
+  if (typeof ResizeObserver === 'undefined' || !element) {
+    return
+  }
+
+  resizeObserver = new ResizeObserver(() => {
+    syncListMetrics()
+    clampScrollPosition()
+  })
+  resizeObserver.observe(element)
+}
+
 function handleScroll(): void {
   scrollTop.value = listRef.value?.scrollTop || 0
+  syncActiveIndexToViewport(scrollTop.value)
 }
 
 function clampScrollPosition(): void {
+  activeIndex.value = clampIndex(activeIndex.value)
   const nextScrollTop = Math.min(scrollTop.value, maxScrollTop.value)
-  scrollTop.value = nextScrollTop
+  setListScrollTop(nextScrollTop)
+  syncActiveIndexToViewport(nextScrollTop)
+}
 
-  const listElement = listRef.value
-  if (listElement && listElement.scrollTop !== nextScrollTop) {
-    listElement.scrollTop = nextScrollTop
+function moveActiveIndex(nextIndex: number): void {
+  if (props.likeSongs.length === 0) {
+    return
+  }
+
+  activeIndex.value = clampIndex(nextIndex)
+  scrollSongIntoView(activeIndex.value)
+  focusActiveSong()
+}
+
+function handleListFocus(event: FocusEvent): void {
+  if (event.target !== listRef.value || props.likeSongs.length === 0) {
+    return
+  }
+
+  focusActiveSong()
+}
+
+function handleSongFocus(index: number): void {
+  activeIndex.value = clampIndex(index)
+}
+
+function handleListKeydown(event: KeyboardEvent): void {
+  if (props.likeSongs.length === 0) {
+    return
+  }
+
+  switch (event.key) {
+    case 'ArrowDown':
+      event.preventDefault()
+      moveActiveIndex(activeIndex.value + 1)
+      break
+    case 'ArrowUp':
+      event.preventDefault()
+      moveActiveIndex(activeIndex.value - 1)
+      break
+    case 'PageDown':
+      event.preventDefault()
+      moveActiveIndex(activeIndex.value + visibleRowCount.value)
+      break
+    case 'PageUp':
+      event.preventDefault()
+      moveActiveIndex(activeIndex.value - visibleRowCount.value)
+      break
+    case 'Home':
+      event.preventDefault()
+      moveActiveIndex(0)
+      break
+    case 'End':
+      event.preventDefault()
+      moveActiveIndex(props.likeSongs.length - 1)
+      break
+    case 'Enter':
+    case ' ':
+      if (event.target === listRef.value) {
+        event.preventDefault()
+        handlePlaySong(activeIndex.value)
+      }
+      break
+    default:
+      break
   }
 }
 
@@ -75,27 +259,34 @@ watch(
   () => props.likeSongs.length,
   () => {
     void nextTick(() => {
-      syncContainerHeight()
+      syncListMetrics()
       clampScrollPosition()
     })
   }
 )
 
-watch([totalHeight, containerHeight], () => {
+watch([totalHeight, containerHeight, itemHeight], () => {
   void nextTick(() => {
     clampScrollPosition()
   })
 })
 
-onMounted(() => {
-  syncContainerHeight()
-  clampScrollPosition()
-  if (typeof ResizeObserver !== 'undefined' && listRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      syncContainerHeight()
+watch(
+  listRef,
+  element => {
+    bindResizeObserver(element)
+    void nextTick(() => {
+      syncListMetrics()
+      clampScrollPosition()
     })
-    resizeObserver.observe(listRef.value)
-  }
+  },
+  { flush: 'post' }
+)
+
+onMounted(() => {
+  syncListMetrics()
+  clampScrollPosition()
+  bindResizeObserver(listRef.value)
 })
 
 onUnmounted(() => {
@@ -106,7 +297,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="liked-songs-section">
+  <div ref="rootRef" class="liked-songs-section">
     <div v-if="props.loading" class="loading-container">
       <p>加载中...</p>
     </div>
@@ -123,7 +314,14 @@ onUnmounted(() => {
         播放全部
       </button>
 
-      <div ref="listRef" class="songs-list" @scroll="handleScroll">
+      <div
+        ref="listRef"
+        class="songs-list"
+        tabindex="0"
+        @focus="handleListFocus"
+        @keydown="handleListKeydown"
+        @scroll="handleScroll"
+      >
         <div class="songs-viewport" :style="{ height: `${totalHeight}px` }">
           <div class="songs-window" :style="{ transform: `translateY(${offsetY}px)` }">
             <button
@@ -132,7 +330,9 @@ onUnmounted(() => {
               class="song-item"
               type="button"
               :data-index="index"
+              :tabindex="index === activeIndex ? 0 : -1"
               @click="handlePlaySong(index)"
+              @focus="handleSongFocus(index)"
             >
               <span class="song-index">{{ index + 1 }}</span>
               <div class="song-cover">
@@ -159,6 +359,7 @@ onUnmounted(() => {
 
 <style scoped>
 .liked-songs-section {
+  --item-height: 88px;
   padding: 0;
 }
 
@@ -221,6 +422,11 @@ onUnmounted(() => {
   -webkit-overflow-scrolling: touch;
 }
 
+.songs-list:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .songs-viewport {
   position: relative;
   min-height: 100%;
@@ -240,7 +446,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 16px;
   padding: 14px 20px;
-  height: 88px;
+  height: var(--item-height);
   border: none;
   border-bottom: 1px solid var(--bg-dark);
   background: var(--white);
@@ -261,6 +467,13 @@ onUnmounted(() => {
 .song-item:hover .song-index {
   color: var(--accent);
   font-weight: 700;
+}
+
+.song-item:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
 }
 
 .song-index {

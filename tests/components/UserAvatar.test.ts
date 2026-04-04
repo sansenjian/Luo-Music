@@ -51,6 +51,7 @@ function createWrapper() {
   setActivePinia(pinia)
 
   return mount(UserAvatar, {
+    attachTo: document.body,
     global: {
       plugins: [pinia],
       stubs: {
@@ -69,6 +70,7 @@ describe('UserAvatar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     platformServiceMock.isElectron.mockReturnValue(false)
+    document.body.innerHTML = ''
   })
 
   it('opens the dropdown on avatar click and closes it on outside click', async () => {
@@ -112,5 +114,35 @@ describe('UserAvatar', () => {
 
     expect(pushMock).toHaveBeenCalledWith('/user')
     expect(wrapper.find('.dropdown').exists()).toBe(false)
+  })
+
+  it('moves focus into the menu on open and restores it to the trigger on Escape', async () => {
+    const wrapper = createWrapper()
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'Tester',
+        avatarUrl: 'https://example.com/avatar.png',
+        userId: 1
+      },
+      'cookie'
+    )
+    await nextTick()
+
+    const triggerButton = wrapper.get('.user-trigger')
+    ;(triggerButton.element as HTMLButtonElement).focus()
+
+    await triggerButton.trigger('click')
+    await nextTick()
+
+    const firstMenuButton = wrapper.get('.menu-btn')
+    expect(document.activeElement).toBe(firstMenuButton.element)
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await nextTick()
+    await nextTick()
+
+    expect(wrapper.find('.dropdown').exists()).toBe(false)
+    expect(document.activeElement).toBe(triggerButton.element)
   })
 })

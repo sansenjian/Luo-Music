@@ -43,6 +43,14 @@ describe('qq search fallback', () => {
     })
   })
 
+  it('falls back to the query keyword when the path segment cannot be decoded', () => {
+    expect(extractQQSearchParams('/getSearchByKey/%E0%A4%A?key=jay&limit=12&page=3')).toEqual({
+      keyword: 'jay',
+      limit: 12,
+      page: 3
+    })
+  })
+
   it('recognizes only QQ search paths', () => {
     expect(isSearchPath('/getSearchByKey')).toBe(true)
     expect(isSearchPath('/getSearchByKey/jay')).toBe(true)
@@ -161,14 +169,17 @@ describe('qq search fallback', () => {
 
   describe('handleQQSearchRequest', () => {
     let originalFetch: typeof global.fetch
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
       originalFetch = global.fetch
       global.fetch = vi.fn() as unknown as typeof global.fetch
+      consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     })
 
     afterEach(() => {
       global.fetch = originalFetch
+      consoleErrorSpy.mockRestore()
     })
 
     const createMockReqRes = (overrides: Partial<{ method: string; url: string }> = {}) => {
@@ -271,7 +282,8 @@ describe('qq search fallback', () => {
       expect(body).toBeTruthy()
       const parsed = JSON.parse(body)
       expect(parsed.error).toBeTruthy()
-      expect(parsed.error.message).toContain('502')
+      expect(parsed.error.message).toBe('Internal server error while searching')
+      expect(consoleErrorSpy).toHaveBeenCalled()
     })
   })
 })

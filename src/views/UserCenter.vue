@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useLikedSongs } from '../composables/useLikedSongs'
@@ -94,7 +94,7 @@ const resetUserContent = () => {
 }
 
 const loadTabData = async (tab: UserTab, userId: string | number, force = false) => {
-  if (!force && loadedTabs.value[tab]) {
+  if (!force && (loadedTabs.value[tab] || loadingMap.value[tab])) {
     return
   }
 
@@ -122,13 +122,12 @@ const loadTabData = async (tab: UserTab, userId: string | number, force = false)
 
 let skipTabLoadOnActiveTabChange = false
 
-resetUserContent()
-
 watch(
   () => [userStore.isLoggedIn, userStore.userId] as const,
-  ([isLoggedIn, userId]) => {
+  async ([isLoggedIn, userId]) => {
     skipTabLoadOnActiveTabChange = true
     resetUserContent()
+    await nextTick()
     skipTabLoadOnActiveTabChange = false
 
     if (!isLoggedIn || !userId) {

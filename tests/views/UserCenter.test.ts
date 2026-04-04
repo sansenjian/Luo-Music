@@ -266,4 +266,43 @@ describe('UserCenter', () => {
 
     expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
   })
+
+  it('does not reload a tab while its previous request is still in flight', async () => {
+    const likedDeferred = createDeferred<void>()
+    const playlistDeferred = createDeferred<void>()
+
+    loadLikedSongsMock.mockImplementationOnce(() => likedDeferred.promise)
+    loadPlaylistsMock.mockImplementationOnce(() => playlistDeferred.promise)
+
+    const UserCenter = (await import('../../src/views/UserCenter.vue')).default
+    const wrapper = mount(UserCenter, {
+      global: {
+        stubs: {
+          UserProfileHeader: true,
+          LikedSongsView: true,
+          PlaylistsView: true,
+          EventsView: true
+        }
+      }
+    })
+
+    await nextTick()
+
+    expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
+
+    const tabButtons = wrapper.findAll('button.tab-btn')
+    await tabButtons[1].trigger('click')
+    await nextTick()
+
+    expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
+
+    await tabButtons[0].trigger('click')
+    await nextTick()
+
+    expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
+
+    likedDeferred.resolve()
+    playlistDeferred.resolve()
+    await flushPromises()
+  })
 })

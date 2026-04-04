@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 
 import LikedSongsView from '../../../src/components/user/LikedSongsView.vue'
@@ -17,9 +17,49 @@ function createSong(index: number): FormattedSong {
   }
 }
 
+function installResizeObserverMock() {
+  let callback: ((entries: ResizeObserverEntry[]) => void) | null = null
+  const observe = vi.fn()
+  const disconnect = vi.fn()
+
+  global.ResizeObserver = class {
+    observe = observe
+    disconnect = disconnect
+    unobserve = vi.fn()
+
+    constructor(nextCallback: (entries: ResizeObserverEntry[]) => void) {
+      callback = nextCallback
+    }
+  } as unknown as typeof ResizeObserver
+
+  return {
+    observe,
+    disconnect,
+    trigger(target: Element) {
+      callback?.([
+        {
+          contentRect: {
+            width: 800,
+            height: (target as HTMLElement).clientHeight || 400
+          } as DOMRectReadOnly,
+          target
+        } as ResizeObserverEntry
+      ])
+    }
+  }
+}
+
 describe('LikedSongsView', () => {
+  let originalResizeObserver: typeof global.ResizeObserver
+
   beforeEach(() => {
     vi.clearAllMocks()
+    originalResizeObserver = global.ResizeObserver
+  })
+
+  afterEach(() => {
+    global.ResizeObserver = originalResizeObserver
+    document.body.innerHTML = ''
   })
 
   it('renders empty state when there are no liked songs', () => {
@@ -49,6 +89,7 @@ describe('LikedSongsView', () => {
   })
 
   it('virtualizes large liked song lists instead of rendering every row at once', async () => {
+    const resizeObserverMock = installResizeObserverMock()
     const wrapper = mount(LikedSongsView, {
       attachTo: document.body,
       props: {
@@ -62,25 +103,7 @@ describe('LikedSongsView', () => {
       value: 400
     })
 
-    // Trigger ResizeObserver callback via a ResizeObserver mock
-    global.ResizeObserver = class {
-      observe: (target: Element) => void
-      disconnect: () => void
-      unobserve: (target: Element) => void
-      constructor(callback: (entries: ResizeObserverEntry[]) => void) {
-        this.observe = () => {
-          callback([
-            {
-              contentRect: { width: 800, height: 400 } as DOMRectReadOnly,
-              target: listElement
-            } as ResizeObserverEntry
-          ])
-        }
-        this.disconnect = vi.fn()
-        this.unobserve = vi.fn()
-      }
-    } as unknown as typeof ResizeObserver
-
+    resizeObserverMock.trigger(listElement)
     await nextTick()
     await nextTick()
 
@@ -88,6 +111,70 @@ describe('LikedSongsView', () => {
 
     expect(items.length).toBeGreaterThan(0)
     expect(items.length).toBeLessThan(200)
+
+    wrapper.unmount()
+  })
+
+  it('supports keyboard focus movement across visible songs', async () => {
+    const resizeObserverMock = installResizeObserverMock()
+    const wrapper = mount(LikedSongsView, {
+      attachTo: document.body,
+      props: {
+        likeSongs: Array.from({ length: 40 }, (_, index) => createSong(index))
+      }
+    })
+
+    const listElement = wrapper.get('.songs-list').element as HTMLElement
+    Object.defineProperty(listElement, 'clientHeight', {
+      configurable: true,
+      value: 352
+    })
+
+    resizeObserverMock.trigger(listElement)
+    await nextTick()
+    await nextTick()
+
+    expect(wrapper.get('.song-item[data-index="0"]').attributes('tabindex')).toBe('0')
+
+    await wrapper.get('.songs-list').trigger('keydown', { key: 'ArrowDown' })
+    await nextTick()
+    await nextTick()
+
+    const activeItem = wrapper.get('.song-item[data-index="1"]')
+    expect(activeItem.attributes('tabindex')).toBe('0')
+    expect(document.activeElement).toBe(activeItem.element)
+
+    wrapper.unmount()
+  })
+
+  it('rebinds ResizeObserver when the list element appears after mount', async () => {
+    const resizeObserverMock = installResizeObserverMock()
+    const wrapper = mount(LikedSongsView, {
+      attachTo: document.body,
+      props: {
+        likeSongs: Array.from({ length: 20 }, (_, index) => createSong(index)),
+        loading: true
+      }
+    })
+
+    expect(wrapper.find('.songs-list').exists()).toBe(false)
+    expect(resizeObserverMock.observe).not.toHaveBeenCalled()
+
+    await wrapper.setProps({ loading: false })
+    await nextTick()
+
+    const listElement = wrapper.get('.songs-list').element as HTMLElement
+    Object.defineProperty(listElement, 'clientHeight', {
+      configurable: true,
+      value: 400
+    })
+
+    resizeObserverMock.trigger(listElement)
+    await nextTick()
+    await nextTick()
+
+    expect(resizeObserverMock.observe).toHaveBeenCalledWith(listElement)
+    expect(wrapper.findAll('.song-item').length).toBeGreaterThan(0)
 
     wrapper.unmount()
   })

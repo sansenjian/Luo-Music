@@ -1,6 +1,32 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import config from '../../forge.config'
+async function loadForgeConfig(fastMakeMode?: string) {
+  const previousFastMakeMode = process.env.LUO_FAST_MAKE
+
+  if (fastMakeMode === undefined) {
+    delete process.env.LUO_FAST_MAKE
+  } else {
+    process.env.LUO_FAST_MAKE = fastMakeMode
+  }
+
+  vi.resetModules()
+
+  try {
+    return (await import('../../forge.config')).default
+  } finally {
+    if (previousFastMakeMode === undefined) {
+      delete process.env.LUO_FAST_MAKE
+    } else {
+      process.env.LUO_FAST_MAKE = previousFastMakeMode
+    }
+  }
+}
+
+let config: Awaited<ReturnType<typeof loadForgeConfig>>
+
+beforeEach(async () => {
+  config = await loadForgeConfig()
+})
 
 function matchesIgnore(relativePath: string): boolean {
   const ignorePatterns = config.packagerConfig.ignore
@@ -38,5 +64,17 @@ describe('forge.config packagerConfig.ignore', () => {
 describe('forge.config packaging hooks', () => {
   it('does not rely on packageAfterPrune repair copies', () => {
     expect(config.hooks?.packageAfterPrune).toBeUndefined()
+  })
+
+  it('keeps fast make zip builds available on darwin, linux, and win32', async () => {
+    const fastConfig = await loadForgeConfig('1')
+    const zipMaker = fastConfig.makers.find(maker => maker.name === 'zip')
+
+    expect(zipMaker).toBeDefined()
+    expect((zipMaker as { platformsToMakeOn?: string[] }).platformsToMakeOn).toEqual([
+      'darwin',
+      'linux',
+      'win32'
+    ])
   })
 })
