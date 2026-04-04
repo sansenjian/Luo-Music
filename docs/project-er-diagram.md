@@ -240,7 +240,7 @@ erDiagram
 2. `PLAYLIST_TRACK` 对应 `PlaylistDetail.tracks`，`SONG_ARTIST` 对应 `Song.artists`，两者都是逻辑关联实体，不是现有独立存储表。
 3. `USER_ACCOUNT` 是聚合实体，数据来自 `userStore`、`useUserData`、`useUserPlaylists`、`useLikedSongs` 等多个模块。
 4. `USER_SESSION` 和 `PLAYBACK_PREFERENCES` 才是当前真正会落到本地存储的核心状态。
-5. `PLAYBACK_QUEUE` 是播放器运行时模型，图里保留它是为了说明当前歌曲、队列顺序和歌曲实体之间的关系，不表示项目已有专门数据表。
+5. 图中保留 `PLAYBACK_QUEUE` 用于说明当前歌曲、队列顺序和歌曲实体之间的关系，不表示项目中有专用的播放队列数据表。
 
 ## 建议使用方式
 

@@ -69,7 +69,7 @@ function removeDir(dirPath) {
   fs.rmSync(dirPath, { recursive: true, force: true })
 }
 
-function copyDir(src, dest, sourceRoot = src, destRoot = dest) {
+function copyDir(src, dest, sourceRoot = src, destRoot = dest, visitedRealPaths = new Set()) {
   const resolvedSrc = ensurePathWithinBase(sourceRoot, src, 'source path')
   const resolvedDest = ensurePathWithinBase(destRoot, dest, 'destination path')
 
@@ -89,15 +89,19 @@ function copyDir(src, dest, sourceRoot = src, destRoot = dest) {
     const destPath = resolveChildPath(resolvedDest, entry.name, 'destination entry')
 
     if (entry.isDirectory()) {
-      copyDir(srcPath, destPath, sourceRoot, destRoot)
+      copyDir(srcPath, destPath, sourceRoot, destRoot, visitedRealPaths)
       continue
     }
 
     if (entry.isSymbolicLink()) {
       const realPath = ensurePathWithinBase(sourceRoot, fs.realpathSync(srcPath), 'symlink target')
+      if (visitedRealPaths.has(realPath)) {
+        continue
+      }
+      visitedRealPaths.add(realPath)
       const realStat = fs.statSync(realPath)
       if (realStat.isDirectory()) {
-        copyDir(realPath, destPath, sourceRoot, destRoot)
+        copyDir(realPath, destPath, sourceRoot, destRoot, visitedRealPaths)
       } else {
         ensureDir(path.dirname(destPath))
         fs.copyFileSync(realPath, destPath)
@@ -147,8 +151,19 @@ function findResourcesDir(startDir) {
   return null
 }
 
+function isDescendantOf(candidate, ancestor) {
+  const relative = path.relative(ancestor, candidate)
+  return relative && !relative.startsWith('..') && !path.isAbsolute(relative)
+}
+
 function copyPackages(targetNodeModulesDir) {
   const safeTargetNodeModulesDir = ensurePathWithinBase(PROJECT_ROOT, targetNodeModulesDir, 'target node_modules directory')
+
+  const projectNodeModules = path.join(PROJECT_ROOT, 'node_modules')
+  if (safeTargetNodeModulesDir === projectNodeModules || isDescendantOf(safeTargetNodeModulesDir, projectNodeModules)) {
+    console.error(`[copy-deps] ERROR: target ${safeTargetNodeModulesDir} is inside the project's own node_modules, aborting`)
+    process.exit(1)
+  }
 
   ensureDir(safeTargetNodeModulesDir)
 
@@ -158,6 +173,11 @@ function copyPackages(targetNodeModulesDir) {
   for (const pkgName of DEFAULT_PATTERNS) {
     const srcPath = resolveRootNodeModule(pkgName)
     const destPath = resolveChildPath(safeTargetNodeModulesDir, pkgName, 'package destination')
+
+    if (isDescendantOf(destPath, srcPath) || isDescendantOf(srcPath, destPath)) {
+      console.error(`[copy-deps] ERROR: src and dest paths overlap for ${pkgName}, aborting`)
+      process.exit(1)
+    }
 
     removeDir(destPath)
 

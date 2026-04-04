@@ -31,6 +31,7 @@ describe('LikedSongsView', () => {
 
     expect(wrapper.find('.empty-state').exists()).toBe(true)
     expect(wrapper.text()).toContain('暂无喜欢的音乐')
+    wrapper.unmount()
   })
 
   it('emits play-all and play-song actions', async () => {
@@ -61,7 +62,25 @@ describe('LikedSongsView', () => {
       value: 400
     })
 
-    window.dispatchEvent(new Event('resize'))
+    // Trigger ResizeObserver callback via a ResizeObserver mock
+    global.ResizeObserver = class {
+      observe: (target: Element) => void
+      disconnect: () => void
+      unobserve: (target: Element) => void
+      constructor(callback: (entries: ResizeObserverEntry[]) => void) {
+        this.observe = () => {
+          callback([
+            {
+              contentRect: { width: 800, height: 400 } as DOMRectReadOnly,
+              target: listElement
+            } as ResizeObserverEntry
+          ])
+        }
+        this.disconnect = vi.fn()
+        this.unobserve = vi.fn()
+      }
+    } as unknown as typeof ResizeObserver
+
     await nextTick()
     await nextTick()
 

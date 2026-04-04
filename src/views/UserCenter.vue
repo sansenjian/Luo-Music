@@ -120,21 +120,16 @@ const loadTabData = async (tab: UserTab, userId: string | number, force = false)
   }
 }
 
-watch(activeTab, tab => {
-  mountedTabs.value[tab] = true
+let skipTabLoadOnActiveTabChange = false
 
-  const userId = currentUserId.value
-  if (!userStore.isLoggedIn || !userId) {
-    return
-  }
-
-  void loadTabData(tab, userId)
-})
+resetUserContent()
 
 watch(
   () => [userStore.isLoggedIn, userStore.userId] as const,
   ([isLoggedIn, userId]) => {
+    skipTabLoadOnActiveTabChange = true
     resetUserContent()
+    skipTabLoadOnActiveTabChange = false
 
     if (!isLoggedIn || !userId) {
       void router.push('/')
@@ -145,6 +140,21 @@ watch(
   },
   { immediate: true }
 )
+
+watch(activeTab, tab => {
+  if (skipTabLoadOnActiveTabChange) {
+    return
+  }
+
+  mountedTabs.value[tab] = true
+
+  const userId = currentUserId.value
+  if (!userStore.isLoggedIn || !userId) {
+    return
+  }
+
+  void loadTabData(tab, userId)
+})
 
 const handlePlaylistClick = async (playlistId: string | number) => {
   loadingMap.value.playlist = true

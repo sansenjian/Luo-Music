@@ -129,6 +129,9 @@ onUnmounted(() => {
       type="button"
       aria-haspopup="menu"
       :aria-expanded="showDropdown"
+      :aria-label="
+        userStore.isLoggedIn ? userStore.nickname || '打开账户菜单' : '打开登录/注册菜单'
+      "
       @click.stop="handleTriggerClick"
     >
       <img

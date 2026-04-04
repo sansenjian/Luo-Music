@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const http = require('http')
-const { handleQQSearchRequest } = require(require('path').join(__dirname, 'qq-search-fallback.cjs'))
+const { handleQQSearchRequest } = require('./qq-search-fallback.cjs')
 
 const port = process.env.PORT || 3200
 const host = process.env.HOST || '127.0.0.1'
@@ -44,9 +44,17 @@ async function start() {
     const appCallback = qqApiApp.callback()
     http
       .createServer(async (req, res) => {
-        const handled = await handleQQSearchRequest(req, res)
-        if (!handled) {
-          appCallback(req, res)
+        try {
+          const handled = await handleQQSearchRequest(req, res)
+          if (!handled) {
+            appCallback(req, res)
+          }
+        } catch (err) {
+          console.error('[QQ Music API] Unhandled request error:', err)
+          if (!res.headersSent) {
+            res.statusCode = 500
+            res.end('Internal Server Error')
+          }
         }
       })
       .listen(Number(port), host, () => {

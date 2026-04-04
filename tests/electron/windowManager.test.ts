@@ -196,7 +196,7 @@ describe('electron/WindowManager', () => {
     expect(playModeItems).toEqual([{ checked: false }, { checked: true }, { checked: false }])
   })
 
-  it('quits the app after the main window is closed on non-macOS platforms', async () => {
+  it('does not quit the app from the closed handler (exit is handled centrally)', async () => {
     const { WindowManager } = await import('../../electron/WindowManager')
     const manager = new WindowManager()
     manager.createWindow()
@@ -206,6 +206,6 @@ describe('electron/WindowManager', () => {
 
     window?.events.closed?.()
 
-    expect(appQuitMock).toHaveBeenCalledTimes(1)
+    expect(appQuitMock).not.toHaveBeenCalled()
   })
 })

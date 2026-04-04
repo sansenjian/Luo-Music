@@ -71,25 +71,40 @@ function normalizeQQMusicuSearchResponse(payload) {
   }
 }
 
-async function requestQQMusicuSearch(keyword, limit, page) {
-  const response = await fetch(SEARCH_ENDPOINT, {
-    method: 'POST',
-    headers: SEARCH_HEADERS,
-    body: JSON.stringify(buildQQMusicuSearchBody(keyword, limit, page))
-  })
+async function requestQQMusicuSearch(keyword, limit, page, timeoutMs = 15000) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => {
+    controller.abort(new Error(`QQ fallback search timed out after ${timeoutMs}ms: ${SEARCH_ENDPOINT} keyword="${keyword}"`))
+  }, timeoutMs)
 
-  if (!response.ok) {
-    const raw = await response.text()
-    const error = new Error(
-      `QQ fallback search failed with status ${response.status}${raw ? `: ${raw}` : ''}`
-    )
-    error.status = response.status
-    error.raw = raw
-    throw error
+  try {
+    const response = await fetch(SEARCH_ENDPOINT, {
+      method: 'POST',
+      headers: SEARCH_HEADERS,
+      body: JSON.stringify(buildQQMusicuSearchBody(keyword, limit, page)),
+      signal: controller.signal
+    })
+
+    if (!response.ok) {
+      const raw = await response.text()
+      const error = new Error(
+        `QQ fallback search failed with status ${response.status}${raw ? `: ${raw}` : ''}`
+      )
+      error.status = response.status
+      error.raw = raw
+      throw error
+    }
+
+    const payload = await response.json()
+    return normalizeQQMusicuSearchResponse(payload)
+  } catch (err) {
+    if (err.name === 'AbortError' || err.message.startsWith('QQ fallback search timed out')) {
+      throw new Error(`QQ fallback search timed out after ${timeoutMs}ms: ${SEARCH_ENDPOINT} keyword="${keyword}"`)
+    }
+    throw err
+  } finally {
+    clearTimeout(timeout)
   }
-
-  const payload = await response.json()
-  return normalizeQQMusicuSearchResponse(payload)
 }
 
 function writeJson(response, status, body) {

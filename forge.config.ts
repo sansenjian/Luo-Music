@@ -20,10 +20,8 @@ const makers = FAST_MAKE_MODE
   ? [new MakerZIP({}, ['win32'])]
   : [
       new MakerSquirrel({
-        name: 'LUO_Music',
-        oneClick: false,
-        allowToChangeInstallationDirectory: true
-      } as never),
+        name: 'LUO_Music'
+      }),
       new MakerZIP({}, ['darwin', 'linux', 'win32'])
     ]
 

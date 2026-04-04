@@ -216,5 +216,6 @@ describe('electron/main/index', () => {
     expect(closeDesktopLyricWindowMock).toHaveBeenCalledTimes(1)
     expect(destroyTrayMock).toHaveBeenCalledTimes(1)
     expect(stopAllServicesMock).toHaveBeenCalledTimes(1)
+    expect(disposePerformanceMonitorMock).toHaveBeenCalledTimes(1)
   })
 })

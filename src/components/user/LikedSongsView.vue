@@ -20,6 +20,7 @@ const emit = defineEmits<{
 const listRef = ref<HTMLElement | null>(null)
 const scrollTop = ref(0)
 const containerHeight = ref(640)
+let resizeObserver: ResizeObserver | null = null
 
 const ITEM_HEIGHT = 88
 const OVERSCAN = 6
@@ -89,11 +90,18 @@ watch([totalHeight, containerHeight], () => {
 onMounted(() => {
   syncContainerHeight()
   clampScrollPosition()
-  window.addEventListener('resize', syncContainerHeight)
+  if (typeof ResizeObserver !== 'undefined' && listRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      syncContainerHeight()
+    })
+    resizeObserver.observe(listRef.value)
+  }
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', syncContainerHeight)
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+  }
 })
 </script>
 
