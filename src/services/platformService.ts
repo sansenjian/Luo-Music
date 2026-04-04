@@ -7,6 +7,7 @@ export type PlatformService = {
   minimizeWindow(): void
   maximizeWindow(): void
   closeWindow(): void
+  toggleDesktopLyric(show?: boolean): Promise<void>
   send(channel: string, data: unknown): void
   supportsSendChannel(channel: string): boolean
   sendPlayingState(playing: boolean): void
@@ -15,6 +16,24 @@ export type PlatformService = {
   getCacheSize(): Promise<unknown>
   clearCache(options?: unknown): Promise<unknown>
   getServiceStatus?(serviceId: string): Promise<{ status: string; port?: number } | null>
+}
+
+type DesktopLyricWindowBridge = {
+  toggleDesktopLyric?: (show?: boolean) => Promise<void> | void
+}
+
+function getDesktopLyricWindowBridge(): DesktopLyricWindowBridge | undefined {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  return (
+    window as Window & {
+      services?: {
+        window?: DesktopLyricWindowBridge
+      }
+    }
+  ).services?.window
 }
 
 export function createPlatformService(): PlatformService {
@@ -40,6 +59,22 @@ export function createPlatformService(): PlatformService {
 
     closeWindow(): void {
       platform.closeWindow()
+    },
+
+    async toggleDesktopLyric(show?: boolean): Promise<void> {
+      if (!platform.isElectron()) {
+        return
+      }
+
+      const windowBridge = getDesktopLyricWindowBridge()
+      if (typeof windowBridge?.toggleDesktopLyric === 'function') {
+        await windowBridge.toggleDesktopLyric(show)
+        return
+      }
+
+      if (platform.supportsSendChannel('toggle-desktop-lyric')) {
+        platform.send('toggle-desktop-lyric', show)
+      }
     },
 
     send(channel: string, data: unknown): void {

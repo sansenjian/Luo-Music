@@ -42,24 +42,26 @@ interface IServiceBridge {
 export class ElectronPlatformService extends PlatformServiceBase {
   readonly name = 'electron'
 
-  private readonly api: IElectronAPI | undefined
-  private readonly servicesBridge: IServiceBridge | undefined
   private readonly disposables = new DisposableStore()
 
   constructor() {
     super()
+  }
 
-    const globalWindow = window as unknown as {
-      electronAPI?: IElectronAPI
-      services?: IServiceBridge
-    }
+  private get api(): IElectronAPI | undefined {
+    return (
+      window as unknown as {
+        electronAPI?: IElectronAPI
+      }
+    ).electronAPI
+  }
 
-    this.api = globalWindow.electronAPI
-    this.servicesBridge = globalWindow.services
-
-    if (!this.api && !this.servicesBridge) {
-      console.error('[ElectronPlatformService] Electron API not found! Is preload script loaded?')
-    }
+  private get servicesBridge(): IServiceBridge | undefined {
+    return (
+      window as unknown as {
+        services?: IServiceBridge
+      }
+    ).services
   }
 
   override isElectron(): boolean {

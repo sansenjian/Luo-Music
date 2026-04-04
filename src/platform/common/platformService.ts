@@ -44,9 +44,11 @@ export function detectMobile(): boolean {
 export function detectElectron(): boolean {
   if (typeof window === 'undefined') return false
   const globalWindow = window as Window & { electronAPI?: unknown; services?: unknown }
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
   return (
     typeof globalWindow.electronAPI !== 'undefined' ||
-    typeof globalWindow.services !== 'undefined'
+    typeof globalWindow.services !== 'undefined' ||
+    /\bElectron\/\d+/i.test(userAgent)
   )
 }
 

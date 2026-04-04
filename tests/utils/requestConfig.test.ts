@@ -29,7 +29,7 @@ describe('requestConfig', () => {
     it('should have retry configuration with correct defaults', () => {
       const config = getRetryConfig()
       expect(config.enabled).toBe(true)
-      expect(config.max_retries).toBe(3)
+      expect(config.max_retries).toBe(1)
       expect(config.initial_delay).toBe(1000)
       expect(config.max_delay).toBe(10000)
       expect(config.backoff).toBe(2)
@@ -153,7 +153,7 @@ describe('requestConfig', () => {
       resetConfig()
 
       expect(getCacheConfig().enabled).toBe(true)
-      expect(getRetryConfig().max_retries).toBe(3)
+      expect(getRetryConfig().max_retries).toBe(1)
       expect(getCancelConfig().auto_cancel).toBe(true)
     })
 
@@ -180,7 +180,7 @@ describe('requestConfig', () => {
       exported.retry.max_retries = 100
 
       expect(getCacheConfig().enabled).toBe(true)
-      expect(getRetryConfig().max_retries).toBe(3)
+      expect(getRetryConfig().max_retries).toBe(1)
     })
   })
 

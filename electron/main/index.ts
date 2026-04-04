@@ -37,7 +37,7 @@ import {
   setupErrorHandlers,
   registerAppLifecycle
 } from './app'
-import { createTray, setWindowManager as setTrayWindowManager } from './tray'
+import { createTray, destroyTray, setWindowManager as setTrayWindowManager } from './tray'
 import {
   registerShortcuts,
   unregisterAllShortcuts,
@@ -83,7 +83,7 @@ async function initializeApp(): Promise<void> {
 
 function initializeIpcService(): void {
   ipcService.configure({
-    defaultTimeout: 10000,
+    defaultTimeout: 15000,
     slowRequestThreshold: 1000,
     enablePerformanceMonitoring: true
   })
@@ -132,6 +132,8 @@ function main(): void {
 
     onWillQuit: async () => {
       unregisterAllShortcuts()
+      desktopLyricManager.closeWindow()
+      destroyTray()
       downloadManager.dispose()
       disposePerformanceMonitor()
       await serviceManager.stopAllServices()

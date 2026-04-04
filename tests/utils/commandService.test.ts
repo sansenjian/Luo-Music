@@ -16,6 +16,7 @@ const platformServiceMock = vi.hoisted(() => ({
   minimizeWindow: vi.fn(),
   maximizeWindow: vi.fn(),
   closeWindow: vi.fn(),
+  toggleDesktopLyric: vi.fn().mockResolvedValue(undefined),
   send: vi.fn(),
   supportsSendChannel: vi.fn(() => true),
   sendPlayingState: vi.fn(),
@@ -32,6 +33,7 @@ describe('commandService', () => {
     registerService(IContextKeyService, createContextKeyService)
     registerService(IPlatformService, () => platformServiceMock as PlatformService)
     platformServiceMock.isElectron.mockReturnValue(true)
+    platformServiceMock.toggleDesktopLyric.mockClear()
     platformServiceMock.send.mockClear()
   })
 
@@ -169,14 +171,17 @@ describe('commandService', () => {
     expect(playerStore.progress).toBe(0)
 
     platformServiceMock.isElectron.mockReturnValue(false)
-    // 清除 seek 操作期间可能发送的歌词更新
+    platformServiceMock.toggleDesktopLyric.mockClear()
     platformServiceMock.send.mockClear()
     await commandService.execute(COMMANDS.DESKTOP_LYRIC_TOGGLE)
+    expect(platformServiceMock.toggleDesktopLyric).toHaveBeenCalledTimes(1)
     expect(platformServiceMock.send).not.toHaveBeenCalled()
 
     platformServiceMock.isElectron.mockReturnValue(true)
+    platformServiceMock.send.mockClear()
     await commandService.execute(COMMANDS.DESKTOP_LYRIC_TOGGLE)
-    expect(platformServiceMock.send).toHaveBeenCalledWith('toggle-desktop-lyric', undefined)
+    expect(platformServiceMock.toggleDesktopLyric).toHaveBeenCalledTimes(2)
+    expect(platformServiceMock.send).not.toHaveBeenCalled()
   })
 
   it('throws when executing a missing command', async () => {

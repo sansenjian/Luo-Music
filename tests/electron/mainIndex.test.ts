@@ -17,6 +17,7 @@ const initializeServicesMock = vi.hoisted(() => vi.fn())
 const getAllServiceStatusMock = vi.hoisted(() => vi.fn(() => ({ qq: { status: 'running' } })))
 const stopAllServicesMock = vi.hoisted(() => vi.fn(async () => {}))
 const prewarmWindowMock = vi.hoisted(() => vi.fn())
+const closeDesktopLyricWindowMock = vi.hoisted(() => vi.fn())
 const registerAppLifecycleMock = vi.hoisted(() => vi.fn())
 const loggerInfoMock = vi.hoisted(() => vi.fn())
 const loggerErrorMock = vi.hoisted(() => vi.fn())
@@ -25,11 +26,13 @@ const requestSingleInstanceLockMock = vi.hoisted(() => vi.fn())
 const setupDevUserDataMock = vi.hoisted(() => vi.fn())
 const setupErrorHandlersMock = vi.hoisted(() => vi.fn())
 const setTrayWindowManagerMock = vi.hoisted(() => vi.fn())
+const destroyTrayMock = vi.hoisted(() => vi.fn())
 const setShortcutsWindowManagerMock = vi.hoisted(() => vi.fn())
 const unregisterAllShortcutsMock = vi.hoisted(() => vi.fn())
 const ipcConfigureMock = vi.hoisted(() => vi.fn())
 const ipcUseMock = vi.hoisted(() => vi.fn())
 const ipcInitializeMock = vi.hoisted(() => vi.fn())
+const disposePerformanceMonitorMock = vi.hoisted(() => vi.fn())
 const performanceMiddlewareMock = vi.hoisted(() => Symbol('performanceMiddleware'))
 const registerWindowHandlersMock = vi.hoisted(() => vi.fn())
 const registerCacheHandlersMock = vi.hoisted(() => vi.fn())
@@ -52,7 +55,8 @@ vi.mock('electron', () => ({
 
 vi.mock('../../electron/DesktopLyricManager', () => ({
   desktopLyricManager: {
-    prewarmWindow: prewarmWindowMock
+    prewarmWindow: prewarmWindowMock,
+    closeWindow: closeDesktopLyricWindowMock
   }
 }))
 
@@ -99,6 +103,7 @@ vi.mock('../../electron/ipc/index', () => ({
     use: ipcUseMock,
     initialize: ipcInitializeMock
   },
+  disposePerformanceMonitor: disposePerformanceMonitorMock,
   errorMiddleware: Symbol('errorMiddleware'),
   loggerMiddleware: Symbol('loggerMiddleware'),
   performanceMiddleware: performanceMiddlewareMock,
@@ -123,6 +128,7 @@ vi.mock('../../electron/main/app', () => ({
 
 vi.mock('../../electron/main/tray', () => ({
   createTray: createTrayMock,
+  destroyTray: destroyTrayMock,
   setWindowManager: setTrayWindowManagerMock
 }))
 
@@ -199,5 +205,17 @@ describe('electron/main/index', () => {
     expect(initializeServicesMock.mock.invocationCallOrder[0]).toBeLessThan(
       createWindowMock.mock.invocationCallOrder[0]
     )
+  })
+
+  it('cleans up desktop lyric window and tray when the app quits', async () => {
+    await import('../../electron/main/index.ts')
+
+    await lifecycleCallbacks?.onWillQuit?.()
+
+    expect(unregisterAllShortcutsMock).toHaveBeenCalledTimes(1)
+    expect(closeDesktopLyricWindowMock).toHaveBeenCalledTimes(1)
+    expect(destroyTrayMock).toHaveBeenCalledTimes(1)
+    expect(stopAllServicesMock).toHaveBeenCalledTimes(1)
+    expect(disposePerformanceMonitorMock).toHaveBeenCalledTimes(1)
   })
 })

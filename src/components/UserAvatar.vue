@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { logout } from '../api/user'
@@ -25,11 +25,13 @@ const logger = services.logger().createLogger('userAvatar')
 const platformService = services.platform()
 const userStore = useUserStore()
 
+const wrapperRef = ref<HTMLElement | null>(null)
+const triggerButtonRef = ref<HTMLButtonElement | null>(null)
+const dropdownRef = ref<HTMLElement | null>(null)
 const showLoginModal = ref(false)
 const showQQLoginModal = ref(false)
 const showDropdown = ref(false)
-
-let hideTimeout: ReturnType<typeof setTimeout> | null = null
+let shouldRestoreTriggerFocus = true
 
 const isQQMusicLoggedIn = computed(() => userStore.isQQMusicLoggedIn)
 
@@ -62,69 +64,117 @@ async function handleLogout(): Promise<void> {
     logger.warn('Netease logout request failed, clearing local session', error)
   } finally {
     userStore.logout()
-    showDropdown.value = false
+    closeDropdown({ restoreFocus: false })
   }
 }
 
 function openLogin(): void {
   showLoginModal.value = true
-  showDropdown.value = false
+  closeDropdown({ restoreFocus: false })
 }
 
 function openQQLogin(): void {
   showQQLoginModal.value = true
-  showDropdown.value = false
+  closeDropdown({ restoreFocus: false })
 }
 
 function openUserCenter(): void {
   void router.push('/user')
+  closeDropdown({ restoreFocus: false })
+}
+
+function closeDropdown(options: { restoreFocus?: boolean } = {}): void {
+  shouldRestoreTriggerFocus = options.restoreFocus ?? true
   showDropdown.value = false
 }
 
-function showMenu(): void {
-  if (hideTimeout) {
-    clearTimeout(hideTimeout)
-    hideTimeout = null
-  }
+function openDropdown(): void {
+  shouldRestoreTriggerFocus = true
   showDropdown.value = true
 }
 
-function hideMenu(): void {
-  hideTimeout = setTimeout(() => {
-    showDropdown.value = false
-  }, 150)
-}
-
-function handleAvatarClick(): void {
-  if (userStore.isLoggedIn) {
-    openUserCenter()
+function toggleDropdown(): void {
+  if (showDropdown.value) {
+    closeDropdown()
     return
   }
 
-  openLogin()
+  openDropdown()
+}
+
+function handleTriggerClick(): void {
+  toggleDropdown()
+}
+
+function handleDocumentPointerDown(event: PointerEvent): void {
+  if (!showDropdown.value) {
+    return
+  }
+
+  const target = event.target as Node | null
+  if (target && wrapperRef.value?.contains(target)) {
+    return
+  }
+
+  closeDropdown({ restoreFocus: false })
+}
+
+function handleDocumentKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || !showDropdown.value) {
+    return
+  }
+
+  event.preventDefault()
+  closeDropdown()
 }
 
 function handleQQLoginSuccess(): void {
-  showDropdown.value = true
+  openDropdown()
 }
 
 onMounted(() => {
   if (platformService.isElectron()) {
     void checkQQMusicLoginStatus()
   }
+
+  document.addEventListener('pointerdown', handleDocumentPointerDown)
+  document.addEventListener('keydown', handleDocumentKeydown)
 })
 
 onUnmounted(() => {
-  if (hideTimeout) {
-    clearTimeout(hideTimeout)
-    hideTimeout = null
+  document.removeEventListener('pointerdown', handleDocumentPointerDown)
+  document.removeEventListener('keydown', handleDocumentKeydown)
+})
+
+watch(showDropdown, async (isOpen, wasOpen) => {
+  if (isOpen) {
+    await nextTick()
+    dropdownRef.value?.querySelector<HTMLButtonElement>('.menu-btn')?.focus()
+    return
   }
+
+  if (wasOpen && shouldRestoreTriggerFocus) {
+    await nextTick()
+    triggerButtonRef.value?.focus()
+  }
+
+  shouldRestoreTriggerFocus = true
 })
 </script>
 
 <template>
-  <div class="user-avatar-wrapper" @mouseleave="hideMenu">
-    <div class="user-trigger" @mouseenter="showMenu" @click="handleAvatarClick">
+  <div ref="wrapperRef" class="user-avatar-wrapper">
+    <button
+      ref="triggerButtonRef"
+      class="user-trigger"
+      type="button"
+      aria-haspopup="menu"
+      :aria-expanded="showDropdown"
+      :aria-label="
+        userStore.isLoggedIn ? userStore.nickname || '打开账户菜单' : '打开登录/注册菜单'
+      "
+      @click.stop="handleTriggerClick"
+    >
       <img
         v-if="userStore.isLoggedIn && userStore.avatarUrl"
         :src="userStore.avatarUrl"
@@ -144,10 +194,10 @@ onUnmounted(() => {
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
       </div>
-    </div>
+    </button>
 
     <Transition name="dropdown">
-      <div v-if="showDropdown" class="dropdown" @mouseenter="showMenu" @mouseleave="hideMenu">
+      <div v-if="showDropdown" ref="dropdownRef" class="dropdown">
         <div class="dropdown-header">
           <template v-if="userStore.isLoggedIn">
             <img
@@ -246,6 +296,9 @@ onUnmounted(() => {
 }
 
 .user-trigger {
+  border: none;
+  background: transparent;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;

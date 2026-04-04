@@ -12,11 +12,15 @@ import { getLogger } from './utils/logger'
 
 const sentryDsn = import.meta.env.SENTRY_DSN
 const sentryRelease = import.meta.env.SENTRY_RELEASE
+const isElectronRuntime =
+  typeof window !== 'undefined' &&
+  (typeof window.electronAPI !== 'undefined' || typeof window.services !== 'undefined')
 const isLocalhost =
   typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-const sentryEnabled = Boolean(sentryDsn) && import.meta.env.PROD && !isLocalhost
-type SentryRendererModule = typeof import('@sentry/electron/renderer')
+const sentryEnabled =
+  Boolean(sentryDsn) && import.meta.env.PROD && isElectronRuntime && !isLocalhost
+type SentryRendererModule = typeof import('@sentry/browser')
 
 let sentryRenderer: SentryRendererModule | null = null
 
@@ -33,7 +37,7 @@ async function initializeSentry(): Promise<void> {
     return
   }
 
-  const sentry = await import('@sentry/electron/renderer')
+  const sentry = await import('@sentry/browser')
   sentryRenderer = sentry
 
   sentry.init({
@@ -105,21 +109,17 @@ setupServices()
 
 app.config.errorHandler = (err: unknown, _vm: unknown, info: string) => {
   getLogger().error('Main', 'Vue Error', { error: err, info })
-  if (sentryEnabled) {
-    captureSentryException(err)
-  }
+  captureSentryException(err)
 }
 
 window.addEventListener('unhandledrejection', event => {
   getLogger().error('Main', 'Unhandled Promise Rejection', event.reason)
-  if (sentryEnabled) {
-    captureSentryException(event.reason)
-  }
+  captureSentryException(event.reason)
 })
 
 window.addEventListener('error', event => {
   console.error('Global Error:', event.error)
-  if (sentryEnabled && event.error) {
+  if (event.error) {
     captureSentryException(event.error)
   }
 })

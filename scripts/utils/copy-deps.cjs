@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const PROJECT_ROOT = process.cwd()
 
 const DEFAULT_PATTERNS = [
   'axios',
@@ -26,6 +27,36 @@ const DEFAULT_PATTERNS = [
   'dunder-proto'
 ]
 
+function ensurePathWithinBase(basePath, targetPath, label) {
+  const resolvedBase = path.resolve(basePath)
+  const resolvedTarget = path.resolve(targetPath)
+  const relativePath = path.relative(resolvedBase, resolvedTarget)
+
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    throw new Error(`${label} escapes base directory: ${resolvedTarget}`)
+  }
+
+  return resolvedTarget
+}
+
+function resolveChildPath(basePath, childPath, label) {
+  if (typeof childPath !== 'string' || childPath.length === 0) {
+    throw new Error(`Invalid ${label}`)
+  }
+
+  if (childPath.includes('\0') || path.isAbsolute(childPath)) {
+    throw new Error(`Unsafe ${label}: ${childPath}`)
+  }
+
+  const normalizedPath = path.normalize(childPath)
+  const segments = normalizedPath.split(path.sep)
+  if (segments.includes('..')) {
+    throw new Error(`Unsafe ${label}: ${childPath}`)
+  }
+
+  return ensurePathWithinBase(basePath, path.resolve(basePath, normalizedPath), label)
+}
+
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true })
 }
@@ -38,35 +69,53 @@ function removeDir(dirPath) {
   fs.rmSync(dirPath, { recursive: true, force: true })
 }
 
-function copyDir(src, dest) {
-  if (!fs.existsSync(src)) {
+function copyDir(src, dest, sourceRoot = src, destRoot = dest, visitedRealPaths = new Set()) {
+  const resolvedSrc = ensurePathWithinBase(sourceRoot, src, 'source path')
+  const resolvedDest = ensurePathWithinBase(destRoot, dest, 'destination path')
+
+  if (!fs.existsSync(resolvedSrc)) {
     return false
   }
 
-  const stat = fs.statSync(src)
+  const stat = fs.statSync(resolvedSrc)
   if (!stat.isDirectory()) {
     return false
   }
 
-  ensureDir(dest)
+  ensureDir(resolvedDest)
 
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath = path.join(src, entry.name)
-    const destPath = path.join(dest, entry.name)
+  for (const entry of fs.readdirSync(resolvedSrc, { withFileTypes: true })) {
+    const srcPath = resolveChildPath(resolvedSrc, entry.name, 'source entry')
+    const destPath = resolveChildPath(resolvedDest, entry.name, 'destination entry')
 
     if (entry.isDirectory()) {
-      copyDir(srcPath, destPath)
+      copyDir(srcPath, destPath, sourceRoot, destRoot, visitedRealPaths)
       continue
     }
 
     if (entry.isSymbolicLink()) {
-      const realPath = fs.realpathSync(srcPath)
-      const realStat = fs.statSync(realPath)
+      let realPath
+      try {
+        realPath = fs.realpathSync(srcPath)
+      } catch (error) {
+        if (error && typeof error === 'object' && error.code === 'ENOENT') {
+          console.warn(`[copy-deps] skip broken symlink: ${srcPath}`)
+          continue
+        }
+        throw error
+      }
+
+      const safeRealPath = ensurePathWithinBase(sourceRoot, realPath, 'symlink target')
+      if (visitedRealPaths.has(safeRealPath)) {
+        continue
+      }
+      visitedRealPaths.add(safeRealPath)
+      const realStat = fs.statSync(safeRealPath)
       if (realStat.isDirectory()) {
-        copyDir(realPath, destPath)
+        copyDir(safeRealPath, destPath, sourceRoot, destRoot, visitedRealPaths)
       } else {
         ensureDir(path.dirname(destPath))
-        fs.copyFileSync(realPath, destPath)
+        fs.copyFileSync(safeRealPath, destPath)
       }
       continue
     }
@@ -79,7 +128,7 @@ function copyDir(src, dest) {
 }
 
 function resolveRootNodeModule(pkgName) {
-  return path.join(process.cwd(), 'node_modules', pkgName)
+  return resolveChildPath(path.join(PROJECT_ROOT, 'node_modules'), pkgName, 'package name')
 }
 
 function findResourcesDir(startDir) {
@@ -97,7 +146,7 @@ function findResourcesDir(startDir) {
         continue
       }
 
-      const entryPath = path.join(currentDir, entry.name)
+      const entryPath = resolveChildPath(currentDir, entry.name, 'resources entry')
       if (entry.name === 'resources' && fs.existsSync(path.join(entryPath, 'app.asar'))) {
         return entryPath
       }
@@ -105,7 +154,7 @@ function findResourcesDir(startDir) {
 
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        queue.push(path.join(currentDir, entry.name))
+        queue.push(resolveChildPath(currentDir, entry.name, 'resources entry'))
       }
     }
   }
@@ -113,15 +162,33 @@ function findResourcesDir(startDir) {
   return null
 }
 
+function isDescendantOf(candidate, ancestor) {
+  const relative = path.relative(ancestor, candidate)
+  return relative && !relative.startsWith('..') && !path.isAbsolute(relative)
+}
+
 function copyPackages(targetNodeModulesDir) {
-  ensureDir(targetNodeModulesDir)
+  const safeTargetNodeModulesDir = ensurePathWithinBase(PROJECT_ROOT, targetNodeModulesDir, 'target node_modules directory')
+
+  const projectNodeModules = path.join(PROJECT_ROOT, 'node_modules')
+  if (safeTargetNodeModulesDir === projectNodeModules || isDescendantOf(safeTargetNodeModulesDir, projectNodeModules)) {
+    console.error(`[copy-deps] ERROR: target ${safeTargetNodeModulesDir} is inside the project's own node_modules, aborting`)
+    process.exit(1)
+  }
+
+  ensureDir(safeTargetNodeModulesDir)
 
   const copied = []
   const missing = []
 
   for (const pkgName of DEFAULT_PATTERNS) {
     const srcPath = resolveRootNodeModule(pkgName)
-    const destPath = path.join(targetNodeModulesDir, pkgName)
+    const destPath = resolveChildPath(safeTargetNodeModulesDir, pkgName, 'package destination')
+
+    if (isDescendantOf(destPath, srcPath) || isDescendantOf(srcPath, destPath)) {
+      console.error(`[copy-deps] ERROR: src and dest paths overlap for ${pkgName}, aborting`)
+      process.exit(1)
+    }
 
     removeDir(destPath)
 
@@ -133,7 +200,7 @@ function copyPackages(targetNodeModulesDir) {
     }
   }
 
-  console.log(`[copy-deps] target: ${targetNodeModulesDir}`)
+  console.log(`[copy-deps] target: ${safeTargetNodeModulesDir}`)
   console.log(`[copy-deps] copied: ${copied.length ? copied.join(', ') : 'none'}`)
   console.log(`[copy-deps] missing: ${missing.length ? missing.join(', ') : 'none'}`)
 }
@@ -146,10 +213,10 @@ function main() {
     process.exit(1)
   }
 
-  const resolvedTarget = path.resolve(process.cwd(), targetArg)
+  const resolvedTarget = resolveChildPath(PROJECT_ROOT, targetArg, 'target path')
   const targetNodeModulesDir = path.basename(resolvedTarget) === 'node_modules'
     ? resolvedTarget
-    : path.join(resolvedTarget, 'node_modules')
+    : resolveChildPath(resolvedTarget, 'node_modules', 'target node_modules directory')
 
   copyPackages(targetNodeModulesDir)
 

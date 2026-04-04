@@ -33,7 +33,8 @@ const CONFIG = {
     preload: 'build/electron/preload.cjs'
   },
   electronSourcePatterns: ['.ts', '.js'],
-  electronConfig: 'electron.vite.config.ts'
+  electronConfig: 'electron.vite.config.ts',
+  appProcessNames: ['electron.exe', 'LUO Music.exe']
 }
 
 // ============ 日志工具 ============
@@ -240,12 +241,30 @@ function killOldElectronInstances() {
   return new Promise((resolve) => {
     logInfo('Checking for old Electron instances...')
 
-    try {
-      const command = process.platform === 'win32'
-        ? 'taskkill /F /IM electron.exe'
-        : 'pkill -f electron'
+    if (process.platform === 'win32') {
+      const killedProcesses = []
 
-      execSync(command, { stdio: 'ignore' })
+      for (const processName of CONFIG.appProcessNames) {
+        try {
+          execSync(`taskkill /F /IM "${processName}"`, { stdio: 'ignore' })
+          killedProcesses.push(processName)
+        } catch {
+          logDebug(`No running process matched ${processName}`)
+        }
+      }
+
+      if (killedProcesses.length > 0) {
+        logSuccess(`Killed old instances: ${killedProcesses.join(', ')}`)
+      } else {
+        logInfo('No old Electron instances found')
+      }
+
+      resolve()
+      return
+    }
+
+    try {
+      execSync('pkill -f electron', { stdio: 'ignore' })
       logSuccess('Killed old Electron instances')
     } catch {
       logInfo('No old Electron instances found')
