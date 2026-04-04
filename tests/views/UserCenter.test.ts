@@ -142,8 +142,8 @@ describe('UserCenter', () => {
     expect(resetPlaylistsMock).toHaveBeenCalled()
     expect(resetEventsMock).toHaveBeenCalled()
     expect(loadLikedSongsMock).toHaveBeenCalledWith('user-1')
-    expect(loadPlaylistsMock).toHaveBeenCalledWith('user-1')
-    expect(loadEventsMock).toHaveBeenCalledWith('user-1')
+    expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadEventsMock).not.toHaveBeenCalled()
 
     vi.clearAllMocks()
 
@@ -155,8 +155,8 @@ describe('UserCenter', () => {
     expect(resetPlaylistsMock).toHaveBeenCalled()
     expect(resetEventsMock).toHaveBeenCalled()
     expect(loadLikedSongsMock).toHaveBeenCalledWith('user-2')
-    expect(loadPlaylistsMock).toHaveBeenCalledWith('user-2')
-    expect(loadEventsMock).toHaveBeenCalledWith('user-2')
+    expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadEventsMock).not.toHaveBeenCalled()
   })
 
   it('clears stale user data and redirects when logout happens on the user route', async () => {
@@ -192,8 +192,6 @@ describe('UserCenter', () => {
   it('keeps the active tab component mounted while its data is still loading', async () => {
     const likedDeferred = createDeferred<void>()
     loadLikedSongsMock.mockImplementationOnce(() => likedDeferred.promise)
-    loadPlaylistsMock.mockImplementationOnce(() => Promise.resolve())
-    loadEventsMock.mockImplementationOnce(() => Promise.resolve())
 
     const likedLifecycle = {
       mounted: vi.fn(),
@@ -228,5 +226,44 @@ describe('UserCenter', () => {
 
     likedDeferred.resolve()
     await flushPromises()
+  })
+
+  it('loads non-active tabs only when the user switches to them', async () => {
+    const UserCenter = (await import('../../src/views/UserCenter.vue')).default
+    const wrapper = mount(UserCenter, {
+      global: {
+        stubs: {
+          UserProfileHeader: true,
+          LikedSongsView: true,
+          PlaylistsView: true,
+          EventsView: true
+        }
+      }
+    })
+
+    await flushPromises()
+
+    expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
+    expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadEventsMock).not.toHaveBeenCalled()
+
+    const tabButtons = wrapper.findAll('button.tab-btn')
+    await tabButtons[1].trigger('click')
+    await flushPromises()
+
+    expect(loadPlaylistsMock).toHaveBeenCalledWith('user-1')
+    expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
+    expect(loadEventsMock).not.toHaveBeenCalled()
+
+    await tabButtons[2].trigger('click')
+    await flushPromises()
+
+    expect(loadEventsMock).toHaveBeenCalledWith('user-1')
+    expect(loadEventsMock).toHaveBeenCalledTimes(1)
+
+    await tabButtons[1].trigger('click')
+    await flushPromises()
+
+    expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
   })
 })

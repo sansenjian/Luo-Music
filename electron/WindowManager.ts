@@ -3,7 +3,7 @@ import type {
   Menu as MenuType,
   Tray as TrayType
 } from 'electron'
-import { BrowserWindow, nativeImage } from 'electron'
+import { app, BrowserWindow, nativeImage } from 'electron'
 import path from 'node:path'
 
 import { downloadManager } from './DownloadManager'
@@ -154,6 +154,10 @@ export class WindowManager {
 
     win.on('closed', () => {
       this.win = null
+
+      if (process.platform !== 'darwin') {
+        app.quit()
+      }
     })
 
     win.on('resize', () => {

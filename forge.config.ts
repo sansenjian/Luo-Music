@@ -1,53 +1,41 @@
+import type { ForgeConfig } from '@electron-forge/shared-types'
 import { MakerSquirrel } from '@electron-forge/maker-squirrel'
 import { MakerZIP } from '@electron-forge/maker-zip'
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives'
 import { FusesPlugin } from '@electron-forge/plugin-fuses'
 import { FuseV1Options, FuseVersion } from '@electron/fuses'
-import fs from 'fs-extra'
-import path from 'node:path'
 
-interface PackagerConfigWithAsar {
-  name: string
-  executableName: string
-  appBundleId: string
-  asar: boolean
-  asarUnpack?: string[]
-  extraResource: string[]
-  download: {
-    unsafelyDisableChecksums: boolean
-    mirrorOptions: {
-      mirror: string
-      customDir: string
-    }
-  }
-  ignore: (string | RegExp)[]
-}
+const FAST_MAKE_MODE = process.env.LUO_FAST_MAKE === '1'
+const packagingIgnorePatterns = [
+  /^\/(?:\.ai|\.claude|\.codex|\.github|\.husky|\.idea|\.kilocode|\.trae|\.userData|\.vite_cache|\.vscode)(?:$|\/)/,
+  /^\/(?:api|config|coverage|dist|docs|electron|playwright-report|server|src|test|test-results|tests)(?:$|\/)/,
+  /^\/\.env(?:\.[^/]+)?$/,
+  /^\/(?:AGENTS\.md|CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|LICENSE|README\.md|electron\.vite\.config\.ts|eslint\.config\.js|forge\.config\.ts|index\.html|playwright\.config\.ts|qodana\.ya?ml|vite\.config\.ts|vitest\.config\.ts)$/,
+  /^\/(?:\.editorconfig|\.gitignore|\.gitmessage|\.lintstagedrc\.json|\.npmignore|\.npmrc|\.prettierrc|\.projectstructure)$/,
+  /^\/scripts\/dev\/dev-electron-launcher\.cjs$/,
+  /^\/scripts\/utils(?:$|\/)/
+] as const
 
-interface ForgeConfigWithAsar {
-  packagerConfig: PackagerConfigWithAsar
-  rebuildConfig: Record<string, never>
-  makers: unknown[]
-  plugins: unknown[]
-  hooks: {
-    packageAfterPrune?: (config: unknown, buildPath: string) => Promise<void>
-  }
-}
+const makers = FAST_MAKE_MODE
+  ? [new MakerZIP({}, ['win32'])]
+  : [
+      new MakerSquirrel({
+        name: 'LUO_Music',
+        oneClick: false,
+        allowToChangeInstallationDirectory: true
+      } as never),
+      new MakerZIP({}, ['darwin', 'linux', 'win32'])
+    ]
 
-const config: ForgeConfigWithAsar = {
+const config: ForgeConfig = {
   packagerConfig: {
     name: 'LUO Music',
     executableName: 'LUO Music',
     appBundleId: 'com.sansenjian.luo-music',
-    asar: true,
-    asarUnpack: [
-      '**/node_modules/conf/**',
-      '**/node_modules/ajv/**',
-      '**/node_modules/json-schema-traverse/**',
-      '**/node_modules/atomically/**',
-      '**/node_modules/dot-prop/**',
-      '**/node_modules/uint8array-extras/**',
-      '**/node_modules/type-fest/**'
-    ],
+    asar: {
+      unpack:
+        '**/node_modules/{conf,ajv,json-schema-traverse,atomically,dot-prop,uint8array-extras,type-fest}/**'
+    },
     extraResource: [
       'build/server',
       'scripts/dev/qq-api-server.cjs',
@@ -60,42 +48,10 @@ const config: ForgeConfigWithAsar = {
         customDir: 'v{{ version }}'
       }
     },
-    ignore: [
-      '.github',
-      '.vscode',
-      '.idea',
-      '.trae',
-      '.kilocode',
-      '.userData',
-      '.git',
-      'release_v2',
-      'dist',
-      'docs',
-      'tests',
-      'test',
-      'scripts/utils',
-      'scripts/dev/dev-electron-launcher.cjs',
-      '.vite_cache',
-      '.electron_cache',
-      'src',
-      /^electron\//,
-      'index.html',
-      'vite.config.ts',
-      'electron.vite.config.ts',
-      'forge.config.ts',
-      'server.ts',
-      'tsup.config'
-    ]
+    ignore: [...packagingIgnorePatterns]
   },
   rebuildConfig: {},
-  makers: [
-    new MakerSquirrel({
-      name: 'LUO_Music',
-      oneClick: false,
-      allowToChangeInstallationDirectory: true
-    } as never),
-    new MakerZIP({}, ['darwin', 'linux', 'win32'])
-  ],
+  makers,
   plugins: [
     new AutoUnpackNativesPlugin({}),
     new FusesPlugin({
@@ -107,93 +63,7 @@ const config: ForgeConfigWithAsar = {
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
       [FuseV1Options.OnlyLoadAppFromAsar]: true
     })
-  ],
-  hooks: {
-    packageAfterPrune: async (_config: unknown, buildPath: string): Promise<void> => {
-      const filesToRemove = [
-        'README.md',
-        'CHANGELOG.md',
-        'LICENSE',
-        'docs',
-        '.github',
-        '.vscode',
-        '.idea'
-      ]
-
-      for (const file of filesToRemove) {
-        const filePath = path.join(buildPath, file)
-
-        if (fs.existsSync(filePath)) {
-          await fs.remove(filePath)
-        }
-      }
-
-      const projectRoot = process.cwd()
-      const sourceNodeModulesRoot = path.join(projectRoot, 'node_modules')
-      const buildNodeModulesRoot = path.join(buildPath, 'node_modules')
-      const visitedPackages = new Set<string>()
-      const rootPackageJson = (await fs.readJson(path.join(projectRoot, 'package.json'))) as {
-        dependencies?: Record<string, string>
-      }
-      const packageNamesToRepair = Object.keys(rootPackageJson.dependencies ?? {})
-
-      const getPackageDir = (nodeModulesRoot: string, packageName: string) =>
-        path.join(nodeModulesRoot, ...packageName.split('/'))
-
-      const ensurePackageRuntimeFiles = async (packageName: string): Promise<void> => {
-        if (visitedPackages.has(packageName)) {
-          return
-        }
-
-        visitedPackages.add(packageName)
-
-        const sourcePackageDir = getPackageDir(sourceNodeModulesRoot, packageName)
-        const buildPackageDir = getPackageDir(buildNodeModulesRoot, packageName)
-
-        if (!fs.existsSync(sourcePackageDir)) {
-          console.warn(`Warning: source package not found for ${packageName}`)
-          return
-        }
-
-        if (!fs.existsSync(buildPackageDir)) {
-          console.warn(
-            `Warning: packaged dependency directory missing for ${packageName}, copying package directory`
-          )
-        }
-
-        await fs.copy(sourcePackageDir, buildPackageDir, {
-          overwrite: false,
-          errorOnExist: false
-        })
-
-        const sourcePackageJsonPath = path.join(sourcePackageDir, 'package.json')
-
-        if (!fs.existsSync(sourcePackageJsonPath)) {
-          return
-        }
-
-        console.log(`Synced runtime files for ${packageName}`)
-
-        const packageJson = (await fs.readJson(sourcePackageJsonPath)) as {
-          dependencies?: Record<string, string>
-          optionalDependencies?: Record<string, string>
-        }
-
-        const runtimeDependencies = {
-          ...packageJson.dependencies,
-          ...packageJson.optionalDependencies
-        }
-
-        for (const dependencyName of Object.keys(runtimeDependencies)) {
-          await ensurePackageRuntimeFiles(dependencyName)
-        }
-      }
-
-      for (const packageName of packageNamesToRepair) {
-        await ensurePackageRuntimeFiles(packageName)
-      }
-    }
-  }
+  ]
 }
 
 export default config

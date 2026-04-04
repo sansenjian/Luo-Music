@@ -8,6 +8,17 @@ import type { Song, LyricLine } from './services/playerProxy'
 
 console.log('--- Preload script loaded (TypeScript) ---')
 
+async function initializeSentryPreloadBridge(): Promise<void> {
+  try {
+    const sentryPreloadModule = await import('@sentry/electron/preload')
+    sentryPreloadModule.hookupIpc()
+  } catch (error) {
+    console.warn('[Preload] Failed to initialize Sentry IPC bridge', error)
+  }
+}
+
+void initializeSentryPreloadBridge()
+
 type SendChannel = (typeof SEND_CHANNELS)[keyof typeof SEND_CHANNELS]
 type ReceiveChannel = (typeof RECEIVE_CHANNELS)[keyof typeof RECEIVE_CHANNELS]
 type InvokeChannel = (typeof INVOKE_CHANNELS)[keyof typeof INVOKE_CHANNELS]

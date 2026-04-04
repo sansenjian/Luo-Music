@@ -3,6 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const http = require('http')
+const { handleQQSearchRequest } = require('./qq-search-fallback.cjs')
 
 const port = process.env.PORT || 3200
 const host = process.env.HOST || '127.0.0.1'
@@ -33,12 +34,24 @@ async function start() {
     // 鍔犺浇 QQ 闊充箰 API
     const qqApiModule = require('@sansenjian/qq-music-api/dist/app.js')
     const qqApiApp = qqApiModule && (qqApiModule.default || qqApiModule)
-    if (!qqApiApp || typeof qqApiApp.listen !== 'function') {
+    if (
+      !qqApiApp ||
+      typeof qqApiApp.listen !== 'function' ||
+      typeof qqApiApp.callback !== 'function'
+    ) {
       throw new Error('Invalid QQ Music API app export')
     }
-    qqApiApp.listen(Number(port), host, () => {
-      console.log(`[QQ Music API] Koa app listening on http://${host}:${port}`)
-    })
+    const appCallback = qqApiApp.callback()
+    http
+      .createServer(async (req, res) => {
+        const handled = await handleQQSearchRequest(req, res)
+        if (!handled) {
+          appCallback(req, res)
+        }
+      })
+      .listen(Number(port), host, () => {
+        console.log(`[QQ Music API] Koa app listening on http://${host}:${port}`)
+      })
     console.log('[QQ Music API] Module loaded successfully')
     
     console.log(`[QQ Music API] Server started, waiting for ready...`)

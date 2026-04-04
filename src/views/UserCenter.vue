@@ -3,7 +3,6 @@ import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useLikedSongs } from '../composables/useLikedSongs'
-import { useUserDataQuery } from '../composables/useUserDataQuery'
 import { useUserEvents } from '../composables/useUserEvents'
 import { useUserPlaylists } from '../composables/useUserPlaylists'
 import { usePlayerStore } from '../store/playerStore.ts'
@@ -35,9 +34,12 @@ const mountedTabs = ref<Record<UserTab, boolean>>({
   playlist: false,
   events: false
 })
+const loadedTabs = ref<Record<UserTab, boolean>>({
+  liked: false,
+  playlist: false,
+  events: false
+})
 const currentUserId = computed(() => userStore.userId)
-
-useUserDataQuery(() => userStore.userId)
 const {
   likeSongs,
   formattedSongs,
@@ -70,10 +72,19 @@ const resetMountedTabs = () => {
   }
 }
 
+const resetLoadedTabs = () => {
+  loadedTabs.value = {
+    liked: false,
+    playlist: false,
+    events: false
+  }
+}
+
 const resetUserContent = () => {
   activeLoadId += 1
   activeTab.value = 'liked'
   resetMountedTabs()
+  resetLoadedTabs()
   loadingMap.value.liked = false
   loadingMap.value.playlist = false
   loadingMap.value.events = false
@@ -82,39 +93,43 @@ const resetUserContent = () => {
   resetEvents()
 }
 
-watch(
-  activeTab,
-  tab => {
-    mountedTabs.value[tab] = true
-  },
-  { immediate: true }
-)
+const loadTabData = async (tab: UserTab, userId: string | number, force = false) => {
+  if (!force && loadedTabs.value[tab]) {
+    return
+  }
 
-const loadAllData = async (userId: string | number) => {
-  const loadId = ++activeLoadId
+  const loadId = activeLoadId
+  loadingMap.value[tab] = true
 
-  loadingMap.value.liked = true
-  loadingMap.value.playlist = true
-  loadingMap.value.events = true
+  try {
+    if (tab === 'liked') {
+      await loadLikedSongs(userId)
+    } else if (tab === 'playlist') {
+      await loadPlaylists(userId)
+    } else {
+      await loadEvents(userId)
+    }
 
-  await Promise.all([
-    loadLikedSongs(userId).finally(() => {
-      if (loadId === activeLoadId) {
-        loadingMap.value.liked = false
-      }
-    }),
-    loadPlaylists(userId).finally(() => {
-      if (loadId === activeLoadId) {
-        loadingMap.value.playlist = false
-      }
-    }),
-    loadEvents(userId).finally(() => {
-      if (loadId === activeLoadId) {
-        loadingMap.value.events = false
-      }
-    })
-  ])
+    if (loadId === activeLoadId) {
+      loadedTabs.value[tab] = true
+    }
+  } finally {
+    if (loadId === activeLoadId) {
+      loadingMap.value[tab] = false
+    }
+  }
 }
+
+watch(activeTab, tab => {
+  mountedTabs.value[tab] = true
+
+  const userId = currentUserId.value
+  if (!userStore.isLoggedIn || !userId) {
+    return
+  }
+
+  void loadTabData(tab, userId)
+})
 
 watch(
   () => [userStore.isLoggedIn, userStore.userId] as const,
@@ -126,7 +141,7 @@ watch(
       return
     }
 
-    void loadAllData(userId)
+    void loadTabData(activeTab.value, userId, true)
   },
   { immediate: true }
 )

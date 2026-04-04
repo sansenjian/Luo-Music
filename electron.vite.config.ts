@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { resolve } from 'path'
 import { config as loadDotEnv } from 'dotenv'
+import type { PluginOption } from 'vite'
 import {
   createSharedDevProxy,
   createSrcAlias,
@@ -20,24 +21,24 @@ const sentryUploadEnabled = Boolean(
   process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
 )
 
-const rendererPlugins = [vue()]
+const rendererPlugins: PluginOption[] = [vue()]
 if (sentryUploadEnabled) {
-  rendererPlugins.push(
-    sentryVitePlugin({
-      org: process.env.SENTRY_ORG,
-      project: process.env.SENTRY_PROJECT,
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-      release: {
-        name: sentryRelease,
-        inject: true
-      },
-      sourcemaps: {
-        assets: ['build/**'],
-        ignore: ['node_modules']
-      },
-      telemetry: false
-    })
-  )
+  const sentryPlugins = sentryVitePlugin({
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    release: {
+      name: sentryRelease,
+      inject: true
+    },
+    sourcemaps: {
+      assets: ['build/**'],
+      ignore: ['node_modules']
+    },
+    telemetry: false
+  })
+
+  rendererPlugins.push(...(Array.isArray(sentryPlugins) ? sentryPlugins : [sentryPlugins]))
 }
 
 export default defineConfig({

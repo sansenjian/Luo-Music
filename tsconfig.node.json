@@ -19,8 +19,11 @@
   "include": [
     "playwright.config.ts",
     "vite.config.ts",
+    "electron.vite.config.ts",
     "vitest.config.ts",
     "forge.config.ts",
+    "config/**/*.ts",
+    "config/**/*.d.ts",
     "server/**/*.ts",
     "server/**/*.d.ts",
     "electron/**/*.js",

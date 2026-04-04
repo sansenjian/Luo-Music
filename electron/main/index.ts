@@ -37,7 +37,7 @@ import {
   setupErrorHandlers,
   registerAppLifecycle
 } from './app'
-import { createTray, setWindowManager as setTrayWindowManager } from './tray'
+import { createTray, destroyTray, setWindowManager as setTrayWindowManager } from './tray'
 import {
   registerShortcuts,
   unregisterAllShortcuts,
@@ -132,6 +132,8 @@ function main(): void {
 
     onWillQuit: async () => {
       unregisterAllShortcuts()
+      desktopLyricManager.closeWindow()
+      destroyTray()
       downloadManager.dispose()
       disposePerformanceMonitor()
       await serviceManager.stopAllServices()

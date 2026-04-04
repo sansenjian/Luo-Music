@@ -187,11 +187,8 @@ export function createCommandService(): CommandService {
 
   register(
     COMMANDS.DESKTOP_LYRIC_TOGGLE,
-    () => {
-      const platformService = getPlatformService()
-      if (platformService.isElectron()) {
-        platformService.send('toggle-desktop-lyric', undefined)
-      }
+    async () => {
+      await getPlatformService().toggleDesktopLyric()
     },
     {
       enablement: COMMAND_ENABLEMENT[COMMANDS.DESKTOP_LYRIC_TOGGLE]

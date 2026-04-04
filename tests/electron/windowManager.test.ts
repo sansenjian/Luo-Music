@@ -6,6 +6,7 @@ const loggerError = vi.fn()
 const loggerWarn = vi.fn()
 const setWindowMock = vi.fn()
 const initDownloadManagerMock = vi.fn()
+const appQuitMock = vi.fn()
 
 class BrowserWindowMock {
   public events: Record<string, (...args: unknown[]) => void> = {}
@@ -48,6 +49,9 @@ class BrowserWindowMock {
 }
 
 vi.mock('electron', () => ({
+  app: {
+    quit: appQuitMock
+  },
   BrowserWindow: BrowserWindowMock,
   ipcMain: {
     on: ipcMainOn
@@ -190,5 +194,18 @@ describe('electron/WindowManager', () => {
     manager.syncTrayPlayMode(1)
 
     expect(playModeItems).toEqual([{ checked: false }, { checked: true }, { checked: false }])
+  })
+
+  it('quits the app after the main window is closed on non-macOS platforms', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+
+    window?.events.closed?.()
+
+    expect(appQuitMock).toHaveBeenCalledTimes(1)
   })
 })
