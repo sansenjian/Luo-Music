@@ -138,4 +138,43 @@ describe('ElectronPlatformService', () => {
     disposable.dispose()
     expect(unsubscribe).toHaveBeenCalledTimes(1)
   })
+
+  it('reads preload bridges lazily so a late-exposed electronAPI still works', () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: undefined
+    })
+    Object.defineProperty(window, 'services', {
+      configurable: true,
+      value: undefined
+    })
+
+    const service = new ElectronPlatformService()
+    const api = {
+      minimizeWindow: vi.fn(),
+      maximizeWindow: vi.fn(),
+      closeWindow: vi.fn(),
+      on: vi.fn(() => vi.fn()),
+      send: vi.fn(),
+      supportsSendChannel: vi.fn(() => true),
+      sendPlayingState: vi.fn(),
+      sendPlayModeChange: vi.fn(),
+      getCacheSize: vi.fn(),
+      clearCache: vi.fn(),
+      clearAllCache: vi.fn()
+    }
+
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: api
+    })
+
+    service.minimizeWindow()
+    service.maximizeWindow()
+    service.closeWindow()
+
+    expect(api.minimizeWindow).toHaveBeenCalledTimes(1)
+    expect(api.maximizeWindow).toHaveBeenCalledTimes(1)
+    expect(api.closeWindow).toHaveBeenCalledTimes(1)
+  })
 })

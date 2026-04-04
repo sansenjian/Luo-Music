@@ -26,6 +26,7 @@ export type PerformanceMetricsSnapshot = Record<
 
 export class PerformanceMonitor {
   private static instance: PerformanceMonitor
+  private static readonly LOW_FPS_THRESHOLD = 30
 
   private readonly onDidChangeMetricsEmitter = new EventEmitter<PerformanceMetricsSnapshot>()
 
@@ -38,6 +39,7 @@ export class PerformanceMonitor {
   private memoryIntervalId: ReturnType<typeof setInterval> | null = null
   private webVitalsInitialized = false
   private runtimeDisposables: DisposableStore | null = null
+  private hasLowFpsWarning = false
 
   private constructor() {}
 
@@ -86,6 +88,7 @@ export class PerformanceMonitor {
     this.fps = 0
     this.frameCount = 0
     this.lastTime = performance.now()
+    this.hasLowFpsWarning = false
   }
 
   private initWebVitals(): void {
@@ -130,8 +133,15 @@ export class PerformanceMonitor {
         this.lastTime = currentTime
         this.emitMetrics()
 
-        if (this.fps < 30 && document.visibilityState === 'visible') {
+        if (
+          this.fps < PerformanceMonitor.LOW_FPS_THRESHOLD &&
+          document.visibilityState === 'visible' &&
+          !this.hasLowFpsWarning
+        ) {
+          this.hasLowFpsWarning = true
           console.warn(`[Performance] Low FPS detected: ${this.fps}`)
+        } else if (this.fps >= PerformanceMonitor.LOW_FPS_THRESHOLD) {
+          this.hasLowFpsWarning = false
         }
       }
 

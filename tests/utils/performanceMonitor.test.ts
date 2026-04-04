@@ -16,7 +16,8 @@ vi.mock('web-vitals', () => ({
   onTTFB: webVitalsMocks.onTTFB
 }))
 
-type PerformanceMonitorSingleton = typeof import('@/utils/performance/monitor')['performanceMonitor']
+type PerformanceMonitorSingleton =
+  (typeof import('@/utils/performance/monitor'))['performanceMonitor']
 
 describe('performanceMonitor', () => {
   const originalMemoryDescriptor = Object.getOwnPropertyDescriptor(performance, 'memory')
@@ -24,6 +25,7 @@ describe('performanceMonitor', () => {
   let performanceMonitor: PerformanceMonitorSingleton
 
   let frameRequestId = 0
+  let rafCallback: FrameRequestCallback | null = null
   let requestAnimationFrameMock: ReturnType<typeof vi.fn>
   let cancelAnimationFrameMock: ReturnType<typeof vi.fn>
   let setIntervalSpy: ReturnType<typeof vi.spyOn>
@@ -34,10 +36,11 @@ describe('performanceMonitor', () => {
     vi.useFakeTimers()
     vi.clearAllMocks()
     frameRequestId = 0
-
     ;({ performanceMonitor } = await import('@/utils/performance/monitor'))
 
-    requestAnimationFrameMock = vi.fn((_callback: FrameRequestCallback) => {
+    rafCallback = null
+    requestAnimationFrameMock = vi.fn((callback: FrameRequestCallback) => {
+      rafCallback = callback
       frameRequestId += 1
       return frameRequestId
     })
@@ -87,7 +90,9 @@ describe('performanceMonitor', () => {
     expect(setIntervalSpy).toHaveBeenCalledTimes(1)
 
     const scheduledFrameId = requestAnimationFrameMock.mock.results[0]?.value as number
-    const scheduledIntervalId = setIntervalSpy.mock.results[0]?.value as ReturnType<typeof setInterval>
+    const scheduledIntervalId = setIntervalSpy.mock.results[0]?.value as ReturnType<
+      typeof setInterval
+    >
 
     performanceMonitor.dispose()
 
@@ -135,5 +140,35 @@ describe('performanceMonitor', () => {
     )
 
     disposeListener.dispose()
+  })
+
+  it('warns once when FPS drops below the threshold and resets after recovery', () => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible'
+    })
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    performanceMonitor.init()
+
+    expect(rafCallback).not.toBeNull()
+
+    rafCallback?.(1200)
+    expect(warnSpy).toHaveBeenCalledWith('[Performance] Low FPS detected: 1')
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+
+    rafCallback?.(2400)
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+
+    for (let i = 0; i < 60; i += 1) {
+      rafCallback?.(2416 + i * 16)
+    }
+    rafCallback?.(3600)
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+
+    rafCallback?.(4800)
+    expect(warnSpy).toHaveBeenCalledTimes(2)
+    expect(warnSpy).toHaveBeenLastCalledWith('[Performance] Low FPS detected: 1')
   })
 })

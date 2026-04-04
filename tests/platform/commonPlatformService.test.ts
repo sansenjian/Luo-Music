@@ -127,6 +127,23 @@ describe('platform/common/platformService', () => {
         value: undefined
       })
     })
+
+    it('returns true for Electron user agents even before preload globals are exposed', () => {
+      Object.defineProperty(window, 'electronAPI', {
+        configurable: true,
+        value: undefined
+      })
+      Object.defineProperty(window, 'services', {
+        configurable: true,
+        value: undefined
+      })
+      Object.defineProperty(window.navigator, 'userAgent', {
+        configurable: true,
+        value: 'Mozilla/5.0 AppleWebKit/537.36 Chrome/140.0.0.0 Electron/40.0.0 Safari/537.36'
+      })
+
+      expect(detectElectron()).toBe(true)
+    })
   })
 
   describe('PlatformServiceBase', () => {
@@ -155,14 +172,8 @@ describe('platform/common/platformService', () => {
 
       expect(disposable).toBe(Disposable.none)
       expect(warnSpy).toHaveBeenCalledTimes(5)
-      expect(warnSpy).toHaveBeenNthCalledWith(
-        1,
-        '[PlatformService] minimizeWindow not implemented'
-      )
-      expect(warnSpy).toHaveBeenNthCalledWith(
-        2,
-        '[PlatformService] maximizeWindow not implemented'
-      )
+      expect(warnSpy).toHaveBeenNthCalledWith(1, '[PlatformService] minimizeWindow not implemented')
+      expect(warnSpy).toHaveBeenNthCalledWith(2, '[PlatformService] maximizeWindow not implemented')
       expect(warnSpy).toHaveBeenNthCalledWith(3, '[PlatformService] closeWindow not implemented')
       expect(warnSpy).toHaveBeenNthCalledWith(4, '[PlatformService] on not implemented')
       expect(warnSpy).toHaveBeenNthCalledWith(5, '[PlatformService] send not implemented')
