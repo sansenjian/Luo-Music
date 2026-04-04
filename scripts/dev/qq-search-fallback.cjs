@@ -131,9 +131,12 @@ async function handleQQSearchRequest(request, response) {
     const result = await requestQQMusicuSearch(keyword, limit, page)
     writeJson(response, 200, result)
   } catch (error) {
+    // Log detailed error information on the server for debugging,
+    // but do not expose internal details to the client.
+    console.error('QQ search fallback error:', error)
     writeJson(response, 500, {
       error: {
-        message: error instanceof Error ? error.message : String(error)
+        message: 'QQ search failed'
       }
     })
   }
