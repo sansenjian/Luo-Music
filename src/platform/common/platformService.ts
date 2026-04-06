@@ -14,6 +14,7 @@ import type {
   Platform
 } from './types'
 import { Platform as PlatformEnum } from './types'
+import { isElectronRuntime } from '@/utils/runtime'
 
 /**
  * 格式化字节数
@@ -39,17 +40,10 @@ export function detectMobile(): boolean {
 }
 
 /**
- * 检测是否为 Electron 环境
+ * 检测当前启动目标是否为 Electron
  */
 export function detectElectron(): boolean {
-  if (typeof window === 'undefined') return false
-  const globalWindow = window as Window & { electronAPI?: unknown; services?: unknown }
-  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-  return (
-    typeof globalWindow.electronAPI !== 'undefined' ||
-    typeof globalWindow.services !== 'undefined' ||
-    /\bElectron\/\d+/i.test(userAgent)
-  )
+  return isElectronRuntime()
 }
 
 /**

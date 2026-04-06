@@ -1,3 +1,4 @@
+import type { ChildProcess } from 'node:child_process'
 import { spawn } from 'node:child_process'
 import logger from '../logger'
 import { getScriptPath } from '../utils/paths'
@@ -12,6 +13,7 @@ interface NodeApiServiceOptions {
   requestServiceName: string
   unavailableMessage: string
   methodResolver: (endpoint: string) => RequestMethod
+  startupTimeoutMs?: number
 }
 
 abstract class NodeApiService extends BaseService {
@@ -20,6 +22,7 @@ abstract class NodeApiService extends BaseService {
   private readonly requestServiceName: string
   private readonly unavailableMessage: string
   private readonly methodResolver: (endpoint: string) => RequestMethod
+  private readonly startupTimeoutMs: number
 
   protected constructor(serviceId: string, port: number, options: NodeApiServiceOptions) {
     super(serviceId, port)
@@ -28,6 +31,7 @@ abstract class NodeApiService extends BaseService {
     this.requestServiceName = options.requestServiceName
     this.unavailableMessage = options.unavailableMessage
     this.methodResolver = options.methodResolver
+    this.startupTimeoutMs = options.startupTimeoutMs ?? 15000
   }
 
   async start(): Promise<void> {
@@ -39,10 +43,12 @@ abstract class NodeApiService extends BaseService {
       const scriptPath = getScriptPath(this.scriptName)
       logger.info(`[${this.loggerScope}] Script path: ${scriptPath}`)
 
-      this.process = spawn('node', [scriptPath], {
+      this.process = spawn(process.execPath, [scriptPath], {
         env: {
           ...process.env,
           PORT: String(this.port),
+          HOST: '127.0.0.1',
+          ELECTRON_RUN_AS_NODE: '1',
           NODE_OPTIONS: ''
         },
         stdio: ['ignore', 'pipe', 'pipe', 'ipc']
@@ -71,7 +77,7 @@ abstract class NodeApiService extends BaseService {
         this.lastUpdate = Date.now()
       })
 
-      await this.waitForReady(15000)
+      await this.waitForReady(this.startupTimeoutMs)
 
       this.status = 'running'
       this.lastUpdate = Date.now()
@@ -85,19 +91,52 @@ abstract class NodeApiService extends BaseService {
     }
   }
 
+  private static readonly FORCE_KILL_TIMEOUT = 5000
+
   async stop(): Promise<void> {
     this.status = 'stopping'
     this.lastUpdate = Date.now()
     logger.info(`[${this.loggerScope}] Stopping...`)
 
-    if (this.process) {
-      this.process.kill('SIGTERM')
+    const proc = this.process
+    if (proc) {
       this.process = null
+      await this.gracefulKill(proc)
     }
 
     this.status = 'stopped'
     this.lastUpdate = Date.now()
     logger.info(`[${this.loggerScope}] Stopped`)
+  }
+
+  private gracefulKill(proc: ChildProcess): Promise<void> {
+    return new Promise(resolve => {
+      let settled = false
+      const finish = () => {
+        if (!settled) {
+          settled = true
+          resolve()
+        }
+      }
+
+      proc.on('exit', () => finish())
+
+      proc.kill('SIGTERM')
+
+      setTimeout(() => {
+        if (!settled) {
+          logger.warn(
+            `[${this.loggerScope}] Process did not exit within ${NodeApiService.FORCE_KILL_TIMEOUT}ms, force killing`
+          )
+          try {
+            proc.kill('SIGKILL')
+          } catch {
+            // Process may have already exited
+          }
+          finish()
+        }
+      }, NodeApiService.FORCE_KILL_TIMEOUT)
+    })
   }
 
   async handleRequest(endpoint: string, params: Record<string, unknown>): Promise<unknown> {
@@ -130,7 +169,8 @@ export class QQService extends NodeApiService {
       loggerScope: 'QQService',
       requestServiceName: 'QQ',
       unavailableMessage: 'QQ Service is not available',
-      methodResolver: endpoint => (QQService.POST_ENDPOINTS.has(endpoint) ? 'POST' : 'GET')
+      methodResolver: endpoint => (QQService.POST_ENDPOINTS.has(endpoint) ? 'POST' : 'GET'),
+      startupTimeoutMs: 8000
     })
   }
 }
@@ -147,7 +187,8 @@ export class NeteaseService extends NodeApiService {
       unavailableMessage: 'Netease Service is not available',
       // The local Netease API used by Electron matches the web adapter and
       // expects query-string GET requests for endpoints like song/detail.
-      methodResolver: () => 'GET'
+      methodResolver: () => 'GET',
+      startupTimeoutMs: 12000
     })
   }
 }

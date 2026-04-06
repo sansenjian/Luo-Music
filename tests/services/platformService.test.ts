@@ -100,4 +100,29 @@ describe('platformService', () => {
 
     await expect(service.getServiceStatus?.('qq')).resolves.toBeNull()
   })
+
+  it('supports injected platform runtime dependencies', async () => {
+    const injectedPlatform = {
+      ...platformMock,
+      isElectron: vi.fn(() => false)
+    }
+    const initialize = vi.fn()
+    const getPlatform = vi.fn(() => injectedPlatform)
+    const getDesktopBridge = vi.fn(() => undefined)
+    const getElectronApi = vi.fn(() => undefined)
+
+    const { createPlatformService } = await import('@/services/platformService')
+    const service = createPlatformService({
+      initializePlatformService: initialize,
+      getPlatformService: getPlatform,
+      getDesktopLyricWindowBridge: getDesktopBridge,
+      getElectronApi
+    })
+
+    expect(initialize).toHaveBeenCalledTimes(1)
+    expect(service.isElectron()).toBe(false)
+    await expect(service.getServiceStatus?.('qq')).resolves.toBeNull()
+    expect(getPlatform).toHaveBeenCalledTimes(1)
+    expect(getElectronApi).toHaveBeenCalledTimes(1)
+  })
 })

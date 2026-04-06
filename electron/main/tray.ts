@@ -108,7 +108,7 @@ function createTrayMenu(): MenuItemConstructorOptions[] {
       label: '退出',
       click: () => {
         const { app } = require('electron')
-        app.exit(0)
+        app.quit()
       }
     }
   ]
@@ -176,6 +176,7 @@ export function destroyTray(): void {
   if (tray) {
     tray.destroy()
     tray = null
+    windowManager = null
     logger.info('[Tray] System tray destroyed')
   }
 }

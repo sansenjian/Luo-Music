@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { describe, it, expect } from 'vitest'
 import { usePlaylistStore } from '../../src/store/playlistStore'
 
 // Mock PLAY_MODE constants for clarity
@@ -15,10 +14,6 @@ interface MockSong {
 }
 
 describe('Playlist Store', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
   it('initializes with default state', () => {
     const store = usePlaylistStore()
     expect(store.songs).toEqual([])

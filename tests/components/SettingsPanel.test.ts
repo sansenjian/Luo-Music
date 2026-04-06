@@ -1,6 +1,5 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
 
 const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => false)
@@ -19,7 +18,6 @@ vi.mock('../../src/services', async importOriginal => {
 
 describe('SettingsPanel.vue', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 

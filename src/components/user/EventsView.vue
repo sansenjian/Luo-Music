@@ -8,6 +8,10 @@ interface EventsViewProps {
 
 defineProps<EventsViewProps>()
 
+const formatArtists = (artists: EventItem['song']['artists'] | undefined): string => {
+  return artists?.map(artist => artist.name).join(' / ') || ''
+}
+
 const formatEventTime = (timestamp: number | string | undefined): string => {
   if (timestamp === undefined) {
     return ''
@@ -53,9 +57,7 @@ const formatEventTime = (timestamp: number | string | undefined): string => {
           <img class="event-song-cover" :src="event.song.album?.picUrl" :alt="event.song.name" />
           <div class="event-song-info">
             <span class="event-song-name">{{ event.song.name }}</span>
-            <span class="event-song-artist">
-              {{ event.song.artists?.map(a => a.name).join(' / ') }}
-            </span>
+            <span class="event-song-artist">{{ formatArtists(event.song.artists) }}</span>
           </div>
         </div>
       </div>

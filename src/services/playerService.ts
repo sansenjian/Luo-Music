@@ -17,7 +17,11 @@ export type PlayerService = {
   skipToNext(): Promise<void>
 }
 
-function getServiceBridge(): ServiceBridge | undefined {
+export type PlayerServiceDeps = {
+  getServiceBridge?: () => ServiceBridge | undefined
+}
+
+function resolveServiceBridge(): ServiceBridge | undefined {
   if (typeof window === 'undefined') {
     return undefined
   }
@@ -26,6 +30,7 @@ function getServiceBridge(): ServiceBridge | undefined {
 }
 
 async function callWithInvokeFallback(
+  getServiceBridge: () => ServiceBridge | undefined,
   operation: (() => Promise<void> | void) | undefined,
   invokeChannel: string
 ): Promise<void> {
@@ -44,29 +49,48 @@ async function callWithInvokeFallback(
   }
 }
 
-export function createPlayerService(): PlayerService {
+export function createPlayerService(deps: PlayerServiceDeps = {}): PlayerService {
+  const getServiceBridge = deps.getServiceBridge ?? resolveServiceBridge
+
   return {
     play(): Promise<void> {
-      return callWithInvokeFallback(getServiceBridge()?.player?.play, 'player:play')
+      return callWithInvokeFallback(
+        getServiceBridge,
+        getServiceBridge()?.player?.play,
+        'player:play'
+      )
     },
 
     pause(): Promise<void> {
-      return callWithInvokeFallback(getServiceBridge()?.player?.pause, 'player:pause')
+      return callWithInvokeFallback(
+        getServiceBridge,
+        getServiceBridge()?.player?.pause,
+        'player:pause'
+      )
     },
 
     toggle(): Promise<void> {
-      return callWithInvokeFallback(getServiceBridge()?.player?.toggle, 'player:toggle')
+      return callWithInvokeFallback(
+        getServiceBridge,
+        getServiceBridge()?.player?.toggle,
+        'player:toggle'
+      )
     },
 
     skipToPrevious(): Promise<void> {
       return callWithInvokeFallback(
+        getServiceBridge,
         getServiceBridge()?.player?.skipToPrevious,
         'player:skip-to-previous'
       )
     },
 
     skipToNext(): Promise<void> {
-      return callWithInvokeFallback(getServiceBridge()?.player?.skipToNext, 'player:skip-to-next')
+      return callWithInvokeFallback(
+        getServiceBridge,
+        getServiceBridge()?.player?.skipToNext,
+        'player:skip-to-next'
+      )
     }
   }
 }

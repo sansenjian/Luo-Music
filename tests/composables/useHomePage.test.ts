@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+
 import { defineComponent, ref } from 'vue'
-import { createPinia, setActivePinia } from 'pinia'
 
 import { useSearchStore } from '../../src/store/searchStore'
 import { useToastStore } from '../../src/store/toastStore'
@@ -36,7 +36,6 @@ const Harness = defineComponent({
 
 describe('useHomePage', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     vi.clearAllMocks()
     localStorage.clear()
   })

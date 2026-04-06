@@ -64,4 +64,23 @@ describe('platform music index', () => {
     expect(createLoggerMock).toHaveBeenCalledTimes(1)
     expect(warnMock).toHaveBeenCalledTimes(2)
   })
+
+  it('supports an injected logger factory for fallback warnings', async () => {
+    vi.resetModules()
+    const injectedWarn = vi.fn()
+    const { configureMusicPlatformDeps, getMusicAdapter, resetMusicPlatformDeps } =
+      await import('@/platform/music')
+
+    configureMusicPlatformDeps({
+      createLogger: () =>
+        ({
+          warn: injectedWarn
+        }) as { warn: typeof injectedWarn }
+    })
+
+    expect(getMusicAdapter('missing-platform')).toMatchObject({ kind: 'netease' })
+    expect(injectedWarn).toHaveBeenCalledTimes(1)
+
+    resetMusicPlatformDeps()
+  })
 })

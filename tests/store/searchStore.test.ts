@@ -1,4 +1,3 @@
-import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { resetServices } from '../../src/services/registry'
@@ -41,7 +40,6 @@ vi.mock('../../src/services', async importOriginal => {
 
 describe('searchStore', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     localStorage.clear()
     vi.clearAllMocks()
     resetServices()

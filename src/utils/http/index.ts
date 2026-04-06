@@ -39,8 +39,12 @@ import {
   DEV_API_SERVER
 } from '@/constants/http'
 import type { ILogger } from '@/services/loggerService'
+import type { ErrorService } from '@/services/errorService'
 
-type ErrorService = typeof services.error extends () => infer R ? R : never
+type ErrorServiceLike = Pick<ErrorService, 'emit'>
+type LoggerServiceLike = {
+  createLogger(resource: string): ILogger
+}
 
 type UserStoreLike = {
   cookie?: string | null
@@ -57,19 +61,45 @@ type SongUrlResponse = {
   data?: SongUrlItem[]
 }
 
-let cachedErrorService: ErrorService | null = null
+type HttpRequestDeps = {
+  getLoggerService: () => LoggerServiceLike
+  getErrorService: () => ErrorServiceLike
+}
+
+const defaultHttpRequestDeps: HttpRequestDeps = {
+  getLoggerService: () => services.logger(),
+  getErrorService: () => services.error()
+}
+
+let httpRequestDeps: HttpRequestDeps = defaultHttpRequestDeps
+let cachedErrorService: ErrorServiceLike | null = null
 let _logger: ILogger | undefined
+
+export function configureHttpRequestDeps(deps: Partial<HttpRequestDeps>): void {
+  httpRequestDeps = {
+    ...httpRequestDeps,
+    ...deps
+  }
+  cachedErrorService = null
+  _logger = undefined
+}
+
+export function resetHttpRequestDeps(): void {
+  httpRequestDeps = defaultHttpRequestDeps
+  cachedErrorService = null
+  _logger = undefined
+}
 
 function getLogger() {
   if (_logger === undefined) {
-    _logger = services.logger().createLogger('httpRequest')
+    _logger = httpRequestDeps.getLoggerService().createLogger('httpRequest')
   }
   return _logger
 }
 
-function getErrorService(): ErrorService {
+function getErrorService(): ErrorServiceLike {
   if (!cachedErrorService) {
-    cachedErrorService = services.error()
+    cachedErrorService = httpRequestDeps.getErrorService()
   }
   return cachedErrorService
 }

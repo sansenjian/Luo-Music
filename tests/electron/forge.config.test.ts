@@ -29,13 +29,22 @@ beforeEach(async () => {
 })
 
 function matchesIgnore(relativePath: string): boolean {
-  const ignorePatterns = config.packagerConfig.ignore
+  const ignorePatterns = config.packagerConfig?.ignore
 
   expect(Array.isArray(ignorePatterns)).toBe(true)
 
   return (ignorePatterns as Array<string | RegExp>).some(pattern =>
     typeof pattern === 'string' ? relativePath.includes(pattern) : pattern.test(relativePath)
   )
+}
+
+function getMakerName(maker: unknown): string | undefined {
+  if (!maker || typeof maker !== 'object') {
+    return undefined
+  }
+
+  const namedMaker = maker as { name?: unknown }
+  return typeof namedMaker.name === 'string' ? namedMaker.name : undefined
 }
 
 describe('forge.config packagerConfig.ignore', () => {
@@ -68,7 +77,7 @@ describe('forge.config packaging hooks', () => {
 
   it('keeps fast make zip builds available on darwin, linux, and win32', async () => {
     const fastConfig = await loadForgeConfig('1')
-    const zipMaker = fastConfig.makers.find(maker => maker.name === 'zip')
+    const zipMaker = fastConfig.makers?.find(maker => getMakerName(maker) === 'zip')
 
     expect(zipMaker).toBeDefined()
     expect((zipMaker as { platformsToMakeOn?: string[] }).platformsToMakeOn).toEqual([

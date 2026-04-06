@@ -112,6 +112,7 @@ export default defineConfig({
     root: '.',
     plugins: rendererPlugins,
     define: {
+      'import.meta.env.APP_RUNTIME': JSON.stringify('electron'),
       'import.meta.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN ?? ''),
       'import.meta.env.SENTRY_RELEASE': JSON.stringify(sentryRelease)
     },

@@ -266,13 +266,15 @@ export class ServiceManager {
    */
   async stopAll(): Promise<void> {
     logger.info('[ServiceManager] Stopping all services...')
-    for (const [serviceId, service] of this.services) {
-      try {
-        await service.stop()
-      } catch (error) {
-        logger.error(`[ServiceManager] Failed to stop ${serviceId}:`, error)
-      }
-    }
+    await Promise.allSettled(
+      Array.from(this.services.entries()).map(async ([serviceId, service]) => {
+        try {
+          await service.stop()
+        } catch (error) {
+          logger.error(`[ServiceManager] Failed to stop ${serviceId}:`, error)
+        }
+      })
+    )
     logger.info('[ServiceManager] All services stopped')
   }
 

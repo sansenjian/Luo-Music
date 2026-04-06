@@ -24,6 +24,7 @@ const router = useRouter()
 const logger = services.logger().createLogger('userAvatar')
 const platformService = services.platform()
 const userStore = useUserStore()
+const isElectron = computed(() => platformService.isElectron())
 
 const wrapperRef = ref<HTMLElement | null>(null)
 const triggerButtonRef = ref<HTMLButtonElement | null>(null)
@@ -69,11 +70,17 @@ async function handleLogout(): Promise<void> {
 }
 
 function openLogin(): void {
+  if (!isElectron.value) {
+    return
+  }
   showLoginModal.value = true
   closeDropdown({ restoreFocus: false })
 }
 
 function openQQLogin(): void {
+  if (!isElectron.value) {
+    return
+  }
   showQQLoginModal.value = true
   closeDropdown({ restoreFocus: false })
 }
@@ -163,7 +170,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 </script>
 
 <template>
-  <div ref="wrapperRef" class="user-avatar-wrapper">
+  <div v-if="isElectron" ref="wrapperRef" class="user-avatar-wrapper">
     <button
       ref="triggerButtonRef"
       class="user-trigger"

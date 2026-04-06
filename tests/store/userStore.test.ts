@@ -1,5 +1,4 @@
 ﻿import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
 
 vi.mock('../../src/utils/http', () => ({
   AUTH_REQUEST_CACHE_NAMESPACE: 'auth',
@@ -18,7 +17,6 @@ import { clearCacheNamespaces, clearCookieCache } from '../../src/utils/http'
 
 describe('userStore', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 

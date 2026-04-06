@@ -3,6 +3,8 @@ import { EventEmitter, type Event } from '../base/common/event/event'
 import { DisposableStore } from '../base/common/lifecycle/disposable'
 import { usePlayerStore } from '../store/playerStore'
 import { getService } from './registry'
+import type { ContextKeyService } from './contextKeyService'
+import type { PlatformService } from './platformService'
 import { IContextKeyService, IPlatformService } from './types'
 
 export type CommandHandler<TPayload = unknown> = (payload?: TPayload) => void | Promise<void>
@@ -47,9 +49,26 @@ type SeekPayload = {
 const DEFAULT_VOLUME_STEP = 0.1
 const DEFAULT_SEEK_SECONDS = 5
 
-export function createCommandService(): CommandService {
+export type CommandServiceDeps = {
+  contextKeyService: Pick<ContextKeyService, 'contextMatchesRules' | 'onDidChangeContext'>
+  platformService: Pick<PlatformService, 'toggleDesktopLyric'>
+  getPlayerStore?: typeof usePlayerStore
+}
+
+function getDefaultCommandServiceDeps(): CommandServiceDeps {
+  return {
+    contextKeyService: getService(IContextKeyService),
+    platformService: getService(IPlatformService),
+    getPlayerStore: usePlayerStore
+  }
+}
+
+export function createCommandService(
+  deps: CommandServiceDeps = getDefaultCommandServiceDeps()
+): CommandService {
   const handlers = new Map<string, RegisteredCommand>()
-  const contextKeyService = getService(IContextKeyService)
+  const { contextKeyService, platformService } = deps
+  const getPlayerStore = deps.getPlayerStore ?? usePlayerStore
   const enablementEmitter = new EventEmitter<{ id?: string }>()
   const disposables = new DisposableStore()
 
@@ -101,9 +120,6 @@ export function createCommandService(): CommandService {
 
     await command.handler(payload)
   }
-
-  const getPlayerStore = () => usePlayerStore()
-  const getPlatformService = () => getService(IPlatformService)
 
   register(
     COMMANDS.PLAYER_TOGGLE_PLAY,
@@ -188,7 +204,7 @@ export function createCommandService(): CommandService {
   register(
     COMMANDS.DESKTOP_LYRIC_TOGGLE,
     async () => {
-      await getPlatformService().toggleDesktopLyric()
+      await platformService.toggleDesktopLyric()
     },
     {
       enablement: COMMAND_ENABLEMENT[COMMANDS.DESKTOP_LYRIC_TOGGLE]

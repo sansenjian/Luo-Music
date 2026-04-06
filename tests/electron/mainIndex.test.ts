@@ -101,7 +101,8 @@ vi.mock('../../electron/ipc/index', () => ({
   ipcService: {
     configure: ipcConfigureMock,
     use: ipcUseMock,
-    initialize: ipcInitializeMock
+    initialize: ipcInitializeMock,
+    dispose: vi.fn()
   },
   disposePerformanceMonitor: disposePerformanceMonitorMock,
   errorMiddleware: Symbol('errorMiddleware'),

@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
 
 import { CONTEXT_KEYS } from '../../src/core/context/contextKeys'
 import { COMMANDS } from '../../src/core/commands/commands'
@@ -28,7 +27,6 @@ const platformServiceMock = vi.hoisted(() => ({
 
 describe('commandService', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     resetServices()
     registerService(IContextKeyService, createContextKeyService)
     registerService(IPlatformService, () => platformServiceMock as PlatformService)
@@ -39,9 +37,11 @@ describe('commandService', () => {
 
   it('executes built-in player commands through the store', async () => {
     const context = createContextKeyService()
-    resetServices()
-    registerService(IContextKeyService, () => context)
-    const commandService = createCommandService()
+    const commandService = createCommandService({
+      contextKeyService: context,
+      platformService: platformServiceMock as unknown as PlatformService,
+      getPlayerStore: usePlayerStore
+    })
     const playerStore = usePlayerStore()
 
     context.setContext(CONTEXT_KEYS.PLAYER_HAS_CURRENT_SONG, true)
@@ -59,6 +59,19 @@ describe('commandService', () => {
     expect(playerStore.isCompact).toBe(false)
     await commandService.execute(COMMANDS.PLAYER_TOGGLE_COMPACT_MODE)
     expect(playerStore.isCompact).toBe(true)
+  })
+
+  it('supports explicit dependency injection without registry lookups', async () => {
+    const context = createContextKeyService()
+    const commandService = createCommandService({
+      contextKeyService: context,
+      platformService: platformServiceMock as unknown as PlatformService,
+      getPlayerStore: usePlayerStore
+    })
+
+    expect(commandService.canExecute(COMMANDS.PLAYER_TOGGLE_PLAY)).toBe(false)
+    context.setContext(CONTEXT_KEYS.PLAYER_HAS_CURRENT_SONG, true)
+    expect(commandService.canExecute(COMMANDS.PLAYER_TOGGLE_PLAY)).toBe(true)
   })
 
   it('supports registering and disposing custom commands', async () => {

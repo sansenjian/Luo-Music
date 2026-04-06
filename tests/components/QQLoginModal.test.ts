@@ -1,5 +1,4 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 type Deferred<T> = {
@@ -41,7 +40,6 @@ vi.mock('../../src/services', () => ({
 describe('QQLoginModal.vue', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    setActivePinia(createPinia())
     localStorage.clear()
     qqApiMocks.getQQLoginQr.mockReset()
     qqApiMocks.checkQQLoginQr.mockReset()

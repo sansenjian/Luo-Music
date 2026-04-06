@@ -36,6 +36,7 @@ declare global {
   const createReactiveFn: typeof import('@vueuse/core').createReactiveFn
   const createRef: typeof import('@vueuse/core').createRef
   const createReusableTemplate: typeof import('@vueuse/core').createReusableTemplate
+  const createSearchStore: typeof import('./store/searchStore').createSearchStore
   const createSharedComposable: typeof import('@vueuse/core').createSharedComposable
   const createTemplatePromise: typeof import('@vueuse/core').createTemplatePromise
   const createUnrefFn: typeof import('@vueuse/core').createUnrefFn
@@ -390,17 +391,26 @@ declare global {
   export type { AnimationFunctions } from './composables/useAnimations'
   import('./composables/useAnimations')
   // @ts-ignore
+  export type { CommandContextDeps } from './composables/useCommandContext'
+  import('./composables/useCommandContext')
+  // @ts-ignore
   export type { MusicServerOption } from './composables/useHomePage'
   import('./composables/useHomePage')
   // @ts-ignore
-  export type { HomeTab } from './composables/useHomeShell'
+  export type { HomeTab, HomeShellDeps } from './composables/useHomeShell'
   import('./composables/useHomeShell')
+  // @ts-ignore
+  export type { KeyboardShortcutDeps } from './composables/useKeyboardShortcuts'
+  import('./composables/useKeyboardShortcuts')
   // @ts-ignore
   export type { UseLikedSongsReturn } from './composables/useLikedSongs'
   import('./composables/useLikedSongs')
   // @ts-ignore
   export type { UseLyricAutoScrollOptions } from './composables/useLyricAutoScroll'
   import('./composables/useLyricAutoScroll')
+  // @ts-ignore
+  export type { PlayerViewModelDeps } from './composables/usePlayerViewModel'
+  import('./composables/usePlayerViewModel')
   // @ts-ignore
   export type { SearchOptions, Song } from './composables/useSearch'
   import('./composables/useSearch')
@@ -430,7 +440,7 @@ declare global {
   export type { PlayerStoreActions } from './store/playerStore'
   import('./store/playerStore')
   // @ts-ignore
-  export type { SearchResultItem } from './store/searchStore'
+  export type { SearchResultItem, SearchStoreDeps } from './store/searchStore'
   import('./store/searchStore')
   // @ts-ignore
   export type { UserInfo } from './store/userStore'
@@ -492,6 +502,9 @@ declare module 'vue' {
     readonly createRef: UnwrapRef<(typeof import('@vueuse/core'))['createRef']>
     readonly createReusableTemplate: UnwrapRef<
       (typeof import('@vueuse/core'))['createReusableTemplate']
+    >
+    readonly createSearchStore: UnwrapRef<
+      (typeof import('./store/searchStore'))['createSearchStore']
     >
     readonly createSharedComposable: UnwrapRef<
       (typeof import('@vueuse/core'))['createSharedComposable']

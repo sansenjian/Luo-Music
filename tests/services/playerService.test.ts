@@ -71,4 +71,20 @@ describe('playerService', () => {
     expect(invoke).toHaveBeenNthCalledWith(4, 'player:skip-to-previous')
     expect(invoke).toHaveBeenNthCalledWith(5, 'player:skip-to-next')
   })
+
+  it('supports an injected bridge resolver', async () => {
+    const play = vi.fn().mockResolvedValue(undefined)
+    const getServiceBridge = vi.fn(() => ({
+      player: { play },
+      invoke: vi.fn()
+    }))
+
+    const { createPlayerService } = await import('@/services/playerService')
+    const service = createPlayerService({ getServiceBridge })
+
+    await service.play()
+
+    expect(getServiceBridge).toHaveBeenCalled()
+    expect(play).toHaveBeenCalledTimes(1)
+  })
 })

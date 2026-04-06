@@ -273,5 +273,16 @@ describe('musicService', () => {
 
       expect(mockAdapter.search).toHaveBeenCalled()
     })
+
+    it('supports an injected adapter resolver', async () => {
+      const resolveAdapter = vi.fn(() => mockAdapter)
+      mockAdapter.getLyric.mockResolvedValue({ lrc: '', tlyric: '', romalrc: '' })
+      const injectedService = createMusicService({ resolveAdapter })
+
+      await injectedService.getLyric('netease', 'song-1')
+
+      expect(resolveAdapter).toHaveBeenCalledWith('netease')
+      expect(mockAdapter.getLyric).toHaveBeenCalledWith('song-1')
+    })
   })
 })

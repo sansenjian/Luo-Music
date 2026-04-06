@@ -36,7 +36,7 @@ const config: ForgeConfig = {
     },
     extraResource: [
       'build/server',
-      'scripts/dev/qq-api-server.cjs',
+      'build/runtime/qq-api-server.cjs',
       'scripts/dev/qq-search-fallback.cjs',
       'scripts/dev/netease-api-server.cjs'
     ],
@@ -55,7 +55,7 @@ const config: ForgeConfig = {
     new AutoUnpackNativesPlugin({}),
     new FusesPlugin({
       version: FuseVersion.V1,
-      [FuseV1Options.RunAsNode]: false,
+      [FuseV1Options.RunAsNode]: true,
       [FuseV1Options.EnableCookieEncryption]: true,
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: false,

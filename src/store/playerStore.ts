@@ -334,6 +334,7 @@ function getPlaybackActions(store: PlayerStoreInstance) {
     },
     playSongByIndex: index => store.playSongByIndex(index),
     setLyricsArray: lyrics => store.setLyricsArray(lyrics),
+    musicService: services.music(),
     createErrorHandler: () => runtime.ensureErrorHandler(() => store.createErrorHandler()),
     getErrorHandler: () => runtime.getErrorHandler(),
     platform: {
@@ -546,6 +547,7 @@ export const usePlayerStore = defineStore('player', {
     createErrorHandler(): PlaybackErrorHandler {
       return markRaw(
         new PlaybackErrorHandler({
+          musicService: services.music(),
           getState: () => ({
             songList: this.songList,
             currentIndex: this.currentIndex,

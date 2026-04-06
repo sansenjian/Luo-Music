@@ -136,6 +136,7 @@ function main(): void {
       destroyTray()
       downloadManager.dispose()
       disposePerformanceMonitor()
+      ipcService.dispose()
       await serviceManager.stopAllServices()
     },
 

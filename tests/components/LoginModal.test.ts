@@ -1,5 +1,4 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useUserStore } from '../../src/store/userStore'
 
@@ -48,7 +47,6 @@ vi.mock('../../src/services', () => ({
 describe('LoginModal.vue', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    setActivePinia(createPinia())
     localStorage.clear()
     apiMocks.getQRKey.mockReset()
     apiMocks.getQRCode.mockReset()

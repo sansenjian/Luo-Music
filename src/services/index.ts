@@ -90,6 +90,13 @@ interface ServiceConfig<T> {
   overrideKey: keyof ServiceOverrides
 }
 
+function createCommandServiceFactory(): CommandService {
+  return createCommandService({
+    contextKeyService: getService(IContextKeyService),
+    platformService: getService(IPlatformService)
+  })
+}
+
 /**
  * 服务注册表 - 单一数据源
  */
@@ -126,7 +133,7 @@ const SERVICE_REGISTRY: ServiceConfig<unknown>[] = [
   },
   {
     identifier: ICommandService,
-    factory: createCommandService,
+    factory: createCommandServiceFactory,
     overrideKey: 'command'
   },
   {

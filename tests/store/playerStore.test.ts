@@ -1,51 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { Song } from '../../src/platform/music/interface'
-import { usePlayerStore } from '../../src/store/playerStore.ts'
 import { PLAY_MODE } from '../../src/utils/player/constants/playMode'
 import type { LyricLine } from '../../src/utils/player/core/lyric'
-
-function createMockSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
-  return {
-    id: overrides.id ?? 1,
-    name: String(overrides.name ?? 'Song'),
-    artists: overrides.artists ?? [{ id: 1, name: String(overrides.artist ?? 'Artist') }],
-    album: overrides.album ?? { id: 1, name: 'Album', picUrl: '' },
-    duration: Number(overrides.duration ?? 180000),
-    mvid: overrides.mvid ?? 0,
-    platform: (overrides.platform as 'netease' | 'qq') ?? 'netease',
-    originalId: overrides.originalId ?? overrides.id ?? 1,
-    ...overrides
-  }
-}
-
-vi.mock('../../src/utils/player/audioManager', () => ({
-  audioManager: {
-    play: vi.fn(() => Promise.resolve()),
-    pause: vi.fn(),
-    toggle: vi.fn(),
-    seek: vi.fn(),
-    setVolume: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-    get currentTime() {
-      return 0
-    },
-    get duration() {
-      return 180
-    },
-    get paused() {
-      return true
-    }
-  }
-}))
+import { usePlayerStore } from '../../src/store/playerStore.ts'
+import { createMockSong } from '../utils/test-utils'
 
 describe('playerStore', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
   describe('initial state', () => {
     it('has correct defaults', () => {
       const store = usePlayerStore()

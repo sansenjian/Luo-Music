@@ -2,6 +2,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { COMMANDS } from '../core/commands/commands'
 import type { Song } from '../types/schemas'
 import { services } from '../services'
+import type { CommandService } from '../services/commandService'
 import { usePlayerStore } from '../store/playerStore'
 import {
   animateAlbumCover,
@@ -63,9 +64,14 @@ function resolveCoverUrl(url?: string): string {
  * - sliders: `progressSlider`, `volumeSlider`
  * - UI handlers: `onPlayButtonClick`, `onPrevButtonClick`, `onNextButtonClick`, `toggleDesktopLyric`, `onLoopButtonClick`
  */
-export function usePlayerViewModel() {
-  const commandService = services.commands()
-  const playerStore = usePlayerStore()
+export type PlayerViewModelDeps = {
+  commandService?: Pick<CommandService, 'canExecute' | 'execute'>
+  playerStore?: ReturnType<typeof usePlayerStore>
+}
+
+export function usePlayerViewModel(deps: PlayerViewModelDeps = {}) {
+  const commandService = deps.commandService ?? services.commands()
+  const playerStore = deps.playerStore ?? usePlayerStore()
 
   const playButtonRef = ref<HTMLButtonElement | null>(null)
   const prevButtonRef = ref<HTMLButtonElement | null>(null)

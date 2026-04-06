@@ -5,6 +5,7 @@ import { createInitialState } from '@/store/player/playerState'
 import { PlaybackActions } from '@/store/player/playbackActions'
 import type { Song } from '@/types/schemas'
 import type { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
+import { createMockSong, createQQSong } from '../../utils/test-utils'
 
 type MockPlaybackErrorHandler = PlaybackErrorHandler & {
   markAsUnavailable: ReturnType<typeof vi.fn>
@@ -15,10 +16,6 @@ const adapterMock = vi.hoisted(() => ({
   getSongUrl: vi.fn(),
   getSongDetail: vi.fn(),
   getLyric: vi.fn()
-}))
-
-const servicesMock = vi.hoisted(() => ({
-  music: vi.fn(() => adapterMock)
 }))
 
 const lyricParseMock = vi.hoisted(() => vi.fn())
@@ -36,17 +33,6 @@ const fatalErrorMock = vi.hoisted(() => vi.fn((message: string) => new Error(mes
 const isCanceledRequestErrorMock = vi.hoisted(() =>
   vi.fn((error: unknown) => Boolean((error as { __cancel?: boolean })?.__cancel))
 )
-
-vi.mock('@/services', async importOriginal => {
-  const actual = await importOriginal<typeof import('@/services')>()
-  return {
-    ...actual,
-    services: {
-      ...actual.services,
-      music: servicesMock.music
-    }
-  }
-})
 
 vi.mock('@/utils/player/core/lyric', () => ({
   LyricParser: {
@@ -67,20 +53,6 @@ vi.mock('@/utils/error', () => ({
 vi.mock('@/utils/http/cancelError', () => ({
   isCanceledRequestError: isCanceledRequestErrorMock
 }))
-
-function createSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
-  return {
-    id: 1,
-    name: 'Test Song',
-    artists: [],
-    album: { id: 1, name: 'Album', picUrl: '' },
-    duration: 100,
-    mvid: 0,
-    platform: 'qq',
-    originalId: 1,
-    ...overrides
-  }
-}
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -118,6 +90,7 @@ describe('playbackActions', () => {
       onStateChange,
       playSongByIndex,
       setLyricsArray,
+      musicService: adapterMock,
       createErrorHandler: vi.fn(() => errorHandler),
       getErrorHandler: vi.fn(() => errorHandler),
       platform: {
@@ -140,10 +113,10 @@ describe('playbackActions', () => {
 
     expect(actions.getRandomIndex()).toBe(-1)
 
-    state.songList = [createSong()]
+    state.songList = [createMockSong()]
     expect(actions.getRandomIndex()).toBe(0)
 
-    state.songList = [createSong({ id: 1 }), createSong({ id: 2 })]
+    state.songList = [createMockSong({ id: 1 }), createMockSong({ id: 2 })]
     state.currentIndex = 0
     vi.spyOn(Math, 'random').mockReturnValue(0)
 
@@ -152,7 +125,11 @@ describe('playbackActions', () => {
 
   it('navigates previous and next songs according to play mode', () => {
     const { actions, state } = createSubject()
-    state.songList = [createSong({ id: 1 }), createSong({ id: 2 }), createSong({ id: 3 })]
+    state.songList = [
+      createMockSong({ id: 1 }),
+      createMockSong({ id: 2 }),
+      createMockSong({ id: 3 })
+    ]
     state.currentIndex = 0
 
     const playSongWithDetails = vi
@@ -174,7 +151,7 @@ describe('playbackActions', () => {
 
   it('plays an already-resolved song by index', async () => {
     const { actions, state, onStateChange, playSongByIndex } = createSubject()
-    state.songList = [createSong({ url: 'https://song.test/1.mp3' })]
+    state.songList = [createMockSong({ url: 'https://song.test/1.mp3' })]
 
     await actions.playSongByIndex(0)
 
@@ -188,7 +165,7 @@ describe('playbackActions', () => {
 
   it('preserves the current lyric index when reselecting the same song', async () => {
     const { actions, state, onStateChange, playSongByIndex, setLyricsArray } = createSubject()
-    const song = createSong({ id: 'song-1', url: 'https://song.test/1.mp3' })
+    const song = createMockSong({ id: 'song-1', url: 'https://song.test/1.mp3' })
     state.songList = [song]
     state.currentSong = song
     state.currentIndex = 0
@@ -207,14 +184,14 @@ describe('playbackActions', () => {
 
   it('throws when playSongByIndex is asked to play a song without a url', async () => {
     const { actions, state } = createSubject()
-    state.songList = [createSong()]
+    state.songList = [createMockSong()]
 
     await expect(actions.playSongByIndex(0)).rejects.toThrow('No URL for song')
   })
 
   it('fetches song url, plays it, and parses lyrics', async () => {
     const { actions, state, setLyricsArray, playSongByIndex, onStateChange } = createSubject()
-    const song = createSong({ id: 'song-1', mediaId: 'media-1' })
+    const song = createQQSong({ id: 'song-1', mediaId: 'media-1' })
     state.songList = [song]
     adapterMock.getSongUrl.mockResolvedValue('https://song.test/stream.mp3')
     adapterMock.getLyric.mockResolvedValue({
@@ -226,7 +203,6 @@ describe('playbackActions', () => {
 
     await actions.playSongWithDetails(0)
 
-    expect(servicesMock.music).toHaveBeenCalled()
     expect(adapterMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-1', {
       mediaId: 'media-1'
     })
@@ -241,7 +217,7 @@ describe('playbackActions', () => {
 
   it('hydrates netease search-result songs before fetching the playback url', async () => {
     const { actions, state } = createSubject()
-    const song = createSong({
+    const song = createMockSong({
       id: 'song-netease-search',
       platform: 'netease',
       name: 'Search Name',
@@ -251,7 +227,7 @@ describe('playbackActions', () => {
 
     state.songList = [song]
     adapterMock.getSongDetail.mockResolvedValue(
-      createSong({
+      createMockSong({
         id: 'song-netease-search',
         platform: 'netease',
         name: 'Detail Name',
@@ -281,7 +257,7 @@ describe('playbackActions', () => {
 
   it('reuses cached urls for netease songs during playback transitions', async () => {
     const { actions, state, playSongByIndex } = createSubject()
-    const song = createSong({
+    const song = createMockSong({
       id: 'song-netease',
       platform: 'netease',
       url: 'https://stale.example.com/old.mp3',
@@ -309,12 +285,12 @@ describe('playbackActions', () => {
 
   it('restores the previous song state when a manual switch fails before playback starts', async () => {
     const { actions, state, playSongByIndex } = createSubject()
-    const previousSong = createSong({
+    const previousSong = createMockSong({
       id: 'song-prev',
       platform: 'qq',
       url: 'https://song.test/prev.mp3'
     })
-    const nextSong = createSong({
+    const nextSong = createMockSong({
       id: 'song-next',
       platform: 'qq',
       url: 'https://song.test/next.mp3'
@@ -339,7 +315,7 @@ describe('playbackActions', () => {
 
   it('refreshes cached netease urls after an initial playback failure and retries once', async () => {
     const { actions, state, playSongByIndex } = createSubject()
-    const song = createSong({
+    const song = createMockSong({
       id: 'song-netease-retry',
       platform: 'netease',
       url: 'https://stale.example.com/old.mp3'
@@ -370,7 +346,7 @@ describe('playbackActions', () => {
 
   it('keeps current lyrics when lyric loading is cancelled', async () => {
     const { actions, state, setLyricsArray } = createSubject()
-    state.songList = [createSong({ url: 'https://song.test/ready.mp3' })]
+    state.songList = [createMockSong({ url: 'https://song.test/ready.mp3' })]
     adapterMock.getLyric.mockRejectedValue({ __cancel: true })
 
     await actions.playSongWithDetails(0)
@@ -385,8 +361,8 @@ describe('playbackActions', () => {
   it('ignores stale lyric responses from superseded playback requests', async () => {
     const { actions, state, setLyricsArray } = createSubject()
     state.songList = [
-      createSong({ id: 'song-1', url: 'https://song.test/1.mp3' }),
-      createSong({ id: 'song-2', url: 'https://song.test/2.mp3' })
+      createMockSong({ id: 'song-1', url: 'https://song.test/1.mp3' }),
+      createMockSong({ id: 'song-2', url: 'https://song.test/2.mp3' })
     ]
 
     const firstLyric = createDeferred<{ lrc: string; tlyric: string; romalrc: string }>()
@@ -442,8 +418,8 @@ describe('playbackActions', () => {
   it('ignores stale playback requests before they can replace the current song', async () => {
     const { actions, state, playSongByIndex, onStateChange } = createSubject()
     state.songList = [
-      createSong({ id: 'song-1', url: undefined }),
-      createSong({ id: 'song-2', url: undefined })
+      createQQSong({ id: 'song-1', url: undefined }),
+      createQQSong({ id: 'song-2', url: undefined })
     ]
 
     const firstUrl = createDeferred<string | null>()
@@ -480,8 +456,8 @@ describe('playbackActions', () => {
   it('skips state updates when an older playback promise resolves after a newer switch', async () => {
     const { actions, state, playSongByIndex, onStateChange } = createSubject()
     state.songList = [
-      createSong({ id: 'song-1', url: 'https://song.test/1.mp3' }),
-      createSong({ id: 'song-2', url: 'https://song.test/2.mp3' })
+      createMockSong({ id: 'song-1', url: 'https://song.test/1.mp3' }),
+      createMockSong({ id: 'song-2', url: 'https://song.test/2.mp3' })
     ]
 
     const firstPlaybackCommit = createDeferred<void>()
@@ -517,7 +493,7 @@ describe('playbackActions', () => {
 
   it('marks songs unavailable and rethrows when auto skip is disabled', async () => {
     const { actions, state, errorHandler } = createSubject()
-    state.songList = [createSong({ id: 'vip-song' })]
+    state.songList = [createQQSong({ id: 'vip-song' })]
     adapterMock.getSongUrl.mockResolvedValue(null)
 
     await expect(actions.playSongWithDetails(0, false)).rejects.toThrow()
@@ -532,7 +508,7 @@ describe('playbackActions', () => {
 
   it('auto skips to the next available song after playback errors', async () => {
     const { actions, state } = createSubject()
-    state.songList = [createSong({ id: 'bad-song' })]
+    state.songList = [createMockSong({ id: 'bad-song' })]
     adapterMock.getSongUrl.mockRejectedValue(new Error('network'))
     const playNextSkipUnavailable = vi
       .spyOn(actions, 'playNextSkipUnavailable')

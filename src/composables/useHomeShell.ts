@@ -1,6 +1,8 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { services } from '../services'
+import type { PlatformService } from '../services/platformService'
+import type { StorageService } from '../services/storageService'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { usePlayerStore } from '../store/playerStore'
 import { useToastStore } from '../store/toastStore'
@@ -9,14 +11,25 @@ export type HomeTab = 'lyric' | 'playlist'
 
 const COMPACT_MODE_PREFERENCE_KEY = 'compactModeUserToggled'
 
-export function useHomeShell() {
-  const playerStore = usePlayerStore()
-  const toastStore = useToastStore()
-  const platformService = services.platform()
-  const storageService = services.storage()
+export type HomeShellDeps = {
+  playerStore?: ReturnType<typeof usePlayerStore>
+  toastStore?: Pick<ReturnType<typeof useToastStore>, 'error'>
+  platformService?: Pick<
+    PlatformService,
+    'isElectron' | 'minimizeWindow' | 'maximizeWindow' | 'closeWindow' | 'isMobile'
+  >
+  storageService?: Pick<StorageService, 'getItem' | 'setItem'>
+  registerKeyboardShortcuts?: () => void
+}
+
+export function useHomeShell(deps: HomeShellDeps = {}) {
+  const playerStore = deps.playerStore ?? usePlayerStore()
+  const toastStore = deps.toastStore ?? useToastStore()
+  const platformService = deps.platformService ?? services.platform()
+  const storageService = deps.storageService ?? services.storage()
   const activeTab = ref<HomeTab>('lyric')
 
-  useKeyboardShortcuts()
+  ;(deps.registerKeyboardShortcuts ?? useKeyboardShortcuts)()
 
   const isElectron = computed(() => platformService.isElectron())
 

@@ -1,7 +1,6 @@
 import { defineComponent, nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
 
 import { useHomeShell } from '../../src/composables/useHomeShell'
 import { usePlayerStore } from '../../src/store/playerStore'
@@ -55,7 +54,6 @@ function mountShell() {
 
 describe('useHomeShell', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     localStorage.clear()
     vi.clearAllMocks()
     platformServiceMock.isElectron.mockReturnValue(false)

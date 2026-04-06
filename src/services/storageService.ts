@@ -6,6 +6,10 @@ export type StorageService = {
   setJSON<T>(key: string, value: T): void
 }
 
+export type StorageServiceDeps = {
+  storage?: StorageLike
+}
+
 type StorageLike = Pick<Storage, 'clear' | 'getItem' | 'key' | 'removeItem' | 'setItem'> & {
   readonly length: number
 }
@@ -70,22 +74,24 @@ export const storageAdapter: StorageLike = {
   }
 }
 
-export function createStorageService(): StorageService {
+export function createStorageService(deps: StorageServiceDeps = {}): StorageService {
+  const storage = deps.storage ?? storageAdapter
+
   return {
     getItem(key: string): string | null {
-      return storageAdapter.getItem(key)
+      return storage.getItem(key)
     },
 
     setItem(key: string, value: string): void {
-      storageAdapter.setItem(key, value)
+      storage.setItem(key, value)
     },
 
     removeItem(key: string): void {
-      storageAdapter.removeItem(key)
+      storage.removeItem(key)
     },
 
     getJSON<T>(key: string): T | null {
-      const value = storageAdapter.getItem(key)
+      const value = storage.getItem(key)
       if (!value) {
         return null
       }
@@ -98,7 +104,7 @@ export function createStorageService(): StorageService {
     },
 
     setJSON<T>(key: string, value: T): void {
-      storageAdapter.setItem(key, JSON.stringify(value))
+      storage.setItem(key, JSON.stringify(value))
     }
   }
 }

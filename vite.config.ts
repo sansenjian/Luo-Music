@@ -11,6 +11,7 @@ import {
 
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  const appRuntime = env.APP_RUNTIME === 'electron' ? 'electron' : 'web'
   const sentryDsn = env.SENTRY_DSN ?? ''
   const sentryRelease = env.SENTRY_RELEASE ?? ''
   const isProduction = mode === 'production'
@@ -38,6 +39,7 @@ export default defineConfig(async ({ mode }) => {
     plugins,
     base: './',
     define: {
+      'import.meta.env.APP_RUNTIME': JSON.stringify(appRuntime),
       'import.meta.env.SENTRY_DSN': JSON.stringify(sentryDsn),
       'import.meta.env.SENTRY_RELEASE': JSON.stringify(sentryRelease)
     },

@@ -25,10 +25,40 @@ for (const assignment of envAssignments) {
   env[key] = value
 }
 
-const child = spawn(commandParts[0], commandParts.slice(1), {
+function escapeForWindowsCmd(argument) {
+  const value = String(argument)
+
+  if (value.length === 0) {
+    return '""'
+  }
+
+  if (!/[\s"&^|<>()%!]/.test(value)) {
+    return value
+  }
+
+  return `"${value.replace(/(["^])/g, '^$1')}"`
+}
+
+function createSpawnTarget(parts) {
+  if (process.platform !== 'win32') {
+    return {
+      command: parts[0],
+      args: parts.slice(1)
+    }
+  }
+
+  const commandLine = parts.map(escapeForWindowsCmd).join(' ')
+  return {
+    command: process.env.comspec || 'cmd.exe',
+    args: ['/d', '/s', '/c', commandLine]
+  }
+}
+
+const target = createSpawnTarget(commandParts)
+
+const child = spawn(target.command, target.args, {
   stdio: 'inherit',
-  env,
-  shell: process.platform === 'win32'
+  env
 })
 
 child.on('exit', (code, signal) => {

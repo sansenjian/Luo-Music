@@ -1,49 +1,35 @@
 import type { Component } from 'vue'
 import { mount, type MountingOptions } from '@vue/test-utils'
 
-export interface MockSong {
-  id: number
-  name: string
-  artist: string
-  album: string
-  duration: number
-  url: string
-  cover: string
-}
+import type { Song } from '@/platform/music/interface'
 
-export interface MockLyrics {
-  lrc: { lyric: string }
-  tlyric: { lyric: string }
-}
-
-export function createMockSong(overrides: Partial<MockSong> = {}): MockSong {
+/**
+ * Create a mock Song object with sensible defaults.
+ * Covers the full Song interface so tests don't need to define every field.
+ */
+export function createMockSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
   return {
-    id: 123,
-    name: 'Test Song',
-    artist: 'Test Artist',
-    album: 'Test Album',
-    duration: 180,
-    url: 'http://example.com/test.mp3',
-    cover: 'http://example.com/cover.jpg',
+    id: overrides.id ?? 1,
+    name: String(overrides.name ?? 'Song'),
+    artists: overrides.artists ?? [{ id: 1, name: String(overrides.artist ?? 'Artist') }],
+    album: overrides.album ?? {
+      id: 1,
+      name: String(overrides.albumName ?? 'Album'),
+      picUrl: String(overrides.pic ?? '')
+    },
+    duration: Number(overrides.duration ?? 180000),
+    mvid: overrides.mvid ?? 0,
+    platform: (overrides.platform as 'netease' | 'qq') ?? 'netease',
+    originalId: overrides.originalId ?? overrides.id ?? 1,
     ...overrides
   }
 }
 
-export function createMockLyrics(): MockLyrics {
-  return {
-    lrc: {
-      lyric: `[00:00.00]歌词第一行
-[00:05.00]歌词第二行
-[00:10.00]歌词第三行
-[00:15.00]歌词第四行`
-    },
-    tlyric: {
-      lyric: `[00:00.00]Translation line 1
-[00:05.00]Translation line 2
-[00:10.00]Translation line 3
-[00:15.00]Translation line 4`
-    }
-  }
+/**
+ * Shortcut for QQ Music platform songs — avoids repeating `platform: 'qq'`.
+ */
+export function createQQSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
+  return createMockSong({ platform: 'qq', ...overrides })
 }
 
 export function mountComponent(component: Component, options: MountingOptions<any> = {}) {

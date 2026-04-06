@@ -33,6 +33,7 @@ describe('platform/common/platformService', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    delete globalThis.__LUO_APP_RUNTIME__
     PlatformServiceRegistry.clear()
   })
 
@@ -91,58 +92,38 @@ describe('platform/common/platformService', () => {
   })
 
   describe('detectElectron', () => {
-    it('returns false without a window object', () => {
-      vi.stubGlobal('window', undefined)
+    it('returns false for the web runtime', () => {
+      globalThis.__LUO_APP_RUNTIME__ = 'web'
       expect(detectElectron()).toBe(false)
     })
 
-    it('returns false when electron api is absent', () => {
-      Object.defineProperty(window, 'electronAPI', {
-        configurable: true,
-        value: undefined
-      })
-      expect(detectElectron()).toBe(false)
+    it('returns true for the electron runtime', () => {
+      globalThis.__LUO_APP_RUNTIME__ = 'electron'
+      expect(detectElectron()).toBe(true)
     })
 
-    it('returns true when electron api exists', () => {
+    it('does not treat preload globals as electron when runtime is web', () => {
+      globalThis.__LUO_APP_RUNTIME__ = 'web'
       Object.defineProperty(window, 'electronAPI', {
         configurable: true,
         value: {} as unknown
       })
-      expect(detectElectron()).toBe(true)
-      Object.defineProperty(window, 'electronAPI', {
-        configurable: true,
-        value: undefined
-      })
-    })
-
-    it('returns true when services bridge exists', () => {
       Object.defineProperty(window, 'services', {
         configurable: true,
         value: {} as unknown
       })
-      expect(detectElectron()).toBe(true)
-      Object.defineProperty(window, 'services', {
-        configurable: true,
-        value: undefined
-      })
+
+      expect(detectElectron()).toBe(false)
     })
 
-    it('returns true for Electron user agents even before preload globals are exposed', () => {
-      Object.defineProperty(window, 'electronAPI', {
-        configurable: true,
-        value: undefined
-      })
-      Object.defineProperty(window, 'services', {
-        configurable: true,
-        value: undefined
-      })
+    it('does not treat the user agent as electron when runtime is web', () => {
+      globalThis.__LUO_APP_RUNTIME__ = 'web'
       Object.defineProperty(window.navigator, 'userAgent', {
         configurable: true,
         value: 'Mozilla/5.0 AppleWebKit/537.36 Chrome/140.0.0.0 Electron/40.0.0 Safari/537.36'
       })
 
-      expect(detectElectron()).toBe(true)
+      expect(detectElectron()).toBe(false)
     })
   })
 

@@ -19,10 +19,18 @@ export type MusicService = {
   getPlaylistDetail(platform: string, id: string | number): Promise<PlaylistDetail | null>
 }
 
-export function createMusicService(): MusicService {
+type ResolveMusicAdapter = typeof getMusicAdapter
+
+export type MusicServiceDeps = {
+  resolveAdapter?: ResolveMusicAdapter
+}
+
+export function createMusicService(deps: MusicServiceDeps = {}): MusicService {
+  const resolveAdapter = deps.resolveAdapter ?? getMusicAdapter
+
   return {
     search(platform: string, keyword: string, limit: number, page: number): Promise<SearchResult> {
-      return getMusicAdapter(platform).search(keyword, limit, page)
+      return resolveAdapter(platform).search(keyword, limit, page)
     },
 
     getSongUrl(
@@ -30,19 +38,19 @@ export function createMusicService(): MusicService {
       id: string | number,
       options?: SongUrlOptions | string
     ): Promise<string | null> {
-      return getMusicAdapter(platform).getSongUrl(id, options)
+      return resolveAdapter(platform).getSongUrl(id, options)
     },
 
     getSongDetail(platform: string, id: string | number): Promise<Song | null> {
-      return getMusicAdapter(platform).getSongDetail(id)
+      return resolveAdapter(platform).getSongDetail(id)
     },
 
     getLyric(platform: string, id: string | number): Promise<LyricResult> {
-      return getMusicAdapter(platform).getLyric(id)
+      return resolveAdapter(platform).getLyric(id)
     },
 
     getPlaylistDetail(platform: string, id: string | number): Promise<PlaylistDetail | null> {
-      return getMusicAdapter(platform).getPlaylistDetail(id)
+      return resolveAdapter(platform).getPlaylistDetail(id)
     }
   }
 }

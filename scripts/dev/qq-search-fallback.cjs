@@ -76,7 +76,7 @@ function normalizeQQMusicuSearchResponse(payload) {
   }
 }
 
-async function requestQQMusicuSearch(keyword, limit, page, timeoutMs = 15000) {
+async function requestQQMusicuSearch(keyword, limit, page, timeoutMs = 10000) {
   const controller = new AbortController()
   const timeout = setTimeout(() => {
     controller.abort(new Error(`QQ fallback search timed out after ${timeoutMs}ms: ${SEARCH_ENDPOINT} keyword="${keyword}"`))

@@ -3,9 +3,16 @@ import { onMounted, onUnmounted } from 'vue'
 import { DEFAULT_SHORTCUTS } from '../config/shortcuts'
 import { COMMANDS } from '../core/commands/commands'
 import { services } from '../services'
+import type { CommandService } from '../services/commandService'
 
-export function useKeyboardShortcuts(): void {
-  const commandService = services.commands()
+export type KeyboardShortcutDeps = {
+  commandService?: Pick<CommandService, 'canExecute' | 'execute'>
+  target?: Pick<Window, 'addEventListener' | 'removeEventListener'>
+}
+
+export function useKeyboardShortcuts(deps: KeyboardShortcutDeps = {}): void {
+  const commandService = deps.commandService ?? services.commands()
+  const target = deps.target ?? window
   const commandMap: Record<string, { id: string; payload?: unknown }> = {
     togglePlay: { id: COMMANDS.PLAYER_TOGGLE_PLAY },
     playPrev: { id: COMMANDS.PLAYER_PLAY_PREV },
@@ -60,10 +67,10 @@ export function useKeyboardShortcuts(): void {
   }
 
   onMounted(() => {
-    window.addEventListener('keydown', handleKeydown)
+    target.addEventListener('keydown', handleKeydown)
   })
 
   onUnmounted(() => {
-    window.removeEventListener('keydown', handleKeydown)
+    target.removeEventListener('keydown', handleKeydown)
   })
 }

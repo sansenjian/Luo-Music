@@ -69,7 +69,7 @@ export function setupErrorHandlers(): void {
 export interface AppLifecycleCallbacks {
   onReady: () => Promise<void> | void
   onWindowAllClosed: () => Promise<void> | void
-  onWillQuit: () => Promise<void> | void
+  onWillQuit: (event: Electron.Event) => Promise<void> | void
   onActivate: () => void
   onSecondInstance: () => void
 }
@@ -82,8 +82,16 @@ export function registerAppLifecycle(callbacks: AppLifecycleCallbacks): void {
     await callbacks.onWindowAllClosed()
   })
 
-  app.on('will-quit', async () => {
-    await callbacks.onWillQuit()
+  app.on('will-quit', (event: Electron.Event) => {
+    event.preventDefault()
+    Promise.resolve()
+      .then(() => callbacks.onWillQuit(event))
+      .catch((error: unknown) => {
+        logger.error('[App] Cleanup error during quit:', error)
+      })
+      .finally(() => {
+        app.exit(0)
+      })
   })
 
   app.on('activate', () => {

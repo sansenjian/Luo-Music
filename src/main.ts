@@ -9,17 +9,15 @@ import App from './App.vue'
 import router from './router'
 import { setupServices } from './services'
 import { getLogger } from './utils/logger'
+import { isElectronRuntime } from './utils/runtime'
 
 const sentryDsn = import.meta.env.SENTRY_DSN
 const sentryRelease = import.meta.env.SENTRY_RELEASE
-const isElectronRuntime =
-  typeof window !== 'undefined' &&
-  (typeof window.electronAPI !== 'undefined' || typeof window.services !== 'undefined')
 const isLocalhost =
   typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 const sentryEnabled =
-  Boolean(sentryDsn) && import.meta.env.PROD && isElectronRuntime && !isLocalhost
+  Boolean(sentryDsn) && import.meta.env.PROD && isElectronRuntime() && !isLocalhost
 type SentryRendererModule = typeof import('@sentry/browser')
 
 let sentryRenderer: SentryRendererModule | null = null
