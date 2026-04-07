@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createSong, type Song } from '../../src/platform/music/interface'
-import type { SongArtist } from '../../src/platform/music/interface'
+import type { Artist } from '../../src/platform/music/interface'
 
 describe('platform/music/interface', () => {
   describe('createSong()', () => {
@@ -120,7 +120,7 @@ describe('platform/music/interface', () => {
       })
 
       expect(song.artists).toHaveLength(3)
-      expect(song.artists.map((artist: SongArtist) => artist.name)).toEqual([
+      expect(song.artists.map((artist: Artist) => artist.name)).toEqual([
         'Artist 1',
         'Artist 2',
         'Artist 3'

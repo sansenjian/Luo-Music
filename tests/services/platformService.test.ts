@@ -1,19 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Platform, type IPlatformService } from '../../src/platform'
 
 const platformMock = vi.hoisted(() => ({
+  name: 'platform-test',
   closeWindow: vi.fn(),
   isElectron: vi.fn(),
   isMobile: vi.fn(),
   maximizeWindow: vi.fn(),
   minimizeWindow: vi.fn(),
   send: vi.fn(),
+  supportsSendChannel: vi.fn(() => true),
+  sendPlayingState: vi.fn(),
+  sendPlayModeChange: vi.fn(),
   on: vi.fn(),
   getCacheSize: vi.fn(),
-  clearCache: vi.fn()
+  clearCache: vi.fn(),
+  getPlatform: vi.fn(() => Platform.Web),
+  getName: vi.fn(() => 'test-platform')
 }))
 
 const initializePlatformServiceMock = vi.hoisted(() => vi.fn())
-const getPlatformServiceMock = vi.hoisted(() => vi.fn(() => platformMock))
+const getPlatformServiceMock = vi.hoisted(() =>
+  vi.fn((): IPlatformService => platformMock as unknown as IPlatformService)
+)
 
 vi.mock('../../src/platform', () => ({
   initializePlatformService: initializePlatformServiceMock,
@@ -107,7 +116,9 @@ describe('platformService', () => {
       isElectron: vi.fn(() => false)
     }
     const initialize = vi.fn()
-    const getPlatform = vi.fn(() => injectedPlatform)
+    const getPlatform = vi.fn(
+      (): IPlatformService => injectedPlatform as unknown as IPlatformService
+    )
     const getDesktopBridge = vi.fn(() => undefined)
     const getElectronApi = vi.fn(() => undefined)
 

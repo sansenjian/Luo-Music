@@ -1,9 +1,51 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PLAY_MODE } from '../../src/utils/player/constants/playMode'
 import type { LyricLine } from '../../src/utils/player/core/lyric'
-import { usePlayerStore } from '../../src/store/playerStore.ts'
+import { createPlayerStore, usePlayerStore } from '../../src/store/playerStore.ts'
 import { createMockSong } from '../utils/test-utils'
+
+let storeCounter = 0
+
+function createAudioManagerMock() {
+  return {
+    play: vi.fn(() => Promise.resolve()),
+    pause: vi.fn(),
+    toggle: vi.fn(),
+    seek: vi.fn(),
+    setVolume: vi.fn(),
+    getMuted: vi.fn(() => false),
+    setMuted: vi.fn()
+  }
+}
+
+function createInjectedPlayerStore() {
+  storeCounter += 1
+  const audioManager = createAudioManagerMock()
+  const storageService = {
+    setItem: vi.fn()
+  }
+  const useInjectedStore = createPlayerStore(
+    {
+      audioManager,
+      getStorageService: () => storageService,
+      getPlatformAccessor: () => ({
+        isElectron: () => false,
+        send: vi.fn(),
+        sendPlayingState: vi.fn(),
+        sendPlayModeChange: vi.fn(),
+        on: vi.fn(() => () => {})
+      })
+    },
+    `player-test-${storeCounter}`
+  )
+
+  return {
+    store: useInjectedStore(),
+    audioManager,
+    storageService
+  }
+}
 
 describe('playerStore', () => {
   describe('initial state', () => {
@@ -114,9 +156,10 @@ describe('playerStore', () => {
     })
 
     it('setVolume sets volume', () => {
-      const store = usePlayerStore()
+      const { store, audioManager } = createInjectedPlayerStore()
       store.setVolume(0.5)
       expect(store.volume).toBe(0.5)
+      expect(audioManager.setVolume).toHaveBeenCalledWith(0.5)
     })
 
     it('setPlayMode falls back to sequential for invalid numeric input', () => {
@@ -128,10 +171,11 @@ describe('playerStore', () => {
     })
 
     it('seek updates progress', () => {
-      const store = usePlayerStore()
+      const { store, audioManager } = createInjectedPlayerStore()
       store.duration = 180
       store.seek(60)
       expect(store.progress).toBe(60)
+      expect(audioManager.seek).toHaveBeenCalledWith(60)
     })
   })
 
@@ -201,13 +245,14 @@ describe('playerStore', () => {
     })
 
     it('toggleCompactMode toggles compact mode', () => {
-      const store = usePlayerStore()
+      const { store, storageService } = createInjectedPlayerStore()
 
       expect(store.isCompact).toBe(false)
       store.toggleCompactMode()
       expect(store.isCompact).toBe(true)
       store.toggleCompactMode()
       expect(store.isCompact).toBe(false)
+      expect(storageService.setItem).toHaveBeenCalledWith('compactModeUserToggled', 'true')
     })
   })
 })

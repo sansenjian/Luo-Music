@@ -1,65 +1,65 @@
+import { computed, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
 
-import { defineComponent, ref } from 'vue'
-
-import { useSearchStore } from '../../src/store/searchStore'
-import { useToastStore } from '../../src/store/toastStore'
 import { useHomePage } from '../../src/composables/useHomePage'
+import type { SearchResultItem } from '../../src/store/searchStore'
 
 const mockSwitchTab = vi.fn()
 const mockSetSongList = vi.fn()
+const mockToastError = vi.fn()
+const mockToastSuccess = vi.fn()
+const mockSearch = vi.fn()
 
-vi.mock('../../src/composables/useHomeShell', () => ({
-  useHomeShell: () => ({
-    activeTab: ref('lyric'),
-    closeWindow: vi.fn(),
-    isElectron: ref(false),
-    maximizeWindow: vi.fn(),
-    minimizeWindow: vi.fn(),
-    playSong: vi.fn(),
-    playerStore: {
-      setSongList: mockSetSongList,
-      loading: false,
-      songList: []
+function createHomePageDeps() {
+  const searchStore = {
+    server: 'netease',
+    isLoading: false,
+    results: [] as SearchResultItem[],
+    totalResults: 0,
+    error: null as string | null,
+    hasResults: false,
+    search: mockSearch,
+    setServer: vi.fn((value: string) => {
+      searchStore.server = value
+    })
+  }
+
+  return {
+    toastStore: {
+      error: mockToastError,
+      success: mockToastSuccess
     },
-    switchTab: mockSwitchTab
-  })
-}))
-
-const Harness = defineComponent({
-  setup() {
-    return useHomePage()
-  },
-  template: '<div />'
-})
+    searchStore,
+    homeShell: {
+      activeTab: ref<'lyric' | 'playlist'>('lyric'),
+      isElectron: computed(() => false),
+      playerStore: {
+        setSongList: mockSetSongList
+      },
+      switchTab: mockSwitchTab
+    }
+  }
+}
 
 describe('useHomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
   })
 
   it('shows a toast when searching with an empty keyword', async () => {
-    const toastStore = useToastStore()
-    const toastErrorSpy = vi.spyOn(toastStore, 'error')
-    const wrapper = mount(Harness)
+    const deps = createHomePageDeps()
+    const viewModel = useHomePage(deps)
 
-    await (wrapper.vm as unknown as { setSearchKeyword: (value: string) => void }).setSearchKeyword(
-      '   '
-    )
-    await (wrapper.vm as unknown as { onSearch: () => Promise<void> }).onSearch()
+    viewModel.setSearchKeyword('   ')
+    await viewModel.onSearch()
 
-    expect(toastErrorSpy).toHaveBeenCalledWith('Please enter a search keyword')
+    expect(mockToastError).toHaveBeenCalledWith('Please enter a search keyword')
   })
 
   it('routes successful search results to playlist and switches tab', async () => {
-    const searchStore = useSearchStore()
-    const toastStore = useToastStore()
-    const toastSuccessSpy = vi.spyOn(toastStore, 'success')
-
-    vi.spyOn(searchStore, 'search').mockImplementation(async () => {
-      searchStore.results = [
+    const deps = createHomePageDeps()
+    deps.searchStore.search = vi.fn(async () => {
+      deps.searchStore.results = [
         {
           id: 'song-1',
           name: 'Song 1',
@@ -72,35 +72,29 @@ describe('useHomePage', () => {
           duration: 180
         }
       ]
-      searchStore.totalResults = 1
-      searchStore.error = null
+      deps.searchStore.totalResults = 1
+      deps.searchStore.error = null
+      deps.searchStore.hasResults = true
     })
 
-    const wrapper = mount(Harness)
-    ;(wrapper.vm as unknown as { setSearchKeyword: (value: string) => void }).setSearchKeyword(
-      'song'
-    )
-    await (wrapper.vm as unknown as { onSearch: () => Promise<void> }).onSearch()
+    const viewModel = useHomePage(deps)
+    viewModel.setSearchKeyword('song')
+    await viewModel.onSearch()
 
     expect(mockSetSongList).toHaveBeenCalledTimes(1)
     expect(mockSwitchTab).toHaveBeenCalledWith('playlist')
-    expect(toastSuccessSpy).toHaveBeenCalledWith('Found 1 songs')
+    expect(mockToastSuccess).toHaveBeenCalledWith('Found 1 songs')
   })
 
   it('updates server selection and closes the server dropdown', () => {
-    const searchStore = useSearchStore()
-    const wrapper = mount(Harness)
-    const vm = wrapper.vm as unknown as {
-      showSelect: boolean
-      toggleSelect: () => void
-      selectServer: (value: string) => void
-    }
+    const deps = createHomePageDeps()
+    const viewModel = useHomePage(deps)
 
-    vm.toggleSelect()
-    expect(vm.showSelect).toBe(true)
+    viewModel.toggleSelect()
+    expect(viewModel.showSelect.value).toBe(true)
 
-    vm.selectServer('qq')
-    expect(searchStore.server).toBe('qq')
-    expect(vm.showSelect).toBe(false)
+    viewModel.selectServer('qq')
+    expect(deps.searchStore.server).toBe('qq')
+    expect(viewModel.showSelect.value).toBe(false)
   })
 })

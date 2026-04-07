@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { SearchResultItem } from '../../src/store/searchStore'
+import { useSearch } from '../../src/composables/useSearch'
 
 const searchMock = vi.fn()
 const clearResultsMock = vi.fn()
@@ -35,23 +36,20 @@ const mockSearchStore = {
   addAllToPlaylist: addAllToPlaylistMock
 }
 
-vi.mock('../../src/store/searchStore', () => ({
-  useSearchStore: () => mockSearchStore
-}))
-
-import { useSearch } from '../../src/composables/useSearch'
-
 describe('useSearch', () => {
   beforeEach(() => {
     mockResults = []
     mockHasResults = false
     mockError = null
     mockSearchStore.totalResults = 0
+    mockSearchStore.server = 'netease'
     vi.clearAllMocks()
   })
 
   it('proxies store state through computed properties', () => {
-    const { keyword, results, total, loading, error, platform, hasResults } = useSearch()
+    const { keyword, results, total, loading, error, platform, hasResults } = useSearch({
+      searchStore: mockSearchStore
+    })
 
     expect(keyword.value).toBe('test')
     expect(results.value).toEqual([])
@@ -81,7 +79,7 @@ describe('useSearch', () => {
     mockHasResults = true
     searchMock.mockResolvedValue(undefined)
 
-    const { search } = useSearch()
+    const { search } = useSearch({ searchStore: mockSearchStore })
     const result = await search('jay')
 
     expect(searchMock).toHaveBeenCalledWith('jay')
@@ -93,20 +91,20 @@ describe('useSearch', () => {
     mockError = 'No songs found'
     searchMock.mockResolvedValue(undefined)
 
-    const { search } = useSearch()
+    const { search } = useSearch({ searchStore: mockSearchStore })
     const result = await search('xyz')
 
     expect(result).toEqual({ success: false, error: 'No songs found' })
   })
 
   it('delegates clear to searchStore', () => {
-    const { clear } = useSearch()
+    const { clear } = useSearch({ searchStore: mockSearchStore })
     clear()
     expect(clearResultsMock).toHaveBeenCalled()
   })
 
   it('delegates setPlatform to searchStore', () => {
-    const { setPlatform } = useSearch()
+    const { setPlatform } = useSearch({ searchStore: mockSearchStore })
     setPlatform('qq')
     expect(setServerMock).toHaveBeenCalledWith('qq')
   })
@@ -125,20 +123,20 @@ describe('useSearch', () => {
     }
     mockResults = [item]
 
-    const { getSongAt } = useSearch()
+    const { getSongAt } = useSearch({ searchStore: mockSearchStore })
     expect(getSongAt(0)).toEqual(item)
   })
 
   it('getSongAt returns null for out-of-range indices', () => {
     mockResults = []
 
-    const { getSongAt } = useSearch()
+    const { getSongAt } = useSearch({ searchStore: mockSearchStore })
     expect(getSongAt(-1)).toBeNull()
     expect(getSongAt(5)).toBeNull()
   })
 
   it('delegates playResult and addToPlaylist', () => {
-    const { playResult, addToPlaylist } = useSearch()
+    const { playResult, addToPlaylist } = useSearch({ searchStore: mockSearchStore })
 
     void playResult(2)
     expect(playResultMock).toHaveBeenCalledWith(2)
@@ -148,7 +146,7 @@ describe('useSearch', () => {
   })
 
   it('delegates addAllToPlaylist', () => {
-    const { addAllToPlaylist } = useSearch()
+    const { addAllToPlaylist } = useSearch({ searchStore: mockSearchStore })
     addAllToPlaylist()
     expect(addAllToPlaylistMock).toHaveBeenCalled()
   })

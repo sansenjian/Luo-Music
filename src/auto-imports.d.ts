@@ -33,6 +33,7 @@ declare global {
   const createGlobalState: typeof import('@vueuse/core').createGlobalState
   const createInjectionState: typeof import('@vueuse/core').createInjectionState
   const createPinia: typeof import('pinia').createPinia
+  const createPlayerStore: typeof import('./store/playerStore').createPlayerStore
   const createReactiveFn: typeof import('@vueuse/core').createReactiveFn
   const createRef: typeof import('@vueuse/core').createRef
   const createReusableTemplate: typeof import('@vueuse/core').createReusableTemplate
@@ -394,7 +395,7 @@ declare global {
   export type { CommandContextDeps } from './composables/useCommandContext'
   import('./composables/useCommandContext')
   // @ts-ignore
-  export type { MusicServerOption } from './composables/useHomePage'
+  export type { MusicServerOption, HomePageDeps } from './composables/useHomePage'
   import('./composables/useHomePage')
   // @ts-ignore
   export type { HomeTab, HomeShellDeps } from './composables/useHomeShell'
@@ -412,7 +413,7 @@ declare global {
   export type { PlayerViewModelDeps } from './composables/usePlayerViewModel'
   import('./composables/usePlayerViewModel')
   // @ts-ignore
-  export type { SearchOptions, Song } from './composables/useSearch'
+  export type { SearchOptions, SearchComposableDeps, Song } from './composables/useSearch'
   import('./composables/useSearch')
   // @ts-ignore
   export type { SliderOptions } from './composables/useSlider'
@@ -437,7 +438,7 @@ declare global {
   export type { PlaylistItem, UseUserPlaylistsReturn } from './composables/useUserPlaylists'
   import('./composables/useUserPlaylists')
   // @ts-ignore
-  export type { PlayerStoreActions } from './store/playerStore'
+  export type { PlayerStoreActions, PlayerStoreDeps } from './store/playerStore'
   import('./store/playerStore')
   // @ts-ignore
   export type { SearchResultItem, SearchStoreDeps } from './store/searchStore'
@@ -498,6 +499,9 @@ declare module 'vue' {
       (typeof import('@vueuse/core'))['createInjectionState']
     >
     readonly createPinia: UnwrapRef<(typeof import('pinia'))['createPinia']>
+    readonly createPlayerStore: UnwrapRef<
+      (typeof import('./store/playerStore'))['createPlayerStore']
+    >
     readonly createReactiveFn: UnwrapRef<(typeof import('@vueuse/core'))['createReactiveFn']>
     readonly createRef: UnwrapRef<(typeof import('@vueuse/core'))['createRef']>
     readonly createReusableTemplate: UnwrapRef<
@@ -513,7 +517,6 @@ declare module 'vue' {
       (typeof import('@vueuse/core'))['createTemplatePromise']
     >
     readonly createUnrefFn: UnwrapRef<(typeof import('@vueuse/core'))['createUnrefFn']>
-    readonly currentSongInfo: UnwrapRef<(typeof import('./store/playerStore'))['currentSongInfo']>
     readonly customRef: UnwrapRef<(typeof import('vue'))['customRef']>
     readonly debouncedRef: UnwrapRef<(typeof import('@vueuse/core'))['debouncedRef']>
     readonly debouncedWatch: UnwrapRef<(typeof import('@vueuse/core'))['debouncedWatch']>

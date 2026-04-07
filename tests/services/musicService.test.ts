@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMusicService } from '@/services/musicService'
 import type { Song, LyricResult, PlaylistDetail, SearchResult } from '@/types/schemas'
+import type { MusicPlatformAdapter } from '@/platform/music/interface'
 
 // Mock getMusicAdapter
 const mockAdapter = {
+  platformId: 'mock',
   search: vi.fn(),
   getSongUrl: vi.fn(),
   getSongDetail: vi.fn(),
@@ -275,7 +277,9 @@ describe('musicService', () => {
     })
 
     it('supports an injected adapter resolver', async () => {
-      const resolveAdapter = vi.fn(() => mockAdapter)
+      const resolveAdapter = vi.fn(
+        (_platform: string): MusicPlatformAdapter => mockAdapter as unknown as MusicPlatformAdapter
+      )
       mockAdapter.getLyric.mockResolvedValue({ lrc: '', tlyric: '', romalrc: '' })
       const injectedService = createMusicService({ resolveAdapter })
 

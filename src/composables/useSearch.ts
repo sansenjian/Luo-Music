@@ -12,12 +12,33 @@ export interface SearchOptions {
   page?: number
 }
 
+type SearchStoreLike = Pick<
+  ReturnType<typeof useSearchStore>,
+  | 'keyword'
+  | 'results'
+  | 'totalResults'
+  | 'isLoading'
+  | 'error'
+  | 'server'
+  | 'hasResults'
+  | 'search'
+  | 'clearResults'
+  | 'setServer'
+  | 'playResult'
+  | 'addToPlaylist'
+  | 'addAllToPlaylist'
+>
+
+export type SearchComposableDeps = {
+  searchStore?: SearchStoreLike
+}
+
 /**
  * 搜索功能 composable
  * 封装 searchStore 提供更简洁的 API
  */
-export function useSearch() {
-  const searchStore = useSearchStore()
+export function useSearch(deps: SearchComposableDeps = {}) {
+  const searchStore = deps.searchStore ?? useSearchStore()
 
   // 计算属性 - 直接代理 store 状态
   const keyword = computed(() => searchStore.keyword)

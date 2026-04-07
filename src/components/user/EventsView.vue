@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { EventItem } from '@/composables/useUserEvents'
+import type { EventArtist, EventItem } from '@/composables/useUserEvents'
 
 interface EventsViewProps {
   events: EventItem[]
@@ -8,7 +8,7 @@ interface EventsViewProps {
 
 defineProps<EventsViewProps>()
 
-const formatArtists = (artists: EventItem['song']['artists'] | undefined): string => {
+const formatArtists = (artists?: EventArtist[]): string => {
   return artists?.map(artist => artist.name).join(' / ') || ''
 }
 

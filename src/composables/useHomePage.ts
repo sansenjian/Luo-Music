@@ -14,10 +14,41 @@ const SERVERS: MusicServerOption[] = [
   { value: 'qq', label: 'QQ Music' }
 ]
 
-export function useHomePage() {
-  const toastStore = useToastStore()
-  const searchStore = useSearchStore()
-  const homeShell = useHomeShell()
+type ToastStoreLike = Pick<ReturnType<typeof useToastStore>, 'error' | 'success'>
+type SearchStoreLike = Pick<
+  ReturnType<typeof useSearchStore>,
+  | 'server'
+  | 'isLoading'
+  | 'search'
+  | 'hasResults'
+  | 'results'
+  | 'totalResults'
+  | 'error'
+  | 'setServer'
+>
+type HomePagePlayerStoreLike = Pick<ReturnType<typeof useHomeShell>['playerStore'], 'setSongList'>
+type HomeShellReturn = ReturnType<typeof useHomeShell>
+type HomeShellLike = {
+  playerStore: HomePagePlayerStoreLike
+  switchTab: HomeShellReturn['switchTab']
+  activeTab?: HomeShellReturn['activeTab']
+  closeWindow?: HomeShellReturn['closeWindow']
+  isElectron?: HomeShellReturn['isElectron']
+  maximizeWindow?: HomeShellReturn['maximizeWindow']
+  minimizeWindow?: HomeShellReturn['minimizeWindow']
+  playSong?: HomeShellReturn['playSong']
+}
+
+export type HomePageDeps = {
+  toastStore?: ToastStoreLike
+  searchStore?: SearchStoreLike
+  homeShell?: HomeShellLike
+}
+
+export function useHomePage(deps: HomePageDeps = {}) {
+  const toastStore = deps.toastStore ?? useToastStore()
+  const searchStore = deps.searchStore ?? useSearchStore()
+  const homeShell = (deps.homeShell ?? useHomeShell()) as HomeShellReturn
 
   const searchKeyword = ref('')
   const showSelect = ref(false)
