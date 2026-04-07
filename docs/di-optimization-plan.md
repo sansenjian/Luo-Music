@@ -60,6 +60,9 @@
 - [x] Phase 2.3 兼容层清理：已删除未再被业务代码使用的 [`src/services/platformAccessor.ts`](./../src/services/platformAccessor.ts) 与 [`src/services/playerAccessor.ts`](./../src/services/playerAccessor.ts)；仓库级 `typecheck` 与 `lint` 已通过。
 - [x] Phase 2.4 配置边界收口：已将 [`src/api/qqmusic.ts`](./../src/api/qqmusic.ts) 的生产环境 QQ API fallback 地址从 `QQ_API_SERVER` 常量切换为 `ConfigService` 端口解析；相关测试与 lint 已通过。
 - [x] Phase 2.5 API 边界试点：已将 [`src/api/user.ts`](./../src/api/user.ts) 的 Netease 用户请求切换为 `services.api().request('netease', ...)`，并补充模块级测试 [`tests/api/user.test.ts`](./../tests/api/user.test.ts)；相关受影响测试与 lint 已通过。
+- [x] Phase 3.1 规则固化：已重写 [`docs/service-layer.md`](./service-layer.md)，明确 `services.xxx()` 默认场景、显式 `deps` 推荐场景、`@injectParam(...)` 限制场景与评审清单。
+- [x] Phase 3.2 示例对齐：已重写 [`docs/injector-example.ts`](./injector-example.ts)，示例改为与当前仓库路线一致的三种用法，不再传播过时的 `getService()` / 泛化构造注入建议。
+- [x] Phase 3.3 监控口径对齐：已更新 [`docs/di-performance-monitoring.md`](./di-performance-monitoring.md)，补充当前 `services.xxx()` / 显式 `deps` 路线下的回归检查建议。
 
 ## 现状归纳
 
