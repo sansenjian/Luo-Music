@@ -14,6 +14,7 @@ const rootDir = __dirname
 loadDotEnv({ path: resolve(rootDir, '.env') })
 loadDotEnv({ path: resolve(rootDir, '.env.sentry-build-plugin') })
 const devServerPort = resolveViteDevServerPort(process.env.VITE_DEV_SERVER_PORT)
+const buildSourceMaps = process.env.LUO_BUILD_SOURCEMAP === '1'
 
 const sentryRelease =
   process.env.SENTRY_RELEASE || `luo-music@${process.env.npm_package_version ?? '0.0.0'}`
@@ -75,7 +76,7 @@ export default defineConfig({
         transformMixedEsModules: false
       },
       minify: false,
-      sourcemap: true,
+      sourcemap: buildSourceMaps,
       emptyOutDir: false
     }
   },
@@ -104,7 +105,7 @@ export default defineConfig({
         transformMixedEsModules: false
       },
       minify: false,
-      sourcemap: true,
+      sourcemap: buildSourceMaps,
       emptyOutDir: false
     }
   },
@@ -131,7 +132,7 @@ export default defineConfig({
     build: {
       outDir: 'build',
       emptyOutDir: false,
-      sourcemap: true,
+      sourcemap: buildSourceMaps,
       chunkSizeWarningLimit: 700,
       rollupOptions: {
         input: {
