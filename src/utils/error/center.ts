@@ -1,5 +1,5 @@
 import { AppError, ErrorCode } from './types'
-import { getPlatformAccessor } from '@/services/platformAccessor'
+import { services } from '@/services'
 
 type ErrorHandler = (error: AppError) => void | Promise<void>
 
@@ -61,7 +61,7 @@ class ErrorCenter {
 
   // 发送到主进程记录日志（Electron）
   private reportToMain(error: AppError) {
-    const platformService = getPlatformAccessor()
+    const platformService = services.platform()
     if (platformService.isElectron()) {
       void platformService.send('error-report', {
         code: error.code,

@@ -55,6 +55,11 @@
 - [x] 存量问题清理：已修复 `EventsView.vue`、平台/服务测试类型问题以及 `vite.config.js` 的 ESLint 问题；仓库级 `typecheck` 与 `lint` 已全部通过。
 - [x] 依赖警告清理：已定位 `(DEP0147)` 来源为 `@electron-forge/maker-zip -> cross-zip@4.0.1`，新增 [`scripts/patch-cross-zip.cjs`](./../scripts/patch-cross-zip.cjs) 并通过 `postinstall` 持久化替换为 `fs.rm/fs.rmSync`。
 - [x] 依赖警告清理补充：已定位 `(DEP0187)` 来源为 `electron-winstaller/lib/sign.js` 在未启用 `windowsSign` 时对未初始化路径调用 `existsSync`；已复用 [`scripts/patch-cross-zip.cjs`](./../scripts/patch-cross-zip.cjs) 在 `postinstall` 中为 `resetSignTool()` 增加空值保护。
+- [x] Phase 2.1 服务入口收口：已将 [`src/components/LyricFloat.vue`](./../src/components/LyricFloat.vue) 和 [`src/utils/error/center.ts`](./../src/utils/error/center.ts) 从 `getPlatformAccessor()/getPlayerAccessor()` 兼容入口切换到 `services.platform()/services.player()` 主路径；相关测试与 lint 已通过。
+- [x] Phase 2.2 存储/默认入口收口：已将 [`src/composables/useIpcActiveLyricState.ts`](./../src/composables/useIpcActiveLyricState.ts) 的 debug 开关读取切换为 `services.storage()`；已将 [`src/store/playerStore.ts`](./../src/store/playerStore.ts) 的默认平台依赖从 accessor 兼容层切回 `services.platform()` 主路径；相关测试与 lint 已通过。
+- [x] Phase 2.3 兼容层清理：已删除未再被业务代码使用的 [`src/services/platformAccessor.ts`](./../src/services/platformAccessor.ts) 与 [`src/services/playerAccessor.ts`](./../src/services/playerAccessor.ts)；仓库级 `typecheck` 与 `lint` 已通过。
+- [x] Phase 2.4 配置边界收口：已将 [`src/api/qqmusic.ts`](./../src/api/qqmusic.ts) 的生产环境 QQ API fallback 地址从 `QQ_API_SERVER` 常量切换为 `ConfigService` 端口解析；相关测试与 lint 已通过。
+- [x] Phase 2.5 API 边界试点：已将 [`src/api/user.ts`](./../src/api/user.ts) 的 Netease 用户请求切换为 `services.api().request('netease', ...)`，并补充模块级测试 [`tests/api/user.test.ts`](./../tests/api/user.test.ts)；相关受影响测试与 lint 已通过。
 
 ## 现状归纳
 

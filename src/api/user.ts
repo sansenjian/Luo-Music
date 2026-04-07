@@ -1,62 +1,74 @@
-import request from '@/utils/http'
+import { services } from '@/services'
+import type { ApiService } from '@/services/apiService'
+
+type UserApiClient = Pick<ApiService, 'request'>
+
+export type UserApiDeps = {
+  getApiService?: () => UserApiClient
+  getTimestamp?: () => number
+}
+
+const defaultUserApiDeps: Required<UserApiDeps> = {
+  getApiService: () => services.api(),
+  getTimestamp: () => Date.now()
+}
+
+let userApiDeps: Required<UserApiDeps> = defaultUserApiDeps
+
+export function configureUserApiDeps(deps: UserApiDeps): void {
+  userApiDeps = {
+    ...userApiDeps,
+    ...deps
+  }
+}
+
+export function resetUserApiDeps(): void {
+  userApiDeps = defaultUserApiDeps
+}
+
+function neteaseRequest(endpoint: string, params: Record<string, unknown> = {}): Promise<unknown> {
+  return userApiDeps.getApiService().request('netease', endpoint, params)
+}
+
+function withTimestamp(params: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    ...params,
+    timestamp: userApiDeps.getTimestamp()
+  }
+}
 
 export function getQRKey() {
-  return request.get('/login/qr/key', {
-    params: { timestamp: Date.now() }
-  })
+  return neteaseRequest('/login/qr/key', withTimestamp())
 }
 
 export function getQRCode(key: string) {
-  return request.get('/login/qr/create', {
-    params: {
-      key,
-      qrimg: true,
-      timestamp: Date.now()
-    }
-  })
+  return neteaseRequest('/login/qr/create', withTimestamp({ key, qrimg: true }))
 }
 
 export function checkQRStatus(key: string) {
-  return request.get('/login/qr/check', {
-    params: {
-      key,
-      timestamp: Date.now()
-    }
-  })
+  return neteaseRequest('/login/qr/check', withTimestamp({ key }))
 }
 
 export function getUserAccount() {
-  return request.get('/user/account', {
-    params: { timestamp: Date.now() }
-  })
+  return neteaseRequest('/user/account', withTimestamp())
 }
 
 export function logout() {
-  return request.get('/logout', {
-    params: { timestamp: Date.now() }
-  })
+  return neteaseRequest('/logout', withTimestamp())
 }
 
 export function getUserDetail(uid: number) {
-  return request.get('/user/detail', {
-    params: { uid, timestamp: Date.now() }
-  })
+  return neteaseRequest('/user/detail', withTimestamp({ uid }))
 }
 
 export function getUserSubcount() {
-  return request.get('/user/subcount', {
-    params: { timestamp: Date.now() }
-  })
+  return neteaseRequest('/user/subcount', withTimestamp())
 }
 
 export function getUserLevel() {
-  return request.get('/user/level', {
-    params: { timestamp: Date.now() }
-  })
+  return neteaseRequest('/user/level', withTimestamp())
 }
 
 export function getUserEvent(uid: number, limit: number = 10, lasttime: number = -1) {
-  return request.get('/user/event', {
-    params: { uid, limit, lasttime, timestamp: Date.now() }
-  })
+  return neteaseRequest('/user/event', withTimestamp({ uid, limit, lasttime }))
 }

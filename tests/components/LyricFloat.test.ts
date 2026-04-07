@@ -95,21 +95,14 @@ const playerState = vi.hoisted(() => {
   }
 })
 
-vi.mock('../../src/services/platformAccessor', () => ({
-  getPlatformAccessor: () => platformState.platformServiceMock
-}))
-
-vi.mock('../../src/services/playerAccessor', () => ({
-  getPlayerAccessor: () => playerState.playerServiceMock
-}))
-
 vi.mock('../../src/services', async importOriginal => {
   const actual = await importOriginal<typeof import('../../src/services')>()
   return {
     ...actual,
     services: {
       ...actual.services,
-      platform: () => platformState.platformServiceMock
+      platform: () => platformState.platformServiceMock,
+      player: () => playerState.playerServiceMock
     }
   }
 })

@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { isRecoverableQQLoginError } from '../../src/api/qqmusic'
+import { getQQMusicApiServerURL, isRecoverableQQLoginError } from '../../src/api/qqmusic'
 import { AppError, ErrorCode } from '../../src/utils/error/types'
 
 describe('qqmusic isRecoverableQQLoginError', () => {
+  it('builds the QQ API server URL from a configured port', () => {
+    expect(getQQMusicApiServerURL(3200)).toBe('http://127.0.0.1:3200')
+    expect(getQQMusicApiServerURL(4567)).toBe('http://127.0.0.1:4567')
+  })
+
   it('treats transport-level connection failures as recoverable', () => {
     expect(isRecoverableQQLoginError({ code: 'ECONNREFUSED' })).toBe(true)
     expect(isRecoverableQQLoginError({ code: 'ENOTFOUND' })).toBe(true)

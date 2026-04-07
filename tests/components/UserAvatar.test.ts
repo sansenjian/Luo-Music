@@ -24,11 +24,16 @@ vi.mock('../../src/api/user', () => ({
   logout: logoutMock
 }))
 
-vi.mock('../../src/api/qqmusic', () => ({
-  qqMusicApi: {
-    checkQQMusicLogin: checkQQMusicLoginMock
+vi.mock('../../src/api/qqmusic', async importOriginal => {
+  const actual = await importOriginal<typeof import('../../src/api/qqmusic')>()
+  return {
+    ...actual,
+    qqMusicApi: {
+      ...actual.qqMusicApi,
+      checkQQMusicLogin: checkQQMusicLoginMock
+    }
   }
-}))
+})
 
 vi.mock('../../src/services', async importOriginal => {
   const actual = await importOriginal<typeof import('../../src/services')>()
@@ -69,7 +74,7 @@ function createWrapper() {
 describe('UserAvatar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    platformServiceMock.isElectron.mockReturnValue(false)
+    platformServiceMock.isElectron.mockReturnValue(true)
     document.body.innerHTML = ''
   })
 

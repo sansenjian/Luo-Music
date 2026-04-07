@@ -2,11 +2,10 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 
 import { useActiveLyricState } from '../composables/useActiveLyricState'
-import { getPlatformAccessor } from '../services/platformAccessor'
-import { getPlayerAccessor } from '../services/playerAccessor'
+import { services } from '../services'
 
-const platformService = getPlatformAccessor()
-const playerService = getPlayerAccessor()
+const platformService = services.platform()
+const playerService = services.player()
 const { currentLyric, secondaryLyric, isPlaying } = useActiveLyricState({
   source: 'ipc',
   emptyText: 'Desktop Lyric'

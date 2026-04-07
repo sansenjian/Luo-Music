@@ -5,7 +5,6 @@ import { SEND_CHANNELS } from '../../electron/shared/protocol/channels'
 import type { PlayerStateSnapshot } from '../../electron/ipc/types'
 import type { Song } from '../platform/music/interface'
 import { services } from '../services'
-import { getPlatformAccessor } from '../services/platformAccessor'
 import type { MusicService } from '../services/musicService'
 import type { PlatformService } from '../services/platformService'
 import { storageAdapter } from '../services/storageService'
@@ -92,7 +91,7 @@ function getDefaultPlayerStoreDeps(): Required<PlayerStoreDeps> {
   return {
     getMusicService: () => services.music(),
     getStorageService: () => services.storage(),
-    getPlatformAccessor: () => getPlatformAccessor(),
+    getPlatformAccessor: () => services.platform(),
     audioManager: defaultAudioManager
   }
 }
