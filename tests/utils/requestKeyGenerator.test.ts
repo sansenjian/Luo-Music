@@ -5,7 +5,7 @@ import {
   parseRequestKey,
   isSameRequest,
   generateRequestKeys
-} from '../../src/utils/http/requestKeyGenerator'
+} from '@/utils/http/requestKeyGenerator'
 
 interface RequestConfig {
   url: string

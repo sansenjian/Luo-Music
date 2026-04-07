@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import Player from '../../src/components/Player.vue'
+import Player from '@/components/Player.vue'
 
 // Mock anime.js
 vi.mock('animejs', () => ({
@@ -11,7 +11,7 @@ vi.mock('animejs', () => ({
 }))
 
 // Mock composables
-vi.mock('../../src/composables/useAnimations.ts', () => ({
+vi.mock('@/composables/useAnimations.ts', () => ({
   animate: vi.fn(),
   animateButtonClick: vi.fn(),
   animatePlayPause: vi.fn(),

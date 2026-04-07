@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
-import LyricFloat from '../../src/components/LyricFloat.vue'
+import LyricFloat from '@/components/LyricFloat.vue'
 import { TIME_OFFSETS } from '../utils/testConstants'
 
 const platformState = vi.hoisted(() => {
@@ -95,8 +95,8 @@ const playerState = vi.hoisted(() => {
   }
 })
 
-vi.mock('../../src/services', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../src/services')>()
+vi.mock('@/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services')>()
   return {
     ...actual,
     services: {

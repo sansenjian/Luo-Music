@@ -2,9 +2,9 @@ import { defineComponent, nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useHomeShell } from '../../src/composables/useHomeShell'
-import { usePlayerStore } from '../../src/store/playerStore'
-import { useToastStore } from '../../src/store/toastStore'
+import { useHomeShell } from '@/composables/useHomeShell'
+import { usePlayerStore } from '@/store/playerStore'
+import { useToastStore } from '@/store/toastStore'
 
 const platformServiceMock = vi.hoisted(() => ({
   closeWindow: vi.fn(),
@@ -25,8 +25,8 @@ const storageServiceMock = vi.hoisted(() => ({
 
 const useKeyboardShortcutsMock = vi.hoisted(() => vi.fn())
 
-vi.mock('../../src/services', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../src/services')>()
+vi.mock('@/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services')>()
   return {
     ...actual,
     services: {
@@ -37,7 +37,7 @@ vi.mock('../../src/services', async importOriginal => {
   }
 })
 
-vi.mock('../../src/composables/useKeyboardShortcuts', () => ({
+vi.mock('@/composables/useKeyboardShortcuts', () => ({
   useKeyboardShortcuts: useKeyboardShortcutsMock
 }))
 

@@ -12,6 +12,45 @@
 
 这条路线的目标是把服务访问、测试替身和边界收口统一起来，同时避免引入重量级容器复杂度。
 
+## 先区分：路径别名不是 DI
+
+`@/services`、`../services`、`../../src/services` 这类写法只是在表达“模块文件从哪里解析”。
+
+它们属于：
+
+- TypeScript 路径别名
+- Vite / Vitest 模块解析
+- 导入风格选择
+
+它们不属于 DI。
+
+DI 真正关心的是：
+
+- 依赖通过什么入口获取
+- 依赖是否显式
+- 依赖是否容易替换成测试替身
+- 模块是否对具体实现解耦
+
+举例：
+
+```ts
+import { services } from '@/services'
+```
+
+上面这行里：
+
+- `@/services` 是路径解析问题
+- `services.xxx()` 才是服务层 / DI 路径
+
+再比如：
+
+```ts
+import { services } from '@/services'
+```
+
+这里即使导入路径换成相对路径，也不改变 DI 语义。  
+真正决定是不是 DI 的，仍然是后续是否通过 `services.xxx()`、显式 `deps` 或 `@injectParam(...)` 获取依赖。
+
 ## 默认路径
 
 ### 1. 业务代码默认使用 `services.xxx()`

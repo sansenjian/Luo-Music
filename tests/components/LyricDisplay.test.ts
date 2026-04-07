@@ -3,8 +3,8 @@ import { mount } from '@vue/test-utils'
 
 import { nextTick } from 'vue'
 
-import LyricDisplay from '../../src/components/LyricDisplay.vue'
-import { usePlayerStore } from '../../src/store/playerStore'
+import LyricDisplay from '@/components/LyricDisplay.vue'
+import { usePlayerStore } from '@/store/playerStore'
 
 describe('LyricDisplay', () => {
   let resizeObserverCallback:

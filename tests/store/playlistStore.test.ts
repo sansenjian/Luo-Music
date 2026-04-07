@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { usePlaylistStore } from '../../src/store/playlistStore'
+import { usePlaylistStore } from '@/store/playlistStore'
 
 // Mock PLAY_MODE constants for clarity
 const PLAY_MODE = {

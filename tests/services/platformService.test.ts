@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Platform, type IPlatformService } from '../../src/platform'
+import { Platform, type IPlatformService } from '@/platform'
 
 const platformMock = vi.hoisted(() => ({
   name: 'platform-test',
@@ -24,7 +24,7 @@ const getPlatformServiceMock = vi.hoisted(() =>
   vi.fn((): IPlatformService => platformMock as unknown as IPlatformService)
 )
 
-vi.mock('../../src/platform', () => ({
+vi.mock('@/platform', () => ({
   initializePlatformService: initializePlatformServiceMock,
   getPlatformService: getPlatformServiceMock
 }))

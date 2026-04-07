@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import EventsView from '../../../src/components/user/EventsView.vue'
+import EventsView from '@/components/user/EventsView.vue'
 
 describe('EventsView', () => {
   it('renders pre-parsed event messages from the view model', () => {

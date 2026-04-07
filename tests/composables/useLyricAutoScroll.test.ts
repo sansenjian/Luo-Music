@@ -6,9 +6,9 @@ import {
   PROGRAMMATIC_SCROLL_GUARD,
   USER_SCROLL_END_DEBOUNCE,
   USER_SCROLL_IDLE_DELAY
-} from '../../src/constants/lyric'
-import { useLyricAutoScroll } from '../../src/composables/useLyricAutoScroll'
-import type { LyricLine } from '../../src/utils/player/core/lyric'
+} from '@/constants/lyric'
+import { useLyricAutoScroll } from '@/composables/useLyricAutoScroll'
+import type { LyricLine } from '@/utils/player/core/lyric'
 
 type AutoScrollApi = ReturnType<typeof useLyricAutoScroll>
 
@@ -210,5 +210,4 @@ describe('useLyricAutoScroll', () => {
       behavior: 'smooth'
     })
   })
-
 })

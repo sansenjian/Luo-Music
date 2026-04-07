@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { useToastStore } from '../../src/store/toastStore'
+import { useToastStore } from '@/store/toastStore'
 
 describe('toastStore', () => {
   afterEach(() => {

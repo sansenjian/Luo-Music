@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PLAY_MODE } from '../../src/utils/player/constants/playMode'
-import type { LyricLine } from '../../src/utils/player/core/lyric'
-import { createPlayerStore, usePlayerStore } from '../../src/store/playerStore.ts'
+import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import type { LyricLine } from '@/utils/player/core/lyric'
+import { createPlayerStore, usePlayerStore } from '@/store/playerStore.ts'
 import { createMockSong } from '../utils/test-utils'
 
 let storeCounter = 0

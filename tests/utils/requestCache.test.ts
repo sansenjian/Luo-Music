@@ -1,4 +1,4 @@
-﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   clearCache,
   clearCacheNamespaces,
@@ -9,7 +9,7 @@ import {
   prefetch,
   setCache,
   type CacheRequestConfig
-} from '../../src/utils/http/requestCache'
+} from '@/utils/http/requestCache'
 
 describe('requestCache', () => {
   const mockConfig: CacheRequestConfig = {

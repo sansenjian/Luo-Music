@@ -3,8 +3,8 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 
-import UserAvatar from '../../src/components/UserAvatar.vue'
-import { useUserStore } from '../../src/store/userStore'
+import UserAvatar from '@/components/UserAvatar.vue'
+import { useUserStore } from '@/store/userStore'
 
 const pushMock = vi.hoisted(() => vi.fn())
 const logoutMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
@@ -20,12 +20,12 @@ vi.mock('vue-router', () => ({
   })
 }))
 
-vi.mock('../../src/api/user', () => ({
+vi.mock('@/api/user', () => ({
   logout: logoutMock
 }))
 
-vi.mock('../../src/api/qqmusic', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../src/api/qqmusic')>()
+vi.mock('@/api/qqmusic', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/api/qqmusic')>()
   return {
     ...actual,
     qqMusicApi: {
@@ -35,8 +35,8 @@ vi.mock('../../src/api/qqmusic', async importOriginal => {
   }
 })
 
-vi.mock('../../src/services', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../src/services')>()
+vi.mock('@/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services')>()
   return {
     ...actual,
     services: {

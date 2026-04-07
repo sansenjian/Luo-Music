@@ -48,6 +48,8 @@
 
 更新日期：2026-04-07
 
+后续工作请转到 [`docs/plans/di-followup-roadmap.md`](./plans/di-followup-roadmap.md)，本文件保持为本轮 Phase 1 到 Phase 3 的完成记录。
+
 - [x] Phase 1.1 `playerStore`：已完成 `createPlayerStore(deps, storeId)` 工厂化改造，默认 `usePlayerStore()` 保持不变；`music/storage/platform/audioManager` 已支持显式注入；相关定向测试已通过。
 - [x] Phase 1.2 `useSearch`：已完成 `useSearch(deps?)` 改造，测试已改为直接注入替身 `searchStore`，不再依赖模块级 `vi.mock()`。
 - [x] Phase 1.3 `useHomePage`：已完成 `toastStore/searchStore/homeShell` 的显式 deps 注入；测试已改为直接传入替身依赖，去掉对 `useHomeShell` 模块 mock 的依赖。

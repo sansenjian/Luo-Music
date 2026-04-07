@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { Disposable } from '../../src/base/common/lifecycle/disposable'
+import { Disposable } from '@/base/common/lifecycle/disposable'
 import {
   PlatformServiceBase,
   detectElectron,
   detectMobile,
   formatBytes,
   PlatformServiceRegistry
-} from '../../src/platform/common/platformService'
-import { Platform } from '../../src/platform/common/types'
+} from '@/platform/common/platformService'
+import { Platform } from '@/platform/common/types'
 
 class TestPlatformService extends PlatformServiceBase {
   readonly name = 'test'

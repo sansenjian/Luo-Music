@@ -6,12 +6,9 @@ import {
   createTransport,
   configureTransportFactoryDeps,
   resetTransportFactoryDeps
-} from '../../src/utils/http/transportFactory'
-import { AppError, ErrorCode } from '../../src/utils/error/types'
-import {
-  createCanceledRequestError,
-  isCanceledRequestError
-} from '../../src/utils/http/cancelError'
+} from '@/utils/http/transportFactory'
+import { AppError, ErrorCode } from '@/utils/error/types'
+import { createCanceledRequestError, isCanceledRequestError } from '@/utils/http/cancelError'
 
 function setElectronApi(
   apiRequest?: (

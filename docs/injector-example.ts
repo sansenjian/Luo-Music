@@ -11,11 +11,11 @@
  * - 示例以当前仓库已落地的规则为准，而不是展示理论上更多的 DI 玩法
  */
 
-import { services } from '../src/services'
-import type { ApiService } from '../src/services/apiService'
-import type { LoggerService } from '../src/services/loggerService'
-import { createInstance, injectParam } from '../src/services/injector'
-import { IApiService, ILoggerService } from '../src/services/types'
+import { services } from '@/services'
+import type { ApiService } from '@/services/apiService'
+import type { LoggerService } from '@/services/loggerService'
+import { createInstance, injectParam } from '@/services/injector'
+import { IApiService, ILoggerService } from '@/services/types'
 
 // ==================== 方式 1：默认使用 services.xxx() ====================
 

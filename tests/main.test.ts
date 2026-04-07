@@ -9,13 +9,13 @@ const loggerErrorMock = vi.hoisted(() => vi.fn())
 const performanceInitMock = vi.hoisted(() => vi.fn())
 const performanceDisposeMock = vi.hoisted(() => vi.fn())
 
-vi.mock('../src/App.vue', () => ({
+vi.mock('@/App.vue', () => ({
   default: {
     template: '<div class="app-stub" />'
   }
 }))
 
-vi.mock('../src/router', () => ({
+vi.mock('@/router', () => ({
   default: {
     install: routerInstallMock,
     beforeResolve: routerBeforeResolveMock
@@ -28,18 +28,18 @@ vi.mock('@tanstack/vue-query', () => ({
   }
 }))
 
-vi.mock('../src/services', () => ({
+vi.mock('@/services', () => ({
   setupServices: setupServicesMock
 }))
 
-vi.mock('../src/utils/logger', () => ({
+vi.mock('@/utils/logger', () => ({
   getLogger: () => ({
     warn: loggerWarnMock,
     error: loggerErrorMock
   })
 }))
 
-vi.mock('../src/utils/performance/monitor', () => ({
+vi.mock('@/utils/performance/monitor', () => ({
   performanceMonitor: {
     init: performanceInitMock,
     dispose: performanceDisposeMock
@@ -56,7 +56,7 @@ describe('main bootstrap', () => {
   })
 
   it('does not clear existing cookies during bootstrap', async () => {
-    await import('../src/main.ts')
+    await import('@/main.ts')
     await vi.runAllTimersAsync()
 
     expect(document.cookie).toContain('sessionToken=alive')
@@ -64,7 +64,7 @@ describe('main bootstrap', () => {
   })
 
   it('installs Vue Query before router navigation starts', async () => {
-    await import('../src/main.ts')
+    await import('@/main.ts')
 
     expect(vueQueryInstallMock).toHaveBeenCalledTimes(1)
     expect(routerInstallMock).toHaveBeenCalledTimes(1)

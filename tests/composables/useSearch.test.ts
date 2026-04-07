@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { SearchResultItem } from '../../src/store/searchStore'
-import { useSearch } from '../../src/composables/useSearch'
+import type { SearchResultItem } from '@/store/searchStore'
+import { useSearch } from '@/composables/useSearch'
 
 const searchMock = vi.fn()
 const clearResultsMock = vi.fn()

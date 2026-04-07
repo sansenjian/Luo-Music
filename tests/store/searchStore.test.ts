@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { resetServices } from '../../src/services/registry'
-import { setupServices, services } from '../../src/services'
-import type { Song } from '../../src/platform/music/interface'
-import { usePlayerStore } from '../../src/store/playerStore'
-import { searchResultItemToSong, useSearchStore } from '../../src/store/searchStore'
+import { resetServices } from '@/services/registry'
+import { setupServices, services } from '@/services'
+import type { Song } from '@/platform/music/interface'
+import { usePlayerStore } from '@/store/playerStore'
+import { searchResultItemToSong, useSearchStore } from '@/store/searchStore'
 
 type Deferred<T> = {
   promise: Promise<T>
@@ -27,8 +27,8 @@ const adapterMock = {
   search: vi.fn()
 }
 
-vi.mock('../../src/services', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../src/services')>()
+vi.mock('@/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services')>()
   return {
     ...actual,
     services: {

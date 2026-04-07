@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
-import UserProfileHeader from '../../../src/components/user/UserProfileHeader.vue'
+import UserProfileHeader from '@/components/user/UserProfileHeader.vue'
 
 // Mock data
 interface MockProfile {
@@ -42,7 +42,7 @@ const mockStats: MockStats = {
 // Mock useUserDataQuery
 const mockUseUserDataQuery = vi.fn()
 
-vi.mock('../../../src/composables/useUserDataQuery', () => ({
+vi.mock('@/composables/useUserDataQuery', () => ({
   useUserDataQuery: (source: () => string) => {
     mockUseUserDataQuery(source)
     return {

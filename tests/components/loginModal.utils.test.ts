@@ -6,7 +6,7 @@ import {
   extractQrKey,
   extractQrStatusCode,
   extractUserProfile
-} from '../../src/components/loginModal.utils'
+} from '@/components/loginModal.utils'
 
 describe('loginModal.utils', () => {
   it('extracts wrapped Netease QR payloads', () => {

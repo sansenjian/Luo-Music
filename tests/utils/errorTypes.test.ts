@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { AppError, ErrorCode, Errors } from '../../src/utils/error/types'
+import { AppError, ErrorCode, Errors } from '@/utils/error/types'
 
 describe('error/types', () => {
   it('defines stable transport and domain error codes', () => {

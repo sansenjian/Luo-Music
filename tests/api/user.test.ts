@@ -12,7 +12,7 @@ import {
   getUserSubcount,
   logout,
   resetUserApiDeps
-} from '../../src/api/user'
+} from '@/api/user'
 
 const apiRequestMock = vi.fn()
 

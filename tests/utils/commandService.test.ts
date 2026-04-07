@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { CONTEXT_KEYS } from '../../src/core/context/contextKeys'
-import { COMMANDS } from '../../src/core/commands/commands'
-import { createCommandService } from '../../src/services/commandService'
-import { createContextKeyService } from '../../src/services/contextKeyService'
-import { registerService, resetServices } from '../../src/services/registry'
-import type { PlatformService } from '../../src/services/platformService'
-import { IContextKeyService, IPlatformService } from '../../src/services/types'
-import { usePlayerStore } from '../../src/store/playerStore'
+import { CONTEXT_KEYS } from '@/core/context/contextKeys'
+import { COMMANDS } from '@/core/commands/commands'
+import { createCommandService } from '@/services/commandService'
+import { createContextKeyService } from '@/services/contextKeyService'
+import { registerService, resetServices } from '@/services/registry'
+import type { PlatformService } from '@/services/platformService'
+import { IContextKeyService, IPlatformService } from '@/services/types'
+import { usePlayerStore } from '@/store/playerStore'
 
 const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => true),

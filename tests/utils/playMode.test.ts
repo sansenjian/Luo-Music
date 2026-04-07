@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  PLAY_MODE,
-  PLAY_MODE_LABELS,
-  PLAY_MODE_ICONS
-} from '../../src/utils/player/constants/playMode'
+import { PLAY_MODE, PLAY_MODE_LABELS, PLAY_MODE_ICONS } from '@/utils/player/constants/playMode'
 
 describe('PlayMode Constants', () => {
   describe('PLAY_MODE', () => {

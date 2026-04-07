@@ -139,7 +139,7 @@ vi.mock('../../electron/main/shortcuts', () => ({
   setWindowManager: setShortcutsWindowManagerMock
 }))
 
-vi.mock('../../src/config/shortcuts', () => ({
+vi.mock('@/config/shortcuts', () => ({
   DEFAULT_SHORTCUTS: [{ key: 'Ctrl+Shift+L' }]
 }))
 

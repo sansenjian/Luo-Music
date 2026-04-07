@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HTTP_DEFAULT_RETRY_DELAY } from '../../src/constants/http'
+import { HTTP_DEFAULT_RETRY_DELAY } from '@/constants/http'
 import { executeWithRetry } from '../../electron/ipc/utils/gatewayCache.ts'
 
 vi.mock('../../electron/logger', () => ({

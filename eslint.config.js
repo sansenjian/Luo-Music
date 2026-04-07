@@ -200,7 +200,36 @@ export default [
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
-      'no-console': 'off'
+      'no-console': 'off',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../src/*', '../../src/*', '../../../src/*', '../../../../src/*'],
+              message:
+                'Imports that target src should use the @/ alias instead of relative parent paths.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ['docs/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../src/*', '../../src/*', '../../../src/*', '../../../../src/*'],
+              message:
+                'Documentation examples that target src should use the @/ alias instead of relative parent paths.'
+            }
+          ]
+        }
+      ]
     }
   },
   {

@@ -3,15 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const getUserEventMock = vi.hoisted(() => vi.fn())
 const isCanceledRequestErrorMock = vi.hoisted(() => vi.fn(() => false))
 
-vi.mock('../../src/api/user', () => ({
+vi.mock('@/api/user', () => ({
   getUserEvent: getUserEventMock
 }))
 
-vi.mock('../../src/utils/http/cancelError', () => ({
+vi.mock('@/utils/http/cancelError', () => ({
   isCanceledRequestError: isCanceledRequestErrorMock
 }))
 
-import { useUserEvents } from '../../src/composables/useUserEvents'
+import { useUserEvents } from '@/composables/useUserEvents'
 
 describe('useUserEvents', () => {
   beforeEach(() => {

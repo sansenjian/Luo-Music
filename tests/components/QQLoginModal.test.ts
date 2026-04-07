@@ -25,11 +25,11 @@ const loggerMocks = vi.hoisted(() => ({
   warn: vi.fn()
 }))
 
-vi.mock('../../src/api/qqmusic', () => ({
+vi.mock('@/api/qqmusic', () => ({
   qqMusicApi: qqApiMocks
 }))
 
-vi.mock('../../src/services', () => ({
+vi.mock('@/services', () => ({
   services: {
     logger: () => ({
       createLogger: () => loggerMocks
@@ -57,7 +57,7 @@ describe('QQLoginModal.vue', () => {
     }>()
     qqApiMocks.getQQLoginQr.mockReturnValue(qrRequest.promise)
 
-    const { default: QQLoginModal } = await import('../../src/components/QQLoginModal.vue')
+    const { default: QQLoginModal } = await import('@/components/QQLoginModal.vue')
     const wrapper = mount(QQLoginModal, {
       props: {
         modelValue: true
@@ -92,7 +92,7 @@ describe('QQLoginModal.vue', () => {
       }
     })
 
-    const { default: QQLoginModal } = await import('../../src/components/QQLoginModal.vue')
+    const { default: QQLoginModal } = await import('@/components/QQLoginModal.vue')
     const wrapper = mount(QQLoginModal, {
       props: {
         modelValue: true

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createSong, type Song } from '../../src/platform/music/interface'
-import type { Artist } from '../../src/platform/music/interface'
+import { createSong, type Song } from '@/platform/music/interface'
+import type { Artist } from '@/platform/music/interface'
 
 describe('platform/music/interface', () => {
   describe('createSong()', () => {

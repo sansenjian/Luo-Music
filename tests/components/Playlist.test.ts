@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import Playlist from '../../src/components/Playlist.vue'
-import { usePlayerStore } from '../../src/store/playerStore.ts'
+import Playlist from '@/components/Playlist.vue'
+import { usePlayerStore } from '@/store/playerStore.ts'
 import { createMockSong } from '../utils/test-utils'
 
 HTMLElement.prototype.scrollTo = vi.fn()

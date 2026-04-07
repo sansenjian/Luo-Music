@@ -22,8 +22,8 @@ const playerStoreState = vi.hoisted(() => ({
   lyricType: ['original', 'trans'] as Array<'original' | 'trans' | 'roma'>
 }))
 
-vi.mock('../../src/services', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../src/services')>()
+vi.mock('@/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services')>()
   return {
     ...actual,
     services: {
@@ -33,7 +33,7 @@ vi.mock('../../src/services', async importOriginal => {
   }
 })
 
-vi.mock('../../src/store/playerStore', () => ({
+vi.mock('@/store/playerStore', () => ({
   usePlayerStore: () => playerStoreState
 }))
 
@@ -52,7 +52,7 @@ async function flushAsyncState(): Promise<void> {
   await nextTick()
 }
 
-import { useActiveLyricState } from '../../src/composables/useActiveLyricState'
+import { useActiveLyricState } from '@/composables/useActiveLyricState'
 
 type HarnessOptions = Parameters<typeof useActiveLyricState>[0]
 

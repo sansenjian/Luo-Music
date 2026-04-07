@@ -2,15 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
-import { COMMANDS } from '../../src/core/commands/commands'
-import { usePlayerViewModel } from '../../src/composables/usePlayerViewModel'
-import { usePlayerStore } from '../../src/store/playerStore'
+import { COMMANDS } from '@/core/commands/commands'
+import { usePlayerViewModel } from '@/composables/usePlayerViewModel'
+import { usePlayerStore } from '@/store/playerStore'
 import { createMockSong } from '../utils/test-utils'
 
 const executeMock = vi.hoisted(() => vi.fn())
 const canExecuteMock = vi.hoisted(() => vi.fn<(command: string) => boolean>(() => true))
 
-vi.mock('../../src/services', () => ({
+vi.mock('@/services', () => ({
   services: {
     commands: () => ({
       execute: executeMock,
@@ -19,7 +19,7 @@ vi.mock('../../src/services', () => ({
   }
 }))
 
-vi.mock('../../src/composables/useAnimations', () => ({
+vi.mock('@/composables/useAnimations', () => ({
   animateButtonClick: vi.fn(),
   animatePlayPause: vi.fn(),
   animateAlbumCover: vi.fn(),

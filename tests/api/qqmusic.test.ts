@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { getQQMusicApiServerURL, isRecoverableQQLoginError } from '../../src/api/qqmusic'
-import { AppError, ErrorCode } from '../../src/utils/error/types'
+import { getQQMusicApiServerURL, isRecoverableQQLoginError } from '@/api/qqmusic'
+import { AppError, ErrorCode } from '@/utils/error/types'
 
 describe('qqmusic isRecoverableQQLoginError', () => {
   it('builds the QQ API server URL from a configured port', () => {

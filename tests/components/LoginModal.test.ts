@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useUserStore } from '../../src/store/userStore'
+import { useUserStore } from '@/store/userStore'
 
 type Deferred<T> = {
   promise: Promise<T>
@@ -29,14 +29,14 @@ const loggerMocks = vi.hoisted(() => ({
   warn: vi.fn()
 }))
 
-vi.mock('../../src/api/user', () => ({
+vi.mock('@/api/user', () => ({
   getQRKey: apiMocks.getQRKey,
   getQRCode: apiMocks.getQRCode,
   checkQRStatus: apiMocks.checkQRStatus,
   getUserAccount: apiMocks.getUserAccount
 }))
 
-vi.mock('../../src/services', () => ({
+vi.mock('@/services', () => ({
   services: {
     logger: () => ({
       createLogger: () => loggerMocks
@@ -66,7 +66,7 @@ describe('LoginModal.vue', () => {
     const qrKeyRequest = createDeferred<{ data: { unikey: string } }>()
     apiMocks.getQRKey.mockReturnValue(qrKeyRequest.promise)
 
-    const { default: LoginModal } = await import('../../src/components/LoginModal.vue')
+    const { default: LoginModal } = await import('@/components/LoginModal.vue')
     const wrapper = mount(LoginModal)
 
     wrapper.unmount()
@@ -83,7 +83,7 @@ describe('LoginModal.vue', () => {
     apiMocks.checkQRStatus.mockResolvedValue({ code: 803, cookie: 'cookie' })
     apiMocks.getUserAccount.mockResolvedValue({ profile: { nickname: 'tester' } })
 
-    const { default: LoginModal } = await import('../../src/components/LoginModal.vue')
+    const { default: LoginModal } = await import('@/components/LoginModal.vue')
     const wrapper = mount(LoginModal)
 
     await flushPromises()
@@ -110,7 +110,7 @@ describe('LoginModal.vue', () => {
       }
     })
 
-    const { default: LoginModal } = await import('../../src/components/LoginModal.vue')
+    const { default: LoginModal } = await import('@/components/LoginModal.vue')
     mount(LoginModal)
 
     await flushPromises()

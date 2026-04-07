@@ -4,7 +4,7 @@ import {
   formatTimeDetailed,
   parseTimeToSeconds,
   formatTimeWithHours
-} from '../../src/utils/player/helpers/timeFormatter'
+} from '@/utils/player/helpers/timeFormatter'
 
 describe('TimeFormatter', () => {
   describe('formatTime', () => {

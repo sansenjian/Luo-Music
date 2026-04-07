@@ -1,19 +1,19 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../../src/utils/http', () => ({
+vi.mock('@/utils/http', () => ({
   AUTH_REQUEST_CACHE_NAMESPACE: 'auth',
   clearCookieCache: vi.fn(),
   clearCacheNamespaces: vi.fn()
 }))
 
-vi.mock('../../src/api/qqmusic', () => ({
+vi.mock('@/api/qqmusic', () => ({
   clearQQCookieCache: vi.fn()
 }))
 
-import { clearQQCookieCache } from '../../src/api/qqmusic'
-import { useUserStore } from '../../src/store/userStore'
-import type { UserInfo } from '../../src/store/userStore'
-import { clearCacheNamespaces, clearCookieCache } from '../../src/utils/http'
+import { clearQQCookieCache } from '@/api/qqmusic'
+import { useUserStore } from '@/store/userStore'
+import type { UserInfo } from '@/store/userStore'
+import { clearCacheNamespaces, clearCookieCache } from '@/utils/http'
 
 describe('userStore', () => {
   beforeEach(() => {

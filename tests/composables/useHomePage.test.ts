@@ -1,8 +1,8 @@
 import { computed, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useHomePage } from '../../src/composables/useHomePage'
-import type { SearchResultItem } from '../../src/store/searchStore'
+import { useHomePage } from '@/composables/useHomePage'
+import type { SearchResultItem } from '@/store/searchStore'
 
 const mockSwitchTab = vi.fn()
 const mockSetSongList = vi.fn()
