@@ -28,7 +28,8 @@ type SearchStoreLike = Pick<
 >
 type HomePagePlayerStoreLike = Pick<ReturnType<typeof useHomeShell>['playerStore'], 'setSongList'>
 type HomeShellReturn = ReturnType<typeof useHomeShell>
-type HomeShellLike = {
+
+interface HomeShellLike {
   playerStore?: HomePagePlayerStoreLike
   switchTab: HomeShellReturn['switchTab']
   activeTab?: HomeShellReturn['activeTab']
@@ -39,7 +40,7 @@ type HomeShellLike = {
   playSong?: HomeShellReturn['playSong']
 }
 
-export type HomePageDeps = {
+export interface HomePageDeps {
   toastStore?: ToastStoreLike
   searchStore?: SearchStoreLike
   homeShell?: HomeShellLike
@@ -49,6 +50,8 @@ export function useHomePage(deps: HomePageDeps = {}) {
   const toastStore = deps.toastStore ?? useToastStore()
   const searchStore = deps.searchStore ?? useSearchStore()
   const baseHomeShell = useHomeShell()
+  const injectedPlayerStore = deps.homeShell?.playerStore
+  const effectivePlayerStore = injectedPlayerStore ?? baseHomeShell.playerStore
   const homeShell: HomeShellReturn = {
     ...baseHomeShell,
     activeTab: deps.homeShell?.activeTab ?? baseHomeShell.activeTab,
@@ -57,10 +60,7 @@ export function useHomePage(deps: HomePageDeps = {}) {
     maximizeWindow: deps.homeShell?.maximizeWindow ?? baseHomeShell.maximizeWindow,
     minimizeWindow: deps.homeShell?.minimizeWindow ?? baseHomeShell.minimizeWindow,
     playSong: deps.homeShell?.playSong ?? baseHomeShell.playSong,
-    playerStore: {
-      ...baseHomeShell.playerStore,
-      ...deps.homeShell?.playerStore
-    },
+    playerStore: baseHomeShell.playerStore,
     switchTab: deps.homeShell?.switchTab ?? baseHomeShell.switchTab
   }
 
@@ -113,7 +113,7 @@ export function useHomePage(deps: HomePageDeps = {}) {
 
     if (searchStore.hasResults) {
       const songs = searchStore.results.map(searchResultItemToSong)
-      homeShell.playerStore.setSongList(songs)
+      effectivePlayerStore.setSongList(songs)
       homeShell.switchTab('playlist')
       toastStore.success(`Found ${searchStore.totalResults} songs`)
       return

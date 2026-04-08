@@ -177,8 +177,9 @@
 每轮优化后都重新检查：
 
 1. `npm run make`
-2. `npx asar list out\\LUO Music-win32-x64\\resources\\app.asar`
-3. 对以下模式重新计数：
+2. Windows 示例：`npx asar list out\\LUO Music-win32-x64\\resources\\app.asar`
+3. 跨平台占位示例：`npx asar list out/<app>-<platform>-<arch>/resources/app.asar`
+4. 对以下模式重新计数：
    - `scripts/`
    - `*.map`
    - `README.md`

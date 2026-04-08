@@ -27,6 +27,10 @@ vi.mock('../../electron/service/requestClient', () => ({
   requestJson: requestJsonMock
 }))
 
+interface BaseServicePrototypeWithWaitForReady {
+  waitForReady: () => Promise<void>
+}
+
 describe('electron/musicServices', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -54,7 +58,10 @@ describe('electron/musicServices', () => {
 
     const { BaseService } = await import('../../electron/service/baseService')
     const waitForReadySpy = vi
-      .spyOn(BaseService.prototype as any, 'waitForReady')
+      .spyOn(
+        BaseService.prototype as unknown as BaseServicePrototypeWithWaitForReady,
+        'waitForReady'
+      )
       .mockRejectedValue(new Error('startup failed'))
 
     const { QQService } = await import('../../electron/service/musicServices')

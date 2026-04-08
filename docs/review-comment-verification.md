@@ -112,7 +112,7 @@
     - “can access playerStore” 直接依赖内部实现。
 
 - `tests/components/QQLoginModal.test.ts`
-  - 当前是整模块替换 mock，可优化为保留真实模块、仅覆盖所需导出。
+  - 当前是整个模块替换 mock，可优化为保留真实模块、仅覆盖所需导出。
 
 - `eslint.config.js`
   - `no-restricted-imports` 的 `patterns` 配置在两个规则块中重复。
@@ -135,5 +135,20 @@
 
 ## 本轮验证
 
-- `npx vitest run tests/electron/requestClient.test.ts tests/electron/musicServices.test.ts tests/components/Player.test.ts tests/electron/mainIndex.test.ts tests/electron/gatewayCache.test.ts tests/composables/useSearch.test.ts tests/composables/useHomePage.test.ts tests/platform/commonPlatformService.test.ts tests/store/playerStore.test.ts tests/store/searchStore.test.ts`
+- 使用以下测试子集：
+
+  ```bash
+  npx vitest run \
+    tests/electron/requestClient.test.ts \
+    tests/electron/musicServices.test.ts \
+    tests/components/Player.test.ts \
+    tests/electron/mainIndex.test.ts \
+    tests/electron/gatewayCache.test.ts \
+    tests/composables/useSearch.test.ts \
+    tests/composables/useHomePage.test.ts \
+    tests/platform/commonPlatformService.test.ts \
+    tests/store/playerStore.test.ts \
+    tests/store/searchStore.test.ts
+  ```
+
 - `npm run typecheck`

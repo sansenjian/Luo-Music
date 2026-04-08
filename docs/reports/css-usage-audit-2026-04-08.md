@@ -22,7 +22,6 @@
 - `body` 字体与基础排版
 - `#app` 根布局
 - 全局滚动条样式
-- 全局工具类
 
 当前 `src/assets/main.css` 已作为唯一全局主题入口使用。
 
@@ -89,13 +88,12 @@
 ### 活跃样式层级
 
 - 全局主题与基础样式：`src/assets/main.css`
-- 全局共享组件样式：`src/assets/components/index.css`
 - 页面/组件局部样式：
   - `src/views/Home.vue`
   - `src/views/UserCenter.vue`
   - `src/components/SearchInput.vue`
   - `src/components/LyricFloat.vue`
-  - `src/components/Player.css`
+  - `src/components/Player.vue`（`<style scoped src="./Player.css">`）
 
 ### 当前主要样式模式
 

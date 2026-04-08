@@ -4,11 +4,11 @@ import { markRaw, toRaw } from 'vue'
 import { SEND_CHANNELS } from '../../electron/shared/protocol/channels'
 import type { PlayerStateSnapshot } from '../../electron/ipc/types'
 import type { Song } from '../platform/music/interface'
+import type { MusicService } from '@/services/musicService'
+import type { PlatformService } from '@/services/platformService'
 import { services } from '../services'
-import type { MusicService } from '../services/musicService'
-import type { PlatformService } from '../services/platformService'
-import { storageAdapter } from '../services/storageService'
-import type { StorageService } from '../services/storageService'
+import { storageAdapter } from '@/services/storageService'
+import type { StorageService } from '@/services/storageService'
 import { createInitialState, PLAY_MODE_TEXTS, type PlayerState } from './player/playerState'
 import {
   ensurePlayerStoreRuntime,
@@ -29,6 +29,7 @@ import { PLAY_MODE } from '../utils/player/constants/playMode'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
 import { PlaybackErrorHandler } from '../utils/player/modules/playbackErrorHandler'
 import { DESKTOP_LYRIC_IPC_INTERVAL, LYRIC_UI_UPDATE_INTERVAL } from '../constants/lyric'
+import { handleError } from '@/utils/error'
 
 export type PlayerStoreActions = {
   seek: (time: number) => void
@@ -93,6 +94,17 @@ function getDefaultPlayerStoreDeps(): Required<PlayerStoreDeps> {
     getStorageService: () => services.storage(),
     getPlatformAccessor: () => services.platform(),
     audioManager: defaultAudioManager
+  }
+}
+
+function resolvePlayerStoreDeps(deps: PlayerStoreDeps): Required<PlayerStoreDeps> {
+  const defaultDeps = getDefaultPlayerStoreDeps()
+
+  return {
+    getMusicService: deps.getMusicService ?? defaultDeps.getMusicService,
+    getStorageService: deps.getStorageService ?? defaultDeps.getStorageService,
+    getPlatformAccessor: deps.getPlatformAccessor ?? defaultDeps.getPlatformAccessor,
+    audioManager: deps.audioManager ?? defaultDeps.audioManager
   }
 }
 
@@ -222,11 +234,27 @@ async function playSongFromIpc(
 }
 
 export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player') {
-  const resolvedDeps = { ...getDefaultPlayerStoreDeps(), ...deps }
+  const resolvedDeps = resolvePlayerStoreDeps(deps)
   const getMusicService = resolvedDeps.getMusicService
   const getStorageService = resolvedDeps.getStorageService
   const getPlatformService = resolvedDeps.getPlatformAccessor
   const audioManager = resolvedDeps.audioManager
+
+  function reportPlayerStoreError(
+    error: unknown,
+    fn: string,
+    customMessage: string,
+    recoverable = true
+  ): void {
+    handleError(error, {
+      customMessage,
+      recoverable,
+      context: {
+        module: 'PlayerStore',
+        fn
+      }
+    })
+  }
 
   function createPlayerStateSnapshot(store: PlayerStoreInstance): PlayerStateSnapshot {
     return {
@@ -441,7 +469,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
               this.notifyPlayingState(false)
             },
             onError: (error: unknown) => {
-              console.error('Audio error:', error)
+              reportPlayerStoreError(error, 'initAudio.onError', 'Audio error')
               void this.handleAudioError(error)
             }
           },
@@ -463,6 +491,10 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       },
 
       setupIpcListeners(): void {
+        if (this.ipcInitialized) {
+          return
+        }
+
         const store = this as unknown as PlayerStoreInstance
         const runtime = ensurePlayerStoreRuntime(store)
 
@@ -486,7 +518,11 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
             if (!store.playing) {
               void audioManager.play().catch(error => {
                 if (!(error instanceof Error) || error.name !== 'AbortError') {
-                  console.error('Failed to resume playback:', error)
+                  reportPlayerStoreError(
+                    error,
+                    'setupIpcListeners.play',
+                    'Failed to resume playback'
+                  )
                 }
               })
             }
@@ -607,15 +643,16 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         const song = this.songList[index]
 
         if (!song.url) {
-          console.error('No URL for song')
-          throw new Error('No URL for song')
+          const error = new Error('No URL for song')
+          reportPlayerStoreError(error, 'playSongByIndex', 'No URL for song')
+          throw error
         }
 
         try {
           await audioManager.play(String(song.url))
           this.playing = true
         } catch (error) {
-          console.error('Playback failed:', error)
+          reportPlayerStoreError(error, 'playSongByIndex', 'Playback failed')
           this.playing = false
           throw error
         }

@@ -112,6 +112,11 @@ describe('platform/common/platformService', () => {
   })
 
   describe('detectElectron', () => {
+    it('returns false when the runtime global is undefined', () => {
+      delete globalThis.__LUO_APP_RUNTIME__
+      expect(detectElectron()).toBe(false)
+    })
+
     it('returns false for the web runtime', () => {
       globalThis.__LUO_APP_RUNTIME__ = 'web'
       expect(detectElectron()).toBe(false)

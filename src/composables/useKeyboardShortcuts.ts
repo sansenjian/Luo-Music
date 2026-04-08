@@ -1,9 +1,9 @@
 import { onMounted, onUnmounted } from 'vue'
 
-import { DEFAULT_SHORTCUTS } from '../config/shortcuts'
-import { COMMANDS } from '../core/commands/commands'
-import { services } from '../services'
-import type { CommandService } from '../services/commandService'
+import { DEFAULT_SHORTCUTS } from '@/config/shortcuts'
+import { COMMANDS } from '@/core/commands/commands'
+import { services } from '@/services'
+import type { CommandService } from '@/services/commandService'
 
 export type KeyboardShortcutDeps = {
   commandService?: Pick<CommandService, 'canExecute' | 'execute'>
@@ -25,14 +25,14 @@ export function useKeyboardShortcuts(deps: KeyboardShortcutDeps = {}): void {
   }
 
   function handleKeydown(event: KeyboardEvent): void {
-    const target = event.target instanceof HTMLElement ? event.target : null
-    const isInput = target
-      ? ['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable
+    const eventTarget = event.target instanceof HTMLElement ? event.target : null
+    const isInput = eventTarget
+      ? ['INPUT', 'TEXTAREA'].includes(eventTarget.tagName) || eventTarget.isContentEditable
       : false
 
     if (isInput) {
       if (event.key === 'Escape') {
-        target?.blur()
+        eventTarget?.blur()
       }
       return
     }

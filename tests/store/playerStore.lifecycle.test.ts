@@ -139,6 +139,19 @@ describe('playerStore lifecycle', () => {
     expect(secondIpcHandler.teardown).toHaveBeenCalledTimes(1)
   })
 
+  it('does not register IPC listeners more than once for the same store instance', () => {
+    const { store } = createTestStore()
+    store.initAudio()
+
+    expect(ipcHandlerMocks.factory).toHaveBeenCalledTimes(1)
+    expect(ipcHandlerMocks.instances[0].setup).toHaveBeenCalledTimes(1)
+
+    store.setupIpcListeners()
+
+    expect(ipcHandlerMocks.factory).toHaveBeenCalledTimes(1)
+    expect(ipcHandlerMocks.instances[0].setup).toHaveBeenCalledTimes(1)
+  })
+
   it('syncs current lyric index and desktop lyric payload immediately after seek', () => {
     const { store, platformAccessor, audioManager } = createTestStore()
     store.initAudio()
