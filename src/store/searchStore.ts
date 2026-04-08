@@ -76,6 +76,10 @@ export type SearchStoreDeps = {
   createRequestController?: typeof createLatestRequestController
 }
 
+export type SearchStoreOptions = {
+  storeId?: string
+}
+
 function getDefaultSearchStoreDeps(): Required<SearchStoreDeps> {
   return {
     logger: services.logger(),
@@ -87,9 +91,10 @@ function getDefaultSearchStoreDeps(): Required<SearchStoreDeps> {
   }
 }
 
-export function createSearchStore(deps: SearchStoreDeps = {}) {
+export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchStoreOptions = {}) {
+  const storeId = options.storeId ?? 'searchStore'
   return defineStore(
-    'searchStore',
+    storeId,
     () => {
       const {
         logger,

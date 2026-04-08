@@ -25,12 +25,23 @@ function loadModule(moduleId) {
   }
 
   let lastError = null
+  const isResolutionError = (error, candidate) =>
+    Boolean(
+      error &&
+        typeof error === 'object' &&
+        error.code === 'MODULE_NOT_FOUND' &&
+        typeof error.message === 'string' &&
+        error.message.includes(`'${candidate}'`)
+    )
 
   for (const candidate of candidates) {
     try {
       console.log(`[QQ Music API] Resolving module from: ${candidate}`)
       return require(candidate)
     } catch (error) {
+      if (!isResolutionError(error, candidate)) {
+        throw error
+      }
       lastError = error
     }
   }

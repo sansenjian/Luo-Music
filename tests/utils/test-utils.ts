@@ -29,7 +29,7 @@ export function createMockSong(overrides: Partial<Song> & Record<string, unknown
  * Shortcut for QQ Music platform songs — avoids repeating `platform: 'qq'`.
  */
 export function createQQSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
-  return createMockSong({ platform: 'qq', ...overrides })
+  return createMockSong({ ...overrides, platform: 'qq' })
 }
 
 export function mountComponent(component: Component, options: MountingOptions<any> = {}) {

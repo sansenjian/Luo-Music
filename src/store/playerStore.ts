@@ -298,6 +298,9 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
 
     const insertIndex = Math.max(0, Math.min(store.currentIndex + 1, store.songList.length))
     store.songList.splice(insertIndex, 0, song)
+    if (existingIndex === store.currentIndex) {
+      store.currentIndex = insertIndex
+    }
     notifyPlayerStateSnapshot(store)
   }
 
@@ -578,7 +581,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.songList = songs
 
         if (this.currentSong) {
-          const newIndex = songs.findIndex(song => song.id === this.currentSong!.id)
+          const newIndex = songs.findIndex(song => isSameSong(song, this.currentSong!))
           this.currentIndex = newIndex
           if (newIndex === -1) {
             this.currentSong = null

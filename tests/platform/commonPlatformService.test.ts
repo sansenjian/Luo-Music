@@ -29,10 +29,30 @@ class TestPlatformService extends PlatformServiceBase {
   }
 }
 
+const originalElectronApiDescriptor = Object.getOwnPropertyDescriptor(window, 'electronAPI')
+const originalServicesDescriptor = Object.getOwnPropertyDescriptor(window, 'services')
+const originalUserAgentDescriptor = Object.getOwnPropertyDescriptor(window.navigator, 'userAgent')
+
+function restoreDescriptor(
+  target: object,
+  key: 'electronAPI' | 'services' | 'userAgent',
+  descriptor: PropertyDescriptor | undefined
+) {
+  if (descriptor) {
+    Object.defineProperty(target, key, descriptor)
+    return
+  }
+
+  delete (target as Record<string, unknown>)[key]
+}
+
 describe('platform/common/platformService', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    restoreDescriptor(window, 'electronAPI', originalElectronApiDescriptor)
+    restoreDescriptor(window, 'services', originalServicesDescriptor)
+    restoreDescriptor(window.navigator, 'userAgent', originalUserAgentDescriptor)
     delete globalThis.__LUO_APP_RUNTIME__
     PlatformServiceRegistry.clear()
   })

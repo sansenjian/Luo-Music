@@ -135,13 +135,13 @@ describe('useSearch', () => {
     expect(getSongAt(5)).toBeNull()
   })
 
-  it('delegates playResult and addToPlaylist', () => {
+  it('delegates playResult and addToPlaylist', async () => {
     const { playResult, addToPlaylist } = useSearch({ searchStore: mockSearchStore })
 
-    void playResult(2)
+    await playResult(2)
     expect(playResultMock).toHaveBeenCalledWith(2)
 
-    void addToPlaylist(3)
+    await addToPlaylist(3)
     expect(addToPlaylistMock).toHaveBeenCalledWith(3)
   })
 

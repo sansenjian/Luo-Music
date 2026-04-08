@@ -3,9 +3,6 @@ const http = require('node:http')
 const os = require('node:os')
 const path = require('node:path')
 
-const qqApiModule = require('@sansenjian/qq-music-api/dist/app.js')
-const { handleQQSearchRequest } = require('../dev/qq-search-fallback.cjs')
-
 const port = process.env.PORT || 3200
 const host = process.env.HOST || '127.0.0.1'
 
@@ -30,6 +27,8 @@ async function start() {
     process.env.HOST = host
 
     console.log('[QQ Music API] Loading bundled module...')
+    const qqApiModule = require('@sansenjian/qq-music-api/dist/app.js')
+    const { handleQQSearchRequest } = require('../dev/qq-search-fallback.cjs')
     const qqApiApp = qqApiModule && (qqApiModule.default || qqApiModule)
     if (
       !qqApiApp ||
@@ -40,8 +39,7 @@ async function start() {
     }
 
     const appCallback = qqApiApp.callback()
-    http
-      .createServer(async (req, res) => {
+    const server = http.createServer(async (req, res) => {
         try {
           const handled = await handleQQSearchRequest(req, res)
           if (!handled) {
@@ -55,8 +53,21 @@ async function start() {
           }
         }
       })
-      .listen(Number(port), host, () => {
+
+    await new Promise((resolve, reject) => {
+      const onListening = () => {
+        server.off('error', onError)
         console.log(`[QQ Music API] Koa app listening on http://${host}:${port}`)
+        resolve()
+      }
+      const onError = error => {
+        server.off('listening', onListening)
+        reject(error)
+      }
+
+      server.once('listening', onListening)
+      server.once('error', onError)
+      server.listen(Number(port), host)
       })
 
     console.log('[QQ Music API] Bundled module loaded successfully')

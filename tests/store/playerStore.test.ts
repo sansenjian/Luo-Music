@@ -115,6 +115,20 @@ describe('playerStore', () => {
       expect(store.currentSongInfo).toBeNull()
     })
 
+    it('matches current songs by id and platform when replacing the playlist', () => {
+      const store = usePlayerStore()
+      store.currentSong = createMockSong({ id: 'shared-id', platform: 'qq', name: 'QQ Song' })
+      store.currentIndex = 0
+
+      store.setSongList([
+        createMockSong({ id: 'shared-id', platform: 'netease', name: 'Netease Song' }),
+        createMockSong({ id: 'shared-id', platform: 'qq', name: 'QQ Song' })
+      ])
+
+      expect(store.currentIndex).toBe(1)
+      expect(store.currentSong?.platform).toBe('qq')
+    })
+
     it('addSong appends a song', () => {
       const store = usePlayerStore()
       const song = createMockSong({ id: 1, name: 'New Song' })

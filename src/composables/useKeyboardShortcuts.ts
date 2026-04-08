@@ -12,7 +12,7 @@ export type KeyboardShortcutDeps = {
 
 export function useKeyboardShortcuts(deps: KeyboardShortcutDeps = {}): void {
   const commandService = deps.commandService ?? services.commands()
-  const target = deps.target ?? window
+  let target: KeyboardShortcutDeps['target'] | null = null
   const commandMap: Record<string, { id: string; payload?: unknown }> = {
     togglePlay: { id: COMMANDS.PLAYER_TOGGLE_PLAY },
     playPrev: { id: COMMANDS.PLAYER_PLAY_PREV },
@@ -67,10 +67,11 @@ export function useKeyboardShortcuts(deps: KeyboardShortcutDeps = {}): void {
   }
 
   onMounted(() => {
-    target.addEventListener('keydown', handleKeydown)
+    target = deps.target ?? (typeof window !== 'undefined' ? window : null)
+    target?.addEventListener('keydown', handleKeydown)
   })
 
   onUnmounted(() => {
-    target.removeEventListener('keydown', handleKeydown)
+    target?.removeEventListener('keydown', handleKeydown)
   })
 }

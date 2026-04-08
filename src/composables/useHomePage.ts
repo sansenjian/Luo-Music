@@ -29,7 +29,7 @@ type SearchStoreLike = Pick<
 type HomePagePlayerStoreLike = Pick<ReturnType<typeof useHomeShell>['playerStore'], 'setSongList'>
 type HomeShellReturn = ReturnType<typeof useHomeShell>
 type HomeShellLike = {
-  playerStore: HomePagePlayerStoreLike
+  playerStore?: HomePagePlayerStoreLike
   switchTab: HomeShellReturn['switchTab']
   activeTab?: HomeShellReturn['activeTab']
   closeWindow?: HomeShellReturn['closeWindow']
@@ -48,7 +48,21 @@ export type HomePageDeps = {
 export function useHomePage(deps: HomePageDeps = {}) {
   const toastStore = deps.toastStore ?? useToastStore()
   const searchStore = deps.searchStore ?? useSearchStore()
-  const homeShell = (deps.homeShell ?? useHomeShell()) as HomeShellReturn
+  const baseHomeShell = useHomeShell()
+  const homeShell: HomeShellReturn = {
+    ...baseHomeShell,
+    activeTab: deps.homeShell?.activeTab ?? baseHomeShell.activeTab,
+    closeWindow: deps.homeShell?.closeWindow ?? baseHomeShell.closeWindow,
+    isElectron: deps.homeShell?.isElectron ?? baseHomeShell.isElectron,
+    maximizeWindow: deps.homeShell?.maximizeWindow ?? baseHomeShell.maximizeWindow,
+    minimizeWindow: deps.homeShell?.minimizeWindow ?? baseHomeShell.minimizeWindow,
+    playSong: deps.homeShell?.playSong ?? baseHomeShell.playSong,
+    playerStore: {
+      ...baseHomeShell.playerStore,
+      ...deps.homeShell?.playerStore
+    },
+    switchTab: deps.homeShell?.switchTab ?? baseHomeShell.switchTab
+  }
 
   const searchKeyword = ref('')
   const showSelect = ref(false)

@@ -36,7 +36,7 @@ function escapeForWindowsCmd(argument) {
     return value
   }
 
-  return `"${value.replace(/(["^])/g, '^$1')}"`
+  return `"${value.replace(/%/g, '%%').replace(/(["^])/g, '^$1')}"`
 }
 
 function createSpawnTarget(parts) {

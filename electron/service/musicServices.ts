@@ -16,6 +16,13 @@ interface NodeApiServiceOptions {
   startupTimeoutMs?: number
 }
 
+type ProcessListeners = {
+  onStdoutData: (data: Buffer | string) => void
+  onStderrData: (data: Buffer | string) => void
+  onProcessError: (err: Error) => void
+  onExit: (code: number | null) => void
+}
+
 abstract class NodeApiService extends BaseService {
   private readonly scriptName: string
   private readonly loggerScope: string
@@ -39,11 +46,14 @@ abstract class NodeApiService extends BaseService {
     this.lastUpdate = Date.now()
     logger.info(`[${this.loggerScope}] Starting on port ${this.port}`)
 
+    let proc: ChildProcess | null = null
+    let listeners: ProcessListeners | null = null
+
     try {
       const scriptPath = getScriptPath(this.scriptName)
       logger.info(`[${this.loggerScope}] Script path: ${scriptPath}`)
 
-      this.process = spawn(process.execPath, [scriptPath], {
+      proc = spawn(process.execPath, [scriptPath], {
         env: {
           ...process.env,
           PORT: String(this.port),
@@ -54,28 +64,33 @@ abstract class NodeApiService extends BaseService {
         stdio: ['ignore', 'pipe', 'pipe', 'ipc']
       })
 
-      this.process.stdout?.on('data', data => {
-        logger.info(`[${this.loggerScope}] ${data.toString().trim()}`)
-      })
-
-      this.process.stderr?.on('data', data => {
-        logger.error(`[${this.loggerScope}] ${data.toString().trim()}`)
-      })
-
-      this.process.on('error', err => {
-        logger.error(`[${this.loggerScope}] Process error:`, err)
-        this.status = 'error'
-        this.lastError = err.message
-        this.lastUpdate = Date.now()
-      })
-
-      this.process.on('exit', code => {
-        logger.info(`[${this.loggerScope}] Process exited with code ${code}`)
-        if (this.status === 'running') {
-          this.status = 'stopped'
+      this.process = proc
+      listeners = {
+        onStdoutData: data => {
+          logger.info(`[${this.loggerScope}] ${data.toString().trim()}`)
+        },
+        onStderrData: data => {
+          logger.error(`[${this.loggerScope}] ${data.toString().trim()}`)
+        },
+        onProcessError: err => {
+          logger.error(`[${this.loggerScope}] Process error:`, err)
+          this.status = 'error'
+          this.lastError = err.message
+          this.lastUpdate = Date.now()
+        },
+        onExit: code => {
+          logger.info(`[${this.loggerScope}] Process exited with code ${code}`)
+          if (this.status === 'running') {
+            this.status = 'stopped'
+          }
+          this.lastUpdate = Date.now()
         }
-        this.lastUpdate = Date.now()
-      })
+      }
+
+      proc.stdout?.on('data', listeners.onStdoutData)
+      proc.stderr?.on('data', listeners.onStderrData)
+      proc.on('error', listeners.onProcessError)
+      proc.on('exit', listeners.onExit)
 
       await this.waitForReady(this.startupTimeoutMs)
 
@@ -83,11 +98,29 @@ abstract class NodeApiService extends BaseService {
       this.lastUpdate = Date.now()
       logger.info(`[${this.loggerScope}] Started successfully`)
     } catch (error) {
+      if (proc && listeners) {
+        await this.cleanupFailedStart(proc, listeners)
+      }
       this.status = 'error'
       this.lastError = error instanceof Error ? error.message : 'Unknown error'
       this.lastUpdate = Date.now()
       logger.error(`[${this.loggerScope}] Failed to start:`, error)
       throw error
+    }
+  }
+
+  private removeProcessListeners(proc: ChildProcess, listeners: ProcessListeners): void {
+    proc.stdout?.off('data', listeners.onStdoutData)
+    proc.stderr?.off('data', listeners.onStderrData)
+    proc.off('error', listeners.onProcessError)
+    proc.off('exit', listeners.onExit)
+  }
+
+  private async cleanupFailedStart(proc: ChildProcess, listeners: ProcessListeners): Promise<void> {
+    this.removeProcessListeners(proc, listeners)
+    await this.gracefulKill(proc)
+    if (this.process === proc) {
+      this.process = null
     }
   }
 
@@ -111,19 +144,44 @@ abstract class NodeApiService extends BaseService {
 
   private gracefulKill(proc: ChildProcess): Promise<void> {
     return new Promise(resolve => {
+      if (proc.exitCode !== null || proc.signalCode !== null) {
+        resolve()
+        return
+      }
+
       let settled = false
+      let timer: NodeJS.Timeout | null = null
+
+      const onExit = () => {
+        finish()
+      }
+
       const finish = () => {
         if (!settled) {
           settled = true
+          if (timer) {
+            clearTimeout(timer)
+            timer = null
+          }
+          proc.off('exit', onExit)
           resolve()
         }
       }
 
-      proc.on('exit', () => finish())
+      proc.once('exit', onExit)
 
-      proc.kill('SIGTERM')
+      try {
+        const killSent = proc.kill('SIGTERM')
+        if (killSent === false) {
+          finish()
+          return
+        }
+      } catch {
+        finish()
+        return
+      }
 
-      setTimeout(() => {
+      timer = setTimeout(() => {
         if (!settled) {
           logger.warn(
             `[${this.loggerScope}] Process did not exit within ${NodeApiService.FORCE_KILL_TIMEOUT}ms, force killing`

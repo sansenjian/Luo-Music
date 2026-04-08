@@ -36,7 +36,7 @@ export const QQ_API_PORT = 3200
 /**
  * 开发环境 API 服务器地址
  */
-export const DEV_API_SERVER = `http://localhost:${NETEASE_API_PORT}`
+export const DEV_API_SERVER = `http://127.0.0.1:${NETEASE_API_PORT}`
 
 /**
  * QQ 音乐 API 服务器地址

@@ -179,12 +179,11 @@ export async function requestJson(
 
     req.on('error', reject)
     req.on('timeout', () => {
-      req.destroy()
       const error = new Error(
         `${options.serviceName} local service request timed out after ${LOCAL_SERVICE_TIMEOUT_MS}ms: ${path}`
       ) as JsonHttpError
       error.code = 'LOCAL_SERVICE_TIMEOUT'
-      reject(error)
+      req.destroy(error)
     })
 
     if (body !== null) {

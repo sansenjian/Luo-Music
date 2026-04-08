@@ -11,7 +11,7 @@ vi.mock('animejs', () => ({
 }))
 
 // Mock composables
-vi.mock('@/composables/useAnimations.ts', () => ({
+vi.mock('@/composables/useAnimations', () => ({
   animate: vi.fn(),
   animateButtonClick: vi.fn(),
   animatePlayPause: vi.fn(),

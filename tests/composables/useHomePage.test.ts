@@ -1,5 +1,6 @@
-import { computed, ref } from 'vue'
+import { computed, defineComponent, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mount } from '@vue/test-utils'
 
 import { useHomePage } from '@/composables/useHomePage'
 import type { SearchResultItem } from '@/store/searchStore'
@@ -41,14 +42,28 @@ function createHomePageDeps() {
   }
 }
 
+function mountHomePage(deps = createHomePageDeps()) {
+  const Harness = defineComponent({
+    setup() {
+      return useHomePage(deps)
+    },
+    template: '<div />'
+  })
+
+  const wrapper = mount(Harness)
+  return {
+    deps,
+    viewModel: wrapper.vm as unknown as ReturnType<typeof useHomePage>
+  }
+}
+
 describe('useHomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('shows a toast when searching with an empty keyword', async () => {
-    const deps = createHomePageDeps()
-    const viewModel = useHomePage(deps)
+    const { viewModel } = mountHomePage()
 
     viewModel.setSearchKeyword('   ')
     await viewModel.onSearch()
@@ -77,7 +92,7 @@ describe('useHomePage', () => {
       deps.searchStore.hasResults = true
     })
 
-    const viewModel = useHomePage(deps)
+    const { viewModel } = mountHomePage(deps)
     viewModel.setSearchKeyword('song')
     await viewModel.onSearch()
 
@@ -87,14 +102,13 @@ describe('useHomePage', () => {
   })
 
   it('updates server selection and closes the server dropdown', () => {
-    const deps = createHomePageDeps()
-    const viewModel = useHomePage(deps)
+    const { deps, viewModel } = mountHomePage()
 
     viewModel.toggleSelect()
-    expect(viewModel.showSelect.value).toBe(true)
+    expect(viewModel.showSelect).toBe(true)
 
     viewModel.selectServer('qq')
     expect(deps.searchStore.server).toBe('qq')
-    expect(viewModel.showSelect.value).toBe(false)
+    expect(viewModel.showSelect).toBe(false)
   })
 })
