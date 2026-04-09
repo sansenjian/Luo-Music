@@ -510,13 +510,20 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
             if (!store.initialized) {
               if (store.songList.length > 0) {
                 const targetIndex = store.currentIndex >= 0 ? store.currentIndex : 0
-                void store.playSongWithDetails(targetIndex)
+                return store.playSongWithDetails(targetIndex).catch(error => {
+                  reportPlayerStoreError(
+                    error,
+                    'setupIpcListeners.play.uninitialized',
+                    'Failed to play song during initialization'
+                  )
+                  throw error
+                })
               }
               return
             }
 
             if (!store.playing) {
-              void audioManager.play().catch(error => {
+              return audioManager.play().catch(error => {
                 if (!(error instanceof Error) || error.name !== 'AbortError') {
                   reportPlayerStoreError(
                     error,
@@ -524,6 +531,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
                     'Failed to resume playback'
                   )
                 }
+                throw error
               })
             }
           },
@@ -535,7 +543,14 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           playPrev: () => store.playPrev(),
           playNext: () => store.playNext(),
           playSong: (song, playlist) => {
-            void playSongFromIpc(store, song, playlist)
+            return playSongFromIpc(store, song, playlist).catch(error => {
+              reportPlayerStoreError(
+                error,
+                'setupIpcListeners.playSong',
+                'Failed to play song from IPC'
+              )
+              throw error
+            })
           },
           playSongById: (id, platform) => playSongByIdFromIpc(store, id, platform),
           addToNext: song => addToNextFromIpc(store, song),
@@ -580,12 +595,24 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         const result = await errorHandler.handleAudioError(error, this.currentSong)
 
         if (result.shouldRetry && result.url) {
-          if (this.currentSong) {
-            this.currentSong.url = result.url
+          try {
+            await audioManager.play(result.url)
+            if (this.currentSong) {
+              this.currentSong.url = result.url
+            }
+            this.playing = true
+          } catch (retryError) {
+            this.playing = false
+            reportPlayerStoreError(
+              retryError,
+              'handleAudioError.retry',
+              'Failed to play audio after retry'
+            )
+            const retryResult = await errorHandler.handleAudioError(retryError, this.currentSong)
+            if (retryResult.shouldSkip) {
+              this.playNext()
+            }
           }
-
-          await audioManager.play(result.url)
-          this.playing = true
         } else if (result.shouldSkip) {
           this.playNext()
         }
@@ -796,7 +823,9 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       afterHydrate: (context: unknown) => {
         const store = (context as { store: PlayerState }).store
 
-        if (store.volume < 0 || store.volume > 1) {
+        if (typeof store.volume !== 'number' || !Number.isFinite(store.volume)) {
+          store.volume = 0.7
+        } else if (store.volume < 0 || store.volume > 1) {
           store.volume = 0.7
         }
 
@@ -804,7 +833,13 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           audioManager.setVolume(store.volume)
         }
 
-        if (store.playMode < 0 || store.playMode > 3) {
+        if (
+          typeof store.playMode !== 'number' ||
+          !Number.isFinite(store.playMode) ||
+          !Number.isInteger(store.playMode)
+        ) {
+          store.playMode = 0
+        } else if (store.playMode < 0 || store.playMode > 3) {
           store.playMode = 0
         }
 
