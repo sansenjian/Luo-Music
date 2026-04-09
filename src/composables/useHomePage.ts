@@ -49,20 +49,19 @@ export interface HomePageDeps {
 export function useHomePage(deps: HomePageDeps = {}) {
   const toastStore = deps.toastStore ?? useToastStore()
   const searchStore = deps.searchStore ?? useSearchStore()
-  const baseHomeShell = useHomeShell()
-  const injectedPlayerStore = deps.homeShell?.playerStore
-  const effectivePlayerStore = injectedPlayerStore ?? baseHomeShell.playerStore
+  const actualHomeShell = useHomeShell()
+  const baseHomeShell = deps.homeShell ?? actualHomeShell
   const homeShell: HomeShellReturn = {
-    ...baseHomeShell,
-    activeTab: deps.homeShell?.activeTab ?? baseHomeShell.activeTab,
-    closeWindow: deps.homeShell?.closeWindow ?? baseHomeShell.closeWindow,
-    isElectron: deps.homeShell?.isElectron ?? baseHomeShell.isElectron,
-    maximizeWindow: deps.homeShell?.maximizeWindow ?? baseHomeShell.maximizeWindow,
-    minimizeWindow: deps.homeShell?.minimizeWindow ?? baseHomeShell.minimizeWindow,
-    playSong: deps.homeShell?.playSong ?? baseHomeShell.playSong,
-    playerStore: baseHomeShell.playerStore,
-    switchTab: deps.homeShell?.switchTab ?? baseHomeShell.switchTab
+    activeTab: baseHomeShell.activeTab ?? actualHomeShell.activeTab,
+    closeWindow: baseHomeShell.closeWindow ?? actualHomeShell.closeWindow,
+    isElectron: baseHomeShell.isElectron ?? actualHomeShell.isElectron,
+    maximizeWindow: baseHomeShell.maximizeWindow ?? actualHomeShell.maximizeWindow,
+    minimizeWindow: baseHomeShell.minimizeWindow ?? actualHomeShell.minimizeWindow,
+    playSong: baseHomeShell.playSong ?? actualHomeShell.playSong,
+    playerStore: baseHomeShell.playerStore ?? actualHomeShell.playerStore,
+    switchTab: baseHomeShell.switchTab
   }
+  const effectivePlayerStore = homeShell.playerStore
 
   const searchKeyword = ref('')
   const showSelect = ref(false)
