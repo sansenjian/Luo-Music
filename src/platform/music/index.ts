@@ -1,10 +1,9 @@
 import { services } from '@/services'
 import type { ILogger } from '@/services/loggerService'
 import type { MusicPlatformAdapter } from './interface'
-import { NeteaseAdapter } from './netease'
-import { QQMusicAdapter } from './qq'
 
 type MusicPlatformLoggerFactory = () => ILogger
+type SupportedPlatformId = 'netease' | 'qq'
 
 const defaultMusicPlatformLoggerFactory: MusicPlatformLoggerFactory = () =>
   services.logger().createLogger('musicPlatform')
@@ -34,26 +33,50 @@ function getLogger() {
   return _logger
 }
 
-const adapters: Record<string, MusicPlatformAdapter> = {
-  netease: new NeteaseAdapter(),
-  qq: new QQMusicAdapter()
+const adapterLoaders: Record<SupportedPlatformId, () => Promise<MusicPlatformAdapter>> = {
+  netease: async () => {
+    const { NeteaseAdapter } = await import('./netease')
+    return new NeteaseAdapter()
+  },
+  qq: async () => {
+    const { QQMusicAdapter } = await import('./qq')
+    return new QQMusicAdapter()
+  }
+}
+
+const adapterPromises = new Map<SupportedPlatformId, Promise<MusicPlatformAdapter>>()
+
+function resolvePlatformId(platform: string): SupportedPlatformId {
+  if (platform in adapterLoaders) {
+    return platform as SupportedPlatformId
+  }
+
+  getLogger().warn('Unknown music platform, falling back to netease', {
+    requested: platform,
+    available: Object.keys(adapterLoaders)
+  })
+  return 'netease'
 }
 
 /**
  * Get the adapter for the specified platform
  * @param platform 'netease' | 'qq'
  */
-export function getMusicAdapter(platform: string): MusicPlatformAdapter {
-  const adapter = adapters[platform]
-  if (!adapter) {
-    getLogger().warn('Unknown music platform, falling back to netease', {
-      requested: platform,
-      available: Object.keys(adapters)
-    })
-    return adapters.netease
+export function getMusicAdapter(platform: string): Promise<MusicPlatformAdapter> {
+  const platformId = resolvePlatformId(platform)
+  const existingAdapterPromise = adapterPromises.get(platformId)
+
+  if (existingAdapterPromise) {
+    return existingAdapterPromise
   }
 
-  return adapter
+  const adapterPromise = adapterLoaders[platformId]().catch(error => {
+    adapterPromises.delete(platformId)
+    throw error
+  })
+
+  adapterPromises.set(platformId, adapterPromise)
+  return adapterPromise
 }
 
 /**
@@ -66,5 +89,4 @@ export function getAvailablePlatforms(): Array<{ id: string; name: string }> {
   ]
 }
 
-export { NeteaseAdapter, QQMusicAdapter }
 export * from './interface'

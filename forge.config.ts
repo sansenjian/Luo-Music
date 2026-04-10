@@ -1,3 +1,5 @@
+import { readdir, rm } from 'node:fs/promises'
+import { join } from 'node:path'
 import type { ForgeConfig } from '@electron-forge/shared-types'
 import { MakerSquirrel } from '@electron-forge/maker-squirrel'
 import { MakerZIP } from '@electron-forge/maker-zip'
@@ -6,6 +8,8 @@ import { FusesPlugin } from '@electron-forge/plugin-fuses'
 import { FuseV1Options, FuseVersion } from '@electron/fuses'
 
 const FAST_MAKE_MODE = process.env.LUO_FAST_MAKE === '1'
+const packagingLocalesToKeep = new Set(['en-US.pak', 'zh-CN.pak'] as const)
+type PackagerHookDone = (error?: Error | null) => void
 const packagingExtraResources = [
   'build/server',
   'build/runtime/qq-api-server.cjs',
@@ -36,6 +40,20 @@ const makers = FAST_MAKE_MODE
       new MakerZIP({}, ['darwin', 'linux', 'win32'])
     ]
 
+async function pruneElectronLocales(buildPath: string): Promise<void> {
+  const localesDir = join(buildPath, 'locales')
+  const localeEntries = await readdir(localesDir, { withFileTypes: true }).catch(() => [])
+
+  await Promise.all(
+    localeEntries
+      .filter(
+        entry =>
+          entry.isFile() && !packagingLocalesToKeep.has(entry.name as 'en-US.pak' | 'zh-CN.pak')
+      )
+      .map(entry => rm(join(localesDir, entry.name), { force: true }))
+  )
+}
+
 const config: ForgeConfig = {
   packagerConfig: {
     name: 'LUO Music',
@@ -53,7 +71,17 @@ const config: ForgeConfig = {
         customDir: 'v{{ version }}'
       }
     },
-    ignore: [...packagingIgnorePatterns]
+    ignore: [...packagingIgnorePatterns],
+    afterExtract: [
+      (buildPath, _electronVersion, _platform, _arch, done: PackagerHookDone) => {
+        void pruneElectronLocales(buildPath).then(
+          () => done(),
+          error => {
+            done(error instanceof Error ? error : new Error(String(error)))
+          }
+        )
+      }
+    ]
   },
   rebuildConfig: {},
   makers,

@@ -29,28 +29,38 @@ export function createMusicService(deps: MusicServiceDeps = {}): MusicService {
   const resolveAdapter = deps.resolveAdapter ?? getMusicAdapter
 
   return {
-    search(platform: string, keyword: string, limit: number, page: number): Promise<SearchResult> {
-      return resolveAdapter(platform).search(keyword, limit, page)
+    async search(
+      platform: string,
+      keyword: string,
+      limit: number,
+      page: number
+    ): Promise<SearchResult> {
+      const adapter = await resolveAdapter(platform)
+      return adapter.search(keyword, limit, page)
     },
 
-    getSongUrl(
+    async getSongUrl(
       platform: string,
       id: string | number,
       options?: SongUrlOptions | string
     ): Promise<string | null> {
-      return resolveAdapter(platform).getSongUrl(id, options)
+      const adapter = await resolveAdapter(platform)
+      return adapter.getSongUrl(id, options)
     },
 
-    getSongDetail(platform: string, id: string | number): Promise<Song | null> {
-      return resolveAdapter(platform).getSongDetail(id)
+    async getSongDetail(platform: string, id: string | number): Promise<Song | null> {
+      const adapter = await resolveAdapter(platform)
+      return adapter.getSongDetail(id)
     },
 
-    getLyric(platform: string, id: string | number): Promise<LyricResult> {
-      return resolveAdapter(platform).getLyric(id)
+    async getLyric(platform: string, id: string | number): Promise<LyricResult> {
+      const adapter = await resolveAdapter(platform)
+      return adapter.getLyric(id)
     },
 
-    getPlaylistDetail(platform: string, id: string | number): Promise<PlaylistDetail | null> {
-      return resolveAdapter(platform).getPlaylistDetail(id)
+    async getPlaylistDetail(platform: string, id: string | number): Promise<PlaylistDetail | null> {
+      const adapter = await resolveAdapter(platform)
+      return adapter.getPlaylistDetail(id)
     }
   }
 }

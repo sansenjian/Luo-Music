@@ -11,6 +11,9 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/user',
     name: 'UserCenter',
+    meta: {
+      requiresVueQuery: true
+    },
     component: () => import('../views/UserCenter.vue')
   },
   {

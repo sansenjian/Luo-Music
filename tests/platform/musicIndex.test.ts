@@ -47,13 +47,13 @@ describe('platform music index', () => {
   it('returns the requested adapter when known', async () => {
     const { getMusicAdapter } = await import('@/platform/music')
 
-    expect(getMusicAdapter('qq')).toMatchObject({ kind: 'qq' })
+    await expect(getMusicAdapter('qq')).resolves.toMatchObject({ kind: 'qq' })
   })
 
   it('falls back to netease and warns on unknown platforms', async () => {
     const { getMusicAdapter } = await import('@/platform/music')
 
-    expect(getMusicAdapter('unknown')).toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('unknown')).resolves.toMatchObject({ kind: 'netease' })
     expect(warnMock).toHaveBeenCalled()
   })
 
@@ -70,8 +70,8 @@ describe('platform music index', () => {
     vi.resetModules()
     const { getMusicAdapter } = await import('@/platform/music')
 
-    expect(getMusicAdapter('unknown-a')).toMatchObject({ kind: 'netease' })
-    expect(getMusicAdapter('unknown-b')).toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('unknown-a')).resolves.toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('unknown-b')).resolves.toMatchObject({ kind: 'netease' })
 
     expect(createLoggerMock).toHaveBeenCalledTimes(1)
     expect(warnMock).toHaveBeenCalledTimes(2)
@@ -98,7 +98,7 @@ describe('platform music index', () => {
       })
     })
 
-    expect(getMusicAdapter('missing-platform')).toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('missing-platform')).resolves.toMatchObject({ kind: 'netease' })
     expect(injectedWarn).toHaveBeenCalledTimes(1)
 
     resetMusicPlatformDeps()

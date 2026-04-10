@@ -14,6 +14,8 @@ export default defineConfig(async ({ mode }) => {
   const appRuntime = env.APP_RUNTIME === 'electron' ? 'electron' : 'web'
   const sentryDsn = env.SENTRY_DSN ?? ''
   const sentryRelease = env.SENTRY_RELEASE ?? ''
+  const sentryTracingEnabled = env.SENTRY_TRACING_ENABLED ?? '0'
+  const sentryReplayEnabled = env.SENTRY_REPLAY_ENABLED ?? '0'
   const isProduction = mode === 'production'
   const devServerPort = resolveViteDevServerPort(env.VITE_DEV_SERVER_PORT)
 
@@ -41,7 +43,9 @@ export default defineConfig(async ({ mode }) => {
     define: {
       'import.meta.env.APP_RUNTIME': JSON.stringify(appRuntime),
       'import.meta.env.SENTRY_DSN': JSON.stringify(sentryDsn),
-      'import.meta.env.SENTRY_RELEASE': JSON.stringify(sentryRelease)
+      'import.meta.env.SENTRY_RELEASE': JSON.stringify(sentryRelease),
+      'import.meta.env.SENTRY_TRACING_ENABLED': JSON.stringify(sentryTracingEnabled),
+      'import.meta.env.SENTRY_REPLAY_ENABLED': JSON.stringify(sentryReplayEnabled)
     },
     server: {
       port: devServerPort,

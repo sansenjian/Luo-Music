@@ -43,6 +43,8 @@
     "clean": "node scripts/clean-force.js",
     "clean:all": "node scripts/clean-force.js --all",
     "analyze": "vite-bundle-visualizer",
+    "analyze:web": "npm run guard:configs && node scripts/run-with-env.cjs APP_RUNTIME=web -- vite-bundle-visualizer -c config/vite.analyze.web.js -m production -o .vite_cache/reports/web-bundle.html --open false",
+    "analyze:electron-renderer": "npm run guard:configs && vite-bundle-visualizer -c config/vite.analyze.electron-renderer.js -m production -o .vite_cache/reports/electron-renderer-bundle.html --open false",
     "analyze:deps": "node scripts/utils/analyze-deps.js",
     "analyze:graph": "node scripts/utils/dependency-graph.js --write docs/dependency-graph.md",
     "check:deps": "ncu",

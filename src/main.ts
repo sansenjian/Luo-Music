@@ -1,7 +1,7 @@
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
-import { VueQueryPlugin } from '@tanstack/vue-query'
 import { createApp } from 'vue'
+import type { RouteLocationNormalized } from 'vue-router'
 
 import './assets/main.css'
 import App from './App.vue'
@@ -12,17 +12,41 @@ import { isElectronRuntime } from './utils/runtime'
 
 const sentryDsn = import.meta.env.SENTRY_DSN
 const sentryRelease = import.meta.env.SENTRY_RELEASE
+const sentryTracingEnabled = import.meta.env.SENTRY_TRACING_ENABLED === '1'
+const sentryReplayEnabled = import.meta.env.SENTRY_REPLAY_ENABLED === '1'
+const canLoadRendererSentry = import.meta.env.APP_RUNTIME === 'electron'
 const isLocalhost =
   typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 const sentryEnabled =
-  Boolean(sentryDsn) && import.meta.env.PROD && isElectronRuntime() && !isLocalhost
-type SentryRendererModule = typeof import('@sentry/browser')
+  canLoadRendererSentry &&
+  Boolean(sentryDsn) &&
+  import.meta.env.PROD &&
+  isElectronRuntime() &&
+  !isLocalhost
 
-let sentryRenderer: SentryRendererModule | null = null
+type SentryRendererModule = typeof import('./utils/monitoring/sentryRenderer')
+
+let sentryRendererModule: SentryRendererModule | null = null
+let sentryRendererModulePromise: Promise<SentryRendererModule> | null = null
+
+async function loadRendererSentryModule(): Promise<SentryRendererModule> {
+  if (sentryRendererModule) {
+    return sentryRendererModule
+  }
+
+  if (!sentryRendererModulePromise) {
+    sentryRendererModulePromise = import('./utils/monitoring/sentryRenderer').then(module => {
+      sentryRendererModule = module
+      return module
+    })
+  }
+
+  return sentryRendererModulePromise
+}
 
 function captureSentryException(error: unknown): void {
-  sentryRenderer?.captureException(error)
+  sentryRendererModule?.captureRendererException(error)
 }
 
 async function initializeSentry(): Promise<void> {
@@ -30,41 +54,22 @@ async function initializeSentry(): Promise<void> {
     return
   }
 
-  if (sentryRenderer) {
+  const dsn = sentryDsn
+  if (!dsn) {
     return
   }
 
-  const sentry = await import('@sentry/browser')
-  sentryRenderer = sentry
+  const sentryRenderer = await loadRendererSentryModule()
 
-  sentry.init({
-    dsn: sentryDsn,
+  await sentryRenderer.initializeRendererSentry({
+    dsn,
     environment: import.meta.env.MODE,
     release: sentryRelease || undefined,
-    integrations: [
-      sentry.browserTracingIntegration(),
-      sentry.replayIntegration({
-        maskAllText: false,
-        blockAllMedia: false
-      })
-    ],
+    tracingEnabled: sentryTracingEnabled,
+    replayEnabled: sentryReplayEnabled,
     tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0
-  })
-
-  sentry.setTags({
-    'process.type': 'renderer',
-    platform: navigator.platform || 'unknown',
-    'app.environment': import.meta.env.MODE
-  })
-
-  if (sentryRelease) {
-    sentry.setTag('app.release', sentryRelease)
-  }
-
-  sentry.setContext('runtime', {
-    userAgent: navigator.userAgent
   })
 }
 
@@ -101,6 +106,45 @@ const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
 
 const app = createApp(App)
+let vueQueryPluginInstalled = false
+let vueQueryPluginPromise: Promise<void> | null = null
+
+function routeRequiresVueQuery(route: RouteLocationNormalized): boolean {
+  return route.matched.some(record => record.meta.requiresVueQuery === true)
+}
+
+async function ensureVueQueryPlugin(): Promise<void> {
+  if (vueQueryPluginInstalled) {
+    return
+  }
+
+  if (!vueQueryPluginPromise) {
+    vueQueryPluginPromise = import('@tanstack/vue-query')
+      .then(({ VueQueryPlugin }) => {
+        if (vueQueryPluginInstalled) {
+          return
+        }
+
+        app.use(VueQueryPlugin)
+        vueQueryPluginInstalled = true
+      })
+      .finally(() => {
+        if (!vueQueryPluginInstalled) {
+          vueQueryPluginPromise = null
+        }
+      })
+  }
+
+  await vueQueryPluginPromise
+}
+
+router.beforeResolve(async to => {
+  if (!routeRequiresVueQuery(to)) {
+    return
+  }
+
+  await ensureVueQueryPlugin()
+})
 
 setupServices()
 
@@ -122,13 +166,16 @@ window.addEventListener('error', event => {
 })
 
 app.use(pinia)
-app.use(VueQueryPlugin)
 app.use(router)
 
 app.mount('#app')
 
 scheduleNonCriticalInit(async () => {
-  const tasks: Array<Promise<void>> = [initializeSentry()]
+  const tasks: Array<Promise<void>> = []
+
+  if (canLoadRendererSentry) {
+    tasks.push(initializeSentry())
+  }
 
   if (import.meta.env.DEV) {
     tasks.push(initializePerformanceMonitoring())

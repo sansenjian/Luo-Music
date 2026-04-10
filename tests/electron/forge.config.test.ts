@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtemp, mkdir, readdir, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 async function loadForgeConfig(fastMakeMode?: string) {
   const previousFastMakeMode = process.env.LUO_FAST_MAKE
@@ -55,6 +58,22 @@ function getExtraResources(): string[] {
   return [...(extraResources as string[])]
 }
 
+type AfterExtractHook = (
+  buildPath: string,
+  electronVersion: string,
+  platform: string,
+  arch: string,
+  callback: (error?: Error | null) => void
+) => void
+
+function getAfterExtractHooks(): AfterExtractHook[] {
+  const afterExtract = config.packagerConfig?.afterExtract
+
+  expect(Array.isArray(afterExtract)).toBe(true)
+
+  return [...(afterExtract as AfterExtractHook[])]
+}
+
 describe('forge.config packagerConfig.ignore', () => {
   it('ignores development-only roots, scripts, sourcemaps, and dependency metadata', () => {
     expect(matchesIgnore('/.ai/session.json')).toBe(true)
@@ -97,6 +116,34 @@ describe('forge.config packagerConfig.ignore', () => {
 describe('forge.config packaging hooks', () => {
   it('does not rely on packageAfterPrune repair copies', () => {
     expect(config.hooks?.packageAfterPrune).toBeUndefined()
+  })
+
+  it('prunes unused Electron locale files after extracting the runtime', async () => {
+    const [afterExtractHook] = getAfterExtractHooks()
+    const tempRoot = await mkdtemp(join(tmpdir(), 'luo-music-locales-'))
+    const localesDir = join(tempRoot, 'locales')
+
+    await mkdir(localesDir, { recursive: true })
+    await Promise.all([
+      writeFile(join(localesDir, 'en-US.pak'), 'en'),
+      writeFile(join(localesDir, 'zh-CN.pak'), 'zh'),
+      writeFile(join(localesDir, 'fr.pak'), 'fr'),
+      writeFile(join(localesDir, 'ja.pak'), 'ja')
+    ])
+
+    await new Promise<void>((resolve, reject) => {
+      afterExtractHook(tempRoot, '40.8.5', 'win32', 'x64', error => {
+        if (error) {
+          reject(error)
+          return
+        }
+
+        resolve()
+      })
+    })
+
+    const remainingLocales = await readdir(localesDir)
+    expect(remainingLocales.sort()).toEqual(['en-US.pak', 'zh-CN.pak'])
   })
 
   it('keeps fast make zip builds available on darwin, linux, and win32', async () => {
