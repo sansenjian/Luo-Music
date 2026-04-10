@@ -6,14 +6,25 @@ import { FusesPlugin } from '@electron-forge/plugin-fuses'
 import { FuseV1Options, FuseVersion } from '@electron/fuses'
 
 const FAST_MAKE_MODE = process.env.LUO_FAST_MAKE === '1'
+const packagingExtraResources = [
+  'build/server',
+  'build/runtime/qq-api-server.cjs',
+  'scripts/dev/qq-search-fallback.cjs',
+  'scripts/dev/netease-api-server.cjs'
+] as const
 const packagingIgnorePatterns = [
   /^\/(?:\.ai|\.claude|\.codex|\.github|\.husky|\.idea|\.kilocode|\.trae|\.userData|\.vite_cache|\.vscode)(?:$|\/)/,
   /^\/(?:api|config|coverage|dist|docs|electron|playwright-report|server|src|test|test-results|tests)(?:$|\/)/,
+  /^\/build\/runtime(?:$|\/)/,
   /^\/\.env(?:\.[^/]+)?$/,
   /^\/(?:AGENTS\.md|CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|LICENSE|README\.md|electron\.vite\.config\.ts|eslint\.config\.js|forge\.config\.ts|index\.html|playwright\.config\.ts|qodana\.ya?ml|vite\.config\.ts|vitest\.config\.ts)$/,
   /^\/(?:\.editorconfig|\.gitignore|\.gitmessage|\.lintstagedrc\.json|\.npmignore|\.npmrc|\.prettierrc|\.projectstructure)$/,
-  /^\/scripts\/dev\/dev-electron-launcher\.cjs$/,
-  /^\/scripts\/utils(?:$|\/)/
+  /^\/scripts(?:$|\/)/,
+  /^\/.*\.map$/,
+  /^\/node_modules\/@fontsource(?:$|\/)/,
+  /^\/node_modules\/date-fns(?:$|\/)/,
+  /^\/node_modules\/(?:.*\/)?(?:README|readme|CHANGELOG|changelog|CHANGES|changes|AUTHORS|authors|CONTRIBUTING|contributing)(?:\.[^/]+)?$/,
+  /^\/node_modules\/(?:.*\/)?(?:\.github|\.vscode|coverage|docs?|example|examples|test|tests|__tests__)(?:$|\/)/
 ] as const
 
 const makers = FAST_MAKE_MODE
@@ -34,12 +45,7 @@ const config: ForgeConfig = {
       unpack:
         '**/node_modules/{conf,ajv,json-schema-traverse,atomically,dot-prop,uint8array-extras,type-fest}/**'
     },
-    extraResource: [
-      'build/server',
-      'scripts/dev/qq-api-server.cjs',
-      'scripts/dev/qq-search-fallback.cjs',
-      'scripts/dev/netease-api-server.cjs'
-    ],
+    extraResource: [...packagingExtraResources],
     download: {
       unsafelyDisableChecksums: true,
       mirrorOptions: {
@@ -55,7 +61,7 @@ const config: ForgeConfig = {
     new AutoUnpackNativesPlugin({}),
     new FusesPlugin({
       version: FuseVersion.V1,
-      [FuseV1Options.RunAsNode]: false,
+      [FuseV1Options.RunAsNode]: true,
       [FuseV1Options.EnableCookieEncryption]: true,
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: false,

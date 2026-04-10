@@ -60,23 +60,23 @@ vi.mock('vue-router', () => ({
   })
 }))
 
-vi.mock('../../src/store/userStore', () => ({
+vi.mock('@/store/userStore', () => ({
   useUserStore: () => userStoreState
 }))
 
-vi.mock('../../src/store/playlistStore', () => ({
+vi.mock('@/store/playlistStore', () => ({
   usePlaylistStore: () => playlistStoreMock
 }))
 
-vi.mock('../../src/store/playerStore.ts', () => ({
+vi.mock('@/store/playerStore.ts', () => ({
   usePlayerStore: () => playerStoreMock
 }))
 
-vi.mock('../../src/composables/useUserDataQuery', () => ({
+vi.mock('@/composables/useUserDataQuery', () => ({
   useUserDataQuery: vi.fn()
 }))
 
-vi.mock('../../src/composables/useLikedSongs', () => ({
+vi.mock('@/composables/useLikedSongs', () => ({
   useLikedSongs: () => ({
     likeSongs: ref([]),
     formattedSongs: computed(() => []),
@@ -88,7 +88,7 @@ vi.mock('../../src/composables/useLikedSongs', () => ({
   })
 }))
 
-vi.mock('../../src/composables/useUserPlaylists', () => ({
+vi.mock('@/composables/useUserPlaylists', () => ({
   useUserPlaylists: () => ({
     playlists: ref([]),
     count: computed(() => 0),
@@ -100,7 +100,7 @@ vi.mock('../../src/composables/useUserPlaylists', () => ({
   })
 }))
 
-vi.mock('../../src/composables/useUserEvents', () => ({
+vi.mock('@/composables/useUserEvents', () => ({
   useUserEvents: () => ({
     events: ref([]),
     count: computed(() => 0),
@@ -124,7 +124,7 @@ describe('UserCenter', () => {
   })
 
   it('reloads user scoped data when the account changes on the same route', async () => {
-    const UserCenter = (await import('../../src/views/UserCenter.vue')).default
+    const UserCenter = (await import('@/views/UserCenter.vue')).default
     mount(UserCenter, {
       global: {
         stubs: {
@@ -160,7 +160,7 @@ describe('UserCenter', () => {
   })
 
   it('clears stale user data and redirects when logout happens on the user route', async () => {
-    const UserCenter = (await import('../../src/views/UserCenter.vue')).default
+    const UserCenter = (await import('@/views/UserCenter.vue')).default
     mount(UserCenter, {
       global: {
         stubs: {
@@ -198,7 +198,7 @@ describe('UserCenter', () => {
       unmounted: vi.fn()
     }
 
-    const UserCenter = (await import('../../src/views/UserCenter.vue')).default
+    const UserCenter = (await import('@/views/UserCenter.vue')).default
     mount(UserCenter, {
       global: {
         stubs: {
@@ -229,7 +229,7 @@ describe('UserCenter', () => {
   })
 
   it('loads non-active tabs only when the user switches to them', async () => {
-    const UserCenter = (await import('../../src/views/UserCenter.vue')).default
+    const UserCenter = (await import('@/views/UserCenter.vue')).default
     const wrapper = mount(UserCenter, {
       global: {
         stubs: {
@@ -274,7 +274,7 @@ describe('UserCenter', () => {
     loadLikedSongsMock.mockImplementationOnce(() => likedDeferred.promise)
     loadPlaylistsMock.mockImplementationOnce(() => playlistDeferred.promise)
 
-    const UserCenter = (await import('../../src/views/UserCenter.vue')).default
+    const UserCenter = (await import('@/views/UserCenter.vue')).default
     const wrapper = mount(UserCenter, {
       global: {
         stubs: {

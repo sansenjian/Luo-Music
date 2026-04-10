@@ -9,7 +9,7 @@ import {
   getActiveRequestKeys,
   isRequestActive,
   generateRequestKey
-} from '../../src/utils/http/requestCanceler'
+} from '@/utils/http/requestCanceler'
 
 interface MockConfig {
   method: string

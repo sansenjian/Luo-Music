@@ -4,11 +4,32 @@ import type { MusicPlatformAdapter } from './interface'
 import { NeteaseAdapter } from './netease'
 import { QQMusicAdapter } from './qq'
 
+type MusicPlatformLoggerFactory = () => ILogger
+
+const defaultMusicPlatformLoggerFactory: MusicPlatformLoggerFactory = () =>
+  services.logger().createLogger('musicPlatform')
+
+let createMusicPlatformLogger: MusicPlatformLoggerFactory = defaultMusicPlatformLoggerFactory
+
+export function configureMusicPlatformDeps(deps: {
+  createLogger?: MusicPlatformLoggerFactory
+}): void {
+  if (deps.createLogger) {
+    createMusicPlatformLogger = deps.createLogger
+    _logger = undefined
+  }
+}
+
+export function resetMusicPlatformDeps(): void {
+  createMusicPlatformLogger = defaultMusicPlatformLoggerFactory
+  _logger = undefined
+}
+
 // Lazy loading to avoid circular dependency
 let _logger: ILogger | undefined
 function getLogger() {
   if (_logger === undefined) {
-    _logger = services.logger().createLogger('musicPlatform')
+    _logger = createMusicPlatformLogger()
   }
   return _logger
 }

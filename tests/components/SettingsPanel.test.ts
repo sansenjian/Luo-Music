@@ -1,13 +1,12 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
 
 const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => false)
 }))
 
-vi.mock('../../src/services', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../src/services')>()
+vi.mock('@/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services')>()
   return {
     ...actual,
     services: {
@@ -19,13 +18,12 @@ vi.mock('../../src/services', async importOriginal => {
 
 describe('SettingsPanel.vue', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 
   it('shows cache manager section when running in Electron', async () => {
     platformServiceMock.isElectron.mockReturnValue(true)
-    const { default: SettingsPanel } = await import('../../src/components/SettingsPanel.vue')
+    const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
     const wrapper = mount(SettingsPanel, {
       attachTo: document.body,
@@ -48,7 +46,7 @@ describe('SettingsPanel.vue', () => {
 
   it('shows fallback message outside Electron', async () => {
     platformServiceMock.isElectron.mockReturnValue(false)
-    const { default: SettingsPanel } = await import('../../src/components/SettingsPanel.vue')
+    const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
     const wrapper = mount(SettingsPanel, {
       attachTo: document.body,

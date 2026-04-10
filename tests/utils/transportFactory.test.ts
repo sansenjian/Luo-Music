@@ -1,12 +1,14 @@
 import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createCachedCookieResolver, createTransport } from '../../src/utils/http/transportFactory'
-import { AppError, ErrorCode } from '../../src/utils/error/types'
 import {
-  createCanceledRequestError,
-  isCanceledRequestError
-} from '../../src/utils/http/cancelError'
+  createCachedCookieResolver,
+  createTransport,
+  configureTransportFactoryDeps,
+  resetTransportFactoryDeps
+} from '@/utils/http/transportFactory'
+import { AppError, ErrorCode } from '@/utils/error/types'
+import { createCanceledRequestError, isCanceledRequestError } from '@/utils/http/cancelError'
 
 function setElectronApi(
   apiRequest?: (
@@ -25,6 +27,7 @@ describe('transportFactory', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     setElectronApi()
+    resetTransportFactoryDeps()
   })
 
   it('injects normalized params and cookies into HTTP requests', async () => {
@@ -257,5 +260,32 @@ describe('transportFactory', () => {
       // 应该是原始的取消错误，而不是被包装成 AppError
       return isCanceledRequestError(err)
     })
+  })
+
+  it('emits normalized errors through an injected error service resolver', async () => {
+    const emit = vi.fn()
+    configureTransportFactoryDeps({
+      getErrorService: () => ({ emit })
+    })
+
+    const transport = createTransport({
+      service: 'netease',
+      baseURL: '/api',
+      unwrapData: true,
+      emitErrors: true
+    })
+
+    await expect(
+      transport.get('/playlist/detail', {
+        adapter: async (config: InternalAxiosRequestConfig) => {
+          throw new AxiosError('offline', 'ERR_NETWORK', config)
+        }
+      })
+    ).rejects.toMatchObject({
+      name: 'AppError',
+      code: ErrorCode.SERVICE_UNAVAILABLE
+    } satisfies Partial<AppError>)
+
+    expect(emit).toHaveBeenCalledTimes(1)
   })
 })

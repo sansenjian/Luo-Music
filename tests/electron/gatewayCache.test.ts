@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HTTP_DEFAULT_RETRY_DELAY } from '../../src/constants/http'
+import { HTTP_DEFAULT_RETRY_DELAY } from '@/constants/http'
 import { executeWithRetry } from '../../electron/ipc/utils/gatewayCache.ts'
 
 vi.mock('../../electron/logger', () => ({
@@ -69,5 +69,17 @@ describe('gatewayCache executeWithRetry', () => {
 
     await expect(task).resolves.toBe('ok')
     expect(request).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not retry local service timeout errors', async () => {
+    const timeoutError = Object.assign(new Error('QQ local service timeout'), {
+      code: 'LOCAL_SERVICE_TIMEOUT'
+    })
+    const request = vi.fn().mockRejectedValue(timeoutError)
+
+    await expect(executeWithRetry(request, 'api:request qq:getSearchByKey')).rejects.toBe(
+      timeoutError
+    )
+    expect(request).toHaveBeenCalledTimes(1)
   })
 })

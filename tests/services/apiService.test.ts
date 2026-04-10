@@ -31,6 +31,21 @@ describe('apiService', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  it('supports injected external dependencies without touching window globals', async () => {
+    const apiRequest = vi.fn().mockResolvedValue({ ok: true })
+    const fetchSpy = vi.fn()
+
+    const service = createApiService({
+      getElectronApi: () => ({ apiRequest }),
+      fetchImpl: fetchSpy as typeof fetch
+    })
+    const result = await service.request('qq', '/search', { keyword: 'jay' })
+
+    expect(result).toEqual({ ok: true })
+    expect(apiRequest).toHaveBeenCalledWith('qq', '/search', { keyword: 'jay' })
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
   it('builds browser request urls and filters undefined query params', async () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,

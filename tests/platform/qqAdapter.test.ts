@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const fetchMock = vi.fn()
 
-vi.mock('../../src/api/qqmusic', () => ({
+vi.mock('@/api/qqmusic', () => ({
   qqMusicAdapter: {
     fetch: fetchMock
   }
@@ -25,7 +25,7 @@ describe('QQMusicAdapter getSongUrl', () => {
       return { success: false }
     })
 
-    const { QQMusicAdapter } = await import('../../src/platform/music/qq')
+    const { QQMusicAdapter } = await import('@/platform/music/qq')
     const adapter = new QQMusicAdapter()
 
     const url = await adapter.getSongUrl('songmid')
@@ -54,7 +54,7 @@ describe('QQMusicAdapter getSongUrl', () => {
       return { success: false }
     })
 
-    const { QQMusicAdapter } = await import('../../src/platform/music/qq')
+    const { QQMusicAdapter } = await import('@/platform/music/qq')
     const adapter = new QQMusicAdapter()
 
     const url = await adapter.getSongUrl('songmid')
@@ -79,7 +79,7 @@ describe('QQMusicAdapter getSongUrl', () => {
       return { success: false }
     })
 
-    const { QQMusicAdapter } = await import('../../src/platform/music/qq')
+    const { QQMusicAdapter } = await import('@/platform/music/qq')
     const adapter = new QQMusicAdapter()
 
     const url = await adapter.getSongUrl('songmid')
@@ -107,7 +107,7 @@ describe('QQMusicAdapter getLyric', () => {
       return { success: false }
     })
 
-    const { QQMusicAdapter } = await import('../../src/platform/music/qq')
+    const { QQMusicAdapter } = await import('@/platform/music/qq')
     const adapter = new QQMusicAdapter()
 
     const lyric = await adapter.getLyric('songmid')
@@ -133,7 +133,7 @@ describe('QQMusicAdapter getLyric', () => {
       return { success: false }
     })
 
-    const { QQMusicAdapter } = await import('../../src/platform/music/qq')
+    const { QQMusicAdapter } = await import('@/platform/music/qq')
     const adapter = new QQMusicAdapter()
 
     const lyric = await adapter.getLyric('songmid')

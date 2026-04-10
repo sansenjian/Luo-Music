@@ -4,7 +4,7 @@ import {
   DisposableStore,
   ReferenceDisposable,
   DisposableTracker
-} from '../../src/base/common/lifecycle'
+} from '@/base/common/lifecycle'
 
 describe('Disposable', () => {
   it('should dispose registered resources', () => {

@@ -13,6 +13,21 @@ export type ApiService = {
   request(service: string, endpoint: string, params?: Record<string, unknown>): Promise<unknown>
 }
 
+type ElectronApiBridge = {
+  apiRequest?: (
+    service: string,
+    endpoint: string,
+    params: Record<string, unknown>
+  ) => Promise<unknown>
+}
+
+type FetchLike = typeof fetch
+
+export type ApiServiceDeps = {
+  getElectronApi?: () => ElectronApiBridge | undefined
+  fetchImpl?: FetchLike
+}
+
 function buildQuery(params: Record<string, unknown>): string {
   const entries = Object.entries(params)
     .filter(([, value]) => value !== undefined)
@@ -26,24 +41,33 @@ function buildQuery(params: Record<string, unknown>): string {
   return `?${search}`
 }
 
-export function createApiService(): ApiService {
+function getElectronApiBridge(): ElectronApiBridge | undefined {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  return (window as unknown as { electronAPI?: ElectronApiBridge }).electronAPI
+}
+
+function getDefaultFetchImpl(): FetchLike {
+  if (typeof fetch !== 'function') {
+    throw new Error('Fetch API is not available in the current runtime')
+  }
+
+  return fetch.bind(globalThis)
+}
+
+export function createApiService(deps: ApiServiceDeps = {}): ApiService {
+  const getElectronApi = deps.getElectronApi ?? getElectronApiBridge
+  const fetchImpl = deps.fetchImpl ?? getDefaultFetchImpl()
+
   return {
     async request(
       service: string,
       endpoint: string,
       params: Record<string, unknown> = {}
     ): Promise<unknown> {
-      const electronAPI = (
-        window as unknown as {
-          electronAPI?: {
-            apiRequest?: (
-              service: string,
-              endpoint: string,
-              params: Record<string, unknown>
-            ) => Promise<unknown>
-          }
-        }
-      ).electronAPI
+      const electronAPI = getElectronApi()
 
       if (electronAPI?.apiRequest) {
         return electronAPI.apiRequest(service, endpoint, params)
@@ -56,7 +80,7 @@ export function createApiService(): ApiService {
       const { controller, timeoutId } = createTimeoutController(normalizedEndpoint)
 
       try {
-        const response = await fetch(url, {
+        const response = await fetchImpl(url, {
           method: 'GET',
           credentials: 'include',
           signal: controller.signal

@@ -17,8 +17,9 @@ import {
   HTTP_DEFAULT_TIMEOUT
 } from '@/constants/http'
 import { services } from '@/services'
+import type { ErrorService } from '@/services/errorService'
 
-type ErrorService = typeof services.error extends () => infer R ? R : never
+type ErrorServiceLike = Pick<ErrorService, 'emit'>
 
 export type TransportRequestParams = Record<string, unknown>
 
@@ -59,11 +60,33 @@ export interface TransportFactoryOptions {
   extend?: (client: AxiosInstance) => void
 }
 
-let cachedErrorService: ErrorService | null = null
+type TransportFactoryDeps = {
+  getErrorService: () => ErrorServiceLike
+}
 
-function getErrorService(): ErrorService {
+const defaultTransportFactoryDeps: TransportFactoryDeps = {
+  getErrorService: () => services.error()
+}
+
+let transportFactoryDeps: TransportFactoryDeps = defaultTransportFactoryDeps
+let cachedErrorService: ErrorServiceLike | null = null
+
+export function configureTransportFactoryDeps(deps: Partial<TransportFactoryDeps>): void {
+  transportFactoryDeps = {
+    ...transportFactoryDeps,
+    ...deps
+  }
+  cachedErrorService = null
+}
+
+export function resetTransportFactoryDeps(): void {
+  transportFactoryDeps = defaultTransportFactoryDeps
+  cachedErrorService = null
+}
+
+function getErrorService(): ErrorServiceLike {
   if (!cachedErrorService) {
-    cachedErrorService = services.error()
+    cachedErrorService = transportFactoryDeps.getErrorService()
   }
 
   return cachedErrorService

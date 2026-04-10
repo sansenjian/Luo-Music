@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { Disposable } from '../../src/base/common/lifecycle/disposable'
+import { Disposable } from '@/base/common/lifecycle/disposable'
 import {
   PlatformServiceBase,
   detectElectron,
   detectMobile,
   formatBytes,
   PlatformServiceRegistry
-} from '../../src/platform/common/platformService'
-import { Platform } from '../../src/platform/common/types'
+} from '@/platform/common/platformService'
+import { Platform } from '@/platform/common/types'
 
 class TestPlatformService extends PlatformServiceBase {
   readonly name = 'test'
@@ -29,10 +29,31 @@ class TestPlatformService extends PlatformServiceBase {
   }
 }
 
+const originalElectronApiDescriptor = Object.getOwnPropertyDescriptor(window, 'electronAPI')
+const originalServicesDescriptor = Object.getOwnPropertyDescriptor(window, 'services')
+const originalUserAgentDescriptor = Object.getOwnPropertyDescriptor(window.navigator, 'userAgent')
+
+function restoreDescriptor(
+  target: object,
+  key: 'electronAPI' | 'services' | 'userAgent',
+  descriptor: PropertyDescriptor | undefined
+) {
+  if (descriptor) {
+    Object.defineProperty(target, key, descriptor)
+    return
+  }
+
+  delete (target as Record<string, unknown>)[key]
+}
+
 describe('platform/common/platformService', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    restoreDescriptor(window, 'electronAPI', originalElectronApiDescriptor)
+    restoreDescriptor(window, 'services', originalServicesDescriptor)
+    restoreDescriptor(window.navigator, 'userAgent', originalUserAgentDescriptor)
+    delete globalThis.__LUO_APP_RUNTIME__
     PlatformServiceRegistry.clear()
   })
 
@@ -91,58 +112,43 @@ describe('platform/common/platformService', () => {
   })
 
   describe('detectElectron', () => {
-    it('returns false without a window object', () => {
-      vi.stubGlobal('window', undefined)
+    it('returns false when the runtime global is undefined', () => {
+      delete globalThis.__LUO_APP_RUNTIME__
       expect(detectElectron()).toBe(false)
     })
 
-    it('returns false when electron api is absent', () => {
-      Object.defineProperty(window, 'electronAPI', {
-        configurable: true,
-        value: undefined
-      })
+    it('returns false for the web runtime', () => {
+      globalThis.__LUO_APP_RUNTIME__ = 'web'
       expect(detectElectron()).toBe(false)
     })
 
-    it('returns true when electron api exists', () => {
+    it('returns true for the electron runtime', () => {
+      globalThis.__LUO_APP_RUNTIME__ = 'electron'
+      expect(detectElectron()).toBe(true)
+    })
+
+    it('does not treat preload globals as electron when runtime is web', () => {
+      globalThis.__LUO_APP_RUNTIME__ = 'web'
       Object.defineProperty(window, 'electronAPI', {
         configurable: true,
         value: {} as unknown
       })
-      expect(detectElectron()).toBe(true)
-      Object.defineProperty(window, 'electronAPI', {
-        configurable: true,
-        value: undefined
-      })
-    })
-
-    it('returns true when services bridge exists', () => {
       Object.defineProperty(window, 'services', {
         configurable: true,
         value: {} as unknown
       })
-      expect(detectElectron()).toBe(true)
-      Object.defineProperty(window, 'services', {
-        configurable: true,
-        value: undefined
-      })
+
+      expect(detectElectron()).toBe(false)
     })
 
-    it('returns true for Electron user agents even before preload globals are exposed', () => {
-      Object.defineProperty(window, 'electronAPI', {
-        configurable: true,
-        value: undefined
-      })
-      Object.defineProperty(window, 'services', {
-        configurable: true,
-        value: undefined
-      })
+    it('does not treat the user agent as electron when runtime is web', () => {
+      globalThis.__LUO_APP_RUNTIME__ = 'web'
       Object.defineProperty(window.navigator, 'userAgent', {
         configurable: true,
         value: 'Mozilla/5.0 AppleWebKit/537.36 Chrome/140.0.0.0 Electron/40.0.0 Safari/537.36'
       })
 
-      expect(detectElectron()).toBe(true)
+      expect(detectElectron()).toBe(false)
     })
   })
 

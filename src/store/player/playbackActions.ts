@@ -1,5 +1,5 @@
 import type { Song } from '@/types/schemas'
-import { services } from '@/services'
+import type { MusicService } from '@/services/musicService'
 import { errorCenter, Errors } from '@/utils/error'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
@@ -12,6 +12,7 @@ export interface PlaybackActionsDeps {
   onStateChange: (changes: Partial<PlayerState>) => void
   playSongByIndex: (index: number) => Promise<void>
   setLyricsArray: (lyrics: import('@/utils/player/core/lyric').LyricLine[]) => void
+  musicService: Pick<MusicService, 'getSongUrl' | 'getSongDetail' | 'getLyric'>
   createErrorHandler: () => import('@/utils/player/modules/playbackErrorHandler').PlaybackErrorHandler
   getErrorHandler: () =>
     | import('@/utils/player/modules/playbackErrorHandler').PlaybackErrorHandler
@@ -128,7 +129,7 @@ export class PlaybackActions {
   private async refreshSongUrl(song: Song, platformKey: string): Promise<boolean> {
     console.log('[Player] Refreshing URL for song:', song.id)
     const mediaId = (song as Song & { mediaId?: string }).mediaId
-    const url = await services.music().getSongUrl(platformKey, song.id, { mediaId })
+    const url = await this.deps.musicService.getSongUrl(platformKey, song.id, { mediaId })
     console.log('[Player] Refreshed URL:', url ? 'Success' : 'Failed')
 
     if (!url) {
@@ -152,7 +153,7 @@ export class PlaybackActions {
     }
 
     try {
-      const detail = await services.music().getSongDetail(platformKey, song.id)
+      const detail = await this.deps.musicService.getSongDetail(platformKey, song.id)
 
       if (!this.isCurrentPlaybackRequest(requestId)) {
         return null
@@ -268,7 +269,7 @@ export class PlaybackActions {
     this.deps.onStateChange({ loading: true })
 
     const platformKey = song.platform || (song as { server?: string }).server || 'netease'
-    const musicService = services.music()
+    const musicService = this.deps.musicService
 
     console.log(`[Player] Playing song: ${song.name} (ID: ${song.id}, Platform: ${platformKey})`)
 

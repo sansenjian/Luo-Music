@@ -4,14 +4,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { Disposable } from '../../src/base/common/lifecycle/disposable'
+import { Disposable } from '@/base/common/lifecycle/disposable'
 import {
   PlatformServiceRegistry,
   formatBytes,
   detectMobile
-} from '../../src/platform/common/platformService'
-import { WebPlatformService } from '../../src/platform/web/webPlatformService'
-import type { IMessageHandler } from '../../src/platform/common/types'
+} from '@/platform/common/platformService'
+import { WebPlatformService } from '@/platform/web/webPlatformService'
+import type { IMessageHandler } from '@/platform/common/types'
 
 // Mock Electron 模块
 vi.mock('electron', () => ({

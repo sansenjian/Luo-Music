@@ -1,5 +1,6 @@
 // 网易云 API 子进程服务
 const http = require('http')
+const path = require('path')
 
 const port = process.env.PORT || 14532
 const host = process.env.HOST || 'localhost'
@@ -12,11 +13,44 @@ console.log(`[Netease API] CWD: ${process.cwd()}`)
 console.log(`[Netease API] NODE_ENV: ${process.env.NODE_ENV}`)
 console.log(`[Netease API] ========================================`)
 
+function loadModule(moduleId) {
+  const candidates = [moduleId]
+
+  if (typeof process.resourcesPath === 'string' && process.resourcesPath.length > 0) {
+    candidates.push(path.join(process.resourcesPath, 'app.asar', 'node_modules', moduleId))
+    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', moduleId))
+  }
+
+  let lastError = null
+  const isResolutionError = (error, candidate) =>
+    Boolean(
+      error &&
+        typeof error === 'object' &&
+        error.code === 'MODULE_NOT_FOUND' &&
+        typeof error.message === 'string' &&
+        error.message.includes(`'${candidate}'`)
+    )
+
+  for (const candidate of candidates) {
+    try {
+      console.log(`[Netease API] Resolving module from: ${candidate}`)
+      return require(candidate)
+    } catch (error) {
+      if (!isResolutionError(error, candidate)) {
+        throw error
+      }
+      lastError = error
+    }
+  }
+
+  throw lastError || new Error(`Cannot resolve module: ${moduleId}`)
+}
+
 async function start() {
   try {
     // 动态加载模块
     console.log('[Netease API] Loading module...')
-    const { serveNcmApi } = require('@neteasecloudmusicapienhanced/api')
+    const { serveNcmApi } = loadModule('@neteasecloudmusicapienhanced/api')
     console.log('[Netease API] Module loaded successfully')
     
     console.log(`[Netease API] Starting server on ${host}:${port}...`)

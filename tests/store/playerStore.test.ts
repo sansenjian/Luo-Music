@@ -1,51 +1,55 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
 
-import type { Song } from '../../src/platform/music/interface'
-import { usePlayerStore } from '../../src/store/playerStore.ts'
-import { PLAY_MODE } from '../../src/utils/player/constants/playMode'
-import type { LyricLine } from '../../src/utils/player/core/lyric'
+import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import type { LyricLine } from '@/utils/player/core/lyric'
+import { createPlayerStore, usePlayerStore } from '@/store/playerStore.ts'
+import { createMockSong } from '../utils/test-utils'
 
-function createMockSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
+let storeCounter = 0
+
+function createAudioManagerMock() {
   return {
-    id: overrides.id ?? 1,
-    name: String(overrides.name ?? 'Song'),
-    artists: overrides.artists ?? [{ id: 1, name: String(overrides.artist ?? 'Artist') }],
-    album: overrides.album ?? { id: 1, name: 'Album', picUrl: '' },
-    duration: Number(overrides.duration ?? 180000),
-    mvid: overrides.mvid ?? 0,
-    platform: (overrides.platform as 'netease' | 'qq') ?? 'netease',
-    originalId: overrides.originalId ?? overrides.id ?? 1,
-    ...overrides
-  }
-}
-
-vi.mock('../../src/utils/player/audioManager', () => ({
-  audioManager: {
     play: vi.fn(() => Promise.resolve()),
     pause: vi.fn(),
     toggle: vi.fn(),
     seek: vi.fn(),
     setVolume: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-    get currentTime() {
-      return 0
-    },
-    get duration() {
-      return 180
-    },
-    get paused() {
-      return true
-    }
+    getMuted: vi.fn(() => false),
+    setMuted: vi.fn()
   }
-}))
+}
+
+function createInjectedPlayerStore(options: { isElectron?: boolean } = {}) {
+  storeCounter += 1
+  const audioManager = createAudioManagerMock()
+  const platformAccessor = {
+    isElectron: vi.fn(() => options.isElectron ?? false),
+    send: vi.fn(),
+    sendPlayingState: vi.fn(),
+    sendPlayModeChange: vi.fn(),
+    on: vi.fn(() => () => {})
+  }
+  const storageService = {
+    setItem: vi.fn()
+  }
+  const useInjectedStore = createPlayerStore(
+    {
+      audioManager,
+      getStorageService: () => storageService,
+      getPlatformAccessor: () => platformAccessor
+    },
+    `player-test-${storeCounter}`
+  )
+
+  return {
+    store: useInjectedStore(),
+    audioManager,
+    platformAccessor,
+    storageService
+  }
+}
 
 describe('playerStore', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
   describe('initial state', () => {
     it('has correct defaults', () => {
       const store = usePlayerStore()
@@ -113,6 +117,20 @@ describe('playerStore', () => {
       expect(store.currentSongInfo).toBeNull()
     })
 
+    it('matches current songs by id and platform when replacing the playlist', () => {
+      const store = usePlayerStore()
+      store.currentSong = createMockSong({ id: 'shared-id', platform: 'qq', name: 'QQ Song' })
+      store.currentIndex = 0
+
+      store.setSongList([
+        createMockSong({ id: 'shared-id', platform: 'netease', name: 'Netease Song' }),
+        createMockSong({ id: 'shared-id', platform: 'qq', name: 'QQ Song' })
+      ])
+
+      expect(store.currentIndex).toBe(1)
+      expect(store.currentSong?.platform).toBe('qq')
+    })
+
     it('addSong appends a song', () => {
       const store = usePlayerStore()
       const song = createMockSong({ id: 1, name: 'New Song' })
@@ -154,9 +172,10 @@ describe('playerStore', () => {
     })
 
     it('setVolume sets volume', () => {
-      const store = usePlayerStore()
+      const { store, audioManager } = createInjectedPlayerStore()
       store.setVolume(0.5)
       expect(store.volume).toBe(0.5)
+      expect(audioManager.setVolume).toHaveBeenCalledWith(0.5)
     })
 
     it('setPlayMode falls back to sequential for invalid numeric input', () => {
@@ -168,10 +187,86 @@ describe('playerStore', () => {
     })
 
     it('seek updates progress', () => {
-      const store = usePlayerStore()
+      const { store, audioManager } = createInjectedPlayerStore()
       store.duration = 180
       store.seek(60)
       expect(store.progress).toBe(60)
+      expect(audioManager.seek).toHaveBeenCalledWith(60)
+    })
+
+    it('resets playback state when togglePlay cannot start the first track', async () => {
+      const { store, platformAccessor } = createInjectedPlayerStore()
+      store.songList = [createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' })]
+      store.playing = true
+      vi.spyOn(store, 'playSongWithDetails').mockRejectedValueOnce(new Error('start failed'))
+
+      store.togglePlay()
+      await Promise.resolve()
+
+      expect(store.playing).toBe(false)
+      expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
+    })
+
+    it('resets playback state when audioManager.toggle rejects', async () => {
+      const { store, audioManager, platformAccessor } = createInjectedPlayerStore()
+      store.initialized = true
+      store.playing = true
+      audioManager.toggle.mockRejectedValueOnce(new Error('toggle failed'))
+
+      store.togglePlay()
+      await Promise.resolve()
+
+      expect(store.playing).toBe(false)
+      expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
+    })
+
+    it('falls back to the next track when single-loop replay fails at song end', async () => {
+      const { store, audioManager, platformAccessor } = createInjectedPlayerStore()
+      const playNextSpy = vi.spyOn(store, 'playNext').mockImplementation(() => {})
+      store.playMode = PLAY_MODE.SINGLE_LOOP
+      store.playing = true
+      audioManager.play.mockRejectedValueOnce(new Error('replay failed'))
+
+      store.handleSongEnd()
+      await Promise.resolve()
+
+      expect(audioManager.seek).toHaveBeenCalledWith(0)
+      expect(store.playing).toBe(false)
+      expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
+      expect(playNextSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps the next selection and resets playback state when replaying after removal fails', async () => {
+      const { store, platformAccessor } = createInjectedPlayerStore({ isElectron: true })
+      const firstSong = createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' })
+      const secondSong = createMockSong({ id: 2, name: 'Song 2', url: 'http://test.com/2.mp3' })
+
+      store.songList = [firstSong, secondSong]
+      store.currentIndex = 0
+      store.currentSong = firstSong
+      store.playing = true
+      store.initAudio()
+      platformAccessor.sendPlayingState.mockClear()
+
+      vi.spyOn(store, 'playSongWithDetails').mockRejectedValueOnce(
+        new Error('remove replay failed')
+      )
+
+      const onCalls = platformAccessor.on.mock.calls as unknown as Array<
+        [string, (payload: unknown) => void]
+      >
+      const songControlListener = onCalls.find(
+        ([channel]) => channel === 'music-song-control'
+      )?.[1] as ((payload: unknown) => void) | undefined
+
+      songControlListener?.({ type: 'remove-from-playlist', index: 0 })
+      await Promise.resolve()
+
+      expect(store.songList).toEqual([secondSong])
+      expect(store.currentIndex).toBe(0)
+      expect(store.currentSong).toStrictEqual(secondSong)
+      expect(store.playing).toBe(false)
+      expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
     })
   })
 
@@ -241,13 +336,14 @@ describe('playerStore', () => {
     })
 
     it('toggleCompactMode toggles compact mode', () => {
-      const store = usePlayerStore()
+      const { store, storageService } = createInjectedPlayerStore()
 
       expect(store.isCompact).toBe(false)
       store.toggleCompactMode()
       expect(store.isCompact).toBe(true)
       store.toggleCompactMode()
       expect(store.isCompact).toBe(false)
+      expect(storageService.setItem).toHaveBeenCalledWith('compactModeUserToggled', 'true')
     })
   })
 })

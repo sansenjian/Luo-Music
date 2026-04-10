@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { errorCenter } from '../../src/utils/error/center'
-import { AppError, ErrorCode } from '../../src/utils/error/types'
+import { errorCenter } from '@/utils/error/center'
+import { AppError, ErrorCode } from '@/utils/error/types'
 
 // Mock platform 模块
 const platformServiceMock = vi.hoisted(() => ({
@@ -8,7 +8,7 @@ const platformServiceMock = vi.hoisted(() => ({
   send: vi.fn()
 }))
 
-vi.mock('../../src/services/platformAccessor', () => ({
+vi.mock('@/services/platformAccessor', () => ({
   getPlatformAccessor: () => platformServiceMock
 }))
 

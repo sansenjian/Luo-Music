@@ -1,11 +1,12 @@
 import type { InternalAxiosRequestConfig } from 'axios'
+import { isElectronRuntime } from '@/utils/runtime'
 
 export type ApiServiceId = 'netease' | 'qq'
 
 type RequestDataConfig = Pick<InternalAxiosRequestConfig, 'data' | 'params'>
 
 export function isElectronRenderer(): boolean {
-  return typeof window !== 'undefined' && window.navigator.userAgent.includes('Electron')
+  return isElectronRuntime()
 }
 
 export function normalizeEndpoint(endpoint: string | undefined): string {

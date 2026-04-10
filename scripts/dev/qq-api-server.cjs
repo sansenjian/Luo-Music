@@ -16,6 +16,39 @@ console.log(`[QQ Music API] CWD: ${process.cwd()}`)
 console.log(`[QQ Music API] NODE_ENV: ${process.env.NODE_ENV}`)
 console.log(`[QQ Music API] ========================================`)
 
+function loadModule(moduleId) {
+  const candidates = [moduleId]
+
+  if (typeof process.resourcesPath === 'string' && process.resourcesPath.length > 0) {
+    candidates.push(path.join(process.resourcesPath, 'app.asar', 'node_modules', moduleId))
+    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', moduleId))
+  }
+
+  let lastError = null
+  const isResolutionError = (error, candidate) =>
+    Boolean(
+      error &&
+        typeof error === 'object' &&
+        error.code === 'MODULE_NOT_FOUND' &&
+        typeof error.message === 'string' &&
+        error.message.includes(`'${candidate}'`)
+    )
+
+  for (const candidate of candidates) {
+    try {
+      console.log(`[QQ Music API] Resolving module from: ${candidate}`)
+      return require(candidate)
+    } catch (error) {
+      if (!isResolutionError(error, candidate)) {
+        throw error
+      }
+      lastError = error
+    }
+  }
+
+  throw lastError || new Error(`Cannot resolve module: ${moduleId}`)
+}
+
 async function start() {
   try {
     // 璁剧疆宸ヤ綔鐩綍鍒扮敤鎴锋暟鎹洰褰曪紝閬垮厤鍐欏叆鏉冮檺闂
@@ -32,7 +65,7 @@ async function start() {
     
     console.log('[QQ Music API] Loading module...')
     // 鍔犺浇 QQ 闊充箰 API
-    const qqApiModule = require('@sansenjian/qq-music-api/dist/app.js')
+    const qqApiModule = loadModule('@sansenjian/qq-music-api/dist/app.js')
     const qqApiApp = qqApiModule && (qqApiModule.default || qqApiModule)
     if (
       !qqApiApp ||

@@ -1,10 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { LogLevel, type ILogger } from '@/services/loggerService'
 
 const warnMock = vi.hoisted(() => vi.fn())
 const createLoggerMock = vi.hoisted(() =>
-  vi.fn(() => ({
-    warn: warnMock
-  }))
+  vi.fn(
+    (): ILogger => ({
+      resource: 'music-platform-test',
+      setLevel: vi.fn(),
+      getLevel: vi.fn(() => LogLevel.Info),
+      trace: vi.fn(),
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: warnMock,
+      error: vi.fn(),
+      flush: vi.fn(),
+      dispose: vi.fn()
+    })
+  )
 )
 
 vi.mock('@/services', () => ({
@@ -63,5 +75,32 @@ describe('platform music index', () => {
 
     expect(createLoggerMock).toHaveBeenCalledTimes(1)
     expect(warnMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('supports an injected logger factory for fallback warnings', async () => {
+    vi.resetModules()
+    const injectedWarn = vi.fn()
+    const { configureMusicPlatformDeps, getMusicAdapter, resetMusicPlatformDeps } =
+      await import('@/platform/music')
+
+    configureMusicPlatformDeps({
+      createLogger: (): ILogger => ({
+        resource: 'music-platform-test',
+        setLevel: vi.fn(),
+        getLevel: vi.fn(() => LogLevel.Info),
+        trace: vi.fn(),
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: injectedWarn,
+        error: vi.fn(),
+        flush: vi.fn(),
+        dispose: vi.fn()
+      })
+    })
+
+    expect(getMusicAdapter('missing-platform')).toMatchObject({ kind: 'netease' })
+    expect(injectedWarn).toHaveBeenCalledTimes(1)
+
+    resetMusicPlatformDeps()
   })
 })

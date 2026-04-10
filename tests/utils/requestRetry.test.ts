@@ -4,8 +4,8 @@ import {
   calculateRetryDelay,
   getRetryStats,
   resetRetryCount
-} from '../../src/utils/http/requestRetry'
-import { getRetryConfig } from '../../src/utils/http/requestConfig'
+} from '@/utils/http/requestRetry'
+import { getRetryConfig } from '@/utils/http/requestConfig'
 import type { AxiosError } from 'axios'
 
 /** 创建模拟的 AxiosError */

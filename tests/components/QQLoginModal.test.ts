@@ -1,5 +1,4 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 type Deferred<T> = {
@@ -26,11 +25,11 @@ const loggerMocks = vi.hoisted(() => ({
   warn: vi.fn()
 }))
 
-vi.mock('../../src/api/qqmusic', () => ({
+vi.mock('@/api/qqmusic', () => ({
   qqMusicApi: qqApiMocks
 }))
 
-vi.mock('../../src/services', () => ({
+vi.mock('@/services', () => ({
   services: {
     logger: () => ({
       createLogger: () => loggerMocks
@@ -41,7 +40,6 @@ vi.mock('../../src/services', () => ({
 describe('QQLoginModal.vue', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    setActivePinia(createPinia())
     localStorage.clear()
     qqApiMocks.getQQLoginQr.mockReset()
     qqApiMocks.checkQQLoginQr.mockReset()
@@ -59,7 +57,7 @@ describe('QQLoginModal.vue', () => {
     }>()
     qqApiMocks.getQQLoginQr.mockReturnValue(qrRequest.promise)
 
-    const { default: QQLoginModal } = await import('../../src/components/QQLoginModal.vue')
+    const { default: QQLoginModal } = await import('@/components/QQLoginModal.vue')
     const wrapper = mount(QQLoginModal, {
       props: {
         modelValue: true
@@ -94,7 +92,7 @@ describe('QQLoginModal.vue', () => {
       }
     })
 
-    const { default: QQLoginModal } = await import('../../src/components/QQLoginModal.vue')
+    const { default: QQLoginModal } = await import('@/components/QQLoginModal.vue')
     const wrapper = mount(QQLoginModal, {
       props: {
         modelValue: true

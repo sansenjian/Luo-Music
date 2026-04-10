@@ -6,6 +6,9 @@ type JsonHttpError = Error & {
   }
 }
 
+const LOCAL_SERVICE_HOST = '127.0.0.1'
+const LOCAL_SERVICE_TIMEOUT_MS = 10000
+
 type ParsedErrorPayload = {
   message: string
   data: unknown
@@ -104,17 +107,19 @@ export async function requestJson(
   }
 ): Promise<unknown> {
   const http = await import('node:http')
+  const normalizedEndpoint = endpoint.replace(/^\/+/, '')
   const query = options.method === 'GET' ? buildQueryString(params) : ''
-  const path = `/${endpoint}${query}`
+  const path = `/${normalizedEndpoint}${query}`
   const body = options.method === 'POST' ? JSON.stringify(params) : null
 
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
-        host: 'localhost',
+        host: LOCAL_SERVICE_HOST,
         port,
         path,
         method: options.method,
+        timeout: LOCAL_SERVICE_TIMEOUT_MS,
         headers:
           body === null
             ? undefined
@@ -173,6 +178,13 @@ export async function requestJson(
     )
 
     req.on('error', reject)
+    req.on('timeout', () => {
+      const error = new Error(
+        `${options.serviceName} local service request timed out after ${LOCAL_SERVICE_TIMEOUT_MS}ms: ${path}`
+      ) as JsonHttpError
+      error.code = 'LOCAL_SERVICE_TIMEOUT'
+      req.destroy(error)
+    })
 
     if (body !== null) {
       req.write(body)

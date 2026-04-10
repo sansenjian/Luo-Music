@@ -2,33 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
-import type { Song } from '@/types/schemas'
 import { TEST_BASE_DATE, TIME_OFFSETS, getTestDate } from '../../utils/testConstants'
+import { createMockSong, createQQSong } from '../test-utils'
 
 const musicServiceMock = {
   getSongUrl: vi.fn()
-}
-
-const servicesMock = vi.hoisted(() => ({
-  music: vi.fn(() => musicServiceMock)
-}))
-
-vi.mock('@/services', () => ({
-  services: servicesMock
-}))
-
-function createSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
-  return {
-    id: 1,
-    name: 'Song',
-    artists: [],
-    album: { id: 1, name: 'Album', picUrl: '' },
-    duration: 100,
-    mvid: 0,
-    platform: 'qq',
-    originalId: 1,
-    ...overrides
-  }
 }
 
 describe('playbackErrorHandler', () => {
@@ -40,7 +18,7 @@ describe('playbackErrorHandler', () => {
 
   it('retries fetching the song url on the first audio error', async () => {
     const state = {
-      songList: [createSong({ id: 'song-1' })],
+      songList: [createQQSong({ id: 'song-1' })],
       currentIndex: 0,
       playMode: PLAY_MODE.LIST_LOOP
     }
@@ -48,6 +26,7 @@ describe('playbackErrorHandler', () => {
     musicServiceMock.getSongUrl.mockResolvedValue('https://song.test/retry.mp3')
 
     const handler = new PlaybackErrorHandler({
+      musicService: musicServiceMock,
       getState: () => state,
       onStateChange
     })
@@ -55,7 +34,6 @@ describe('playbackErrorHandler', () => {
     const result = await handler.handleAudioError(new Error('decode failed'), state.songList[0])
 
     expect(onStateChange).toHaveBeenCalledWith({ playing: false })
-    expect(servicesMock.music).toHaveBeenCalled()
     expect(musicServiceMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-1', {
       mediaId: undefined
     })
@@ -67,7 +45,7 @@ describe('playbackErrorHandler', () => {
   })
 
   it('marks songs unavailable when retrying audio playback fails', async () => {
-    const song = createSong({ id: 'song-2', extra: { mediaId: 'media-2' } })
+    const song = createQQSong({ id: 'song-2', extra: { mediaId: 'media-2' } })
     const state = {
       songList: [song],
       currentIndex: 0,
@@ -76,12 +54,12 @@ describe('playbackErrorHandler', () => {
     musicServiceMock.getSongUrl.mockResolvedValue(null)
 
     const handler = new PlaybackErrorHandler({
+      musicService: musicServiceMock,
       getState: () => state
     })
 
     const result = await handler.handleAudioError('unknown', song)
 
-    expect(servicesMock.music).toHaveBeenCalled()
     expect(musicServiceMock.getSongUrl).toHaveBeenCalledWith('qq', 'song-2', {
       mediaId: 'media-2'
     })
@@ -96,15 +74,16 @@ describe('playbackErrorHandler', () => {
 
   it('stops skipping after too many rapid attempts or when most songs are unavailable', () => {
     const songs = [
-      createSong({ id: 1 }),
-      createSong({ id: 2, unavailable: true }),
-      createSong({ id: 3, unavailable: true }),
-      createSong({ id: 4, unavailable: true }),
-      createSong({ id: 5, unavailable: true }),
-      createSong({ id: 6, unavailable: true })
+      createMockSong({ id: 1 }),
+      createMockSong({ id: 2, unavailable: true }),
+      createMockSong({ id: 3, unavailable: true }),
+      createMockSong({ id: 4, unavailable: true }),
+      createMockSong({ id: 5, unavailable: true }),
+      createMockSong({ id: 6, unavailable: true })
     ]
 
     const handler = new PlaybackErrorHandler({
+      musicService: musicServiceMock,
       getState: () => ({
         songList: songs,
         currentIndex: 0,
@@ -135,13 +114,14 @@ describe('playbackErrorHandler', () => {
 
   it('plays the next available song and marks failed candidates unavailable', async () => {
     const songs = [
-      createSong({ id: 1 }),
-      createSong({ id: 2, unavailable: true }),
-      createSong({ id: 3 }),
-      createSong({ id: 4 })
+      createMockSong({ id: 1 }),
+      createMockSong({ id: 2, unavailable: true }),
+      createMockSong({ id: 3 }),
+      createMockSong({ id: 4 })
     ]
 
     const handler = new PlaybackErrorHandler({
+      musicService: musicServiceMock,
       getState: () => ({
         songList: songs,
         currentIndex: 0,
@@ -162,8 +142,9 @@ describe('playbackErrorHandler', () => {
   })
 
   it('supports shuffle index selection and reset', () => {
-    const songs = [createSong({ id: 1 }), createSong({ id: 2, unavailable: true })]
+    const songs = [createMockSong({ id: 1 }), createMockSong({ id: 2, unavailable: true })]
     const handler = new PlaybackErrorHandler({
+      musicService: musicServiceMock,
       getState: () => ({
         songList: songs,
         currentIndex: 0,

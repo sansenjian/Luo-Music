@@ -1,18 +1,19 @@
-/* LUO Music - Main Styles */
-/* 工业风格 - 参考 web.html 设计 */
-
-/* 字体使用 font-display: swap 避免阻塞渲染 */
-/* 实际字体通过 main.js 异步加载 */
+/* LUO Music - Theme tokens and global base styles */
 
 :root {
-  --bg: #e8ecef;
-  --bg-dark: #d1d5d8;
-  --black: #0a0a0a;
+  --bg: #f5f5f5;
+  --bg-dark: #e0e0e0;
+  --black: #1a1a1a;
   --white: #ffffff;
-  --accent: #4ade80;
-  --gray: #6b7280;
-  --gray-light: #9ca3af;
+  --accent: #ff6b35;
+  --accent-hover: #e85b2c;
+  --accent-light: #ff9a73;
+  --gray: #666666;
+  --gray-light: #999999;
+  --gray-lighter: #e5e7eb;
   --border: 3px solid var(--black);
+  --radius: 10px;
+  --shadow: 4px 4px 0 rgba(26, 26, 26, 0.16);
   --left-width: 360px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -27,7 +28,8 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   overflow: hidden;
   position: fixed;
@@ -35,19 +37,19 @@ html, body {
   overscroll-behavior: none;
 }
 
-/* 使用系统字体作为首屏回退，避免 FOIT */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    Inter,
+    'Noto Sans SC',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   background: var(--bg);
   color: var(--black);
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* 字体加载后的样式 */
-.fonts-loaded body {
-  font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 #app {
@@ -61,88 +63,15 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg);
+  background: var(--bg-dark);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--black);
+  background: var(--gray-light);
 }
 
-.btn {
-  padding: 10px 20px;
-  border: var(--border);
-  background: var(--white);
-  color: var(--black);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.1s;
-}
-
-.btn:hover:not(:disabled), .btn:active:not(:disabled) {
-  background: var(--black);
-  color: var(--white);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--black);
-  color: var(--white);
-}
-
-.btn-primary:hover:not(:disabled), .btn-primary:active:not(:disabled) {
-  background: var(--accent);
-  color: var(--black);
-}
-
-.input {
-  padding: 8px 10px;
-  border: 2px solid var(--black);
-  background: var(--white);
-  color: var(--black);
-  font-family: inherit;
-  font-size: 16px;
-  outline: none;
-}
-
-.input:focus {
-  background: var(--bg);
-}
-
-.loading {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--black);
-  border-top-color: transparent;
-  animation: spin 1s linear infinite;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.hidden {
-  display: none !important;
-}
-
-.text-ellipsis {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray);
 }
 
 @media (max-width: 900px) {

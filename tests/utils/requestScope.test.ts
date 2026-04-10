@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createLatestRequestController } from '../../src/utils/http/requestScope'
+import { createLatestRequestController } from '@/utils/http/requestScope'
 
 type Deferred<T> = {
   promise: Promise<T>

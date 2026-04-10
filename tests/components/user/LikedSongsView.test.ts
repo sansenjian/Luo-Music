@@ -2,8 +2,8 @@ import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 
-import LikedSongsView from '../../../src/components/user/LikedSongsView.vue'
-import type { FormattedSong } from '../../../src/utils/songFormatter'
+import LikedSongsView from '@/components/user/LikedSongsView.vue'
+import type { FormattedSong } from '@/utils/songFormatter'
 
 function createSong(index: number): FormattedSong {
   return {

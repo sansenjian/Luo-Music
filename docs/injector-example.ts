@@ -1,267 +1,136 @@
 /**
- * 依赖注入使用示例
+ * DI 与服务层使用示例
  *
- * 本文件是文档示例，展示仓库内真实的 DI API 用法：
- * - `getService()`：快速获取已注册服务
- * - `@inject(...)`：属性注入
- * - `@injectParam(...)` + `Injector`：构造函数注入
+ * 这份示例只展示当前仓库推荐的三种用法：
+ * 1. 默认使用 `services.xxx()`
+ * 2. 热点模块使用显式 `deps`
+ * 3. 基础设施类在确有需要时使用 `@injectParam(...)`
  *
- * 说明：
- * - 该示例引用真实源码模块路径，便于和实现保持一致
- * - 文件内不执行顶层实例化副作用，示例对象通过函数返回
+ * 注意：
+ * - 这不是“所有业务代码都应该这样写”的模板合集
+ * - 示例以当前仓库已落地的规则为准，而不是展示理论上更多的 DI 玩法
  */
 
-import { inject } from '../src/services/decorators'
-import {
-  createAnnotatedInstance,
-  createInstance,
-  Injector,
-  injectParam
-} from '../src/services/injector'
-import { getService } from '../src/services/registry'
-import { IApiService, ILoggerService } from '../src/services/types'
+import { services } from '@/services'
+import type { ApiService } from '@/services/apiService'
+import type { LoggerService } from '@/services/loggerService'
+import { createInstance, injectParam } from '@/services/injector'
+import { IApiService, ILoggerService } from '@/services/types'
 
-import type { ApiService } from '../src/services/apiService'
-import type { LoggerService } from '../src/services/loggerService'
+// ==================== 方式 1：默认使用 services.xxx() ====================
 
-// ==================== 方式 1: 直接 getService ====================
-// 最简单直接，适合快速开发
+/**
+ * 适用于普通业务模块。
+ * 默认路径简单、稳定，也和当前服务 override 机制兼容。
+ */
+export class DefaultServiceUsageExample {
+  private readonly logger = services.logger().createLogger('default-example')
 
-export class SimpleService {
-  private api = getService('api')
-  private logger = getService('logger')
-
-  fetchData(id: string): void {
-    this.logger.info('SimpleService', `Fetching data for ${id}`)
-    this.api.request('netease', '/song/detail', { ids: id })
+  async loadSong(id: string): Promise<unknown> {
+    this.logger.info('Loading song', { id })
+    return services.api().request('netease', '/song/detail', { ids: id })
   }
 }
 
-export function createSimpleServiceExample(): SimpleService {
-  return new SimpleService()
+export function createDefaultServiceUsageExample(): DefaultServiceUsageExample {
+  return new DefaultServiceUsageExample()
 }
 
-// ==================== 方式 2: 使用装饰器 @inject ====================
-// 适合 Vue 组件和需要明确依赖的类
+// ==================== 方式 2：热点模块使用显式 deps ====================
 
-export class DecoratedService {
-  @inject(IApiService) private api!: ApiService
-  @inject(ILoggerService) private logger!: LoggerService
+type SearchFacadeDeps = {
+  getApiService?: () => Pick<ApiService, 'request'>
+  getLogger?: () => Pick<LoggerService, 'debug'>
+}
 
-  fetchData(id: string): void {
-    this.logger.info('DecoratedService', `Fetching data for ${id}`)
-    this.api.request('netease', '/song/detail', { ids: id })
+const defaultSearchFacadeDeps: Required<SearchFacadeDeps> = {
+  getApiService: () => services.api(),
+  getLogger: () => services.logger().createLogger('search-facade')
+}
+
+/**
+ * 适用于复杂 store / composable / 高副作用模块。
+ * 默认实现仍来自 services，但测试可以传最小替身。
+ */
+export class SearchFacade {
+  constructor(private readonly deps: Required<SearchFacadeDeps> = defaultSearchFacadeDeps) {}
+
+  async search(keyword: string): Promise<unknown> {
+    this.deps.getLogger().debug('Search requested', { keyword })
+    return this.deps.getApiService().request('netease', '/cloudsearch', {
+      keywords: keyword,
+      type: 1,
+      limit: 30,
+      offset: 0
+    })
   }
 }
 
-export function createDecoratedServiceExample(): DecoratedService {
-  return new DecoratedService()
+export function createSearchFacade(deps: SearchFacadeDeps = {}): SearchFacade {
+  return new SearchFacade({ ...defaultSearchFacadeDeps, ...deps })
 }
 
-// Vue 组件示例
-/*
-import { defineComponent } from 'vue'
-import { useService } from '../src/services/decorators'
-
-export default defineComponent({
-  setup() {
-    const api = useService(IApiService)
-    const logger = useService(ILoggerService)
-
-    const fetchData = (id: string) => {
-      logger.info('Component', `Fetching ${id}`)
-      return api.request('netease', '/song/detail', { ids: id })
+export function createSearchFacadeForTest() {
+  const request = async (_service: string, _endpoint: string, params?: Record<string, unknown>) => {
+    return {
+      mocked: true,
+      params
     }
-
-    return { fetchData }
   }
-})
-*/
 
-// ==================== 方式 3: Injector 自动注入 ====================
-// 最灵活，支持构造函数注入和单例模式
+  return createSearchFacade({
+    getApiService: () => ({
+      request
+    }),
+    getLogger: () => ({
+      debug: () => {}
+    })
+  })
+}
+
+// ==================== 方式 3：基础设施类使用 @injectParam(...) ====================
 
 /**
- * 使用构造函数默认参数的类
- * 参数默认值使用 getService() 获取服务
+ * 仅在“这个类值得通过 Injector 创建”时使用。
+ * 不推荐把这种方式扩散到普通 Vue 业务代码。
  */
-export class PlayerService {
+export class DownloadJob {
   constructor(
-    private api = getService('api'),
-    private logger = getService('logger')
+    @injectParam(IApiService) private readonly api: ApiService,
+    @injectParam(ILoggerService) private readonly logger: LoggerService
   ) {}
 
-  playSong(songId: string): void {
-    this.logger.info('PlayerService', `Playing song ${songId}`)
-    this.api.request('netease', '/song/url/v1', { id: songId })
-  }
-}
-
-export function createPlayerServiceExample(): PlayerService {
-  return new PlayerService()
-}
-
-/**
- * 使用 @injectParam 注解的类
- * 类型更安全，依赖关系更明确
- */
-export class AnnotatedPlayerService {
-  constructor(
-    @injectParam(IApiService) private api: ApiService,
-    @injectParam(ILoggerService) private logger: LoggerService
-  ) {}
-
-  playSong(songId: string): void {
-    this.logger.info('AnnotatedPlayerService', `Playing song ${songId}`)
-    this.api.request('netease', '/song/url/v1', { id: songId })
-  }
-}
-
-// ==================== 使用示例 ====================
-
-export function demonstrateDI(): void {
-  // 方式 1: 直接实例化（依赖在内部获取）
-  const simple = createSimpleServiceExample()
-  simple.fetchData('123')
-
-  // 方式 2: 装饰器方式（需要 TypeScript 启用 experimentalDecorators）
-  const decorated = createDecoratedServiceExample()
-  decorated.fetchData('456')
-
-  // 方式 3a: 使用 Injector 自动解析
-  const injector = new Injector()
-  const player1 = injector.createInstance(PlayerService)
-  player1.playSong('789')
-
-  // 方式 3b: 使用 Injector + 单例模式
-  const player2 = injector.createInstance(PlayerService, { singleton: true })
-  const player3 = injector.createInstance(PlayerService, { singleton: true })
-  console.log(player2 === player3) // true，同一个实例
-
-  // 方式 3c: 使用 createAnnotatedInstance + @injectParam 注解
-  const annotatedPlayer = createAnnotatedInstance(AnnotatedPlayerService)
-  annotatedPlayer.playSong('012')
-
-  // 便捷函数方式
-  const player4 = createInstance(PlayerService)
-  player4.playSong('345')
-}
-
-// ==================== 高级用法：服务依赖其他服务 ====================
-
-/**
- * 下载服务依赖 API 服务和日志服务
- */
-export class DownloadService {
-  constructor(
-    @injectParam(IApiService) private api: ApiService,
-    @injectParam(ILoggerService) private logger: LoggerService
-  ) {}
-
-  async downloadSong(songId: string): Promise<string> {
-    this.logger.info('DownloadService', `Downloading song ${songId}`)
-
-    const response = await this.api.request('netease', '/song/url/v1', {
+  async run(songId: string): Promise<unknown> {
+    this.logger.info('Download job started', { songId })
+    return this.api.request('netease', '/song/url/v1', {
       id: songId,
       level: 'standard'
     })
-
-    return (response as { data?: { url?: string } })?.data?.url || ''
   }
 }
 
-/**
- * 缓存服务依赖日志服务
- */
-export class CacheService {
-  constructor(@injectParam(ILoggerService) private logger: LoggerService) {}
-
-  get(key: string): string | null {
-    this.logger.debug('CacheService', `Getting cache key: ${key}`)
-    return localStorage.getItem(key)
-  }
-
-  set(key: string, value: string): void {
-    this.logger.debug('CacheService', `Setting cache key: ${key}`)
-    localStorage.setItem(key, value)
-  }
+export function createDownloadJob(): DownloadJob {
+  return createInstance(DownloadJob)
 }
 
-/**
- * 复杂场景：多层依赖
- * DownloadManager 依赖 DownloadService 和 CacheService
- */
-export class DownloadManager {
-  constructor(
-    @injectParam(ILoggerService) private logger: LoggerService,
-    private downloadService: DownloadService = createAnnotatedInstance(DownloadService),
-    private cacheService: CacheService = createAnnotatedInstance(CacheService)
-  ) {}
-
-  async downloadWithCache(songId: string): Promise<string> {
-    const cached = this.cacheService.get(`song:${songId}`)
-    if (cached) {
-      this.logger.info('DownloadManager', `Cache hit for ${songId}`)
-      return cached
-    }
-
-    this.logger.info('DownloadManager', `Cache miss for ${songId}, downloading...`)
-    const url = await this.downloadService.downloadSong(songId)
-    this.cacheService.set(`song:${songId}`, url)
-
-    return url
-  }
-}
-
-// ==================== 测试用例：Mock 依赖 ====================
+// ==================== 选择建议 ====================
 
 /**
- * Mock API 服务用于测试
- */
-export class MockApiService {
-  request(service: string, endpoint: string, params?: Record<string, unknown>): Promise<unknown> {
-    console.log(`[MockAPI] ${service}${endpoint}`, params)
-    return Promise.resolve({ data: { url: 'mock-url' } })
-  }
-}
-
-/**
- * Mock 日志服务用于测试
- */
-export class MockLoggerService {
-  info(module: string, message: string): void {
-    console.log(`[MockLogger][${module}] ${message}`)
-  }
-
-  warn(module: string, message: string): void {
-    console.warn(`[MockLogger][${module}] ${message}`)
-  }
-
-  error(module: string, message: string): void {
-    console.error(`[MockLogger][${module}] ${message}`)
-  }
-
-  debug(module: string, message: string): void {
-    console.debug(`[MockLogger][${module}] ${message}`)
-  }
-}
-
-// ==================== 总结 ====================
-
-/**
- * 依赖注入方式选择建议：
+ * 结论：
  *
- * 1. **快速开发/小项目**: 直接 getService()
- *    - 优点：简单直接，代码量少
- *    - 缺点：依赖关系不明显，测试时需要手动 Mock
+ * 1. 普通业务代码：优先 `services.xxx()`
+ * 2. 热点模块、测试敏感模块：增加显式 `deps`
+ * 3. 基础设施类：确有实例化需求时再用 `@injectParam(...)`
  *
- * 2. **Vue 组件/中等项目**: @inject 装饰器 + useService()
- *    - 优点：依赖关系清晰，易于测试
- *    - 缺点：需要 TypeScript 启用 experimentalDecorators
- *
- * 3. **复杂服务/大型项目**: Injector + 构造函数注入
- *    - 优点：依赖完全显式，支持单例/瞬态作用域，易于测试和维护
- *    - 缺点：代码量稍多，需要理解 DI 概念
- *
- * 推荐：新代码优先使用 Injector + 构造函数注入方式
+ * 不推荐：
+ * - 继续新增 accessor 兼容入口
+ * - 在模块顶层缓存服务实例
+ * - 为了“更像 DI”把普通组件/页面强行改成构造注入
  */
+export function summarizeCurrentDiGuidance(): string[] {
+  return [
+    '业务代码默认使用 services.xxx()',
+    '热点模块通过显式 deps 降低测试替身成本',
+    'injectParam 只用于真正需要 Injector 的基础设施类'
+  ]
+}

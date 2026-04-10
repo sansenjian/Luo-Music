@@ -6,7 +6,7 @@ import {
   mapEvent,
   debounceEvent,
   anyEvent
-} from '../../src/base/common/event'
+} from '@/base/common/event'
 
 describe('EventEmitter', () => {
   it('should emit events to listeners', () => {

@@ -6,11 +6,17 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 export default [
   {
     ignores: [
+      '.codex/**',
+      '.cache/**',
+      'tmp/**',
+      '.tmp/**',
       'dist/**',
       'build/**',
+      'out/**',
       'release/**',
       'node_modules/**',
       '.vite_cache/**',
+      '.vite/**',
       'docs/.vitepress/**',
       'src/auto-imports.d.ts',
       'src/components.d.ts',
@@ -200,7 +206,36 @@ export default [
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
-      'no-console': 'off'
+      'no-console': 'off',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../src/*', '../../src/*', '../../../src/*', '../../../../src/*'],
+              message:
+                'Imports that target src should use the @/ alias instead of relative parent paths.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ['docs/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../src/*', '../../src/*', '../../../src/*', '../../../../src/*'],
+              message:
+                'Documentation examples that target src should use the @/ alias instead of relative parent paths.'
+            }
+          ]
+        }
+      ]
     }
   },
   {

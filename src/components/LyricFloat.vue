@@ -2,11 +2,10 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 
 import { useActiveLyricState } from '../composables/useActiveLyricState'
-import { getPlatformAccessor } from '../services/platformAccessor'
-import { getPlayerAccessor } from '../services/playerAccessor'
+import { services } from '../services'
 
-const platformService = getPlatformAccessor()
-const playerService = getPlayerAccessor()
+const platformService = services.platform()
+const playerService = services.player()
 const { currentLyric, secondaryLyric, isPlaying } = useActiveLyricState({
   source: 'ipc',
   emptyText: 'Desktop Lyric'
@@ -163,7 +162,7 @@ function scheduleDragMoveFlush() {
 
 function onMouseDown(e: MouseEvent) {
   const target = e.target as Element | null
-  if (isLocked.value || target?.closest('.btn') || target?.closest('.unlock-btn')) {
+  if (isLocked.value || target?.closest('.control-btn, .unlock-btn')) {
     return
   }
 
@@ -268,12 +267,12 @@ onUnmounted(() => {
     </div>
 
     <div v-if="!isLocked" class="controls">
-      <button class="btn" @click="playPrev" title="Prev">
+      <button class="control-btn" @click="playPrev" title="Prev">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
         </svg>
       </button>
-      <button class="btn" @click="togglePlay" :title="isPlaying ? 'Pause' : 'Play'">
+      <button class="control-btn" @click="togglePlay" :title="isPlaying ? 'Pause' : 'Play'">
         <svg v-if="isPlaying" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
           <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
         </svg>
@@ -281,13 +280,13 @@ onUnmounted(() => {
           <path d="M8 5v14l11-7z" />
         </svg>
       </button>
-      <button class="btn" @click="playNext" title="Next">
+      <button class="control-btn" @click="playNext" title="Next">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
         </svg>
       </button>
       <div class="divider"></div>
-      <button class="btn" @click="toggleLock" title="Lock Desktop Lyric">
+      <button class="control-btn" @click="toggleLock" title="Lock Desktop Lyric">
         <svg
           viewBox="0 0 24 24"
           width="18"
@@ -300,7 +299,7 @@ onUnmounted(() => {
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
       </button>
-      <button class="btn close" @click="closeWindow" title="Close">
+      <button class="control-btn close" @click="closeWindow" title="Close">
         <svg
           viewBox="0 0 24 24"
           width="18"
@@ -444,7 +443,7 @@ onUnmounted(() => {
   transform: translate(-50%, 20px);
 }
 
-.btn {
+.control-btn {
   background: #fff;
   border: 2px solid #0a0a0a;
   color: #0a0a0a;
@@ -459,18 +458,18 @@ onUnmounted(() => {
   transition: all 0.1s;
 }
 
-.btn:hover {
+.control-btn:hover {
   background: #4ade80;
   transform: translate(-2px, -2px);
   box-shadow: 2px 2px 0px #0a0a0a;
 }
 
-.btn:active {
+.control-btn:active {
   transform: translate(0, 0);
   box-shadow: none;
 }
 
-.btn.close:hover {
+.control-btn.close:hover {
   background: #ff4d4f;
   color: #fff;
 }

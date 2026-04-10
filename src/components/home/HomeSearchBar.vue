@@ -64,7 +64,7 @@ function onToggleSelect(): void {
     />
 
     <button @click="onSearch" class="exec-btn" :disabled="props.isLoading">
-      <span v-if="props.isLoading" class="loading"></span>
+      <span v-if="props.isLoading" class="exec-loading" aria-hidden="true"></span>
       <span v-else>Execute</span>
     </button>
   </div>
@@ -124,6 +124,23 @@ function onToggleSelect(): void {
 .exec-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.exec-loading {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: home-search-spin 0.8s linear infinite;
+}
+
+@keyframes home-search-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 900px) {

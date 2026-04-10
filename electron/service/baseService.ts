@@ -151,7 +151,7 @@ export abstract class BaseService {
 
         const req = http.request(
           {
-            host: 'localhost',
+            host: '127.0.0.1',
             port: this.port,
             path: '/',
             method: 'GET',

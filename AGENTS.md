@@ -56,26 +56,26 @@ npm run check:unused
 
 ## 关键目录
 
-| 目录 | 职责 | 注意事项 |
-| --- | --- | --- |
-| `.vscode/` | VSCode 调试配置 | 包含 launch.json、tasks.json、extensions.json |
-| `.husky/` | Git 钩子 | 预提交自动执行 lint-staged |
-| `.github/` | GitHub 模板 | PR/Issue 模板 |
-| `build/` | 构建产物输出 | Web 和 Electron 统一输出目录 |
-| `out/` | Electron 打包输出 | 安装包和便携版 |
-| `src/api/` | 音乐平台接口封装 | 必须优先使用 TypeScript，禁止扩散 `any` |
-| `src/platform/` | 平台能力抽象 | 不直接耦合 UI |
-| `src/store/` | Pinia 状态管理 | 跨组件状态保持唯一数据源 |
-| `src/composables/` | 组合式逻辑复用 | 优先沉淀状态编排与副作用逻辑 |
-| `src/utils/` | 通用工具与底层能力 | 公共能力优先下沉到这里复用 |
-| `src/components/` | 展示与交互组件 | 避免堆积平台逻辑与请求逻辑 |
-| `src/views/` | 页面视图 | 页面负责组装，不承载底层平台适配 |
-| `src/router/` | 路由入口与页面组织 | 路由变更需关注页面生命周期影响 |
-| `electron/` | 主进程与 Preload | 禁止混入前端浏览器逻辑 |
-| `electron/utils/paths.ts` | 路径工具 | 构建、打包、路径异常时优先检查这里 |
-| `tests/` | 测试目录 | 优先复用现有 mocks 与组织方式 |
-| `docs/` | 项目文档与分析材料 | 修改文档结构后补跑文档构建 |
-| `scripts/` | 构建辅助脚本 | 包含构建、清理、依赖排查相关逻辑 |
+| 目录                      | 职责               | 注意事项                                      |
+| ------------------------- | ------------------ | --------------------------------------------- |
+| `.vscode/`                | VSCode 调试配置    | 包含 launch.json、tasks.json、extensions.json |
+| `.husky/`                 | Git 钩子           | 预提交自动执行 lint-staged                    |
+| `.github/`                | GitHub 模板        | PR/Issue 模板                                 |
+| `build/`                  | 构建产物输出       | Web 和 Electron 统一输出目录                  |
+| `out/`                    | Electron 打包输出  | 安装包和便携版                                |
+| `src/api/`                | 音乐平台接口封装   | 必须优先使用 TypeScript，禁止扩散 `any`       |
+| `src/platform/`           | 平台能力抽象       | 不直接耦合 UI                                 |
+| `src/store/`              | Pinia 状态管理     | 跨组件状态保持唯一数据源                      |
+| `src/composables/`        | 组合式逻辑复用     | 优先沉淀状态编排与副作用逻辑                  |
+| `src/utils/`              | 通用工具与底层能力 | 公共能力优先下沉到这里复用                    |
+| `src/components/`         | 展示与交互组件     | 避免堆积平台逻辑与请求逻辑                    |
+| `src/views/`              | 页面视图           | 页面负责组装，不承载底层平台适配              |
+| `src/router/`             | 路由入口与页面组织 | 路由变更需关注页面生命周期影响                |
+| `electron/`               | 主进程与 Preload   | 禁止混入前端浏览器逻辑                        |
+| `electron/utils/paths.ts` | 路径工具           | 构建、打包、路径异常时优先检查这里            |
+| `tests/`                  | 测试目录           | 优先复用现有 mocks 与组织方式                 |
+| `docs/`                   | 项目文档与分析材料 | 修改文档结构后补跑文档构建                    |
+| `scripts/`                | 构建辅助脚本       | 包含构建、清理、依赖排查相关逻辑              |
 
 ## 核心开发规则
 
@@ -137,6 +137,7 @@ npm run check:unused
 - 1 组：框架与第三方库
 - 2 组：内部模块与类型
 - 3 组：相对路径与样式文件
+- 导入 `src/*` 下的模块时，优先使用 `@/` 别名，不要在 `tests/` 或文档示例里继续写 `../../src/*` 这类相对父路径
 - 同组内保持稳定顺序，依赖 ESLint 自动修复时遵循工具结果
 - 类型导入优先使用 `import type`
 
@@ -211,13 +212,13 @@ npm run check:unused
 
 项目使用 `electron-vite` + `Electron Forge` 方案：
 
-| 构建目标 | 工具 | 输出路径 |
-|----------|------|----------|
-| Electron 主进程 | electron-vite | `build/electron/main.cjs` |
-| Preload 脚本 | electron-vite | `build/electron/preload.cjs` |
-| 渲染进程 | electron-vite | `build/` |
-| API 服务端 | tsup | `build/server/server.cjs` |
-| 应用打包 | Electron Forge | `out/` |
+| 构建目标        | 工具           | 输出路径                     |
+| --------------- | -------------- | ---------------------------- |
+| Electron 主进程 | electron-vite  | `build/electron/main.cjs`    |
+| Preload 脚本    | electron-vite  | `build/electron/preload.cjs` |
+| 渲染进程        | electron-vite  | `build/`                     |
+| API 服务端      | tsup           | `build/server/server.cjs`    |
+| 应用打包        | Electron Forge | `out/`                       |
 
 ### QQ 音乐或平台适配
 

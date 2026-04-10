@@ -1,17 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h, nextTick } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
-import { COMMANDS } from '../../src/core/commands/commands'
-import { usePlayerViewModel } from '../../src/composables/usePlayerViewModel'
-import type { Song } from '../../src/platform/music/interface'
-import { usePlayerStore } from '../../src/store/playerStore'
+import { COMMANDS } from '@/core/commands/commands'
+import { usePlayerViewModel } from '@/composables/usePlayerViewModel'
+import { usePlayerStore } from '@/store/playerStore'
+import { createMockSong } from '../utils/test-utils'
 
 const executeMock = vi.hoisted(() => vi.fn())
 const canExecuteMock = vi.hoisted(() => vi.fn<(command: string) => boolean>(() => true))
 
-vi.mock('../../src/services', () => ({
+vi.mock('@/services', () => ({
   services: {
     commands: () => ({
       execute: executeMock,
@@ -20,26 +19,12 @@ vi.mock('../../src/services', () => ({
   }
 }))
 
-vi.mock('../../src/composables/useAnimations', () => ({
+vi.mock('@/composables/useAnimations', () => ({
   animateButtonClick: vi.fn(),
   animatePlayPause: vi.fn(),
   animateAlbumCover: vi.fn(),
   animateLoopMode: vi.fn()
 }))
-
-function createSong(overrides: Partial<Song> = {}): Song {
-  return {
-    id: 1,
-    name: 'Test Song',
-    artists: [{ id: 1, name: 'Jay' }],
-    album: { id: 1, name: 'Album', picUrl: 'https://example.com/cover.jpg' },
-    duration: 180000,
-    mvid: 0,
-    platform: 'qq',
-    originalId: 1,
-    ...overrides
-  }
-}
 
 function getVmValue<T>(source: T | { value: T }): T {
   if (source && typeof source === 'object' && 'value' in source) {
@@ -63,7 +48,6 @@ function mountHarness(): VueWrapper {
 
 describe('usePlayerViewModel', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     vi.clearAllMocks()
     canExecuteMock.mockReturnValue(true)
   })
@@ -73,7 +57,7 @@ describe('usePlayerViewModel', () => {
     const store = usePlayerStore()
 
     store.songList = [
-      createSong({
+      createMockSong({
         album: { id: 1, name: 'Album', picUrl: 'javascript:alert(1)' }
       })
     ]
@@ -90,7 +74,7 @@ describe('usePlayerViewModel', () => {
     const url = 'https://cdn.example.com/cover.jpg'
 
     store.songList = [
-      createSong({
+      createMockSong({
         album: { id: 2, name: 'Album', picUrl: url }
       })
     ]
@@ -104,7 +88,7 @@ describe('usePlayerViewModel', () => {
     const wrapper = mountHarness()
     const store = usePlayerStore()
 
-    store.songList = [createSong()]
+    store.songList = [createMockSong()]
     store.currentSong = store.songList[0]
     await nextTick()
     ;(wrapper.vm as any).onPlayButtonClick()
@@ -117,7 +101,7 @@ describe('usePlayerViewModel', () => {
     const wrapper = mountHarness()
     const store = usePlayerStore()
 
-    store.songList = [createSong()]
+    store.songList = [createMockSong()]
     store.currentSong = store.songList[0]
     await nextTick()
     ;(wrapper.vm as any).onPlayButtonClick()

@@ -1,16 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
-import UserProfile from '../../src/components/UserProfile.vue'
-import { useUserStore } from '../../src/store/userStore'
+import UserProfile from '@/components/UserProfile.vue'
+import { useUserStore } from '@/store/userStore'
 
 // Mock the API module
-vi.mock('../../src/api/user', () => ({
+vi.mock('@/api/user', () => ({
   logout: vi.fn(() => Promise.resolve())
 }))
 
 // Import the mocked function to assert calls
-import { logout } from '../../src/api/user'
+import { logout } from '@/api/user'
 
 interface UserInfo {
   nickname?: string
@@ -20,7 +19,6 @@ interface UserInfo {
 
 describe('UserProfile.vue', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 

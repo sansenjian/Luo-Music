@@ -1,8 +1,9 @@
 import { PLAY_MODE } from '../constants/playMode'
 import type { Song } from '@/types/schemas'
-import { services } from '@/services'
+import type { MusicService } from '@/services/musicService'
 
 interface ErrorHandlerOptions {
+  musicService: Pick<MusicService, 'getSongUrl'>
   getState?: () => {
     songList: Song[]
     currentIndex: number
@@ -25,6 +26,7 @@ export interface ErrorHandler {
 }
 
 export class PlaybackErrorHandler implements ErrorHandler {
+  private readonly musicService: Pick<MusicService, 'getSongUrl'>
   private getState: () => {
     songList: Song[]
     currentIndex: number
@@ -37,7 +39,8 @@ export class PlaybackErrorHandler implements ErrorHandler {
   private skipCooldownMs: number = 3000
   private unavailableSongs: (string | number)[] = []
 
-  constructor(options: ErrorHandlerOptions = {}) {
+  constructor(options: ErrorHandlerOptions) {
+    this.musicService = options.musicService
     this.getState =
       options.getState ||
       (() => ({ songList: [], currentIndex: -1, playMode: PLAY_MODE.SEQUENTIAL }))
@@ -84,7 +87,7 @@ export class PlaybackErrorHandler implements ErrorHandler {
           : undefined
 
     try {
-      const url = await services.music().getSongUrl(platform, song.id, { mediaId })
+      const url = await this.musicService.getSongUrl(platform, song.id, { mediaId })
       if (url) {
         return { url }
       }

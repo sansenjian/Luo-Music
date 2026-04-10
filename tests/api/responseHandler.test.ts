@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { handleApiError } from '../../src/api/responseHandler'
-import { AppError, ErrorCode } from '../../src/utils/error/types'
+import { handleApiError } from '@/api/responseHandler'
+import { AppError, ErrorCode } from '@/utils/error/types'
 
 describe('responseHandler handleApiError', () => {
   afterEach(() => {

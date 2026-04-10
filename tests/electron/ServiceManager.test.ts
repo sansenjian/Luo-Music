@@ -133,7 +133,7 @@ describe('electron/ServiceManager', () => {
       })
 
       expect(capturedOptions).toMatchObject({
-        host: 'localhost',
+        host: '127.0.0.1',
         port: 3200,
         method: 'GET',
         path: '/getSearchByKey?key=jay&limit=30&page=1'
@@ -183,7 +183,7 @@ describe('electron/ServiceManager', () => {
       })
 
       expect(capturedOptions).toMatchObject({
-        host: 'localhost',
+        host: '127.0.0.1',
         port: 3200,
         method: 'POST',
         path: '/user/checkQQLoginQr'
@@ -276,7 +276,7 @@ describe('electron/ServiceManager', () => {
       })
 
       expect(capturedOptions).toMatchObject({
-        host: 'localhost',
+        host: '127.0.0.1',
         port: 14532,
         method: 'GET',
         path: '/song/detail?ids=1948694501'

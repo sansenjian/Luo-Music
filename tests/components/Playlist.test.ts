@@ -1,34 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 
-import Playlist from '../../src/components/Playlist.vue'
-import { usePlayerStore } from '../../src/store/playerStore.ts'
-import type { Song } from '../../src/platform/music/interface'
+import Playlist from '@/components/Playlist.vue'
+import { usePlayerStore } from '@/store/playerStore.ts'
+import { createMockSong } from '../utils/test-utils'
 
 HTMLElement.prototype.scrollTo = vi.fn()
 
-function createMockSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
-  return {
-    id: overrides.id ?? 1,
-    name: String(overrides.name ?? 'Song'),
-    artists: overrides.artists ?? [{ id: 1, name: String(overrides.artist ?? 'Artist') }],
-    album: overrides.album ?? {
-      id: 1,
-      name: String(overrides.albumName ?? 'Album'),
-      picUrl: String(overrides.pic ?? '')
-    },
-    duration: Number(overrides.duration ?? 180000),
-    mvid: overrides.mvid ?? 0,
-    platform: (overrides.platform as 'netease' | 'qq') ?? 'netease',
-    originalId: overrides.originalId ?? overrides.id ?? 1,
-    ...overrides
-  }
-}
-
 describe('Playlist.vue', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 

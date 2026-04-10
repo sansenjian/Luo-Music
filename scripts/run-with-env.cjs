@@ -4,7 +4,9 @@ const rawArgs = process.argv.slice(2)
 const separatorIndex = rawArgs.indexOf('--')
 
 if (separatorIndex === -1 || separatorIndex === rawArgs.length - 1) {
-  console.error('Usage: node scripts/run-with-env.cjs KEY=value [KEY=value ...] -- command [args...]')
+  console.error(
+    'Usage: node scripts/run-with-env.cjs KEY=value [KEY=value ...] -- command [args...]'
+  )
   process.exit(1)
 }
 
@@ -25,10 +27,33 @@ for (const assignment of envAssignments) {
   env[key] = value
 }
 
-const child = spawn(commandParts[0], commandParts.slice(1), {
+function createSpawnTarget(parts) {
+  const isWindows = process.platform === 'win32'
+
+  if (isWindows) {
+    return {
+      command: parts.join(' '),
+      args: [],
+      shell: true,
+      windowsVerbatimArguments: true
+    }
+  }
+
+  return {
+    command: parts[0],
+    args: parts.slice(1),
+    shell: false,
+    windowsVerbatimArguments: false
+  }
+}
+
+const target = createSpawnTarget(commandParts)
+
+const child = spawn(target.command, target.args, {
   stdio: 'inherit',
   env,
-  shell: process.platform === 'win32'
+  shell: target.shell,
+  windowsVerbatimArguments: target.windowsVerbatimArguments
 })
 
 child.on('exit', (code, signal) => {
@@ -40,7 +65,7 @@ child.on('exit', (code, signal) => {
   process.exit(code ?? 1)
 })
 
-child.on('error', (error) => {
+child.on('error', error => {
   console.error(error)
   process.exit(1)
 })

@@ -1,11 +1,10 @@
-import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { resetServices } from '../../src/services/registry'
-import { setupServices, services } from '../../src/services'
-import type { Song } from '../../src/platform/music/interface'
-import { usePlayerStore } from '../../src/store/playerStore'
-import { searchResultItemToSong, useSearchStore } from '../../src/store/searchStore'
+import { resetServices } from '@/services/registry'
+import { setupServices, services } from '@/services'
+import type { Song } from '@/platform/music/interface'
+import { usePlayerStore } from '@/store/playerStore'
+import { createSearchStore, searchResultItemToSong, useSearchStore } from '@/store/searchStore'
 
 type Deferred<T> = {
   promise: Promise<T>
@@ -28,8 +27,8 @@ const adapterMock = {
   search: vi.fn()
 }
 
-vi.mock('../../src/services', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../src/services')>()
+vi.mock('@/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services')>()
   return {
     ...actual,
     services: {
@@ -41,7 +40,6 @@ vi.mock('../../src/services', async importOriginal => {
 
 describe('searchStore', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     localStorage.clear()
     vi.clearAllMocks()
     resetServices()
@@ -80,6 +78,20 @@ describe('searchStore', () => {
     expect(song.duration).toBe(215000)
     expect((song as Song & { mediaId?: string }).mediaId).toBe('media-mid')
     expect(song.mvid).toBe('mv-1')
+  })
+
+  it('supports isolated store instances with custom store ids', () => {
+    const useSearchStoreA = createSearchStore({}, { storeId: 'search-store-a' })
+    const useSearchStoreB = createSearchStore({}, { storeId: 'search-store-b' })
+
+    const storeA = useSearchStoreA()
+    const storeB = useSearchStoreB()
+
+    storeA.setServer('qq')
+
+    expect(storeA.$id).toBe('search-store-a')
+    expect(storeB.$id).toBe('search-store-b')
+    expect(storeB.server).toBe('netease')
   })
 
   it('ignores stale search responses and keeps the latest results', async () => {

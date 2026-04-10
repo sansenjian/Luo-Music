@@ -14,7 +14,7 @@ const emit = defineEmits<{
 
 <template>
   <div class="window-controls">
-    <UserAvatar />
+    <UserAvatar v-if="props.isElectron" />
     <template v-if="props.isElectron">
       <button class="win-btn" @click="emit('minimize-window')" title="Minimize">
         <svg

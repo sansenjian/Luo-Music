@@ -32,6 +32,7 @@ const unregisterAllShortcutsMock = vi.hoisted(() => vi.fn())
 const ipcConfigureMock = vi.hoisted(() => vi.fn())
 const ipcUseMock = vi.hoisted(() => vi.fn())
 const ipcInitializeMock = vi.hoisted(() => vi.fn())
+const ipcDisposeMock = vi.hoisted(() => vi.fn())
 const disposePerformanceMonitorMock = vi.hoisted(() => vi.fn())
 const performanceMiddlewareMock = vi.hoisted(() => Symbol('performanceMiddleware'))
 const registerWindowHandlersMock = vi.hoisted(() => vi.fn())
@@ -101,7 +102,8 @@ vi.mock('../../electron/ipc/index', () => ({
   ipcService: {
     configure: ipcConfigureMock,
     use: ipcUseMock,
-    initialize: ipcInitializeMock
+    initialize: ipcInitializeMock,
+    dispose: ipcDisposeMock
   },
   disposePerformanceMonitor: disposePerformanceMonitorMock,
   errorMiddleware: Symbol('errorMiddleware'),
@@ -138,7 +140,7 @@ vi.mock('../../electron/main/shortcuts', () => ({
   setWindowManager: setShortcutsWindowManagerMock
 }))
 
-vi.mock('../../src/config/shortcuts', () => ({
+vi.mock('@/config/shortcuts', () => ({
   DEFAULT_SHORTCUTS: [{ key: 'Ctrl+Shift+L' }]
 }))
 
@@ -217,5 +219,6 @@ describe('electron/main/index', () => {
     expect(destroyTrayMock).toHaveBeenCalledTimes(1)
     expect(stopAllServicesMock).toHaveBeenCalledTimes(1)
     expect(disposePerformanceMonitorMock).toHaveBeenCalledTimes(1)
+    expect(ipcDisposeMock).toHaveBeenCalledTimes(1)
   })
 })

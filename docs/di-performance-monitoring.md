@@ -20,6 +20,7 @@ console.log(report)
 ```
 
 **输出示例：**
+
 ```
 === Service Performance Report ===
 
@@ -125,6 +126,21 @@ printPerformanceReport()
    - 减少不必要的服务获取
 
 3. **循环依赖检测**：性能监控会记录依赖创建顺序，有助于分析循环依赖问题
+
+## Phase 3 回归检查
+
+当前仓库的 DI 路线不是“所有代码都构造注入”，因此性能回归检查也应围绕实际默认路径展开：
+
+1. `services.xxx()` 高频访问的服务是否出现异常初始化耗时。
+2. 新增的 `deps` 注入入口是否只是降低测试成本，而没有引入额外运行时初始化负担。
+3. 配置/平台/API 收口后，是否因为多一层服务包装引入明显回归。
+
+建议在以下变更后重新查看性能报告：
+
+- 新增核心服务
+- 修改 `setupServices()` / `registerService()` / 生命周期逻辑
+- 将高频 API 或平台入口切换到 `services.api()` / `services.platform()`
+- 为热点 store/composable 增加新的默认依赖解析逻辑
 
 ## 测试示例
 

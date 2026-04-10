@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createIpcHandlers, IpcEventHandler } from '../../../src/store/player/ipcHandlers'
-import { createInitialState } from '../../../src/store/player/playerState'
-import type { Song } from '../../../src/platform/music/interface'
+import { createIpcHandlers, IpcEventHandler } from '@/store/player/ipcHandlers'
+import { createInitialState } from '@/store/player/playerState'
+import type { Song } from '@/platform/music/interface'
 
 type Listener = (...args: unknown[]) => void
 

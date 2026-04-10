@@ -7,8 +7,8 @@ const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => true)
 }))
 
-vi.mock('../../src/services', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../src/services')>()
+vi.mock('@/services', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services')>()
   return {
     ...actual,
     services: {
@@ -29,7 +29,7 @@ describe('CacheManager.vue', () => {
   })
 
   it('loads cache size through platform service in Electron', async () => {
-    const { default: CacheManager } = await import('../../src/components/CacheManager.vue')
+    const { default: CacheManager } = await import('@/components/CacheManager.vue')
     const wrapper = mount(CacheManager)
 
     await flushPromises()
@@ -42,7 +42,7 @@ describe('CacheManager.vue', () => {
   it('does not load cache size outside Electron', async () => {
     platformServiceMock.isElectron.mockReturnValue(false)
 
-    const { default: CacheManager } = await import('../../src/components/CacheManager.vue')
+    const { default: CacheManager } = await import('@/components/CacheManager.vue')
     const wrapper = mount(CacheManager)
 
     await flushPromises()

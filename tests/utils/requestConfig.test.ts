@@ -8,7 +8,7 @@ import {
   resetConfig,
   exportConfig,
   importConfig
-} from '../../src/utils/http/requestConfig'
+} from '@/utils/http/requestConfig'
 
 describe('requestConfig', () => {
   // 每个测试前重置配置

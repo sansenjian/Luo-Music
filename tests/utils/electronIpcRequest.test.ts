@@ -4,9 +4,15 @@ import axios, { type InternalAxiosRequestConfig } from 'axios'
 import {
   createElectronIpcAdapter,
   hasElectronIpcRequestSupport
-} from '../../src/utils/http/electronIpcRequest'
+} from '@/utils/http/electronIpcRequest'
 
-function setElectronApi(apiRequest?: (service: string, endpoint: string, params: Record<string, unknown>) => Promise<unknown>) {
+function setElectronApi(
+  apiRequest?: (
+    service: string,
+    endpoint: string,
+    params: Record<string, unknown>
+  ) => Promise<unknown>
+) {
   Object.defineProperty(window, 'electronAPI', {
     configurable: true,
     value: apiRequest ? { apiRequest } : undefined
@@ -71,7 +77,9 @@ describe('electronIpcRequest', () => {
         method: 'get',
         params: { id: 1 }
       } as InternalAxiosRequestConfig)
-    ).rejects.toSatisfy(error => axios.isAxiosError(error) && error.message === 'service unavailable')
+    ).rejects.toSatisfy(
+      error => axios.isAxiosError(error) && error.message === 'service unavailable'
+    )
   })
 
   it('preserves structured bridge failures as axios response metadata', async () => {

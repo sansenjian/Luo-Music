@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
-import HomeWorkspace from '../../../src/components/home/HomeWorkspace.vue'
+import HomeWorkspace from '@/components/home/HomeWorkspace.vue'
 
 function createWrapper(activeTab: 'lyric' | 'playlist') {
   return mount(HomeWorkspace, {

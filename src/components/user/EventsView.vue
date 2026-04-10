@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { EventItem } from '@/composables/useUserEvents'
+import type { EventArtist, EventItem } from '@/composables/useUserEvents'
 
 interface EventsViewProps {
   events: EventItem[]
@@ -7,6 +7,10 @@ interface EventsViewProps {
 }
 
 defineProps<EventsViewProps>()
+
+const formatArtists = (artists?: EventArtist[]): string => {
+  return artists?.map(artist => artist.name).join(' / ') || ''
+}
 
 const formatEventTime = (timestamp: number | string | undefined): string => {
   if (timestamp === undefined) {
@@ -53,9 +57,7 @@ const formatEventTime = (timestamp: number | string | undefined): string => {
           <img class="event-song-cover" :src="event.song.album?.picUrl" :alt="event.song.name" />
           <div class="event-song-info">
             <span class="event-song-name">{{ event.song.name }}</span>
-            <span class="event-song-artist">
-              {{ event.song.artists?.map(a => a.name).join(' / ') }}
-            </span>
+            <span class="event-song-artist">{{ formatArtists(event.song.artists) }}</span>
           </div>
         </div>
       </div>

@@ -149,7 +149,7 @@ function isDesktopLyricDebugEnabled(): boolean {
 
   try {
     return isDesktopLyricDebugFlagEnabled(
-      window.localStorage.getItem(DESKTOP_LYRIC_DEBUG_STORAGE_KEY)
+      services.storage().getItem(DESKTOP_LYRIC_DEBUG_STORAGE_KEY)
     )
   } catch {
     return false

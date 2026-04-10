@@ -22,7 +22,18 @@ type DesktopLyricWindowBridge = {
   toggleDesktopLyric?: (show?: boolean) => Promise<void> | void
 }
 
-function getDesktopLyricWindowBridge(): DesktopLyricWindowBridge | undefined {
+type ElectronStatusApi = {
+  getServiceStatus?: (serviceId: string) => Promise<{ status: string; port?: number } | null>
+}
+
+export type PlatformServiceDeps = {
+  initializePlatformService?: typeof initializePlatformService
+  getPlatformService?: typeof getPlatformService
+  getDesktopLyricWindowBridge?: () => DesktopLyricWindowBridge | undefined
+  getElectronApi?: () => ElectronStatusApi | undefined
+}
+
+function resolveDesktopLyricWindowBridge(): DesktopLyricWindowBridge | undefined {
   if (typeof window === 'undefined') {
     return undefined
   }
@@ -36,9 +47,22 @@ function getDesktopLyricWindowBridge(): DesktopLyricWindowBridge | undefined {
   ).services?.window
 }
 
-export function createPlatformService(): PlatformService {
-  initializePlatformService()
-  const platform = getPlatformService()
+function resolveElectronApi(): ElectronStatusApi | undefined {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  return (window as unknown as { electronAPI?: ElectronStatusApi }).electronAPI
+}
+
+export function createPlatformService(deps: PlatformServiceDeps = {}): PlatformService {
+  const initializePlatform = deps.initializePlatformService ?? initializePlatformService
+  const getPlatform = deps.getPlatformService ?? getPlatformService
+  const getDesktopBridge = deps.getDesktopLyricWindowBridge ?? resolveDesktopLyricWindowBridge
+  const getElectronApi = deps.getElectronApi ?? resolveElectronApi
+
+  initializePlatform()
+  const platform = getPlatform()
 
   return {
     isElectron(): boolean {
@@ -66,7 +90,7 @@ export function createPlatformService(): PlatformService {
         return
       }
 
-      const windowBridge = getDesktopLyricWindowBridge()
+      const windowBridge = getDesktopBridge()
       if (typeof windowBridge?.toggleDesktopLyric === 'function') {
         await windowBridge.toggleDesktopLyric(show)
         return
@@ -107,15 +131,7 @@ export function createPlatformService(): PlatformService {
     },
 
     async getServiceStatus(serviceId: string): Promise<{ status: string; port?: number } | null> {
-      const electronAPI = (
-        window as unknown as {
-          electronAPI?: {
-            getServiceStatus?: (
-              serviceId: string
-            ) => Promise<{ status: string; port?: number } | null>
-          }
-        }
-      ).electronAPI
+      const electronAPI = getElectronApi()
 
       if (electronAPI?.getServiceStatus) {
         return electronAPI.getServiceStatus(serviceId)

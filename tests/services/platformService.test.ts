@@ -1,21 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Platform, type IPlatformService } from '@/platform'
 
 const platformMock = vi.hoisted(() => ({
+  name: 'platform-test',
   closeWindow: vi.fn(),
   isElectron: vi.fn(),
   isMobile: vi.fn(),
   maximizeWindow: vi.fn(),
   minimizeWindow: vi.fn(),
   send: vi.fn(),
+  supportsSendChannel: vi.fn(() => true),
+  sendPlayingState: vi.fn(),
+  sendPlayModeChange: vi.fn(),
   on: vi.fn(),
   getCacheSize: vi.fn(),
-  clearCache: vi.fn()
+  clearCache: vi.fn(),
+  getPlatform: vi.fn(() => Platform.Web),
+  getName: vi.fn(() => 'test-platform')
 }))
 
 const initializePlatformServiceMock = vi.hoisted(() => vi.fn())
-const getPlatformServiceMock = vi.hoisted(() => vi.fn(() => platformMock))
+const getPlatformServiceMock = vi.hoisted(() =>
+  vi.fn((): IPlatformService => platformMock as unknown as IPlatformService)
+)
 
-vi.mock('../../src/platform', () => ({
+vi.mock('@/platform', () => ({
   initializePlatformService: initializePlatformServiceMock,
   getPlatformService: getPlatformServiceMock
 }))
@@ -99,5 +108,32 @@ describe('platformService', () => {
     const service = createPlatformService()
 
     await expect(service.getServiceStatus?.('qq')).resolves.toBeNull()
+  })
+
+  it('supports injected platform runtime dependencies', async () => {
+    const injectedPlatform = {
+      ...platformMock,
+      isElectron: vi.fn(() => false)
+    }
+    const initialize = vi.fn()
+    const getPlatform = vi.fn(
+      (): IPlatformService => injectedPlatform as unknown as IPlatformService
+    )
+    const getDesktopBridge = vi.fn(() => undefined)
+    const getElectronApi = vi.fn(() => undefined)
+
+    const { createPlatformService } = await import('@/services/platformService')
+    const service = createPlatformService({
+      initializePlatformService: initialize,
+      getPlatformService: getPlatform,
+      getDesktopLyricWindowBridge: getDesktopBridge,
+      getElectronApi
+    })
+
+    expect(initialize).toHaveBeenCalledTimes(1)
+    expect(service.isElectron()).toBe(false)
+    await expect(service.getServiceStatus?.('qq')).resolves.toBeNull()
+    expect(getPlatform).toHaveBeenCalledTimes(1)
+    expect(getElectronApi).toHaveBeenCalledTimes(1)
   })
 })

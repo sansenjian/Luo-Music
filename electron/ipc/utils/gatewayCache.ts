@@ -222,6 +222,10 @@ function shouldRetry(error: unknown, retryCount: number): boolean {
     return true
   }
 
+  if (err.code === 'LOCAL_SERVICE_TIMEOUT') {
+    return false
+  }
+
   if (typeof err.response?.status === 'number') {
     return RETRYABLE_RESPONSE_STATUSES.has(err.response.status)
   }

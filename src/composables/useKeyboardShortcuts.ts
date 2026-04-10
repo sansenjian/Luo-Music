@@ -1,11 +1,18 @@
 import { onMounted, onUnmounted } from 'vue'
 
-import { DEFAULT_SHORTCUTS } from '../config/shortcuts'
-import { COMMANDS } from '../core/commands/commands'
-import { services } from '../services'
+import { DEFAULT_SHORTCUTS } from '@/config/shortcuts'
+import { COMMANDS } from '@/core/commands/commands'
+import { services } from '@/services'
+import type { CommandService } from '@/services/commandService'
 
-export function useKeyboardShortcuts(): void {
-  const commandService = services.commands()
+export type KeyboardShortcutDeps = {
+  commandService?: Pick<CommandService, 'canExecute' | 'execute'>
+  target?: Pick<Window, 'addEventListener' | 'removeEventListener'>
+}
+
+export function useKeyboardShortcuts(deps: KeyboardShortcutDeps = {}): void {
+  const commandService = deps.commandService ?? services.commands()
+  let target: KeyboardShortcutDeps['target'] | null = null
   const commandMap: Record<string, { id: string; payload?: unknown }> = {
     togglePlay: { id: COMMANDS.PLAYER_TOGGLE_PLAY },
     playPrev: { id: COMMANDS.PLAYER_PLAY_PREV },
@@ -18,14 +25,14 @@ export function useKeyboardShortcuts(): void {
   }
 
   function handleKeydown(event: KeyboardEvent): void {
-    const target = event.target instanceof HTMLElement ? event.target : null
-    const isInput = target
-      ? ['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable
+    const eventTarget = event.target instanceof HTMLElement ? event.target : null
+    const isInput = eventTarget
+      ? ['INPUT', 'TEXTAREA'].includes(eventTarget.tagName) || eventTarget.isContentEditable
       : false
 
     if (isInput) {
       if (event.key === 'Escape') {
-        target?.blur()
+        eventTarget?.blur()
       }
       return
     }
@@ -60,10 +67,11 @@ export function useKeyboardShortcuts(): void {
   }
 
   onMounted(() => {
-    window.addEventListener('keydown', handleKeydown)
+    target = deps.target ?? (typeof window !== 'undefined' ? window : null)
+    target?.addEventListener('keydown', handleKeydown)
   })
 
   onUnmounted(() => {
-    window.removeEventListener('keydown', handleKeydown)
+    target?.removeEventListener('keydown', handleKeydown)
   })
 }

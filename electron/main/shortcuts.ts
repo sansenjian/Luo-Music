@@ -88,6 +88,7 @@ export function registerShortcuts(shortcuts: ShortcutConfig[]): void {
  */
 export function unregisterAllShortcuts(): void {
   globalShortcut.unregisterAll()
+  windowManager = null
   logger.info('[Shortcuts] All shortcuts unregistered')
 }
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createSong, type Song } from '../../src/platform/music/interface'
+import { createSong, type Song } from '@/platform/music/interface'
+import type { Artist } from '@/platform/music/interface'
 
 describe('platform/music/interface', () => {
   describe('createSong()', () => {
@@ -119,7 +120,11 @@ describe('platform/music/interface', () => {
       })
 
       expect(song.artists).toHaveLength(3)
-      expect(song.artists.map(a => a.name)).toEqual(['Artist 1', 'Artist 2', 'Artist 3'])
+      expect(song.artists.map((artist: Artist) => artist.name)).toEqual([
+        'Artist 1',
+        'Artist 2',
+        'Artist 3'
+      ])
     })
 
     it('should support both netease and qq platforms', () => {

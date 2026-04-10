@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
-import { createPinia, setActivePinia } from 'pinia'
 
-import LyricDisplay from '../../src/components/LyricDisplay.vue'
-import { usePlayerStore } from '../../src/store/playerStore'
+import { nextTick } from 'vue'
+
+import LyricDisplay from '@/components/LyricDisplay.vue'
+import { usePlayerStore } from '@/store/playerStore'
 
 describe('LyricDisplay', () => {
   let resizeObserverCallback:
@@ -13,7 +13,6 @@ describe('LyricDisplay', () => {
   let scrollToMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    setActivePinia(createPinia())
     scrollToMock = vi.fn()
 
     Object.defineProperty(HTMLElement.prototype, 'scrollTo', {

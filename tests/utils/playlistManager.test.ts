@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { PlaylistManager, type Playlist } from '../../src/utils/player/core/playlistManager'
-import { PLAY_MODE } from '../../src/utils/player/constants'
-import type { Song } from '../../src/platform/music/interface'
+import { PlaylistManager, type Playlist } from '@/utils/player/core/playlistManager'
+import { PLAY_MODE } from '@/utils/player/constants'
+import type { Song } from '@/platform/music/interface'
 
 // 创建测试用的歌曲数据
 const createTestSong = (id: number, name: string): Song => ({
