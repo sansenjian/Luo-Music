@@ -26,15 +26,15 @@ type SearchStoreLike = Pick<
   | 'error'
   | 'setServer'
 >
-type HomePagePlayerStoreLike = Pick<
-  ReturnType<typeof useHomeShell>['playerStore'],
-  'setSongList' | 'isCompact' | 'loading' | 'songList'
->
+type HomePagePlayerStoreLike = Pick<ReturnType<typeof useHomeShell>['playerStore'], 'setSongList'> &
+  Partial<
+    Pick<ReturnType<typeof useHomeShell>['playerStore'], 'isCompact' | 'loading' | 'songList'>
+  >
 type HomeShellReturn = ReturnType<typeof useHomeShell>
 
 interface HomeShellLike {
   playerStore?: HomePagePlayerStoreLike
-  switchTab: HomeShellReturn['switchTab']
+  switchTab?: HomeShellReturn['switchTab']
   activeTab?: HomeShellReturn['activeTab']
   closeWindow?: HomeShellReturn['closeWindow']
   isElectron?: HomeShellReturn['isElectron']
@@ -52,19 +52,19 @@ export interface HomePageDeps {
 export function useHomePage(deps: HomePageDeps = {}) {
   const toastStore = deps.toastStore ?? useToastStore()
   const searchStore = deps.searchStore ?? useSearchStore()
-  const baseHomeShell = deps.homeShell ?? useHomeShell()
-  const effectivePlayerStore = baseHomeShell.playerStore
-  const homeShell = {
-    ...baseHomeShell,
-    activeTab: baseHomeShell.activeTab,
-    closeWindow: baseHomeShell.closeWindow,
-    isElectron: baseHomeShell.isElectron,
-    maximizeWindow: baseHomeShell.maximizeWindow,
-    minimizeWindow: baseHomeShell.minimizeWindow,
-    playSong: baseHomeShell.playSong,
-    playerStore: baseHomeShell.playerStore,
-    switchTab: baseHomeShell.switchTab
+  const actualHomeShell = useHomeShell()
+  const homeShell: HomeShellReturn = {
+    ...actualHomeShell,
+    activeTab: deps.homeShell?.activeTab ?? actualHomeShell.activeTab,
+    closeWindow: deps.homeShell?.closeWindow ?? actualHomeShell.closeWindow,
+    isElectron: deps.homeShell?.isElectron ?? actualHomeShell.isElectron,
+    maximizeWindow: deps.homeShell?.maximizeWindow ?? actualHomeShell.maximizeWindow,
+    minimizeWindow: deps.homeShell?.minimizeWindow ?? actualHomeShell.minimizeWindow,
+    playSong: deps.homeShell?.playSong ?? actualHomeShell.playSong,
+    playerStore: actualHomeShell.playerStore,
+    switchTab: deps.homeShell?.switchTab ?? actualHomeShell.switchTab
   }
+  const effectivePlayerStore = homeShell.playerStore
 
   const searchKeyword = ref('')
   const showSelect = ref(false)
@@ -115,7 +115,8 @@ export function useHomePage(deps: HomePageDeps = {}) {
 
     if (searchStore.hasResults) {
       const songs = searchStore.results.map(searchResultItemToSong)
-      effectivePlayerStore?.setSongList(songs)
+      const targetPlayerStore = deps.homeShell?.playerStore ?? effectivePlayerStore
+      targetPlayerStore.setSongList(songs)
       homeShell.switchTab('playlist')
       toastStore.success(`Found ${searchStore.totalResults} songs`)
       return

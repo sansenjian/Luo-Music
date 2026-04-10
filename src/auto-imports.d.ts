@@ -441,7 +441,7 @@ declare global {
   export type { PlayerStoreActions, PlayerStoreDeps } from './store/playerStore'
   import('./store/playerStore')
   // @ts-ignore
-  export type { SearchResultItem, SearchStoreDeps } from './store/searchStore'
+  export type { SearchResultItem, SearchStoreDeps, SearchStoreOptions } from './store/searchStore'
   import('./store/searchStore')
   // @ts-ignore
   export type { UserInfo } from './store/userStore'
