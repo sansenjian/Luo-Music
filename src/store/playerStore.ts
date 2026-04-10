@@ -1,35 +1,36 @@
 import { defineStore, type StoreGeneric } from 'pinia'
 import { markRaw, toRaw } from 'vue'
 
-import { SEND_CHANNELS } from '../../electron/shared/protocol/channels'
-import type { PlayerStateSnapshot } from '../../electron/ipc/types'
-import type { Song } from '../platform/music/interface'
+import { handleError } from '@/utils/error'
+import { DESKTOP_LYRIC_IPC_INTERVAL, LYRIC_UI_UPDATE_INTERVAL } from '@/constants/lyric'
+import type { Song } from '@/platform/music/interface'
+import { services } from '@/services'
 import type { MusicService } from '@/services/musicService'
 import type { PlatformService } from '@/services/platformService'
-import { services } from '../services'
 import { storageAdapter } from '@/services/storageService'
 import type { StorageService } from '@/services/storageService'
-import { createInitialState, PLAY_MODE_TEXTS, type PlayerState } from './player/playerState'
-import {
-  ensurePlayerStoreRuntime,
-  getPlayerStoreRuntime,
-  resetPlayerStoreRuntime,
-  type PlayerStoreOwner
-} from './player/runtime'
 import {
   createLyricTimeUpdatePayload,
   getCurrentLyricLine,
   getDesktopLyricSequence,
   notifyLyricTimeUpdate,
   resolveLyricIndex
-} from './player/lyricSync'
-import { playerCore as defaultAudioManager } from '../utils/player/core/playerCore'
-import { LyricEngine, type LyricLine } from '../utils/player/core/lyric'
-import { PLAY_MODE } from '../utils/player/constants/playMode'
-import { formatTime } from '../utils/player/helpers/timeFormatter'
-import { PlaybackErrorHandler } from '../utils/player/modules/playbackErrorHandler'
-import { DESKTOP_LYRIC_IPC_INTERVAL, LYRIC_UI_UPDATE_INTERVAL } from '../constants/lyric'
-import { handleError } from '@/utils/error'
+} from '@/store/player/lyricSync'
+import {
+  ensurePlayerStoreRuntime,
+  getPlayerStoreRuntime,
+  resetPlayerStoreRuntime,
+  type PlayerStoreOwner
+} from '@/store/player/runtime'
+import { createInitialState, PLAY_MODE_TEXTS, type PlayerState } from '@/store/player/playerState'
+import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import { LyricEngine, type LyricLine } from '@/utils/player/core/lyric'
+import { playerCore as defaultAudioManager } from '@/utils/player/core/playerCore'
+import { formatTime } from '@/utils/player/helpers/timeFormatter'
+import { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
+
+import { SEND_CHANNELS } from '../../electron/shared/protocol/channels'
+import type { PlayerStateSnapshot } from '../../electron/ipc/types'
 
 export type PlayerStoreActions = {
   seek: (time: number) => void
@@ -290,6 +291,18 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
     platform.send(SEND_CHANNELS.PLAYER_SYNC_STATE, createPlayerStateSnapshot(store))
   }
 
+  function handlePlaybackActionFailure(
+    store: PlayerStoreInstance,
+    error: unknown,
+    fn: string,
+    customMessage: string
+  ): void {
+    reportPlayerStoreError(error, fn, customMessage)
+    store.playing = false
+    store.notifyPlayingState(false)
+    notifyPlayerStateSnapshot(store)
+  }
+
   async function playSongByIdFromIpc(
     store: PlayerStoreInstance,
     id: string | number,
@@ -351,7 +364,18 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       store.currentIndex = Math.min(index, store.songList.length - 1)
       store.currentSong = store.songList[store.currentIndex]
       notifyPlayerStateSnapshot(store)
-      void store.playSongWithDetails(store.currentIndex)
+      void store.playSongWithDetails(store.currentIndex).catch(error => {
+        store.currentSong =
+          store.currentIndex >= 0 && store.currentIndex < store.songList.length
+            ? store.songList[store.currentIndex]
+            : null
+        handlePlaybackActionFailure(
+          store,
+          error,
+          'removeFromPlaylistFromIpc',
+          'Failed to continue playback after removing the current song'
+        )
+      })
       return
     }
 
@@ -693,14 +717,30 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       },
 
       togglePlay(): void {
+        const store = this as unknown as PlayerStoreInstance
+
         if (!this.initialized) {
           if (this.songList.length > 0) {
-            void this.playSongWithDetails(0)
+            void this.playSongWithDetails(0).catch(error => {
+              handlePlaybackActionFailure(
+                store,
+                error,
+                'togglePlay.start',
+                'Failed to start playback from togglePlay'
+              )
+            })
           }
           return
         }
 
-        void audioManager.toggle()
+        void Promise.resolve(audioManager.toggle()).catch(error => {
+          handlePlaybackActionFailure(
+            store,
+            error,
+            'togglePlay.toggle',
+            'Failed to toggle playback'
+          )
+        })
       },
 
       getRandomIndex(excludeCurrent = true): number {
@@ -726,9 +766,19 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       },
 
       handleSongEnd(): void {
+        const store = this as unknown as PlayerStoreInstance
+
         if (this.playMode === PLAY_MODE.SINGLE_LOOP) {
           audioManager.seek(0)
-          void audioManager.play()
+          void audioManager.play().catch(error => {
+            handlePlaybackActionFailure(
+              store,
+              error,
+              'handleSongEnd.singleLoop',
+              'Failed to replay the current song after it ended'
+            )
+            this.playNext()
+          })
         } else {
           this.playNext()
         }

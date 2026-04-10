@@ -19,9 +19,16 @@ function createAudioManagerMock() {
   }
 }
 
-function createInjectedPlayerStore() {
+function createInjectedPlayerStore(options: { isElectron?: boolean } = {}) {
   storeCounter += 1
   const audioManager = createAudioManagerMock()
+  const platformAccessor = {
+    isElectron: vi.fn(() => options.isElectron ?? false),
+    send: vi.fn(),
+    sendPlayingState: vi.fn(),
+    sendPlayModeChange: vi.fn(),
+    on: vi.fn(() => () => {})
+  }
   const storageService = {
     setItem: vi.fn()
   }
@@ -29,13 +36,7 @@ function createInjectedPlayerStore() {
     {
       audioManager,
       getStorageService: () => storageService,
-      getPlatformAccessor: () => ({
-        isElectron: () => false,
-        send: vi.fn(),
-        sendPlayingState: vi.fn(),
-        sendPlayModeChange: vi.fn(),
-        on: vi.fn(() => () => {})
-      })
+      getPlatformAccessor: () => platformAccessor
     },
     `player-test-${storeCounter}`
   )
@@ -43,6 +44,7 @@ function createInjectedPlayerStore() {
   return {
     store: useInjectedStore(),
     audioManager,
+    platformAccessor,
     storageService
   }
 }
@@ -190,6 +192,81 @@ describe('playerStore', () => {
       store.seek(60)
       expect(store.progress).toBe(60)
       expect(audioManager.seek).toHaveBeenCalledWith(60)
+    })
+
+    it('resets playback state when togglePlay cannot start the first track', async () => {
+      const { store, platformAccessor } = createInjectedPlayerStore()
+      store.songList = [createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' })]
+      store.playing = true
+      vi.spyOn(store, 'playSongWithDetails').mockRejectedValueOnce(new Error('start failed'))
+
+      store.togglePlay()
+      await Promise.resolve()
+
+      expect(store.playing).toBe(false)
+      expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
+    })
+
+    it('resets playback state when audioManager.toggle rejects', async () => {
+      const { store, audioManager, platformAccessor } = createInjectedPlayerStore()
+      store.initialized = true
+      store.playing = true
+      audioManager.toggle.mockRejectedValueOnce(new Error('toggle failed'))
+
+      store.togglePlay()
+      await Promise.resolve()
+
+      expect(store.playing).toBe(false)
+      expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
+    })
+
+    it('falls back to the next track when single-loop replay fails at song end', async () => {
+      const { store, audioManager, platformAccessor } = createInjectedPlayerStore()
+      const playNextSpy = vi.spyOn(store, 'playNext').mockImplementation(() => {})
+      store.playMode = PLAY_MODE.SINGLE_LOOP
+      store.playing = true
+      audioManager.play.mockRejectedValueOnce(new Error('replay failed'))
+
+      store.handleSongEnd()
+      await Promise.resolve()
+
+      expect(audioManager.seek).toHaveBeenCalledWith(0)
+      expect(store.playing).toBe(false)
+      expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
+      expect(playNextSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps the next selection and resets playback state when replaying after removal fails', async () => {
+      const { store, platformAccessor } = createInjectedPlayerStore({ isElectron: true })
+      const firstSong = createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' })
+      const secondSong = createMockSong({ id: 2, name: 'Song 2', url: 'http://test.com/2.mp3' })
+
+      store.songList = [firstSong, secondSong]
+      store.currentIndex = 0
+      store.currentSong = firstSong
+      store.playing = true
+      store.initAudio()
+      platformAccessor.sendPlayingState.mockClear()
+
+      vi.spyOn(store, 'playSongWithDetails').mockRejectedValueOnce(
+        new Error('remove replay failed')
+      )
+
+      const onCalls = platformAccessor.on.mock.calls as unknown as Array<
+        [string, (payload: unknown) => void]
+      >
+      const songControlListener = onCalls.find(
+        ([channel]) => channel === 'music-song-control'
+      )?.[1] as ((payload: unknown) => void) | undefined
+
+      songControlListener?.({ type: 'remove-from-playlist', index: 0 })
+      await Promise.resolve()
+
+      expect(store.songList).toEqual([secondSong])
+      expect(store.currentIndex).toBe(0)
+      expect(store.currentSong).toStrictEqual(secondSong)
+      expect(store.playing).toBe(false)
+      expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
     })
   })
 

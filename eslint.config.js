@@ -6,11 +6,17 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 export default [
   {
     ignores: [
+      '.codex/**',
+      '.cache/**',
+      'tmp/**',
+      '.tmp/**',
       'dist/**',
       'build/**',
+      'out/**',
       'release/**',
       'node_modules/**',
       '.vite_cache/**',
+      '.vite/**',
       'docs/.vitepress/**',
       'src/auto-imports.d.ts',
       'src/components.d.ts',
