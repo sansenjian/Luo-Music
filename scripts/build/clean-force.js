@@ -38,7 +38,7 @@ function killLockingProcesses() {
 
   for (const proc of processes) {
     try {
-      execSync(`taskkill /F /IM ${proc} 2>nul`, { stdio: 'ignore' })
+      execSync(`taskkill /F /IM "${proc}" 2>nul`, { stdio: 'ignore' })
       console.log(`  ✓ 已结束 ${proc}`)
     } catch {
       // 进程不存在，忽略错误

@@ -289,5 +289,15 @@ describe('musicService', () => {
       expect(resolveAdapter).toHaveBeenCalledWith('netease')
       expect(mockAdapter.getLyric).toHaveBeenCalledWith('song-1')
     })
+
+    it('propagates errors from an async adapter resolver', async () => {
+      const error = new Error('boom')
+      const resolveAdapter = vi.fn(async () => {
+        throw error
+      })
+      const injectedService = createMusicService({ resolveAdapter })
+
+      await expect(injectedService.search('qq', 'k', 10, 1)).rejects.toBe(error)
+    })
   })
 })

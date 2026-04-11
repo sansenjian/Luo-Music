@@ -24,7 +24,7 @@
     "preview:electron": "electron-forge start",
     "server": "tsx server/index.ts",
     "package": "npm run clean && npm run build:electron:bundle && electron-forge package",
-    "package:fast": "npm run clean && npm run build:electron:bundle && electron-forge package",
+    "package:fast": "npm run package",
     "make": "npm run clean && npm run build:electron:bundle && electron-forge make",
     "make:fast": "npm run clean && npm run build:electron:bundle && node scripts/run-with-env.cjs LUO_FAST_MAKE=1 -- electron-forge make",
     "test": "vitest",

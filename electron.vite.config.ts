@@ -10,13 +10,26 @@ import {
   electronRendererManualChunks,
   resolveViteDevServerPort
 } from './config/vite.shared.ts'
+
+export const ANALYZE_EXCLUDE_PLUGIN_MARKER = '__luoAnalyzeExclude'
+
+function markAnalyzeExcludedPlugins(plugins: PluginOption[]): PluginOption[] {
+  return plugins.map(plugin => {
+    if (!plugin || typeof plugin !== 'object' || Array.isArray(plugin)) {
+      return plugin
+    }
+
+    return Object.assign(plugin, { [ANALYZE_EXCLUDE_PLUGIN_MARKER]: true })
+  })
+}
+
 const rootDir = __dirname
 loadDotEnv({ path: resolve(rootDir, '.env') })
 loadDotEnv({ path: resolve(rootDir, '.env.sentry-build-plugin') })
 const devServerPort = resolveViteDevServerPort(process.env.VITE_DEV_SERVER_PORT)
 const buildSourceMaps = process.env.LUO_BUILD_SOURCEMAP === '1'
-const sentryTracingEnabled = process.env.SENTRY_TRACING_ENABLED ?? '0'
-const sentryReplayEnabled = process.env.SENTRY_REPLAY_ENABLED ?? '0'
+const sentryTracingEnabled = process.env.SENTRY_TRACING_ENABLED === '1' ? '1' : '0'
+const sentryReplayEnabled = process.env.SENTRY_REPLAY_ENABLED === '1' ? '1' : '0'
 
 const sentryRelease =
   process.env.SENTRY_RELEASE || `luo-music@${process.env.npm_package_version ?? '0.0.0'}`
@@ -41,7 +54,9 @@ if (sentryUploadEnabled) {
     telemetry: false
   })
 
-  rendererPlugins.push(...(Array.isArray(sentryPlugins) ? sentryPlugins : [sentryPlugins]))
+  rendererPlugins.push(
+    ...markAnalyzeExcludedPlugins(Array.isArray(sentryPlugins) ? sentryPlugins : [sentryPlugins])
+  )
 }
 
 export default defineConfig({

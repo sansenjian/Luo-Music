@@ -12,12 +12,13 @@ const packageJson = JSON.parse(
 ) as PackageJson
 
 describe('package scripts for forge workflows', () => {
-  it.each(['package', 'package:fast', 'make', 'make:fast'])(
-    'runs build:electron:bundle before %s',
-    scriptName => {
-      expect(packageJson.scripts?.[scriptName]).toMatch(
-        /^npm run clean && npm run build:electron:bundle && /
-      )
-    }
-  )
+  it.each(['package', 'make', 'make:fast'])('runs build:electron:bundle before %s', scriptName => {
+    expect(packageJson.scripts?.[scriptName]).toMatch(
+      /^npm run clean && npm run build:electron:bundle && /
+    )
+  })
+
+  it('lets package:fast delegate to the canonical package workflow', () => {
+    expect(packageJson.scripts?.['package:fast']).toBe('npm run package')
+  })
 })

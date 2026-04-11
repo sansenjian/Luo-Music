@@ -16,7 +16,7 @@ const packagingExtraResources = [
   'scripts/dev/qq-search-fallback.cjs',
   'scripts/dev/netease-api-server.cjs'
 ] as const
-const packagingWorkspaceArtifactsToRemove = [
+export const packagingWorkspaceArtifactsToRemove = [
   '.ai',
   '.claude',
   '.codex',
@@ -30,7 +30,7 @@ const packagingWorkspaceArtifactsToRemove = [
   '.vite_cache',
   '.vscode'
 ] as const
-const packagingNodeModulesToRemoveAfterPrune = [
+export const packagingNodeModulesToRemoveAfterPrune = [
   'node_modules/.vite-temp',
   'node_modules/@electron-forge',
   'node_modules/@playwright',
@@ -47,8 +47,22 @@ const packagingNodeModulesToRemoveAfterPrune = [
   'node_modules/vite',
   'node_modules/vitest'
 ] as const
+const packagingIgnoredNodeModulePaths = [
+  'node_modules/@fontsource',
+  'node_modules/date-fns',
+  ...packagingNodeModulesToRemoveAfterPrune
+] as const
+
+function escapeRegexFragment(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function createIgnorePatterns(paths: readonly string[]): RegExp[] {
+  return paths.map(targetPath => new RegExp(`^/${escapeRegexFragment(targetPath)}(?:$|/)`))
+}
+
 const packagingIgnorePatterns = [
-  /^\/(?:\.ai|\.claude|\.codex|\.github|\.husky|\.idea|\.kilocode|\.playwright-mcp|\.trae|\.userData|\.vite_cache|\.vscode)(?:$|\/)/,
+  ...createIgnorePatterns(packagingWorkspaceArtifactsToRemove),
   /^\/(?:api|config|coverage|dist|docs|electron|playwright-report|server|src|test|test-results|tests)(?:$|\/)/,
   /^\/build\/runtime(?:$|\/)/,
   /^\/\.env(?:\.[^/]+)?$/,
@@ -56,18 +70,7 @@ const packagingIgnorePatterns = [
   /^\/(?:\.editorconfig|\.gitignore|\.gitmessage|\.lintstagedrc\.json|\.npmignore|\.npmrc|\.prettierrc|\.projectstructure)$/,
   /^\/scripts(?:$|\/)/,
   /^\/.*\.map$/,
-  /^\/node_modules\/@fontsource(?:$|\/)/,
-  /^\/node_modules\/@electron-forge(?:$|\/)/,
-  /^\/node_modules\/@playwright(?:$|\/)/,
-  /^\/node_modules\/@sentry\/(?:bundler-plugin-core|rollup-plugin|vite-plugin)(?:$|\/)/,
-  /^\/node_modules\/@types(?:$|\/)/,
-  /^\/node_modules\/@vitejs(?:$|\/)/,
-  /^\/node_modules\/date-fns(?:$|\/)/,
-  /^\/node_modules\/electron(?:$|\/)/,
-  /^\/node_modules\/playwright(?:-core)?(?:$|\/)/,
-  /^\/node_modules\/typescript(?:$|\/)/,
-  /^\/node_modules\/vite(?:$|\/)/,
-  /^\/node_modules\/vitest(?:$|\/)/,
+  ...createIgnorePatterns(packagingIgnoredNodeModulePaths),
   /^\/node_modules\/(?:.*\/)?(?:README|readme|CHANGELOG|changelog|CHANGES|changes|AUTHORS|authors|CONTRIBUTING|contributing)(?:\.[^/]+)?$/,
   /^\/node_modules\/(?:.*\/)?(?:\.github|\.vscode|coverage|docs?|example|examples|test|tests|__tests__)(?:$|\/)/
 ] as const

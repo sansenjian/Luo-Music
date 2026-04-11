@@ -128,6 +128,9 @@ async function ensureVueQueryPlugin(): Promise<void> {
         app.use(VueQueryPlugin)
         vueQueryPluginInstalled = true
       })
+      .catch(error => {
+        getLogger().error('Main', 'Failed to install Vue Query plugin', error)
+      })
       .finally(() => {
         if (!vueQueryPluginInstalled) {
           vueQueryPluginPromise = null

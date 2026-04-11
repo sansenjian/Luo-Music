@@ -15,6 +15,7 @@ const sentryTracingFeatureEnabled = import.meta.env.SENTRY_TRACING_ENABLED === '
 const sentryReplayFeatureEnabled = import.meta.env.SENTRY_REPLAY_ENABLED === '1'
 
 let rendererSentryInitialized = false
+let rendererSentryInitPromise: Promise<void> | null = null
 
 export function captureRendererException(error: unknown): void {
   if (!rendererSentryInitialized) {
@@ -31,47 +32,62 @@ export async function initializeRendererSentry(
     return
   }
 
-  const integrations = []
-
-  if (sentryTracingFeatureEnabled && options.tracingEnabled) {
-    const { createRendererTracingIntegration } =
-      await import('@/utils/monitoring/sentryRendererTracing')
-    integrations.push(createRendererTracingIntegration())
+  if (rendererSentryInitPromise) {
+    await rendererSentryInitPromise
+    return
   }
 
-  if (sentryReplayFeatureEnabled && options.replayEnabled) {
-    const { createRendererReplayIntegration } =
-      await import('@/utils/monitoring/sentryRendererReplay')
-    integrations.push(createRendererReplayIntegration())
-  }
+  rendererSentryInitPromise = (async () => {
+    const tracingEnabled = sentryTracingFeatureEnabled && options.tracingEnabled
+    const replayEnabled = sentryReplayFeatureEnabled && options.replayEnabled
+    const integrations = []
 
-  init({
-    dsn: options.dsn,
-    environment: options.environment,
-    release: options.release,
-    integrations,
-    tracesSampleRate: options.tracingEnabled ? options.tracesSampleRate : 0,
-    replaysSessionSampleRate: options.replayEnabled ? options.replaysSessionSampleRate : 0,
-    replaysOnErrorSampleRate: options.replayEnabled ? options.replaysOnErrorSampleRate : 0
+    if (tracingEnabled) {
+      const { createRendererTracingIntegration } =
+        await import('@/utils/monitoring/sentryRendererTracing')
+      integrations.push(createRendererTracingIntegration())
+    }
+
+    if (replayEnabled) {
+      const { createRendererReplayIntegration } =
+        await import('@/utils/monitoring/sentryRendererReplay')
+      integrations.push(createRendererReplayIntegration())
+    }
+
+    init({
+      dsn: options.dsn,
+      environment: options.environment,
+      release: options.release,
+      integrations,
+      tracesSampleRate: tracingEnabled ? options.tracesSampleRate : 0,
+      replaysSessionSampleRate: replayEnabled ? options.replaysSessionSampleRate : 0,
+      replaysOnErrorSampleRate: replayEnabled ? options.replaysOnErrorSampleRate : 0
+    })
+
+    setTags({
+      'process.type': 'renderer',
+      platform: navigator.platform || 'unknown',
+      'app.environment': options.environment
+    })
+
+    if (options.release) {
+      setTag('app.release', options.release)
+    }
+
+    setContext('runtime', {
+      userAgent: navigator.userAgent
+    })
+
+    rendererSentryInitialized = true
+  })().catch(error => {
+    rendererSentryInitPromise = null
+    throw error
   })
 
-  setTags({
-    'process.type': 'renderer',
-    platform: navigator.platform || 'unknown',
-    'app.environment': options.environment
-  })
-
-  if (options.release) {
-    setTag('app.release', options.release)
-  }
-
-  setContext('runtime', {
-    userAgent: navigator.userAgent
-  })
-
-  rendererSentryInitialized = true
+  await rendererSentryInitPromise
 }
 
 export function resetRendererSentryForTest(): void {
   rendererSentryInitialized = false
+  rendererSentryInitPromise = null
 }

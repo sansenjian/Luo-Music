@@ -47,7 +47,7 @@ const adapterLoaders: Record<SupportedPlatformId, () => Promise<MusicPlatformAda
 const adapterPromises = new Map<SupportedPlatformId, Promise<MusicPlatformAdapter>>()
 
 function resolvePlatformId(platform: string): SupportedPlatformId {
-  if (platform in adapterLoaders) {
+  if (Object.prototype.hasOwnProperty.call(adapterLoaders, platform)) {
     return platform as SupportedPlatformId
   }
 

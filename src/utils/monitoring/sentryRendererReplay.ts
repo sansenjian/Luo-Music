@@ -1,8 +1,10 @@
 import { replayIntegration } from '@sentry/browser'
 
-export function createRendererReplayIntegration() {
+export function createRendererReplayIntegration(): ReturnType<typeof replayIntegration> {
   return replayIntegration({
-    maskAllText: false,
-    blockAllMedia: false
+    maskAllText: true,
+    blockAllMedia: true,
+    unmask: ['[data-sentry-unmask]'],
+    unblock: ['[data-sentry-unblock]']
   })
 }

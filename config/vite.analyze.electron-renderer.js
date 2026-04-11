@@ -1,6 +1,6 @@
 import { defineConfig, mergeConfig } from 'vite'
 
-import baseConfig from '../electron.vite.config.ts'
+import baseConfig, { ANALYZE_EXCLUDE_PLUGIN_MARKER } from '../electron.vite.config.ts'
 
 async function resolveBaseConfig(env) {
   if (typeof baseConfig === 'function') {
@@ -15,7 +15,12 @@ export default defineConfig(async env => {
   const rendererConfig = resolvedConfig.renderer ?? {}
   const plugins = Array.isArray(rendererConfig.plugins)
     ? rendererConfig.plugins.filter(plugin => {
-        return !plugin || !('name' in plugin) || !plugin.name.toLowerCase().includes('sentry')
+        return (
+          !plugin ||
+          typeof plugin !== 'object' ||
+          Array.isArray(plugin) ||
+          !(ANALYZE_EXCLUDE_PLUGIN_MARKER in plugin)
+        )
       })
     : rendererConfig.plugins
 
