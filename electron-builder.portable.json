@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.sansenjian.luo-music",
+  "productName": "LUO Music",
+  "artifactName": "${productName}-portable-${version}.${ext}",
+  "directories": {
+    "output": "out/portable"
+  },
+  "asar": true,
+  "asarUnpack": [
+    "**/node_modules/{conf,ajv,json-schema-traverse,atomically,dot-prop,uint8array-extras,type-fest}/**"
+  ],
+  "files": [
+    "build/**/*",
+    "public/**/*",
+    "!build/runtime{,/**}",
+    "!build/service{,/**}",
+    "!**/*.map"
+  ],
+  "extraResources": [
+    {
+      "from": "build/service",
+      "to": "service",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "build/runtime/qq-api-server.cjs",
+      "to": ".",
+      "filter": ["qq-api-server.cjs"]
+    },
+    {
+      "from": "scripts/dev/qq-search-fallback.cjs",
+      "to": ".",
+      "filter": ["qq-search-fallback.cjs"]
+    },
+    {
+      "from": "scripts/dev/netease-api-server.cjs",
+      "to": ".",
+      "filter": ["netease-api-server.cjs"]
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ]
+  }
+}

@@ -4,9 +4,11 @@ const setupServicesMock = vi.hoisted(() => vi.fn())
 const vueQueryInstallMock = vi.hoisted(() => vi.fn())
 const routerInstallMock = vi.hoisted(() => vi.fn())
 const routerBeforeResolveMock = vi.hoisted(() => vi.fn())
-let routeBeforeResolveHandler:
-  | ((to: { matched: Array<{ meta?: Record<string, unknown> }> }) => Promise<void>)
-  | undefined
+type RouteResolveHandler = (to: {
+  matched: Array<{ meta?: Record<string, unknown> }>
+}) => Promise<void>
+
+let routeBeforeResolveHandler: RouteResolveHandler | undefined
 const loggerWarnMock = vi.hoisted(() => vi.fn())
 const loggerErrorMock = vi.hoisted(() => vi.fn())
 const performanceInitMock = vi.hoisted(() => vi.fn())
@@ -21,7 +23,7 @@ vi.mock('@/App.vue', () => ({
 vi.mock('@/router', () => ({
   default: {
     install: routerInstallMock,
-    beforeResolve: vi.fn(handler => {
+    beforeResolve: vi.fn((handler: RouteResolveHandler) => {
       routeBeforeResolveHandler = handler
       routerBeforeResolveMock(handler)
     })
@@ -75,8 +77,9 @@ describe('main bootstrap', () => {
 
     expect(vueQueryInstallMock).not.toHaveBeenCalled()
     expect(routerInstallMock).toHaveBeenCalledTimes(1)
+    expect(routeBeforeResolveHandler).toBeDefined()
 
-    await routeBeforeResolveHandler?.({
+    await routeBeforeResolveHandler!({
       matched: [{ meta: { requiresVueQuery: true } }]
     })
 

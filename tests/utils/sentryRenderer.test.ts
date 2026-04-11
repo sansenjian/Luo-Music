@@ -6,7 +6,18 @@ const setContextMock = vi.hoisted(() => vi.fn())
 const setTagMock = vi.hoisted(() => vi.fn())
 const setTagsMock = vi.hoisted(() => vi.fn())
 const browserTracingIntegrationMock = vi.hoisted(() => vi.fn(() => ({ name: 'tracing' })))
-const replayIntegrationMock = vi.hoisted(() => vi.fn(() => ({ name: 'replay' })))
+const replayIntegrationMock = vi.hoisted(() =>
+  vi.fn(options => ({
+    name: 'replay',
+    options
+  }))
+)
+const expectedReplayPrivacyOptions = {
+  maskAllText: true,
+  blockAllMedia: true,
+  unmask: ['[data-sentry-unmask]'],
+  unblock: ['[data-sentry-unblock]']
+}
 
 vi.mock('@sentry/browser', () => ({
   init: initMock,
@@ -133,9 +144,16 @@ describe('renderer sentry bootstrap', () => {
 
     expect(browserTracingIntegrationMock).toHaveBeenCalledTimes(1)
     expect(replayIntegrationMock).toHaveBeenCalledTimes(1)
+    expect(replayIntegrationMock).toHaveBeenCalledWith(expectedReplayPrivacyOptions)
     expect(initMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        integrations: expect.arrayContaining([{ name: 'tracing' }, { name: 'replay' }]),
+        integrations: expect.arrayContaining([
+          { name: 'tracing' },
+          expect.objectContaining({
+            name: 'replay',
+            options: expect.objectContaining(expectedReplayPrivacyOptions)
+          })
+        ]),
         tracesSampleRate: 0.1,
         replaysSessionSampleRate: 0.1,
         replaysOnErrorSampleRate: 1

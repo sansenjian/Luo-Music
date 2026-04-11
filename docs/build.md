@@ -1,6 +1,6 @@
 # 构建产物管理
 
-**最后更新**: 2026-04-11
+**最后更新**: 2026-04-12
 
 ## 📁 统一输出目录
 
@@ -32,6 +32,14 @@ out/
     │   └── service/       # API 服务资源（extraResource）
     │       └── index.cjs
     └── ...
+```
+
+额外的单文件便携版输出目录：
+
+```
+out/
+└── portable/
+    └── LUO Music-portable-1.0.0.exe
 ```
 
 **已废弃的目录：**
@@ -74,6 +82,9 @@ npm run build
 
 # 构建并打包 Electron 应用（生成安装包）
 npm run build:electron
+
+# 构建单文件便携版（最终仅输出一个 .exe）
+npm run build:electron:portable
 
 # 仅打包（使用已构建的文件）
 npm run make
@@ -244,6 +255,7 @@ outDir: 'build'
 
 - **打包配置**: `packagerConfig` 定义了应用打包选项
 - **安装包制作**: `makers` 包含 `MakerSquirrel` (Windows 安装程序) 和 `MakerZIP`
+- **单文件便携版**: `electron-builder.portable.json` 使用 `portable` 目标，仅输出一个便携 `.exe`
 - **插件**: `AutoUnpackNativesPlugin` 自动解包原生模块
 - **额外资源**: `extraResource` 包含 API 服务端代码
 
@@ -274,6 +286,13 @@ outDir: 'build'
    - `LUO Music-1.0.0 Setup.exe` - Windows 安装程序
    - `LUO Music-1.0.0.zip` - 便携版压缩包
 3. 分发安装包或便携版
+
+### Electron 单文件便携版
+
+1. 运行 `npm run build:electron:portable`
+2. 产物在 `out/portable/` 目录
+   - `LUO Music-portable-1.0.0.exe` - 单文件便携版
+3. 该命令结束后，输出目录会被收敛为仅保留一个 `.exe`
 
 ### 独立 Server 部署
 

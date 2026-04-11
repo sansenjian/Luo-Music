@@ -10,11 +10,21 @@ async function resolveBaseConfig(env) {
   return await baseConfig
 }
 
+function flattenPlugins(plugins) {
+  return plugins.flatMap(plugin => {
+    if (Array.isArray(plugin)) {
+      return flattenPlugins(plugin)
+    }
+
+    return [plugin]
+  })
+}
+
 export default defineConfig(async env => {
   const resolvedConfig = await resolveBaseConfig(env)
   const rendererConfig = resolvedConfig.renderer ?? {}
   const plugins = Array.isArray(rendererConfig.plugins)
-    ? rendererConfig.plugins.filter(plugin => {
+    ? flattenPlugins(rendererConfig.plugins).filter(plugin => {
         return (
           !plugin ||
           typeof plugin !== 'object' ||

@@ -12,7 +12,7 @@ const mockAdapter = {
   getSongDetail: vi.fn(),
   getLyric: vi.fn(),
   getPlaylistDetail: vi.fn()
-}
+} satisfies MusicPlatformAdapter
 
 vi.mock('@/platform/music', () => ({
   getMusicAdapter: vi.fn(async () => mockAdapter)
@@ -278,8 +278,7 @@ describe('musicService', () => {
 
     it('supports an injected adapter resolver', async () => {
       const resolveAdapter = vi.fn(
-        async (_platform: string): Promise<MusicPlatformAdapter> =>
-          mockAdapter as unknown as MusicPlatformAdapter
+        async (_platform: string): Promise<MusicPlatformAdapter> => mockAdapter
       )
       mockAdapter.getLyric.mockResolvedValue({ lrc: '', tlyric: '', romalrc: '' })
       const injectedService = createMusicService({ resolveAdapter })

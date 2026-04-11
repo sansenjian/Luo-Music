@@ -8,7 +8,8 @@
 scripts/
 ├── README.md           # 本说明文件
 ├── build/              # 构建相关脚本
-│   └── clean-force.js  # 强制清理构建产物（Windows 优化）
+│   ├── clean-force.js  # 强制清理构建产物（Windows 优化）
+│   └── finalize-portable-output.cjs # 收敛单文件便携版输出，只保留 .exe
 │
 ├── dev/                # 开发环境脚本
 │   ├── dev-electron-launcher.cjs  # Electron 开发启动器
@@ -31,6 +32,9 @@ npm run clean
 
 # 清理所有（包括 node_modules）
 npm run clean:all
+
+# 构建单文件便携版
+npm run build:electron:portable
 ```
 
 ### 工具脚本
@@ -80,6 +84,16 @@ node scripts/build/clean-force.js --all
 1. 强制结束 Electron 相关进程
 2. 使用重命名策略绕过文件锁定
 3. 清理构建产物目录
+
+#### finalize-portable-output.cjs
+
+单文件便携版打包后处理脚本。
+
+**功能：**
+
+1. 检查 `out/portable/` 中是否恰好生成一个 `.exe`
+2. 删除同目录下的其他文件或临时目录
+3. 确保最终输出目录只保留单个便携版 `.exe`
 
 ### dev/
 
@@ -169,16 +183,16 @@ Electron 开发环境启动器。
 
 ```javascript
 // ESM 模块 (.js)
-import { fileURLToPath } from "url";
-import path from "path";
+import { fileURLToPath } from 'url'
+import path from 'path'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, "..", ".."); // 回到项目根目录
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const rootDir = path.resolve(__dirname, '..', '..') // 回到项目根目录
 
 // CommonJS 模块 (.cjs)
-const path = require("path");
-const projectRoot = path.resolve(__dirname, "..", "..");
+const path = require('path')
+const projectRoot = path.resolve(__dirname, '..', '..')
 ```
 
 ## 📊 相关命令
