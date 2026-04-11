@@ -10,6 +10,15 @@ const electronWinstallerSignPath = path.join(
   'lib',
   'sign.js'
 )
+const appBuilderLibNodeModulesCollectorPath = path.join(
+  __dirname,
+  '..',
+  'node_modules',
+  'app-builder-lib',
+  'out',
+  'node-module-collector',
+  'nodeModulesCollector.js'
+)
 
 function patchCrossZip(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -58,5 +67,72 @@ function patchElectronWinstallerSign(filePath) {
   console.log('[patch-cross-zip] patched electron-winstaller sign.js guard for DEP0187')
 }
 
+function patchAppBuilderLibNodeModulesCollector(filePath) {
+  if (!fs.existsSync(filePath)) {
+    console.log('[patch-cross-zip] app-builder-lib is not installed, skipping')
+    return
+  }
+
+  const source = fs.readFileSync(filePath, 'utf8')
+  const originalSnippet = [
+    '        await new Promise((resolve, reject) => {',
+    '            const outStream = (0, fs_extra_1.createWriteStream)(tempOutputFile);',
+    '            const child = childProcess.spawn(command, args, {',
+    '                cwd,',
+    '                env: { COREPACK_ENABLE_STRICT: "0", ...process.env }, // allow `process.env` overrides',
+    '                shell: true, // `true`` is now required: https://github.com/electron-userland/electron-builder/issues/9488',
+    '            });'
+  ].join('\n')
+  const malformedSnippet = [
+    '        await new Promise((resolve, reject) => {',
+    '            const outStream = (0, fs_extra_1.createWriteStream)(tempOutputFile);',
+    '            const quoteForShell = (part) => {',
+    '                if (part.length === 0) {',
+    '                    return "\\"";',
+    '                }',
+    '                return /[\\s"]/u.test(part) && !(part.startsWith("\\"") && part.endsWith("\\""))',
+    '                    ? "\\\\"${part.replace(/"/g, \'\\\\\\\\\\"\')}\\\\""',
+    '                    : part;',
+    '            };',
+    '            const shellCommand = [command, ...args].map(quoteForShell).join(" ");',
+    '            const child = childProcess.spawn(shellCommand, [], {',
+    '                cwd,',
+    '                env: { COREPACK_ENABLE_STRICT: "0", ...process.env }, // allow `process.env` overrides',
+    '                shell: true, // electron-builder currently requires shell mode here, so pass a single shell command string to avoid DEP0190',
+    '            });'
+  ].join('\n')
+  const fixedSnippet = [
+    "        await new Promise((resolve, reject) => {",
+    "            const outStream = (0, fs_extra_1.createWriteStream)(tempOutputFile);",
+    "            const quoteForShell = (part) => {",
+    "                if (part.length === 0) {",
+    "                    return '\"\"';",
+    "                }",
+    "                if (!(part.startsWith('\"') && part.endsWith('\"')) && /[\\s\"]/u.test(part)) {",
+    "                    const escapedPart = part.replace(/\"/g, '\\\\\"');",
+    "                    return `\"${escapedPart}\"`;",
+    "                }",
+    "                return part;",
+    "            };",
+    "            const shellCommand = [command, ...args].map(quoteForShell).join(\" \");",
+    "            const child = childProcess.spawn(shellCommand, [], {",
+    "                cwd,",
+    "                env: { COREPACK_ENABLE_STRICT: \"0\", ...process.env }, // allow `process.env` overrides",
+    "                shell: true, // electron-builder currently requires shell mode here, so pass a single shell command string to avoid DEP0190",
+    "            });"
+  ].join('\n')
+
+  const patched = source.replace(originalSnippet, fixedSnippet).replace(malformedSnippet, fixedSnippet)
+
+  if (patched === source) {
+    console.log('[patch-cross-zip] app-builder-lib already patched or unsupported version')
+    return
+  }
+
+  fs.writeFileSync(filePath, patched, 'utf8')
+  console.log('[patch-cross-zip] patched app-builder-lib nodeModulesCollector for DEP0190')
+}
+
 patchCrossZip(crossZipPath)
 patchElectronWinstallerSign(electronWinstallerSignPath)
+patchAppBuilderLibNodeModulesCollector(appBuilderLibNodeModulesCollectorPath)

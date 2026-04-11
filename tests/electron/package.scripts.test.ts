@@ -39,6 +39,10 @@ describe('package scripts for forge workflows', () => {
     )
   })
 
+  it('lets build:electron:fast delegate to make:fast without rebuilding twice', () => {
+    expect(packageJson.scripts?.['build:electron:fast']).toBe('npm run make:fast')
+  })
+
   it('lets package:fast delegate to the canonical package workflow', () => {
     expect(packageJson.scripts?.['package:fast']).toBe('npm run package')
   })

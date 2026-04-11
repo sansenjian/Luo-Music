@@ -12,13 +12,17 @@ function setTimeoutSync(ms) {
 }
 
 function killLockingProcesses() {
+  if (process.platform !== 'win32') {
+    return
+  }
+
   console.log('正在结束占用进程...')
 
   const processes = ['electron.exe', 'LUO Music.exe']
 
   for (const proc of processes) {
     try {
-      execSync(`taskkill /F /IM "${proc}" 2>nul`, { stdio: 'ignore' })
+      execSync(`taskkill /F /IM "${proc}"`, { stdio: 'ignore' })
       console.log(`  ✓ 已结束 ${proc}`)
     } catch {
       // ignore when the process is not running

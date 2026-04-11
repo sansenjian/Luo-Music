@@ -75,6 +75,32 @@ describe('user api', () => {
     })
   })
 
+  it('omits the cookie field when the user account request has no cookie', async () => {
+    apiRequestMock.mockResolvedValue({})
+
+    await getUserAccount()
+    await getUserAccount('')
+    await logout()
+    await getUserSubcount()
+    await getUserLevel()
+
+    expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'netease', '/user/account', {
+      timestamp: 1234567890
+    })
+    expect(apiRequestMock).toHaveBeenNthCalledWith(2, 'netease', '/user/account', {
+      timestamp: 1234567890
+    })
+    expect(apiRequestMock).toHaveBeenNthCalledWith(3, 'netease', '/logout', {
+      timestamp: 1234567890
+    })
+    expect(apiRequestMock).toHaveBeenNthCalledWith(4, 'netease', '/user/subcount', {
+      timestamp: 1234567890
+    })
+    expect(apiRequestMock).toHaveBeenNthCalledWith(5, 'netease', '/user/level', {
+      timestamp: 1234567890
+    })
+  })
+
   it('routes user detail and event requests through ApiService with params', async () => {
     apiRequestMock.mockResolvedValue({})
 

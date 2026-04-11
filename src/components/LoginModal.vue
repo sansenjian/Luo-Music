@@ -21,6 +21,14 @@ import {
 type LoginStatus = 'loading' | 'waiting' | 'scanned' | 'expired' | 'success' | 'error'
 type UserDetailResponse = {
   profile?: Record<string, unknown>
+  data?: {
+    profile?: Record<string, unknown>
+  }
+  body?: {
+    data?: {
+      profile?: Record<string, unknown>
+    }
+  }
 }
 
 const emit = defineEmits<{
@@ -231,10 +239,11 @@ async function handleLoginSuccess(cookie: string, attemptId: number): Promise<vo
         if (!isAttemptCurrent(attemptId)) {
           return
         }
-        profile =
-          userDetailRes?.profile && typeof userDetailRes.profile === 'object'
-            ? userDetailRes.profile
-            : null
+        const detailProfile =
+          userDetailRes?.profile ||
+          userDetailRes?.data?.profile ||
+          userDetailRes?.body?.data?.profile
+        profile = detailProfile && typeof detailProfile === 'object' ? detailProfile : null
       }
     }
 

@@ -138,7 +138,11 @@ describe('LoginModal.vue', () => {
       }
     })
     apiMocks.getUserDetail.mockResolvedValue({
-      profile: { nickname: 'detail-user', userId: 42 }
+      body: {
+        data: {
+          profile: { nickname: 'detail-user', userId: 42 }
+        }
+      }
     })
 
     const { default: LoginModal } = await import('@/components/LoginModal.vue')
