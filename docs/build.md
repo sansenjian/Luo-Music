@@ -17,8 +17,8 @@ build/
 ├── electron/               # Electron 主进程和 Preload 脚本
 │   ├── main.cjs            # Electron 主进程
 │   └── preload.cjs         # Preload 脚本
-└── server/                 # API 服务端
-    └── server.cjs          # 编译后的服务端代码
+└── service/                # API 服务资源
+    └── index.cjs           # 编译后的服务入口
 ```
 
 Electron Forge 打包输出目录：
@@ -29,8 +29,8 @@ out/
 └── LUO Music-win32-x64/    # 便携版（未打包）
     ├── resources/
     │   ├── app.asar/      # Electron 应用代码
-    │   └── server/        # API 服务端（extraResource）
-    │       └── server.cjs
+    │   └── service/       # API 服务资源（extraResource）
+    │       └── index.cjs
     └── ...
 ```
 
@@ -38,7 +38,7 @@ out/
 
 - ❌ `dist/` - 已迁移至 `build/`
 - ❌ `dist-electron/` - 已迁移至 `build/electron/`
-- ❌ `dist-server/` - 已迁移至 `build/server/`
+- ❌ `dist-server/` - 已迁移至 `build/service/`
 - ❌ `release_v2/` - 已迁移至 `out/` (Electron Forge)
 
 ## 🚀 构建命令
@@ -131,11 +131,13 @@ npm run test:coverage
 - QQ 音乐 API: 通过 `scripts/dev/qq-api-server.cjs` 子进程启动
 
 **优点**：
+
 - API 崩溃不影响主进程
 - 可以独立重启 API 服务
 - 资源隔离更好
 
 **架构**：
+
 - `ServiceManager` 统一管理所有 API 子进程
 - 支持健康检查和自动重启
 - 通过 HTTP 进行进程间通信
@@ -175,24 +177,26 @@ await serviceManager.stopAll()
 ### Server 构建
 
 ```bash
-# 构建 server.ts 到 build/server/server.cjs
+# 构建 server.ts 到 build/service/index.cjs
 npm run build:server
 ```
 
 ### Server 打包
 
 `forge.config.ts` 配置：
+
 ```typescript
 packagerConfig: {
   extraResource: [
-    'build/server'  // 打包到 resources/server/
+    'build/service' // 打包到 resources/service/
   ]
 }
 ```
 
 打包后的路径：
-- 开发环境: `build/server/server.cjs`
-- 生产环境: `resources/server/server.cjs`
+
+- 开发环境: `build/service/index.cjs`
+- 生产环境: `resources/service/index.cjs`
 
 ## 🧹 清理构建产物
 
@@ -229,7 +233,7 @@ npm run clean:all
 // Electron 主进程输出目录
 outDir: 'build/electron'
 
-// Preload 脚本输出目录  
+// Preload 脚本输出目录
 outDir: 'build/electron'
 
 // 渲染进程输出目录
@@ -259,7 +263,7 @@ outDir: 'build'
 2. 部署 `build/` 目录到静态服务器
 3. 同时部署并运行 API 服务端：
    ```bash
-   node build/server/server.cjs
+   node build/service/index.cjs
    ```
 4. 配置服务器支持 SPA 路由
 
@@ -280,10 +284,11 @@ outDir: 'build'
 npm run build:server
 
 # 运行
-node build/server/server.cjs
+node build/service/index.cjs
 ```
 
 环境变量：
+
 - `NCM_PORT`: 网易云 API 端口（默认 14532）
 - `PORT`: Koa 服务端口（如有）
 
@@ -291,9 +296,9 @@ node build/server/server.cjs
 
 1. **electron-vite**: 使用 `electron-vite` 构建 Electron 主进程、preload 和渲染进程
 2. **编码统一**：项目文本文件统一使用 UTF-8（无 BOM），避免编码不一致导致的乱码与构建异常
-2. **Electron Forge**: 使用 `@electron-forge` 进行应用打包和分发
-3. **输出目录**: Forge 默认输出到 `out/` 目录（可在 `forge.config.ts` 中修改）
-4. **API 服务端**:
+3. **Electron Forge**: 使用 `@electron-forge` 进行应用打包和分发
+4. **输出目录**: Forge 默认输出到 `out/` 目录（可在 `forge.config.ts` 中修改）
+5. **API 服务端**:
    - API 服务通过子进程启动（QQ 音乐和网易云）
    - 使用 `ServiceManager` 管理服务子进程
    - 打包时通过 `extraResource` 包含 server 代码
@@ -331,7 +336,7 @@ taskkill /F /PID <PID>
 npm run build:server
 
 # 检查输出
-ls build/server/
+ls build/service/
 ```
 
 ### 依赖问题

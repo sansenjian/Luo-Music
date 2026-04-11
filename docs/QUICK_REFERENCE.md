@@ -97,7 +97,7 @@ luo-music/
 │   ├── store/              # 状态管理
 │   └── utils/              # 工具
 ├── electron/                # Electron 主进程
-├── server/                  # API 服务端
+├── service/                 # API 服务资源
 ├── tests/                   # 测试
 └── docs/                    # 文档
 ```

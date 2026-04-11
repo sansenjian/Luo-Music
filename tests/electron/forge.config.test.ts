@@ -105,7 +105,7 @@ describe('forge.config packagerConfig.ignore', () => {
 
   it('copies required runtime scripts via extraResource instead of app.asar', () => {
     expect(getExtraResources()).toEqual([
-      'build/server',
+      'build/service',
       'build/runtime/qq-api-server.cjs',
       'scripts/dev/qq-search-fallback.cjs',
       'scripts/dev/netease-api-server.cjs'

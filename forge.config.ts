@@ -11,7 +11,7 @@ const FAST_MAKE_MODE = process.env.LUO_FAST_MAKE === '1'
 const packagingLocalesToKeep = new Set(['en-US.pak', 'zh-CN.pak'] as const)
 type PackagerHookDone = (error?: Error | null) => void
 const packagingExtraResources = [
-  'build/server',
+  'build/service',
   'build/runtime/qq-api-server.cjs',
   'scripts/dev/qq-search-fallback.cjs',
   'scripts/dev/netease-api-server.cjs'
