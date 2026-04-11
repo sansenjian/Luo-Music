@@ -164,6 +164,7 @@ test-results/
 .claude/
 .codex/
 .ai/
+.playwright-mcp/
 
 # Husky
 .husky/.gitignore
