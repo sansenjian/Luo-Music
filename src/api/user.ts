@@ -37,6 +37,14 @@ function withTimestamp(params: Record<string, unknown> = {}): Record<string, unk
   }
 }
 
+function withOptionalCookie(
+  params: Record<string, unknown> = {},
+  cookie?: string
+): Record<string, unknown> {
+  const trimmedCookie = typeof cookie === 'string' ? cookie.trim() : ''
+  return trimmedCookie.length > 0 ? { ...params, cookie: trimmedCookie } : params
+}
+
 export function getQRKey() {
   return neteaseRequest('/login/qr/key', withTimestamp())
 }
@@ -49,16 +57,16 @@ export function checkQRStatus(key: string) {
   return neteaseRequest('/login/qr/check', withTimestamp({ key }))
 }
 
-export function getUserAccount() {
-  return neteaseRequest('/user/account', withTimestamp())
+export function getUserAccount(cookie?: string) {
+  return neteaseRequest('/user/account', withTimestamp(withOptionalCookie({}, cookie)))
 }
 
 export function logout() {
   return neteaseRequest('/logout', withTimestamp())
 }
 
-export function getUserDetail(uid: number) {
-  return neteaseRequest('/user/detail', withTimestamp({ uid }))
+export function getUserDetail(uid: number, cookie?: string) {
+  return neteaseRequest('/user/detail', withTimestamp(withOptionalCookie({ uid }, cookie)))
 }
 
 export function getUserSubcount() {

@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 
 import { services } from '../services'
-import { getQRCode, getQRKey, getUserAccount, checkQRStatus } from '../api/user'
+import { checkQRStatus, getQRCode, getQRKey, getUserAccount, getUserDetail } from '../api/user'
 import { useToastStore } from '../store/toastStore'
 import { useUserStore } from '../store/userStore'
 import {
@@ -10,6 +10,7 @@ import {
   extractQrImage,
   extractQrKey,
   extractQrStatusCode,
+  extractUserId,
   extractUserProfile,
   type QrCheckResponse,
   type QrImageResponse,
@@ -18,6 +19,9 @@ import {
 } from './loginModal.utils'
 
 type LoginStatus = 'loading' | 'waiting' | 'scanned' | 'expired' | 'success' | 'error'
+type UserDetailResponse = {
+  profile?: Record<string, unknown>
+}
 
 const emit = defineEmits<{
   close: []
@@ -214,12 +218,26 @@ async function handleLoginSuccess(cookie: string, attemptId: number): Promise<vo
       userStore.setCookie(initialCookie)
     }
 
-    const userRes = (await getUserAccount()) as UserAccountResponse
+    const userRes = (await getUserAccount(initialCookie)) as UserAccountResponse
     if (!isAttemptCurrent(attemptId)) {
       return
     }
 
-    const profile = extractUserProfile(userRes)
+    let profile = extractUserProfile(userRes)
+    if (!profile) {
+      const userId = extractUserId(userRes)
+      if (userId !== null) {
+        const userDetailRes = (await getUserDetail(userId, initialCookie)) as UserDetailResponse
+        if (!isAttemptCurrent(attemptId)) {
+          return
+        }
+        profile =
+          userDetailRes?.profile && typeof userDetailRes.profile === 'object'
+            ? userDetailRes.profile
+            : null
+      }
+    }
+
     if (!profile) {
       throw new Error('Missing user profile')
     }

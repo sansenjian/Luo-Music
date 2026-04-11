@@ -20,7 +20,8 @@ const apiMocks = vi.hoisted(() => ({
   getQRKey: vi.fn(),
   getQRCode: vi.fn(),
   checkQRStatus: vi.fn(),
-  getUserAccount: vi.fn()
+  getUserAccount: vi.fn(),
+  getUserDetail: vi.fn()
 }))
 
 const loggerMocks = vi.hoisted(() => ({
@@ -33,7 +34,8 @@ vi.mock('@/api/user', () => ({
   getQRKey: apiMocks.getQRKey,
   getQRCode: apiMocks.getQRCode,
   checkQRStatus: apiMocks.checkQRStatus,
-  getUserAccount: apiMocks.getUserAccount
+  getUserAccount: apiMocks.getUserAccount,
+  getUserDetail: apiMocks.getUserDetail
 }))
 
 vi.mock('@/services', () => ({
@@ -52,6 +54,7 @@ describe('LoginModal.vue', () => {
     apiMocks.getQRCode.mockReset()
     apiMocks.checkQRStatus.mockReset()
     apiMocks.getUserAccount.mockReset()
+    apiMocks.getUserDetail.mockReset()
     loggerMocks.debug.mockReset()
     loggerMocks.error.mockReset()
     loggerMocks.warn.mockReset()
@@ -121,5 +124,34 @@ describe('LoginModal.vue', () => {
     expect(userStore.isLoggedIn).toBe(true)
     expect(userStore.cookie).toContain('MUSIC_U=browser-cookie')
     expect(userStore.nickname).toBe('tester')
+  })
+
+  it('falls back to user detail when user account is missing the profile payload', async () => {
+    apiMocks.getQRKey.mockResolvedValue({ data: { unikey: 'qr-key' } })
+    apiMocks.getQRCode.mockResolvedValue({ data: { qrimg: 'data:image/png;base64,qr' } })
+    apiMocks.checkQRStatus.mockResolvedValue({ code: 803, cookie: 'MUSIC_U=login-cookie' })
+    apiMocks.getUserAccount.mockResolvedValue({
+      body: {
+        data: {
+          account: { id: 42 }
+        }
+      }
+    })
+    apiMocks.getUserDetail.mockResolvedValue({
+      profile: { nickname: 'detail-user', userId: 42 }
+    })
+
+    const { default: LoginModal } = await import('@/components/LoginModal.vue')
+    mount(LoginModal)
+
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(3000)
+    await flushPromises()
+
+    const userStore = useUserStore()
+    expect(apiMocks.getUserAccount).toHaveBeenCalledWith('MUSIC_U=login-cookie')
+    expect(apiMocks.getUserDetail).toHaveBeenCalledWith(42, 'MUSIC_U=login-cookie')
+    expect(userStore.isLoggedIn).toBe(true)
+    expect(userStore.nickname).toBe('detail-user')
   })
 })

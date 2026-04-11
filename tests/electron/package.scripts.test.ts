@@ -20,7 +20,7 @@ describe('package scripts for forge workflows', () => {
 
   it('cleans only the packaged app directory before package', () => {
     expect(packageJson.scripts?.package).toBe(
-      'node scripts/build/clean-targets.cjs --force build out/LUO Music-win32-x64 && npm run build:electron:bundle && electron-forge package'
+      'node scripts/build/clean-targets.cjs --force build "out/LUO Music-win32-x64" && npm run build:electron:bundle && electron-forge package'
     )
   })
 
@@ -28,7 +28,7 @@ describe('package scripts for forge workflows', () => {
     'cleans only forge make outputs before %s',
     scriptName => {
       expect(packageJson.scripts?.[scriptName]).toMatch(
-        /^node scripts\/build\/clean-targets\.cjs --force build out\/LUO Music-win32-x64 out\/make && npm run build:electron:bundle && /
+        /^node scripts\/build\/clean-targets\.cjs --force build "out\/LUO Music-win32-x64" out\/make && npm run build:electron:bundle && /
       )
     }
   )

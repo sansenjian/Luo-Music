@@ -5,6 +5,7 @@ import {
   extractQrImage,
   extractQrKey,
   extractQrStatusCode,
+  extractUserId,
   extractUserProfile
 } from '@/components/loginModal.utils'
 
@@ -30,6 +31,15 @@ describe('loginModal.utils', () => {
         }
       })
     ).toEqual({ nickname: 'tester' })
+    expect(
+      extractUserId({
+        body: {
+          data: {
+            account: { id: 42 }
+          }
+        }
+      })
+    ).toBe(42)
   })
 
   it('extracts deeply wrapped payloads and normalizes status values', () => {
@@ -50,5 +60,14 @@ describe('loginModal.utils', () => {
         }
       })
     ).toEqual({ nickname: 'deep-tester' })
+    expect(
+      extractUserId({
+        data: {
+          data: {
+            profile: { userId: '24' }
+          }
+        }
+      })
+    ).toBe(24)
   })
 })

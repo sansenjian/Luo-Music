@@ -55,12 +55,13 @@ describe('user api', () => {
   it('routes user account requests through ApiService', async () => {
     apiRequestMock.mockResolvedValue({})
 
-    await getUserAccount()
+    await getUserAccount('MUSIC_U=abc')
     await logout()
     await getUserSubcount()
     await getUserLevel()
 
     expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'netease', '/user/account', {
+      cookie: 'MUSIC_U=abc',
       timestamp: 1234567890
     })
     expect(apiRequestMock).toHaveBeenNthCalledWith(2, 'netease', '/logout', {
@@ -77,10 +78,11 @@ describe('user api', () => {
   it('routes user detail and event requests through ApiService with params', async () => {
     apiRequestMock.mockResolvedValue({})
 
-    await getUserDetail(42)
+    await getUserDetail(42, 'MUSIC_U=abc')
     await getUserEvent(42, 20, 777)
 
     expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'netease', '/user/detail', {
+      cookie: 'MUSIC_U=abc',
       uid: 42,
       timestamp: 1234567890
     })
