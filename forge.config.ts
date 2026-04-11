@@ -16,8 +16,39 @@ const packagingExtraResources = [
   'scripts/dev/qq-search-fallback.cjs',
   'scripts/dev/netease-api-server.cjs'
 ] as const
+const packagingWorkspaceArtifactsToRemove = [
+  '.ai',
+  '.claude',
+  '.codex',
+  '.github',
+  '.husky',
+  '.idea',
+  '.kilocode',
+  '.playwright-mcp',
+  '.trae',
+  '.userData',
+  '.vite_cache',
+  '.vscode'
+] as const
+const packagingNodeModulesToRemoveAfterPrune = [
+  'node_modules/.vite-temp',
+  'node_modules/@electron-forge',
+  'node_modules/@playwright',
+  'node_modules/@sentry/bundler-plugin-core',
+  'node_modules/@sentry/rollup-plugin',
+  'node_modules/@sentry/vite-plugin',
+  'node_modules/@types',
+  'node_modules/@vitejs',
+  'node_modules/electron',
+  'node_modules/electron-nightly',
+  'node_modules/playwright',
+  'node_modules/playwright-core',
+  'node_modules/typescript',
+  'node_modules/vite',
+  'node_modules/vitest'
+] as const
 const packagingIgnorePatterns = [
-  /^\/(?:\.ai|\.claude|\.codex|\.github|\.husky|\.idea|\.kilocode|\.trae|\.userData|\.vite_cache|\.vscode)(?:$|\/)/,
+  /^\/(?:\.ai|\.claude|\.codex|\.github|\.husky|\.idea|\.kilocode|\.playwright-mcp|\.trae|\.userData|\.vite_cache|\.vscode)(?:$|\/)/,
   /^\/(?:api|config|coverage|dist|docs|electron|playwright-report|server|src|test|test-results|tests)(?:$|\/)/,
   /^\/build\/runtime(?:$|\/)/,
   /^\/\.env(?:\.[^/]+)?$/,
@@ -26,7 +57,17 @@ const packagingIgnorePatterns = [
   /^\/scripts(?:$|\/)/,
   /^\/.*\.map$/,
   /^\/node_modules\/@fontsource(?:$|\/)/,
+  /^\/node_modules\/@electron-forge(?:$|\/)/,
+  /^\/node_modules\/@playwright(?:$|\/)/,
+  /^\/node_modules\/@sentry\/(?:bundler-plugin-core|rollup-plugin|vite-plugin)(?:$|\/)/,
+  /^\/node_modules\/@types(?:$|\/)/,
+  /^\/node_modules\/@vitejs(?:$|\/)/,
   /^\/node_modules\/date-fns(?:$|\/)/,
+  /^\/node_modules\/electron(?:$|\/)/,
+  /^\/node_modules\/playwright(?:-core)?(?:$|\/)/,
+  /^\/node_modules\/typescript(?:$|\/)/,
+  /^\/node_modules\/vite(?:$|\/)/,
+  /^\/node_modules\/vitest(?:$|\/)/,
   /^\/node_modules\/(?:.*\/)?(?:README|readme|CHANGELOG|changelog|CHANGES|changes|AUTHORS|authors|CONTRIBUTING|contributing)(?:\.[^/]+)?$/,
   /^\/node_modules\/(?:.*\/)?(?:\.github|\.vscode|coverage|docs?|example|examples|test|tests|__tests__)(?:$|\/)/
 ] as const
@@ -54,11 +95,35 @@ async function pruneElectronLocales(buildPath: string): Promise<void> {
   )
 }
 
+async function removePackagedPaths(
+  buildPath: string,
+  targetPaths: readonly string[]
+): Promise<void> {
+  const candidateRoots = [buildPath, join(buildPath, 'resources', 'app')]
+
+  await Promise.all(
+    candidateRoots.flatMap(rootPath =>
+      targetPaths.map(targetPath =>
+        rm(join(rootPath, targetPath), { recursive: true, force: true })
+      )
+    )
+  )
+}
+
+async function removePackagedWorkspaceArtifacts(buildPath: string): Promise<void> {
+  await removePackagedPaths(buildPath, packagingWorkspaceArtifactsToRemove)
+}
+
+async function removePackagedBuildOnlyModules(buildPath: string): Promise<void> {
+  await removePackagedPaths(buildPath, packagingNodeModulesToRemoveAfterPrune)
+}
+
 const config: ForgeConfig = {
   packagerConfig: {
     name: 'LUO Music',
     executableName: 'LUO Music',
     appBundleId: 'com.sansenjian.luo-music',
+    prune: true,
     asar: {
       unpack:
         '**/node_modules/{conf,ajv,json-schema-traverse,atomically,dot-prop,uint8array-extras,type-fest}/**'
@@ -72,6 +137,29 @@ const config: ForgeConfig = {
       }
     },
     ignore: [...packagingIgnorePatterns],
+    afterCopy: [
+      (buildPath, _electronVersion, _platform, _arch, done: PackagerHookDone) => {
+        void removePackagedWorkspaceArtifacts(buildPath).then(
+          () => done(),
+          error => {
+            done(error instanceof Error ? error : new Error(String(error)))
+          }
+        )
+      }
+    ],
+    afterPrune: [
+      (buildPath, _electronVersion, _platform, _arch, done: PackagerHookDone) => {
+        void Promise.all([
+          removePackagedWorkspaceArtifacts(buildPath),
+          removePackagedBuildOnlyModules(buildPath)
+        ]).then(
+          () => done(),
+          error => {
+            done(error instanceof Error ? error : new Error(String(error)))
+          }
+        )
+      }
+    ],
     afterExtract: [
       (buildPath, _electronVersion, _platform, _arch, done: PackagerHookDone) => {
         void pruneElectronLocales(buildPath).then(
