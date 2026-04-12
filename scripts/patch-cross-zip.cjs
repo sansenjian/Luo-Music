@@ -24,11 +24,18 @@ function isCiEnvironment() {
   return Boolean(process.env.CI || process.env.GITHUB_ACTIONS || process.env.GITLAB_CI)
 }
 
-function handleUnchangedPatch(logMessage) {
-  console.log(logMessage)
+function handleUnchangedPatch(options) {
+  const { alreadyPatched, alreadyPatchedMessage, unsupportedMessage } = options
+
+  if (alreadyPatched) {
+    console.log(alreadyPatchedMessage)
+    return
+  }
+
+  console.log(unsupportedMessage)
 
   if (isCiEnvironment()) {
-    throw new Error(`${logMessage} (failing in CI to surface patch drift)`)
+    throw new Error(`${unsupportedMessage} (failing in CI to surface patch drift)`)
   }
 }
 
@@ -50,7 +57,15 @@ function patchCrossZip(filePath) {
     )
 
   if (patched === source) {
-    handleUnchangedPatch('[patch-cross-zip] cross-zip already patched or unsupported version')
+    const alreadyPatched =
+      source.includes("fs.rm(outPath, { recursive: true, force: true, maxRetries: 3 }, doZip2)") &&
+      source.includes("fs.rmSync(outPath, { recursive: true, force: true, maxRetries: 3 })")
+
+    handleUnchangedPatch({
+      alreadyPatched,
+      alreadyPatchedMessage: '[patch-cross-zip] cross-zip already patched',
+      unsupportedMessage: '[patch-cross-zip] cross-zip unsupported version'
+    })
     return
   }
 
@@ -71,9 +86,15 @@ function patchElectronWinstallerSign(filePath) {
   )
 
   if (patched === source) {
-    handleUnchangedPatch(
-      '[patch-cross-zip] electron-winstaller already patched or unsupported version'
+    const alreadyPatched = source.includes(
+      'if (!BACKUP_SIGN_TOOL_PATH || !fs_extra_1.default.existsSync(BACKUP_SIGN_TOOL_PATH)) return [3 /*break*/, 3];'
     )
+
+    handleUnchangedPatch({
+      alreadyPatched,
+      alreadyPatchedMessage: '[patch-cross-zip] electron-winstaller already patched',
+      unsupportedMessage: '[patch-cross-zip] electron-winstaller unsupported version'
+    })
     return
   }
 
@@ -151,7 +172,13 @@ function patchAppBuilderLibNodeModulesCollector(filePath) {
     .replace(unsafePatchedSnippet, safeSnippet)
 
   if (patched === source) {
-    handleUnchangedPatch('[patch-cross-zip] app-builder-lib already patched or unsupported version')
+    const alreadyPatched = source.includes(safeSnippet)
+
+    handleUnchangedPatch({
+      alreadyPatched,
+      alreadyPatchedMessage: '[patch-cross-zip] app-builder-lib already patched',
+      unsupportedMessage: '[patch-cross-zip] app-builder-lib unsupported version'
+    })
     return
   }
 
