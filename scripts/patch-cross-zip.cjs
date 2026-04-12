@@ -20,6 +20,18 @@ const appBuilderLibNodeModulesCollectorPath = path.join(
   'nodeModulesCollector.js'
 )
 
+function isCiEnvironment() {
+  return Boolean(process.env.CI || process.env.GITHUB_ACTIONS || process.env.GITLAB_CI)
+}
+
+function handleUnchangedPatch(logMessage) {
+  console.log(logMessage)
+
+  if (isCiEnvironment()) {
+    throw new Error(`${logMessage} (failing in CI to surface patch drift)`)
+  }
+}
+
 function patchCrossZip(filePath) {
   if (!fs.existsSync(filePath)) {
     console.log('[patch-cross-zip] cross-zip is not installed, skipping')
@@ -38,7 +50,7 @@ function patchCrossZip(filePath) {
     )
 
   if (patched === source) {
-    console.log('[patch-cross-zip] cross-zip already patched or unsupported version')
+    handleUnchangedPatch('[patch-cross-zip] cross-zip already patched or unsupported version')
     return
   }
 
@@ -59,7 +71,9 @@ function patchElectronWinstallerSign(filePath) {
   )
 
   if (patched === source) {
-    console.log('[patch-cross-zip] electron-winstaller already patched or unsupported version')
+    handleUnchangedPatch(
+      '[patch-cross-zip] electron-winstaller already patched or unsupported version'
+    )
     return
   }
 
@@ -101,7 +115,7 @@ function patchAppBuilderLibNodeModulesCollector(filePath) {
     '                shell: true, // electron-builder currently requires shell mode here, so pass a single shell command string to avoid DEP0190',
     '            });'
   ].join('\n')
-  const fixedSnippet = [
+  const unsafePatchedSnippet = [
     "        await new Promise((resolve, reject) => {",
     "            const outStream = (0, fs_extra_1.createWriteStream)(tempOutputFile);",
     "            const quoteForShell = (part) => {",
@@ -121,11 +135,23 @@ function patchAppBuilderLibNodeModulesCollector(filePath) {
     "                shell: true, // electron-builder currently requires shell mode here, so pass a single shell command string to avoid DEP0190",
     "            });"
   ].join('\n')
+  const safeSnippet = [
+    "        await new Promise((resolve, reject) => {",
+    "            const outStream = (0, fs_extra_1.createWriteStream)(tempOutputFile);",
+    "            const child = childProcess.spawn(command, args, {",
+    "                cwd,",
+    "                env: { COREPACK_ENABLE_STRICT: \"0\", ...process.env }, // allow `process.env` overrides",
+    "                shell: false, // pass argv directly to avoid shell-escaping bugs and injection risks",
+    "            });"
+  ].join('\n')
 
-  const patched = source.replace(originalSnippet, fixedSnippet).replace(malformedSnippet, fixedSnippet)
+  const patched = source
+    .replace(originalSnippet, safeSnippet)
+    .replace(malformedSnippet, safeSnippet)
+    .replace(unsafePatchedSnippet, safeSnippet)
 
   if (patched === source) {
-    console.log('[patch-cross-zip] app-builder-lib already patched or unsupported version')
+    handleUnchangedPatch('[patch-cross-zip] app-builder-lib already patched or unsupported version')
     return
   }
 
@@ -133,6 +159,21 @@ function patchAppBuilderLibNodeModulesCollector(filePath) {
   console.log('[patch-cross-zip] patched app-builder-lib nodeModulesCollector for DEP0190')
 }
 
-patchCrossZip(crossZipPath)
-patchElectronWinstallerSign(electronWinstallerSignPath)
-patchAppBuilderLibNodeModulesCollector(appBuilderLibNodeModulesCollectorPath)
+function main() {
+  patchCrossZip(crossZipPath)
+  patchElectronWinstallerSign(electronWinstallerSignPath)
+  patchAppBuilderLibNodeModulesCollector(appBuilderLibNodeModulesCollectorPath)
+}
+
+if (require.main === module) {
+  main()
+}
+
+module.exports = {
+  handleUnchangedPatch,
+  isCiEnvironment,
+  main,
+  patchAppBuilderLibNodeModulesCollector,
+  patchCrossZip,
+  patchElectronWinstallerSign
+}

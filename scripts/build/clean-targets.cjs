@@ -1,8 +1,9 @@
 const { existsSync, renameSync, rmSync } = require('node:fs')
 const path = require('node:path')
-const { execSync } = require('node:child_process')
+const { execFileSync } = require('node:child_process')
 
 const projectRoot = path.resolve(__dirname, '..', '..')
+const WINDOWS_LOCKING_PROCESS_NAMES = new Set(['electron.exe', 'luo music.exe'])
 
 function setTimeoutSync(ms) {
   const start = Date.now()
@@ -17,19 +18,86 @@ function killLockingProcesses() {
   }
 
   console.log('正在结束占用进程...')
+  const processes = getProjectScopedWindowsProcesses()
 
-  const processes = ['electron.exe', 'LUO Music.exe']
+  if (processes.length === 0) {
+    console.log('  ℹ 未发现当前项目的 Electron 进程')
+    return
+  }
+
+  let killedProcessCount = 0
 
   for (const proc of processes) {
     try {
-      execSync(`taskkill /F /IM "${proc}"`, { stdio: 'ignore' })
-      console.log(`  ✓ 已结束 ${proc}`)
+      execFileSync('taskkill', ['/F', '/PID', String(proc.ProcessId)], { stdio: 'ignore' })
+      console.log(`  ✓ 已结束 ${proc.Name} (PID ${proc.ProcessId})`)
+      killedProcessCount += 1
     } catch {
-      // ignore when the process is not running
+      // ignore when the process exits before taskkill runs
     }
   }
 
-  setTimeoutSync(500)
+  if (killedProcessCount > 0) {
+    setTimeoutSync(500)
+  }
+}
+
+function normalizeWindowsProcessText(value) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function parseWindowsProcessList(rawOutput) {
+  const trimmedOutput = typeof rawOutput === 'string' ? rawOutput.trim() : ''
+
+  if (trimmedOutput.length === 0) {
+    return []
+  }
+
+  const parsed = JSON.parse(trimmedOutput)
+  return Array.isArray(parsed) ? parsed : [parsed]
+}
+
+function isProjectScopedWindowsProcess(processInfo, projectRootPath = projectRoot) {
+  if (!processInfo || typeof processInfo !== 'object') {
+    return false
+  }
+
+  const processName = normalizeWindowsProcessText(processInfo.Name).toLowerCase()
+  if (!WINDOWS_LOCKING_PROCESS_NAMES.has(processName)) {
+    return false
+  }
+
+  const normalizedProjectRoot = projectRootPath.toLowerCase()
+  const executablePath = normalizeWindowsProcessText(processInfo.ExecutablePath).toLowerCase()
+  const commandLine = normalizeWindowsProcessText(processInfo.CommandLine).toLowerCase()
+
+  return executablePath.includes(normalizedProjectRoot) || commandLine.includes(normalizedProjectRoot)
+}
+
+function getProjectScopedWindowsProcesses() {
+  const powershellScript = [
+    "$targetNames = @('electron.exe', 'LUO Music.exe')",
+    'Get-CimInstance Win32_Process',
+    '  | Where-Object { $targetNames -contains $_.Name }',
+    '  | Select-Object ProcessId, Name, CommandLine, ExecutablePath',
+    '  | ConvertTo-Json -Compress'
+  ].join('\n')
+
+  try {
+    const output = execFileSync('powershell.exe', ['-NoProfile', '-Command', powershellScript], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    })
+
+    return parseWindowsProcessList(output).filter(processInfo =>
+      isProjectScopedWindowsProcess(processInfo)
+    )
+  } catch (error) {
+    console.warn(
+      `  ⚠ 无法枚举占用进程: ${error instanceof Error ? error.message : String(error)}`
+    )
+    return []
+  }
 }
 
 function isPathInsideProject(absolutePath) {
@@ -158,5 +226,8 @@ if (require.main === module) {
 
 module.exports = {
   cleanTargets,
+  getProjectScopedWindowsProcesses,
+  isProjectScopedWindowsProcess,
+  parseWindowsProcessList,
   resolveCleanupTargets
 }

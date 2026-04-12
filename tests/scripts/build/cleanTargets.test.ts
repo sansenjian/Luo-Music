@@ -5,9 +5,17 @@ import { join, relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
-const { cleanTargets, resolveCleanupTargets } =
+const { cleanTargets, isProjectScopedWindowsProcess, resolveCleanupTargets } =
   require('../../../scripts/build/clean-targets.cjs') as {
     cleanTargets: (targetArgs: string[], options?: { force?: boolean }) => void
+    isProjectScopedWindowsProcess: (
+      processInfo: {
+        Name?: string
+        CommandLine?: string
+        ExecutablePath?: string
+      },
+      projectRootPath?: string
+    ) => boolean
     resolveCleanupTargets: (
       targetArgs: string[]
     ) => Array<{ targetPath: string; absolutePath: string }>
@@ -44,5 +52,38 @@ describe('clean-targets script', () => {
     } finally {
       await rm(projectScopedRoot, { recursive: true, force: true })
     }
+  })
+
+  it('matches only Electron processes that belong to the current project path', () => {
+    expect(
+      isProjectScopedWindowsProcess(
+        {
+          Name: 'electron.exe',
+          ExecutablePath: join(projectRoot, 'node_modules', 'electron', 'dist', 'electron.exe')
+        },
+        projectRoot
+      )
+    ).toBe(true)
+
+    expect(
+      isProjectScopedWindowsProcess(
+        {
+          Name: 'electron.exe',
+          ExecutablePath: 'C:\\Program Files\\Other App\\electron.exe',
+          CommandLine: '"C:\\Program Files\\Other App\\electron.exe" .'
+        },
+        projectRoot
+      )
+    ).toBe(false)
+
+    expect(
+      isProjectScopedWindowsProcess(
+        {
+          Name: 'LUO Music.exe',
+          ExecutablePath: join(projectRoot, 'out', 'LUO Music-win32-x64', 'LUO Music.exe')
+        },
+        projectRoot
+      )
+    ).toBe(true)
   })
 })
