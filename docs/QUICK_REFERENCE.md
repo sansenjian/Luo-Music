@@ -1,132 +1,83 @@
-# 🚀 快速参考卡片
+# 快速参考
 
-## 常用命令
+## 高频命令
 
-```bash
-# 开发
-npm run dev              # 完整开发模式
-npm run dev:web          # Web 模式
-npm run dev:electron     # Electron 开发模式
-
-# 构建
-npm run build:web        # 构建 Web
-npm run build:electron   # 构建 Electron
-
-# 测试
-npm run test:run         # 运行测试
-npm run test:ui          # 测试 UI
-npm run test:coverage    # 覆盖率报告
-
-# 代码质量
-npm run lint             # ESLint 检查
-npm run lint:fix         # 自动修复
-npm run typecheck        # TypeScript 检查
-npm run format           # Prettier 格式化
-```
-
-## 调试配置
-
-| 配置名称                | 用途                 | 快捷键 |
-| ----------------------- | -------------------- | ------ |
-| Debug Main Process      | 调试 Electron 主进程 | F5     |
-| Debug Renderer (Chrome) | 调试渲染进程         | F5     |
-| Debug Full Electron     | 同时调试             | F5     |
-
-## Git 提交规范
+### 开发
 
 ```bash
-# 格式：<type>: <subject>
-
-# 示例
-git commit -m "feat: 添加播放器歌词同步功能"
-git commit -m "fix: 修复播放列表无法刷新的问题"
-git commit -m "refactor: 重构用户中心组件"
+npm install
+npm run dev
+npm run dev:web
+npm run dev:electron
+npm run server
 ```
 
-### 提交类型
+### 构建
 
-| 类型       | 用途      |
-| ---------- | --------- |
-| `feat`     | 新功能    |
-| `fix`      | 修复 bug  |
-| `docs`     | 文档变更  |
-| `style`    | 代码格式  |
-| `refactor` | 重构      |
-| `perf`     | 性能优化  |
-| `test`     | 测试      |
-| `chore`    | 构建/工具 |
-| `ci`       | CI 配置   |
-| `build`    | 构建系统  |
-| `revert`   | 回滚      |
-
-## VSCode 扩展推荐
-
-必装扩展：
-
-- Vue.volar
-- vscode-eslint
-- prettier-vscode
-
-推荐扩展：
-
-- vscode-tailwindcss
-- markdown-preview-github-styles
-- es6-string-html
-
-## 目录结构
-
-```
-luo-music/
-├── .vscode/                 # VSCode 配置
-│   ├── launch.json         # 调试配置
-│   ├── tasks.json          # 任务配置
-│   ├── settings.json       # 编辑器设置
-│   └── extensions.json     # 扩展推荐
-├── .husky/                  # Git 钩子
-│   └── pre-commit          # 预提交钩子
-├── .github/                 # GitHub 配置
-│   ├── ISSUE_TEMPLATE/     # Issue 模板
-│   └── PULL_REQUEST_TEMPLATE.md
-├── src/                     # 源代码
-│   ├── api/                # API 层
-│   ├── components/         # 组件
-│   ├── composables/        # 组合式函数
-│   ├── platform/           # 平台抽象
-│   ├── router/             # 路由
-│   ├── services/           # 服务层
-│   ├── store/              # 状态管理
-│   └── utils/              # 工具
-├── electron/                # Electron 主进程
-├── service/                 # API 服务资源
-├── tests/                   # 测试
-└── docs/                    # 文档
+```bash
+npm run build:web
+npm run build:electron
+npm run build:electron:portable
+npm run build:server
+npm run docs:build
 ```
 
-## 文件命名规范
+### 质量与测试
 
-| 类型       | 规范               | 示例                     |
-| ---------- | ------------------ | ------------------------ |
-| 组件       | PascalCase         | `LyricDisplay.vue`       |
-| 组合式函数 | camelCase          | `usePlayer.ts`           |
-| 工具函数   | camelCase          | `formatTime.ts`          |
-| 常量       | kebab-case         | `player-config.const.ts` |
-| 类型       | 驼峰 + `.types.ts` | `api.types.ts`           |
-| 测试       | `.test.ts`         | `playerStore.test.ts`    |
+```bash
+npm run test:run
+npm run test:coverage
+npm run test:e2e
+npm run lint
+npm run lint:fix
+npm run format
+npm run typecheck
+```
+
+## 关键目录
+
+| 路径               | 用途                      |
+| ------------------ | ------------------------- |
+| `src/api/`         | 平台 API 封装             |
+| `src/platform/`    | 平台适配                  |
+| `src/store/`       | Pinia 状态                |
+| `src/composables/` | 组合式逻辑                |
+| `src/utils/http/`  | 请求层                    |
+| `src/utils/error/` | 错误处理                  |
+| `electron/`        | Electron 主进程 / preload |
+| `scripts/build/`   | 构建与清理脚本            |
+| `tests/`           | 测试入口                  |
+| `docs/`            | 文档站源码                |
+
+## 产物位置
+
+| 目标                      | 路径              |
+| ------------------------- | ----------------- |
+| Web 构建                  | `build/`          |
+| Electron 主进程 / preload | `build/electron/` |
+| Server 构建               | `build/service/`  |
+| Electron 安装包           | `out/make/`       |
+| Electron 便携版           | `out/portable/`   |
+
+## 常见排查入口
+
+| 问题                | 优先检查                                                                          |
+| ------------------- | --------------------------------------------------------------------------------- |
+| Electron 白屏 / 404 | `electron/utils/paths.ts`、`electron/WindowManager.ts`、`electron.vite.config.ts` |
+| 请求失败            | `src/utils/http/`、`src/api/`、`src/utils/error/`                                 |
+| 播放器行为异常      | `src/store/playerStore.ts`、`src/utils/player/`、`src/components/Player.vue`      |
+| 登录态异常          | `src/store/userStore.ts`、`src/composables/useNeteaseLoginProfile.ts`             |
+| 文档构建异常        | `docs/.vitepress/config.mts`、`package.json`                                      |
 
 ## 环境要求
 
-- Node.js >= 24.x
-- npm >= 10.x
+- Node.js `24+`
+- npm `10+`
+- Windows 优先
 
-## 遇到问题？
+## 推荐验证顺序
 
-1. 清理缓存：`npm run clean`
-2. 重新安装：`rm -rf node_modules && npm install`
-3. 类型检查：`npm run typecheck`
-4. 代码检查：`npm run lint:fix`
-
-## 相关文档
-
-- [VSCode 配置文档](./vscode-setup.md)
-- [优化总结](/reports/optimization-summary)
-- `CONTRIBUTING.md`（仓库根目录）
+1. `npm run test:run`
+2. `npm run build:web`
+3. `npm run build:electron`
+4. 如改动文档站，再跑 `npm run docs:build`

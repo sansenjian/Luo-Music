@@ -81,7 +81,7 @@
 
 ## 风格与测试改进
 
-- `docs/injector-example.ts`
+- `docs/reference/examples/injector-example.ts`
   - `createSearchFacade()` 用对象 spread 合并 deps，显式传 `undefined` 会覆盖默认值。
 
 - `docs/service-layer.md`

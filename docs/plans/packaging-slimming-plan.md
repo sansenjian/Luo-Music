@@ -4,7 +4,7 @@
 
 当前 Electron 打包流程已经可以稳定产出安装包，但实际发行产物中仍包含一批不必要的内容。
 
-对 [`out/LUO Music-win32-x64/resources/app.asar`](./../../out/LUO%20Music-win32-x64/resources/app.asar) 的检查结果表明：
+对 `out/LUO Music-win32-x64/resources/app.asar` 的检查结果表明：
 
 - 没有误把顶层 `src/`、`tests/`、`docs/`、`electron/`、`api/` 整体打进包里
 - 但仍然打进了大量运行时不需要的脚本、sourcemap 和依赖文档/元数据
@@ -46,7 +46,7 @@
 
 ### Forge ignore 规则不够严格
 
-当前 [`forge.config.ts`](./../../forge.config.ts) 里只排除了：
+当前 `forge.config.ts` 里只排除了：
 
 - `scripts/dev/dev-electron-launcher.cjs`
 - `scripts/utils/**`
@@ -55,7 +55,7 @@
 
 ### Electron 构建默认保留 sourcemap
 
-当前 [`electron.vite.config.ts`](./../../electron.vite.config.ts) 中：
+当前 `electron.vite.config.ts` 中：
 
 - `main.build.sourcemap = true`
 - `preload.build.sourcemap = true`
@@ -85,8 +85,8 @@
 
 优先处理：
 
-- [`forge.config.ts`](./../../forge.config.ts)
-- [`electron.vite.config.ts`](./../../electron.vite.config.ts)
+- `forge.config.ts`
+- `electron.vite.config.ts`
 - 与运行时脚本路径有关的主进程代码
 
 暂不处理：
@@ -106,7 +106,7 @@
 
 建议动作：
 
-1. 收紧 [`forge.config.ts`](./../../forge.config.ts) 的 `ignore`
+1. 收紧 `forge.config.ts` 的 `ignore`
 2. 明确哪些脚本必须通过 `extraResource` 进入发行包
 3. 验证 `ServiceManager`、QQ runtime、Netease runtime 的实际路径不受影响
 
@@ -123,7 +123,7 @@
 
 建议动作：
 
-1. 调整 [`electron.vite.config.ts`](./../../electron.vite.config.ts)
+1. 调整 `electron.vite.config.ts`
 2. 根据需要保留单独调试包或 CI 构建产物中的 sourcemap，而不是塞进发行包
 
 验收标准：

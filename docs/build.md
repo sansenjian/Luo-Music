@@ -1,366 +1,123 @@
-# 构建产物管理
+# 构建与发布
 
-**最后更新**: 2026-04-12
+本文档描述 LUO Music 当前的 Web、Electron、服务端和文档站构建链路。
 
-## 📁 统一输出目录
+## 构建矩阵
 
-所有生产环境的构建产物都输出到 `build/` 目录。
+| 目标              | 命令                                               | 主要输出                                      |
+| ----------------- | -------------------------------------------------- | --------------------------------------------- |
+| Web               | `npm run build:web`                                | `build/`                                      |
+| Electron bundle   | `npm run build` 或 `npm run build:electron:bundle` | `build/`、`build/electron/`、`build/service/` |
+| Electron 安装包   | `npm run build:electron`                           | `out/make/`                                   |
+| Electron portable | `npm run build:electron:portable`                  | `out/portable/`                               |
+| Server            | `npm run build:server`                             | `build/service/index.cjs`                     |
+| Docs              | `npm run docs:build`                               | `docs/.vitepress/dist/`                       |
 
-```
-build/
-├── index.html              # Web 入口
-├── assets/                 # 静态资源
-│   ├── css/                # 样式文件
-│   ├── js/                 # JavaScript 文件
-│   ├── fonts/              # 字体文件
-│   └── img/                # 图片文件
-├── electron/               # Electron 主进程和 Preload 脚本
-│   ├── main.cjs            # Electron 主进程
-│   └── preload.cjs         # Preload 脚本
-└── service/                # API 服务资源
-    └── index.cjs           # 编译后的服务入口
-```
+## 关键脚本
 
-Electron Forge 打包输出目录：
-
-```
-out/
-├── make/                   # 安装包（.exe, .zip）
-└── LUO Music-win32-x64/    # 便携版（未打包）
-    ├── resources/
-    │   ├── app.asar/      # Electron 应用代码
-    │   └── service/       # API 服务资源（extraResource）
-    │       └── index.cjs
-    └── ...
-```
-
-额外的单文件便携版输出目录：
-
-```
-out/
-└── portable/
-    └── LUO Music-portable-1.0.0.exe
-```
-
-**已废弃的目录：**
-
-- ❌ `dist/` - 已迁移至 `build/`
-- ❌ `dist-electron/` - 已迁移至 `build/electron/`
-- ❌ `dist-server/` - 已迁移至 `build/service/`
-- ❌ `release_v2/` - 已迁移至 `out/` (Electron Forge)
-
-## 🚀 构建命令
-
-### 依赖安装
+### Web
 
 ```bash
-# 安装所有依赖（包含 devDependencies）
-npm install
-
-# 仅安装生产依赖（Vercel 部署）
-npm install --production
-```
-
-### Web 构建
-
-```bash
-# 构建 Web 版本（生产环境）
 npm run build:web
-
-# 构建 Web 版本（包含 API 服务器）
-npm run build:server && npm run build:web
 ```
 
-### Electron 构建
+流程：
+
+1. 清理 `dist` 与 `build/service`
+2. 执行配置守卫
+3. 构建服务端
+4. 以 Web 模式构建 Vite 渲染端
+
+### Electron
 
 ```bash
-# 开发模式（热重载）
-npm run dev:electron
-
-# 构建 Electron 应用（仅构建，不打包）
-npm run build
-
-# 构建并打包 Electron 应用（生成安装包）
 npm run build:electron
+```
 
-# 构建单文件便携版（最终仅输出一个 .exe）
+流程：
+
+1. 清理 `build/` 与 `out/`
+2. 构建 QQ runtime
+3. 并行构建 server 与 electron-vite bundle
+4. 使用 Electron Forge 产出安装包
+
+### Portable
+
+```bash
 npm run build:electron:portable
-
-# 仅打包（使用已构建的文件）
-npm run make
 ```
 
-### 服务端构建
+在 Electron bundle 基础上，调用 `electron-builder.portable.json` 生成单文件便携版。
+
+### 文档站
 
 ```bash
-# 仅构建服务端（用于 Web 版本或独立运行）
-npm run build:server
-
-# 运行服务端（开发模式）
-npm run server
-
-# 或
-npm run dev:server
+npm run docs:dev
+npm run docs:build
 ```
 
-### 代码质量
+`docs/.vitepress/dist` 属于生成产物，不应作为源码提交。
 
-```bash
-# ESLint 检查
-npm run lint
+## 输出目录
 
-# ESLint 自动修复
-npm run lint:fix
+```text
+build/
+  index.html
+  assets/
+  electron/
+    main.cjs
+    preload.cjs
+  service/
+    index.cjs
 
-# Prettier 格式化
-npm run format
-
-# TypeScript 类型检查
-npm run typecheck
+out/
+  make/
+  portable/
 ```
 
-### 测试
+## 提交前建议
+
+### 常规代码改动
 
 ```bash
-# 运行所有测试
 npm run test:run
-
-# 交互式测试 UI
-npm run test:ui
-
-# 生成覆盖率报告
-npm run test:coverage
 ```
 
-## 📦 API 服务端 (Server) 说明
-
-### 运行方式
-
-应用使用 **子进程模式** 运行 API 服务：
-
-- 网易云音乐 API: 通过 `scripts/dev/netease-api-server.cjs` 子进程启动
-- QQ 音乐 API: 通过 `scripts/dev/qq-api-server.cjs` 子进程启动
-
-**优点**：
-
-- API 崩溃不影响主进程
-- 可以独立重启 API 服务
-- 资源隔离更好
-
-**架构**：
-
-- `ServiceManager` 统一管理所有 API 子进程
-- 支持健康检查和自动重启
-- 通过 HTTP 进行进程间通信
-
-### ServiceManager 使用
-
-```typescript
-import { serviceManager } from './ServiceManager'
-
-// 初始化并启动服务
-await serviceManager.initialize({
-  services: {
-    netease: { enabled: true, port: 14532 },
-    qq: { enabled: true, port: 3200 }
-  }
-})
-
-// 停止单个服务
-await serviceManager.stopService('netease')
-
-// 启动单个服务
-await serviceManager.startService('netease')
-
-// 重启服务
-await serviceManager.restartService('netease')
-
-// 获取服务状态
-const status = serviceManager.getServiceStatus('netease')
-
-// 获取所有可用服务
-const services = serviceManager.getAvailableServices()
-
-// 停止所有服务
-await serviceManager.stopAll()
-```
-
-### Server 构建
+### 涉及构建 / Electron / 路径
 
 ```bash
-# 构建 server.ts 到 build/service/index.cjs
-npm run build:server
-```
-
-### Server 打包
-
-`forge.config.ts` 配置：
-
-```typescript
-packagerConfig: {
-  extraResource: [
-    'build/service' // 打包到 resources/service/
-  ]
-}
-```
-
-打包后的路径：
-
-- 开发环境: `build/service/index.cjs`
-- 生产环境: `resources/service/index.cjs`
-
-## 🧹 清理构建产物
-
-```bash
-# 清理构建产物
-npm run clean
-
-# 清理所有（包括 node_modules）
-npm run clean:all
-```
-
-## 📊 构建模式说明
-
-### 开发模式
-
-- 输出目录：`dist/`
-- 包含 Source Map
-- 不压缩代码
-- 支持热重载
-
-### 生产模式
-
-- 输出目录：`build/`
-- 移除 Source Map
-- 压缩代码
-- 优化打包体积
-- 代码分割优化
-
-## 🔧 配置说明
-
-### electron-vite 配置 (`electron.vite.config.ts`)
-
-```typescript
-// Electron 主进程输出目录
-outDir: 'build/electron'
-
-// Preload 脚本输出目录
-outDir: 'build/electron'
-
-// 渲染进程输出目录
-outDir: 'build'
-```
-
-### Forge 配置 (`forge.config.ts`)
-
-- **打包配置**: `packagerConfig` 定义了应用打包选项
-- **安装包制作**: `makers` 包含 `MakerSquirrel` (Windows 安装程序) 和 `MakerZIP`
-- **单文件便携版**: `electron-builder.portable.json` 使用 `portable` 目标，仅输出一个便携 `.exe`
-- **插件**: `AutoUnpackNativesPlugin` 自动解包原生模块
-- **额外资源**: `extraResource` 包含 API 服务端代码
-
-### Package.json 脚本
-
-- `build`: 使用 electron-vite 构建
-- `build:server`: 构建 API 服务端
-- `build:electron`: 完整构建并打包
-- `dev:electron`: 开发模式（热重载）
-- `server`: 运行 API 服务端（tsx）
-
-## 📦 部署建议
-
-### Web 部署
-
-1. 运行 `npm run build:web`
-2. 部署 `build/` 目录到静态服务器
-3. 同时部署并运行 API 服务端：
-   ```bash
-   node build/service/index.cjs
-   ```
-4. 配置服务器支持 SPA 路由
-
-### Electron 部署
-
-1. 运行 `npm run build:electron`
-2. 产物在 `out/make/` 目录
-   - `LUO Music-1.0.0 Setup.exe` - Windows 安装程序
-   - `LUO Music-1.0.0.zip` - 便携版压缩包
-3. 分发安装包或便携版
-
-### Electron 单文件便携版
-
-1. 运行 `npm run build:electron:portable`
-2. 产物在 `out/portable/` 目录
-   - `LUO Music-portable-1.0.0.exe` - 单文件便携版
-3. 该命令结束后，输出目录会被收敛为仅保留一个 `.exe`
-
-### 独立 Server 部署
-
-如果只需要 API 服务端：
-
-```bash
-# 构建
-npm run build:server
-
-# 运行
-node build/service/index.cjs
-```
-
-环境变量：
-
-- `NCM_PORT`: 网易云 API 端口（默认 14532）
-- `PORT`: Koa 服务端口（如有）
-
-## ⚠️ 注意事项
-
-1. **electron-vite**: 使用 `electron-vite` 构建 Electron 主进程、preload 和渲染进程
-2. **编码统一**：项目文本文件统一使用 UTF-8（无 BOM），避免编码不一致导致的乱码与构建异常
-3. **Electron Forge**: 使用 `@electron-forge` 进行应用打包和分发
-4. **输出目录**: Forge 默认输出到 `out/` 目录（可在 `forge.config.ts` 中修改）
-5. **API 服务端**:
-   - API 服务通过子进程启动（QQ 音乐和网易云）
-   - 使用 `ServiceManager` 管理服务子进程
-   - 打包时通过 `extraResource` 包含 server 代码
-
-## 🎯 构建优化
-
-- **代码分割**: 按功能和库分割代码块
-- **资源优化**: 字体、图片单独打包
-- **Tree Shaking**: 移除未使用代码
-- **压缩**: CSS 和 JS 压缩
-- **缓存优化**: 使用内容哈希
-
-## 🔨 故障排除
-
-### 打包失败
-
-```bash
-# 清理并重试
-npm run clean
+npm run test:run
+npm run build:web
 npm run build:electron
 ```
 
-### 端口占用
+### 涉及文档站
 
 ```bash
-# 查找并结束占用 14532 或 3200 端口的进程
-netstat -ano | findstr :14532
-taskkill /F /PID <PID>
+npm run docs:build
 ```
 
-### Server 构建失败
+## 常见问题
+
+### 构建失败但开发能跑
+
+优先检查：
+
+- `electron.vite.config.ts`
+- `forge.config.ts`
+- `electron/utils/paths.ts`
+- `scripts/build/`
+
+### Electron 打包阶段报路径错误
+
+优先检查 preload、main、service 产物名是否与当前配置一致，不要硬编码历史名称。
+
+### 安装依赖后 postinstall 报错
+
+先确认 Node / npm 版本，再重新执行：
 
 ```bash
-# 重新构建 server
-npm run build:server
-
-# 检查输出
-ls build/service/
-```
-
-### 依赖问题
-
-```bash
-# 重新安装依赖
 npm install
 ```
+
+项目会在 `postinstall` 中自动修补部分 Windows 打包链路兼容性问题。

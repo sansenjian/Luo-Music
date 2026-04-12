@@ -1,167 +1,96 @@
 # 测试指南
 
-**最后更新**: 2026-03-15
+LUO Music 目前同时使用 Vitest 和 Playwright 覆盖单测、集成测试、脚本测试与 E2E 场景。
 
-## 🧪 测试框架
-
-项目使用以下测试工具：
-
-| 工具                                             | 用途           |
-| ------------------------------------------------ | -------------- |
-| [Vitest](https://vitest.dev/)                    | 单元测试框架   |
-| [@vue/test-utils](https://test-utils.vuejs.org/) | Vue 组件测试   |
-| [Playwright](https://playwright.dev/)            | E2E 测试       |
-| [jsdom](https://github.com/jsdom/jsdom)          | 浏览器环境模拟 |
-
-## 📋 测试命令
+## 测试命令
 
 ```bash
-# 运行所有测试（一次性）
-npm run test:run
-
-# 运行所有测试（监听模式）
 npm run test
-
-# 交互式测试 UI
-npm run test:ui
-
-# 生成覆盖率报告
+npm run test:run
 npm run test:coverage
+npm run test:e2e
+npm run test:e2e:headed
+npm run test:e2e:debug
+npm run test:e2e:report
+npm run typecheck
 ```
 
-## 📁 测试文件组织
+## 当前测试目录
 
-```
+```text
 tests/
-├── base/                 # 基础架构测试
-├── components/           # 组件测试
-├── electron/             # Electron 测试
-├── platform/             # 平台适配器测试
-├── services/             # 服务层测试
-├── store/                # Store 测试
-├── utils/                # 工具函数测试
-└── setup.ts              # 测试配置
+  api/
+  base/
+  components/
+  composables/
+  constants/
+  e2e/
+  electron/
+  mocks/
+  platform/
+  scripts/
+  services/
+  store/
+  utils/
+  views/
 ```
 
-## 📝 测试覆盖率
+## 当前验证基线
 
-### 覆盖率阈值
+截至 `2026-04-12`，最近一次全量 `npm run test:run` 结果为：
 
-项目配置的覆盖率阈值：
+- `122` 个测试文件通过
+- `927` 个测试用例通过
 
-| 指标       | 阈值 |
-| ---------- | ---- |
-| Lines      | 60%  |
-| Functions  | 60%  |
-| Branches   | 50%  |
-| Statements | 60%  |
+## 什么时候必须补测试
 
-### 查看覆盖率报告
+- 修改 `src/store/`、`src/utils/`、`src/platform/` 核心逻辑时
+- 修复缺陷且可以稳定复现时
+- 变更构建脚本、Electron 路径、postinstall patch 时
+- 调整请求层、错误处理、登录态和播放器核心行为时
+
+## 推荐验证流程
+
+### 功能或逻辑改动
 
 ```bash
-# 运行测试并生成覆盖率报告
-npm run test:coverage
-
-# 查看 HTML 报告
-open coverage/index.html
+npm run test:run
 ```
 
-## 🔧 测试配置
+### 构建 / Electron 改动
 
-### Vitest 配置
-
-在 `vitest.config.ts` 中配置：
-
-```javascript
-import { defineConfig } from 'vitest/config'
-
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./tests/setup.ts'],
-    include: ['tests/**/*.test.ts'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      threshold: {
-        lines: 60,
-        functions: 60,
-        branches: 50,
-        statements: 60
-      }
-    }
-  }
-})
+```bash
+npm run test:run
+npm run build:web
+npm run build:electron
 ```
 
-## 📊 测试记录
+### 文档或 VitePress 改动
 
-### 2026-03-15
-
-- 测试文件：25+
-- 测试用例：300+
-- 覆盖率：60%+
-
-### 2026-03-13
-
-- 命令：`npm run test:run`
-- 结果：全部通过
-- 统计：25 个测试文件通过，306 个用例通过
-
-## 🏷️ 测试最佳实践
-
-### 组件测试
-
-```typescript
-import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
-import MyComponent from '@/components/MyComponent.vue'
-
-describe('MyComponent', () => {
-  it('renders correctly', () => {
-    const wrapper = mount(MyComponent, {
-      props: { title: 'Test' }
-    })
-    expect(wrapper.text()).toContain('Test')
-  })
-})
+```bash
+npm run docs:build
 ```
 
-### Store 测试
+## E2E 说明
 
-```typescript
-import { describe, it, expect, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
-import { usePlayerStore } from '@/store/playerStore'
+Playwright 相关命令：
 
-describe('usePlayerStore', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
-  it('initializes with default state', () => {
-    const store = usePlayerStore()
-    expect(store.isPlaying).toBe(false)
-  })
-})
+```bash
+npm run test:e2e
+npm run test:e2e:headed
+npm run test:e2e:debug
+npm run test:e2e:report
 ```
 
-### 工具函数测试
+如果本机还没有浏览器依赖，可先执行：
 
-```typescript
-import { describe, it, expect } from 'vitest'
-import { formatTime } from '@/utils/player/helpers/timeFormatter'
-
-describe('formatTime', () => {
-  it('formats seconds to MM:SS', () => {
-    expect(formatTime(125)).toBe('02:05')
-  })
-})
+```bash
+npx playwright install
 ```
 
-## 🔗 相关文档
+## 调试建议
 
-- [Vitest 文档](https://vitest.dev/)
-- [Vue Test Utils 文档](https://test-utils.vuejs.org/)
-- [Playwright 文档](https://playwright.dev/)
+- `tests/setup.ts` 负责全局 Pinia 与浏览器环境初始化。
+- 组件测试优先复用现有 mocks 和测试组织方式。
+- 改动请求层时，优先写纯单测，不把网络依赖带进用例。
+- E2E 失败时先看 `playwright-report/`，再回看浏览器控制台与网络请求。

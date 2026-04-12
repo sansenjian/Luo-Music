@@ -6,7 +6,7 @@
 
 - `src/services/registry.ts` 已支持服务注册、单例缓存、循环依赖检测、`activate/deactivate` 生命周期和 `resetServices()`
 - `src/services/injector.ts` 已收敛为“显式注解才允许构造注入”的模式
-- `src/services/performanceMonitor.ts` 与 [`di-performance-monitoring`](./di-performance-monitoring.md) 已提供可观测性基础
+- `src/services/performanceMonitor.ts` 与 [`di-performance-monitoring`](../di-performance-monitoring.md) 已提供可观测性基础
 
 但业务层接入仍然不完整，当前问题不是“没有 DI”，而是“默认路径还不稳定”：
 
@@ -48,23 +48,23 @@
 
 更新日期：2026-04-07
 
-后续工作请转到 [`docs/plans/di-followup-roadmap.md`](./plans/di-followup-roadmap.md)，本文件保持为本轮 Phase 1 到 Phase 3 的完成记录。
+后续工作请转到 [`docs/plans/di-followup-roadmap.md`](/plans/di-followup-roadmap)，本文件保持为本轮 Phase 1 到 Phase 3 的完成记录。
 
 - [x] Phase 1.1 `playerStore`：已完成 `createPlayerStore(deps, storeId)` 工厂化改造，默认 `usePlayerStore()` 保持不变；`music/storage/platform/audioManager` 已支持显式注入；相关定向测试已通过。
 - [x] Phase 1.2 `useSearch`：已完成 `useSearch(deps?)` 改造，测试已改为直接注入替身 `searchStore`，不再依赖模块级 `vi.mock()`。
 - [x] Phase 1.3 `useHomePage`：已完成 `toastStore/searchStore/homeShell` 的显式 deps 注入；测试已改为直接传入替身依赖，去掉对 `useHomeShell` 模块 mock 的依赖。
 - [x] Phase 1.4 验证与收尾：本轮涉及的 5 组测试已全部通过，变更文件单独执行 ESLint 通过；仓库级 `typecheck` 与 `lint` 仍存在存量问题，未由本次 DI 改造引入。
 - [x] 存量问题清理：已修复 `EventsView.vue`、平台/服务测试类型问题以及 `vite.config.js` 的 ESLint 问题；仓库级 `typecheck` 与 `lint` 已全部通过。
-- [x] 依赖警告清理：已定位 `(DEP0147)` 来源为 `@electron-forge/maker-zip -> cross-zip@4.0.1`，新增 [`scripts/patch-cross-zip.cjs`](./../scripts/patch-cross-zip.cjs) 并通过 `postinstall` 持久化替换为 `fs.rm/fs.rmSync`。
-- [x] 依赖警告清理补充：已定位 `(DEP0187)` 来源为 `electron-winstaller/lib/sign.js` 在未启用 `windowsSign` 时对未初始化路径调用 `existsSync`；已复用 [`scripts/patch-cross-zip.cjs`](./../scripts/patch-cross-zip.cjs) 在 `postinstall` 中为 `resetSignTool()` 增加空值保护。
-- [x] Phase 2.1 服务入口收口：已将 [`src/components/LyricFloat.vue`](./../src/components/LyricFloat.vue) 和 [`src/utils/error/center.ts`](./../src/utils/error/center.ts) 从 `getPlatformAccessor()/getPlayerAccessor()` 兼容入口切换到 `services.platform()/services.player()` 主路径；相关测试与 lint 已通过。
+- [x] 依赖警告清理：已定位 `(DEP0147)` 来源为 `@electron-forge/maker-zip -> cross-zip@4.0.1`，新增 `scripts/patch-cross-zip.cjs` 并通过 `postinstall` 持久化替换为 `fs.rm/fs.rmSync`。
+- [x] 依赖警告清理补充：已定位 `(DEP0187)` 来源为 `electron-winstaller/lib/sign.js` 在未启用 `windowsSign` 时对未初始化路径调用 `existsSync`；已复用 `scripts/patch-cross-zip.cjs` 在 `postinstall` 中为 `resetSignTool()` 增加空值保护。
+- [x] Phase 2.1 服务入口收口：已将 `src/components/LyricFloat.vue` 和 `src/utils/error/center.ts` 从 `getPlatformAccessor()/getPlayerAccessor()` 兼容入口切换到 `services.platform()/services.player()` 主路径；相关测试与 lint 已通过。
 - [x] Phase 2.2 存储/默认入口收口：已将 [`src/composables/useIpcActiveLyricState.ts`](./../src/composables/useIpcActiveLyricState.ts) 的 debug 开关读取切换为 `services.storage()`；已将 [`src/store/playerStore.ts`](./../src/store/playerStore.ts) 的默认平台依赖从 accessor 兼容层切回 `services.platform()` 主路径；相关测试与 lint 已通过。
 - [x] Phase 2.3 兼容层清理：已删除未再被业务代码使用的 [`src/services/platformAccessor.ts`](./../src/services/platformAccessor.ts) 与 [`src/services/playerAccessor.ts`](./../src/services/playerAccessor.ts)；仓库级 `typecheck` 与 `lint` 已通过。
 - [x] Phase 2.4 配置边界收口：已将 [`src/api/qqmusic.ts`](./../src/api/qqmusic.ts) 的生产环境 QQ API fallback 地址从 `QQ_API_SERVER` 常量切换为 `ConfigService` 端口解析；相关测试与 lint 已通过。
 - [x] Phase 2.5 API 边界试点：已将 [`src/api/user.ts`](./../src/api/user.ts) 的 Netease 用户请求切换为 `services.api().request('netease', ...)`，并补充模块级测试 [`tests/api/user.test.ts`](./../tests/api/user.test.ts)；相关受影响测试与 lint 已通过。
-- [x] Phase 3.1 规则固化：已重写 [`docs/service-layer.md`](./service-layer.md)，明确 `services.xxx()` 默认场景、显式 `deps` 推荐场景、`@injectParam(...)` 限制场景与评审清单。
-- [x] Phase 3.2 示例对齐：已重写 [`docs/injector-example.ts`](./injector-example.ts)，示例改为与当前仓库路线一致的三种用法，不再传播过时的 `getService()` / 泛化构造注入建议。
-- [x] Phase 3.3 监控口径对齐：已更新 [`docs/di-performance-monitoring.md`](./di-performance-monitoring.md)，补充当前 `services.xxx()` / 显式 `deps` 路线下的回归检查建议。
+- [x] Phase 3.1 规则固化：已重写 [`docs/service-layer.md`](../service-layer.md)，明确 `services.xxx()` 默认场景、显式 `deps` 推荐场景、`@injectParam(...)` 限制场景与评审清单。
+- [x] Phase 3.2 示例对齐：已重写 [`docs/reference/examples/injector-example.ts`](../reference/examples/injector-example.ts)，示例改为与当前仓库路线一致的三种用法，不再传播过时的 `getService()` / 泛化构造注入建议。
+- [x] Phase 3.3 监控口径对齐：已更新 [`docs/di-performance-monitoring.md`](../di-performance-monitoring.md)，补充当前 `services.xxx()` / 显式 `deps` 路线下的回归检查建议。
 
 ## 现状归纳
 
@@ -78,7 +78,7 @@
 
 ### 主要缺口
 
-根据 [`service-layer-gap-report`](./reports/service-layer-gap-report.md) 与 [`vscode-gap-issues`](./reports/vscode-gap-issues.md)，当前缺口集中在三类：
+根据 [`service-layer-gap-report`](/reports/service-layer-gap-report) 与 [`vscode-gap-issues`](/reports/vscode-gap-issues)，当前缺口集中在三类：
 
 1. 业务边界未完全收口
    - 仍有模块直接依赖 `platform`、`localStorage`、`document`
@@ -292,7 +292,7 @@ Phase 2 验收标准：
 执行项：
 
 1. 补充示例
-   - 更新 [`injector-example.ts`](./injector-example.ts) 或服务层文档
+   - 更新 [`injector-example.ts`](../reference/examples/injector-example.ts) 或服务层文档
    - 给出“默认服务获取”和“显式 deps 注入”的对照示例
 
 2. 固化评审规则
@@ -301,7 +301,7 @@ Phase 2 验收标准：
    - 是否能通过显式 deps 降低测试替身成本
 
 3. 监控回归
-   - 使用 [`di-performance-monitoring`](./di-performance-monitoring.md) 记录初始化时间
+   - 使用 [`di-performance-monitoring`](../di-performance-monitoring.md) 记录初始化时间
    - 识别新增服务或迁移后是否引入初始化回归
 
 Phase 3 验收标准：
@@ -433,6 +433,6 @@ Phase 3 验收标准：
 ### Phase 3
 
 - `docs/service-layer.md`
-- `docs/injector-example.ts`
+- `docs/reference/examples/injector-example.ts`
 - `docs/di-performance-monitoring.md`
 - 相关测试与评审说明

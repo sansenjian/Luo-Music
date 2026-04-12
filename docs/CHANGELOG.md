@@ -206,22 +206,22 @@
 ### 快速开始
 
 - `README.md`（仓库根目录） - 项目主页
-- [GETTING_STARTED.md](./GETTING_STARTED.md) - 入门指南
-- [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) - 快速参考
+- [快速开始](/guide/getting-started) - 入门指南
+- [快速参考](/reference/quick-reference) - 高频命令与排查速查
 
 ### 开发指南
 
 - [vscode-setup.md](./vscode-setup.md) - VSCode 配置
-- [build.md](./build.md) - 构建指南
-- [testing.md](./testing.md) - 测试指南
+- [构建与发布](/guide/build-and-release) - 构建指南
+- [测试指南](/guide/testing) - 测试指南
 
 ### 架构设计
 
 - [architecture-refactoring-plan.md](/plans/architecture-refactoring-plan) - 架构重构
-- [service-layer.md](./service-layer.md) - 服务层设计
+- [服务层设计](/architecture/service-layer) - 服务层设计
 - [unified-ipc-plan.md](/plans/unified-ipc-plan) - IPC 统一方案
 
 ### 项目优化
 
 - [optimization-summary.md](/reports/optimization-summary) - 优化总结
-- [CHANGELOG.md](./CHANGELOG.md) - 更新日志（本文档）
+- [更新日志](/guide/changelog) - 更新日志（本文档）

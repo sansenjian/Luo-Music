@@ -23,7 +23,7 @@
   - `storage`、`platform`、`config`、部分 `api` 已走 `services.xxx()`
 - 规则与示例文档已对齐
   - [`docs/service-layer.md`](./../service-layer.md)
-  - [`docs/injector-example.ts`](./../injector-example.ts)
+  - [`docs/reference/examples/injector-example.ts`](./../reference/examples/injector-example.ts)
   - [`docs/di-performance-monitoring.md`](./../di-performance-monitoring.md)
 
 仍然存在的现实限制：
@@ -71,7 +71,7 @@
 
 建议更新：
 
-- [`docs/di-optimization-plan.md`](./../di-optimization-plan.md)
+- [`docs/plans/di-optimization-plan.md`](./di-optimization-plan.md)
 - [`docs/reports/service-layer-gap-report.md`](./../reports/service-layer-gap-report.md)
 - [`docs/reports/vscode-gap-issues.md`](./../reports/vscode-gap-issues.md)
 

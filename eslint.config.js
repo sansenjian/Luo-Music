@@ -38,6 +38,8 @@ export default [
       'config/vite.shared.js',
       'docs/injector-example.ts',
       'docs/injector-example.js',
+      'docs/reference/examples/injector-example.ts',
+      'docs/reference/examples/injector-example.js',
       'electron/external.d.ts',
       'server/index.ts'
     ]
