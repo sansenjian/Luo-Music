@@ -1,207 +1,139 @@
-# LUO Music - 快速启动指南
+# LUO Music 快速开始
 
-## 🎯 目标
+本指南面向首次接手 LUO Music 的开发者，目标是在最短路径内把 Web 和 Electron 两条开发链路跑起来。
 
-本指南将帮助你在 5 分钟内启动 LUO Music 项目。
+## 环境要求
 
-## 📋 步骤清单
+- Windows 优先
+- Node.js `24+`
+- npm `10+`
 
-- [ ] 安装 Node.js
-- [ ] 安装项目依赖
-- [ ] 启动开发服务器
-- [ ] 开始使用
-
-## 1️⃣ 安装 Node.js
-
-### 检查是否已安装
+检查版本：
 
 ```bash
 node --version
 npm --version
 ```
 
-如果显示版本号（>= 16.0.0），则已安装，跳到步骤 2。
-
-### 下载安装
-
-访问 [Node.js 官网](https://nodejs.org/) 下载并安装 LTS 版本。
-
-## 2️⃣ 安装项目依赖
-
-打开终端窗口，进入 luo_music 目录：
+## 安装依赖
 
 ```bash
-cd luo_music
 npm install
 ```
 
-等待依赖安装完成（可能需要几分钟）。
+项目使用 `package-lock.json` 锁定依赖版本，默认按 npm 工作流维护。
 
-## 3️⃣ 启动开发服务器
+## 启动方式
 
-> **注意**: 启动 `npm run dev` 会自动同时启动前端应用和内置的 API 服务（端口 14532），无需额外操作。
+### Web 开发
 
-在 luo_music 目录下运行：
-
-### Windows (CMD)
-
-```cmd
-npm run dev
-```
-
-### Windows (PowerShell)
-
-```powershell
-npm run dev
-```
-
-### macOS / Linux
+推荐命令：
 
 ```bash
 npm run dev
 ```
 
-看到以下信息表示启动成功：
+这会同时启动：
 
-```
-  VITE v7.x.x  ready in xxx ms
+- 本地 API 服务
+- Vite Web 开发服务器
 
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: use --host to expose
-```
-
-**API 服务会自动在后台启动（端口 14532），无需手动操作。**
-
-## 4️⃣ 开始使用
-
-1. 打开浏览器访问 `localhost:5173`
-2. 在搜索框输入歌曲名称，如"你的猫咪"
-3. 点击"搜索"按钮
-4. 点击搜索结果中的歌曲开始播放
-5. 享受音乐！🎵
-
-## 5️⃣ 成功！
-
-现在你应该看到：
-
-- ✅ API 服务运行在 `localhost:36530`
-- ✅ 前端应用运行在 `localhost:5173`
-- ✅ 可以搜索和播放音乐
-- ✅ 可以查看实时同步的歌词
-
-## 🔧 故障排除
-
-### 问题 1：API 服务启动失败
-
-**错误信息**：`Error: listen EADDRINUSE: address already in use :::36530`
-
-**解决方法**：端口 36530 被占用，更换端口：
+如果只想启动渲染端：
 
 ```bash
-PORT=36531 node app.js
+npm run dev:web
 ```
 
-然后修改 `luo_music/src/utils/request.js` 中的 `baseURL`:
-
-```javascript
-baseURL: 'http://localhost:36531'
-```
-
-### 问题 2：前端启动失败
-
-**错误信息**：`npm ERR! code ENOENT`
-
-**解决方法**：
+如果只想单独启动服务端：
 
 ```bash
-# 删除 node_modules 和 package-lock.json
-rm -rf node_modules package-lock.json
+npm run server
+```
 
-# 重新安装
+### Electron 开发
+
+```bash
+npm run dev:electron
+```
+
+这会启动：
+
+- Electron 主进程
+- preload / renderer 热更新
+- 本地 API 服务与桌面窗口
+
+## 常用验证
+
+### 运行测试
+
+```bash
+npm run test:run
+```
+
+### 类型检查
+
+```bash
+npm run typecheck
+```
+
+### 文档站构建
+
+```bash
+npm run docs:build
+```
+
+## 常见工作流
+
+### 只改前端页面
+
+1. `npm run dev`
+2. 修改 `src/components/`、`src/views/`、`src/composables/`
+3. 提交前至少运行 `npm run test:run`
+
+### 改 Electron / 路径 / 打包
+
+1. `npm run dev:electron`
+2. 修改 `electron/`、`forge.config.ts`、`electron.vite.config.ts`、`scripts/build/`
+3. 提交前运行：
+
+```bash
+npm run test:run
+npm run build:web
+npm run build:electron
+```
+
+## 常见问题
+
+### 依赖安装或 postinstall 异常
+
+先确认 Node 版本满足项目约束，再尝试：
+
+```bash
+npm run clean:all
 npm install
 ```
 
-### 问题 3：无法播放音乐
+### Electron 白屏或 404
 
-**可能原因**：
+优先检查：
 
-1. API 服务未启动
-2. API 地址配置错误
-3. 网络问题
+- `electron/main.ts`
+- `electron/WindowManager.ts`
+- `electron/utils/paths.ts`
+- `electron.vite.config.ts`
 
-**解决方法**：
+### 请求失败或登录态异常
 
-1. 检查 API 服务是否运行：访问 `localhost:36530`
-2. 检查浏览器控制台是否有错误
-3. 尝试重启 API 服务和前端服务
+优先检查：
 
-### 问题 4：搜索无结果
+- `src/utils/http/`
+- `src/utils/error/`
+- `src/api/`
+- `src/store/userStore.ts`
 
-**可能原因**：
+## 下一步
 
-1. 关键词不正确
-2. API 服务异常
-3. 网络连接问题
-
-**解决方法**：
-
-1. 尝试更换搜索关键词
-2. 检查 API 服务日志
-3. 检查网络连接
-
-### 问题 5：歌词不显示
-
-**可能原因**：
-
-1. 该歌曲没有歌词
-2. API 返回数据异常
-
-**解决方法**：
-
-1. 尝试播放其他歌曲
-2. 查看浏览器控制台错误信息
-3. 检查 API 响应数据
-
-## 📞 获取帮助
-
-如果遇到其他问题：
-
-1. **查看文档**：阅读 `PROJECT.md` 和 `README.md`
-2. **检查日志**：查看终端和浏览器控制台的错误信息
-3. **搜索问题**：在 GitHub Issues 中搜索类似问题
-4. **提交 Issue**：如果问题仍未解决，提交详细的问题描述
-
-## 🎓 下一步
-
-- 📖 阅读 [PROJECT.md](./PROJECT.md) 了解项目架构
-- 🎨 自定义样式和主题
-- 🔧 添加新功能
-- 🚀 部署到生产环境
-
-## 💡 小贴士
-
-### 开发技巧
-
-- 使用 Vue DevTools 浏览器扩展调试
-- 修改代码后会自动热重载
-- 使用 `console.log()` 调试问题
-
-### 推荐搜索关键词
-
-- 你的猫咪
-- 晴天
-- 七里香
-- 稻香
-- 夜曲
-
-### 快捷键（计划中）
-
-- `Space` - 播放/暂停
-- `→` - 下一曲
-- `←` - 上一曲
-- `↑` - 增加音量
-- `↓` - 减少音量
-
----
-
-🎵 **祝你使用愉快！**
+- [项目概览](/architecture/project-overview)
+- [构建与发布](/guide/build-and-release)
+- [测试指南](/guide/testing)
+- [快速参考](/reference/quick-reference)

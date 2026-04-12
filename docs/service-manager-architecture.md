@@ -575,8 +575,8 @@ export class ServiceManager {
 - [Electron IPC 通信机制](https://www.electronjs.org/docs/latest/tutorial/ipc)
 - [Pinia 官方文档](https://pinia.vuejs.org/)
 - [`electron-store`](https://github.com/sindresorhus/electron-store)
-- [项目概述](./PROJECT.md)
-- [构建指南](./build.md)
+- [项目概览](/architecture/project-overview)
+- [构建与发布](/guide/build-and-release)
 
 ---
 

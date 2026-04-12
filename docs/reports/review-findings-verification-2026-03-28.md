@@ -12,7 +12,7 @@
    `catch` 分支仍然用过宽的 `isRecord(error)` 把普通异常当成 `NcmModuleResponse`，非模块异常会被错误映射成 404。
 3. `api/qq/[...qq].ts`
    `normalizeQQRequestUrl()` 仍然使用 `requestUrl.split('?')`，对包含多个 `?` 的 URL 解析不稳。
-4. `docs/e2e-testing.md`
+4. `docs/guide/e2e-testing.md`
    文档仍然写着不存在的 `route.intercept()`，示例实际使用的是 `page.route()`。
 5. `docs/plans/desktop-lyric-optimization.md`
    “补真实链路回归”这句表意仍然偏残缺。
@@ -44,9 +44,9 @@
     仍然使用 `page.waitForTimeout(1000)`。
 19. `tests/utils/player/core/playerCore.test.ts`
     不只是两处，整份测试里还有大量 `(player as any).audio` / `(player as any).audioContext`。
-20. `docs/injector-example.ts`
+20. `docs/reference/examples/injector-example.ts`
     示例源码仍然引用未定义的 `IApiService` / `ILoggerService`，而且导入路径本身也是 `./registry` / `./decorators` / `./injector` 这类在 `docs/` 目录下并不存在的路径。
-21. `docs/injector-example.ts`
+21. `docs/reference/examples/injector-example.ts`
     顶层仍然有 `new SimpleService()` / `new DecoratedService()` / `new PlayerService()` 等实例化副作用。
 
 ### 不存在或已不适用的问题
@@ -102,7 +102,7 @@
 
 ### 文档 / 测试
 
-- `docs/e2e-testing.md`
+- `docs/guide/e2e-testing.md`
   文字写的是 `route.intercept()`，代码块却是 `page.route(...)`，前后不一致。
 - `docs/plans/desktop-lyric-optimization.md`
   `- 补真实链路回归`
@@ -115,7 +115,7 @@
 
 ### DI 示例
 
-- `docs/injector-example.ts`
+- `docs/reference/examples/injector-example.ts`
   当前文件首部只导入了：
   - `getService` from `./registry`
   - `inject` from `./decorators`
@@ -133,4 +133,4 @@
 
 1. 先修 `api/[...netease].ts`、`api/qq/[...qq].ts`、`useActiveLyricState.ts`、`useIpcActiveLyricState.ts`、`playerStore.ts`、`playbackActions.ts` 这些真实逻辑问题。
 2. 再处理 `UserCenter.vue`、`EventsView.vue`、`tests/e2e/search.spec.ts`、`playerCore.test.ts` 的结构和测试问题。
-3. 最后收文档与 `docs/injector-example.ts`，因为这部分改动面相对大，适合单独整理。
+3. 最后收文档与 `docs/reference/examples/injector-example.ts`，因为这部分改动面相对大，适合单独整理。

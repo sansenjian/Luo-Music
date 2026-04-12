@@ -3,94 +3,73 @@ layout: home
 
 hero:
   name: 'LUO Music 文档'
-  text: '开发指南、架构说明与审查归档'
-  tagline: '保留高频文档在根层，把计划和报告下沉到子目录，减少 docs 根目录噪音。'
+  text: '开发、架构、参考与归档的统一入口'
+  tagline: '面向当前 Vue 3 + Vite + Electron 双端工程，按开发路径重新收敛文档结构，并将计划与报告独立归档。'
   actions:
     - theme: brand
-      text: 快速开始
-      link: /GETTING_STARTED
+      text: 开发指南
+      link: /guide/
     - theme: alt
-      text: 构建指南
-      link: /build
+      text: 架构设计
+      link: /architecture/
     - theme: alt
-      text: 项目概览
-      link: /PROJECT
+      text: 参考资料
+      link: /reference/
 
 features:
-  - title: 高使用频率
-    details: 快速开始、构建、测试、VSCode 配置等开发常用文档继续保留在 docs 根层。
-  - title: 架构说明
-    details: 服务层、IPC、沙箱桥接、依赖注入和请求层等长期参考文档集中保留。
-  - title: 计划归档
-    details: 重构方案、迁移计划和结构调整提案统一收纳到 plans。
-  - title: 报告归档
-    details: 审核、分析、优化和复盘类文档统一收纳到 reports。
+  - title: 开发指南
+    details: 聚合快速开始、构建发布、测试、E2E 与 VSCode 工作流，优先服务日常开发。
+  - title: 架构设计
+    details: 聚合项目概览、服务层、IPC、错误处理、请求层与依赖图，便于理解系统边界。
+  - title: 参考资料
+    details: 聚合 API、组件与速查资料，降低从源码反推接口和组件行为的成本。
+  - title: 计划与报告
+    details: 方案、审计、评审与复盘全部下沉到独立归档区，避免主路径文档被历史材料淹没。
 ---
 
-## 根层文档
+## 文档分区
 
 ### 开发指南
 
-| 文档                         | 说明                             |
-| ---------------------------- | -------------------------------- |
-| [快速开始](/GETTING_STARTED) | 环境准备、安装与开发启动         |
-| [构建指南](/build)           | Web / Electron / Server 构建说明 |
-| [测试指南](/testing)         | 测试命令、策略与排查方式         |
-| [项目概览](/PROJECT)         | 项目结构与模块职责               |
-| [快速参考](/QUICK_REFERENCE) | 常用命令与配置速查               |
-| [VSCode 配置](/vscode-setup) | 调试、任务与工作区配置           |
-| [更新日志](/CHANGELOG)       | 项目与文档阶段性变更记录         |
+| 入口                                   | 说明                                     |
+| -------------------------------------- | ---------------------------------------- |
+| [开发指南总览](/guide/)                | 从安装、启动到构建、测试的主入口         |
+| [快速开始](/guide/getting-started)     | 本地开发、Electron 调试与环境要求        |
+| [构建与发布](/guide/build-and-release) | Web、Electron、portable 与 docs 构建链路 |
+| [测试指南](/guide/testing)             | Vitest、Playwright 与回归验证约定        |
+| [E2E 测试](/guide/e2e-testing)         | Playwright 入口和当前测试组织            |
+| [VSCode 配置](/guide/vscode-setup)     | 本地调试与任务配置                       |
 
-### 架构与参考
+### 架构设计
 
-| 文档                                          | 说明                            |
-| --------------------------------------------- | ------------------------------- |
-| [API 文档](/api-documentation)                | API 接口说明                    |
-| [组件文档](/components-documentation)         | 组件使用说明                    |
-| [错误处理](/error-handling)                   | 错误处理约定                    |
-| [请求层说明](/request-usage)                  | 请求层使用约定                  |
-| [服务层设计](/service-layer)                  | 服务层结构说明                  |
-| [服务管理架构](/service-manager-architecture) | Service Manager 设计            |
-| [沙箱服务](/sandbox-services)                 | Electron sandbox / preload 说明 |
-| [统一 IPC 实现](/unified-ipc-implementation)  | IPC 落地实现说明                |
-| [依赖图](/dependency-graph)                   | 依赖关系输出                    |
-| [DI 性能监控](/di-performance-monitoring)     | 依赖注入与性能监控说明          |
+| 入口                                             | 说明                                    |
+| ------------------------------------------------ | --------------------------------------- |
+| [架构总览](/architecture/)                       | 系统设计与关键模块入口                  |
+| [项目概览](/architecture/project-overview)       | 模块边界、运行时形态与目录职责          |
+| [服务层设计](/architecture/service-layer)        | 服务注册、依赖组织与调用边界            |
+| [Service Manager](/architecture/service-manager) | Electron 子进程与服务生命周期           |
+| [请求层说明](/architecture/request-layer)        | `src/utils/http` 的缓存、重试与取消机制 |
+| [统一 IPC](/architecture/unified-ipc)            | preload / IPC 落地说明                  |
 
-## 归档目录
+### 参考资料
 
-### `plans/`
+| 入口                                   | 说明                     |
+| -------------------------------------- | ------------------------ |
+| [参考总览](/reference/)                | 速查与接口文档入口       |
+| [快速参考](/reference/quick-reference) | 高频命令、目录和排查速查 |
+| [API 文档](/reference/api)             | 平台与用户相关 API 说明  |
+| [组件文档](/reference/components)      | 核心组件说明             |
 
-| 文档                                                     | 说明                  |
-| -------------------------------------------------------- | --------------------- |
-| [架构重构计划](/plans/architecture-refactoring-plan)     | 架构层面的重构计划    |
-| [DI 后续路线图](/plans/di-followup-roadmap)              | DI 后续收口与扩展路线 |
-| [首页重构计划](/plans/home-refactor-plan)                | 首页相关改造方案      |
-| [歌词系统重构过程](/plans/lyric-system-refactor-process) | 歌词链路重构执行说明  |
-| [Player Store 重构](/plans/player-store-refactoring)     | 播放器状态层改造计划  |
-| [统一 IPC 方案](/plans/unified-ipc-plan)                 | IPC 统一化设计方案    |
-| [常量重构](/plans/refactoring/constants-refactoring)     | 常量整理与收敛计划    |
+### 归档区
 
-### `reports/`
-
-| 文档                                                                   | 说明                   |
-| ---------------------------------------------------------------------- | ---------------------- |
-| [多代理审核报告](/reports/multi-agent-review-2026-03-24)               | 本轮多子代理审查结论   |
-| [复审报告](/reports/re-audit-report-2026-03-21)                        | 阶段性复审结果         |
-| [代码审查报告](/reports/code-review-report)                            | 代码审查记录           |
-| [优化总结](/reports/optimization-summary)                              | 优化结果汇总           |
-| [VSCode 优化报告](/reports/optimization-report-vscode)                 | VSCode 相关优化记录    |
-| [服务层差距报告](/reports/service-layer-gap-report)                    | 服务层缺口分析         |
-| [VSCode 差距问题](/reports/vscode-gap-issues)                          | VSCode 侧问题整理      |
-| [分析报告 v1](/reports/analysis-report)                                | 历史分析归档           |
-| [分析报告 v2](/reports/analysis-report-v2)                             | 历史分析归档           |
-| [分析报告 v3](/reports/analysis-report-v3)                             | 历史分析归档           |
-| [IPC 性能监控](/reports/ipc-performance-monitoring)                    | IPC 性能监控说明       |
-| [IPC 性能实现总结](/reports/ipc-performance-monitoring-implementation) | IPC 性能监控落地记录   |
-| [IPC 日志优化](/reports/ipc-performance-logging-optimization)          | IPC 日志与监控优化记录 |
+| 入口                  | 说明                         |
+| --------------------- | ---------------------------- |
+| [计划总览](/plans/)   | 重构方案、迁移计划与执行路线 |
+| [报告总览](/reports/) | 评审、审计、分析与复盘归档   |
 
 ## 整理原则
 
-- 高频使用的文档继续保留在 `docs/` 根层，避免日常查阅路径变深。
-- 计划类文档统一收纳到 `docs/plans/`。
-- 报告类文档统一收纳到 `docs/reports/`。
-- 文档源码目录不保留 VitePress 缓存等生成产物。
+- 面向站点的路由按 `guide / architecture / reference / plans / reports` 分组。
+- 高频开发路径优先落在指南与架构区，避免历史报告干扰日常查阅。
+- 计划与报告统一归档，减少 `docs/` 根层噪音。
+- `docs/.vitepress/dist` 视为生成产物，不再保留在源码目录。

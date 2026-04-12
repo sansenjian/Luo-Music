@@ -154,6 +154,9 @@ config/vite.shared.js
 
 # VitePress cache
 .vitepress/cache/
+docs/.vitepress/cache/
+.vitepress/dist/
+docs/.vitepress/dist/
 
 # Playwright
 playwright-report/

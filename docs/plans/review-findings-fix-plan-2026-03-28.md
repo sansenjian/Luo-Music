@@ -113,7 +113,7 @@ npm run test:run -- tests/api/neteaseVercelFunction.test.ts tests/composables/us
 
 状态：已完成
 
-1. `docs/e2e-testing.md`
+1. `docs/guide/e2e-testing.md`
    `route.intercept()` 文案与实际示例不一致
 2. `docs/plans/desktop-lyric-optimization.md`
    语句表意残缺
@@ -123,9 +123,9 @@ npm run test:run -- tests/api/neteaseVercelFunction.test.ts tests/composables/us
    仍使用固定等待 `page.waitForTimeout(1000)`
 5. `tests/utils/player/core/playerCore.test.ts`
    大量 `(player as any)` 未清理
-6. `docs/injector-example.ts`
+6. `docs/reference/examples/injector-example.ts`
    引用未定义 token 与不存在的相对模块路径
-7. `docs/injector-example.ts`
+7. `docs/reference/examples/injector-example.ts`
    顶层存在实例化副作用
 
 ## 分阶段执行计划
@@ -319,16 +319,16 @@ npm run test:run -- tests/utils/player/core/playerCore.test.ts
 
 ### 覆盖问题
 
-- `docs/e2e-testing.md` 1 项
+- `docs/guide/e2e-testing.md` 1 项
 - `docs/plans/desktop-lyric-optimization.md` 1 项
 - `docs/plans/lyric-system-refactor-process.md` 1 项
-- `docs/injector-example.ts` 2 项
+- `docs/reference/examples/injector-example.ts` 2 项
 
 ### 工作项
 
-- 统一 `docs/e2e-testing.md` 中 API 说明与示例代码
+- 统一 `docs/guide/e2e-testing.md` 中 API 说明与示例代码
 - 修正文档中表意残缺或可读性差的语句
-- 处理 `docs/injector-example.ts`：
+- 处理 `docs/reference/examples/injector-example.ts`：
 - 明确该文件是“概念示例”还是“可执行示例”
 - 若保留为可执行示例，修正导入路径和 token 来源
 - 若仅作展示，移除顶层副作用并显式标注不可直接运行
@@ -337,7 +337,7 @@ npm run test:run -- tests/utils/player/core/playerCore.test.ts
 
 - 文档示例 API 名称前后一致
 - 计划文档语义清晰，无明显残句
-- `docs/injector-example.ts` 不再引用未定义标识符，也不再包含顶层副作用
+- `docs/reference/examples/injector-example.ts` 不再引用未定义标识符，也不再包含顶层副作用
 
 ## 推荐实施顺序
 
