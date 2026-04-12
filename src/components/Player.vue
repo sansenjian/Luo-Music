@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
+
 import { usePlayerViewModel } from '../composables/usePlayerViewModel'
-import SettingsPanel from './SettingsPanel.vue'
+
+const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'))
 
 interface PlayerProps {
   compact?: boolean
@@ -54,10 +57,7 @@ const {
       @click="progressSlider.handleClick"
     >
       <div class="top-progress-track">
-        <div
-          class="top-progress-fill"
-          :style="{ width: `${progressPercent}%` }"
-        ></div>
+        <div class="top-progress-fill" :style="{ width: `${progressPercent}%` }"></div>
       </div>
       <div class="top-progress-hover-info">
         <span>{{ playerStore.formattedProgress }}</span>
@@ -101,10 +101,7 @@ const {
         @pointercancel="progressSlider.handlePointerUp"
         @click="progressSlider.handleClick"
       >
-        <div
-          class="progress-fill"
-          :style="{ width: `${progressPercent}%` }"
-        ></div>
+        <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
       </div>
     </div>
 

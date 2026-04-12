@@ -1,21 +1,20 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 
-import { services } from '../services'
-import { getQRCode, getQRKey, getUserAccount, checkQRStatus } from '../api/user'
-import { useToastStore } from '../store/toastStore'
-import { useUserStore } from '../store/userStore'
+import { checkQRStatus, getQRCode, getQRKey } from '@/api/user'
+import { useNeteaseLoginProfile } from '@/composables/useNeteaseLoginProfile'
 import {
   extractQrCookie,
   extractQrImage,
   extractQrKey,
   extractQrStatusCode,
-  extractUserProfile,
   type QrCheckResponse,
   type QrImageResponse,
-  type QrKeyResponse,
-  type UserAccountResponse
-} from './loginModal.utils'
+  type QrKeyResponse
+} from '@/components/loginModal.utils'
+import { services } from '@/services'
+import { useToastStore } from '@/store/toastStore'
+import { useUserStore } from '@/store/userStore'
 
 type LoginStatus = 'loading' | 'waiting' | 'scanned' | 'expired' | 'success' | 'error'
 
@@ -26,6 +25,7 @@ const emit = defineEmits<{
 const logger = services.logger().createLogger('loginModal')
 const toastStore = useToastStore()
 const userStore = useUserStore()
+const { loginAndFetchProfile } = useNeteaseLoginProfile()
 
 const qrImage = ref('')
 const qrKey = ref('')
@@ -53,26 +53,6 @@ function invalidateActiveAttempt(): void {
   isChecking = false
   stopPolling()
   clearCloseTimer()
-}
-
-function resolveBrowserCookie(): string {
-  if (typeof document === 'undefined' || typeof document.cookie !== 'string') {
-    return ''
-  }
-
-  return document.cookie.trim()
-}
-
-function resolveSessionCookie(cookie: string): string {
-  if (cookie.trim().length > 0) {
-    return cookie.trim()
-  }
-
-  if (typeof userStore.cookie === 'string' && userStore.cookie.trim().length > 0) {
-    return userStore.cookie.trim()
-  }
-
-  return resolveBrowserCookie()
 }
 
 async function fetchQRCode(): Promise<void> {
@@ -209,22 +189,12 @@ async function handleLoginSuccess(cookie: string, attemptId: number): Promise<vo
       return
     }
 
-    const initialCookie = resolveSessionCookie(cookie)
-    if (initialCookie) {
-      userStore.setCookie(initialCookie)
-    }
-
-    const userRes = (await getUserAccount()) as UserAccountResponse
+    const loginResult = await loginAndFetchProfile(cookie)
     if (!isAttemptCurrent(attemptId)) {
       return
     }
 
-    const profile = extractUserProfile(userRes)
-    if (!profile) {
-      throw new Error('Missing user profile')
-    }
-
-    userStore.login(profile, resolveSessionCookie(initialCookie))
+    userStore.login(loginResult.profile, loginResult.cookie)
     toastStore.success('网易云登录成功')
     clearCloseTimer()
     closeTimer = setTimeout(() => {

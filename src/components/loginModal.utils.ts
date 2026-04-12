@@ -4,6 +4,9 @@ type LoginPayload = {
   code?: number | string
   cookie?: string | string[]
   profile?: Record<string, unknown>
+  account?: {
+    id?: number | string
+  }
   data?: LoginPayload
   body?: LoginPayload
 }
@@ -102,6 +105,28 @@ export function extractUserProfile(
   for (const payload of collectPayloads(response)) {
     if (payload.profile && typeof payload.profile === 'object') {
       return payload.profile
+    }
+  }
+
+  return null
+}
+
+export function extractUserId(response: UserAccountResponse | null | undefined): number | null {
+  for (const payload of collectPayloads(response)) {
+    const profileUserId =
+      payload.profile && typeof payload.profile === 'object'
+        ? normalizeNumberLikeValue(payload.profile.userId)
+        : null
+    if (profileUserId !== null) {
+      return profileUserId
+    }
+
+    const accountId =
+      payload.account && typeof payload.account === 'object'
+        ? normalizeNumberLikeValue(payload.account.id)
+        : null
+    if (accountId !== null) {
+      return accountId
     }
   }
 

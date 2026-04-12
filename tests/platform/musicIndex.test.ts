@@ -27,33 +27,57 @@ vi.mock('@/services', () => ({
   }
 }))
 
-vi.mock('@/platform/music/netease', () => ({
-  NeteaseAdapter: class {
-    readonly kind = 'netease'
+type QQAdapterModuleFactory = () => {
+  QQMusicAdapter: new () => {
+    kind: 'qq'
   }
-}))
+}
 
-vi.mock('@/platform/music/qq', () => ({
-  QQMusicAdapter: class {
-    readonly kind = 'qq'
-  }
-}))
+function mockAdapterModules(options: { qqFactory?: QQAdapterModuleFactory } = {}) {
+  vi.doMock('@/platform/music/netease', () => ({
+    NeteaseAdapter: class {
+      readonly kind = 'netease'
+    }
+  }))
+
+  vi.doMock(
+    '@/platform/music/qq',
+    options.qqFactory
+      ? options.qqFactory
+      : () => ({
+          QQMusicAdapter: class {
+            readonly kind = 'qq'
+          }
+        })
+  )
+}
 
 describe('platform music index', () => {
   beforeEach(() => {
+    vi.resetModules()
     vi.clearAllMocks()
+    mockAdapterModules()
   })
 
   it('returns the requested adapter when known', async () => {
     const { getMusicAdapter } = await import('@/platform/music')
 
-    expect(getMusicAdapter('qq')).toMatchObject({ kind: 'qq' })
+    await expect(getMusicAdapter('qq')).resolves.toMatchObject({ kind: 'qq' })
   })
 
   it('falls back to netease and warns on unknown platforms', async () => {
     const { getMusicAdapter } = await import('@/platform/music')
 
-    expect(getMusicAdapter('unknown')).toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('unknown')).resolves.toMatchObject({ kind: 'netease' })
+    expect(warnMock).toHaveBeenCalled()
+  })
+
+  it('treats prototype keys as unknown platforms and falls back safely', async () => {
+    const { getMusicAdapter } = await import('@/platform/music')
+
+    await expect(getMusicAdapter('__proto__')).resolves.toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('toString')).resolves.toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('constructor')).resolves.toMatchObject({ kind: 'netease' })
     expect(warnMock).toHaveBeenCalled()
   })
 
@@ -68,10 +92,11 @@ describe('platform music index', () => {
 
   it('reuses the lazily created logger across repeated fallback lookups', async () => {
     vi.resetModules()
+    mockAdapterModules()
     const { getMusicAdapter } = await import('@/platform/music')
 
-    expect(getMusicAdapter('unknown-a')).toMatchObject({ kind: 'netease' })
-    expect(getMusicAdapter('unknown-b')).toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('unknown-a')).resolves.toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('unknown-b')).resolves.toMatchObject({ kind: 'netease' })
 
     expect(createLoggerMock).toHaveBeenCalledTimes(1)
     expect(warnMock).toHaveBeenCalledTimes(2)
@@ -79,6 +104,7 @@ describe('platform music index', () => {
 
   it('supports an injected logger factory for fallback warnings', async () => {
     vi.resetModules()
+    mockAdapterModules()
     const injectedWarn = vi.fn()
     const { configureMusicPlatformDeps, getMusicAdapter, resetMusicPlatformDeps } =
       await import('@/platform/music')
@@ -98,9 +124,62 @@ describe('platform music index', () => {
       })
     })
 
-    expect(getMusicAdapter('missing-platform')).toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('missing-platform')).resolves.toMatchObject({ kind: 'netease' })
     expect(injectedWarn).toHaveBeenCalledTimes(1)
 
     resetMusicPlatformDeps()
+  })
+
+  it('loads each adapter module at most once, even for concurrent requests', async () => {
+    vi.resetModules()
+
+    const loaderCallCount = { qq: 0 }
+    mockAdapterModules({
+      qqFactory: () => {
+        loaderCallCount.qq += 1
+        return {
+          QQMusicAdapter: class {
+            readonly kind = 'qq'
+          }
+        }
+      }
+    })
+
+    const { getMusicAdapter } = await import('@/platform/music')
+    const firstPromise = getMusicAdapter('qq')
+    const secondPromise = getMusicAdapter('qq')
+
+    expect(firstPromise).toBe(secondPromise)
+    await expect(firstPromise).resolves.toMatchObject({ kind: 'qq' })
+    expect(loaderCallCount.qq).toBe(1)
+  })
+
+  it('retries loading an adapter after a failed import and does not cache the failure', async () => {
+    vi.resetModules()
+
+    let qqConstructionCount = 0
+    mockAdapterModules({
+      qqFactory: () => {
+        return {
+          QQMusicAdapter: class {
+            constructor() {
+              qqConstructionCount += 1
+
+              if (qqConstructionCount === 1) {
+                throw new Error('qq adapter load failed')
+              }
+            }
+
+            readonly kind = 'qq'
+          }
+        }
+      }
+    })
+
+    const { getMusicAdapter } = await import('@/platform/music')
+
+    await expect(getMusicAdapter('qq')).rejects.toThrow('qq adapter load failed')
+    await expect(getMusicAdapter('qq')).resolves.toMatchObject({ kind: 'qq' })
+    expect(qqConstructionCount).toBe(2)
   })
 })

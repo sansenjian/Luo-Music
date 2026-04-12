@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { defineAsyncComponent, onMounted, ref } from 'vue'
 
-import ErrorToast from '../components/ErrorToast.vue'
 import HomeFooter from '../components/home/HomeFooter.vue'
 import HomeHeader from '../components/home/HomeHeader.vue'
 import HomeWorkspace from '../components/home/HomeWorkspace.vue'
-import LyricDisplay from '../components/LyricDisplay.vue'
-import Player from '../components/Player.vue'
-import Playlist from '../components/Playlist.vue'
-import Toast from '../components/Toast.vue'
 import { useHomePage } from '../composables/useHomePage'
+
+const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.vue'))
+const LyricDisplay = defineAsyncComponent(() => import('../components/LyricDisplay.vue'))
+const Player = defineAsyncComponent(() => import('../components/Player.vue'))
+const Playlist = defineAsyncComponent(() => import('../components/Playlist.vue'))
+const Toast = defineAsyncComponent(() => import('../components/Toast.vue'))
 
 const {
   activeTab,

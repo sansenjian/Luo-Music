@@ -4,6 +4,11 @@ const setupServicesMock = vi.hoisted(() => vi.fn())
 const vueQueryInstallMock = vi.hoisted(() => vi.fn())
 const routerInstallMock = vi.hoisted(() => vi.fn())
 const routerBeforeResolveMock = vi.hoisted(() => vi.fn())
+type RouteResolveHandler = (to: {
+  matched: Array<{ meta?: Record<string, unknown> }>
+}) => Promise<void>
+
+let routeBeforeResolveHandler: RouteResolveHandler | undefined
 const loggerWarnMock = vi.hoisted(() => vi.fn())
 const loggerErrorMock = vi.hoisted(() => vi.fn())
 const performanceInitMock = vi.hoisted(() => vi.fn())
@@ -18,7 +23,10 @@ vi.mock('@/App.vue', () => ({
 vi.mock('@/router', () => ({
   default: {
     install: routerInstallMock,
-    beforeResolve: routerBeforeResolveMock
+    beforeResolve: vi.fn((handler: RouteResolveHandler) => {
+      routeBeforeResolveHandler = handler
+      routerBeforeResolveMock(handler)
+    })
   }
 }))
 
@@ -51,6 +59,7 @@ describe('main bootstrap', () => {
     vi.resetModules()
     vi.clearAllMocks()
     vi.useFakeTimers()
+    routeBeforeResolveHandler = undefined
     document.body.innerHTML = '<div id="app"></div>'
     document.cookie = 'sessionToken=alive'
   })
@@ -63,13 +72,17 @@ describe('main bootstrap', () => {
     expect(setupServicesMock).toHaveBeenCalledTimes(1)
   })
 
-  it('installs Vue Query before router navigation starts', async () => {
+  it('installs Vue Query lazily before a matching route navigation resolves', async () => {
     await import('@/main.ts')
 
-    expect(vueQueryInstallMock).toHaveBeenCalledTimes(1)
+    expect(vueQueryInstallMock).not.toHaveBeenCalled()
     expect(routerInstallMock).toHaveBeenCalledTimes(1)
-    expect(vueQueryInstallMock.mock.invocationCallOrder[0]).toBeLessThan(
-      routerInstallMock.mock.invocationCallOrder[0]
-    )
+    expect(routeBeforeResolveHandler).toBeDefined()
+
+    await routeBeforeResolveHandler!({
+      matched: [{ meta: { requiresVueQuery: true } }]
+    })
+
+    expect(vueQueryInstallMock).toHaveBeenCalledTimes(1)
   })
 })

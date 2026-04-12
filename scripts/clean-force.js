@@ -12,13 +12,16 @@ const projectRoot = resolve(import.meta.dirname, '..')
 
 // 要清理的目录列表
 const dirsToClean = [
+  'build',
   'dist',
   'dist-electron',
   'dist-server',
+  'out',
   'release_v2',
   '.vite',
+  '.vite_cache',
   'node_modules/.vite',
-  'node_modules/.cache',
+  'node_modules/.cache'
 ]
 
 // 额外清理 node_modules（仅当传入 --all 参数时）

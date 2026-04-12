@@ -91,12 +91,15 @@ export const electronRendererManualChunks: ManualChunksOption = (id: string) => 
     return undefined
   }
 
+  if (id.includes('/@tanstack/')) {
+    return 'vendor-query'
+  }
+
   if (
     id.includes('/vue/') ||
     id.includes('/@vue/') ||
     id.includes('/pinia/') ||
-    id.includes('/vue-router/') ||
-    id.includes('/@tanstack/vue-query/')
+    id.includes('/vue-router/')
   ) {
     return 'vendor-vue'
   }
