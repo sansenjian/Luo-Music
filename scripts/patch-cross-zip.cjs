@@ -109,7 +109,7 @@ function patchAppBuilderLibNodeModulesCollector(filePath) {
   }
 
   const source = fs.readFileSync(filePath, 'utf8')
-  const originalSnippet = [
+  const upstreamSnippet = [
     '        await new Promise((resolve, reject) => {',
     '            const outStream = (0, fs_extra_1.createWriteStream)(tempOutputFile);',
     '            const child = childProcess.spawn(command, args, {',
@@ -156,7 +156,7 @@ function patchAppBuilderLibNodeModulesCollector(filePath) {
     "                shell: true, // electron-builder currently requires shell mode here, so pass a single shell command string to avoid DEP0190",
     "            });"
   ].join('\n')
-  const safeSnippet = [
+  const brokenShellFalseSnippet = [
     "        await new Promise((resolve, reject) => {",
     "            const outStream = (0, fs_extra_1.createWriteStream)(tempOutputFile);",
     "            const child = childProcess.spawn(command, args, {",
@@ -167,23 +167,23 @@ function patchAppBuilderLibNodeModulesCollector(filePath) {
   ].join('\n')
 
   const patched = source
-    .replace(originalSnippet, safeSnippet)
-    .replace(malformedSnippet, safeSnippet)
-    .replace(unsafePatchedSnippet, safeSnippet)
+    .replace(malformedSnippet, upstreamSnippet)
+    .replace(unsafePatchedSnippet, upstreamSnippet)
+    .replace(brokenShellFalseSnippet, upstreamSnippet)
 
   if (patched === source) {
-    const alreadyPatched = source.includes(safeSnippet)
+    const alreadyPatched = source.includes(upstreamSnippet)
 
     handleUnchangedPatch({
       alreadyPatched,
-      alreadyPatchedMessage: '[patch-cross-zip] app-builder-lib already patched',
+      alreadyPatchedMessage: '[patch-cross-zip] app-builder-lib collector shell mode already preserved',
       unsupportedMessage: '[patch-cross-zip] app-builder-lib unsupported version'
     })
     return
   }
 
   fs.writeFileSync(filePath, patched, 'utf8')
-  console.log('[patch-cross-zip] patched app-builder-lib nodeModulesCollector for DEP0190')
+  console.log('[patch-cross-zip] restored app-builder-lib nodeModulesCollector shell mode')
 }
 
 function main() {

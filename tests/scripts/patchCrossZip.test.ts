@@ -46,7 +46,7 @@ const crossZipPatchedSource = [
   ''
 ].join('\n')
 
-const originalSnippet = [
+const upstreamSnippet = [
   '        await new Promise((resolve, reject) => {',
   '            const outStream = (0, fs_extra_1.createWriteStream)(tempOutputFile);',
   '            const child = childProcess.spawn(command, args, {',
@@ -56,7 +56,7 @@ const originalSnippet = [
   '            });'
 ].join('\n')
 
-const safeSnippet = [
+const legacyShellFalseSnippet = [
   '        await new Promise((resolve, reject) => {',
   '            const outStream = (0, fs_extra_1.createWriteStream)(tempOutputFile);',
   '            const child = childProcess.spawn(command, args, {',
@@ -117,35 +117,35 @@ describe('patch-cross-zip script', () => {
     }
   })
 
-  it('patches app-builder-lib to spawn with argv directly instead of a shell string', async () => {
+  it('restores app-builder-lib collector shell mode after the legacy shell-false patch', async () => {
     const tempDir = await mkdtemp(join(tmpdir(), 'luo-music-patch-cross-zip-'))
     const filePath = join(tempDir, 'nodeModulesCollector.js')
 
     try {
-      await writeFile(filePath, buildCollectorSource(originalSnippet), 'utf8')
+      await writeFile(filePath, buildCollectorSource(legacyShellFalseSnippet), 'utf8')
 
       patchAppBuilderLibNodeModulesCollector(filePath)
 
       const patched = await readFile(filePath, 'utf8')
-      expect(patched).toContain(safeSnippet)
-      expect(patched).not.toContain('quoteForShell')
-      expect(patched).not.toContain('shellCommand')
-      expect(patched).not.toContain('shell: true')
+      expect(patched).toContain(upstreamSnippet)
+      expect(patched).not.toContain('shell: false')
     } finally {
       await rm(tempDir, { recursive: true, force: true })
     }
   })
 
-  it('keeps local no-op patch runs informational', async () => {
+  it('keeps upstream app-builder-lib collector runs informational', async () => {
     const tempDir = await mkdtemp(join(tmpdir(), 'luo-music-patch-cross-zip-'))
     const filePath = join(tempDir, 'nodeModulesCollector.js')
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
     try {
-      await writeFile(filePath, buildCollectorSource(safeSnippet), 'utf8')
+      await writeFile(filePath, buildCollectorSource(upstreamSnippet), 'utf8')
 
       expect(() => patchAppBuilderLibNodeModulesCollector(filePath)).not.toThrow()
-      expect(logSpy).toHaveBeenCalledWith('[patch-cross-zip] app-builder-lib already patched')
+      expect(logSpy).toHaveBeenCalledWith(
+        '[patch-cross-zip] app-builder-lib collector shell mode already preserved'
+      )
     } finally {
       await rm(tempDir, { recursive: true, force: true })
     }

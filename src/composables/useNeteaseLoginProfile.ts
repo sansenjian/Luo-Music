@@ -11,21 +11,25 @@ type LoginProfileResult = {
   profile: Record<string, unknown>
 }
 
+function normalizeCookie(cookie: unknown): string {
+  return typeof cookie === 'string' ? cookie.trim() : ''
+}
+
 function resolveBrowserCookie(): string {
   if (typeof document === 'undefined' || typeof document.cookie !== 'string') {
     return ''
   }
 
-  return document.cookie.trim()
+  return normalizeCookie(document.cookie)
 }
 
-function resolveSessionCookie(cookie: string, storedCookie: string): string {
-  const trimmedCookie = cookie.trim()
+function resolveSessionCookie(cookie: string, storedCookie: unknown): string {
+  const trimmedCookie = normalizeCookie(cookie)
   if (trimmedCookie.length > 0) {
     return trimmedCookie
   }
 
-  const trimmedStoredCookie = storedCookie.trim()
+  const trimmedStoredCookie = normalizeCookie(storedCookie)
   if (trimmedStoredCookie.length > 0) {
     return trimmedStoredCookie
   }
