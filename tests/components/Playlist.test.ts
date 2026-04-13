@@ -56,6 +56,26 @@ describe('Playlist.vue', () => {
     expect(items[1].find('.server-badge.qq').exists()).toBe(true)
   })
 
+  it('renders sparse playlist songs without crashing', () => {
+    const store = usePlayerStore()
+    store.songList = [
+      {
+        id: 1,
+        name: 'Sparse Song',
+        duration: 180000,
+        platform: 'netease'
+      } as any
+    ]
+    store.currentIndex = 0
+
+    const wrapper = mount(Playlist)
+    const items = wrapper.findAll('.list-item')
+
+    expect(items).toHaveLength(1)
+    expect(items[0].text()).toContain('Sparse Song')
+    expect(items[0].find('.list-artist').text()).toBe('')
+  })
+
   it('highlights current playing song', () => {
     const store = usePlayerStore()
     store.songList = [

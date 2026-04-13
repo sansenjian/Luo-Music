@@ -88,6 +88,40 @@ describe('LikedSongsView', () => {
     expect(wrapper.emitted('play-song')?.[0]).toEqual([1])
   })
 
+  it('filters loaded songs and preserves the original play index', async () => {
+    const wrapper = mount(LikedSongsView, {
+      props: {
+        likeSongs: [createSong(0), createSong(1), createSong(2)]
+      }
+    })
+
+    await wrapper.get('input[type="search"]').setValue('Artist 3')
+
+    const items = wrapper.findAll('.song-item')
+    expect(items).toHaveLength(1)
+    expect(wrapper.find('.results-summary').text()).toContain('找到 1 首匹配歌曲')
+
+    await items[0].trigger('click')
+
+    expect(wrapper.emitted('play-song')?.[0]).toEqual([2])
+  })
+
+  it('renders an error state and emits retry when liked songs fail to load', async () => {
+    const wrapper = mount(LikedSongsView, {
+      props: {
+        likeSongs: [],
+        error: new Error('request failed')
+      }
+    })
+
+    expect(wrapper.find('.error-state').exists()).toBe(true)
+    expect(wrapper.text()).toContain('喜欢的音乐加载失败')
+
+    await wrapper.get('.retry-btn').trigger('click')
+
+    expect(wrapper.emitted('retry')).toHaveLength(1)
+  })
+
   it('virtualizes large liked song lists instead of rendering every row at once', async () => {
     const resizeObserverMock = installResizeObserverMock()
     const wrapper = mount(LikedSongsView, {
@@ -134,15 +168,86 @@ describe('LikedSongsView', () => {
     await nextTick()
     await nextTick()
 
-    expect(wrapper.get('.song-item[data-index="0"]').attributes('tabindex')).toBe('0')
+    expect(wrapper.get('.song-item[data-filtered-index="0"]').attributes('tabindex')).toBe('0')
 
     await wrapper.get('.songs-list').trigger('keydown', { key: 'ArrowDown' })
     await nextTick()
     await nextTick()
 
-    const activeItem = wrapper.get('.song-item[data-index="1"]')
+    const activeItem = wrapper.get('.song-item[data-filtered-index="1"]')
     expect(activeItem.attributes('tabindex')).toBe('0')
     expect(document.activeElement).toBe(activeItem.element)
+
+    wrapper.unmount()
+  })
+
+  it('emits load-more when scrolled near the end and more liked songs are available', async () => {
+    const resizeObserverMock = installResizeObserverMock()
+    const wrapper = mount(LikedSongsView, {
+      attachTo: document.body,
+      props: {
+        likeSongs: Array.from({ length: 100 }, (_, index) => createSong(index)),
+        hasMore: true
+      }
+    })
+
+    const listElement = wrapper.get('.songs-list').element as HTMLElement
+    Object.defineProperty(listElement, 'clientHeight', {
+      configurable: true,
+      value: 400
+    })
+
+    resizeObserverMock.trigger(listElement)
+    await nextTick()
+    await nextTick()
+
+    listElement.scrollTop = 8400
+    await wrapper.get('.songs-list').trigger('scroll')
+
+    expect(wrapper.emitted('load-more')).toHaveLength(1)
+
+    wrapper.unmount()
+  })
+
+  it('allows another load-more request after more liked songs are appended', async () => {
+    const resizeObserverMock = installResizeObserverMock()
+    const wrapper = mount(LikedSongsView, {
+      attachTo: document.body,
+      props: {
+        likeSongs: Array.from({ length: 100 }, (_, index) => createSong(index)),
+        hasMore: true
+      }
+    })
+
+    const listElement = wrapper.get('.songs-list').element as HTMLElement
+    Object.defineProperty(listElement, 'clientHeight', {
+      configurable: true,
+      value: 400
+    })
+
+    resizeObserverMock.trigger(listElement)
+    await nextTick()
+    await nextTick()
+
+    listElement.scrollTop = 8400
+    await wrapper.get('.songs-list').trigger('scroll')
+
+    await wrapper.setProps({
+      loadingMore: true
+    })
+    await nextTick()
+
+    await wrapper.setProps({
+      likeSongs: Array.from({ length: 200 }, (_, index) => createSong(index)),
+      loadingMore: false
+    })
+    await nextTick()
+    await nextTick()
+
+    listElement.scrollTop = 17200
+    await wrapper.get('.songs-list').trigger('scroll')
+
+    expect(wrapper.emitted('load-more')).toHaveLength(2)
 
     wrapper.unmount()
   })
@@ -152,7 +257,7 @@ describe('LikedSongsView', () => {
     const wrapper = mount(LikedSongsView, {
       attachTo: document.body,
       props: {
-        likeSongs: Array.from({ length: 20 }, (_, index) => createSong(index)),
+        likeSongs: [],
         loading: true
       }
     })
@@ -160,7 +265,10 @@ describe('LikedSongsView', () => {
     expect(wrapper.find('.songs-list').exists()).toBe(false)
     expect(resizeObserverMock.observe).not.toHaveBeenCalled()
 
-    await wrapper.setProps({ loading: false })
+    await wrapper.setProps({
+      likeSongs: Array.from({ length: 20 }, (_, index) => createSong(index)),
+      loading: false
+    })
     await nextTick()
 
     const listElement = wrapper.get('.songs-list').element as HTMLElement

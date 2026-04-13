@@ -27,8 +27,10 @@ type PlaylistItem = {
 const songs = computed<PlaylistItem[]>(() =>
   playerStore.songList.map(song => ({
     id: song.id,
-    artistText: song.artists.map(artist => artist.name).join(' / '),
-    cover: song.album.picUrl || '',
+    artistText: Array.isArray(song.artists)
+      ? song.artists.map(artist => artist.name).join(' / ')
+      : '',
+    cover: song.album?.picUrl || '',
     duration: Math.floor(song.duration / 1000), // 毫秒转秒
     isQQ: song.platform === 'qq',
     name: song.name

@@ -1,0 +1,580 @@
+import { computed, defineComponent, nextTick, reactive, ref } from 'vue'
+import { flushPromises, mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { LocationQuery, LocationQueryRaw } from 'vue-router'
+
+import {
+  useUserCenterPage,
+  type UseUserCenterPageDeps,
+  type UseUserCenterPageReturn
+} from '@/composables/useUserCenterPage'
+import type { EventItem } from '@/composables/useUserEvents'
+import type { PlaylistItem } from '@/composables/useUserPlaylists'
+import { createSong, type Song } from '@/platform/music/interface'
+import { formatSongs } from '@/utils/songFormatter'
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+
+  const promise = new Promise<T>(nextResolve => {
+    resolve = nextResolve
+  })
+
+  return { promise, resolve }
+}
+
+type UserStoreState = {
+  isLoggedIn: boolean
+  userId: string | null
+  avatarUrl: string
+  nickname: string
+}
+
+type RouteState = {
+  query: LocationQuery
+}
+
+function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
+  const userStore = reactive<UserStoreState>({
+    isLoggedIn: true,
+    userId: 'user-1',
+    avatarUrl: 'avatar.png',
+    nickname: 'tester'
+  })
+  const route = reactive<RouteState>({
+    query: { ...initialQuery }
+  })
+
+  const likedSongsRef = ref<Song[]>([
+    createSong({
+      id: 'liked-1',
+      name: 'Liked Song 1',
+      platform: 'netease'
+    }),
+    createSong({
+      id: 'liked-2',
+      name: 'Liked Song 2',
+      platform: 'netease'
+    })
+  ])
+  const playlistsRef = ref<PlaylistItem[]>([
+    {
+      id: 'playlist-1',
+      name: 'Playlist 1',
+      trackCount: 2
+    }
+  ])
+  const eventsRef = ref<EventItem[]>([
+    {
+      eventId: 'event-1',
+      message: 'event message'
+    }
+  ])
+  const filteredEventsRef = computed(() => eventsRef.value)
+  const likedSongsErrorRef = ref<unknown>(null)
+  const playlistsErrorRef = ref<unknown>(null)
+  const eventsErrorRef = ref<unknown>(null)
+
+  const pushMock = vi.fn<(path: string) => Promise<void>>(() => Promise.resolve())
+  const replaceMock = vi.fn<
+    (location: { path?: string; query?: LocationQueryRaw }) => Promise<void>
+  >(async location => {
+    route.query = { ...(location.query ?? {}) } as LocationQuery
+  })
+  const setPlaylistMock = vi.fn<(songs: Song[]) => void>()
+  const setSongListMock = vi.fn<(songs: Song[]) => void>()
+  const playSongWithDetailsMock = vi.fn<(index: number) => Promise<void>>(() => Promise.resolve())
+  const loadMoreLikedSongsMock = vi.fn<() => Promise<void>>(() => Promise.resolve())
+  const retryLoadLikedSongsMock = vi.fn<() => Promise<void>>(() => Promise.resolve())
+  const loadLikedSongsMock = vi.fn<(userId: string | number) => Promise<void>>(() =>
+    Promise.resolve()
+  )
+  const resetLikedSongsMock = vi.fn(() => {
+    likedSongsRef.value = []
+    likedSongsErrorRef.value = null
+  })
+  const loadPlaylistsMock = vi.fn<(userId: string | number) => Promise<void>>(() =>
+    Promise.resolve()
+  )
+  const loadPlaylistSongsMock = vi.fn<(playlistId: string | number) => Promise<Song[]>>(() =>
+    Promise.resolve([])
+  )
+  const resetPlaylistsMock = vi.fn(() => {
+    playlistsRef.value = []
+    playlistsErrorRef.value = null
+  })
+  const loadEventsMock = vi.fn<(userId: string | number) => Promise<void>>(() => Promise.resolve())
+  const loadMoreEventsMock = vi.fn<() => Promise<void>>(() => Promise.resolve())
+  const retryLoadEventsMock = vi.fn<() => Promise<void>>(() => Promise.resolve())
+  const resetEventsMock = vi.fn(() => {
+    eventsRef.value = []
+    eventsErrorRef.value = null
+  })
+
+  const deps: UseUserCenterPageDeps = {
+    route,
+    router: {
+      push: pushMock,
+      replace: replaceMock
+    },
+    userStore,
+    playlistStore: {
+      setPlaylist: setPlaylistMock
+    },
+    playerStore: {
+      setSongList: setSongListMock,
+      playSongWithDetails: playSongWithDetailsMock
+    },
+    likedSongs: {
+      likeSongs: likedSongsRef,
+      formattedSongs: computed(() => formatSongs(likedSongsRef.value)),
+      count: computed(() => likedSongsRef.value.length),
+      error: likedSongsErrorRef,
+      hasMore: computed(() => true),
+      loadLikedSongs: loadLikedSongsMock,
+      loadMoreLikedSongs: loadMoreLikedSongsMock,
+      loadingMore: ref(false),
+      retryLoadLikedSongs: retryLoadLikedSongsMock,
+      resetLikedSongs: resetLikedSongsMock
+    },
+    userPlaylists: {
+      playlists: playlistsRef,
+      count: computed(() => playlistsRef.value.length),
+      error: playlistsErrorRef,
+      loadPlaylists: loadPlaylistsMock,
+      loadPlaylistSongs: loadPlaylistSongsMock,
+      resetPlaylists: resetPlaylistsMock
+    },
+    userEvents: {
+      activeFilter: ref('all'),
+      events: eventsRef,
+      filteredEvents: filteredEventsRef,
+      count: computed(() => eventsRef.value.length),
+      error: eventsErrorRef,
+      hasMore: computed(() => false),
+      loadEvents: loadEventsMock,
+      loadMoreEvents: loadMoreEventsMock,
+      loadingMore: ref(false),
+      retryLoadEvents: retryLoadEventsMock,
+      resetEvents: resetEventsMock,
+      setFilter: vi.fn()
+    }
+  }
+
+  return {
+    deps,
+    userStore,
+    route,
+    likedSongsRef,
+    likedSongsErrorRef,
+    playlistsRef,
+    playlistsErrorRef,
+    eventsErrorRef,
+    pushMock,
+    replaceMock,
+    setPlaylistMock,
+    setSongListMock,
+    playSongWithDetailsMock,
+    loadLikedSongsMock,
+    loadMoreLikedSongsMock,
+    retryLoadLikedSongsMock,
+    resetLikedSongsMock,
+    loadPlaylistsMock,
+    loadPlaylistSongsMock,
+    resetPlaylistsMock,
+    loadEventsMock,
+    loadMoreEventsMock,
+    retryLoadEventsMock,
+    resetEventsMock
+  }
+}
+
+function mountUserCenterPage(factory = createUserCenterPageDeps()) {
+  let viewModel!: UseUserCenterPageReturn
+
+  const Harness = defineComponent({
+    setup() {
+      viewModel = useUserCenterPage(factory.deps)
+      return () => null
+    }
+  })
+
+  mount(Harness)
+
+  return {
+    ...factory,
+    viewModel
+  }
+}
+
+describe('useUserCenterPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('reloads user scoped data when the account changes on the same route', async () => {
+    const {
+      viewModel,
+      userStore,
+      loadEventsMock,
+      loadLikedSongsMock,
+      loadPlaylistsMock,
+      resetEventsMock,
+      resetLikedSongsMock,
+      resetPlaylistsMock
+    } = mountUserCenterPage()
+
+    await flushPromises()
+
+    expect(viewModel.activeTab.value).toBe('liked')
+    expect(viewModel.mountedTabs.value).toEqual({
+      liked: true,
+      playlist: false,
+      events: false
+    })
+    expect(resetLikedSongsMock).toHaveBeenCalled()
+    expect(resetPlaylistsMock).toHaveBeenCalled()
+    expect(resetEventsMock).toHaveBeenCalled()
+    expect(loadLikedSongsMock).toHaveBeenCalledWith('user-1')
+    expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadEventsMock).not.toHaveBeenCalled()
+
+    vi.clearAllMocks()
+
+    userStore.userId = 'user-2'
+    await nextTick()
+    await flushPromises()
+
+    expect(resetLikedSongsMock).toHaveBeenCalled()
+    expect(resetPlaylistsMock).toHaveBeenCalled()
+    expect(resetEventsMock).toHaveBeenCalled()
+    expect(loadLikedSongsMock).toHaveBeenCalledWith('user-2')
+    expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadEventsMock).not.toHaveBeenCalled()
+  })
+
+  it('clears stale user data and redirects when logout happens on the user route', async () => {
+    const {
+      userStore,
+      pushMock,
+      loadEventsMock,
+      loadLikedSongsMock,
+      loadPlaylistsMock,
+      resetEventsMock,
+      resetLikedSongsMock,
+      resetPlaylistsMock
+    } = mountUserCenterPage()
+
+    await flushPromises()
+    vi.clearAllMocks()
+
+    userStore.isLoggedIn = false
+    userStore.userId = null
+    await nextTick()
+    await flushPromises()
+
+    expect(resetLikedSongsMock).toHaveBeenCalled()
+    expect(resetPlaylistsMock).toHaveBeenCalled()
+    expect(resetEventsMock).toHaveBeenCalled()
+    expect(loadLikedSongsMock).not.toHaveBeenCalled()
+    expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadEventsMock).not.toHaveBeenCalled()
+    expect(pushMock).toHaveBeenCalledWith('/')
+  })
+
+  it('restores active tab and playlist detail from route query', async () => {
+    const playlistSongs = [
+      createSong({
+        id: 'playlist-song-1',
+        name: 'Playlist Song 1',
+        platform: 'netease'
+      })
+    ]
+    const factory = createUserCenterPageDeps({
+      tab: 'playlist',
+      playlistId: 'playlist-1'
+    })
+
+    factory.loadPlaylistSongsMock.mockResolvedValue(playlistSongs)
+
+    const { viewModel, loadLikedSongsMock, loadPlaylistSongsMock, loadPlaylistsMock, route } =
+      mountUserCenterPage(factory)
+
+    await flushPromises()
+
+    expect(viewModel.activeTab.value).toBe('playlist')
+    expect(viewModel.selectedPlaylistId.value).toBe('playlist-1')
+    expect(viewModel.mountedTabs.value.playlist).toBe(true)
+    expect(route.query).toEqual({
+      tab: 'playlist',
+      playlistId: 'playlist-1'
+    })
+    expect(loadPlaylistsMock).toHaveBeenCalledWith('user-1')
+    expect(loadLikedSongsMock).not.toHaveBeenCalled()
+    expect(loadPlaylistSongsMock).toHaveBeenCalledWith('playlist-1')
+    expect(viewModel.selectedPlaylistSongs.value).toEqual(playlistSongs)
+  })
+
+  it('loads non-active tabs only when the user switches to them and syncs query state', async () => {
+    const { route, replaceMock, viewModel, loadEventsMock, loadLikedSongsMock, loadPlaylistsMock } =
+      mountUserCenterPage()
+
+    await flushPromises()
+
+    expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
+    expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadEventsMock).not.toHaveBeenCalled()
+
+    viewModel.switchTab('playlist')
+    await flushPromises()
+
+    expect(viewModel.activeTab.value).toBe('playlist')
+    expect(viewModel.mountedTabs.value.playlist).toBe(true)
+    expect(loadPlaylistsMock).toHaveBeenCalledWith('user-1')
+    expect(route.query).toEqual({ tab: 'playlist' })
+    expect(replaceMock).toHaveBeenLastCalledWith({
+      path: '/user',
+      query: { tab: 'playlist' }
+    })
+
+    viewModel.switchTab('events')
+    await flushPromises()
+
+    expect(viewModel.activeTab.value).toBe('events')
+    expect(viewModel.mountedTabs.value.events).toBe(true)
+    expect(loadEventsMock).toHaveBeenCalledWith('user-1')
+    expect(route.query).toEqual({ tab: 'events' })
+
+    viewModel.switchTab('playlist')
+    await flushPromises()
+
+    expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not reload a tab while its previous request is still in flight', async () => {
+    const likedDeferred = createDeferred<void>()
+    const playlistDeferred = createDeferred<void>()
+    const factory = createUserCenterPageDeps()
+
+    factory.loadLikedSongsMock.mockImplementationOnce(() => likedDeferred.promise)
+    factory.loadPlaylistsMock.mockImplementationOnce(() => playlistDeferred.promise)
+
+    const { viewModel, loadLikedSongsMock, loadPlaylistsMock } = mountUserCenterPage(factory)
+
+    await nextTick()
+
+    expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
+
+    viewModel.switchTab('playlist')
+    await nextTick()
+
+    expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
+
+    viewModel.switchTab('liked')
+    await nextTick()
+
+    expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
+
+    likedDeferred.resolve()
+    playlistDeferred.resolve()
+    await flushPromises()
+  })
+
+  it('opens playlist detail, syncs query, and retries detail loading after failure', async () => {
+    const playlistSongs = [
+      createSong({
+        id: 'playlist-song-1',
+        name: 'Playlist Song 1',
+        platform: 'netease'
+      })
+    ]
+    const factory = createUserCenterPageDeps()
+
+    factory.loadPlaylistSongsMock
+      .mockRejectedValueOnce(new Error('detail failed'))
+      .mockResolvedValueOnce(playlistSongs)
+
+    const { route, replaceMock, viewModel, loadPlaylistSongsMock } = mountUserCenterPage(factory)
+
+    await flushPromises()
+    await viewModel.openPlaylistDetail('playlist-1')
+
+    expect(viewModel.activeTab.value).toBe('playlist')
+    expect(viewModel.selectedPlaylistId.value).toBe('playlist-1')
+    expect(route.query).toEqual({
+      tab: 'playlist',
+      playlistId: 'playlist-1'
+    })
+    expect(replaceMock).toHaveBeenLastCalledWith({
+      path: '/user',
+      query: {
+        tab: 'playlist',
+        playlistId: 'playlist-1'
+      }
+    })
+    expect(viewModel.playlistDetailError.value).toBeInstanceOf(Error)
+    expect(viewModel.selectedPlaylistSongs.value).toEqual([])
+
+    await viewModel.retryPlaylistDetail()
+
+    expect(loadPlaylistSongsMock).toHaveBeenCalledTimes(2)
+    expect(viewModel.playlistDetailError.value).toBe(null)
+    expect(viewModel.selectedPlaylistSongs.value).toEqual(playlistSongs)
+
+    viewModel.closePlaylistDetail()
+    await flushPromises()
+
+    expect(viewModel.selectedPlaylistId.value).toBe(null)
+    expect(route.query).toEqual({ tab: 'playlist' })
+  })
+
+  it('retries the active tab through the shell state', async () => {
+    const factory = createUserCenterPageDeps({
+      tab: 'events'
+    })
+
+    const { eventsErrorRef, retryLoadEventsMock, viewModel } = mountUserCenterPage(factory)
+
+    await flushPromises()
+    vi.clearAllMocks()
+
+    eventsErrorRef.value = new Error('events failed')
+
+    await viewModel.retryActiveTab()
+
+    expect(viewModel.activeTabError.value).toBe(null)
+    expect(retryLoadEventsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('coordinates playlist and player stores across playback actions', async () => {
+    const factory = createUserCenterPageDeps()
+    const playlistSongs = [
+      createSong({
+        id: 'playlist-song-1',
+        name: 'Playlist Song 1',
+        platform: 'netease'
+      })
+    ]
+
+    factory.loadPlaylistSongsMock.mockResolvedValue(playlistSongs)
+
+    const {
+      viewModel,
+      likedSongsRef,
+      loadPlaylistSongsMock,
+      playSongWithDetailsMock,
+      pushMock,
+      setPlaylistMock,
+      setSongListMock
+    } = mountUserCenterPage(factory)
+
+    await flushPromises()
+
+    const likedSongs = [
+      createSong({
+        id: 'liked-a',
+        name: 'Liked Song A',
+        platform: 'netease'
+      }),
+      createSong({
+        id: 'liked-b',
+        name: 'Liked Song B',
+        platform: 'netease'
+      })
+    ]
+
+    likedSongsRef.value = likedSongs
+
+    await viewModel.playAllLikedSongs()
+
+    expect(setPlaylistMock).toHaveBeenCalledWith(likedSongs)
+    expect(setSongListMock).toHaveBeenCalledWith(likedSongs)
+    expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
+    expect(pushMock).toHaveBeenCalledWith('/')
+
+    vi.clearAllMocks()
+
+    await viewModel.playLikedSongAt(1)
+
+    expect(setPlaylistMock).toHaveBeenCalledWith(likedSongs)
+    expect(setSongListMock).toHaveBeenCalledWith(likedSongs)
+    expect(playSongWithDetailsMock).toHaveBeenCalledWith(1)
+    expect(pushMock).toHaveBeenCalledWith('/')
+
+    vi.clearAllMocks()
+
+    await viewModel.openPlaylistDetail('playlist-1')
+    await viewModel.playPlaylistTrackAt(0)
+
+    expect(loadPlaylistSongsMock).toHaveBeenCalledWith('playlist-1')
+    expect(setPlaylistMock).toHaveBeenCalledWith(playlistSongs)
+    expect(setSongListMock).toHaveBeenCalledWith(playlistSongs)
+    expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
+    expect(pushMock).toHaveBeenCalledWith('/')
+
+    vi.clearAllMocks()
+
+    await viewModel.playPlaylist('playlist-1')
+
+    expect(loadPlaylistSongsMock).toHaveBeenCalledTimes(0)
+    expect(setPlaylistMock).toHaveBeenCalledWith(playlistSongs)
+    expect(setSongListMock).toHaveBeenCalledWith(playlistSongs)
+    expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
+    expect(pushMock).toHaveBeenCalledWith('/')
+    expect(viewModel.loadingMap.value.playlist).toBe(false)
+  })
+
+  it('exposes liked songs pagination state and delegates incremental loading', async () => {
+    const { retryLoadLikedSongsMock, viewModel, loadMoreLikedSongsMock } = mountUserCenterPage()
+
+    await flushPromises()
+
+    expect(viewModel.likedSongsHasMore.value).toBe(true)
+    expect(viewModel.likedSongsLoadingMore.value).toBe(false)
+
+    await viewModel.loadMoreLikedSongs()
+
+    expect(loadMoreLikedSongsMock).toHaveBeenCalledTimes(1)
+
+    await viewModel.retryLoadLikedSongs()
+
+    expect(retryLoadLikedSongsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('exposes events filtering, pagination, and playback actions', async () => {
+    const eventSong = createSong({
+      id: 'event-song-1',
+      name: 'Event Song 1',
+      platform: 'netease'
+    })
+    const factory = createUserCenterPageDeps({
+      tab: 'events'
+    })
+
+    const {
+      loadMoreEventsMock,
+      retryLoadEventsMock,
+      setPlaylistMock,
+      setSongListMock,
+      playSongWithDetailsMock,
+      pushMock,
+      viewModel
+    } = mountUserCenterPage(factory)
+
+    await flushPromises()
+
+    expect(viewModel.eventsFilter.value).toBe('all')
+
+    viewModel.setEventsFilter('song')
+    await viewModel.loadMoreEvents()
+    await viewModel.retryLoadEvents()
+    await viewModel.playEventSong(eventSong)
+
+    expect(loadMoreEventsMock).toHaveBeenCalledTimes(1)
+    expect(retryLoadEventsMock).toHaveBeenCalledTimes(1)
+    expect(setPlaylistMock).toHaveBeenCalledWith([eventSong])
+    expect(setSongListMock).toHaveBeenCalledWith([eventSong])
+    expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
+    expect(pushMock).toHaveBeenCalledWith('/')
+  })
+})

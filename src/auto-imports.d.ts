@@ -325,6 +325,7 @@ declare global {
   const useToggle: typeof import('@vueuse/core').useToggle
   const useTransition: typeof import('@vueuse/core').useTransition
   const useUrlSearchParams: typeof import('@vueuse/core').useUrlSearchParams
+  const useUserCenterPage: typeof import('./composables/useUserCenterPage').default
   const useUserData: typeof import('./composables/useUserData').useUserData
   const useUserDataQuery: typeof import('./composables/useUserDataQuery').useUserDataQuery
   const useUserEvents: typeof import('./composables/useUserEvents').useUserEvents
@@ -420,6 +421,13 @@ declare global {
   export type { SliderOptions } from './composables/useSlider'
   import('./composables/useSlider')
   // @ts-ignore
+  export type {
+    UserTab,
+    UseUserCenterPageDeps,
+    UseUserCenterPageReturn
+  } from './composables/useUserCenterPage'
+  import('./composables/useUserCenterPage')
+  // @ts-ignore
   export type { UserStats, UseUserDataReturn } from './composables/useUserData'
   import('./composables/useUserData')
   // @ts-ignore
@@ -432,6 +440,7 @@ declare global {
     EventAlbum,
     EventSong,
     EventItem,
+    EventFilter,
     UseUserEventsReturn
   } from './composables/useUserEvents'
   import('./composables/useUserEvents')
@@ -842,6 +851,9 @@ declare module 'vue' {
     readonly useToggle: UnwrapRef<(typeof import('@vueuse/core'))['useToggle']>
     readonly useTransition: UnwrapRef<(typeof import('@vueuse/core'))['useTransition']>
     readonly useUrlSearchParams: UnwrapRef<(typeof import('@vueuse/core'))['useUrlSearchParams']>
+    readonly useUserCenterPage: UnwrapRef<
+      (typeof import('./composables/useUserCenterPage'))['default']
+    >
     readonly useUserData: UnwrapRef<(typeof import('./composables/useUserData'))['useUserData']>
     readonly useUserDataQuery: UnwrapRef<
       (typeof import('./composables/useUserDataQuery'))['useUserDataQuery']

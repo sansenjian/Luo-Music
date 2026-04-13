@@ -84,6 +84,27 @@ describe('usePlayerViewModel', () => {
     expect(getVmValue<string>((wrapper.vm as any).coverUrl)).toBe(url)
   })
 
+  it('falls back to unknown artist when the current song lacks artists', async () => {
+    const wrapper = mountHarness()
+    const store = usePlayerStore()
+
+    store.songList = [
+      {
+        id: 1,
+        name: 'Sparse Song',
+        album: { id: 1, name: 'Album', picUrl: '' },
+        duration: 180000,
+        mvid: 0,
+        platform: 'netease',
+        originalId: 1
+      } as any
+    ]
+    store.currentSong = store.songList[0] as any
+    await nextTick()
+
+    expect(getVmValue<string>((wrapper.vm as any).artistText)).toBe('Unknown Artist')
+  })
+
   it('executes play command when it is enabled', async () => {
     const wrapper = mountHarness()
     const store = usePlayerStore()

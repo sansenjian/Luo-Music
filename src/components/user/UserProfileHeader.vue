@@ -1,262 +1,359 @@
-<script setup>
-import { useUserDataQuery } from '@/composables/useUserDataQuery'
+<script setup lang="ts">
+import { computed, onBeforeUnmount, ref } from 'vue'
 
-const props = defineProps({
-  userId: {
-    type: [String, Number],
-    required: true
-  },
-  avatarUrl: {
-    type: String,
-    default: ''
-  },
-  nickname: {
-    type: String,
-    default: ''
-  }
+interface UserProfileHeaderProps {
+  userId: string | number
+  avatarUrl?: string
+  nickname?: string
+}
+
+type CopyState = 'idle' | 'success' | 'error'
+
+const props = withDefaults(defineProps<UserProfileHeaderProps>(), {
+  avatarUrl: '',
+  nickname: ''
 })
 
-// 使用 Vue Query，传入 getter 以支持响应式更新
-const { profile, stats } = useUserDataQuery(() => props.userId)
+const copyState = ref<CopyState>('idle')
+const previewVisible = ref(false)
+let copyFeedbackTimer: ReturnType<typeof setTimeout> | null = null
+
+const displayName = computed(() => props.nickname || '未命名用户')
+const profileLink = computed(
+  () => `https://music.163.com/#/user/home?id=${encodeURIComponent(String(props.userId))}`
+)
+const previewLabel = computed(() => (props.avatarUrl ? '预览头像' : '暂无头像'))
+const copyButtonLabel = computed(() => {
+  if (copyState.value === 'success') {
+    return 'UID 已复制'
+  }
+
+  if (copyState.value === 'error') {
+    return '复制失败'
+  }
+
+  return '复制 UID'
+})
+
+function resetCopyStateLater(): void {
+  if (copyFeedbackTimer) {
+    clearTimeout(copyFeedbackTimer)
+  }
+
+  copyFeedbackTimer = setTimeout(() => {
+    copyState.value = 'idle'
+  }, 1800)
+}
+
+async function copyText(text: string): Promise<boolean> {
+  if (!text || typeof window === 'undefined') {
+    return false
+  }
+
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch (error) {
+    console.warn('Clipboard API copy failed, trying fallback', error)
+  }
+
+  if (typeof document === 'undefined' || typeof document.execCommand !== 'function') {
+    return false
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', 'true')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  const copied = document.execCommand('copy')
+  document.body.removeChild(textarea)
+  return copied
+}
+
+async function handleCopyUserId(): Promise<void> {
+  const copied = await copyText(String(props.userId))
+  copyState.value = copied ? 'success' : 'error'
+  resetCopyStateLater()
+}
+
+function handleOpenProfileLink(): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.open(profileLink.value, '_blank', 'noopener,noreferrer')
+}
+
+function openAvatarPreview(): void {
+  if (!props.avatarUrl) {
+    return
+  }
+
+  previewVisible.value = true
+}
+
+function closeAvatarPreview(): void {
+  previewVisible.value = false
+}
+
+onBeforeUnmount(() => {
+  if (copyFeedbackTimer) {
+    clearTimeout(copyFeedbackTimer)
+  }
+})
 </script>
 
 <template>
-  <section class="user-profile-section">
-    <div
-      class="user-profile-bg"
-      :class="{ 'has-custom-bg': profile?.backgroundUrl }"
-      :style="
-        profile?.backgroundUrl
-          ? {
-              backgroundImage: `linear-gradient(135deg, rgba(255, 126, 95, 0.3), rgba(254, 180, 123, 0.3)), url(${profile.backgroundUrl})`
-            }
-          : {}
-      "
-    ></div>
-    <div class="user-profile-info">
-      <div class="user-avatar-container">
-        <img v-if="avatarUrl" :src="avatarUrl" :alt="nickname" class="user-avatar" />
+  <section class="user-profile-header">
+    <button
+      type="button"
+      class="user-profile-avatar"
+      :class="{ clickable: Boolean(props.avatarUrl) }"
+      @click="openAvatarPreview"
+    >
+      <img v-if="props.avatarUrl" :src="props.avatarUrl" :alt="displayName" loading="lazy" />
+      <div v-else class="user-profile-avatar-fallback">
+        {{ displayName.slice(0, 1).toUpperCase() }}
       </div>
-      <div class="user-details">
-        <div class="user-name-row">
-          <h1 class="user-nickname">{{ profile?.nickname || nickname || '未知用户' }}</h1>
-          <span v-if="stats.level" class="user-level">Lv.{{ stats.level }}</span>
-          <svg
-            v-if="stats.isVip"
-            class="vip-icon"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-          </svg>
-        </div>
-        <div class="user-stats">
-          <div class="stat-item">
-            <span class="stat-value">{{ stats.playlists }}</span>
-            <span class="stat-label">歌单</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <span class="stat-value">{{ stats.follows }}</span>
-            <span class="stat-label">关注</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <span class="stat-value">{{ stats.followeds }}</span>
-            <span class="stat-label">粉丝</span>
-          </div>
-        </div>
-        <p v-if="profile?.signature" class="user-signature">{{ profile.signature }}</p>
+    </button>
+
+    <div class="user-profile-copy">
+      <p class="user-profile-eyebrow">个人中心</p>
+      <div class="user-profile-heading">
+        <h1 class="user-profile-name">{{ displayName }}</h1>
+        <span class="user-profile-id">UID {{ props.userId }}</span>
+      </div>
+
+      <div class="user-profile-actions">
+        <button
+          type="button"
+          class="profile-action"
+          data-testid="copy-user-id"
+          @click="handleCopyUserId"
+        >
+          {{ copyButtonLabel }}
+        </button>
+        <button
+          type="button"
+          class="profile-action"
+          data-testid="open-user-profile"
+          @click="handleOpenProfileLink"
+        >
+          打开主页
+        </button>
+        <button
+          type="button"
+          class="profile-action"
+          data-testid="preview-avatar"
+          :disabled="!props.avatarUrl"
+          @click="openAvatarPreview"
+        >
+          {{ previewLabel }}
+        </button>
+      </div>
+    </div>
+
+    <div
+      v-if="previewVisible"
+      class="avatar-preview-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="头像预览"
+      @click.self="closeAvatarPreview"
+    >
+      <div class="avatar-preview-card">
+        <button
+          type="button"
+          class="avatar-preview-close"
+          aria-label="关闭头像预览"
+          @click="closeAvatarPreview"
+        >
+          ×
+        </button>
+        <img :src="props.avatarUrl" :alt="displayName" />
       </div>
     </div>
   </section>
 </template>
 
 <style scoped>
-.user-profile-section {
-  position: relative;
-  margin-bottom: 32px;
-}
-
-.user-profile-bg {
-  height: 280px;
-  background-image: linear-gradient(135deg, #ff7e5f, #feb47b);
-  background-size: cover;
-  background-position: center;
-  position: relative;
-}
-
-.user-profile-bg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.3) 100%);
-}
-
-.user-profile-bg.has-custom-bg {
-  animation: none;
-}
-
-.user-profile-info {
-  max-width: 1200px;
-  margin: -80px auto 0;
-  padding: 0 20px 24px;
-  display: flex;
-  align-items: flex-end;
-  gap: 24px;
-  position: relative;
-  z-index: 10;
-}
-
-.user-avatar-container {
-  flex-shrink: 0;
-}
-
-.user-avatar {
-  width: 160px;
-  height: 160px;
-  border-radius: 12px;
-  border: 4px solid var(--white);
-  object-fit: cover;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  background: var(--white);
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease;
-}
-
-.user-avatar:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-}
-
-.user-details {
-  flex: 1;
-  padding-bottom: 12px;
-  color: var(--black);
-  min-width: 0;
-}
-
-.user-name-row {
+.user-profile-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 20px;
+  margin: 24px auto 28px;
+  padding: 24px;
+  border: 2px solid var(--black);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 112, 59, 0.22), transparent 34%),
+    linear-gradient(135deg, rgba(0, 0, 0, 0.03), transparent 40%), var(--white);
+  box-shadow: 8px 8px 0 var(--black);
 }
 
-.user-nickname {
-  margin: 0 0 8px 0;
+.user-profile-avatar,
+.user-profile-avatar-fallback,
+.user-profile-avatar img {
+  width: 96px;
+  height: 96px;
+  border-radius: 28px;
+}
+
+.user-profile-avatar {
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 2px solid var(--black);
+  background: var(--bg);
+  padding: 0;
+}
+
+.user-profile-avatar.clickable {
+  cursor: zoom-in;
+}
+
+.user-profile-avatar img {
+  display: block;
+  object-fit: cover;
+}
+
+.user-profile-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 32px;
   font-weight: 800;
   color: var(--black);
-  letter-spacing: -0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.user-level {
-  padding: 4px 10px;
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: var(--white);
+.user-profile-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.user-profile-eyebrow {
+  margin: 0 0 8px;
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.user-profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.user-profile-name {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.05;
+  color: var(--black);
+}
+
+.user-profile-id {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 2px solid var(--black);
+  border-radius: 999px;
+  background: var(--white);
+  font-size: 13px;
+  color: var(--gray);
+  font-weight: 700;
+}
+
+.user-profile-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.profile-action {
+  padding: 10px 14px;
+  border: 2px solid var(--black);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--black);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-action:hover:not(:disabled) {
+  background: var(--black);
+  color: var(--white);
+}
+
+.profile-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.avatar-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.68);
+}
+
+.avatar-preview-card {
+  position: relative;
+  width: min(520px, 100%);
+  border: 3px solid var(--black);
   border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(255, 140, 0, 0.3);
+  overflow: hidden;
+  background: var(--white);
+  box-shadow: 8px 8px 0 var(--black);
 }
 
-.vip-icon {
-  color: #ff4757;
-  filter: drop-shadow(0 2px 4px rgba(255, 71, 87, 0.3));
+.avatar-preview-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
 }
 
-.user-stats {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 12px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: background 0.2s ease;
+.avatar-preview-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--black);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--black);
+  font-size: 24px;
   cursor: pointer;
 }
 
-.stat-item:hover {
-  background: var(--bg-dark);
-}
-
-.stat-value {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--black);
-  line-height: 1.2;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--gray);
-  margin-top: 2px;
-}
-
-.stat-divider {
-  width: 1px;
-  height: 32px;
-  background: linear-gradient(to bottom, transparent, var(--gray-light), transparent);
-}
-
-.user-signature {
-  margin: 0;
-  font-size: 14px;
-  color: var(--gray);
-  max-width: 600px;
-}
-
 @media (max-width: 768px) {
-  .user-profile-bg {
-    height: 200px;
-  }
-
-  .user-profile-info {
+  .user-profile-header {
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    margin-top: -50px;
+    align-items: flex-start;
+    padding: 20px;
   }
 
-  .user-avatar {
-    width: 100px;
-    height: 100px;
-    border-radius: 8px;
+  .user-profile-actions {
+    width: 100%;
   }
 
-  .user-nickname {
-    font-size: 22px;
-  }
-
-  .user-name-row {
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .user-stats {
-    gap: 8px;
-  }
-
-  .stat-item {
-    padding: 6px 12px;
-  }
-
-  .stat-value {
-    font-size: 18px;
+  .profile-action {
+    flex: 1 1 160px;
   }
 }
 </style>
