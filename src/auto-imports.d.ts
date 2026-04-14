@@ -30,6 +30,7 @@ declare global {
   const controlledRef: typeof import('@vueuse/core').controlledRef
   const createApp: typeof import('vue').createApp
   const createEventHook: typeof import('@vueuse/core').createEventHook
+  const createEventViewModel: typeof import('./composables/useUserEvents').createEventViewModel
   const createGlobalState: typeof import('@vueuse/core').createGlobalState
   const createInjectionState: typeof import('@vueuse/core').createInjectionState
   const createPinia: typeof import('pinia').createPinia
@@ -51,10 +52,14 @@ declare global {
   const eagerComputed: typeof import('@vueuse/core').eagerComputed
   const effectScope: typeof import('vue').effectScope
   const extendRef: typeof import('@vueuse/core').extendRef
+  const formatEventArtists: typeof import('./composables/useUserEvents').formatEventArtists
+  const formatEventTimeLabel: typeof import('./composables/useUserEvents').formatEventTimeLabel
   const getActivePinia: typeof import('pinia').getActivePinia
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
+  const getEventDisplaySong: typeof import('./composables/useUserEvents').getEventDisplaySong
+  const getEventKey: typeof import('./composables/useUserEvents').getEventKey
   const getResultsForPlaylist: typeof import('./composables/useSearch').getResultsForPlaylist
   const getSongAt: typeof import('./composables/useSearch').getSongAt
   const h: typeof import('vue').h
@@ -445,6 +450,7 @@ declare global {
     EventSong,
     EventItem,
     EventFilter,
+    EventViewModel,
     UseUserEventsReturn
   } from './composables/useUserEvents'
   import('./composables/useUserEvents')
@@ -508,6 +514,9 @@ declare module 'vue' {
     readonly controlledRef: UnwrapRef<(typeof import('@vueuse/core'))['controlledRef']>
     readonly createApp: UnwrapRef<(typeof import('vue'))['createApp']>
     readonly createEventHook: UnwrapRef<(typeof import('@vueuse/core'))['createEventHook']>
+    readonly createEventViewModel: UnwrapRef<
+      (typeof import('./composables/useUserEvents'))['createEventViewModel']
+    >
     readonly createGlobalState: UnwrapRef<(typeof import('@vueuse/core'))['createGlobalState']>
     readonly createInjectionState: UnwrapRef<
       (typeof import('@vueuse/core'))['createInjectionState']
@@ -540,10 +549,20 @@ declare module 'vue' {
     readonly eagerComputed: UnwrapRef<(typeof import('@vueuse/core'))['eagerComputed']>
     readonly effectScope: UnwrapRef<(typeof import('vue'))['effectScope']>
     readonly extendRef: UnwrapRef<(typeof import('@vueuse/core'))['extendRef']>
+    readonly formatEventArtists: UnwrapRef<
+      (typeof import('./composables/useUserEvents'))['formatEventArtists']
+    >
+    readonly formatEventTimeLabel: UnwrapRef<
+      (typeof import('./composables/useUserEvents'))['formatEventTimeLabel']
+    >
     readonly getActivePinia: UnwrapRef<(typeof import('pinia'))['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<(typeof import('vue'))['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<(typeof import('vue'))['getCurrentScope']>
     readonly getCurrentWatcher: UnwrapRef<(typeof import('vue'))['getCurrentWatcher']>
+    readonly getEventDisplaySong: UnwrapRef<
+      (typeof import('./composables/useUserEvents'))['getEventDisplaySong']
+    >
+    readonly getEventKey: UnwrapRef<(typeof import('./composables/useUserEvents'))['getEventKey']>
     readonly h: UnwrapRef<(typeof import('vue'))['h']>
     readonly ignorableWatch: UnwrapRef<(typeof import('@vueuse/core'))['ignorableWatch']>
     readonly inject: UnwrapRef<(typeof import('vue'))['inject']>

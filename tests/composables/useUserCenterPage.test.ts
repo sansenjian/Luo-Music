@@ -62,7 +62,14 @@ function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
     {
       id: 'playlist-1',
       name: 'Playlist 1',
-      trackCount: 2
+      trackCount: 2,
+      subscribed: false
+    },
+    {
+      id: 'playlist-favorite-1',
+      name: 'Favorite Playlist 1',
+      trackCount: 3,
+      subscribed: true
     }
   ])
   const albumsRef = ref<FavoriteAlbumItem[]>([
@@ -160,7 +167,15 @@ function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
     },
     userPlaylists: {
       playlists: playlistsRef,
-      count: computed(() => playlistsRef.value.length),
+      createdPlaylists: computed(() =>
+        playlistsRef.value.filter(playlist => playlist.subscribed !== true)
+      ),
+      favoritePlaylists: computed(() =>
+        playlistsRef.value.filter(playlist => playlist.subscribed === true)
+      ),
+      count: computed(
+        () => playlistsRef.value.filter(playlist => playlist.subscribed !== true).length
+      ),
       error: playlistsErrorRef,
       loadPlaylists: loadPlaylistsMock,
       loadPlaylistSongs: loadPlaylistSongsMock,
@@ -375,8 +390,14 @@ describe('useUserCenterPage', () => {
 
     factory.loadAlbumSongsMock.mockResolvedValue(albumSongs)
 
-    const { viewModel, loadAlbumSongsMock, loadFavoriteAlbumsMock, loadLikedSongsMock, route } =
-      mountUserCenterPage(factory)
+    const {
+      viewModel,
+      loadAlbumSongsMock,
+      loadFavoriteAlbumsMock,
+      loadLikedSongsMock,
+      loadPlaylistsMock,
+      route
+    } = mountUserCenterPage(factory)
 
     await flushPromises()
 
@@ -387,6 +408,7 @@ describe('useUserCenterPage', () => {
       tab: 'album',
       albumId: 'album-1'
     })
+    expect(loadPlaylistsMock).toHaveBeenCalledWith('user-1')
     expect(loadFavoriteAlbumsMock).toHaveBeenCalledWith('user-1')
     expect(loadLikedSongsMock).not.toHaveBeenCalled()
     expect(loadAlbumSongsMock).toHaveBeenCalledWith('album-1')

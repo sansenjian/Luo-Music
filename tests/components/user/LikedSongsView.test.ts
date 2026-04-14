@@ -252,6 +252,51 @@ describe('LikedSongsView', () => {
     wrapper.unmount()
   })
 
+  it('preserves scroll position after appending songs and only resets on search changes', async () => {
+    const resizeObserverMock = installResizeObserverMock()
+    const wrapper = mount(LikedSongsView, {
+      attachTo: document.body,
+      props: {
+        likeSongs: Array.from({ length: 120 }, (_, index) => createSong(index)),
+        hasMore: true
+      }
+    })
+
+    const listElement = wrapper.get('.songs-list').element as HTMLElement
+    Object.defineProperty(listElement, 'clientHeight', {
+      configurable: true,
+      value: 400
+    })
+
+    resizeObserverMock.trigger(listElement)
+    await nextTick()
+    await nextTick()
+
+    listElement.scrollTop = 4400
+    await wrapper.get('.songs-list').trigger('scroll')
+    await nextTick()
+
+    expect(wrapper.get('.song-item[data-filtered-index="50"]').attributes('tabindex')).toBe('0')
+
+    await wrapper.setProps({
+      likeSongs: Array.from({ length: 180 }, (_, index) => createSong(index))
+    })
+    await nextTick()
+    await nextTick()
+
+    expect(listElement.scrollTop).toBe(4400)
+    expect(wrapper.get('.song-item[data-filtered-index="50"]').attributes('tabindex')).toBe('0')
+
+    await wrapper.get('input[type="search"]').setValue('Song 1')
+    await nextTick()
+    await nextTick()
+
+    expect(listElement.scrollTop).toBe(0)
+    expect(wrapper.get('.song-item[data-filtered-index="0"]').attributes('tabindex')).toBe('0')
+
+    wrapper.unmount()
+  })
+
   it('rebinds ResizeObserver when the list element appears after mount', async () => {
     const resizeObserverMock = installResizeObserverMock()
     const wrapper = mount(LikedSongsView, {

@@ -107,4 +107,38 @@ describe('useUserPlaylists', () => {
       album: { id: 10, name: 'Album 10', picUrl: 'cover-10.jpg' }
     })
   })
+
+  it('splits created playlists from favorite playlists', async () => {
+    getUserPlaylistMock.mockResolvedValue({
+      playlist: [
+        {
+          id: 'playlist-created',
+          name: 'Created Playlist',
+          subscribed: false
+        },
+        {
+          id: 'playlist-favorite',
+          name: 'Favorite Playlist',
+          subscribed: true
+        }
+      ]
+    })
+
+    const viewModel = mountUseUserPlaylists()
+    await viewModel.loadPlaylists('user-1')
+    await flushPromises()
+
+    expect(viewModel.playlists.value).toHaveLength(2)
+    expect(viewModel.createdPlaylists.value).toEqual([
+      expect.objectContaining({
+        id: 'playlist-created'
+      })
+    ])
+    expect(viewModel.favoritePlaylists.value).toEqual([
+      expect.objectContaining({
+        id: 'playlist-favorite'
+      })
+    ])
+    expect(viewModel.count.value).toBe(1)
+  })
 })

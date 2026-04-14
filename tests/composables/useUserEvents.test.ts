@@ -2,7 +2,13 @@ import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useUserEvents, type UseUserEventsReturn } from '@/composables/useUserEvents'
+import {
+  createEventViewModel,
+  formatEventTimeLabel,
+  useUserEvents,
+  type UseUserEventsReturn
+} from '@/composables/useUserEvents'
+import { createMockSong } from '../utils/test-utils'
 
 const getUserEventMock = vi.hoisted(() => vi.fn())
 const isCanceledRequestErrorMock = vi.hoisted(() => vi.fn(() => false))
@@ -115,6 +121,58 @@ describe('useUserEvents', () => {
         json: JSON.stringify({ msg: 'stale message' })
       })
     ).toBe('normalized message')
+  })
+
+  it('builds stable event view models for the template hot path', () => {
+    const now = new Date('2026-04-15T12:00:00Z')
+    const playableSong = createMockSong({
+      id: 77,
+      name: 'Derived Song',
+      artists: [
+        { id: 1, name: 'Artist A' },
+        { id: 2, name: 'Artist B' }
+      ],
+      album: {
+        id: 9,
+        name: 'Album 9',
+        picUrl: 'cover-9.jpg'
+      }
+    })
+
+    const viewModel = createEventViewModel(
+      {
+        eventId: 7,
+        eventTime: now.getTime() - 2 * 60 * 60 * 1000,
+        message: 'derived metadata',
+        user: {
+          nickname: 'tester',
+          avatarUrl: 'avatar-7.jpg'
+        },
+        song: null,
+        playableSong
+      },
+      0,
+      now
+    )
+
+    expect(viewModel).toMatchObject({
+      key: '7',
+      message: 'derived metadata',
+      formattedTime: '2小时前',
+      userName: 'tester',
+      userAvatarUrl: 'avatar-7.jpg',
+      userAvatarAlt: 'tester',
+      songName: 'Derived Song',
+      songCoverUrl: 'cover-9.jpg',
+      artistText: 'Artist A / Artist B',
+      playableSong
+    })
+    expect(viewModel.displaySong).toBe(playableSong)
+  })
+
+  it('returns an empty formatted time when the event timestamp is invalid', () => {
+    expect(formatEventTimeLabel(undefined)).toBe('')
+    expect(formatEventTimeLabel('not-a-date')).toBe('')
   })
 
   it('loads more events incrementally and ignores duplicate load-more requests', async () => {

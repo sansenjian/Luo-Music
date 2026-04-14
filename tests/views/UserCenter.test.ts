@@ -54,6 +54,16 @@ const pageMocks = vi.hoisted(() => ({
       playCount: 32000
     }
   ],
+  favoritePlaylists: [
+    {
+      id: 'playlist-favorite-1',
+      name: 'Favorite Playlist 1',
+      coverImgUrl: 'favorite-cover.jpg',
+      trackCount: 18,
+      playCount: 64000,
+      subscribed: true
+    }
+  ],
   albums: [
     {
       id: 'album-1',
@@ -153,6 +163,7 @@ vi.mock('@/composables/useUserCenterPage', async () => {
       retryLoadLikedSongs: pageMocks.retryLoadLikedSongs,
       resetLikedSongs: vi.fn(),
       playlists: ref(pageMocks.playlists),
+      favoritePlaylists: ref(pageMocks.favoritePlaylists),
       loadPlaylists: vi.fn(),
       loadPlaylistSongs: vi.fn(),
       resetPlaylists: vi.fn(),
@@ -537,6 +548,23 @@ describe('UserCenter', () => {
     expect(pageMocks.playAlbum).toHaveBeenCalledWith('album-1')
   })
 
+  it('renders favorite playlist content inside the collections tab and reuses playlist actions', async () => {
+    pageMocks.activeTab = 'album'
+
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    const sections = wrapper.findAll('.collection-section')
+    expect(sections[0]?.text()).toContain('收藏歌单')
+    expect(sections[0]?.find('.playlists-view').exists()).toBe(true)
+
+    await sections[0]!.find('.playlist-open').trigger('click')
+    await sections[0]!.find('.playlist-play').trigger('click')
+
+    expect(pageMocks.openPlaylistDetail).toHaveBeenCalledWith('playlist-1')
+    expect(pageMocks.playPlaylist).toHaveBeenCalledWith('playlist-1')
+  })
+
   it('renders and wires the playlist detail panel when a playlist is selected', async () => {
     pageMocks.activeTab = 'playlist'
     pageMocks.selectedPlaylistId = 'playlist-1'
@@ -585,6 +613,9 @@ describe('UserCenter', () => {
     await flushPromises()
 
     expect(wrapper.find('.album-detail-panel').exists()).toBe(true)
+    const sections = wrapper.findAll('.collection-section')
+    expect(sections[1]?.text()).toContain('收藏专辑')
+    expect(sections[1]?.find('.album-detail-panel').exists()).toBe(true)
 
     await wrapper.find('.album-detail-play-all').trigger('click')
     await wrapper.find('.album-detail-play-song').trigger('click')

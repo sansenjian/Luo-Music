@@ -102,6 +102,11 @@ describe('useFavoriteAlbums', () => {
 
   it('loads and normalizes album songs from album detail', async () => {
     getAlbumDetailMock.mockResolvedValue({
+      album: {
+        id: 20,
+        name: 'Album 20',
+        picUrl: 'fallback-cover.jpg'
+      },
       songs: [
         {
           id: 201,
@@ -135,7 +140,7 @@ describe('useFavoriteAlbums', () => {
       id: 202,
       name: 'Album Track 2',
       artists: [],
-      album: { id: 0, name: '', picUrl: '' },
+      album: { id: 20, name: 'Album 20', picUrl: 'fallback-cover.jpg' },
       platform: 'netease'
     })
   })

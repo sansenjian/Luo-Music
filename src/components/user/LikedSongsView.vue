@@ -357,7 +357,7 @@ watch(
   }
 )
 
-watch(filteredSongs, () => {
+watch([normalizedQuery, filterScope], () => {
   activeIndex.value = 0
   setListScrollTop(0)
   void nextTick(() => {

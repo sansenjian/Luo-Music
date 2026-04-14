@@ -167,6 +167,53 @@ describe('Playlist.vue', () => {
     wrapper.unmount()
   })
 
+  it('reuses normalized playlist items that were already rendered', async () => {
+    const store = usePlayerStore()
+    let firstSongArtistsReads = 0
+    const firstSong = createMockSong({
+      id: 1,
+      name: 'Song 1',
+      album: { id: 11, name: 'Album 1', picUrl: 'cover-1.jpg' },
+      duration: 180000,
+      platform: 'netease'
+    })
+
+    Object.defineProperty(firstSong, 'artists', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        firstSongArtistsReads += 1
+        return [{ id: 1, name: 'Artist 1' }]
+      }
+    })
+
+    store.songList = [
+      firstSong,
+      ...Array.from({ length: 119 }, (_, index) =>
+        createMockSong({
+          id: index + 2,
+          name: `Song ${index + 2}`
+        })
+      )
+    ]
+
+    const wrapper = mount(Playlist, {
+      attachTo: document.body
+    })
+    const listElement = wrapper.get('.playlist').element as HTMLElement
+    const initialArtistsReads = firstSongArtistsReads
+
+    expect(initialArtistsReads).toBeGreaterThan(0)
+
+    listElement.scrollTop = 1600
+    await wrapper.get('.playlist').trigger('scroll')
+    await wrapper.vm.$nextTick()
+
+    expect(firstSongArtistsReads).toBe(initialArtistsReads)
+
+    wrapper.unmount()
+  })
+
   it('clamps scroll position when the playlist shrinks after a deep scroll', async () => {
     const store = usePlayerStore()
     store.songList = Array.from({ length: 200 }, (_, index) =>

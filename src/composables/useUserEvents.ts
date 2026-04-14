@@ -43,6 +43,21 @@ export interface EventItem {
 
 export type EventFilter = 'all' | 'song'
 
+export interface EventViewModel {
+  key: string
+  event: EventItem
+  message: string
+  formattedTime: string
+  userName: string
+  userAvatarUrl: string
+  userAvatarAlt: string
+  displaySong: EventSong | Song | null
+  songName: string
+  songCoverUrl: string
+  artistText: string
+  playableSong: Song | null
+}
+
 interface UserEventResponse {
   events?: EventItem[]
   lasttime?: number | string
@@ -258,6 +273,65 @@ function mergeEvents(currentEvents: EventItem[], nextEvents: EventItem[]): Event
   return [...currentEvents, ...uniqueNextEvents]
 }
 
+export function getEventKey(event: EventItem, index: number): string {
+  return String(event.eventId ?? event.eventTime ?? index)
+}
+
+export function getEventDisplaySong(event: EventItem): EventSong | Song | null {
+  return event.song ?? event.playableSong ?? null
+}
+
+export function formatEventArtists(artists?: EventArtist[]): string {
+  return artists?.map(artist => artist.name).join(' / ') || ''
+}
+
+export function formatEventTimeLabel(
+  timestamp: number | string | undefined,
+  now = new Date()
+): string {
+  if (timestamp === undefined) {
+    return ''
+  }
+
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const diff = now.getTime() - date.getTime()
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+
+  if (minutes < 60) return `${minutes}分钟前`
+  if (hours < 24) return `${hours}小时前`
+  if (days < 30) return `${days}天前`
+  return date.toLocaleDateString('zh-CN')
+}
+
+export function createEventViewModel(
+  event: EventItem,
+  index: number,
+  now = new Date()
+): EventViewModel {
+  const displaySong = getEventDisplaySong(event)
+
+  return {
+    key: getEventKey(event, index),
+    event,
+    message: event.message ?? '',
+    formattedTime: formatEventTimeLabel(event.eventTime, now),
+    userName: event.user?.nickname ?? '',
+    userAvatarUrl: event.user?.avatarUrl ?? '',
+    userAvatarAlt: event.user?.nickname ?? '用户头像',
+    displaySong,
+    songName: displaySong?.name ?? '',
+    songCoverUrl: displaySong?.album?.picUrl ?? '',
+    artistText: formatEventArtists(displaySong?.artists),
+    playableSong: event.playableSong ?? null
+  }
+}
+
 export function useUserEvents(): UseUserEventsReturn {
   const events = ref<EventItem[]>([])
   const loading = ref(false)
@@ -294,17 +368,7 @@ export function useUserEvents(): UseUserEventsReturn {
   }
 
   const formatEventTime = (timestamp: number | string): string => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-    const days = Math.floor(diff / 86400000)
-
-    if (minutes < 60) return `${minutes}分钟前`
-    if (hours < 24) return `${hours}小时前`
-    if (days < 30) return `${days}天前`
-    return date.toLocaleDateString('zh-CN')
+    return formatEventTimeLabel(timestamp)
   }
 
   const getEventMsg = (event: EventItem): string => {

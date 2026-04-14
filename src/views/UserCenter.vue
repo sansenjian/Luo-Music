@@ -35,6 +35,7 @@ const {
   eventsLoadingMore,
   formattedSongs,
   filteredEvents,
+  favoritePlaylists,
   goBack,
   likedSongsHasMore,
   likedSongsError,
@@ -182,27 +183,46 @@ const {
           @play-song="playPlaylistTrackAt"
         />
 
-        <FavoriteAlbumsView
-          v-if="mountedTabs.album"
-          v-show="activeTab === 'album'"
-          :albums="albums"
-          :loading="loadingMap.album"
-          :active-album-id="selectedAlbumId"
-          @album-open="openAlbumDetail"
-          @album-play="playAlbum"
-        />
+        <div v-if="mountedTabs.album" v-show="activeTab === 'album'">
+          <div class="collection-sections">
+            <section class="collection-section">
+              <div class="collection-section-header">
+                <h3 class="collection-section-title">收藏歌单</h3>
+              </div>
+              <PlaylistsView
+                :playlists="favoritePlaylists"
+                :loading="loadingMap.album"
+                @playlist-open="openPlaylistDetail"
+                @playlist-play="playPlaylist"
+              />
+            </section>
 
-        <AlbumDetailPanel
-          v-if="activeTab === 'album' && selectedAlbumId"
-          :album="selectedAlbum"
-          :songs="selectedAlbumSongs"
-          :loading="albumDetailLoading"
-          :error="albumDetailError"
-          @close="closeAlbumDetail"
-          @retry="retryAlbumDetail"
-          @play-all="playAlbum(selectedAlbumId)"
-          @play-song="playAlbumTrackAt"
-        />
+            <section class="collection-section">
+              <div class="collection-section-header">
+                <h3 class="collection-section-title">收藏专辑</h3>
+              </div>
+              <FavoriteAlbumsView
+                :albums="albums"
+                :loading="loadingMap.album"
+                :active-album-id="selectedAlbumId"
+                @album-open="openAlbumDetail"
+                @album-play="playAlbum"
+              />
+
+              <AlbumDetailPanel
+                v-if="selectedAlbumId"
+                :album="selectedAlbum"
+                :songs="selectedAlbumSongs"
+                :loading="albumDetailLoading"
+                :error="albumDetailError"
+                @close="closeAlbumDetail"
+                @retry="retryAlbumDetail"
+                @play-all="playAlbum(selectedAlbumId)"
+                @play-song="playAlbumTrackAt"
+              />
+            </section>
+          </div>
+        </div>
 
         <EventsView
           v-if="mountedTabs.events"
@@ -331,6 +351,32 @@ const {
   border-radius: 12px;
   border: 2px solid var(--black);
   width: fit-content;
+}
+
+.collection-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.collection-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.collection-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.collection-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--black);
 }
 
 .tab-btn {

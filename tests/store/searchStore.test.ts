@@ -108,7 +108,9 @@ describe('searchStore', () => {
     expect(storeB.server).toBe('netease')
   })
 
-  it('aggregates all result pages before exposing search results', async () => {
+  it('exposes the first search page before later pages finish loading and appends the rest', async () => {
+    const secondPage = createDeferred<{ list: Song[]; total: number }>()
+
     adapterMock.search.mockImplementation(
       (_platform: string, keyword: string, limit: number, page: number) => {
         expect(keyword).toBe('paged')
@@ -122,10 +124,7 @@ describe('searchStore', () => {
         }
 
         if (page === 2) {
-          return Promise.resolve({
-            list: [createSearchSong('song-3')],
-            total: 3
-          })
+          return secondPage.promise
         }
 
         throw new Error(`Unexpected page: ${page}`)
@@ -133,13 +132,27 @@ describe('searchStore', () => {
     )
 
     const store = useSearchStore()
-    await store.search('paged')
+    const searchPromise = store.search('paged')
 
-    expect(adapterMock.search).toHaveBeenNthCalledWith(1, 'netease', 'paged', 50, 1)
-    expect(adapterMock.search).toHaveBeenNthCalledWith(2, 'netease', 'paged', 50, 2)
+    await vi.waitFor(() => {
+      expect(adapterMock.search).toHaveBeenNthCalledWith(1, 'netease', 'paged', 50, 1)
+      expect(adapterMock.search).toHaveBeenNthCalledWith(2, 'netease', 'paged', 50, 2)
+      expect(store.totalResults).toBe(3)
+      expect(store.results.map(song => song.id)).toEqual(['song-1', 'song-2'])
+      expect(store.isLoading).toBe(true)
+    })
+
+    secondPage.resolve({
+      list: [createSearchSong('song-3')],
+      total: 3
+    })
+
+    await searchPromise
+
     expect(store.totalResults).toBe(3)
     expect(store.results).toHaveLength(3)
     expect(store.results.map(song => song.id)).toEqual(['song-1', 'song-2', 'song-3'])
+    expect(store.isLoading).toBe(false)
   })
 
   it('ignores stale search responses and keeps the latest results', async () => {

@@ -77,6 +77,11 @@ interface AlbumSublistResponse {
   hasMore?: boolean
 }
 
+interface AlbumDetailResponse {
+  album?: RawAlbumInfo
+  songs?: RawAlbumTrack[]
+}
+
 const ALBUM_PAGE_SIZE = 50
 
 function formatAlbumArtistName(album: RawAlbumInfo): string {
@@ -105,7 +110,10 @@ function normalizeFavoriteAlbum(album: RawAlbumInfo): FavoriteAlbumItem | null {
   }
 }
 
-function normalizeAlbumTrack(track: RawAlbumTrack): Song | null {
+function normalizeAlbumTrack(
+  track: RawAlbumTrack,
+  fallbackAlbum?: RawAlbumInfo | null
+): Song | null {
   if (track.id === undefined || !track.name) {
     return null
   }
@@ -125,9 +133,9 @@ function normalizeAlbumTrack(track: RawAlbumTrack): Song | null {
       name: artist.name ?? ''
     })),
     album: {
-      id: albumSource?.id ?? 0,
-      name: albumSource?.name ?? '',
-      picUrl: albumSource?.picUrl ?? albumSource?.artist?.img1v1Url ?? ''
+      id: albumSource?.id ?? fallbackAlbum?.id ?? 0,
+      name: albumSource?.name ?? fallbackAlbum?.name ?? '',
+      picUrl: albumSource?.picUrl ?? albumSource?.artist?.img1v1Url ?? fallbackAlbum?.picUrl ?? ''
     },
     duration: track.duration ?? track.dt ?? 0,
     mvid: track.mvid ?? track.mv ?? 0,
@@ -157,6 +165,19 @@ function extractAlbumSongs(payload: unknown): RawAlbumTrack[] {
   return Array.isArray((payload as { songs?: RawAlbumTrack[] }).songs)
     ? ((payload as { songs?: RawAlbumTrack[] }).songs ?? [])
     : []
+}
+
+function extractAlbumInfo(payload: unknown): RawAlbumInfo | null {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+
+  const album = (payload as AlbumDetailResponse).album
+  if (!album || typeof album !== 'object') {
+    return null
+  }
+
+  return album
 }
 
 export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
@@ -240,10 +261,11 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
 
   const loadAlbumSongs = async (albumId: string | number): Promise<Song[]> => {
     try {
-      const response = await getAlbumDetail(Number(albumId))
+      const response = (await getAlbumDetail(Number(albumId))) as AlbumDetailResponse
+      const fallbackAlbum = extractAlbumInfo(response)
 
       return extractAlbumSongs(response)
-        .map(track => normalizeAlbumTrack(track))
+        .map(track => normalizeAlbumTrack(track, fallbackAlbum))
         .filter((track): track is Song => Boolean(track))
     } catch (requestError) {
       console.error('Failed to load album detail:', requestError)

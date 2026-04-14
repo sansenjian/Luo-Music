@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import EventsView from '@/components/user/EventsView.vue'
 import { createMockSong } from '../../utils/test-utils'
 
 describe('EventsView', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('renders pre-parsed event messages from the view model', () => {
     const wrapper = mount(EventsView, {
       props: {
@@ -47,6 +51,50 @@ describe('EventsView', () => {
 
     expect(wrapper.find('.event-item').exists()).toBe(true)
     expect(wrapper.find('.event-content').exists()).toBe(false)
+  })
+
+  it('renders precomputed song metadata and lazy-loads event images', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-15T12:00:00Z'))
+
+    const playableSong = createMockSong({
+      id: 77,
+      name: 'Derived Song',
+      artists: [
+        { id: 1, name: 'Artist A' },
+        { id: 2, name: 'Artist B' }
+      ],
+      album: {
+        id: 9,
+        name: 'Album 9',
+        picUrl: 'cover-9.jpg'
+      }
+    })
+
+    const wrapper = mount(EventsView, {
+      props: {
+        loading: false,
+        events: [
+          {
+            eventId: 7,
+            eventTime: Date.now() - 2 * 60 * 60 * 1000,
+            message: 'derived metadata',
+            user: {
+              nickname: 'tester',
+              avatarUrl: 'avatar-7.jpg'
+            },
+            song: null,
+            playableSong
+          }
+        ]
+      }
+    })
+
+    expect(wrapper.find('.event-time').text()).toBe('2小时前')
+    expect(wrapper.find('.event-song-name').text()).toBe('Derived Song')
+    expect(wrapper.find('.event-song-artist').text()).toBe('Artist A / Artist B')
+    expect(wrapper.find('.event-user-avatar').attributes('loading')).toBe('lazy')
+    expect(wrapper.find('.event-song-cover').attributes('decoding')).toBe('async')
   })
 
   it('emits filter, retry, load-more, and play-song actions', async () => {

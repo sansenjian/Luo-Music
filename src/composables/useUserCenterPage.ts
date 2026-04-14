@@ -39,7 +39,14 @@ type UserCenterLikedSongsLike = Pick<
 >
 type UserCenterPlaylistsLike = Pick<
   UseUserPlaylistsReturn,
-  'count' | 'error' | 'loadPlaylistSongs' | 'loadPlaylists' | 'playlists' | 'resetPlaylists'
+  | 'count'
+  | 'createdPlaylists'
+  | 'error'
+  | 'favoritePlaylists'
+  | 'loadPlaylistSongs'
+  | 'loadPlaylists'
+  | 'playlists'
+  | 'resetPlaylists'
 >
 type UserCenterFavoriteAlbumsLike = Pick<
   UseFavoriteAlbumsReturn,
@@ -94,7 +101,7 @@ export interface UseUserCenterPageReturn {
   activeTabError: ComputedRef<unknown>
   likedCount: UserCenterLikedSongsLike['count']
   playlistCount: UserCenterPlaylistsLike['count']
-  albumCount: UserCenterFavoriteAlbumsLike['count']
+  albumCount: ComputedRef<number>
   eventsCount: UserCenterEventsLike['count']
   tabCounts: ComputedRef<Record<UserTab, number>>
   likedSongsHasMore: UserCenterLikedSongsLike['hasMore']
@@ -106,7 +113,8 @@ export interface UseUserCenterPageReturn {
   loadMoreLikedSongs: UserCenterLikedSongsLike['loadMoreLikedSongs']
   retryLoadLikedSongs: UserCenterLikedSongsLike['retryLoadLikedSongs']
   resetLikedSongs: UserCenterLikedSongsLike['resetLikedSongs']
-  playlists: UserCenterPlaylistsLike['playlists']
+  playlists: UserCenterPlaylistsLike['createdPlaylists']
+  favoritePlaylists: UserCenterPlaylistsLike['favoritePlaylists']
   loadPlaylists: UserCenterPlaylistsLike['loadPlaylists']
   loadPlaylistSongs: UserCenterPlaylistsLike['loadPlaylistSongs']
   resetPlaylists: UserCenterPlaylistsLike['resetPlaylists']
@@ -243,7 +251,9 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
   } = likedSongs
   const {
     count: playlistCount,
+    createdPlaylists,
     error: playlistsError,
+    favoritePlaylists,
     loadPlaylistSongs,
     loadPlaylists,
     playlists,
@@ -276,7 +286,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     (): Record<UserTab, number> => ({
       liked: likedCount.value,
       playlist: playlistCount.value,
-      album: albumCount.value,
+      album: favoritePlaylists.value.length + albumCount.value,
       events: eventsCount.value
     })
   )
@@ -302,7 +312,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     }
 
     if (activeTab.value === 'album') {
-      return albumsError.value
+      return playlistsError.value ?? albumsError.value
     }
 
     return null
@@ -489,7 +499,12 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
       } else if (tab === 'playlist') {
         await loadPlaylists(userId)
       } else if (tab === 'album') {
-        await loadFavoriteAlbums(userId)
+        await Promise.all([
+          loadedTabs.value.playlist || loadingMap.value.playlist
+            ? Promise.resolve()
+            : loadPlaylists(userId),
+          loadFavoriteAlbums(userId)
+        ])
       } else {
         await loadEvents(userId)
       }
@@ -775,7 +790,8 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     loadMoreLikedSongs,
     retryLoadLikedSongs,
     resetLikedSongs,
-    playlists,
+    playlists: createdPlaylists,
+    favoritePlaylists,
     loadPlaylists,
     loadPlaylistSongs,
     resetPlaylists,

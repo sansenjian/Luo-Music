@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 
 import { usePlayerStore } from '../store/playerStore.ts'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
@@ -40,12 +40,14 @@ function normalizePlaylistItem(song: Song): PlaylistItem {
 }
 
 const renderedCount = ref(0)
+const normalizedSongs = shallowRef<PlaylistItem[]>([])
+let normalizedSongSources: Song[] = []
 const totalSongCount = computed(() => playerStore.songList.length)
 const currentIndex = computed(() => playerStore.currentIndex)
-const renderedSongs = computed<PlaylistItem[]>(() =>
-  playerStore.songList.slice(0, renderedCount.value).map(normalizePlaylistItem)
+const renderedSongCount = computed(() =>
+  Math.min(renderedCount.value, normalizedSongs.value.length)
 )
-const totalHeight = computed(() => renderedSongs.value.length * ITEM_HEIGHT)
+const totalHeight = computed(() => renderedSongCount.value * ITEM_HEIGHT)
 const maxScrollTop = computed(() => Math.max(0, totalHeight.value - containerHeight.value))
 const effectiveScrollTop = computed(() => Math.min(scrollTop.value, maxScrollTop.value))
 const visibleCount = computed(() =>
@@ -55,15 +57,39 @@ const startIndex = computed(() =>
   Math.max(0, Math.floor(effectiveScrollTop.value / ITEM_HEIGHT) - OVERSCAN)
 )
 const endIndex = computed(() =>
-  Math.min(renderedSongs.value.length, startIndex.value + visibleCount.value)
+  Math.min(renderedSongCount.value, startIndex.value + visibleCount.value)
 )
 const offsetY = computed(() => startIndex.value * ITEM_HEIGHT)
 const visibleSongs = computed(() =>
-  renderedSongs.value.slice(startIndex.value, endIndex.value).map((song, offset) => ({
+  normalizedSongs.value.slice(startIndex.value, endIndex.value).map((song, offset) => ({
     index: startIndex.value + offset,
     song
   }))
 )
+
+function syncNormalizedSongs(songList: Song[]): void {
+  const nextNormalizedSongs = new Array<PlaylistItem>(songList.length)
+  let changed = normalizedSongSources.length !== songList.length
+
+  for (let index = 0; index < songList.length; index += 1) {
+    const song = songList[index]
+
+    if (normalizedSongSources[index] === song) {
+      nextNormalizedSongs[index] = normalizedSongs.value[index]
+      continue
+    }
+
+    nextNormalizedSongs[index] = normalizePlaylistItem(song)
+    changed = true
+  }
+
+  if (!changed) {
+    return
+  }
+
+  normalizedSongSources = songList.slice()
+  normalizedSongs.value = nextNormalizedSongs
+}
 
 function getInitialRenderCount(total = totalSongCount.value): number {
   if (total <= 0) {
@@ -107,6 +133,7 @@ function maybeRenderMore(): void {
 watch(
   [() => playerStore.songList, totalSongCount],
   ([nextSongs]) => {
+    syncNormalizedSongs(nextSongs)
     setRenderedCount(getInitialRenderCount(nextSongs.length))
 
     if (nextSongs.length === 0) {

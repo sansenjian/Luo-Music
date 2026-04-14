@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { EventArtist, EventFilter, EventItem, EventSong } from '@/composables/useUserEvents'
+import {
+  createEventViewModel,
+  type EventFilter,
+  type EventItem,
+  type EventViewModel
+} from '@/composables/useUserEvents'
 import type { Song } from '@/platform/music/interface'
 
 interface EventsViewProps {
@@ -45,14 +50,10 @@ const showBlockingError = computed(
 )
 const showInlineError = computed(() => Boolean(props.error) && props.events.length > 0)
 const emptyMessage = computed(() => (props.activeFilter === 'song' ? '暂无音乐动态' : '暂无动态'))
-
-const getDisplaySong = (event: EventItem): EventSong | Song | null => {
-  return event.song ?? event.playableSong ?? null
-}
-
-const getEventKey = (event: EventItem, index: number): string => {
-  return String(event.eventId ?? event.eventTime ?? index)
-}
+const eventViewModels = computed<EventViewModel[]>(() => {
+  const now = new Date()
+  return props.events.map((event, index) => createEventViewModel(event, index, now))
+})
 
 const updateFilter = (filter: EventFilter): void => {
   if (props.activeFilter === filter) {
@@ -76,28 +77,6 @@ const playSong = (event: EventItem): void => {
   }
 
   emit('play-song', event.playableSong, event)
-}
-
-const formatArtists = (artists?: EventArtist[]): string => {
-  return artists?.map(artist => artist.name).join(' / ') || ''
-}
-
-const formatEventTime = (timestamp: number | string | undefined): string => {
-  if (timestamp === undefined) {
-    return ''
-  }
-
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-
-  if (minutes < 60) return `${minutes}分钟前`
-  if (hours < 24) return `${hours}小时前`
-  if (days < 30) return `${days}天前`
-  return date.toLocaleDateString('zh-CN')
 }
 </script>
 
@@ -143,38 +122,40 @@ const formatEventTime = (timestamp: number | string | undefined): string => {
         <button type="button" class="inline-action" @click="retry">重试</button>
       </div>
 
-      <div
-        v-for="(event, index) in props.events"
-        :key="getEventKey(event, index)"
-        class="event-item"
-      >
+      <div v-for="eventItem in eventViewModels" :key="eventItem.key" class="event-item">
         <div class="event-header">
-          <img class="event-user-avatar" :src="event.user?.avatarUrl" :alt="event.user?.nickname" />
+          <img
+            class="event-user-avatar"
+            :src="eventItem.userAvatarUrl"
+            :alt="eventItem.userAvatarAlt"
+            loading="lazy"
+            decoding="async"
+          />
           <div class="event-user-info">
-            <span class="event-user-name">{{ event.user?.nickname }}</span>
-            <span class="event-time">{{ formatEventTime(event.eventTime) }}</span>
+            <span class="event-user-name">{{ eventItem.userName }}</span>
+            <span class="event-time">{{ eventItem.formattedTime }}</span>
           </div>
         </div>
-        <div v-if="event.message" class="event-content">
-          <p>{{ event.message }}</p>
+        <div v-if="eventItem.message" class="event-content">
+          <p>{{ eventItem.message }}</p>
         </div>
-        <div class="event-song" v-if="getDisplaySong(event)">
+        <div v-if="eventItem.displaySong" class="event-song">
           <img
             class="event-song-cover"
-            :src="getDisplaySong(event)?.album?.picUrl"
-            :alt="getDisplaySong(event)?.name"
+            :src="eventItem.songCoverUrl"
+            :alt="eventItem.songName"
+            loading="lazy"
+            decoding="async"
           />
           <div class="event-song-info">
-            <span class="event-song-name">{{ getDisplaySong(event)?.name }}</span>
-            <span class="event-song-artist">
-              {{ formatArtists(getDisplaySong(event)?.artists) }}
-            </span>
+            <span class="event-song-name">{{ eventItem.songName }}</span>
+            <span class="event-song-artist">{{ eventItem.artistText }}</span>
           </div>
           <button
-            v-if="event.playableSong"
+            v-if="eventItem.playableSong"
             type="button"
             class="event-song-play"
-            @click="playSong(event)"
+            @click="playSong(eventItem.event)"
           >
             播放
           </button>
@@ -287,6 +268,9 @@ const formatEventTime = (timestamp: number | string | undefined): string => {
 .event-item {
   padding: 20px;
   border-bottom: 1px solid var(--bg-dark);
+  contain: layout paint style;
+  contain-intrinsic-size: 168px;
+  content-visibility: auto;
   transition: background 0.2s ease;
 }
 

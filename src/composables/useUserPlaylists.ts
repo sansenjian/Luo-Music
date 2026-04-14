@@ -8,11 +8,14 @@ import { createLatestRequestController } from '../utils/http/requestScope'
 export interface PlaylistItem {
   id: string | number
   name: string
+  subscribed?: boolean
   [key: string]: unknown
 }
 
 export interface UseUserPlaylistsReturn {
   playlists: Ref<PlaylistItem[]>
+  createdPlaylists: ComputedRef<PlaylistItem[]>
+  favoritePlaylists: ComputedRef<PlaylistItem[]>
   count: ComputedRef<number>
   loading: Ref<boolean>
   error: Ref<unknown>
@@ -137,7 +140,13 @@ export function useUserPlaylists(): UseUserPlaylistsReturn {
   const playlists = ref<PlaylistItem[]>([])
   const loading = ref(false)
   const error = ref<unknown>(null)
-  const count = computed(() => playlists.value.length)
+  const createdPlaylists = computed(() =>
+    playlists.value.filter(playlist => playlist.subscribed !== true)
+  )
+  const favoritePlaylists = computed(() =>
+    playlists.value.filter(playlist => playlist.subscribed === true)
+  )
+  const count = computed(() => createdPlaylists.value.length)
   const requestController = createLatestRequestController()
 
   const resetPlaylists = (): void => {
@@ -210,6 +219,8 @@ export function useUserPlaylists(): UseUserPlaylistsReturn {
 
   return {
     playlists,
+    createdPlaylists,
+    favoritePlaylists,
     count,
     loading,
     error,

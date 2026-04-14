@@ -35,6 +35,10 @@ function formatDuration(duration: number): string {
 
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
+
+function resolveSongCover(song: Song): string {
+  return song.album.picUrl || props.album?.picUrl || ''
+}
 </script>
 
 <template>
@@ -92,7 +96,14 @@ function formatDuration(duration: number): string {
         @click="emit('play-song', index)"
       >
         <span class="detail-song-index">{{ String(index + 1).padStart(2, '0') }}</span>
-        <img class="detail-song-cover" :src="song.album.picUrl" :alt="song.name" loading="lazy" />
+        <img
+          v-if="resolveSongCover(song)"
+          class="detail-song-cover"
+          :src="resolveSongCover(song)"
+          :alt="song.name"
+          loading="lazy"
+        />
+        <div v-else class="detail-song-cover detail-song-cover-fallback" aria-hidden="true"></div>
         <div class="detail-song-copy">
           <span class="detail-song-name">{{ song.name }}</span>
           <span class="detail-song-artist">{{ formatArtists(song) || '未知歌手' }}</span>
@@ -259,6 +270,10 @@ function formatDuration(duration: number): string {
   border-radius: 8px;
   border: 2px solid var(--black);
   background: var(--bg);
+}
+
+.detail-song-cover-fallback {
+  background: linear-gradient(135deg, rgba(255, 112, 59, 0.2), rgba(0, 0, 0, 0.06)), var(--bg);
 }
 
 .detail-song-copy {
