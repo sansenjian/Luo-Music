@@ -14,6 +14,8 @@ const emit = defineEmits(['play-song'])
 
 const ITEM_HEIGHT = 74
 const OVERSCAN = 6
+const RENDER_CHUNK_SIZE = 50
+const MIN_RENDERED_SCREENS = 2
 
 type PlaylistItem = {
   id: Song['id']
@@ -24,20 +26,26 @@ type PlaylistItem = {
   name: string
 }
 
-const songs = computed<PlaylistItem[]>(() =>
-  playerStore.songList.map(song => ({
+function normalizePlaylistItem(song: Song): PlaylistItem {
+  return {
     id: song.id,
     artistText: Array.isArray(song.artists)
       ? song.artists.map(artist => artist.name).join(' / ')
       : '',
     cover: song.album?.picUrl || '',
-    duration: Math.floor(song.duration / 1000), // 毫秒转秒
+    duration: Math.floor(song.duration / 1000),
     isQQ: song.platform === 'qq',
     name: song.name
-  }))
-)
+  }
+}
+
+const renderedCount = ref(0)
+const totalSongCount = computed(() => playerStore.songList.length)
 const currentIndex = computed(() => playerStore.currentIndex)
-const totalHeight = computed(() => songs.value.length * ITEM_HEIGHT)
+const renderedSongs = computed<PlaylistItem[]>(() =>
+  playerStore.songList.slice(0, renderedCount.value).map(normalizePlaylistItem)
+)
+const totalHeight = computed(() => renderedSongs.value.length * ITEM_HEIGHT)
 const maxScrollTop = computed(() => Math.max(0, totalHeight.value - containerHeight.value))
 const effectiveScrollTop = computed(() => Math.min(scrollTop.value, maxScrollTop.value))
 const visibleCount = computed(() =>
@@ -46,17 +54,78 @@ const visibleCount = computed(() =>
 const startIndex = computed(() =>
   Math.max(0, Math.floor(effectiveScrollTop.value / ITEM_HEIGHT) - OVERSCAN)
 )
-const endIndex = computed(() => Math.min(songs.value.length, startIndex.value + visibleCount.value))
+const endIndex = computed(() =>
+  Math.min(renderedSongs.value.length, startIndex.value + visibleCount.value)
+)
 const offsetY = computed(() => startIndex.value * ITEM_HEIGHT)
 const visibleSongs = computed(() =>
-  songs.value.slice(startIndex.value, endIndex.value).map((song, offset) => ({
+  renderedSongs.value.slice(startIndex.value, endIndex.value).map((song, offset) => ({
     index: startIndex.value + offset,
     song
   }))
 )
 
+function getInitialRenderCount(total = totalSongCount.value): number {
+  if (total <= 0) {
+    return 0
+  }
+
+  const viewportCount = Math.max(1, Math.ceil(containerHeight.value / ITEM_HEIGHT))
+  return Math.min(total, Math.max(RENDER_CHUNK_SIZE, viewportCount * MIN_RENDERED_SCREENS))
+}
+
+function setRenderedCount(nextCount: number): void {
+  renderedCount.value = Math.min(totalSongCount.value, Math.max(0, nextCount))
+}
+
+function ensureRenderedIndex(index: number): void {
+  if (index < 0) {
+    return
+  }
+
+  const requiredCount = Math.ceil((index + 1) / RENDER_CHUNK_SIZE) * RENDER_CHUNK_SIZE
+  setRenderedCount(Math.max(renderedCount.value, requiredCount, getInitialRenderCount()))
+}
+
+function maybeRenderMore(): void {
+  if (renderedCount.value >= totalSongCount.value || renderedCount.value === 0) {
+    return
+  }
+
+  const viewportMidpoint = scrollTop.value + containerHeight.value / 2
+  let nextCount = renderedCount.value
+
+  while (nextCount < totalSongCount.value && viewportMidpoint >= (nextCount * ITEM_HEIGHT) / 2) {
+    nextCount += RENDER_CHUNK_SIZE
+  }
+
+  if (nextCount !== renderedCount.value) {
+    setRenderedCount(nextCount)
+  }
+}
+
+watch(
+  [() => playerStore.songList, totalSongCount],
+  ([nextSongs]) => {
+    setRenderedCount(getInitialRenderCount(nextSongs.length))
+
+    if (nextSongs.length === 0) {
+      syncScrollPosition(0)
+      return
+    }
+
+    if (currentIndex.value >= 0) {
+      ensureRenderedIndex(currentIndex.value)
+    }
+
+    maybeRenderMore()
+  },
+  { immediate: true }
+)
+
 watch(currentIndex, newIndex => {
   if (newIndex === -1) return
+  ensureRenderedIndex(newIndex)
   void nextTick(() => {
     const listElement = listRef.value
     if (!listElement) {
@@ -80,6 +149,7 @@ function playSong(index: number): void {
 
 function syncContainerHeight(): void {
   containerHeight.value = listRef.value?.clientHeight || 560
+  setRenderedCount(Math.max(renderedCount.value, getInitialRenderCount()))
 }
 
 function syncScrollPosition(nextScrollTop: number): void {
@@ -97,11 +167,13 @@ function clampScrollPosition(): void {
 
 function handleScroll(): void {
   scrollTop.value = listRef.value?.scrollTop || 0
+  maybeRenderMore()
 }
 
 watch([totalHeight, containerHeight], () => {
   void nextTick(() => {
     clampScrollPosition()
+    maybeRenderMore()
   })
 })
 
@@ -118,7 +190,7 @@ onUnmounted(() => {
 
 <template>
   <div ref="listRef" class="playlist" @scroll="handleScroll">
-    <div v-if="songs.length === 0" class="empty-state">
+    <div v-if="totalSongCount === 0" class="empty-state">
       <div class="empty-icon">[]</div>
       <div>NO TRACKS LOADED</div>
     </div>

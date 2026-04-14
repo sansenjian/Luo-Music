@@ -23,6 +23,20 @@ function createDeferred<T>(): Deferred<T> {
   return { promise, resolve, reject }
 }
 
+function createSearchSong(id: string | number, overrides: Partial<Song> = {}): Song {
+  return {
+    id,
+    name: `Song ${String(id)}`,
+    artists: [{ id: 1, name: 'Artist' }],
+    album: { id: 1, name: 'Album', picUrl: 'cover.jpg' },
+    duration: 180000,
+    mvid: 0,
+    platform: 'netease',
+    originalId: id,
+    ...overrides
+  }
+}
+
 const adapterMock = {
   search: vi.fn()
 }
@@ -94,6 +108,40 @@ describe('searchStore', () => {
     expect(storeB.server).toBe('netease')
   })
 
+  it('aggregates all result pages before exposing search results', async () => {
+    adapterMock.search.mockImplementation(
+      (_platform: string, keyword: string, limit: number, page: number) => {
+        expect(keyword).toBe('paged')
+        expect(limit).toBe(50)
+
+        if (page === 1) {
+          return Promise.resolve({
+            list: [createSearchSong('song-1'), createSearchSong('song-2')],
+            total: 3
+          })
+        }
+
+        if (page === 2) {
+          return Promise.resolve({
+            list: [createSearchSong('song-3')],
+            total: 3
+          })
+        }
+
+        throw new Error(`Unexpected page: ${page}`)
+      }
+    )
+
+    const store = useSearchStore()
+    await store.search('paged')
+
+    expect(adapterMock.search).toHaveBeenNthCalledWith(1, 'netease', 'paged', 50, 1)
+    expect(adapterMock.search).toHaveBeenNthCalledWith(2, 'netease', 'paged', 50, 2)
+    expect(store.totalResults).toBe(3)
+    expect(store.results).toHaveLength(3)
+    expect(store.results.map(song => song.id)).toEqual(['song-1', 'song-2', 'song-3'])
+  })
+
   it('ignores stale search responses and keeps the latest results', async () => {
     const first = createDeferred<{ list: Song[]; total: number }>()
     const second = createDeferred<{ list: Song[]; total: number }>()
@@ -152,6 +200,59 @@ describe('searchStore', () => {
     expect(store.results).toHaveLength(1)
     expect(store.results[0].id).toBe('second-song')
     expect(store.isLoading).toBe(false)
+  })
+
+  it('cancels stale paginated searches and keeps the latest completed results', async () => {
+    const firstPage = createDeferred<{ list: Song[]; total: number }>()
+    const secondPage = createDeferred<{ list: Song[]; total: number }>()
+
+    adapterMock.search.mockImplementation(
+      (_platform: string, keyword: string, limit: number, page: number) => {
+        expect(limit).toBe(50)
+
+        if (keyword === 'first' && page === 1) {
+          return firstPage.promise
+        }
+
+        if (keyword === 'first' && page === 2) {
+          return secondPage.promise
+        }
+
+        if (keyword === 'second' && page === 1) {
+          return Promise.resolve({
+            list: [createSearchSong('second-song')],
+            total: 1
+          })
+        }
+
+        throw new Error(`Unexpected request: ${keyword}:${page}`)
+      }
+    )
+
+    const store = useSearchStore()
+    const firstRequest = store.search('first')
+
+    firstPage.resolve({
+      list: [createSearchSong('first-song')],
+      total: 2
+    })
+
+    await vi.waitFor(() => {
+      expect(adapterMock.search).toHaveBeenNthCalledWith(2, 'netease', 'first', 50, 2)
+    })
+
+    const secondRequest = store.search('second')
+    await secondRequest
+
+    secondPage.resolve({
+      list: [createSearchSong('stale-song')],
+      total: 2
+    })
+
+    await expect(firstRequest).resolves.toBeUndefined()
+    expect(store.results).toHaveLength(1)
+    expect(store.results[0].id).toBe('second-song')
+    expect(store.keyword).toBe('second')
   })
 
   it('treats superseded search failures as cancellation and keeps latest state', async () => {

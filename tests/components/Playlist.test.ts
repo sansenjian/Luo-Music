@@ -141,6 +141,32 @@ describe('Playlist.vue', () => {
     expect(items.length).toBeLessThan(store.songList.length)
   })
 
+  it('progressively unlocks more playlist content after scrolling past the midpoint', async () => {
+    const store = usePlayerStore()
+    store.songList = Array.from({ length: 200 }, (_, index) =>
+      createMockSong({
+        id: index + 1,
+        name: `Song ${index + 1}`
+      })
+    )
+
+    const wrapper = mount(Playlist, {
+      attachTo: document.body
+    })
+    const listElement = wrapper.get('.playlist').element as HTMLElement
+    const trackList = wrapper.get('.track-list').element as HTMLElement
+
+    expect(trackList.style.height).toBe('3700px')
+
+    listElement.scrollTop = 1600
+    await wrapper.get('.playlist').trigger('scroll')
+    await wrapper.vm.$nextTick()
+
+    expect(trackList.style.height).toBe('7400px')
+
+    wrapper.unmount()
+  })
+
   it('clamps scroll position when the playlist shrinks after a deep scroll', async () => {
     const store = usePlayerStore()
     store.songList = Array.from({ length: 200 }, (_, index) =>

@@ -11,9 +11,11 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AlbumDetailPanel: typeof import('./components/user/AlbumDetailPanel.vue')['default']
     CacheManager: typeof import('./components/CacheManager.vue')['default']
     ErrorToast: typeof import('./components/ErrorToast.vue')['default']
     EventsView: typeof import('./components/user/EventsView.vue')['default']
+    FavoriteAlbumsView: typeof import('./components/user/FavoriteAlbumsView.vue')['default']
     HomeFooter: typeof import('./components/home/HomeFooter.vue')['default']
     HomeHeader: typeof import('./components/home/HomeHeader.vue')['default']
     HomeSearchBar: typeof import('./components/home/HomeSearchBar.vue')['default']

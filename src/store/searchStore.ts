@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import type { Song } from '../platform/music/interface'
+import type { SearchResult, Song } from '../platform/music/interface'
 import { services } from '../services'
 import type { ErrorService } from '../services/errorService'
 import type { LoggerService } from '../services/loggerService'
@@ -24,6 +24,8 @@ export interface SearchResultItem {
   duration: number
   [key: string]: unknown
 }
+
+const SEARCH_PAGE_SIZE = 50
 
 export function searchResultItemToSong(item: SearchResultItem): Song {
   const { id, name, artist, album, pic, cover, url, platform, duration, ...extraFields } = item
@@ -65,6 +67,36 @@ function normalizeSearchResults(songs: Song[]): SearchResultItem[] {
 
     return item
   })
+}
+
+async function fetchAllSearchResults(
+  musicService: Pick<MusicService, 'search'>,
+  platform: string,
+  keyword: string,
+  guard: <T>(value: Promise<T>) => Promise<T>
+): Promise<SearchResult> {
+  const firstPage = await guard(musicService.search(platform, keyword, SEARCH_PAGE_SIZE, 1))
+  const aggregatedSongs = [...firstPage.list]
+  const total = Math.max(firstPage.total || 0, aggregatedSongs.length)
+  let nextPage = 2
+
+  while (aggregatedSongs.length < total) {
+    const pageResult = await guard(
+      musicService.search(platform, keyword, SEARCH_PAGE_SIZE, nextPage)
+    )
+
+    if (!Array.isArray(pageResult.list) || pageResult.list.length === 0) {
+      break
+    }
+
+    aggregatedSongs.push(...pageResult.list)
+    nextPage += 1
+  }
+
+  return {
+    list: aggregatedSongs,
+    total
+  }
 }
 
 export type SearchStoreDeps = {
@@ -145,8 +177,11 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
         })
 
         try {
-          const response = await task.guard(
-            musicService.search(server.value, trimmedKeyword, 30, 1)
+          const response = await fetchAllSearchResults(
+            musicService,
+            server.value,
+            trimmedKeyword,
+            value => task.guard(value)
           )
 
           logger.debug('searchStore', 'Search result', response)
