@@ -2,20 +2,23 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pageMocks = vi.hoisted(() => ({
-  activeTab: 'liked' as 'liked' | 'playlist' | 'events',
+  activeTab: 'liked' as 'liked' | 'playlist' | 'album' | 'events',
   loadingMap: {
     liked: false,
     playlist: false,
+    album: false,
     events: false
   },
   mountedTabs: {
     liked: true,
     playlist: true,
+    album: true,
     events: true
   },
   loadedTabs: {
     liked: true,
     playlist: false,
+    album: false,
     events: false
   },
   currentUserId: 'user-1',
@@ -27,6 +30,11 @@ const pageMocks = vi.hoisted(() => ({
   selectedPlaylistSongs: [] as Array<Record<string, unknown>>,
   playlistDetailLoading: false,
   playlistDetailError: null as unknown,
+  selectedAlbumId: null as string | null,
+  selectedAlbum: null as Record<string, unknown> | null,
+  selectedAlbumSongs: [] as Array<Record<string, unknown>>,
+  albumDetailLoading: false,
+  albumDetailError: null as unknown,
   formattedSongs: [
     {
       id: 'song-1',
@@ -44,6 +52,15 @@ const pageMocks = vi.hoisted(() => ({
       coverImgUrl: 'cover.jpg',
       trackCount: 12,
       playCount: 32000
+    }
+  ],
+  albums: [
+    {
+      id: 'album-1',
+      name: 'Album 1',
+      picUrl: 'album-cover.jpg',
+      size: 10,
+      artistName: 'Artist 1'
     }
   ],
   events: [
@@ -65,6 +82,7 @@ const pageMocks = vi.hoisted(() => ({
   tabCounts: {
     liked: 1,
     playlist: 1,
+    album: 1,
     events: 1
   },
   likedSongsHasMore: true,
@@ -75,16 +93,21 @@ const pageMocks = vi.hoisted(() => ({
   eventsLoadingMore: false,
   eventsError: null as unknown,
   switchTab: vi.fn(),
+  openAlbumDetail: vi.fn(),
   openPlaylistDetail: vi.fn(),
+  closeAlbumDetail: vi.fn(),
   closePlaylistDetail: vi.fn(),
   loadMoreLikedSongs: vi.fn(),
   loadMoreEvents: vi.fn(),
   playAllLikedSongs: vi.fn(),
+  playAlbum: vi.fn(),
+  playAlbumTrackAt: vi.fn(),
   playEventSong: vi.fn(),
   playLikedSongAt: vi.fn(),
   playPlaylist: vi.fn(),
   playPlaylistTrackAt: vi.fn(),
   retryActiveTab: vi.fn(),
+  retryAlbumDetail: vi.fn(),
   retryLoadEvents: vi.fn(),
   retryLoadLikedSongs: vi.fn(),
   retryPlaylistDetail: vi.fn(),
@@ -109,9 +132,15 @@ vi.mock('@/composables/useUserCenterPage', async () => {
       selectedPlaylistSongs: ref(pageMocks.selectedPlaylistSongs),
       playlistDetailLoading: ref(pageMocks.playlistDetailLoading),
       playlistDetailError: ref(pageMocks.playlistDetailError),
+      selectedAlbumId: ref(pageMocks.selectedAlbumId),
+      selectedAlbum: computed(() => pageMocks.selectedAlbum),
+      selectedAlbumSongs: ref(pageMocks.selectedAlbumSongs),
+      albumDetailLoading: ref(pageMocks.albumDetailLoading),
+      albumDetailError: ref(pageMocks.albumDetailError),
       activeTabError: computed(() => pageMocks.activeTabError),
       likedCount: computed(() => pageMocks.tabCounts.liked),
       playlistCount: computed(() => pageMocks.tabCounts.playlist),
+      albumCount: computed(() => pageMocks.tabCounts.album),
       eventsCount: computed(() => pageMocks.tabCounts.events),
       tabCounts: computed(() => ({ ...pageMocks.tabCounts })),
       likedSongsHasMore: computed(() => pageMocks.likedSongsHasMore),
@@ -127,6 +156,10 @@ vi.mock('@/composables/useUserCenterPage', async () => {
       loadPlaylists: vi.fn(),
       loadPlaylistSongs: vi.fn(),
       resetPlaylists: vi.fn(),
+      albums: ref(pageMocks.albums),
+      loadFavoriteAlbums: vi.fn(),
+      loadAlbumSongs: vi.fn(),
+      resetFavoriteAlbums: vi.fn(),
       eventsFilter: ref(pageMocks.eventsFilter),
       events: ref(pageMocks.events),
       filteredEvents: computed(() => pageMocks.events),
@@ -139,12 +172,17 @@ vi.mock('@/composables/useUserCenterPage', async () => {
       resetEvents: vi.fn(),
       setEventsFilter: pageMocks.setEventsFilter,
       switchTab: pageMocks.switchTab,
+      openAlbumDetail: pageMocks.openAlbumDetail,
       openPlaylistDetail: pageMocks.openPlaylistDetail,
+      closeAlbumDetail: pageMocks.closeAlbumDetail,
       closePlaylistDetail: pageMocks.closePlaylistDetail,
       retryActiveTab: pageMocks.retryActiveTab,
+      retryAlbumDetail: pageMocks.retryAlbumDetail,
       retryPlaylistDetail: pageMocks.retryPlaylistDetail,
       resetUserContent: vi.fn(),
       loadTabData: vi.fn(),
+      playAlbum: pageMocks.playAlbum,
+      playAlbumTrackAt: pageMocks.playAlbumTrackAt,
       playPlaylist: pageMocks.playPlaylist,
       playPlaylistTrackAt: pageMocks.playPlaylistTrackAt,
       playEventSong: pageMocks.playEventSong,
@@ -224,6 +262,32 @@ const PlaylistsViewStub = {
   `
 }
 
+const FavoriteAlbumsViewStub = {
+  name: 'FavoriteAlbumsView',
+  props: {
+    albums: {
+      type: Array,
+      required: true
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    activeAlbumId: {
+      type: String,
+      default: null
+    }
+  },
+  emits: ['album-open', 'album-play'],
+  template: `
+    <div class="albums-view">
+      <span class="album-size">{{ albums.length }}</span>
+      <button class="album-open" @click="$emit('album-open', 'album-1')">open</button>
+      <button class="album-play" @click="$emit('album-play', 'album-1')">play</button>
+    </div>
+  `
+}
+
 const PlaylistDetailPanelStub = {
   name: 'PlaylistDetailPanel',
   props: {
@@ -248,6 +312,34 @@ const PlaylistDetailPanelStub = {
       <button class="detail-retry" @click="$emit('retry')">retry</button>
       <button class="detail-play-all" @click="$emit('play-all')">play all</button>
       <button class="detail-play-song" @click="$emit('play-song', 2)">play song</button>
+    </div>
+  `
+}
+
+const AlbumDetailPanelStub = {
+  name: 'AlbumDetailPanel',
+  props: {
+    songs: {
+      type: Array,
+      required: true
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    error: {
+      type: null,
+      default: null
+    }
+  },
+  emits: ['close', 'retry', 'play-all', 'play-song'],
+  template: `
+    <div class="album-detail-panel">
+      <span class="album-detail-size">{{ songs.length }}</span>
+      <button class="album-detail-close" @click="$emit('close')">close</button>
+      <button class="album-detail-retry" @click="$emit('retry')">retry</button>
+      <button class="album-detail-play-all" @click="$emit('play-all')">play all</button>
+      <button class="album-detail-play-song" @click="$emit('play-song', 3)">play song</button>
     </div>
   `
 }
@@ -301,7 +393,9 @@ async function mountUserCenter() {
         UserProfileHeader: UserProfileHeaderStub,
         LikedSongsView: LikedSongsViewStub,
         PlaylistsView: PlaylistsViewStub,
+        FavoriteAlbumsView: FavoriteAlbumsViewStub,
         PlaylistDetailPanel: PlaylistDetailPanelStub,
+        AlbumDetailPanel: AlbumDetailPanelStub,
         EventsView: EventsViewStub
       }
     }
@@ -314,16 +408,19 @@ describe('UserCenter', () => {
     pageMocks.loadingMap = {
       liked: false,
       playlist: false,
+      album: false,
       events: false
     }
     pageMocks.mountedTabs = {
       liked: true,
       playlist: true,
+      album: true,
       events: true
     }
     pageMocks.loadedTabs = {
       liked: true,
       playlist: false,
+      album: false,
       events: false
     }
     pageMocks.currentUserId = 'user-1'
@@ -335,9 +432,15 @@ describe('UserCenter', () => {
     pageMocks.selectedPlaylistSongs = []
     pageMocks.playlistDetailLoading = false
     pageMocks.playlistDetailError = null
+    pageMocks.selectedAlbumId = null
+    pageMocks.selectedAlbum = null
+    pageMocks.selectedAlbumSongs = []
+    pageMocks.albumDetailLoading = false
+    pageMocks.albumDetailError = null
     pageMocks.tabCounts = {
       liked: 1,
       playlist: 1,
+      album: 1,
       events: 1
     }
     pageMocks.likedSongsHasMore = true
@@ -360,13 +463,15 @@ describe('UserCenter', () => {
     expect(tabButtons[0].text()).toContain('我喜欢的音乐')
     expect(tabButtons[0].text()).toContain('1')
     expect(tabButtons[1].text()).toContain('歌单')
-    expect(tabButtons[2].text()).toContain('动态')
+    expect(tabButtons[2].text()).toContain('我的收藏')
+    expect(tabButtons[3].text()).toContain('动态')
   })
 
   it('renders only mounted tab views', async () => {
     pageMocks.mountedTabs = {
       liked: true,
       playlist: false,
+      album: false,
       events: false
     }
 
@@ -375,6 +480,7 @@ describe('UserCenter', () => {
 
     expect(wrapper.find('.liked-view').exists()).toBe(true)
     expect(wrapper.find('.playlists-view').exists()).toBe(false)
+    expect(wrapper.find('.albums-view').exists()).toBe(false)
     expect(wrapper.find('.events-view').exists()).toBe(false)
   })
 
@@ -385,9 +491,11 @@ describe('UserCenter', () => {
     const tabButtons = wrapper.findAll('button.tab-btn')
     await tabButtons[1].trigger('click')
     await tabButtons[2].trigger('click')
+    await tabButtons[3].trigger('click')
 
     expect(pageMocks.switchTab).toHaveBeenNthCalledWith(1, 'playlist')
-    expect(pageMocks.switchTab).toHaveBeenNthCalledWith(2, 'events')
+    expect(pageMocks.switchTab).toHaveBeenNthCalledWith(2, 'album')
+    expect(pageMocks.switchTab).toHaveBeenNthCalledWith(3, 'events')
   })
 
   it('forwards liked songs actions to the page composable', async () => {
@@ -414,6 +522,19 @@ describe('UserCenter', () => {
 
     expect(pageMocks.openPlaylistDetail).toHaveBeenCalledWith('playlist-1')
     expect(pageMocks.playPlaylist).toHaveBeenCalledWith('playlist-1')
+  })
+
+  it('forwards favorite album entry and playback actions to the page composable', async () => {
+    pageMocks.activeTab = 'album'
+
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    await wrapper.find('.album-open').trigger('click')
+    await wrapper.find('.album-play').trigger('click')
+
+    expect(pageMocks.openAlbumDetail).toHaveBeenCalledWith('album-1')
+    expect(pageMocks.playAlbum).toHaveBeenCalledWith('album-1')
   })
 
   it('renders and wires the playlist detail panel when a playlist is selected', async () => {
@@ -444,6 +565,36 @@ describe('UserCenter', () => {
     expect(pageMocks.playPlaylistTrackAt).toHaveBeenCalledWith(2)
     expect(pageMocks.retryPlaylistDetail).toHaveBeenCalledTimes(1)
     expect(pageMocks.closePlaylistDetail).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders and wires the album detail panel when an album is selected', async () => {
+    pageMocks.activeTab = 'album'
+    pageMocks.selectedAlbumId = 'album-1'
+    pageMocks.selectedAlbum = {
+      id: 'album-1',
+      name: 'Album 1'
+    }
+    pageMocks.selectedAlbumSongs = [
+      {
+        id: 'song-1',
+        name: 'Song 1'
+      }
+    ]
+
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    expect(wrapper.find('.album-detail-panel').exists()).toBe(true)
+
+    await wrapper.find('.album-detail-play-all').trigger('click')
+    await wrapper.find('.album-detail-play-song').trigger('click')
+    await wrapper.find('.album-detail-retry').trigger('click')
+    await wrapper.find('.album-detail-close').trigger('click')
+
+    expect(pageMocks.playAlbum).toHaveBeenCalledWith('album-1')
+    expect(pageMocks.playAlbumTrackAt).toHaveBeenCalledWith(3)
+    expect(pageMocks.retryAlbumDetail).toHaveBeenCalledTimes(1)
+    expect(pageMocks.closeAlbumDetail).toHaveBeenCalledTimes(1)
   })
 
   it('renders the shell error state and delegates retry handling', async () => {

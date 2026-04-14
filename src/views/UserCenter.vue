@@ -8,15 +8,25 @@ const UserProfileHeader = defineAsyncComponent(
 )
 const LikedSongsView = defineAsyncComponent(() => import('../components/user/LikedSongsView.vue'))
 const PlaylistsView = defineAsyncComponent(() => import('../components/user/PlaylistsView.vue'))
+const FavoriteAlbumsView = defineAsyncComponent(
+  () => import('../components/user/FavoriteAlbumsView.vue')
+)
 const EventsView = defineAsyncComponent(() => import('../components/user/EventsView.vue'))
 const PlaylistDetailPanel = defineAsyncComponent(
   () => import('../components/user/PlaylistDetailPanel.vue')
+)
+const AlbumDetailPanel = defineAsyncComponent(
+  () => import('../components/user/AlbumDetailPanel.vue')
 )
 
 const {
   activeTab,
   activeTabError,
+  albumDetailError,
+  albumDetailLoading,
+  albums,
   avatarUrl,
+  closeAlbumDetail,
   closePlaylistDetail,
   currentUserId,
   eventsError,
@@ -34,7 +44,10 @@ const {
   loadMoreEvents,
   mountedTabs,
   nickname,
+  openAlbumDetail,
   openPlaylistDetail,
+  playAlbum,
+  playAlbumTrackAt,
   playEventSong,
   playlistDetailError,
   playlistDetailLoading,
@@ -44,9 +57,13 @@ const {
   playLikedSongAt,
   playPlaylist,
   retryActiveTab,
+  retryAlbumDetail,
   retryLoadEvents,
   retryLoadLikedSongs,
   retryPlaylistDetail,
+  selectedAlbum,
+  selectedAlbumId,
+  selectedAlbumSongs,
   selectedPlaylist,
   selectedPlaylistId,
   selectedPlaylistSongs,
@@ -104,6 +121,14 @@ const {
             </button>
             <button
               class="tab-btn"
+              :class="{ active: activeTab === 'album' }"
+              @click="switchTab('album')"
+            >
+              我的收藏
+              <span v-if="tabCounts.album > 0" class="count">{{ tabCounts.album }}</span>
+            </button>
+            <button
+              class="tab-btn"
               :class="{ active: activeTab === 'events' }"
               @click="switchTab('events')"
             >
@@ -155,6 +180,28 @@ const {
           @retry="retryPlaylistDetail"
           @play-all="playPlaylist(selectedPlaylistId)"
           @play-song="playPlaylistTrackAt"
+        />
+
+        <FavoriteAlbumsView
+          v-if="mountedTabs.album"
+          v-show="activeTab === 'album'"
+          :albums="albums"
+          :loading="loadingMap.album"
+          :active-album-id="selectedAlbumId"
+          @album-open="openAlbumDetail"
+          @album-play="playAlbum"
+        />
+
+        <AlbumDetailPanel
+          v-if="activeTab === 'album' && selectedAlbumId"
+          :album="selectedAlbum"
+          :songs="selectedAlbumSongs"
+          :loading="albumDetailLoading"
+          :error="albumDetailError"
+          @close="closeAlbumDetail"
+          @retry="retryAlbumDetail"
+          @play-all="playAlbum(selectedAlbumId)"
+          @play-song="playAlbumTrackAt"
         />
 
         <EventsView
@@ -335,10 +382,11 @@ const {
   .tabs {
     width: 100%;
     border-radius: 10px;
+    flex-wrap: wrap;
   }
 
   .tab-btn {
-    flex: 1;
+    flex: 1 1 calc(50% - 4px);
     justify-content: center;
     padding: 10px 12px;
     font-size: 13px;

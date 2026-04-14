@@ -8,6 +8,7 @@ import {
   type UseUserCenterPageDeps,
   type UseUserCenterPageReturn
 } from '@/composables/useUserCenterPage'
+import type { FavoriteAlbumItem } from '@/composables/useFavoriteAlbums'
 import type { EventItem } from '@/composables/useUserEvents'
 import type { PlaylistItem } from '@/composables/useUserPlaylists'
 import { createSong, type Song } from '@/platform/music/interface'
@@ -64,6 +65,15 @@ function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
       trackCount: 2
     }
   ])
+  const albumsRef = ref<FavoriteAlbumItem[]>([
+    {
+      id: 'album-1',
+      name: 'Album 1',
+      picUrl: 'album-cover.jpg',
+      size: 2,
+      artistName: 'Artist 1'
+    }
+  ])
   const eventsRef = ref<EventItem[]>([
     {
       eventId: 'event-1',
@@ -73,6 +83,7 @@ function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
   const filteredEventsRef = computed(() => eventsRef.value)
   const likedSongsErrorRef = ref<unknown>(null)
   const playlistsErrorRef = ref<unknown>(null)
+  const albumsErrorRef = ref<unknown>(null)
   const eventsErrorRef = ref<unknown>(null)
 
   const pushMock = vi.fn<(path: string) => Promise<void>>(() => Promise.resolve())
@@ -102,6 +113,16 @@ function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
   const resetPlaylistsMock = vi.fn(() => {
     playlistsRef.value = []
     playlistsErrorRef.value = null
+  })
+  const loadFavoriteAlbumsMock = vi.fn<(userId: string | number) => Promise<void>>(() =>
+    Promise.resolve()
+  )
+  const loadAlbumSongsMock = vi.fn<(albumId: string | number) => Promise<Song[]>>(() =>
+    Promise.resolve([])
+  )
+  const resetFavoriteAlbumsMock = vi.fn(() => {
+    albumsRef.value = []
+    albumsErrorRef.value = null
   })
   const loadEventsMock = vi.fn<(userId: string | number) => Promise<void>>(() => Promise.resolve())
   const loadMoreEventsMock = vi.fn<() => Promise<void>>(() => Promise.resolve())
@@ -145,6 +166,14 @@ function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
       loadPlaylistSongs: loadPlaylistSongsMock,
       resetPlaylists: resetPlaylistsMock
     },
+    favoriteAlbums: {
+      albums: albumsRef,
+      count: computed(() => albumsRef.value.length),
+      error: albumsErrorRef,
+      loadFavoriteAlbums: loadFavoriteAlbumsMock,
+      loadAlbumSongs: loadAlbumSongsMock,
+      resetFavoriteAlbums: resetFavoriteAlbumsMock
+    },
     userEvents: {
       activeFilter: ref('all'),
       events: eventsRef,
@@ -169,6 +198,8 @@ function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
     likedSongsErrorRef,
     playlistsRef,
     playlistsErrorRef,
+    albumsRef,
+    albumsErrorRef,
     eventsErrorRef,
     pushMock,
     replaceMock,
@@ -182,6 +213,9 @@ function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
     loadPlaylistsMock,
     loadPlaylistSongsMock,
     resetPlaylistsMock,
+    loadFavoriteAlbumsMock,
+    loadAlbumSongsMock,
+    resetFavoriteAlbumsMock,
     loadEventsMock,
     loadMoreEventsMock,
     retryLoadEventsMock,
@@ -215,10 +249,12 @@ describe('useUserCenterPage', () => {
   it('reloads user scoped data when the account changes on the same route', async () => {
     const {
       viewModel,
+      loadFavoriteAlbumsMock,
       userStore,
       loadEventsMock,
       loadLikedSongsMock,
       loadPlaylistsMock,
+      resetFavoriteAlbumsMock,
       resetEventsMock,
       resetLikedSongsMock,
       resetPlaylistsMock
@@ -230,13 +266,16 @@ describe('useUserCenterPage', () => {
     expect(viewModel.mountedTabs.value).toEqual({
       liked: true,
       playlist: false,
+      album: false,
       events: false
     })
     expect(resetLikedSongsMock).toHaveBeenCalled()
     expect(resetPlaylistsMock).toHaveBeenCalled()
+    expect(resetFavoriteAlbumsMock).toHaveBeenCalled()
     expect(resetEventsMock).toHaveBeenCalled()
     expect(loadLikedSongsMock).toHaveBeenCalledWith('user-1')
     expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadFavoriteAlbumsMock).not.toHaveBeenCalled()
     expect(loadEventsMock).not.toHaveBeenCalled()
 
     vi.clearAllMocks()
@@ -247,9 +286,11 @@ describe('useUserCenterPage', () => {
 
     expect(resetLikedSongsMock).toHaveBeenCalled()
     expect(resetPlaylistsMock).toHaveBeenCalled()
+    expect(resetFavoriteAlbumsMock).toHaveBeenCalled()
     expect(resetEventsMock).toHaveBeenCalled()
     expect(loadLikedSongsMock).toHaveBeenCalledWith('user-2')
     expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadFavoriteAlbumsMock).not.toHaveBeenCalled()
     expect(loadEventsMock).not.toHaveBeenCalled()
   })
 
@@ -257,9 +298,11 @@ describe('useUserCenterPage', () => {
     const {
       userStore,
       pushMock,
+      loadFavoriteAlbumsMock,
       loadEventsMock,
       loadLikedSongsMock,
       loadPlaylistsMock,
+      resetFavoriteAlbumsMock,
       resetEventsMock,
       resetLikedSongsMock,
       resetPlaylistsMock
@@ -275,9 +318,11 @@ describe('useUserCenterPage', () => {
 
     expect(resetLikedSongsMock).toHaveBeenCalled()
     expect(resetPlaylistsMock).toHaveBeenCalled()
+    expect(resetFavoriteAlbumsMock).toHaveBeenCalled()
     expect(resetEventsMock).toHaveBeenCalled()
     expect(loadLikedSongsMock).not.toHaveBeenCalled()
     expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadFavoriteAlbumsMock).not.toHaveBeenCalled()
     expect(loadEventsMock).not.toHaveBeenCalled()
     expect(pushMock).toHaveBeenCalledWith('/')
   })
@@ -315,14 +360,55 @@ describe('useUserCenterPage', () => {
     expect(viewModel.selectedPlaylistSongs.value).toEqual(playlistSongs)
   })
 
+  it('restores active tab and album detail from route query', async () => {
+    const albumSongs = [
+      createSong({
+        id: 'album-song-1',
+        name: 'Album Song 1',
+        platform: 'netease'
+      })
+    ]
+    const factory = createUserCenterPageDeps({
+      tab: 'album',
+      albumId: 'album-1'
+    })
+
+    factory.loadAlbumSongsMock.mockResolvedValue(albumSongs)
+
+    const { viewModel, loadAlbumSongsMock, loadFavoriteAlbumsMock, loadLikedSongsMock, route } =
+      mountUserCenterPage(factory)
+
+    await flushPromises()
+
+    expect(viewModel.activeTab.value).toBe('album')
+    expect(viewModel.selectedAlbumId.value).toBe('album-1')
+    expect(viewModel.mountedTabs.value.album).toBe(true)
+    expect(route.query).toEqual({
+      tab: 'album',
+      albumId: 'album-1'
+    })
+    expect(loadFavoriteAlbumsMock).toHaveBeenCalledWith('user-1')
+    expect(loadLikedSongsMock).not.toHaveBeenCalled()
+    expect(loadAlbumSongsMock).toHaveBeenCalledWith('album-1')
+    expect(viewModel.selectedAlbumSongs.value).toEqual(albumSongs)
+  })
+
   it('loads non-active tabs only when the user switches to them and syncs query state', async () => {
-    const { route, replaceMock, viewModel, loadEventsMock, loadLikedSongsMock, loadPlaylistsMock } =
-      mountUserCenterPage()
+    const {
+      route,
+      replaceMock,
+      viewModel,
+      loadEventsMock,
+      loadFavoriteAlbumsMock,
+      loadLikedSongsMock,
+      loadPlaylistsMock
+    } = mountUserCenterPage()
 
     await flushPromises()
 
     expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
     expect(loadPlaylistsMock).not.toHaveBeenCalled()
+    expect(loadFavoriteAlbumsMock).not.toHaveBeenCalled()
     expect(loadEventsMock).not.toHaveBeenCalled()
 
     viewModel.switchTab('playlist')
@@ -336,6 +422,14 @@ describe('useUserCenterPage', () => {
       path: '/user',
       query: { tab: 'playlist' }
     })
+
+    viewModel.switchTab('album')
+    await flushPromises()
+
+    expect(viewModel.activeTab.value).toBe('album')
+    expect(viewModel.mountedTabs.value.album).toBe(true)
+    expect(loadFavoriteAlbumsMock).toHaveBeenCalledWith('user-1')
+    expect(route.query).toEqual({ tab: 'album' })
 
     viewModel.switchTab('events')
     await flushPromises()
@@ -354,12 +448,15 @@ describe('useUserCenterPage', () => {
   it('does not reload a tab while its previous request is still in flight', async () => {
     const likedDeferred = createDeferred<void>()
     const playlistDeferred = createDeferred<void>()
+    const albumDeferred = createDeferred<void>()
     const factory = createUserCenterPageDeps()
 
     factory.loadLikedSongsMock.mockImplementationOnce(() => likedDeferred.promise)
     factory.loadPlaylistsMock.mockImplementationOnce(() => playlistDeferred.promise)
+    factory.loadFavoriteAlbumsMock.mockImplementationOnce(() => albumDeferred.promise)
 
-    const { viewModel, loadLikedSongsMock, loadPlaylistsMock } = mountUserCenterPage(factory)
+    const { viewModel, loadFavoriteAlbumsMock, loadLikedSongsMock, loadPlaylistsMock } =
+      mountUserCenterPage(factory)
 
     await nextTick()
 
@@ -375,8 +472,14 @@ describe('useUserCenterPage', () => {
 
     expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
 
+    viewModel.switchTab('album')
+    await nextTick()
+
+    expect(loadFavoriteAlbumsMock).toHaveBeenCalledTimes(1)
+
     likedDeferred.resolve()
     playlistDeferred.resolve()
+    albumDeferred.resolve()
     await flushPromises()
   })
 
@@ -428,6 +531,54 @@ describe('useUserCenterPage', () => {
     expect(route.query).toEqual({ tab: 'playlist' })
   })
 
+  it('opens album detail, syncs query, and retries detail loading after failure', async () => {
+    const albumSongs = [
+      createSong({
+        id: 'album-song-1',
+        name: 'Album Song 1',
+        platform: 'netease'
+      })
+    ]
+    const factory = createUserCenterPageDeps()
+
+    factory.loadAlbumSongsMock
+      .mockRejectedValueOnce(new Error('detail failed'))
+      .mockResolvedValueOnce(albumSongs)
+
+    const { route, replaceMock, viewModel, loadAlbumSongsMock } = mountUserCenterPage(factory)
+
+    await flushPromises()
+    await viewModel.openAlbumDetail('album-1')
+
+    expect(viewModel.activeTab.value).toBe('album')
+    expect(viewModel.selectedAlbumId.value).toBe('album-1')
+    expect(route.query).toEqual({
+      tab: 'album',
+      albumId: 'album-1'
+    })
+    expect(replaceMock).toHaveBeenLastCalledWith({
+      path: '/user',
+      query: {
+        tab: 'album',
+        albumId: 'album-1'
+      }
+    })
+    expect(viewModel.albumDetailError.value).toBeInstanceOf(Error)
+    expect(viewModel.selectedAlbumSongs.value).toEqual([])
+
+    await viewModel.retryAlbumDetail()
+
+    expect(loadAlbumSongsMock).toHaveBeenCalledTimes(2)
+    expect(viewModel.albumDetailError.value).toBe(null)
+    expect(viewModel.selectedAlbumSongs.value).toEqual(albumSongs)
+
+    viewModel.closeAlbumDetail()
+    await flushPromises()
+
+    expect(viewModel.selectedAlbumId.value).toBe(null)
+    expect(route.query).toEqual({ tab: 'album' })
+  })
+
   it('retries the active tab through the shell state', async () => {
     const factory = createUserCenterPageDeps({
       tab: 'events'
@@ -455,12 +606,21 @@ describe('useUserCenterPage', () => {
         platform: 'netease'
       })
     ]
+    const albumSongs = [
+      createSong({
+        id: 'album-song-1',
+        name: 'Album Song 1',
+        platform: 'netease'
+      })
+    ]
 
     factory.loadPlaylistSongsMock.mockResolvedValue(playlistSongs)
+    factory.loadAlbumSongsMock.mockResolvedValue(albumSongs)
 
     const {
       viewModel,
       likedSongsRef,
+      loadAlbumSongsMock,
       loadPlaylistSongsMock,
       playSongWithDetailsMock,
       pushMock,
@@ -522,6 +682,28 @@ describe('useUserCenterPage', () => {
     expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
     expect(pushMock).toHaveBeenCalledWith('/')
     expect(viewModel.loadingMap.value.playlist).toBe(false)
+
+    vi.clearAllMocks()
+
+    await viewModel.openAlbumDetail('album-1')
+    await viewModel.playAlbumTrackAt(0)
+
+    expect(loadAlbumSongsMock).toHaveBeenCalledWith('album-1')
+    expect(setPlaylistMock).toHaveBeenCalledWith(albumSongs)
+    expect(setSongListMock).toHaveBeenCalledWith(albumSongs)
+    expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
+    expect(pushMock).toHaveBeenCalledWith('/')
+
+    vi.clearAllMocks()
+
+    await viewModel.playAlbum('album-1')
+
+    expect(loadAlbumSongsMock).toHaveBeenCalledTimes(0)
+    expect(setPlaylistMock).toHaveBeenCalledWith(albumSongs)
+    expect(setSongListMock).toHaveBeenCalledWith(albumSongs)
+    expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
+    expect(pushMock).toHaveBeenCalledWith('/')
+    expect(viewModel.loadingMap.value.album).toBe(false)
   })
 
   it('exposes liked songs pagination state and delegates incremental loading', async () => {
