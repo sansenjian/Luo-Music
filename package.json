@@ -69,7 +69,7 @@
     "@vueuse/core": "^14.2.1",
     "animejs": "^4.3.6",
     "async-mutex": "^0.5.0",
-    "axios": "^1.7.9",
+    "axios": "^1.15.0",
     "dotenv": "^16.4.5",
     "electron-log": "^5.4.3",
     "electron-store": "^11.0.2",
@@ -160,7 +160,7 @@
   },
   "packageManager": "npm@10.9.2",
   "overrides": {
-    "axios": "^1.7.9"
+    "axios": "^1.15.0"
   },
   "config": {
     "forge": "./forge.config.ts"
