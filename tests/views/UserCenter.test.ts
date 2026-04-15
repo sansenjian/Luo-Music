@@ -24,6 +24,8 @@ const pageMocks = vi.hoisted(() => ({
   currentUserId: 'user-1',
   avatarUrl: 'avatar.png',
   nickname: 'tester',
+  playingPlaylistId: null as string | null,
+  playingAlbumId: null as string | null,
   activeTabError: null as unknown,
   selectedPlaylistId: null as string | null,
   selectedPlaylist: null as Record<string, unknown> | null,
@@ -137,6 +139,8 @@ vi.mock('@/composables/useUserCenterPage', async () => {
       currentUserId: computed(() => pageMocks.currentUserId),
       avatarUrl: computed(() => pageMocks.avatarUrl),
       nickname: computed(() => pageMocks.nickname),
+      playingPlaylistId: ref(pageMocks.playingPlaylistId),
+      playingAlbumId: ref(pageMocks.playingAlbumId),
       selectedPlaylistId: ref(pageMocks.selectedPlaylistId),
       selectedPlaylist: computed(() => pageMocks.selectedPlaylist),
       selectedPlaylistSongs: ref(pageMocks.selectedPlaylistSongs),
@@ -437,6 +441,8 @@ describe('UserCenter', () => {
     pageMocks.currentUserId = 'user-1'
     pageMocks.avatarUrl = 'avatar.png'
     pageMocks.nickname = 'tester'
+    pageMocks.playingPlaylistId = null
+    pageMocks.playingAlbumId = null
     pageMocks.activeTabError = null
     pageMocks.selectedPlaylistId = null
     pageMocks.selectedPlaylist = null

@@ -2,6 +2,8 @@
 import type { PlaylistItem } from '@/composables/useUserPlaylists'
 import type { Song } from '@/platform/music/interface'
 
+import SongDetailList from '@/components/user/SongDetailList.vue'
+
 interface PlaylistDetailPanelProps {
   playlist: PlaylistItem | null
   songs: Song[]
@@ -20,21 +22,6 @@ const emit = defineEmits<{
   'play-all': []
   'play-song': [index: number]
 }>()
-
-function formatArtists(song: Song): string {
-  return song.artists
-    .map(artist => artist.name)
-    .filter(Boolean)
-    .join(' / ')
-}
-
-function formatDuration(duration: number): string {
-  const totalSeconds = Math.max(0, Math.floor(duration / 1000))
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-}
 </script>
 
 <template>
@@ -73,23 +60,7 @@ function formatDuration(duration: number): string {
       <p>当前歌单暂无可播放歌曲。</p>
     </div>
 
-    <div v-else class="detail-list">
-      <button
-        v-for="(song, index) in props.songs"
-        :key="`${song.id}-${index}`"
-        type="button"
-        class="detail-song"
-        @click="emit('play-song', index)"
-      >
-        <span class="detail-song-index">{{ String(index + 1).padStart(2, '0') }}</span>
-        <img class="detail-song-cover" :src="song.album.picUrl" :alt="song.name" loading="lazy" />
-        <div class="detail-song-copy">
-          <span class="detail-song-name">{{ song.name }}</span>
-          <span class="detail-song-artist">{{ formatArtists(song) || '未知歌手' }}</span>
-        </div>
-        <span class="detail-song-duration">{{ formatDuration(song.duration) }}</span>
-      </button>
-    </div>
+    <SongDetailList :songs="props.songs" @play-song="emit('play-song', $event)" />
   </section>
 </template>
 
@@ -189,76 +160,6 @@ function formatDuration(duration: number): string {
   text-align: left;
 }
 
-.detail-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.detail-song {
-  display: grid;
-  grid-template-columns: 36px 52px minmax(0, 1fr) 56px;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 12px 14px;
-  border: 2px solid var(--black);
-  border-radius: 12px;
-  background: var(--white);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.detail-song:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0 var(--black);
-}
-
-.detail-song-index,
-.detail-song-duration {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gray);
-  font-variant-numeric: tabular-nums;
-}
-
-.detail-song-cover {
-  width: 52px;
-  height: 52px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 2px solid var(--black);
-  background: var(--bg);
-}
-
-.detail-song-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.detail-song-name,
-.detail-song-artist {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.detail-song-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--black);
-}
-
-.detail-song-artist {
-  font-size: 12px;
-  color: var(--gray);
-}
-
 @media (max-width: 768px) {
   .detail-header,
   .detail-state-error {
@@ -272,15 +173,6 @@ function formatDuration(duration: number): string {
 
   .detail-action {
     flex: 1;
-  }
-
-  .detail-song {
-    grid-template-columns: 28px 44px minmax(0, 1fr);
-  }
-
-  .detail-song-duration {
-    grid-column: 3;
-    justify-self: end;
   }
 }
 </style>

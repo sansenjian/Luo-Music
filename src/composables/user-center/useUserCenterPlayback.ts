@@ -1,8 +1,7 @@
-import type { Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 
 import type { Song } from '@/platform/music/interface'
 
-import type { UserTabStateMap } from './shared'
 import type { PlayerStoreLike, PlaylistStoreLike, UserCenterRouterLike } from './types'
 
 type LoadDetailSongs = (id: string | number, force?: boolean) => Promise<Song[]>
@@ -14,7 +13,6 @@ export interface UseUserCenterPlaybackOptions {
   likeSongs: Ref<Song[]>
   selectedPlaylistSongs: Ref<Song[]>
   selectedAlbumSongs: Ref<Song[]>
-  loadingMap: Ref<UserTabStateMap>
   loadPlaylistDetail: LoadDetailSongs
   loadAlbumDetail: LoadDetailSongs
   getCachedPlaylistSongs: (playlistId: string | number) => Song[] | undefined
@@ -22,6 +20,8 @@ export interface UseUserCenterPlaybackOptions {
 }
 
 export interface UseUserCenterPlaybackReturn {
+  playingPlaylistId: Ref<string | null>
+  playingAlbumId: Ref<string | null>
   playEventSong: (song: Song) => Promise<void>
   playPlaylist: (playlistId: string | number) => Promise<void>
   playPlaylistTrackAt: (index: number) => Promise<void>
@@ -40,13 +40,17 @@ export function useUserCenterPlayback(
     likeSongs,
     loadAlbumDetail,
     loadPlaylistDetail,
-    loadingMap,
     playerStore,
     playlistStore,
     router,
     selectedAlbumSongs,
     selectedPlaylistSongs
   } = options
+
+  const playingPlaylistId = ref<string | null>(null)
+  const playingAlbumId = ref<string | null>(null)
+  let activePlaylistPlayId = 0
+  let activeAlbumPlayId = 0
 
   const playSongs = async (songs: Song[], index: number): Promise<void> => {
     if (songs.length === 0) {
@@ -65,7 +69,9 @@ export function useUserCenterPlayback(
   }
 
   const playPlaylist = async (playlistId: string | number): Promise<void> => {
-    loadingMap.value.playlist = true
+    const normalizedPlaylistId = String(playlistId)
+    const playId = ++activePlaylistPlayId
+    playingPlaylistId.value = normalizedPlaylistId
 
     try {
       const songs =
@@ -74,12 +80,16 @@ export function useUserCenterPlayback(
     } catch (error) {
       console.error('获取歌单详情失败:', error)
     } finally {
-      loadingMap.value.playlist = false
+      if (playId === activePlaylistPlayId && playingPlaylistId.value === normalizedPlaylistId) {
+        playingPlaylistId.value = null
+      }
     }
   }
 
   const playAlbum = async (albumId: string | number): Promise<void> => {
-    loadingMap.value.album = true
+    const normalizedAlbumId = String(albumId)
+    const playId = ++activeAlbumPlayId
+    playingAlbumId.value = normalizedAlbumId
 
     try {
       const songs = getCachedAlbumSongs(albumId) ?? (await loadAlbumDetail(albumId, true))
@@ -87,7 +97,9 @@ export function useUserCenterPlayback(
     } catch (error) {
       console.error('获取专辑详情失败:', error)
     } finally {
-      loadingMap.value.album = false
+      if (playId === activeAlbumPlayId && playingAlbumId.value === normalizedAlbumId) {
+        playingAlbumId.value = null
+      }
     }
   }
 
@@ -112,6 +124,8 @@ export function useUserCenterPlayback(
   }
 
   return {
+    playingPlaylistId,
+    playingAlbumId,
     playEventSong,
     playPlaylist,
     playPlaylistTrackAt,

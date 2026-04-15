@@ -5,11 +5,13 @@ interface PlaylistsViewProps {
   playlists: PlaylistItem[]
   loading?: boolean
   activePlaylistId?: string | null
+  playingPlaylistId?: string | null
 }
 
 const props = withDefaults(defineProps<PlaylistsViewProps>(), {
   loading: false,
-  activePlaylistId: null
+  activePlaylistId: null,
+  playingPlaylistId: null
 })
 
 const emit = defineEmits<{
@@ -23,6 +25,10 @@ function handlePlaylistOpen(playlistId: string | number): void {
 
 function handlePlaylistPlay(playlistId: string | number): void {
   emit('playlist-play', playlistId)
+}
+
+function isPlayingPlaylist(playlistId: string | number): boolean {
+  return String(playlistId) === props.playingPlaylistId
 }
 
 function formatPlayCount(count: unknown): string | number {
@@ -41,7 +47,7 @@ function formatPlayCount(count: unknown): string | number {
 
 <template>
   <div class="playlists-section">
-    <div v-if="props.loading" class="loading-container">
+    <div v-if="props.loading && props.playlists.length === 0" class="loading-container">
       <p>加载中...</p>
     </div>
 
@@ -58,7 +64,12 @@ function formatPlayCount(count: unknown): string | number {
       >
         <button type="button" class="playlist-card-hit" @click="handlePlaylistOpen(playlist.id)">
           <div class="playlist-cover">
-            <img :src="String(playlist.coverImgUrl ?? '')" :alt="playlist.name" />
+            <img
+              :src="String(playlist.coverImgUrl ?? '')"
+              :alt="playlist.name"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="playlist-overlay">
               <div class="playlist-overlay-copy">
                 <strong>查看详情</strong>
@@ -78,8 +89,14 @@ function formatPlayCount(count: unknown): string | number {
           </div>
         </button>
 
-        <button type="button" class="playlist-play-button" @click="handlePlaylistPlay(playlist.id)">
-          直接播放
+        <button
+          type="button"
+          class="playlist-play-button"
+          :class="{ loading: isPlayingPlaylist(playlist.id) }"
+          :disabled="isPlayingPlaylist(playlist.id)"
+          @click="handlePlaylistPlay(playlist.id)"
+        >
+          {{ isPlayingPlaylist(playlist.id) ? '播放中...' : '直接播放' }}
         </button>
       </article>
     </div>
@@ -122,6 +139,9 @@ function formatPlayCount(count: unknown): string | number {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  contain: layout paint style;
+  contain-intrinsic-size: 320px 360px;
+  content-visibility: auto;
 }
 
 .playlist-card.active .playlist-card-hit {
@@ -243,9 +263,20 @@ function formatPlayCount(count: unknown): string | number {
   transition: all 0.2s ease;
 }
 
+.playlist-play-button.loading,
+.playlist-play-button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
 .playlist-play-button:hover {
   background: var(--black);
   color: var(--white);
+}
+
+.playlist-play-button:hover:disabled {
+  background: var(--white);
+  color: var(--black);
 }
 
 @media (max-width: 768px) {

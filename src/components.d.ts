@@ -37,6 +37,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SearchInput: typeof import('./components/SearchInput.vue')['default']
     SettingsPanel: typeof import('./components/SettingsPanel.vue')['default']
+    SongDetailList: typeof import('./components/user/SongDetailList.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
     UserAvatar: typeof import('./components/UserAvatar.vue')['default']
     UserProfile: typeof import('./components/UserProfile.vue')['default']

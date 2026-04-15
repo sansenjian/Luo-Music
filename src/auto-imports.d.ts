@@ -20,6 +20,7 @@ declare global {
   const animateVolumeIcon: typeof import('./composables/useAnimations').animateVolumeIcon
   const asyncComputed: typeof import('@vueuse/core').asyncComputed
   const autoResetRef: typeof import('@vueuse/core').autoResetRef
+  const buildCachedEventViewModels: typeof import('./composables/useUserEvents').buildCachedEventViewModels
   const clearSearch: typeof import('./composables/useSearch').clearSearch
   const computed: typeof import('vue').computed
   const computedAsync: typeof import('@vueuse/core').computedAsync
@@ -431,7 +432,6 @@ declare global {
   import('./composables/useSlider')
   // @ts-ignore
   export type {
-    UserTab,
     UseUserCenterPageDeps,
     UseUserCenterPageReturn
   } from './composables/useUserCenterPage'
@@ -451,6 +451,7 @@ declare global {
     EventItem,
     EventFilter,
     EventViewModel,
+    EventViewModelCacheEntry,
     UseUserEventsReturn
   } from './composables/useUserEvents'
   import('./composables/useUserEvents')
@@ -505,6 +506,9 @@ declare module 'vue' {
     >
     readonly asyncComputed: UnwrapRef<(typeof import('@vueuse/core'))['asyncComputed']>
     readonly autoResetRef: UnwrapRef<(typeof import('@vueuse/core'))['autoResetRef']>
+    readonly buildCachedEventViewModels: UnwrapRef<
+      (typeof import('./composables/useUserEvents'))['buildCachedEventViewModels']
+    >
     readonly computed: UnwrapRef<(typeof import('vue'))['computed']>
     readonly computedAsync: UnwrapRef<(typeof import('@vueuse/core'))['computedAsync']>
     readonly computedEager: UnwrapRef<(typeof import('@vueuse/core'))['computedEager']>

@@ -5,11 +5,13 @@ interface FavoriteAlbumsViewProps {
   albums: FavoriteAlbumItem[]
   loading?: boolean
   activeAlbumId?: string | null
+  playingAlbumId?: string | null
 }
 
 const props = withDefaults(defineProps<FavoriteAlbumsViewProps>(), {
   loading: false,
-  activeAlbumId: null
+  activeAlbumId: null,
+  playingAlbumId: null
 })
 
 const emit = defineEmits<{
@@ -25,6 +27,10 @@ function handleAlbumPlay(albumId: string | number): void {
   emit('album-play', albumId)
 }
 
+function isPlayingAlbum(albumId: string | number): boolean {
+  return String(albumId) === props.playingAlbumId
+}
+
 function formatArtistName(album: FavoriteAlbumItem): string {
   const artistName = typeof album.artistName === 'string' ? album.artistName.trim() : ''
   return artistName || '未知艺术家'
@@ -33,7 +39,7 @@ function formatArtistName(album: FavoriteAlbumItem): string {
 
 <template>
   <div class="favorite-albums-section">
-    <div v-if="props.loading" class="loading-container">
+    <div v-if="props.loading && props.albums.length === 0" class="loading-container">
       <p>加载中...</p>
     </div>
 
@@ -50,7 +56,7 @@ function formatArtistName(album: FavoriteAlbumItem): string {
       >
         <button type="button" class="album-card-hit" @click="handleAlbumOpen(album.id)">
           <div class="album-cover">
-            <img :src="album.picUrl" :alt="album.name" loading="lazy" />
+            <img :src="album.picUrl" :alt="album.name" loading="lazy" decoding="async" />
             <div class="album-overlay">
               <div class="album-overlay-copy">
                 <strong>查看曲目</strong>
@@ -65,8 +71,14 @@ function formatArtistName(album: FavoriteAlbumItem): string {
           </div>
         </button>
 
-        <button type="button" class="album-play-button" @click="handleAlbumPlay(album.id)">
-          播放专辑
+        <button
+          type="button"
+          class="album-play-button"
+          :class="{ loading: isPlayingAlbum(album.id) }"
+          :disabled="isPlayingAlbum(album.id)"
+          @click="handleAlbumPlay(album.id)"
+        >
+          {{ isPlayingAlbum(album.id) ? '播放中...' : '播放专辑' }}
         </button>
       </article>
     </div>
@@ -109,6 +121,9 @@ function formatArtistName(album: FavoriteAlbumItem): string {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  contain: layout paint style;
+  contain-intrinsic-size: 320px 360px;
+  content-visibility: auto;
 }
 
 .album-card.active .album-card-hit {
@@ -221,9 +236,20 @@ function formatArtistName(album: FavoriteAlbumItem): string {
   transition: all 0.2s ease;
 }
 
+.album-play-button.loading,
+.album-play-button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
 .album-play-button:hover {
   background: var(--black);
   color: var(--white);
+}
+
+.album-play-button:hover:disabled {
+  background: var(--white);
+  color: var(--black);
 }
 
 @media (max-width: 768px) {

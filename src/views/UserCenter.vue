@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 
 import { useUserCenterPage } from '@/composables/useUserCenterPage'
 
@@ -47,6 +47,8 @@ const {
   nickname,
   openAlbumDetail,
   openPlaylistDetail,
+  playingAlbumId,
+  playingPlaylistId,
   playAlbum,
   playAlbumTrackAt,
   playEventSong,
@@ -72,6 +74,31 @@ const {
   switchTab,
   tabCounts
 } = useUserCenterPage()
+
+function formatTabCountBadge(count: number): string {
+  if (count <= 0) {
+    return '00'
+  }
+
+  if (count > 99) {
+    return '99+'
+  }
+
+  return String(count)
+}
+
+function getTabAriaLabel(label: string, count: number): string {
+  if (count <= 0) {
+    return label
+  }
+
+  return `${label}，${count}`
+}
+
+const likedTabBadge = computed(() => formatTabCountBadge(tabCounts.value.liked))
+const playlistTabBadge = computed(() => formatTabCountBadge(tabCounts.value.playlist))
+const albumTabBadge = computed(() => formatTabCountBadge(tabCounts.value.album))
+const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events))
 </script>
 
 <template>
@@ -107,34 +134,66 @@ const {
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'liked' }"
+              :aria-label="getTabAriaLabel('我喜欢的音乐', tabCounts.liked)"
               @click="switchTab('liked')"
             >
-              我喜欢的音乐
-              <span v-if="tabCounts.liked > 0" class="count">{{ tabCounts.liked }}</span>
+              <span class="tab-btn-label">我喜欢的音乐</span>
+              <span
+                class="count"
+                :class="{ empty: tabCounts.liked <= 0 }"
+                :title="tabCounts.liked > 99 ? String(tabCounts.liked) : undefined"
+                aria-hidden="true"
+              >
+                {{ likedTabBadge }}
+              </span>
             </button>
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'playlist' }"
+              :aria-label="getTabAriaLabel('歌单', tabCounts.playlist)"
               @click="switchTab('playlist')"
             >
-              歌单
-              <span v-if="tabCounts.playlist > 0" class="count">{{ tabCounts.playlist }}</span>
+              <span class="tab-btn-label">歌单</span>
+              <span
+                class="count"
+                :class="{ empty: tabCounts.playlist <= 0 }"
+                :title="tabCounts.playlist > 99 ? String(tabCounts.playlist) : undefined"
+                aria-hidden="true"
+              >
+                {{ playlistTabBadge }}
+              </span>
             </button>
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'album' }"
+              :aria-label="getTabAriaLabel('我的收藏', tabCounts.album)"
               @click="switchTab('album')"
             >
-              我的收藏
-              <span v-if="tabCounts.album > 0" class="count">{{ tabCounts.album }}</span>
+              <span class="tab-btn-label">我的收藏</span>
+              <span
+                class="count"
+                :class="{ empty: tabCounts.album <= 0 }"
+                :title="tabCounts.album > 99 ? String(tabCounts.album) : undefined"
+                aria-hidden="true"
+              >
+                {{ albumTabBadge }}
+              </span>
             </button>
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'events' }"
+              :aria-label="getTabAriaLabel('动态', tabCounts.events)"
               @click="switchTab('events')"
             >
-              动态
-              <span v-if="tabCounts.events > 0" class="count">{{ tabCounts.events }}</span>
+              <span class="tab-btn-label">动态</span>
+              <span
+                class="count"
+                :class="{ empty: tabCounts.events <= 0 }"
+                :title="tabCounts.events > 99 ? String(tabCounts.events) : undefined"
+                aria-hidden="true"
+              >
+                {{ eventsTabBadge }}
+              </span>
             </button>
           </div>
         </div>
@@ -167,6 +226,7 @@ const {
           :playlists="playlists"
           :loading="loadingMap.playlist"
           :active-playlist-id="selectedPlaylistId"
+          :playing-playlist-id="playingPlaylistId"
           @playlist-open="openPlaylistDetail"
           @playlist-play="playPlaylist"
         />
@@ -192,6 +252,7 @@ const {
               <PlaylistsView
                 :playlists="favoritePlaylists"
                 :loading="loadingMap.album"
+                :playing-playlist-id="playingPlaylistId"
                 @playlist-open="openPlaylistDetail"
                 @playlist-play="playPlaylist"
               />
@@ -205,6 +266,7 @@ const {
                 :albums="albums"
                 :loading="loadingMap.album"
                 :active-album-id="selectedAlbumId"
+                :playing-album-id="playingAlbumId"
                 @album-open="openAlbumDetail"
                 @album-play="playAlbum"
               />
@@ -380,9 +442,10 @@ const {
 }
 
 .tab-btn {
-  display: flex;
+  display: inline-grid;
+  grid-template-columns: minmax(0, max-content) minmax(3ch, 3ch);
   align-items: center;
-  gap: 8px;
+  column-gap: 8px;
   padding: 10px 20px;
   background: transparent;
   border: none;
@@ -393,6 +456,10 @@ const {
   color: var(--gray);
   transition: all 0.2s ease;
   position: relative;
+}
+
+.tab-btn-label {
+  min-width: 0;
 }
 
 .tab-btn:hover {
@@ -407,11 +474,20 @@ const {
 }
 
 .tab-btn .count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 11px;
   padding: 2px 8px;
   background: rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   font-weight: 700;
+  min-inline-size: 3ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-btn .count.empty {
+  visibility: hidden;
 }
 
 .tab-btn.active .count {
@@ -436,6 +512,7 @@ const {
     justify-content: center;
     padding: 10px 12px;
     font-size: 13px;
+    grid-template-columns: minmax(0, max-content) minmax(3ch, 3ch);
   }
 }
 

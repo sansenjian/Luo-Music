@@ -2,9 +2,10 @@
 import { computed } from 'vue'
 
 import {
-  createEventViewModel,
+  buildCachedEventViewModels,
   type EventFilter,
   type EventItem,
+  type EventViewModelCacheEntry,
   type EventViewModel
 } from '@/composables/useUserEvents'
 import type { Song } from '@/platform/music/interface'
@@ -50,9 +51,9 @@ const showBlockingError = computed(
 )
 const showInlineError = computed(() => Boolean(props.error) && props.events.length > 0)
 const emptyMessage = computed(() => (props.activeFilter === 'song' ? '暂无音乐动态' : '暂无动态'))
+const eventViewModelCache = new Map<string, EventViewModelCacheEntry>()
 const eventViewModels = computed<EventViewModel[]>(() => {
-  const now = new Date()
-  return props.events.map((event, index) => createEventViewModel(event, index, now))
+  return buildCachedEventViewModels(props.events, eventViewModelCache, new Date())
 })
 
 const updateFilter = (filter: EventFilter): void => {

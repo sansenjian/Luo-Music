@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  buildCachedEventViewModels,
   createEventViewModel,
   formatEventTimeLabel,
   useUserEvents,
@@ -168,6 +169,28 @@ describe('useUserEvents', () => {
       playableSong
     })
     expect(viewModel.displaySong).toBe(playableSong)
+  })
+
+  it('reuses cached event view models for unchanged events when new pages append', () => {
+    const now = new Date('2026-04-15T12:00:00Z')
+    const cache = new Map()
+    const firstEvent = {
+      eventId: 1,
+      eventTime: now.getTime(),
+      message: 'first'
+    }
+    const secondEvent = {
+      eventId: 2,
+      eventTime: now.getTime() - 1000,
+      message: 'second'
+    }
+
+    const initialViewModels = buildCachedEventViewModels([firstEvent], cache, now)
+    const nextViewModels = buildCachedEventViewModels([firstEvent, secondEvent], cache, now)
+
+    expect(nextViewModels[0]).toBe(initialViewModels[0])
+    expect(nextViewModels[1]).not.toBeUndefined()
+    expect(nextViewModels[1]?.key).toBe('2')
   })
 
   it('returns an empty formatted time when the event timestamp is invalid', () => {

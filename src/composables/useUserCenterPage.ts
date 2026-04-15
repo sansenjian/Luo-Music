@@ -52,6 +52,8 @@ export interface UseUserCenterPageReturn {
   currentUserId: ComputedRef<UserStoreLike['userId']>
   avatarUrl: ComputedRef<UserStoreLike['avatarUrl']>
   nickname: ComputedRef<UserStoreLike['nickname']>
+  playingPlaylistId: Ref<string | null>
+  playingAlbumId: Ref<string | null>
   selectedPlaylistId: Ref<string | null>
   selectedPlaylist: ComputedRef<UserCenterPlaylistsLike['playlists']['value'][number] | null>
   selectedPlaylistSongs: Ref<Song[]>
@@ -275,7 +277,6 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     likeSongs,
     selectedPlaylistSongs: details.selectedPlaylistSongs,
     selectedAlbumSongs: details.selectedAlbumSongs,
-    loadingMap,
     loadPlaylistDetail: details.loadPlaylistDetail,
     loadAlbumDetail: details.loadAlbumDetail,
     getCachedPlaylistSongs: details.getCachedPlaylistSongs,
@@ -290,6 +291,8 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     currentUserId,
     avatarUrl,
     nickname,
+    playingPlaylistId: playback.playingPlaylistId,
+    playingAlbumId: playback.playingAlbumId,
     selectedPlaylistId: details.selectedPlaylistId,
     selectedPlaylist,
     selectedPlaylistSongs: details.selectedPlaylistSongs,

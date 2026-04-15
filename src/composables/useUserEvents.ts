@@ -58,6 +58,11 @@ export interface EventViewModel {
   playableSong: Song | null
 }
 
+export interface EventViewModelCacheEntry {
+  event: EventItem
+  viewModel: EventViewModel
+}
+
 interface UserEventResponse {
   events?: EventItem[]
   lasttime?: number | string
@@ -330,6 +335,36 @@ export function createEventViewModel(
     artistText: formatEventArtists(displaySong?.artists),
     playableSong: event.playableSong ?? null
   }
+}
+
+export function buildCachedEventViewModels(
+  events: EventItem[],
+  cache: Map<string, EventViewModelCacheEntry>,
+  now = new Date()
+): EventViewModel[] {
+  const nextCache = new Map<string, EventViewModelCacheEntry>()
+  const viewModels = events.map((event, index) => {
+    const key = getEventKey(event, index)
+    const cachedEntry = cache.get(key)
+    const viewModel =
+      cachedEntry && cachedEntry.event === event
+        ? cachedEntry.viewModel
+        : createEventViewModel(event, index, now)
+
+    nextCache.set(key, {
+      event,
+      viewModel
+    })
+
+    return viewModel
+  })
+
+  cache.clear()
+  nextCache.forEach((entry, key) => {
+    cache.set(key, entry)
+  })
+
+  return viewModels
 }
 
 export function useUserEvents(): UseUserEventsReturn {
