@@ -1,15 +1,87 @@
+import type { AxiosResponse } from 'axios'
+
 import request from '@/utils/http'
+
+export interface AlbumArtistResponse {
+  id?: string | number
+  name?: string
+}
+
+export interface AlbumInfoResponse {
+  id?: string | number
+  name?: string
+  picUrl?: string
+  size?: number
+  artist?: AlbumArtistResponse
+  artists?: AlbumArtistResponse[]
+}
+
+export interface AlbumTrackResponse {
+  id?: string | number
+  name?: string
+  platform?: 'netease' | 'qq'
+  server?: 'netease' | 'qq'
+  artists?: AlbumArtistResponse[]
+  ar?: AlbumArtistResponse[]
+  album?: {
+    id?: string | number
+    name?: string
+    picUrl?: string
+    artist?: {
+      img1v1Url?: string
+    }
+  }
+  al?: {
+    id?: string | number
+    name?: string
+    picUrl?: string
+    artist?: {
+      img1v1Url?: string
+    }
+  }
+  duration?: number
+  dt?: number
+  mvid?: string | number
+  mv?: string | number
+  originalId?: string | number
+  url?: string
+  mediaId?: string | number
+  extra?: Record<string, unknown>
+}
+
+export interface AlbumDetailResponse {
+  album?: AlbumInfoResponse
+  songs?: AlbumTrackResponse[]
+}
+
+export interface AlbumSublistResponse {
+  count?: number
+  data?: AlbumInfoResponse[]
+  hasMore?: boolean
+}
+
+type HttpResponseData<T> = AxiosResponse<T> | T
+
+function unwrapResponseData<T>(response: HttpResponseData<T>): T {
+  if (response && typeof response === 'object' && 'data' in response) {
+    return (response as AxiosResponse<T>).data
+  }
+
+  return response as T
+}
 
 /**
  * 获取专辑详情
  * @param {number} id - 专辑 ID
  */
-export function getAlbumDetail(id: number) {
-  return request({
+export async function getAlbumDetail(id: number): Promise<AlbumDetailResponse> {
+  const response = await request<AlbumDetailResponse>({
     url: '/album',
     method: 'get',
     params: { id }
   })
+
+  return unwrapResponseData(response)
 }
 
 /**
@@ -17,10 +89,15 @@ export function getAlbumDetail(id: number) {
  * @param {number} limit - 数量
  * @param {number} offset - 偏移量
  */
-export function getAlbumSublist(limit: number = 50, offset: number = 0) {
-  return request({
+export async function getAlbumSublist(
+  limit: number = 50,
+  offset: number = 0
+): Promise<AlbumSublistResponse> {
+  const response = await request<AlbumSublistResponse>({
     url: '/album/sublist',
     method: 'get',
     params: { limit, offset }
   })
+
+  return unwrapResponseData(response)
 }

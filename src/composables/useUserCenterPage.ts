@@ -259,12 +259,20 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     return albums.value.find(album => String(album.id) === albumId) ?? null
   })
   const activeTabError = computed(() => {
+    if (activeTab.value === 'liked') {
+      return likedSongsError.value
+    }
+
     if (activeTab.value === 'playlist') {
       return playlistsError.value
     }
 
     if (activeTab.value === 'album') {
       return playlistsError.value ?? albumsError.value
+    }
+
+    if (activeTab.value === 'events') {
+      return eventsError.value
     }
 
     return null

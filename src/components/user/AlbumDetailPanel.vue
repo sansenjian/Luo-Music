@@ -71,7 +71,7 @@ const emit = defineEmits<{
     </div>
 
     <SongDetailList
-      v-else-if="!props.loading && props.songs.length > 0"
+      v-else
       :songs="props.songs"
       :fallback-cover="props.album?.picUrl ?? ''"
       @play-song="emit('play-song', $event)"

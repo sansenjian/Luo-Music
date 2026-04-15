@@ -161,11 +161,11 @@ function readItemHeight(): number {
 }
 
 function clampIndex(index: number): number {
-  if (props.likeSongs.length === 0) {
+  if (filteredSongs.value.length === 0) {
     return 0
   }
 
-  return Math.min(Math.max(index, 0), props.likeSongs.length - 1)
+  return Math.min(Math.max(index, 0), filteredSongs.value.length - 1)
 }
 
 function syncItemHeight(): void {

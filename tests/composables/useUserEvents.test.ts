@@ -7,6 +7,7 @@ import {
   createEventViewModel,
   formatEventTimeLabel,
   useUserEvents,
+  type EventViewModelCacheEntry,
   type UseUserEventsReturn
 } from '@/composables/useUserEvents'
 import { createMockSong } from '../utils/test-utils'
@@ -173,7 +174,7 @@ describe('useUserEvents', () => {
 
   it('reuses cached event view models for unchanged events when new pages append', () => {
     const now = new Date('2026-04-15T12:00:00Z')
-    const cache = new Map()
+    const cache = new Map<string, EventViewModelCacheEntry>()
     const firstEvent = {
       eventId: 1,
       eventTime: now.getTime(),
@@ -191,6 +192,30 @@ describe('useUserEvents', () => {
     expect(nextViewModels[0]).toBe(initialViewModels[0])
     expect(nextViewModels[1]).not.toBeUndefined()
     expect(nextViewModels[1]?.key).toBe('2')
+  })
+
+  it('stops requesting more when a page adds no unique events and lasttime does not advance', async () => {
+    getUserEventMock
+      .mockResolvedValueOnce({
+        events: [{ eventId: 1, json: JSON.stringify({ msg: 'page 1 event 1' }) }],
+        more: true,
+        lasttime: 111
+      })
+      .mockResolvedValueOnce({
+        events: [{ eventId: 1, json: JSON.stringify({ msg: 'page 1 event 1' }) }],
+        more: true,
+        lasttime: 111
+      })
+
+    const viewModel = mountUseUserEvents()
+
+    await viewModel.loadEvents(42, 1)
+    await flushPromises()
+    await viewModel.loadMoreEvents()
+    await flushPromises()
+
+    expect(viewModel.events.value).toHaveLength(1)
+    expect(viewModel.hasMore.value).toBe(false)
   })
 
   it('returns an empty formatted time when the event timestamp is invalid', () => {

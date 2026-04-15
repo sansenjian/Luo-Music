@@ -1,9 +1,9 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 
-import { getPlaylistDetail, getPlaylistTracks, getUserPlaylist } from '../api/playlist'
-import { createSong, type Song } from '../platform/music/interface'
-import { isCanceledRequestError } from '../utils/http/cancelError'
-import { createLatestRequestController } from '../utils/http/requestScope'
+import { getPlaylistDetail, getPlaylistTracks, getUserPlaylist } from '@/api/playlist'
+import { createSong, type Song } from '@/platform/music/interface'
+import { isCanceledRequestError } from '@/utils/http/cancelError'
+import { createLatestRequestController } from '@/utils/http/requestScope'
 
 export interface PlaylistItem {
   id: string | number

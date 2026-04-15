@@ -1,9 +1,9 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 
-import { getUserEvent } from '../api/user'
-import { createSong, type Song } from '../platform/music/interface'
-import { isCanceledRequestError } from '../utils/http/cancelError'
-import { createLatestRequestController } from '../utils/http/requestScope'
+import { getUserEvent } from '@/api/user'
+import { createSong, type Song } from '@/platform/music/interface'
+import { isCanceledRequestError } from '@/utils/http/cancelError'
+import { createLatestRequestController } from '@/utils/http/requestScope'
 
 export interface EventUser {
   nickname?: string
@@ -459,18 +459,22 @@ export function useUserEvents(): UseUserEventsReturn {
         getUserEvent(request.userId, request.limit, request.lasttime)
       )) as UserEventResponse
       const nextEvents = (response.events ?? []).map(normalizeEvent)
-      const moreAvailable =
-        typeof response.more === 'boolean'
-          ? response.more
-          : nextEvents.length >= request.limit && nextEvents.length > 0
       const resolvedLasttime = getEventLasttime(response, nextEvents, request.lasttime)
 
       task.commit(() => {
+        const mergedEvents = request.append ? mergeEvents(events.value, nextEvents) : nextEvents
+        const progressMade =
+          resolvedLasttime !== request.lasttime || mergedEvents.length > events.value.length
+        const moreAvailable =
+          typeof response.more === 'boolean'
+            ? response.more && progressMade
+            : progressMade && nextEvents.length >= request.limit && nextEvents.length > 0
+
         currentUserId.value = request.userId
         currentLimit.value = request.limit
         nextLasttime.value = resolvedLasttime
         hasMoreState.value = moreAvailable
-        events.value = request.append ? mergeEvents(events.value, nextEvents) : nextEvents
+        events.value = mergedEvents
       })
     } catch (requestError) {
       if (isCanceledRequestError(requestError)) {

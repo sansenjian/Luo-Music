@@ -160,7 +160,8 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
             throw new Error('Invalid search result payload')
           }
 
-          const initialTotal = Math.max(firstPage.total || 0, firstPage.list.length)
+          const initialTotal =
+            typeof firstPage.total === 'number' && firstPage.total > 0 ? firstPage.total : undefined
 
           if (firstPage.list.length === 0) {
             task.commit(() => {
@@ -172,7 +173,7 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
           }
 
           task.commit(() => {
-            totalResults.value = initialTotal
+            totalResults.value = initialTotal ?? firstPage.list.length
             results.value = normalizeSearchResults(firstPage.list)
 
             logger.info('searchStore', 'Search first page loaded', {
@@ -184,8 +185,9 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
           let loadedCount = firstPage.list.length
           let nextPage = 2
           let total = initialTotal
+          let unknownTotal = total === undefined
 
-          while (loadedCount < total) {
+          while (unknownTotal || (total !== undefined && loadedCount < total)) {
             const pageResult = await task.guard(
               musicService.search(server.value, trimmedKeyword, SEARCH_PAGE_SIZE, nextPage)
             )
@@ -199,18 +201,25 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
               throw new Error('Invalid search result payload')
             }
 
-            total = Math.max(total, pageResult.total || 0)
+            if (typeof pageResult.total === 'number' && pageResult.total > 0) {
+              total = Math.max(total ?? 0, pageResult.total)
+              unknownTotal = false
+            }
 
             if (pageResult.list.length === 0) {
+              unknownTotal = false
               break
             }
 
             const nextItems = normalizeSearchResults(pageResult.list)
             loadedCount += pageResult.list.length
-            total = Math.max(total, loadedCount)
+
+            if (pageResult.list.length < SEARCH_PAGE_SIZE) {
+              unknownTotal = false
+            }
 
             task.commit(() => {
-              totalResults.value = total
+              totalResults.value = total ?? loadedCount
               results.value = [...results.value, ...nextItems]
 
               logger.info('searchStore', 'Search page appended', {

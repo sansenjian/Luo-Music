@@ -76,6 +76,9 @@ export function useUserCenterPlayback(
     try {
       const songs =
         getCachedPlaylistSongs(playlistId) ?? (await loadPlaylistDetail(playlistId, true))
+      if (playId !== activePlaylistPlayId || playingPlaylistId.value !== normalizedPlaylistId) {
+        return
+      }
       await playSongs(songs, 0)
     } catch (error) {
       console.error('获取歌单详情失败:', error)
@@ -93,6 +96,9 @@ export function useUserCenterPlayback(
 
     try {
       const songs = getCachedAlbumSongs(albumId) ?? (await loadAlbumDetail(albumId, true))
+      if (playId !== activeAlbumPlayId || playingAlbumId.value !== normalizedAlbumId) {
+        return
+      }
       await playSongs(songs, 0)
     } catch (error) {
       console.error('获取专辑详情失败:', error)

@@ -612,11 +612,40 @@ describe('useUserCenterPage', () => {
     vi.clearAllMocks()
 
     eventsErrorRef.value = new Error('events failed')
+    retryLoadEventsMock.mockImplementation(async () => {
+      eventsErrorRef.value = null
+    })
 
     await viewModel.retryActiveTab()
 
     expect(viewModel.activeTabError.value).toBe(null)
     expect(retryLoadEventsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces active tab errors for liked and events tabs', async () => {
+    const likedFactory = createUserCenterPageDeps()
+    const likedMount = mountUserCenterPage(likedFactory)
+
+    await flushPromises()
+
+    const likedError = new Error('liked failed')
+    likedMount.likedSongsErrorRef.value = likedError
+    await nextTick()
+
+    expect(likedMount.viewModel.activeTabError.value).toBe(likedError)
+
+    const eventsFactory = createUserCenterPageDeps({
+      tab: 'events'
+    })
+    const eventsMount = mountUserCenterPage(eventsFactory)
+
+    await flushPromises()
+
+    const eventsError = new Error('events failed')
+    eventsMount.eventsErrorRef.value = eventsError
+    await nextTick()
+
+    expect(eventsMount.viewModel.activeTabError.value).toBe(eventsError)
   })
 
   it('coordinates playlist and player stores across playback actions', async () => {
@@ -726,6 +755,100 @@ describe('useUserCenterPage', () => {
     expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
     expect(pushMock).toHaveBeenCalledWith('/')
     expect(viewModel.loadingMap.value.album).toBe(false)
+  })
+
+  it('ignores stale playlist play requests when a newer target starts playing first', async () => {
+    const firstPlaylistDeferred = createDeferred<Song[]>()
+    const secondPlaylistSongs = [
+      createSong({
+        id: 'playlist-song-2',
+        name: 'Playlist Song 2',
+        platform: 'netease'
+      })
+    ]
+    const factory = createUserCenterPageDeps()
+
+    factory.loadPlaylistSongsMock.mockImplementation(playlistId => {
+      if (playlistId === 'playlist-1') {
+        return firstPlaylistDeferred.promise
+      }
+
+      return Promise.resolve(secondPlaylistSongs)
+    })
+
+    const { playSongWithDetailsMock, setPlaylistMock, setSongListMock, viewModel } =
+      mountUserCenterPage(factory)
+
+    await flushPromises()
+
+    const firstPlay = viewModel.playPlaylist('playlist-1')
+    await nextTick()
+    const secondPlay = viewModel.playPlaylist('playlist-2')
+
+    firstPlaylistDeferred.resolve([
+      createSong({
+        id: 'playlist-song-1',
+        name: 'Playlist Song 1',
+        platform: 'netease'
+      })
+    ])
+
+    await Promise.all([firstPlay, secondPlay])
+    await flushPromises()
+
+    expect(setPlaylistMock).toHaveBeenCalledTimes(1)
+    expect(setPlaylistMock).toHaveBeenCalledWith(secondPlaylistSongs)
+    expect(setSongListMock).toHaveBeenCalledTimes(1)
+    expect(setSongListMock).toHaveBeenCalledWith(secondPlaylistSongs)
+    expect(playSongWithDetailsMock).toHaveBeenCalledTimes(1)
+    expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
+  })
+
+  it('ignores stale album play requests when a newer target starts playing first', async () => {
+    const firstAlbumDeferred = createDeferred<Song[]>()
+    const secondAlbumSongs = [
+      createSong({
+        id: 'album-song-2',
+        name: 'Album Song 2',
+        platform: 'netease'
+      })
+    ]
+    const factory = createUserCenterPageDeps()
+
+    factory.loadAlbumSongsMock.mockImplementation(albumId => {
+      if (albumId === 'album-1') {
+        return firstAlbumDeferred.promise
+      }
+
+      return Promise.resolve(secondAlbumSongs)
+    })
+
+    const { playSongWithDetailsMock, setPlaylistMock, setSongListMock, viewModel } =
+      mountUserCenterPage(factory)
+
+    await flushPromises()
+
+    const firstPlay = viewModel.playAlbum('album-1')
+    await nextTick()
+    const secondPlay = viewModel.playAlbum('album-2')
+
+    firstAlbumDeferred.resolve([
+      createSong({
+        id: 'album-song-1',
+        name: 'Album Song 1',
+        platform: 'netease'
+      })
+    ])
+
+    await Promise.all([firstPlay, secondPlay])
+    await flushPromises()
+
+    expect(setPlaylistMock).toHaveBeenCalledTimes(1)
+    expect(setPlaylistMock).toHaveBeenCalledWith(secondAlbumSongs)
+    expect(setSongListMock).toHaveBeenCalledTimes(1)
+    expect(setSongListMock).toHaveBeenCalledWith(secondAlbumSongs)
+    expect(playSongWithDetailsMock).toHaveBeenCalledTimes(1)
+    expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
   })
 
   it('exposes liked songs pagination state and delegates incremental loading', async () => {

@@ -4,8 +4,8 @@ import type { FavoriteAlbumItem } from '@/composables/useFavoriteAlbums'
 interface FavoriteAlbumsViewProps {
   albums: FavoriteAlbumItem[]
   loading?: boolean
-  activeAlbumId?: string | null
-  playingAlbumId?: string | null
+  activeAlbumId?: FavoriteAlbumItem['id'] | null
+  playingAlbumId?: FavoriteAlbumItem['id'] | null
 }
 
 const props = withDefaults(defineProps<FavoriteAlbumsViewProps>(), {
@@ -28,7 +28,11 @@ function handleAlbumPlay(albumId: string | number): void {
 }
 
 function isPlayingAlbum(albumId: string | number): boolean {
-  return String(albumId) === props.playingAlbumId
+  return props.playingAlbumId !== null && String(albumId) === String(props.playingAlbumId)
+}
+
+function isActiveAlbum(albumId: FavoriteAlbumItem['id']): boolean {
+  return props.activeAlbumId !== null && String(albumId) === String(props.activeAlbumId)
 }
 
 function formatArtistName(album: FavoriteAlbumItem): string {
@@ -52,7 +56,7 @@ function formatArtistName(album: FavoriteAlbumItem): string {
         v-for="album in props.albums"
         :key="album.id"
         class="album-card"
-        :class="{ active: String(album.id) === props.activeAlbumId }"
+        :class="{ active: isActiveAlbum(album.id) }"
       >
         <button type="button" class="album-card-hit" @click="handleAlbumOpen(album.id)">
           <div class="album-cover">

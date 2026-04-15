@@ -5,9 +5,9 @@ import type { UseLikedSongsReturn } from '@/composables/useLikedSongs'
 import type { UseUserEventsReturn } from '@/composables/useUserEvents'
 import type { UseUserPlaylistsReturn } from '@/composables/useUserPlaylists'
 import type { Song } from '@/platform/music/interface'
-import { usePlayerStore } from '@/store/playerStore'
-import { usePlaylistStore } from '@/store/playlistStore'
-import { useUserStore } from '@/store/userStore'
+import type { usePlayerStore } from '@/store/playerStore'
+import type { usePlaylistStore } from '@/store/playlistStore'
+import type { useUserStore } from '@/store/userStore'
 
 export type UserStoreLike = Pick<
   ReturnType<typeof useUserStore>,

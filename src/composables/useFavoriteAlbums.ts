@@ -1,5 +1,11 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 
+import type {
+  AlbumDetailResponse,
+  AlbumInfoResponse as RawAlbumInfo,
+  AlbumSublistResponse,
+  AlbumTrackResponse as RawAlbumTrack
+} from '@/api/album'
 import { getAlbumDetail, getAlbumSublist } from '@/api/album'
 import { createSong, type Song } from '@/platform/music/interface'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
@@ -22,64 +28,6 @@ export interface UseFavoriteAlbumsReturn {
   resetFavoriteAlbums: () => void
   loadFavoriteAlbums: (userId: string | number) => Promise<void>
   loadAlbumSongs: (albumId: string | number) => Promise<Song[]>
-}
-
-interface RawAlbumArtist {
-  id?: string | number
-  name?: string
-}
-
-interface RawAlbumInfo {
-  id?: string | number
-  name?: string
-  picUrl?: string
-  size?: number
-  artist?: RawAlbumArtist
-  artists?: RawAlbumArtist[]
-}
-
-interface RawAlbumTrack {
-  id?: string | number
-  name?: string
-  platform?: Song['platform']
-  server?: Song['platform']
-  artists?: RawAlbumArtist[]
-  ar?: RawAlbumArtist[]
-  album?: {
-    id?: string | number
-    name?: string
-    picUrl?: string
-    artist?: {
-      img1v1Url?: string
-    }
-  }
-  al?: {
-    id?: string | number
-    name?: string
-    picUrl?: string
-    artist?: {
-      img1v1Url?: string
-    }
-  }
-  duration?: number
-  dt?: number
-  mvid?: string | number
-  mv?: string | number
-  originalId?: string | number
-  url?: string
-  mediaId?: string | number
-  extra?: Record<string, unknown>
-}
-
-interface AlbumSublistResponse {
-  count?: number
-  data?: RawAlbumInfo[]
-  hasMore?: boolean
-}
-
-interface AlbumDetailResponse {
-  album?: RawAlbumInfo
-  songs?: RawAlbumTrack[]
 }
 
 const ALBUM_PAGE_SIZE = 50
@@ -217,7 +165,9 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
         const response = (await task.guard(
           getAlbumSublist(ALBUM_PAGE_SIZE, offset)
         )) as AlbumSublistResponse
-        const pageAlbums = extractFavoriteAlbums(response)
+        const rawPageAlbums = extractFavoriteAlbums(response)
+        const rawPageCount = rawPageAlbums.length
+        const pageAlbums = rawPageAlbums
           .map(album => normalizeFavoriteAlbum(album))
           .filter((album): album is FavoriteAlbumItem => Boolean(album))
 
@@ -225,11 +175,10 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
 
         const totalCount = Number(response.count)
         const reachedEnd =
-          pageAlbums.length === 0 ||
-          (Number.isFinite(totalCount) && nextAlbums.length >= totalCount)
+          rawPageCount === 0 || (Number.isFinite(totalCount) && nextAlbums.length >= totalCount)
 
         const canInferMore =
-          pageAlbums.length === ALBUM_PAGE_SIZE &&
+          rawPageCount === ALBUM_PAGE_SIZE &&
           (!Number.isFinite(totalCount) || nextAlbums.length < totalCount)
 
         hasMore = (response.hasMore ?? canInferMore) && !reachedEnd
@@ -237,7 +186,7 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
           break
         }
 
-        offset += pageAlbums.length
+        offset += rawPageCount
       }
 
       task.commit(() => {

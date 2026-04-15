@@ -115,7 +115,7 @@ export function useLikedSongs(): UseLikedSongsReturn {
       })
     } finally {
       task.commit(() => {
-        if (append) {
+        if (append && sessionId === activeSessionId) {
           loadingMore.value = false
         }
       })

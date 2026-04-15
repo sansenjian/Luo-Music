@@ -26,6 +26,17 @@ type PlaylistItem = {
   name: string
 }
 
+function createPlaylistItemFingerprint(song: Song): string {
+  return JSON.stringify({
+    id: song.id,
+    name: song.name,
+    duration: song.duration,
+    platform: song.platform,
+    cover: song.album?.picUrl || '',
+    artists: Array.isArray(song.artists) ? song.artists.map(artist => artist.name) : []
+  })
+}
+
 function normalizePlaylistItem(song: Song): PlaylistItem {
   return {
     id: song.id,
@@ -41,7 +52,7 @@ function normalizePlaylistItem(song: Song): PlaylistItem {
 
 const renderedCount = ref(0)
 const normalizedSongs = shallowRef<PlaylistItem[]>([])
-let normalizedSongSources: Song[] = []
+let normalizedSongFingerprints: string[] = []
 const totalSongCount = computed(() => playerStore.songList.length)
 const currentIndex = computed(() => playerStore.currentIndex)
 const renderedSongCount = computed(() =>
@@ -69,12 +80,15 @@ const visibleSongs = computed(() =>
 
 function syncNormalizedSongs(songList: Song[]): void {
   const nextNormalizedSongs = new Array<PlaylistItem>(songList.length)
-  let changed = normalizedSongSources.length !== songList.length
+  const nextFingerprints = new Array<string>(songList.length)
+  let changed = normalizedSongFingerprints.length !== songList.length
 
   for (let index = 0; index < songList.length; index += 1) {
     const song = songList[index]
+    const fingerprint = createPlaylistItemFingerprint(song)
+    nextFingerprints[index] = fingerprint
 
-    if (normalizedSongSources[index] === song) {
+    if (normalizedSongFingerprints[index] === fingerprint) {
       nextNormalizedSongs[index] = normalizedSongs.value[index]
       continue
     }
@@ -87,7 +101,7 @@ function syncNormalizedSongs(songList: Song[]): void {
     return
   }
 
-  normalizedSongSources = songList.slice()
+  normalizedSongFingerprints = nextFingerprints
   normalizedSongs.value = nextNormalizedSongs
 }
 

@@ -89,17 +89,18 @@ describe('usePlayerViewModel', () => {
     const store = usePlayerStore()
 
     store.songList = [
-      {
+      createMockSong({
         id: 1,
         name: 'Sparse Song',
         album: { id: 1, name: 'Album', picUrl: '' },
         duration: 180000,
         mvid: 0,
         platform: 'netease',
-        originalId: 1
-      } as any
+        originalId: 1,
+        artists: []
+      })
     ]
-    store.currentSong = store.songList[0] as any
+    store.currentSong = store.songList[0]
     await nextTick()
 
     expect(getVmValue<string>((wrapper.vm as any).artistText)).toBe('Unknown Artist')

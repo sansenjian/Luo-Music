@@ -155,6 +155,40 @@ describe('searchStore', () => {
     expect(store.isLoading).toBe(false)
   })
 
+  it('continues paging when the first page is full but total is missing or zero', async () => {
+    adapterMock.search.mockImplementation(
+      (_platform: string, keyword: string, limit: number, page: number) => {
+        expect(keyword).toBe('unknown-total')
+        expect(limit).toBe(50)
+
+        if (page === 1) {
+          return Promise.resolve({
+            list: Array.from({ length: 50 }, (_, index) => createSearchSong(`song-${index + 1}`)),
+            total: 0
+          })
+        }
+
+        if (page === 2) {
+          return Promise.resolve({
+            list: [createSearchSong('song-51')],
+            total: 0
+          })
+        }
+
+        throw new Error(`Unexpected page: ${page}`)
+      }
+    )
+
+    const store = useSearchStore()
+
+    await store.search('unknown-total')
+
+    expect(adapterMock.search).toHaveBeenNthCalledWith(1, 'netease', 'unknown-total', 50, 1)
+    expect(adapterMock.search).toHaveBeenNthCalledWith(2, 'netease', 'unknown-total', 50, 2)
+    expect(store.results).toHaveLength(51)
+    expect(store.results.at(-1)?.id).toBe('song-51')
+  })
+
   it('ignores stale search responses and keeps the latest results', async () => {
     const first = createDeferred<{ list: Song[]; total: number }>()
     const second = createDeferred<{ list: Song[]; total: number }>()

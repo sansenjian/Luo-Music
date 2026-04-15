@@ -59,12 +59,14 @@ describe('Playlist.vue', () => {
   it('renders sparse playlist songs without crashing', () => {
     const store = usePlayerStore()
     store.songList = [
-      {
+      createMockSong({
         id: 1,
         name: 'Sparse Song',
+        artists: [],
+        album: { id: 1, name: 'Album', picUrl: '' },
         duration: 180000,
         platform: 'netease'
-      } as any
+      })
     ]
     store.currentIndex = 0
 
@@ -74,6 +76,27 @@ describe('Playlist.vue', () => {
     expect(items).toHaveLength(1)
     expect(items[0].text()).toContain('Sparse Song')
     expect(items[0].find('.list-artist').text()).toBe('')
+  })
+
+  it('re-normalizes playlist items when reused song objects change key fields', async () => {
+    const store = usePlayerStore()
+    const firstSong = createMockSong({
+      id: 1,
+      name: 'Song 1',
+      artists: [{ id: 1, name: 'Artist 1' }],
+      album: { id: 11, name: 'Album 1', picUrl: 'cover-1.jpg' }
+    })
+
+    store.songList = [firstSong]
+    const wrapper = mount(Playlist)
+
+    expect(wrapper.find('.list-title').text()).toContain('Song 1')
+
+    firstSong.name = 'Song 1 Updated'
+    store.songList = [...store.songList]
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('.list-title').text()).toContain('Song 1 Updated')
   })
 
   it('highlights current playing song', () => {

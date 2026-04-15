@@ -60,11 +60,7 @@ const emit = defineEmits<{
       <p>当前歌单暂无可播放歌曲。</p>
     </div>
 
-    <SongDetailList
-      v-else-if="!props.loading && props.songs.length > 0"
-      :songs="props.songs"
-      @play-song="emit('play-song', $event)"
-    />
+    <SongDetailList v-else :songs="props.songs" @play-song="emit('play-song', $event)" />
   </section>
 </template>
 

@@ -145,6 +145,47 @@ describe('useFavoriteAlbums', () => {
     })
   })
 
+  it('advances favorite album pagination by the raw page size before normalization', async () => {
+    getAlbumSublistMock
+      .mockResolvedValueOnce({
+        count: 2,
+        hasMore: true,
+        data: [
+          {
+            id: 301,
+            name: 'Album 301',
+            picUrl: 'cover-301.jpg',
+            size: 12,
+            artist: { id: 7, name: 'Artist 7' }
+          },
+          {
+            id: undefined,
+            name: ''
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        count: 2,
+        hasMore: false,
+        data: [
+          {
+            id: 302,
+            name: 'Album 302',
+            picUrl: 'cover-302.jpg',
+            size: 8
+          }
+        ]
+      })
+
+    const viewModel = mountUseFavoriteAlbums()
+    await viewModel.loadFavoriteAlbums('user-1')
+    await flushPromises()
+
+    expect(getAlbumSublistMock).toHaveBeenNthCalledWith(1, 50, 0)
+    expect(getAlbumSublistMock).toHaveBeenNthCalledWith(2, 50, 2)
+    expect(viewModel.albums.value.map(album => album.id)).toEqual([301, 302])
+  })
+
   it('surfaces album detail failures instead of silently returning an empty song list', async () => {
     getAlbumDetailMock.mockRejectedValue(new Error('album detail failed'))
 

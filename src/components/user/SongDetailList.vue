@@ -43,7 +43,15 @@ const offsetY = computed(() => startIndex.value * itemHeight.value)
 const visibleSongs = computed(() =>
   props.songs.slice(startIndex.value, endIndex.value).map((song, offset) => ({
     index: startIndex.value + offset,
-    song
+    song,
+    coverUrl: resolveSongCover(song)
+  }))
+)
+const staticSongs = computed(() =>
+  props.songs.map((song, index) => ({
+    index,
+    song,
+    coverUrl: resolveSongCover(song)
   }))
 )
 
@@ -217,16 +225,16 @@ onUnmounted(() => {
       <div class="detail-viewport" :style="{ height: `${totalHeight}px` }">
         <div class="detail-window" :style="{ transform: `translateY(${offsetY}px)` }">
           <div
-            v-for="{ song, index } in visibleSongs"
+            v-for="{ song, index, coverUrl } in visibleSongs"
             :key="`${song.id}-${index}`"
             class="detail-song-row"
           >
             <button type="button" class="detail-song" @click="emitPlaySong(index)">
               <span class="detail-song-index">{{ String(index + 1).padStart(2, '0') }}</span>
               <img
-                v-if="resolveSongCover(song)"
+                v-if="coverUrl"
                 class="detail-song-cover"
-                :src="resolveSongCover(song)"
+                :src="coverUrl"
                 :alt="song.name"
                 loading="lazy"
               />
@@ -248,7 +256,7 @@ onUnmounted(() => {
 
     <div v-else class="detail-list detail-list-static">
       <button
-        v-for="(song, index) in props.songs"
+        v-for="{ song, index, coverUrl } in staticSongs"
         :key="`${song.id}-${index}`"
         type="button"
         class="detail-song"
@@ -256,9 +264,9 @@ onUnmounted(() => {
       >
         <span class="detail-song-index">{{ String(index + 1).padStart(2, '0') }}</span>
         <img
-          v-if="resolveSongCover(song)"
+          v-if="coverUrl"
           class="detail-song-cover"
-          :src="resolveSongCover(song)"
+          :src="coverUrl"
           :alt="song.name"
           loading="lazy"
         />

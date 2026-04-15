@@ -131,7 +131,9 @@ describe('EventsView', () => {
       }
     })
 
-    await wrapper.findAll('.filter-chip')[1]?.trigger('click')
+    const filterChips = wrapper.findAll('.filter-chip')
+    expect(filterChips.length).toBeGreaterThan(1)
+    await filterChips[1]!.trigger('click')
     await wrapper.find('.inline-action').trigger('click')
     await wrapper.find('.action-button').trigger('click')
     await wrapper.find('.event-song-play').trigger('click')
