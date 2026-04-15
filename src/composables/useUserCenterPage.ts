@@ -1,72 +1,36 @@
-import { computed, nextTick, ref, watch, type ComputedRef, type Ref } from 'vue'
-import { useRoute, useRouter, type RouteLocationNormalizedLoaded, type Router } from 'vue-router'
+import { computed, ref, type ComputedRef, type Ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-import { useFavoriteAlbums, type UseFavoriteAlbumsReturn } from '@/composables/useFavoriteAlbums'
-import { useLikedSongs, type UseLikedSongsReturn } from '@/composables/useLikedSongs'
-import { useUserEvents, type UseUserEventsReturn } from '@/composables/useUserEvents'
-import { useUserPlaylists, type UseUserPlaylistsReturn } from '@/composables/useUserPlaylists'
+import { useFavoriteAlbums } from '@/composables/useFavoriteAlbums'
+import { useLikedSongs } from '@/composables/useLikedSongs'
+import { useUserEvents } from '@/composables/useUserEvents'
+import { useUserPlaylists } from '@/composables/useUserPlaylists'
+import {
+  createLoadedTabs,
+  createLoadingMap,
+  createMountedTabs,
+  parseUserTab,
+  type UserTab,
+  type UserTabStateMap
+} from '@/composables/user-center/shared'
+import { useUserCenterDetails } from '@/composables/user-center/useUserCenterDetails'
+import { useUserCenterPlayback } from '@/composables/user-center/useUserCenterPlayback'
+import { useUserCenterTabs } from '@/composables/user-center/useUserCenterTabs'
+import type {
+  PlayerStoreLike,
+  PlaylistStoreLike,
+  UserCenterEventsLike,
+  UserCenterFavoriteAlbumsLike,
+  UserCenterLikedSongsLike,
+  UserCenterPlaylistsLike,
+  UserCenterRouteLike,
+  UserCenterRouterLike,
+  UserStoreLike
+} from '@/composables/user-center/types'
 import type { Song } from '@/platform/music/interface'
 import { usePlayerStore } from '@/store/playerStore'
 import { usePlaylistStore } from '@/store/playlistStore'
 import { useUserStore } from '@/store/userStore'
-
-export type UserTab = 'liked' | 'playlist' | 'album' | 'events'
-
-type UserTabStateMap = Record<UserTab, boolean>
-type UserStoreLike = Pick<
-  ReturnType<typeof useUserStore>,
-  'avatarUrl' | 'isLoggedIn' | 'nickname' | 'userId'
->
-type PlaylistStoreLike = Pick<ReturnType<typeof usePlaylistStore>, 'setPlaylist'>
-type PlayerStoreLike = Pick<
-  ReturnType<typeof usePlayerStore>,
-  'playSongWithDetails' | 'setSongList'
->
-type UserCenterRouterLike = Pick<Router, 'push' | 'replace'>
-type UserCenterRouteLike = Pick<RouteLocationNormalizedLoaded, 'query'>
-type UserCenterLikedSongsLike = Pick<
-  UseLikedSongsReturn,
-  | 'count'
-  | 'error'
-  | 'formattedSongs'
-  | 'hasMore'
-  | 'likeSongs'
-  | 'loadLikedSongs'
-  | 'loadMoreLikedSongs'
-  | 'loadingMore'
-  | 'retryLoadLikedSongs'
-  | 'resetLikedSongs'
->
-type UserCenterPlaylistsLike = Pick<
-  UseUserPlaylistsReturn,
-  | 'count'
-  | 'createdPlaylists'
-  | 'error'
-  | 'favoritePlaylists'
-  | 'loadPlaylistSongs'
-  | 'loadPlaylists'
-  | 'playlists'
-  | 'resetPlaylists'
->
-type UserCenterFavoriteAlbumsLike = Pick<
-  UseFavoriteAlbumsReturn,
-  'albums' | 'count' | 'error' | 'loadAlbumSongs' | 'loadFavoriteAlbums' | 'resetFavoriteAlbums'
->
-type UserCenterEventsLike = Pick<
-  UseUserEventsReturn,
-  | 'activeFilter'
-  | 'count'
-  | 'error'
-  | 'events'
-  | 'filteredEvents'
-  | 'hasMore'
-  | 'loadEvents'
-  | 'loadMoreEvents'
-  | 'loadingMore'
-  | 'retryLoadEvents'
-  | 'resetEvents'
-  | 'setFilter'
->
 
 export interface UseUserCenterPageDeps {
   route?: UserCenterRouteLike
@@ -153,57 +117,6 @@ export interface UseUserCenterPageReturn {
   goBack: () => void
 }
 
-function createLoadingMap(): UserTabStateMap {
-  return {
-    liked: false,
-    playlist: false,
-    album: false,
-    events: false
-  }
-}
-
-function createMountedTabs(activeTab: UserTab = 'liked'): UserTabStateMap {
-  return {
-    liked: activeTab === 'liked',
-    playlist: activeTab === 'playlist',
-    album: activeTab === 'album',
-    events: activeTab === 'events'
-  }
-}
-
-function createLoadedTabs(): UserTabStateMap {
-  return {
-    liked: false,
-    playlist: false,
-    album: false,
-    events: false
-  }
-}
-
-function parseQueryValue(value: unknown): string | null {
-  const normalizedValue = Array.isArray(value) ? value[0] : value
-  if (normalizedValue == null) {
-    return null
-  }
-
-  const stringValue = String(normalizedValue).trim()
-  return stringValue.length > 0 ? stringValue : null
-}
-
-function parseUserTab(value: unknown): UserTab {
-  const normalizedValue = parseQueryValue(value)
-  if (
-    normalizedValue === 'playlist' ||
-    normalizedValue === 'album' ||
-    normalizedValue === 'events' ||
-    normalizedValue === 'liked'
-  ) {
-    return normalizedValue
-  }
-
-  return 'liked'
-}
-
 export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCenterPageReturn {
   const route = deps.route ?? useRoute()
   const router = deps.router ?? useRouter()
@@ -220,18 +133,6 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
   const loadingMap = ref<UserTabStateMap>(createLoadingMap())
   const mountedTabs = ref<UserTabStateMap>(createMountedTabs(activeTab.value))
   const loadedTabs = ref<UserTabStateMap>(createLoadedTabs())
-  const selectedPlaylistId = ref<string | null>(
-    activeTab.value === 'playlist' ? parseQueryValue(route.query.playlistId) : null
-  )
-  const selectedPlaylistSongs = ref<Song[]>([])
-  const playlistDetailLoading = ref(false)
-  const playlistDetailError = ref<unknown>(null)
-  const selectedAlbumId = ref<string | null>(
-    activeTab.value === 'album' ? parseQueryValue(route.query.albumId) : null
-  )
-  const selectedAlbumSongs = ref<Song[]>([])
-  const albumDetailLoading = ref(false)
-  const albumDetailError = ref<unknown>(null)
 
   const currentUserId = computed(() => userStore.userId)
   const avatarUrl = computed(() => userStore.avatarUrl)
@@ -282,6 +183,55 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     setFilter: setEventsFilter
   } = userEvents
 
+  let syncRouteQueryBridge = (): void => {}
+  let loadTabDataBridge: (
+    tab: UserTab,
+    userId: string | number,
+    force?: boolean
+  ) => Promise<void> = async () => {}
+
+  const details = useUserCenterDetails({
+    route,
+    activeTab,
+    mountedTabs,
+    isLoggedIn: () => userStore.isLoggedIn,
+    getCurrentUserId: () => userStore.userId,
+    loadTabData: (tab, userId, force) => loadTabDataBridge(tab, userId, force),
+    loadPlaylistSongs,
+    loadAlbumSongs,
+    syncRouteQuery: () => syncRouteQueryBridge()
+  })
+
+  const tabs = useUserCenterTabs({
+    route,
+    router,
+    userStore,
+    activeTab,
+    loadingMap,
+    mountedTabs,
+    loadedTabs,
+    loadLikedSongs,
+    retryLoadLikedSongs,
+    resetLikedSongs,
+    loadPlaylists,
+    resetPlaylists,
+    loadFavoriteAlbums,
+    resetFavoriteAlbums,
+    loadEvents,
+    retryLoadEvents,
+    resetEvents,
+    selectedPlaylistId: details.selectedPlaylistId,
+    selectedAlbumId: details.selectedAlbumId,
+    resetPlaylistDetail: details.resetPlaylistDetail,
+    resetAlbumDetail: details.resetAlbumDetail,
+    resetDetailState: details.resetDetailState,
+    loadPlaylistDetail: details.loadPlaylistDetail,
+    loadAlbumDetail: details.loadAlbumDetail
+  })
+
+  syncRouteQueryBridge = tabs.syncRouteQuery
+  loadTabDataBridge = tabs.loadTabData
+
   const tabCounts = computed(
     (): Record<UserTab, number> => ({
       liked: likedCount.value,
@@ -291,7 +241,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     })
   )
   const selectedPlaylist = computed(() => {
-    const playlistId = selectedPlaylistId.value
+    const playlistId = details.selectedPlaylistId.value
     if (!playlistId) {
       return null
     }
@@ -299,7 +249,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     return playlists.value.find(playlist => String(playlist.id) === playlistId) ?? null
   })
   const selectedAlbum = computed(() => {
-    const albumId = selectedAlbumId.value
+    const albumId = details.selectedAlbumId.value
     if (!albumId) {
       return null
     }
@@ -318,444 +268,19 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     return null
   })
 
-  let activeLoadId = 0
-  let activePlaylistDetailLoadId = 0
-  let activeAlbumDetailLoadId = 0
-  const playlistSongsCache = new Map<string, Song[]>()
-  const albumSongsCache = new Map<string, Song[]>()
-
-  const syncRouteQuery = (): void => {
-    const nextQuery: Record<string, string> = {
-      tab: activeTab.value
-    }
-
-    if (activeTab.value === 'playlist' && selectedPlaylistId.value) {
-      nextQuery.playlistId = selectedPlaylistId.value
-    }
-
-    if (activeTab.value === 'album' && selectedAlbumId.value) {
-      nextQuery.albumId = selectedAlbumId.value
-    }
-
-    const currentTab = parseUserTab(route.query.tab)
-    const currentPlaylistId =
-      currentTab === 'playlist' ? parseQueryValue(route.query.playlistId) : null
-    const currentAlbumId = currentTab === 'album' ? parseQueryValue(route.query.albumId) : null
-
-    if (
-      currentTab === nextQuery.tab &&
-      currentPlaylistId === (nextQuery.playlistId ?? null) &&
-      currentAlbumId === (nextQuery.albumId ?? null)
-    ) {
-      return
-    }
-
-    void router.replace({
-      path: '/user',
-      query: nextQuery
-    })
-  }
-
-  const resetPlaylistDetail = (): void => {
-    activePlaylistDetailLoadId += 1
-    selectedPlaylistId.value = null
-    selectedPlaylistSongs.value = []
-    playlistDetailLoading.value = false
-    playlistDetailError.value = null
-  }
-
-  const resetAlbumDetail = (): void => {
-    activeAlbumDetailLoadId += 1
-    selectedAlbumId.value = null
-    selectedAlbumSongs.value = []
-    albumDetailLoading.value = false
-    albumDetailError.value = null
-  }
-
-  const loadPlaylistDetail = async (
-    playlistId: string | number,
-    force = false
-  ): Promise<Song[]> => {
-    const normalizedPlaylistId = String(playlistId)
-    const cachedSongs = playlistSongsCache.get(normalizedPlaylistId)
-    if (!force && cachedSongs) {
-      selectedPlaylistSongs.value = cachedSongs
-      playlistDetailError.value = null
-      return cachedSongs
-    }
-
-    const loadId = ++activePlaylistDetailLoadId
-    playlistDetailLoading.value = true
-    playlistDetailError.value = null
-
-    try {
-      const songs = await loadPlaylistSongs(playlistId)
-
-      if (
-        loadId !== activePlaylistDetailLoadId ||
-        selectedPlaylistId.value !== normalizedPlaylistId
-      ) {
-        return songs
-      }
-
-      playlistSongsCache.set(normalizedPlaylistId, songs)
-      selectedPlaylistSongs.value = songs
-      return songs
-    } catch (error) {
-      if (
-        loadId !== activePlaylistDetailLoadId ||
-        selectedPlaylistId.value !== normalizedPlaylistId
-      ) {
-        return []
-      }
-
-      selectedPlaylistSongs.value = []
-      playlistDetailError.value = error
-      return []
-    } finally {
-      if (loadId === activePlaylistDetailLoadId) {
-        playlistDetailLoading.value = false
-      }
-    }
-  }
-
-  const loadAlbumDetail = async (albumId: string | number, force = false): Promise<Song[]> => {
-    const normalizedAlbumId = String(albumId)
-    const cachedSongs = albumSongsCache.get(normalizedAlbumId)
-    if (!force && cachedSongs) {
-      selectedAlbumSongs.value = cachedSongs
-      albumDetailError.value = null
-      return cachedSongs
-    }
-
-    const loadId = ++activeAlbumDetailLoadId
-    albumDetailLoading.value = true
-    albumDetailError.value = null
-
-    try {
-      const songs = await loadAlbumSongs(albumId)
-
-      if (loadId !== activeAlbumDetailLoadId || selectedAlbumId.value !== normalizedAlbumId) {
-        return songs
-      }
-
-      albumSongsCache.set(normalizedAlbumId, songs)
-      selectedAlbumSongs.value = songs
-      return songs
-    } catch (error) {
-      if (loadId !== activeAlbumDetailLoadId || selectedAlbumId.value !== normalizedAlbumId) {
-        return []
-      }
-
-      selectedAlbumSongs.value = []
-      albumDetailError.value = error
-      return []
-    } finally {
-      if (loadId === activeAlbumDetailLoadId) {
-        albumDetailLoading.value = false
-      }
-    }
-  }
-
-  const resetUserContent = (): void => {
-    activeLoadId += 1
-    playlistSongsCache.clear()
-    albumSongsCache.clear()
-    activeTab.value = parseUserTab(route.query.tab)
-    mountedTabs.value = createMountedTabs(activeTab.value)
-    loadedTabs.value = createLoadedTabs()
-    loadingMap.value = createLoadingMap()
-    selectedPlaylistId.value =
-      activeTab.value === 'playlist' ? parseQueryValue(route.query.playlistId) : null
-    selectedPlaylistSongs.value = []
-    playlistDetailLoading.value = false
-    playlistDetailError.value = null
-    selectedAlbumId.value =
-      activeTab.value === 'album' ? parseQueryValue(route.query.albumId) : null
-    selectedAlbumSongs.value = []
-    albumDetailLoading.value = false
-    albumDetailError.value = null
-    resetLikedSongs()
-    resetPlaylists()
-    resetFavoriteAlbums()
-    resetEvents()
-  }
-
-  const loadTabData = async (
-    tab: UserTab,
-    userId: string | number,
-    force = false
-  ): Promise<void> => {
-    if (!force && (loadedTabs.value[tab] || loadingMap.value[tab])) {
-      return
-    }
-
-    const loadId = activeLoadId
-    loadingMap.value[tab] = true
-
-    try {
-      if (tab === 'liked') {
-        await loadLikedSongs(userId)
-      } else if (tab === 'playlist') {
-        await loadPlaylists(userId)
-      } else if (tab === 'album') {
-        await Promise.all([
-          loadedTabs.value.playlist || loadingMap.value.playlist
-            ? Promise.resolve()
-            : loadPlaylists(userId),
-          loadFavoriteAlbums(userId)
-        ])
-      } else {
-        await loadEvents(userId)
-      }
-
-      if (loadId === activeLoadId) {
-        loadedTabs.value[tab] = true
-      }
-    } finally {
-      if (loadId === activeLoadId) {
-        loadingMap.value[tab] = false
-      }
-    }
-  }
-
-  const goBack = (): void => {
-    void router.push('/')
-  }
-
-  const playSongs = async (songs: Song[], index: number): Promise<void> => {
-    if (songs.length === 0) {
-      return
-    }
-
-    playlistStore.setPlaylist(songs)
-    playerStore.setSongList(songs)
-
-    try {
-      await playerStore.playSongWithDetails(index)
-      void router.push('/')
-    } catch (error) {
-      console.error('播放失败:', error)
-    }
-  }
-
-  const playPlaylist = async (playlistId: string | number): Promise<void> => {
-    loadingMap.value.playlist = true
-
-    try {
-      const normalizedPlaylistId = String(playlistId)
-      const songs =
-        playlistSongsCache.get(normalizedPlaylistId) ?? (await loadPlaylistDetail(playlistId, true))
-      await playSongs(songs, 0)
-    } catch (error) {
-      console.error('获取歌单详情失败:', error)
-    } finally {
-      loadingMap.value.playlist = false
-    }
-  }
-
-  const playAlbum = async (albumId: string | number): Promise<void> => {
-    loadingMap.value.album = true
-
-    try {
-      const normalizedAlbumId = String(albumId)
-      const songs = albumSongsCache.get(normalizedAlbumId) ?? (await loadAlbumDetail(albumId, true))
-      await playSongs(songs, 0)
-    } catch (error) {
-      console.error('获取专辑详情失败:', error)
-    } finally {
-      loadingMap.value.album = false
-    }
-  }
-
-  const playAllLikedSongs = async (): Promise<void> => {
-    await playSongs(likeSongs.value, 0)
-  }
-
-  const playEventSong = async (song: Song): Promise<void> => {
-    await playSongs([song], 0)
-  }
-
-  const playPlaylistTrackAt = async (index: number): Promise<void> => {
-    await playSongs(selectedPlaylistSongs.value, index)
-  }
-
-  const playAlbumTrackAt = async (index: number): Promise<void> => {
-    await playSongs(selectedAlbumSongs.value, index)
-  }
-
-  const playLikedSongAt = async (index: number): Promise<void> => {
-    await playSongs(likeSongs.value, index)
-  }
-
-  const switchTab = (tab: UserTab): void => {
-    mountedTabs.value[tab] = true
-    activeTab.value = tab
-    if (tab !== 'playlist') {
-      resetPlaylistDetail()
-    }
-    if (tab !== 'album') {
-      resetAlbumDetail()
-    }
-    syncRouteQuery()
-
-    const userId = currentUserId.value
-    if (!userStore.isLoggedIn || !userId) {
-      return
-    }
-
-    void loadTabData(tab, userId)
-  }
-
-  const openPlaylistDetail = async (playlistId: string | number): Promise<void> => {
-    const normalizedPlaylistId = String(playlistId)
-    mountedTabs.value.playlist = true
-    activeTab.value = 'playlist'
-    selectedPlaylistId.value = normalizedPlaylistId
-    syncRouteQuery()
-
-    const userId = currentUserId.value
-    if (userStore.isLoggedIn && userId) {
-      await loadTabData('playlist', userId)
-    }
-
-    await loadPlaylistDetail(normalizedPlaylistId)
-  }
-
-  const closePlaylistDetail = (): void => {
-    resetPlaylistDetail()
-    if (activeTab.value !== 'playlist') {
-      activeTab.value = 'playlist'
-      mountedTabs.value.playlist = true
-    }
-    syncRouteQuery()
-  }
-
-  const openAlbumDetail = async (albumId: string | number): Promise<void> => {
-    const normalizedAlbumId = String(albumId)
-    mountedTabs.value.album = true
-    activeTab.value = 'album'
-    selectedAlbumId.value = normalizedAlbumId
-    syncRouteQuery()
-
-    const userId = currentUserId.value
-    if (userStore.isLoggedIn && userId) {
-      await loadTabData('album', userId)
-    }
-
-    await loadAlbumDetail(normalizedAlbumId)
-  }
-
-  const closeAlbumDetail = (): void => {
-    resetAlbumDetail()
-    if (activeTab.value !== 'album') {
-      activeTab.value = 'album'
-      mountedTabs.value.album = true
-    }
-    syncRouteQuery()
-  }
-
-  const retryActiveTab = async (): Promise<void> => {
-    const userId = currentUserId.value
-    if (!userStore.isLoggedIn || !userId) {
-      return
-    }
-
-    if (activeTab.value === 'liked') {
-      await retryLoadLikedSongs()
-      return
-    }
-
-    if (activeTab.value === 'events') {
-      await retryLoadEvents()
-      return
-    }
-
-    if (activeTab.value === 'album') {
-      await loadTabData(activeTab.value, userId, true)
-      return
-    }
-
-    await loadTabData(activeTab.value, userId, true)
-  }
-
-  const retryPlaylistDetail = async (): Promise<void> => {
-    if (!selectedPlaylistId.value) {
-      return
-    }
-
-    await loadPlaylistDetail(selectedPlaylistId.value, true)
-  }
-
-  const retryAlbumDetail = async (): Promise<void> => {
-    if (!selectedAlbumId.value) {
-      return
-    }
-
-    await loadAlbumDetail(selectedAlbumId.value, true)
-  }
-
-  watch(
-    () => [route.query.tab, route.query.playlistId, route.query.albumId] as const,
-    ([queryTab, queryPlaylistId, queryAlbumId]) => {
-      const nextTab = parseUserTab(queryTab)
-      const nextPlaylistId = nextTab === 'playlist' ? parseQueryValue(queryPlaylistId) : null
-      const nextAlbumId = nextTab === 'album' ? parseQueryValue(queryAlbumId) : null
-
-      if (activeTab.value !== nextTab) {
-        activeTab.value = nextTab
-        mountedTabs.value[nextTab] = true
-
-        const userId = currentUserId.value
-        if (userStore.isLoggedIn && userId) {
-          void loadTabData(nextTab, userId)
-        }
-      }
-
-      if (selectedPlaylistId.value !== nextPlaylistId) {
-        if (!nextPlaylistId) {
-          resetPlaylistDetail()
-        } else {
-          selectedPlaylistId.value = nextPlaylistId
-          void loadPlaylistDetail(nextPlaylistId)
-        }
-      }
-
-      if (selectedAlbumId.value === nextAlbumId) {
-        return
-      }
-
-      if (!nextAlbumId) {
-        resetAlbumDetail()
-        return
-      }
-
-      selectedAlbumId.value = nextAlbumId
-      void loadAlbumDetail(nextAlbumId)
-    }
-  )
-
-  watch(
-    () => [userStore.isLoggedIn, userStore.userId] as const,
-    async ([isLoggedIn, userId]) => {
-      resetUserContent()
-      await nextTick()
-
-      if (!isLoggedIn || !userId) {
-        goBack()
-        return
-      }
-
-      await loadTabData(activeTab.value, userId, true)
-
-      if (activeTab.value === 'playlist' && selectedPlaylistId.value) {
-        await loadPlaylistDetail(selectedPlaylistId.value, true)
-      } else if (activeTab.value === 'album' && selectedAlbumId.value) {
-        await loadAlbumDetail(selectedAlbumId.value, true)
-      }
-    },
-    { immediate: true }
-  )
+  const playback = useUserCenterPlayback({
+    router,
+    playlistStore,
+    playerStore,
+    likeSongs,
+    selectedPlaylistSongs: details.selectedPlaylistSongs,
+    selectedAlbumSongs: details.selectedAlbumSongs,
+    loadingMap,
+    loadPlaylistDetail: details.loadPlaylistDetail,
+    loadAlbumDetail: details.loadAlbumDetail,
+    getCachedPlaylistSongs: details.getCachedPlaylistSongs,
+    getCachedAlbumSongs: details.getCachedAlbumSongs
+  })
 
   return {
     activeTab,
@@ -765,16 +290,16 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     currentUserId,
     avatarUrl,
     nickname,
-    selectedPlaylistId,
+    selectedPlaylistId: details.selectedPlaylistId,
     selectedPlaylist,
-    selectedPlaylistSongs,
-    playlistDetailLoading,
-    playlistDetailError,
-    selectedAlbumId,
+    selectedPlaylistSongs: details.selectedPlaylistSongs,
+    playlistDetailLoading: details.playlistDetailLoading,
+    playlistDetailError: details.playlistDetailError,
+    selectedAlbumId: details.selectedAlbumId,
     selectedAlbum,
-    selectedAlbumSongs,
-    albumDetailLoading,
-    albumDetailError,
+    selectedAlbumSongs: details.selectedAlbumSongs,
+    albumDetailLoading: details.albumDetailLoading,
+    albumDetailError: details.albumDetailError,
     activeTabError,
     likedCount,
     playlistCount,
@@ -810,24 +335,24 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     loadMoreEvents,
     retryLoadEvents,
     resetEvents,
-    switchTab,
-    openPlaylistDetail,
-    closePlaylistDetail,
-    openAlbumDetail,
-    closeAlbumDetail,
-    retryActiveTab,
-    retryPlaylistDetail,
-    retryAlbumDetail,
-    resetUserContent,
-    loadTabData,
-    playEventSong,
-    playPlaylist,
-    playPlaylistTrackAt,
-    playAlbum,
-    playAlbumTrackAt,
-    playAllLikedSongs,
-    playLikedSongAt,
-    goBack
+    switchTab: tabs.switchTab,
+    openPlaylistDetail: details.openPlaylistDetail,
+    closePlaylistDetail: details.closePlaylistDetail,
+    openAlbumDetail: details.openAlbumDetail,
+    closeAlbumDetail: details.closeAlbumDetail,
+    retryActiveTab: tabs.retryActiveTab,
+    retryPlaylistDetail: details.retryPlaylistDetail,
+    retryAlbumDetail: details.retryAlbumDetail,
+    resetUserContent: tabs.resetUserContent,
+    loadTabData: tabs.loadTabData,
+    playEventSong: playback.playEventSong,
+    playPlaylist: playback.playPlaylist,
+    playPlaylistTrackAt: playback.playPlaylistTrackAt,
+    playAlbum: playback.playAlbum,
+    playAlbumTrackAt: playback.playAlbumTrackAt,
+    playAllLikedSongs: playback.playAllLikedSongs,
+    playLikedSongAt: playback.playLikedSongAt,
+    goBack: tabs.goBack
   }
 }
 
