@@ -213,7 +213,7 @@ export function useUserPlaylists(): UseUserPlaylistsReturn {
         .filter((track): track is Song => Boolean(track))
     } catch (requestError) {
       console.error('Failed to load playlist detail:', requestError)
-      return []
+      throw requestError
     }
   }
 

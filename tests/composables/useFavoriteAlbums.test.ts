@@ -144,4 +144,12 @@ describe('useFavoriteAlbums', () => {
       platform: 'netease'
     })
   })
+
+  it('surfaces album detail failures instead of silently returning an empty song list', async () => {
+    getAlbumDetailMock.mockRejectedValue(new Error('album detail failed'))
+
+    const viewModel = mountUseFavoriteAlbums()
+
+    await expect(viewModel.loadAlbumSongs(88)).rejects.toThrow('album detail failed')
+  })
 })

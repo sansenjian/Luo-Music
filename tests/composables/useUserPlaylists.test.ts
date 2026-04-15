@@ -141,4 +141,12 @@ describe('useUserPlaylists', () => {
     ])
     expect(viewModel.count.value).toBe(1)
   })
+
+  it('surfaces playlist detail failures instead of silently returning an empty song list', async () => {
+    getPlaylistTracksMock.mockRejectedValue(new Error('playlist detail failed'))
+
+    const viewModel = mountUseUserPlaylists()
+
+    await expect(viewModel.loadPlaylistSongs(3)).rejects.toThrow('playlist detail failed')
+  })
 })
