@@ -26,6 +26,7 @@ export interface SearchResultItem {
 }
 
 const SEARCH_PAGE_SIZE = 50
+const MAX_SEARCH_PAGES = 100
 
 export function searchResultItemToSong(item: SearchResultItem): Song {
   const { id, name, artist, album, pic, cover, url, platform, duration, ...extraFields } = item
@@ -188,6 +189,18 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
           let unknownTotal = total === undefined
 
           while (unknownTotal || (total !== undefined && loadedCount < total)) {
+            if (nextPage > MAX_SEARCH_PAGES) {
+              unknownTotal = false
+              logger.warn('searchStore', 'Search paging stopped at safety limit', {
+                keyword: trimmedKeyword,
+                server: server.value,
+                loadedCount,
+                total,
+                pageLimit: MAX_SEARCH_PAGES
+              })
+              break
+            }
+
             const pageResult = await task.guard(
               musicService.search(server.value, trimmedKeyword, SEARCH_PAGE_SIZE, nextPage)
             )

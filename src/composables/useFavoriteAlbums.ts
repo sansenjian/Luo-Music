@@ -134,9 +134,11 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
   const error = ref<unknown>(null)
   const count = computed(() => albums.value.length)
   const requestController = createLatestRequestController()
+  const albumSongsRequestController = createLatestRequestController()
 
   const resetFavoriteAlbums = (): void => {
     requestController.cancel()
+    albumSongsRequestController.cancel()
     albums.value = []
     loading.value = false
     error.value = null
@@ -209,14 +211,22 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
   }
 
   const loadAlbumSongs = async (albumId: string | number): Promise<Song[]> => {
-    try {
-      const response = (await getAlbumDetail(Number(albumId))) as AlbumDetailResponse
-      const fallbackAlbum = extractAlbumInfo(response)
+    const task = albumSongsRequestController.start()
 
-      return extractAlbumSongs(response)
+    try {
+      const response = (await task.guard(getAlbumDetail(Number(albumId)))) as AlbumDetailResponse
+      const fallbackAlbum = extractAlbumInfo(response)
+      const songs = extractAlbumSongs(response)
         .map(track => normalizeAlbumTrack(track, fallbackAlbum))
         .filter((track): track is Song => Boolean(track))
+
+      task.throwIfCanceled()
+      return songs
     } catch (requestError) {
+      if (isCanceledRequestError(requestError)) {
+        throw requestError
+      }
+
       console.error('Failed to load album detail:', requestError)
       throw requestError
     }

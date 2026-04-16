@@ -91,6 +91,8 @@ export function useUserCenterDetails(
   }
 
   const resetDetailState = (): void => {
+    activePlaylistDetailLoadId += 1
+    activeAlbumDetailLoadId += 1
     playlistSongsCache.clear()
     albumSongsCache.clear()
     selectedPlaylistId.value =

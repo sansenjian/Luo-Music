@@ -12,6 +12,16 @@ vi.mock('@/api/album', () => ({
   getAlbumSublist: getAlbumSublistMock
 }))
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+
+  const promise = new Promise<T>(nextResolve => {
+    resolve = nextResolve
+  })
+
+  return { promise, resolve }
+}
+
 function mountUseFavoriteAlbums() {
   let viewModel!: UseFavoriteAlbumsReturn
 
@@ -192,5 +202,70 @@ describe('useFavoriteAlbums', () => {
     const viewModel = mountUseFavoriteAlbums()
 
     await expect(viewModel.loadAlbumSongs(88)).rejects.toThrow('album detail failed')
+  })
+
+  it('cancels stale album detail requests when a newer album load starts', async () => {
+    const firstDetailDeferred = createDeferred<{
+      album: { id: number; name: string; picUrl: string }
+      songs: Array<{ id: number; name: string }>
+    }>()
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    getAlbumDetailMock.mockImplementation((albumId: number) => {
+      if (albumId === 101) {
+        return firstDetailDeferred.promise
+      }
+
+      return Promise.resolve({
+        album: {
+          id: 102,
+          name: 'Album 102',
+          picUrl: 'cover-102.jpg'
+        },
+        songs: [
+          {
+            id: 1021,
+            name: 'Album 102 Track 1'
+          }
+        ]
+      })
+    })
+
+    const viewModel = mountUseFavoriteAlbums()
+    const firstRequest = viewModel.loadAlbumSongs(101)
+    const secondRequest = viewModel.loadAlbumSongs(102)
+
+    firstDetailDeferred.resolve({
+      album: {
+        id: 101,
+        name: 'Album 101',
+        picUrl: 'cover-101.jpg'
+      },
+      songs: [
+        {
+          id: 1011,
+          name: 'Album 101 Track 1'
+        }
+      ]
+    })
+
+    const [firstResult, secondResult] = await Promise.allSettled([firstRequest, secondRequest])
+    await flushPromises()
+
+    expect(getAlbumDetailMock).toHaveBeenNthCalledWith(1, 101)
+    expect(getAlbumDetailMock).toHaveBeenNthCalledWith(2, 102)
+    expect(firstResult.status).toBe('rejected')
+    expect(secondResult).toMatchObject({
+      status: 'fulfilled',
+      value: [
+        expect.objectContaining({
+          id: 1021,
+          name: 'Album 102 Track 1'
+        })
+      ]
+    })
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
   })
 })

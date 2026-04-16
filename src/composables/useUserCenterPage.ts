@@ -164,7 +164,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
   } = userPlaylists
   const {
     albums,
-    count: albumCount,
+    count: favoriteAlbumCount,
     error: albumsError,
     loadAlbumSongs,
     loadFavoriteAlbums,
@@ -234,11 +234,14 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
   syncRouteQueryBridge = tabs.syncRouteQuery
   loadTabDataBridge = tabs.loadTabData
 
+  const favoriteCollectionCount = computed(
+    () => favoritePlaylists.value.length + favoriteAlbumCount.value
+  )
   const tabCounts = computed(
     (): Record<UserTab, number> => ({
       liked: likedCount.value,
       playlist: playlistCount.value,
-      album: favoritePlaylists.value.length + albumCount.value,
+      album: favoriteCollectionCount.value,
       events: eventsCount.value
     })
   )
@@ -314,7 +317,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     activeTabError,
     likedCount,
     playlistCount,
-    albumCount,
+    albumCount: favoriteAlbumCount,
     eventsCount,
     tabCounts,
     likedSongsHasMore,

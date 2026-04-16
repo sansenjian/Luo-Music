@@ -189,6 +189,55 @@ describe('searchStore', () => {
     expect(store.results.at(-1)?.id).toBe('song-51')
   })
 
+  it('stops paging at a safety limit when total stays unknown and pages stay full', async () => {
+    const warnMock = vi.fn()
+    const searchMock = vi.fn((_platform: string, keyword: string, limit: number, page: number) =>
+      Promise.resolve({
+        list: Array.from({ length: 50 }, (_, index) => createSearchSong(`song-${page}-${index}`)),
+        total: 0
+      })
+    )
+    const useLimitedSearchStore = createSearchStore(
+      {
+        logger: {
+          info: vi.fn(),
+          debug: vi.fn(),
+          warn: warnMock,
+          error: vi.fn()
+        },
+        errorService: {
+          handleApiError: (error: unknown) => ({
+            message: error instanceof Error ? error.message : String(error)
+          })
+        },
+        musicService: {
+          search: searchMock
+        } as never
+      },
+      { storeId: 'search-store-page-limit' }
+    )
+
+    const store = useLimitedSearchStore()
+
+    await store.search('page-limit')
+
+    expect(searchMock).toHaveBeenCalledTimes(100)
+    expect(searchMock).toHaveBeenNthCalledWith(1, 'netease', 'page-limit', 50, 1)
+    expect(searchMock).toHaveBeenLastCalledWith('netease', 'page-limit', 50, 100)
+    expect(store.results).toHaveLength(5000)
+    expect(store.totalResults).toBe(5000)
+    expect(warnMock).toHaveBeenCalledWith(
+      'searchStore',
+      'Search paging stopped at safety limit',
+      expect.objectContaining({
+        keyword: 'page-limit',
+        server: 'netease',
+        loadedCount: 5000,
+        pageLimit: 100
+      })
+    )
+  })
+
   it('ignores stale search responses and keeps the latest results', async () => {
     const first = createDeferred<{ list: Song[]; total: number }>()
     const second = createDeferred<{ list: Song[]; total: number }>()

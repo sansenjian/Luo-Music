@@ -415,6 +415,77 @@ describe('useUserCenterPage', () => {
     expect(viewModel.selectedAlbumSongs.value).toEqual(albumSongs)
   })
 
+  it('does not restore stale album detail songs after logout resets the detail state', async () => {
+    const albumSongs = [
+      createSong({
+        id: 'album-song-1',
+        name: 'Album Song 1',
+        platform: 'netease'
+      })
+    ]
+    const albumSongsDeferred = createDeferred<Song[]>()
+    const factory = createUserCenterPageDeps({
+      tab: 'album',
+      albumId: 'album-1'
+    })
+
+    factory.loadAlbumSongsMock.mockImplementation(() => albumSongsDeferred.promise)
+
+    const { loadAlbumSongsMock, pushMock, userStore, viewModel } = mountUserCenterPage(factory)
+
+    await vi.waitFor(() => {
+      expect(loadAlbumSongsMock).toHaveBeenCalledWith('album-1')
+    })
+
+    userStore.isLoggedIn = false
+    userStore.userId = null
+    await nextTick()
+    await flushPromises()
+
+    expect(pushMock).toHaveBeenCalledWith('/')
+    expect(viewModel.selectedAlbumSongs.value).toEqual([])
+
+    albumSongsDeferred.resolve(albumSongs)
+    await flushPromises()
+
+    expect(viewModel.selectedAlbumSongs.value).toEqual([])
+  })
+
+  it('keeps albumCount scoped to favorite albums and exposes a combined collections tab count', async () => {
+    const factory = createUserCenterPageDeps()
+    const { albumsRef, playlistsRef, viewModel } = mountUserCenterPage(factory)
+
+    await flushPromises()
+    playlistsRef.value = [
+      {
+        id: 'playlist-1',
+        name: 'Playlist 1',
+        trackCount: 2,
+        subscribed: false
+      },
+      {
+        id: 'playlist-favorite-1',
+        name: 'Favorite Playlist 1',
+        trackCount: 3,
+        subscribed: true
+      }
+    ]
+    albumsRef.value = [
+      {
+        id: 'album-1',
+        name: 'Album 1',
+        picUrl: 'album-cover.jpg',
+        size: 2,
+        artistName: 'Artist 1'
+      }
+    ]
+    await nextTick()
+
+    expect(viewModel.albumCount.value).toBe(1)
+    expect(viewModel.tabCounts.value.playlist).toBe(1)
+    expect(viewModel.tabCounts.value.album).toBe(2)
+  })
+
   it('loads non-active tabs only when the user switches to them and syncs query state', async () => {
     const {
       route,

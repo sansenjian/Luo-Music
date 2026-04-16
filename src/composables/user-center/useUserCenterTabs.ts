@@ -55,6 +55,61 @@ export interface UseUserCenterTabsReturn {
   goBack: () => void
 }
 
+interface UserCenterQueryState {
+  tab: UserTab
+  playlistId: string | null
+  albumId: string | null
+}
+
+function parseUserCenterQueryState(query: UserCenterRouteLike['query']): UserCenterQueryState {
+  const tab = parseUserTab(query.tab)
+
+  return {
+    tab,
+    playlistId: tab === 'playlist' ? parseQueryValue(query.playlistId) : null,
+    albumId: tab === 'album' ? parseQueryValue(query.albumId) : null
+  }
+}
+
+function createSelectedQueryState(
+  tab: UserTab,
+  playlistId: string | null,
+  albumId: string | null
+): UserCenterQueryState {
+  return {
+    tab,
+    playlistId: tab === 'playlist' ? playlistId : null,
+    albumId: tab === 'album' ? albumId : null
+  }
+}
+
+function areQueryStatesEqual(
+  currentState: UserCenterQueryState,
+  nextState: UserCenterQueryState
+): boolean {
+  return (
+    currentState.tab === nextState.tab &&
+    currentState.playlistId === nextState.playlistId &&
+    currentState.albumId === nextState.albumId
+  )
+}
+
+function toRouteQuery(state: UserCenterQueryState): Record<string, string> {
+  const query: Record<string, string> = {
+    tab: state.tab
+  }
+
+  if (state.playlistId) {
+    query.playlistId = state.playlistId
+  }
+
+  if (state.albumId) {
+    query.albumId = state.albumId
+  }
+
+  return query
+}
+
 export function useUserCenterTabs(options: UseUserCenterTabsOptions): UseUserCenterTabsReturn {
   const {
     activeTab,
@@ -86,34 +141,20 @@ export function useUserCenterTabs(options: UseUserCenterTabsOptions): UseUserCen
   let activeLoadId = 0
 
   const syncRouteQuery = (): void => {
-    const nextQuery: Record<string, string> = {
-      tab: activeTab.value
-    }
+    const currentQueryState = parseUserCenterQueryState(route.query)
+    const nextQueryState = createSelectedQueryState(
+      activeTab.value,
+      selectedPlaylistId.value,
+      selectedAlbumId.value
+    )
 
-    if (activeTab.value === 'playlist' && selectedPlaylistId.value) {
-      nextQuery.playlistId = selectedPlaylistId.value
-    }
-
-    if (activeTab.value === 'album' && selectedAlbumId.value) {
-      nextQuery.albumId = selectedAlbumId.value
-    }
-
-    const currentTab = parseUserTab(route.query.tab)
-    const currentPlaylistId =
-      currentTab === 'playlist' ? parseQueryValue(route.query.playlistId) : null
-    const currentAlbumId = currentTab === 'album' ? parseQueryValue(route.query.albumId) : null
-
-    if (
-      currentTab === nextQuery.tab &&
-      currentPlaylistId === (nextQuery.playlistId ?? null) &&
-      currentAlbumId === (nextQuery.albumId ?? null)
-    ) {
+    if (areQueryStatesEqual(currentQueryState, nextQueryState)) {
       return
     }
 
     void router.replace({
       path: '/user',
-      query: nextQuery
+      query: toRouteQuery(nextQueryState)
     })
   }
 
@@ -212,10 +253,12 @@ export function useUserCenterTabs(options: UseUserCenterTabsOptions): UseUserCen
 
   watch(
     () => [route.query.tab, route.query.playlistId, route.query.albumId] as const,
-    ([queryTab, queryPlaylistId, queryAlbumId]) => {
-      const nextTab = parseUserTab(queryTab)
-      const nextPlaylistId = nextTab === 'playlist' ? parseQueryValue(queryPlaylistId) : null
-      const nextAlbumId = nextTab === 'album' ? parseQueryValue(queryAlbumId) : null
+    () => {
+      const {
+        tab: nextTab,
+        playlistId: nextPlaylistId,
+        albumId: nextAlbumId
+      } = parseUserCenterQueryState(route.query)
 
       if (activeTab.value !== nextTab) {
         activeTab.value = nextTab
