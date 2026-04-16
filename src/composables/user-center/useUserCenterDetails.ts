@@ -93,6 +93,22 @@ export function useUserCenterDetails(
     }
   }
 
+  const beginPlaylistDetailTransition = (playlistId: string): void => {
+    activePlaylistDetailLoadId += 1
+    selectedPlaylistId.value = playlistId
+    selectedPlaylistSongs.value = []
+    playlistDetailLoading.value = true
+    playlistDetailError.value = null
+  }
+
+  const beginAlbumDetailTransition = (albumId: string): void => {
+    activeAlbumDetailLoadId += 1
+    selectedAlbumId.value = albumId
+    selectedAlbumSongs.value = []
+    albumDetailLoading.value = true
+    albumDetailError.value = null
+  }
+
   const resetPlaylistDetail = (): void => {
     activePlaylistDetailLoadId += 1
     selectedPlaylistId.value = null
@@ -215,7 +231,7 @@ export function useUserCenterDetails(
     const normalizedPlaylistId = String(playlistId)
     mountedTabs.value.playlist = true
     activeTab.value = 'playlist'
-    selectedPlaylistId.value = normalizedPlaylistId
+    beginPlaylistDetailTransition(normalizedPlaylistId)
     syncRouteQuery()
 
     const userId = getCurrentUserId()
@@ -239,7 +255,7 @@ export function useUserCenterDetails(
     const normalizedAlbumId = String(albumId)
     mountedTabs.value.album = true
     activeTab.value = 'album'
-    selectedAlbumId.value = normalizedAlbumId
+    beginAlbumDetailTransition(normalizedAlbumId)
     syncRouteQuery()
 
     const userId = getCurrentUserId()

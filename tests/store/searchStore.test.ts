@@ -155,6 +155,38 @@ describe('searchStore', () => {
     expect(store.isLoading).toBe(false)
   })
 
+  it('preserves already loaded pages when a later search page fails', async () => {
+    adapterMock.search.mockImplementation(
+      (_platform: string, keyword: string, limit: number, page: number) => {
+        expect(keyword).toBe('paged-error')
+        expect(limit).toBe(50)
+
+        if (page === 1) {
+          return Promise.resolve({
+            list: [createSearchSong('song-1'), createSearchSong('song-2')],
+            total: 3
+          })
+        }
+
+        if (page === 2) {
+          return Promise.reject(new Error('page 2 failed'))
+        }
+
+        throw new Error(`Unexpected page: ${page}`)
+      }
+    )
+
+    const store = useSearchStore()
+
+    await expect(store.search('paged-error')).rejects.toThrow('page 2 failed')
+
+    expect(store.results).toHaveLength(2)
+    expect(store.results.map(song => song.id)).toEqual(['song-1', 'song-2'])
+    expect(store.totalResults).toBe(3)
+    expect(store.error).toBe('page 2 failed')
+    expect(store.isLoading).toBe(false)
+  })
+
   it('continues paging when the first page is full but total is missing or zero', async () => {
     adapterMock.search.mockImplementation(
       (_platform: string, keyword: string, limit: number, page: number) => {

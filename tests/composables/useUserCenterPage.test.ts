@@ -650,6 +650,53 @@ describe('useUserCenterPage', () => {
     expect(route.query).toEqual({ tab: 'playlist' })
   })
 
+  it('clears stale playlist detail songs and enters loading before playlist tab bootstrap completes', async () => {
+    const playlistBootstrap = createDeferred<void>()
+    const playlistSongs = [
+      createSong({
+        id: 'playlist-song-2',
+        name: 'Playlist Song 2',
+        platform: 'netease'
+      })
+    ]
+    const factory = createUserCenterPageDeps()
+
+    factory.loadPlaylistsMock.mockImplementation(() => playlistBootstrap.promise)
+    factory.loadPlaylistSongsMock.mockResolvedValue(playlistSongs)
+
+    const { route, viewModel } = mountUserCenterPage(factory)
+
+    await flushPromises()
+
+    viewModel.selectedPlaylistSongs.value = [
+      createSong({
+        id: 'stale-playlist-song',
+        name: 'Stale Playlist Song',
+        platform: 'netease'
+      })
+    ]
+
+    const openPromise = viewModel.openPlaylistDetail('playlist-2')
+    await nextTick()
+
+    expect(viewModel.activeTab.value).toBe('playlist')
+    expect(viewModel.selectedPlaylistId.value).toBe('playlist-2')
+    expect(viewModel.playlistDetailLoading.value).toBe(true)
+    expect(viewModel.playlistDetailError.value).toBe(null)
+    expect(viewModel.selectedPlaylistSongs.value).toEqual([])
+    expect(route.query).toEqual({
+      tab: 'playlist',
+      playlistId: 'playlist-2'
+    })
+
+    playlistBootstrap.resolve()
+    await openPromise
+    await flushPromises()
+
+    expect(viewModel.playlistDetailLoading.value).toBe(false)
+    expect(viewModel.selectedPlaylistSongs.value).toEqual(playlistSongs)
+  })
+
   it('opens album detail, syncs query, and retries detail loading after failure', async () => {
     const albumSongs = [
       createSong({
@@ -696,6 +743,53 @@ describe('useUserCenterPage', () => {
 
     expect(viewModel.selectedAlbumId.value).toBe(null)
     expect(route.query).toEqual({ tab: 'album' })
+  })
+
+  it('clears stale album detail songs and enters loading before album tab bootstrap completes', async () => {
+    const albumBootstrap = createDeferred<void>()
+    const albumSongs = [
+      createSong({
+        id: 'album-song-2',
+        name: 'Album Song 2',
+        platform: 'netease'
+      })
+    ]
+    const factory = createUserCenterPageDeps()
+
+    factory.loadFavoriteAlbumsMock.mockImplementation(() => albumBootstrap.promise)
+    factory.loadAlbumSongsMock.mockResolvedValue(albumSongs)
+
+    const { route, viewModel } = mountUserCenterPage(factory)
+
+    await flushPromises()
+
+    viewModel.selectedAlbumSongs.value = [
+      createSong({
+        id: 'stale-album-song',
+        name: 'Stale Album Song',
+        platform: 'netease'
+      })
+    ]
+
+    const openPromise = viewModel.openAlbumDetail('album-2')
+    await nextTick()
+
+    expect(viewModel.activeTab.value).toBe('album')
+    expect(viewModel.selectedAlbumId.value).toBe('album-2')
+    expect(viewModel.albumDetailLoading.value).toBe(true)
+    expect(viewModel.albumDetailError.value).toBe(null)
+    expect(viewModel.selectedAlbumSongs.value).toEqual([])
+    expect(route.query).toEqual({
+      tab: 'album',
+      albumId: 'album-2'
+    })
+
+    albumBootstrap.resolve()
+    await openPromise
+    await flushPromises()
+
+    expect(viewModel.albumDetailLoading.value).toBe(false)
+    expect(viewModel.selectedAlbumSongs.value).toEqual(albumSongs)
   })
 
   it('retries the active tab through the shell state', async () => {

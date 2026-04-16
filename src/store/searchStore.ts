@@ -147,6 +147,8 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
           server: server.value
         })
 
+        let hasCommittedCurrentSearchResults = false
+
         try {
           const firstPage = await task.guard(
             musicService.search(server.value, trimmedKeyword, SEARCH_PAGE_SIZE, 1)
@@ -176,6 +178,7 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
           task.commit(() => {
             totalResults.value = initialTotal ?? firstPage.list.length
             results.value = normalizeSearchResults(firstPage.list)
+            hasCommittedCurrentSearchResults = true
 
             logger.info('searchStore', 'Search first page loaded', {
               count: results.value.length,
@@ -234,6 +237,7 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
             task.commit(() => {
               totalResults.value = total ?? loadedCount
               results.value = [...results.value, ...nextItems]
+              hasCommittedCurrentSearchResults = true
 
               logger.info('searchStore', 'Search page appended', {
                 page: nextPage,
@@ -258,8 +262,10 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
 
           task.commit(() => {
             error.value = errorMessage
-            results.value = []
-            totalResults.value = 0
+            if (!hasCommittedCurrentSearchResults) {
+              results.value = []
+              totalResults.value = 0
+            }
           })
 
           throw new Error(errorMessage, { cause: err })
