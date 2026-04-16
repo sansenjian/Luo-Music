@@ -140,6 +140,52 @@ export function useUserCenterTabs(options: UseUserCenterTabsOptions): UseUserCen
 
   let activeLoadId = 0
 
+  const loadPlaylistDetailSafely = async (
+    playlistId: string | number,
+    force = false
+  ): Promise<void> => {
+    try {
+      await loadPlaylistDetail(playlistId, force)
+    } catch {
+      // Detail state is updated inside loadPlaylistDetail; tab sync only needs to avoid leaks.
+    }
+  }
+
+  const loadAlbumDetailSafely = async (albumId: string | number, force = false): Promise<void> => {
+    try {
+      await loadAlbumDetail(albumId, force)
+    } catch {
+      // Detail state is updated inside loadAlbumDetail; tab sync only needs to avoid leaks.
+    }
+  }
+
+  const loadPlaylistDependencyForAlbumTab = async (
+    userId: string | number,
+    loadId: number,
+    force: boolean
+  ): Promise<void> => {
+    const shouldLoadPlaylistDependency =
+      !loadingMap.value.playlist && (force || !loadedTabs.value.playlist)
+
+    if (!shouldLoadPlaylistDependency) {
+      return
+    }
+
+    loadingMap.value.playlist = true
+
+    try {
+      await loadPlaylists(userId)
+
+      if (loadId === activeLoadId) {
+        loadedTabs.value.playlist = true
+      }
+    } finally {
+      if (loadId === activeLoadId) {
+        loadingMap.value.playlist = false
+      }
+    }
+  }
+
   const syncRouteQuery = (): void => {
     const currentQueryState = parseUserCenterQueryState(route.query)
     const nextQueryState = createSelectedQueryState(
@@ -190,9 +236,7 @@ export function useUserCenterTabs(options: UseUserCenterTabsOptions): UseUserCen
         await loadPlaylists(userId)
       } else if (tab === 'album') {
         await Promise.all([
-          loadedTabs.value.playlist || loadingMap.value.playlist
-            ? Promise.resolve()
-            : loadPlaylists(userId),
+          loadPlaylistDependencyForAlbumTab(userId, loadId, force),
           loadFavoriteAlbums(userId)
         ])
       } else {
@@ -275,7 +319,7 @@ export function useUserCenterTabs(options: UseUserCenterTabsOptions): UseUserCen
           resetPlaylistDetail()
         } else {
           selectedPlaylistId.value = nextPlaylistId
-          void loadPlaylistDetail(nextPlaylistId)
+          void loadPlaylistDetailSafely(nextPlaylistId)
         }
       }
 
@@ -289,7 +333,7 @@ export function useUserCenterTabs(options: UseUserCenterTabsOptions): UseUserCen
       }
 
       selectedAlbumId.value = nextAlbumId
-      void loadAlbumDetail(nextAlbumId)
+      void loadAlbumDetailSafely(nextAlbumId)
     }
   )
 
@@ -307,9 +351,9 @@ export function useUserCenterTabs(options: UseUserCenterTabsOptions): UseUserCen
       await loadTabData(activeTab.value, userId, true)
 
       if (activeTab.value === 'playlist' && selectedPlaylistId.value) {
-        await loadPlaylistDetail(selectedPlaylistId.value, true)
+        await loadPlaylistDetailSafely(selectedPlaylistId.value, true)
       } else if (activeTab.value === 'album' && selectedAlbumId.value) {
-        await loadAlbumDetail(selectedAlbumId.value, true)
+        await loadAlbumDetailSafely(selectedAlbumId.value, true)
       }
     },
     { immediate: true }

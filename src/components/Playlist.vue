@@ -77,16 +77,17 @@ const visibleSongs = computed(() =>
     song
   }))
 )
+const playlistSongFingerprints = computed(() =>
+  playerStore.songList.map(song => createPlaylistItemFingerprint(song))
+)
 
-function syncNormalizedSongs(songList: Song[]): void {
+function syncNormalizedSongs(songList: Song[], nextFingerprints: string[]): void {
   const nextNormalizedSongs = new Array<PlaylistItem>(songList.length)
-  const nextFingerprints = new Array<string>(songList.length)
   let changed = normalizedSongFingerprints.length !== songList.length
 
   for (let index = 0; index < songList.length; index += 1) {
     const song = songList[index]
-    const fingerprint = createPlaylistItemFingerprint(song)
-    nextFingerprints[index] = fingerprint
+    const fingerprint = nextFingerprints[index]
 
     if (normalizedSongFingerprints[index] === fingerprint) {
       nextNormalizedSongs[index] = normalizedSongs.value[index]
@@ -145,12 +146,14 @@ function maybeRenderMore(): void {
 }
 
 watch(
-  [() => playerStore.songList, totalSongCount],
-  ([nextSongs]) => {
-    syncNormalizedSongs(nextSongs)
-    setRenderedCount(getInitialRenderCount(nextSongs.length))
+  playlistSongFingerprints,
+  nextFingerprints => {
+    const nextSongs = playerStore.songList
 
-    if (nextSongs.length === 0) {
+    syncNormalizedSongs(nextSongs, nextFingerprints)
+    setRenderedCount(getInitialRenderCount(nextFingerprints.length))
+
+    if (nextFingerprints.length === 0) {
       syncScrollPosition(0)
       return
     }

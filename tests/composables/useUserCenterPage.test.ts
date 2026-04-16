@@ -538,6 +538,32 @@ describe('useUserCenterPage', () => {
     expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
   })
 
+  it('marks playlist dependency as loaded when album tab preloads playlists and reloads it on force refresh', async () => {
+    const { loadFavoriteAlbumsMock, loadPlaylistsMock, viewModel } = mountUserCenterPage(
+      createUserCenterPageDeps({
+        tab: 'album'
+      })
+    )
+
+    await flushPromises()
+
+    expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
+    expect(loadFavoriteAlbumsMock).toHaveBeenCalledTimes(1)
+    expect(viewModel.loadedTabs.value.album).toBe(true)
+    expect(viewModel.loadedTabs.value.playlist).toBe(true)
+    expect(viewModel.loadingMap.value.album).toBe(false)
+    expect(viewModel.loadingMap.value.playlist).toBe(false)
+
+    vi.clearAllMocks()
+
+    await viewModel.loadTabData('album', 'user-1', true)
+
+    expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
+    expect(loadFavoriteAlbumsMock).toHaveBeenCalledTimes(1)
+    expect(viewModel.loadedTabs.value.playlist).toBe(true)
+    expect(viewModel.loadingMap.value.playlist).toBe(false)
+  })
+
   it('does not reload a tab while its previous request is still in flight', async () => {
     const likedDeferred = createDeferred<void>()
     const playlistDeferred = createDeferred<void>()
@@ -826,6 +852,60 @@ describe('useUserCenterPage', () => {
     expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
     expect(pushMock).toHaveBeenCalledWith('/')
     expect(viewModel.loadingMap.value.album).toBe(false)
+  })
+
+  it('routes playlist detail failures into the playback error path', async () => {
+    const detailError = new Error('detail failed')
+    const factory = createUserCenterPageDeps()
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    factory.loadPlaylistSongsMock.mockRejectedValue(detailError)
+
+    const { playSongWithDetailsMock, setPlaylistMock, setSongListMock, viewModel } =
+      mountUserCenterPage(factory)
+
+    try {
+      await flushPromises()
+      await viewModel.openPlaylistDetail('playlist-1')
+      vi.clearAllMocks()
+
+      await viewModel.playPlaylist('playlist-1')
+
+      expect(setPlaylistMock).not.toHaveBeenCalled()
+      expect(setSongListMock).not.toHaveBeenCalled()
+      expect(playSongWithDetailsMock).not.toHaveBeenCalled()
+      expect(viewModel.playlistDetailError.value).toBe(detailError)
+      expect(consoleErrorSpy).toHaveBeenCalledWith('获取歌单详情失败:', detailError)
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('routes album detail failures into the playback error path', async () => {
+    const detailError = new Error('detail failed')
+    const factory = createUserCenterPageDeps()
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    factory.loadAlbumSongsMock.mockRejectedValue(detailError)
+
+    const { playSongWithDetailsMock, setPlaylistMock, setSongListMock, viewModel } =
+      mountUserCenterPage(factory)
+
+    try {
+      await flushPromises()
+      await viewModel.openAlbumDetail('album-1')
+      vi.clearAllMocks()
+
+      await viewModel.playAlbum('album-1')
+
+      expect(setPlaylistMock).not.toHaveBeenCalled()
+      expect(setSongListMock).not.toHaveBeenCalled()
+      expect(playSongWithDetailsMock).not.toHaveBeenCalled()
+      expect(viewModel.albumDetailError.value).toBe(detailError)
+      expect(consoleErrorSpy).toHaveBeenCalledWith('获取专辑详情失败:', detailError)
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('ignores stale playlist play requests when a newer target starts playing first', async () => {

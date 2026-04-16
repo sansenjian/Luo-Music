@@ -74,6 +74,25 @@ export function useUserCenterDetails(
   const playlistSongsCache = new Map<string, Song[]>()
   const albumSongsCache = new Map<string, Song[]>()
 
+  const loadPlaylistDetailSafely = async (
+    playlistId: string | number,
+    force = false
+  ): Promise<void> => {
+    try {
+      await loadPlaylistDetail(playlistId, force)
+    } catch {
+      // Detail state is updated inside loadPlaylistDetail; callers only need a settled promise.
+    }
+  }
+
+  const loadAlbumDetailSafely = async (albumId: string | number, force = false): Promise<void> => {
+    try {
+      await loadAlbumDetail(albumId, force)
+    } catch {
+      // Detail state is updated inside loadAlbumDetail; callers only need a settled promise.
+    }
+  }
+
   const resetPlaylistDetail = (): void => {
     activePlaylistDetailLoadId += 1
     selectedPlaylistId.value = null
@@ -146,7 +165,7 @@ export function useUserCenterDetails(
 
       selectedPlaylistSongs.value = []
       playlistDetailError.value = error
-      return []
+      throw error
     } finally {
       if (loadId === activePlaylistDetailLoadId) {
         playlistDetailLoading.value = false
@@ -184,7 +203,7 @@ export function useUserCenterDetails(
 
       selectedAlbumSongs.value = []
       albumDetailError.value = error
-      return []
+      throw error
     } finally {
       if (loadId === activeAlbumDetailLoadId) {
         albumDetailLoading.value = false
@@ -204,7 +223,7 @@ export function useUserCenterDetails(
       await loadTabData('playlist', userId)
     }
 
-    await loadPlaylistDetail(normalizedPlaylistId)
+    await loadPlaylistDetailSafely(normalizedPlaylistId)
   }
 
   const closePlaylistDetail = (): void => {
@@ -228,7 +247,7 @@ export function useUserCenterDetails(
       await loadTabData('album', userId)
     }
 
-    await loadAlbumDetail(normalizedAlbumId)
+    await loadAlbumDetailSafely(normalizedAlbumId)
   }
 
   const closeAlbumDetail = (): void => {
@@ -245,7 +264,7 @@ export function useUserCenterDetails(
       return
     }
 
-    await loadPlaylistDetail(selectedPlaylistId.value, true)
+    await loadPlaylistDetailSafely(selectedPlaylistId.value, true)
   }
 
   const retryAlbumDetail = async (): Promise<void> => {
@@ -253,7 +272,7 @@ export function useUserCenterDetails(
       return
     }
 
-    await loadAlbumDetail(selectedAlbumId.value, true)
+    await loadAlbumDetailSafely(selectedAlbumId.value, true)
   }
 
   const getCachedPlaylistSongs = (playlistId: string | number): Song[] | undefined =>
