@@ -74,4 +74,27 @@ describe('HomeHeader', () => {
     const webWrapper = createWrapper(false)
     expect(webWrapper.findAll('.win-btn')).toHaveLength(0)
   })
+
+  it('hides the brand badge when showBrand is false', () => {
+    const wrapper = mount(HomeHeader, {
+      props: {
+        showBrand: false,
+        isElectron: true,
+        isLoading: false,
+        searchKeyword: '',
+        selectedServer: 'netease',
+        selectedServerLabel: 'Netease',
+        servers,
+        showSelect: true
+      },
+      global: {
+        stubs: {
+          UserAvatar: true
+        }
+      }
+    })
+
+    expect(wrapper.text()).not.toContain('LUO Music')
+    expect(wrapper.find('.title-left').exists()).toBe(false)
+  })
 })

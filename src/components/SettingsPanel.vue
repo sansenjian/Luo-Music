@@ -1,12 +1,16 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { services } from '../services'
+import { useHomeBrandPlacement } from '../composables/useHomeBrandPlacement'
+import { useRenderStyle } from '../composables/useRenderStyle'
 import { usePlayerStore } from '../store/playerStore.ts'
 import CacheManager from './CacheManager.vue'
 
 const playerStore = usePlayerStore()
 const platformService = services.platform()
 const showSettings = ref(false)
+const { brandPlacement, setBrandPlacement } = useHomeBrandPlacement()
+const { renderStyle, setRenderStyle } = useRenderStyle()
 
 const isElectron = computed(() => {
   return platformService.isElectron()
@@ -18,6 +22,14 @@ function toggleSettings() {
 
 function closeSettings() {
   showSettings.value = false
+}
+
+function isBrandPlacementActive(placement) {
+  return brandPlacement.value === placement
+}
+
+function isRenderStyleActive(style) {
+  return renderStyle.value === style
 }
 </script>
 
@@ -107,6 +119,51 @@ function closeSettings() {
                     :checked="playerStore.lyricType.includes('roma')"
                     @change="playerStore.toggleLyricType('roma')"
                   />
+                </div>
+              </section>
+
+              <section class="settings-section">
+                <h3>界面设置</h3>
+                <div class="setting-stack">
+                  <span class="setting-label">渲染风格</span>
+                  <div class="placement-switch" role="group" aria-label="渲染风格">
+                    <button
+                      type="button"
+                      class="placement-option"
+                      :class="{ active: isRenderStyleActive('classic') }"
+                      @click="setRenderStyle('classic')"
+                    >
+                      经典配色
+                    </button>
+                    <button
+                      type="button"
+                      class="placement-option"
+                      :class="{ active: isRenderStyleActive('red') }"
+                      @click="setRenderStyle('red')"
+                    >
+                      红色风格
+                    </button>
+                  </div>
+
+                  <span class="setting-label">品牌标识位置</span>
+                  <div class="placement-switch" role="group" aria-label="品牌标识位置">
+                    <button
+                      type="button"
+                      class="placement-option"
+                      :class="{ active: isBrandPlacementActive('header') }"
+                      @click="setBrandPlacement('header')"
+                    >
+                      顶栏
+                    </button>
+                    <button
+                      type="button"
+                      class="placement-option"
+                      :class="{ active: isBrandPlacementActive('sidebar') }"
+                      @click="setBrandPlacement('sidebar')"
+                    >
+                      侧边栏
+                    </button>
+                  </div>
                 </div>
               </section>
 
@@ -246,6 +303,43 @@ function closeSettings() {
 .setting-item label {
   flex: 1;
   font-size: 13px;
+}
+
+.setting-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setting-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.placement-switch {
+  display: inline-flex;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 4px;
+  border: 2px solid var(--black);
+  background: var(--white);
+}
+
+.placement-option {
+  min-width: 76px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--black);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.placement-option.active {
+  background: var(--black);
+  color: var(--white);
 }
 
 .setting-select {

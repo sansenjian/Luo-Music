@@ -5,20 +5,28 @@ const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => false)
 }))
 
+const storageServiceMock = vi.hoisted(() => ({
+  getItem: vi.fn<(key: string) => string | null>(() => null),
+  setItem: vi.fn()
+}))
+
 vi.mock('@/services', async importOriginal => {
   const actual = await importOriginal<typeof import('@/services')>()
   return {
     ...actual,
     services: {
       ...actual.services,
-      platform: () => platformServiceMock
+      platform: () => platformServiceMock,
+      storage: () => storageServiceMock
     }
   }
 })
 
 describe('SettingsPanel.vue', () => {
   beforeEach(() => {
+    vi.resetModules()
     vi.clearAllMocks()
+    storageServiceMock.getItem.mockReturnValue(null)
   })
 
   it('shows cache manager section when running in Electron', async () => {
@@ -62,6 +70,74 @@ describe('SettingsPanel.vue', () => {
     await wrapper.find('.settings-btn').trigger('click')
 
     expect(document.body.querySelector('.cache-unavailable')).not.toBeNull()
+    wrapper.unmount()
+  })
+
+  it('persists the selected home brand placement', async () => {
+    const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
+
+    const wrapper = mount(SettingsPanel, {
+      attachTo: document.body,
+      global: {
+        stubs: {
+          Teleport: false,
+          Transition: false,
+          CacheManager: true
+        }
+      }
+    })
+
+    await wrapper.find('.settings-btn').trigger('click')
+
+    const brandPlacementGroup = document.body.querySelector('[aria-label="品牌标识位置"]')
+    const options = Array.from(brandPlacementGroup?.querySelectorAll('.placement-option') ?? [])
+    expect(options.map(option => option.textContent?.trim())).toEqual(['顶栏', '侧边栏'])
+
+    const headerOption = options.find(option => option.textContent?.includes('顶栏')) as
+      | HTMLButtonElement
+      | undefined
+    expect(headerOption).toBeDefined()
+
+    headerOption?.click()
+    await wrapper.vm.$nextTick()
+
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith('homeBrandPlacement', 'header')
+    expect(headerOption?.classList.contains('active')).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('persists the selected render style', async () => {
+    const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
+
+    const wrapper = mount(SettingsPanel, {
+      attachTo: document.body,
+      global: {
+        stubs: {
+          Teleport: false,
+          Transition: false,
+          CacheManager: true
+        }
+      }
+    })
+
+    await wrapper.find('.settings-btn').trigger('click')
+
+    const options = Array.from(document.body.querySelectorAll('.placement-option'))
+    expect(options.map(option => option.textContent?.trim())).toContain('经典配色')
+    expect(options.map(option => option.textContent?.trim())).toContain('红色风格')
+
+    const redOption = options.find(option => option.textContent?.includes('红色风格')) as
+      | HTMLButtonElement
+      | undefined
+    expect(redOption).toBeDefined()
+
+    redOption?.click()
+    await wrapper.vm.$nextTick()
+
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith('renderStyle', 'red')
+    expect(document.documentElement.dataset.renderStyle).toBe('red')
+
     wrapper.unmount()
   })
 })

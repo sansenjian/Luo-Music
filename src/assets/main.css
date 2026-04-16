@@ -1,6 +1,7 @@
 /* LUO Music - Theme tokens and global base styles */
 
-:root {
+:root,
+:root[data-render-style='classic'] {
   --bg: #f5f5f5;
   --bg-dark: #e0e0e0;
   --black: #1a1a1a;
@@ -11,6 +12,64 @@
   --gray: #666666;
   --gray-light: #999999;
   --gray-lighter: #e5e7eb;
+  --brand-gradient-start: #1a1a1a;
+  --brand-gradient-end: #1a1a1a;
+  --brand-shadow: none;
+  --brand-kicker-color: #666666;
+  --brand-mark-radius: 0px;
+  --sidebar-shell-glow: transparent;
+  --sidebar-shell-bg: #ffffff;
+  --sidebar-note-border: rgba(26, 26, 26, 0.12);
+  --sidebar-note-bg: rgba(26, 26, 26, 0.05);
+  --sidebar-note-text: #444444;
+  --sidebar-active-bg: #1a1a1a;
+  --sidebar-active-shadow: none;
+  --sidebar-link-hover-bg: #ffffff;
+  --sidebar-link-radius: 0px;
+  --sidebar-icon-bg: #e5e7eb;
+  --sidebar-icon-active-bg: rgba(255, 255, 255, 0.12);
+  --sidebar-card-active-border: #1a1a1a;
+  --sidebar-card-active-shadow: none;
+  --surface-soft: #ffffff;
+  --surface-muted: #ffffff;
+  --theme-panel-glow: rgba(26, 26, 26, 0.06);
+}
+
+:root[data-render-style='red'] {
+  --bg: #f8f2f5;
+  --bg-dark: #eadbe2;
+  --black: #20171c;
+  --white: #ffffff;
+  --accent: #ff4f67;
+  --accent-hover: #ec3350;
+  --accent-light: #ffb3bf;
+  --gray: #6e5c65;
+  --gray-light: #a28995;
+  --gray-lighter: #eadde4;
+  --brand-gradient-start: #ff6a52;
+  --brand-gradient-end: #ff3b51;
+  --brand-shadow: 0 10px 18px rgba(255, 59, 81, 0.22);
+  --brand-kicker-color: var(--accent);
+  --brand-mark-radius: 14px;
+  --sidebar-shell-glow: rgba(255, 59, 81, 0.12);
+  --sidebar-shell-bg: linear-gradient(180deg, #fbf5f8 0%, #f2e8ee 100%);
+  --sidebar-note-border: rgba(255, 59, 81, 0.2);
+  --sidebar-note-bg: rgba(255, 59, 81, 0.08);
+  --sidebar-note-text: var(--accent);
+  --sidebar-active-bg: linear-gradient(135deg, #ff5a54 0%, #ff3658 100%);
+  --sidebar-active-shadow: 0 14px 24px rgba(255, 58, 82, 0.24);
+  --sidebar-link-hover-bg: rgba(255, 255, 255, 0.78);
+  --sidebar-link-radius: 16px;
+  --sidebar-icon-bg: rgba(17, 24, 39, 0.08);
+  --sidebar-icon-active-bg: rgba(255, 255, 255, 0.18);
+  --sidebar-card-active-border: rgba(255, 58, 82, 0.28);
+  --sidebar-card-active-shadow: 0 14px 24px rgba(255, 58, 82, 0.12);
+  --surface-soft: rgba(255, 255, 255, 0.9);
+  --surface-muted: rgba(255, 255, 255, 0.76);
+  --theme-panel-glow: rgba(255, 59, 81, 0.1);
+}
+
+:root {
   --border: 3px solid var(--black);
   --radius: 10px;
   --shadow: 4px 4px 0 rgba(26, 26, 26, 0.16);

@@ -56,9 +56,9 @@ describe('commandService', () => {
     await commandService.execute(COMMANDS.PLAYER_VOLUME_DOWN, { step: 0.2 })
     expect(playerStore.volume).toBeCloseTo(0.4)
 
-    expect(playerStore.isCompact).toBe(false)
-    await commandService.execute(COMMANDS.PLAYER_TOGGLE_COMPACT_MODE)
     expect(playerStore.isCompact).toBe(true)
+    await commandService.execute(COMMANDS.PLAYER_TOGGLE_COMPACT_MODE)
+    expect(playerStore.isCompact).toBe(false)
   })
 
   it('supports explicit dependency injection without registry lookups', async () => {

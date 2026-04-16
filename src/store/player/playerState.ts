@@ -101,7 +101,7 @@ export function createInitialState(): PlayerState {
     showPlaylist: false,
     initialized: false,
     loading: false,
-    isCompact: false,
+    isCompact: true,
     ipcInitialized: false
   }
 }

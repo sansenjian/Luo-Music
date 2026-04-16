@@ -3,7 +3,9 @@ import { defineAsyncComponent, onMounted, ref } from 'vue'
 
 import HomeFooter from '../components/home/HomeFooter.vue'
 import HomeHeader from '../components/home/HomeHeader.vue'
+import HomeSidebar from '../components/home/HomeSidebar.vue'
 import HomeWorkspace from '../components/home/HomeWorkspace.vue'
+import { useHomeBrandPlacement } from '../composables/useHomeBrandPlacement'
 import { useHomePage } from '../composables/useHomePage'
 
 const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.vue'))
@@ -33,6 +35,7 @@ const {
   toggleSelect,
   isLoading
 } = useHomePage()
+const { brandPlacement } = useHomeBrandPlacement()
 
 const isCoreMounted = ref(false)
 
@@ -51,8 +54,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="window" :class="{ 'compact-mode': playerStore.isCompact }">
+  <div
+    class="window"
+    :class="{ 'compact-mode': playerStore.isCompact, 'sidebar-collapsed': !playerStore.isCompact }"
+  >
     <HomeHeader
+      :show-brand="brandPlacement === 'header'"
       :is-electron="isElectron"
       :is-loading="isLoading"
       :search-keyword="searchKeyword"
@@ -71,6 +78,12 @@ onMounted(() => {
     />
 
     <main class="main">
+      <HomeSidebar
+        class="sidebar-panel"
+        :collapsed="!playerStore.isCompact"
+        :show-brand="brandPlacement === 'sidebar'"
+      />
+
       <section class="left-panel">
         <Player v-if="isCoreMounted" :loading="playerStore.loading" />
         <div v-else class="panel-placeholder" aria-hidden="true"></div>
@@ -112,20 +125,18 @@ onMounted(() => {
 }
 
 .main {
+  --sidebar-width: 236px;
+  --player-width: 350px;
+  --collapsed-sidebar-width: 82px;
   flex: 1;
   display: grid;
-  grid-template-columns: 350px 1fr;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 0;
   transition: grid-template-columns 0.3s ease;
 }
 
-.window.compact-mode .main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-  grid-template-columns: 1fr;
+.window.sidebar-collapsed .main {
+  grid-template-columns: var(--collapsed-sidebar-width) var(--player-width) minmax(0, 1fr);
 }
 
 .window.compact-mode .left-panel {
@@ -147,6 +158,10 @@ onMounted(() => {
   min-height: 0;
   background: var(--white);
   z-index: 10;
+}
+
+.sidebar-panel {
+  min-width: 0;
 }
 
 .panel-placeholder,
@@ -180,18 +195,33 @@ onMounted(() => {
 
 @media (max-width: 900px) {
   .main {
-    grid-template-columns: 260px 1fr;
+    --player-width: 280px;
+    --collapsed-sidebar-width: 92px;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   }
 
   .left-panel {
     border-right: 2px solid var(--black);
     min-width: 0;
   }
+
+  .window.sidebar-collapsed .main {
+    grid-template-columns: var(--collapsed-sidebar-width) var(--player-width) minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
   .main {
-    grid-template-columns: 200px 1fr;
+    --sidebar-width: minmax(168px, 220px);
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  }
+
+  .left-panel {
+    display: none;
+  }
+
+  .window.sidebar-collapsed .main {
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   }
 }
 </style>

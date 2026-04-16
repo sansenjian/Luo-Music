@@ -2,6 +2,7 @@
 import { defineAsyncComponent, onMounted, ref } from 'vue'
 
 import { useCommandContext } from './composables/useCommandContext'
+import { useRenderStyle } from './composables/useRenderStyle'
 import { services } from './services'
 import { PLAY_MODE } from './utils/player/constants/playMode'
 
@@ -24,7 +25,7 @@ const DEFAULT_PLAYER_STATE: PlayerState = {
   volume: 0.7,
   playMode: PLAY_MODE.SEQUENTIAL,
   lyricType: ['original', 'trans'],
-  isCompact: false
+  isCompact: true
 }
 const VALID_LYRIC_TYPES = new Set(['original', 'trans', 'roma'])
 
@@ -71,6 +72,7 @@ const sanitizePlayerState = (value: unknown): PlayerState => {
 }
 
 useCommandContext()
+useRenderStyle()
 
 function scheduleIdle(task: () => void): void {
   if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {

@@ -14,7 +14,7 @@ const DEFAULT_PLAYER_STATE: PersistedPlayerState = {
   volume: 0.7,
   playMode: PLAY_MODE.SEQUENTIAL,
   lyricType: ['original', 'trans'],
-  isCompact: false
+  isCompact: true
 }
 
 const VALID_LYRIC_TYPES = new Set(['original', 'trans', 'roma'])

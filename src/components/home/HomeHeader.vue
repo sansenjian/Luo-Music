@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { MusicServerOption } from '@/composables/useHomePage'
 
+import { useRenderStyle } from '@/composables/useRenderStyle'
+import HomeBrandBadge from './HomeBrandBadge.vue'
 import HomeSearchBar from './HomeSearchBar.vue'
 import HomeWindowControls from './HomeWindowControls.vue'
 
 const props = defineProps<{
+  showBrand?: boolean
   isElectron: boolean
   isLoading: boolean
   searchKeyword: string
@@ -44,12 +47,15 @@ function onCloseSelect(): void {
 function onToggleSelect(): void {
   emit('toggle-select')
 }
+
+const { renderStyle } = useRenderStyle()
 </script>
 
 <template>
   <header class="titlebar">
-    <div class="title-left">
-      <h1 class="logo">luo_music</h1>
+    <div v-if="props.showBrand !== false" class="title-left">
+      <h1 v-if="renderStyle === 'classic'" class="logo">LUO_MUSIC</h1>
+      <HomeBrandBadge v-else placement="header" />
     </div>
 
     <HomeSearchBar
