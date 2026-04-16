@@ -1,210 +1,104 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, defineAsyncComponent } from 'vue'
 
-import { useLikedSongs } from '../composables/useLikedSongs'
-import { useUserEvents } from '../composables/useUserEvents'
-import { useUserPlaylists } from '../composables/useUserPlaylists'
-import { usePlayerStore } from '../store/playerStore.ts'
-import { usePlaylistStore } from '../store/playlistStore'
-import { useUserStore } from '../store/userStore'
+import { useUserCenterPage } from '@/composables/useUserCenterPage'
 
 const UserProfileHeader = defineAsyncComponent(
   () => import('../components/user/UserProfileHeader.vue')
 )
 const LikedSongsView = defineAsyncComponent(() => import('../components/user/LikedSongsView.vue'))
 const PlaylistsView = defineAsyncComponent(() => import('../components/user/PlaylistsView.vue'))
+const FavoriteAlbumsView = defineAsyncComponent(
+  () => import('../components/user/FavoriteAlbumsView.vue')
+)
 const EventsView = defineAsyncComponent(() => import('../components/user/EventsView.vue'))
-
-type UserTab = 'liked' | 'playlist' | 'events'
-
-const router = useRouter()
-const userStore = useUserStore()
-const playlistStore = usePlaylistStore()
-const playerStore = usePlayerStore()
-
-const activeTab = ref<UserTab>('liked')
-const loadingMap = ref<Record<UserTab, boolean>>({
-  liked: false,
-  playlist: false,
-  events: false
-})
-const mountedTabs = ref<Record<UserTab, boolean>>({
-  liked: true,
-  playlist: false,
-  events: false
-})
-const loadedTabs = ref<Record<UserTab, boolean>>({
-  liked: false,
-  playlist: false,
-  events: false
-})
-const currentUserId = computed(() => userStore.userId)
-const {
-  likeSongs,
-  formattedSongs,
-  count: likedCount,
-  loadLikedSongs,
-  resetLikedSongs
-} = useLikedSongs()
-const {
-  playlists,
-  count: playlistCount,
-  loadPlaylists,
-  loadPlaylistSongs,
-  resetPlaylists
-} = useUserPlaylists()
-const { events, count: eventsCount, loadEvents, resetEvents } = useUserEvents()
-
-const tabCounts = computed(() => ({
-  liked: likedCount.value,
-  playlist: playlistCount.value,
-  events: eventsCount.value
-}))
-
-let activeLoadId = 0
-
-const resetMountedTabs = () => {
-  mountedTabs.value = {
-    liked: true,
-    playlist: false,
-    events: false
-  }
-}
-
-const resetLoadedTabs = () => {
-  loadedTabs.value = {
-    liked: false,
-    playlist: false,
-    events: false
-  }
-}
-
-const resetUserContent = () => {
-  activeLoadId += 1
-  activeTab.value = 'liked'
-  resetMountedTabs()
-  resetLoadedTabs()
-  loadingMap.value.liked = false
-  loadingMap.value.playlist = false
-  loadingMap.value.events = false
-  resetLikedSongs()
-  resetPlaylists()
-  resetEvents()
-}
-
-const loadTabData = async (tab: UserTab, userId: string | number, force = false) => {
-  if (!force && (loadedTabs.value[tab] || loadingMap.value[tab])) {
-    return
-  }
-
-  const loadId = activeLoadId
-  loadingMap.value[tab] = true
-
-  try {
-    if (tab === 'liked') {
-      await loadLikedSongs(userId)
-    } else if (tab === 'playlist') {
-      await loadPlaylists(userId)
-    } else {
-      await loadEvents(userId)
-    }
-
-    if (loadId === activeLoadId) {
-      loadedTabs.value[tab] = true
-    }
-  } finally {
-    if (loadId === activeLoadId) {
-      loadingMap.value[tab] = false
-    }
-  }
-}
-
-let skipTabLoadOnActiveTabChange = false
-
-watch(
-  () => [userStore.isLoggedIn, userStore.userId] as const,
-  async ([isLoggedIn, userId]) => {
-    skipTabLoadOnActiveTabChange = true
-    resetUserContent()
-    await nextTick()
-    skipTabLoadOnActiveTabChange = false
-
-    if (!isLoggedIn || !userId) {
-      void router.push('/')
-      return
-    }
-
-    void loadTabData(activeTab.value, userId, true)
-  },
-  { immediate: true }
+const PlaylistDetailPanel = defineAsyncComponent(
+  () => import('../components/user/PlaylistDetailPanel.vue')
+)
+const AlbumDetailPanel = defineAsyncComponent(
+  () => import('../components/user/AlbumDetailPanel.vue')
 )
 
-watch(activeTab, tab => {
-  if (skipTabLoadOnActiveTabChange) {
-    return
+const {
+  activeTab,
+  activeTabError,
+  albumDetailError,
+  albumDetailLoading,
+  albums,
+  avatarUrl,
+  closeAlbumDetail,
+  closePlaylistDetail,
+  currentUserId,
+  eventsError,
+  eventsFilter,
+  eventsHasMore,
+  eventsLoadingMore,
+  formattedSongs,
+  filteredEvents,
+  favoritePlaylists,
+  goBack,
+  likedSongsHasMore,
+  likedSongsError,
+  likedSongsLoadingMore,
+  loadingMap,
+  loadMoreLikedSongs,
+  loadMoreEvents,
+  mountedTabs,
+  nickname,
+  openAlbumDetail,
+  openPlaylistDetail,
+  playingAlbumId,
+  playingPlaylistId,
+  playAlbum,
+  playAlbumTrackAt,
+  playEventSong,
+  playlistDetailError,
+  playlistDetailLoading,
+  playlists,
+  playPlaylistTrackAt,
+  playAllLikedSongs,
+  playLikedSongAt,
+  playPlaylist,
+  retryActiveTab,
+  retryAlbumDetail,
+  retryLoadEvents,
+  retryLoadLikedSongs,
+  retryPlaylistDetail,
+  selectedAlbum,
+  selectedAlbumId,
+  selectedAlbumSongs,
+  selectedPlaylist,
+  selectedPlaylistId,
+  selectedPlaylistSongs,
+  setEventsFilter,
+  switchTab,
+  tabCounts
+} = useUserCenterPage()
+
+function formatTabCountBadge(count: number): string {
+  if (count <= 0) {
+    return '00'
   }
 
-  mountedTabs.value[tab] = true
-
-  const userId = currentUserId.value
-  if (!userStore.isLoggedIn || !userId) {
-    return
+  if (count > 99) {
+    return '99+'
   }
 
-  void loadTabData(tab, userId)
-})
-
-const handlePlaylistClick = async (playlistId: string | number) => {
-  loadingMap.value.playlist = true
-  try {
-    const songs = await loadPlaylistSongs(playlistId)
-    if (songs.length > 0) {
-      playlistStore.setPlaylist(songs)
-      playerStore.setSongList(songs)
-      try {
-        await playerStore.playSongWithDetails(0)
-        void router.push('/')
-      } catch (playError) {
-        console.error('播放失败:', playError)
-      }
-    }
-  } catch (error) {
-    console.error('获取歌单详情失败:', error)
-  } finally {
-    loadingMap.value.playlist = false
-  }
+  return String(count)
 }
 
-const handlePlayAllLiked = async () => {
-  const songs = likeSongs.value
-  if (songs.length > 0) {
-    playlistStore.setPlaylist(songs)
-    playerStore.setSongList(songs)
-    try {
-      await playerStore.playSongWithDetails(0)
-      void router.push('/')
-    } catch (error) {
-      console.error('播放失败:', error)
-    }
+function getTabAriaLabel(label: string, count: number): string {
+  if (count <= 0) {
+    return label
   }
+
+  return `${label}，${count}`
 }
 
-const handlePlayLikedSong = async (index: number) => {
-  const songs = likeSongs.value
-  playlistStore.setPlaylist(songs)
-  playerStore.setSongList(songs)
-  try {
-    await playerStore.playSongWithDetails(index)
-    void router.push('/')
-  } catch (error) {
-    console.error('播放失败:', error)
-  }
-}
-
-const goBack = () => {
-  void router.push('/')
-}
+const likedTabBadge = computed(() => formatTabCountBadge(tabCounts.value.liked))
+const playlistTabBadge = computed(() => formatTabCountBadge(tabCounts.value.playlist))
+const albumTabBadge = computed(() => formatTabCountBadge(tabCounts.value.album))
+const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events))
 </script>
 
 <template>
@@ -230,8 +124,8 @@ const goBack = () => {
       <UserProfileHeader
         v-if="currentUserId !== null"
         :user-id="currentUserId"
-        :avatar-url="userStore.avatarUrl"
-        :nickname="userStore.nickname"
+        :avatar-url="avatarUrl"
+        :nickname="nickname"
       />
 
       <section class="content-section">
@@ -240,37 +134,90 @@ const goBack = () => {
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'liked' }"
-              @click="activeTab = 'liked'"
+              :aria-label="getTabAriaLabel('我喜欢的音乐', tabCounts.liked)"
+              @click="switchTab('liked')"
             >
-              我喜欢的音乐
-              <span v-if="tabCounts.liked > 0" class="count">{{ tabCounts.liked }}</span>
+              <span class="tab-btn-label">我喜欢的音乐</span>
+              <span
+                class="count"
+                :class="{ empty: tabCounts.liked <= 0 }"
+                :title="tabCounts.liked > 99 ? String(tabCounts.liked) : undefined"
+                aria-hidden="true"
+              >
+                {{ likedTabBadge }}
+              </span>
             </button>
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'playlist' }"
-              @click="activeTab = 'playlist'"
+              :aria-label="getTabAriaLabel('歌单', tabCounts.playlist)"
+              @click="switchTab('playlist')"
             >
-              歌单
-              <span v-if="tabCounts.playlist > 0" class="count">{{ tabCounts.playlist }}</span>
+              <span class="tab-btn-label">歌单</span>
+              <span
+                class="count"
+                :class="{ empty: tabCounts.playlist <= 0 }"
+                :title="tabCounts.playlist > 99 ? String(tabCounts.playlist) : undefined"
+                aria-hidden="true"
+              >
+                {{ playlistTabBadge }}
+              </span>
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: activeTab === 'album' }"
+              :aria-label="getTabAriaLabel('我的收藏', tabCounts.album)"
+              @click="switchTab('album')"
+            >
+              <span class="tab-btn-label">我的收藏</span>
+              <span
+                class="count"
+                :class="{ empty: tabCounts.album <= 0 }"
+                :title="tabCounts.album > 99 ? String(tabCounts.album) : undefined"
+                aria-hidden="true"
+              >
+                {{ albumTabBadge }}
+              </span>
             </button>
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'events' }"
-              @click="activeTab = 'events'"
+              :aria-label="getTabAriaLabel('动态', tabCounts.events)"
+              @click="switchTab('events')"
             >
-              动态
-              <span v-if="tabCounts.events > 0" class="count">{{ tabCounts.events }}</span>
+              <span class="tab-btn-label">动态</span>
+              <span
+                class="count"
+                :class="{ empty: tabCounts.events <= 0 }"
+                :title="tabCounts.events > 99 ? String(tabCounts.events) : undefined"
+                aria-hidden="true"
+              >
+                {{ eventsTabBadge }}
+              </span>
             </button>
           </div>
+        </div>
+
+        <div v-if="activeTabError" class="tab-status tab-status-error" role="alert">
+          <div>
+            <strong>当前内容加载失败</strong>
+            <p>请重试当前分页内容。</p>
+          </div>
+          <button type="button" class="status-action" @click="retryActiveTab">重新加载</button>
         </div>
 
         <LikedSongsView
           v-if="mountedTabs.liked"
           v-show="activeTab === 'liked'"
           :like-songs="formattedSongs"
+          :error="likedSongsError"
+          :has-more="likedSongsHasMore"
           :loading="loadingMap.liked"
-          @play-all="handlePlayAllLiked"
-          @play-song="handlePlayLikedSong"
+          :loading-more="likedSongsLoadingMore"
+          @load-more="loadMoreLikedSongs"
+          @play-all="playAllLikedSongs"
+          @play-song="playLikedSongAt"
+          @retry="retryLoadLikedSongs"
         />
 
         <PlaylistsView
@@ -278,14 +225,80 @@ const goBack = () => {
           v-show="activeTab === 'playlist'"
           :playlists="playlists"
           :loading="loadingMap.playlist"
-          @playlist-click="handlePlaylistClick"
+          :active-playlist-id="selectedPlaylistId"
+          :playing-playlist-id="playingPlaylistId"
+          @playlist-open="openPlaylistDetail"
+          @playlist-play="playPlaylist"
         />
+
+        <PlaylistDetailPanel
+          v-if="activeTab === 'playlist' && selectedPlaylistId"
+          :playlist="selectedPlaylist"
+          :songs="selectedPlaylistSongs"
+          :loading="playlistDetailLoading"
+          :error="playlistDetailError"
+          @close="closePlaylistDetail"
+          @retry="retryPlaylistDetail"
+          @play-all="playPlaylist(selectedPlaylistId)"
+          @play-song="playPlaylistTrackAt"
+        />
+
+        <div v-if="mountedTabs.album" v-show="activeTab === 'album'">
+          <div class="collection-sections">
+            <section class="collection-section">
+              <div class="collection-section-header">
+                <h3 class="collection-section-title">收藏歌单</h3>
+              </div>
+              <PlaylistsView
+                :playlists="favoritePlaylists"
+                :loading="loadingMap.album"
+                :playing-playlist-id="playingPlaylistId"
+                @playlist-open="openPlaylistDetail"
+                @playlist-play="playPlaylist"
+              />
+            </section>
+
+            <section class="collection-section">
+              <div class="collection-section-header">
+                <h3 class="collection-section-title">收藏专辑</h3>
+              </div>
+              <FavoriteAlbumsView
+                :albums="albums"
+                :loading="loadingMap.album"
+                :active-album-id="selectedAlbumId"
+                :playing-album-id="playingAlbumId"
+                @album-open="openAlbumDetail"
+                @album-play="playAlbum"
+              />
+
+              <AlbumDetailPanel
+                v-if="selectedAlbumId"
+                :album="selectedAlbum"
+                :songs="selectedAlbumSongs"
+                :loading="albumDetailLoading"
+                :error="albumDetailError"
+                @close="closeAlbumDetail"
+                @retry="retryAlbumDetail"
+                @play-all="playAlbum(selectedAlbumId)"
+                @play-song="playAlbumTrackAt"
+              />
+            </section>
+          </div>
+        </div>
 
         <EventsView
           v-if="mountedTabs.events"
           v-show="activeTab === 'events'"
-          :events="events"
+          :events="filteredEvents"
+          :active-filter="eventsFilter"
+          :error="eventsError"
+          :has-more="eventsHasMore"
           :loading="loadingMap.events"
+          :loading-more="eventsLoadingMore"
+          @load-more="loadMoreEvents"
+          @play-song="playEventSong"
+          @retry="retryLoadEvents"
+          @update:filter="setEventsFilter"
         />
       </section>
     </div>
@@ -345,6 +358,53 @@ const goBack = () => {
   margin-bottom: 24px;
 }
 
+.tab-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  border: 2px solid var(--black);
+  border-radius: 12px;
+  background: var(--white);
+  box-shadow: 4px 4px 0 var(--black);
+}
+
+.tab-status-error {
+  background: #fff0eb;
+}
+
+.tab-status strong {
+  display: block;
+  font-size: 14px;
+  color: var(--black);
+}
+
+.tab-status p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.status-action {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border: 2px solid var(--black);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--black);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-action:hover {
+  background: var(--black);
+  color: var(--white);
+}
+
 .tabs {
   display: flex;
   gap: 4px;
@@ -355,10 +415,37 @@ const goBack = () => {
   width: fit-content;
 }
 
-.tab-btn {
+.collection-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.collection-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.collection-section-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.collection-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--black);
+}
+
+.tab-btn {
+  display: inline-grid;
+  grid-template-columns: minmax(0, max-content) minmax(3ch, 3ch);
+  align-items: center;
+  column-gap: 8px;
   padding: 10px 20px;
   background: transparent;
   border: none;
@@ -369,6 +456,10 @@ const goBack = () => {
   color: var(--gray);
   transition: all 0.2s ease;
   position: relative;
+}
+
+.tab-btn-label {
+  min-width: 0;
 }
 
 .tab-btn:hover {
@@ -383,11 +474,20 @@ const goBack = () => {
 }
 
 .tab-btn .count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 11px;
   padding: 2px 8px;
   background: rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   font-weight: 700;
+  min-inline-size: 3ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-btn .count.empty {
+  visibility: hidden;
 }
 
 .tab-btn.active .count {
@@ -396,16 +496,23 @@ const goBack = () => {
 }
 
 @media (max-width: 768px) {
+  .tab-status {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .tabs {
     width: 100%;
     border-radius: 10px;
+    flex-wrap: wrap;
   }
 
   .tab-btn {
-    flex: 1;
+    flex: 1 1 calc(50% - 4px);
     justify-content: center;
     padding: 10px 12px;
     font-size: 13px;
+    grid-template-columns: minmax(0, max-content) minmax(3ch, 3ch);
   }
 }
 

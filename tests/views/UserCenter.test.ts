@@ -1,308 +1,675 @@
-import { computed, nextTick, reactive, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('vue', async importOriginal => {
-  const actual = await importOriginal<typeof import('vue')>()
+const pageMocks = vi.hoisted(() => ({
+  activeTab: 'liked' as 'liked' | 'playlist' | 'album' | 'events',
+  loadingMap: {
+    liked: false,
+    playlist: false,
+    album: false,
+    events: false
+  },
+  mountedTabs: {
+    liked: true,
+    playlist: true,
+    album: true,
+    events: true
+  },
+  loadedTabs: {
+    liked: true,
+    playlist: false,
+    album: false,
+    events: false
+  },
+  currentUserId: 'user-1',
+  avatarUrl: 'avatar.png',
+  nickname: 'tester',
+  playingPlaylistId: null as string | null,
+  playingAlbumId: null as string | null,
+  activeTabError: null as unknown,
+  selectedPlaylistId: null as string | null,
+  selectedPlaylist: null as Record<string, unknown> | null,
+  selectedPlaylistSongs: [] as Array<Record<string, unknown>>,
+  playlistDetailLoading: false,
+  playlistDetailError: null as unknown,
+  selectedAlbumId: null as string | null,
+  selectedAlbum: null as Record<string, unknown> | null,
+  selectedAlbumSongs: [] as Array<Record<string, unknown>>,
+  albumDetailLoading: false,
+  albumDetailError: null as unknown,
+  formattedSongs: [
+    {
+      id: 'song-1',
+      name: 'Song 1',
+      artist: 'Artist 1',
+      album: 'Album 1',
+      cover: 'cover.jpg',
+      duration: 180
+    }
+  ],
+  playlists: [
+    {
+      id: 'playlist-1',
+      name: 'Playlist 1',
+      coverImgUrl: 'cover.jpg',
+      trackCount: 12,
+      playCount: 32000
+    }
+  ],
+  favoritePlaylists: [
+    {
+      id: 'playlist-favorite-1',
+      name: 'Favorite Playlist 1',
+      coverImgUrl: 'favorite-cover.jpg',
+      trackCount: 18,
+      playCount: 64000,
+      subscribed: true
+    }
+  ],
+  albums: [
+    {
+      id: 'album-1',
+      name: 'Album 1',
+      picUrl: 'album-cover.jpg',
+      size: 10,
+      artistName: 'Artist 1'
+    }
+  ],
+  events: [
+    {
+      eventId: 'event-1',
+      message: 'event message',
+      playableSong: {
+        id: 'event-song-1',
+        name: 'Event Song 1',
+        platform: 'netease'
+      },
+      user: {
+        nickname: 'tester',
+        avatarUrl: 'avatar.png'
+      },
+      eventTime: Date.now()
+    }
+  ],
+  tabCounts: {
+    liked: 1,
+    playlist: 1,
+    album: 1,
+    events: 1
+  },
+  likedSongsHasMore: true,
+  likedSongsLoadingMore: false,
+  likedSongsError: null as unknown,
+  eventsFilter: 'all' as const,
+  eventsHasMore: true,
+  eventsLoadingMore: false,
+  eventsError: null as unknown,
+  switchTab: vi.fn(),
+  openAlbumDetail: vi.fn(),
+  openPlaylistDetail: vi.fn(),
+  closeAlbumDetail: vi.fn(),
+  closePlaylistDetail: vi.fn(),
+  loadMoreLikedSongs: vi.fn(),
+  loadMoreEvents: vi.fn(),
+  playAllLikedSongs: vi.fn(),
+  playAlbum: vi.fn(),
+  playAlbumTrackAt: vi.fn(),
+  playEventSong: vi.fn(),
+  playLikedSongAt: vi.fn(),
+  playPlaylist: vi.fn(),
+  playPlaylistTrackAt: vi.fn(),
+  retryActiveTab: vi.fn(),
+  retryAlbumDetail: vi.fn(),
+  retryLoadEvents: vi.fn(),
+  retryLoadLikedSongs: vi.fn(),
+  retryPlaylistDetail: vi.fn(),
+  setEventsFilter: vi.fn(),
+  goBack: vi.fn()
+}))
+
+vi.mock('@/composables/useUserCenterPage', async () => {
+  const { computed, ref } = await import('vue')
+
   return {
-    ...actual,
-    defineAsyncComponent: () => ({
-      template: '<div />'
+    useUserCenterPage: () => ({
+      activeTab: ref(pageMocks.activeTab),
+      loadingMap: ref({ ...pageMocks.loadingMap }),
+      mountedTabs: ref({ ...pageMocks.mountedTabs }),
+      loadedTabs: ref({ ...pageMocks.loadedTabs }),
+      currentUserId: computed(() => pageMocks.currentUserId),
+      avatarUrl: computed(() => pageMocks.avatarUrl),
+      nickname: computed(() => pageMocks.nickname),
+      playingPlaylistId: ref(pageMocks.playingPlaylistId),
+      playingAlbumId: ref(pageMocks.playingAlbumId),
+      selectedPlaylistId: ref(pageMocks.selectedPlaylistId),
+      selectedPlaylist: computed(() => pageMocks.selectedPlaylist),
+      selectedPlaylistSongs: ref(pageMocks.selectedPlaylistSongs),
+      playlistDetailLoading: ref(pageMocks.playlistDetailLoading),
+      playlistDetailError: ref(pageMocks.playlistDetailError),
+      selectedAlbumId: ref(pageMocks.selectedAlbumId),
+      selectedAlbum: computed(() => pageMocks.selectedAlbum),
+      selectedAlbumSongs: ref(pageMocks.selectedAlbumSongs),
+      albumDetailLoading: ref(pageMocks.albumDetailLoading),
+      albumDetailError: ref(pageMocks.albumDetailError),
+      activeTabError: computed(() => pageMocks.activeTabError),
+      likedCount: computed(() => pageMocks.tabCounts.liked),
+      playlistCount: computed(() => pageMocks.tabCounts.playlist),
+      albumCount: computed(() => pageMocks.tabCounts.album),
+      eventsCount: computed(() => pageMocks.tabCounts.events),
+      tabCounts: computed(() => ({ ...pageMocks.tabCounts })),
+      likedSongsHasMore: computed(() => pageMocks.likedSongsHasMore),
+      likedSongsLoadingMore: computed(() => pageMocks.likedSongsLoadingMore),
+      likedSongsError: computed(() => pageMocks.likedSongsError),
+      likeSongs: ref([]),
+      formattedSongs: computed(() => pageMocks.formattedSongs),
+      loadLikedSongs: vi.fn(),
+      loadMoreLikedSongs: pageMocks.loadMoreLikedSongs,
+      retryLoadLikedSongs: pageMocks.retryLoadLikedSongs,
+      resetLikedSongs: vi.fn(),
+      playlists: ref(pageMocks.playlists),
+      favoritePlaylists: ref(pageMocks.favoritePlaylists),
+      loadPlaylists: vi.fn(),
+      loadPlaylistSongs: vi.fn(),
+      resetPlaylists: vi.fn(),
+      albums: ref(pageMocks.albums),
+      loadFavoriteAlbums: vi.fn(),
+      loadAlbumSongs: vi.fn(),
+      resetFavoriteAlbums: vi.fn(),
+      eventsFilter: ref(pageMocks.eventsFilter),
+      events: ref(pageMocks.events),
+      filteredEvents: computed(() => pageMocks.events),
+      eventsHasMore: computed(() => pageMocks.eventsHasMore),
+      eventsLoadingMore: computed(() => pageMocks.eventsLoadingMore),
+      eventsError: computed(() => pageMocks.eventsError),
+      loadEvents: vi.fn(),
+      loadMoreEvents: pageMocks.loadMoreEvents,
+      retryLoadEvents: pageMocks.retryLoadEvents,
+      resetEvents: vi.fn(),
+      setEventsFilter: pageMocks.setEventsFilter,
+      switchTab: pageMocks.switchTab,
+      openAlbumDetail: pageMocks.openAlbumDetail,
+      openPlaylistDetail: pageMocks.openPlaylistDetail,
+      closeAlbumDetail: pageMocks.closeAlbumDetail,
+      closePlaylistDetail: pageMocks.closePlaylistDetail,
+      retryActiveTab: pageMocks.retryActiveTab,
+      retryAlbumDetail: pageMocks.retryAlbumDetail,
+      retryPlaylistDetail: pageMocks.retryPlaylistDetail,
+      resetUserContent: vi.fn(),
+      loadTabData: vi.fn(),
+      playAlbum: pageMocks.playAlbum,
+      playAlbumTrackAt: pageMocks.playAlbumTrackAt,
+      playPlaylist: pageMocks.playPlaylist,
+      playPlaylistTrackAt: pageMocks.playPlaylistTrackAt,
+      playEventSong: pageMocks.playEventSong,
+      playAllLikedSongs: pageMocks.playAllLikedSongs,
+      playLikedSongAt: pageMocks.playLikedSongAt,
+      goBack: pageMocks.goBack
     })
   }
 })
 
-const pushMock = vi.hoisted(() => vi.fn())
-const loadLikedSongsMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
-const resetLikedSongsMock = vi.hoisted(() => vi.fn())
-const loadPlaylistsMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
-const loadPlaylistSongsMock = vi.hoisted(() => vi.fn(() => Promise.resolve([])))
-const resetPlaylistsMock = vi.hoisted(() => vi.fn())
-const loadEventsMock = vi.hoisted(() => vi.fn(() => Promise.resolve()))
-const resetEventsMock = vi.hoisted(() => vi.fn())
-
-function createDeferred<T>() {
-  let resolve!: (value: T | PromiseLike<T>) => void
-
-  const promise = new Promise<T>(nextResolve => {
-    resolve = nextResolve
-  })
-
-  return { promise, resolve }
+const UserProfileHeaderStub = {
+  name: 'UserProfileHeader',
+  props: {
+    userId: {
+      type: [String, Number],
+      required: true
+    },
+    avatarUrl: {
+      type: String,
+      default: ''
+    },
+    nickname: {
+      type: String,
+      default: ''
+    }
+  },
+  template: '<div class="profile-header">{{ userId }}|{{ avatarUrl }}|{{ nickname }}</div>'
 }
 
-type UserStoreState = {
-  isLoggedIn: boolean
-  userId: string | null
-  avatarUrl: string
-  nickname: string
+const LikedSongsViewStub = {
+  name: 'LikedSongsView',
+  props: {
+    likeSongs: {
+      type: Array,
+      required: true
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    }
+  },
+  emits: ['play-all', 'play-song', 'load-more', 'retry'],
+  template: `
+    <div class="liked-view">
+      <span class="liked-size">{{ likeSongs.length }}</span>
+      <button class="liked-play-all" @click="$emit('play-all')">play all</button>
+      <button class="liked-play-song" @click="$emit('play-song', 1)">play song</button>
+      <button class="liked-load-more" @click="$emit('load-more')">load more</button>
+      <button class="liked-retry" @click="$emit('retry')">retry</button>
+    </div>
+  `
 }
 
-const userStoreState = reactive<UserStoreState>({
-  isLoggedIn: true,
-  userId: 'user-1',
-  avatarUrl: '',
-  nickname: 'tester'
-})
-
-const playlistStoreMock = {
-  setPlaylist: vi.fn()
+const PlaylistsViewStub = {
+  name: 'PlaylistsView',
+  props: {
+    playlists: {
+      type: Array,
+      required: true
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    activePlaylistId: {
+      type: String,
+      default: null
+    }
+  },
+  emits: ['playlist-open', 'playlist-play'],
+  template: `
+    <div class="playlists-view">
+      <span class="playlist-size">{{ playlists.length }}</span>
+      <button class="playlist-open" @click="$emit('playlist-open', 'playlist-1')">open</button>
+      <button class="playlist-play" @click="$emit('playlist-play', 'playlist-1')">play</button>
+    </div>
+  `
 }
 
-const playerStoreMock = {
-  setSongList: vi.fn(),
-  playSongWithDetails: vi.fn(() => Promise.resolve())
+const FavoriteAlbumsViewStub = {
+  name: 'FavoriteAlbumsView',
+  props: {
+    albums: {
+      type: Array,
+      required: true
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    activeAlbumId: {
+      type: String,
+      default: null
+    }
+  },
+  emits: ['album-open', 'album-play'],
+  template: `
+    <div class="albums-view">
+      <span class="album-size">{{ albums.length }}</span>
+      <button class="album-open" @click="$emit('album-open', 'album-1')">open</button>
+      <button class="album-play" @click="$emit('album-play', 'album-1')">play</button>
+    </div>
+  `
 }
 
-vi.mock('vue-router', () => ({
-  useRouter: () => ({
-    push: pushMock
+const PlaylistDetailPanelStub = {
+  name: 'PlaylistDetailPanel',
+  props: {
+    songs: {
+      type: Array,
+      required: true
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    error: {
+      type: null,
+      default: null
+    }
+  },
+  emits: ['close', 'retry', 'play-all', 'play-song'],
+  template: `
+    <div class="playlist-detail-panel">
+      <span class="playlist-detail-size">{{ songs.length }}</span>
+      <button class="detail-close" @click="$emit('close')">close</button>
+      <button class="detail-retry" @click="$emit('retry')">retry</button>
+      <button class="detail-play-all" @click="$emit('play-all')">play all</button>
+      <button class="detail-play-song" @click="$emit('play-song', 2)">play song</button>
+    </div>
+  `
+}
+
+const AlbumDetailPanelStub = {
+  name: 'AlbumDetailPanel',
+  props: {
+    songs: {
+      type: Array,
+      required: true
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    error: {
+      type: null,
+      default: null
+    }
+  },
+  emits: ['close', 'retry', 'play-all', 'play-song'],
+  template: `
+    <div class="album-detail-panel">
+      <span class="album-detail-size">{{ songs.length }}</span>
+      <button class="album-detail-close" @click="$emit('close')">close</button>
+      <button class="album-detail-retry" @click="$emit('retry')">retry</button>
+      <button class="album-detail-play-all" @click="$emit('play-all')">play all</button>
+      <button class="album-detail-play-song" @click="$emit('play-song', 3)">play song</button>
+    </div>
+  `
+}
+
+const EventsViewStub = {
+  name: 'EventsView',
+  props: {
+    events: {
+      type: Array,
+      required: true
+    },
+    activeFilter: {
+      type: String,
+      default: 'all'
+    },
+    error: {
+      type: null,
+      default: null
+    },
+    hasMore: {
+      type: Boolean,
+      default: false
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    loadingMore: {
+      type: Boolean,
+      default: false
+    }
+  },
+  emits: ['retry', 'load-more', 'update:filter', 'play-song'],
+  template: `
+    <div class="events-view">
+      <span class="events-size">{{ events.length }}</span>
+      <button class="events-filter" @click="$emit('update:filter', 'song')">filter</button>
+      <button class="events-load-more" @click="$emit('load-more')">load more</button>
+      <button class="events-retry" @click="$emit('retry')">retry</button>
+      <button class="events-play-song" @click="$emit('play-song', events[0]?.playableSong)">play song</button>
+    </div>
+  `
+}
+
+async function mountUserCenter() {
+  const UserCenter = (await import('@/views/UserCenter.vue')).default
+
+  return mount(UserCenter, {
+    global: {
+      stubs: {
+        UserProfileHeader: UserProfileHeaderStub,
+        LikedSongsView: LikedSongsViewStub,
+        PlaylistsView: PlaylistsViewStub,
+        FavoriteAlbumsView: FavoriteAlbumsViewStub,
+        PlaylistDetailPanel: PlaylistDetailPanelStub,
+        AlbumDetailPanel: AlbumDetailPanelStub,
+        EventsView: EventsViewStub
+      }
+    }
   })
-}))
-
-vi.mock('@/store/userStore', () => ({
-  useUserStore: () => userStoreState
-}))
-
-vi.mock('@/store/playlistStore', () => ({
-  usePlaylistStore: () => playlistStoreMock
-}))
-
-vi.mock('@/store/playerStore.ts', () => ({
-  usePlayerStore: () => playerStoreMock
-}))
-
-vi.mock('@/composables/useUserDataQuery', () => ({
-  useUserDataQuery: vi.fn()
-}))
-
-vi.mock('@/composables/useLikedSongs', () => ({
-  useLikedSongs: () => ({
-    likeSongs: ref([]),
-    formattedSongs: computed(() => []),
-    count: computed(() => 0),
-    loading: ref(false),
-    error: ref(null),
-    resetLikedSongs: resetLikedSongsMock,
-    loadLikedSongs: loadLikedSongsMock
-  })
-}))
-
-vi.mock('@/composables/useUserPlaylists', () => ({
-  useUserPlaylists: () => ({
-    playlists: ref([]),
-    count: computed(() => 0),
-    loading: ref(false),
-    error: ref(null),
-    resetPlaylists: resetPlaylistsMock,
-    loadPlaylists: loadPlaylistsMock,
-    loadPlaylistSongs: loadPlaylistSongsMock
-  })
-}))
-
-vi.mock('@/composables/useUserEvents', () => ({
-  useUserEvents: () => ({
-    events: ref([]),
-    count: computed(() => 0),
-    loading: ref(false),
-    error: ref(null),
-    formatEventTime: vi.fn(() => ''),
-    getEventMsg: vi.fn(() => ''),
-    resetEvents: resetEventsMock,
-    loadEvents: loadEventsMock
-  })
-}))
+}
 
 describe('UserCenter', () => {
   beforeEach(() => {
-    userStoreState.isLoggedIn = true
-    userStoreState.userId = 'user-1'
-    userStoreState.avatarUrl = ''
-    userStoreState.nickname = 'tester'
+    pageMocks.activeTab = 'liked'
+    pageMocks.loadingMap = {
+      liked: false,
+      playlist: false,
+      album: false,
+      events: false
+    }
+    pageMocks.mountedTabs = {
+      liked: true,
+      playlist: true,
+      album: true,
+      events: true
+    }
+    pageMocks.loadedTabs = {
+      liked: true,
+      playlist: false,
+      album: false,
+      events: false
+    }
+    pageMocks.currentUserId = 'user-1'
+    pageMocks.avatarUrl = 'avatar.png'
+    pageMocks.nickname = 'tester'
+    pageMocks.playingPlaylistId = null
+    pageMocks.playingAlbumId = null
+    pageMocks.activeTabError = null
+    pageMocks.selectedPlaylistId = null
+    pageMocks.selectedPlaylist = null
+    pageMocks.selectedPlaylistSongs = []
+    pageMocks.playlistDetailLoading = false
+    pageMocks.playlistDetailError = null
+    pageMocks.selectedAlbumId = null
+    pageMocks.selectedAlbum = null
+    pageMocks.selectedAlbumSongs = []
+    pageMocks.albumDetailLoading = false
+    pageMocks.albumDetailError = null
+    pageMocks.tabCounts = {
+      liked: 1,
+      playlist: 1,
+      album: 1,
+      events: 1
+    }
+    pageMocks.likedSongsHasMore = true
+    pageMocks.likedSongsLoadingMore = false
+    pageMocks.likedSongsError = null
+    pageMocks.eventsFilter = 'all'
+    pageMocks.eventsHasMore = true
+    pageMocks.eventsLoadingMore = false
+    pageMocks.eventsError = null
 
     vi.clearAllMocks()
   })
 
-  it('reloads user scoped data when the account changes on the same route', async () => {
-    const UserCenter = (await import('@/views/UserCenter.vue')).default
-    mount(UserCenter, {
-      global: {
-        stubs: {
-          UserProfileHeader: true,
-          LikedSongsView: true,
-          PlaylistsView: true,
-          EventsView: true
-        }
-      }
-    })
-
+  it('renders profile info and tab counts from the page composable', async () => {
+    const wrapper = await mountUserCenter()
     await flushPromises()
 
-    expect(resetLikedSongsMock).toHaveBeenCalled()
-    expect(resetPlaylistsMock).toHaveBeenCalled()
-    expect(resetEventsMock).toHaveBeenCalled()
-    expect(loadLikedSongsMock).toHaveBeenCalledWith('user-1')
-    expect(loadPlaylistsMock).not.toHaveBeenCalled()
-    expect(loadEventsMock).not.toHaveBeenCalled()
-
-    vi.clearAllMocks()
-
-    userStoreState.userId = 'user-2'
-    await nextTick()
-    await flushPromises()
-
-    expect(resetLikedSongsMock).toHaveBeenCalled()
-    expect(resetPlaylistsMock).toHaveBeenCalled()
-    expect(resetEventsMock).toHaveBeenCalled()
-    expect(loadLikedSongsMock).toHaveBeenCalledWith('user-2')
-    expect(loadPlaylistsMock).not.toHaveBeenCalled()
-    expect(loadEventsMock).not.toHaveBeenCalled()
+    expect(wrapper.find('.profile-header').text()).toContain('user-1|avatar.png|tester')
+    const tabButtons = wrapper.findAll('button.tab-btn')
+    expect(tabButtons[0].text()).toContain('我喜欢的音乐')
+    expect(tabButtons[0].text()).toContain('1')
+    expect(tabButtons[1].text()).toContain('歌单')
+    expect(tabButtons[2].text()).toContain('我的收藏')
+    expect(tabButtons[3].text()).toContain('动态')
   })
 
-  it('clears stale user data and redirects when logout happens on the user route', async () => {
-    const UserCenter = (await import('@/views/UserCenter.vue')).default
-    mount(UserCenter, {
-      global: {
-        stubs: {
-          UserProfileHeader: true,
-          LikedSongsView: true,
-          PlaylistsView: true,
-          EventsView: true
-        }
-      }
-    })
-
-    await flushPromises()
-    vi.clearAllMocks()
-
-    userStoreState.isLoggedIn = false
-    userStoreState.userId = null
-    await nextTick()
-    await flushPromises()
-
-    expect(resetLikedSongsMock).toHaveBeenCalled()
-    expect(resetPlaylistsMock).toHaveBeenCalled()
-    expect(resetEventsMock).toHaveBeenCalled()
-    expect(loadLikedSongsMock).not.toHaveBeenCalled()
-    expect(loadPlaylistsMock).not.toHaveBeenCalled()
-    expect(loadEventsMock).not.toHaveBeenCalled()
-    expect(pushMock).toHaveBeenCalledWith('/')
-  })
-
-  it('keeps the active tab component mounted while its data is still loading', async () => {
-    const likedDeferred = createDeferred<void>()
-    loadLikedSongsMock.mockImplementationOnce(() => likedDeferred.promise)
-
-    const likedLifecycle = {
-      mounted: vi.fn(),
-      unmounted: vi.fn()
+  it('renders only mounted tab views', async () => {
+    pageMocks.mountedTabs = {
+      liked: true,
+      playlist: false,
+      album: false,
+      events: false
     }
 
-    const UserCenter = (await import('@/views/UserCenter.vue')).default
-    mount(UserCenter, {
-      global: {
-        stubs: {
-          UserProfileHeader: true,
-          LikedSongsView: {
-            props: ['loading'],
-            mounted() {
-              likedLifecycle.mounted()
-            },
-            unmounted() {
-              likedLifecycle.unmounted()
-            },
-            template: '<div class="liked-view-stub">{{ loading ? "loading" : "ready" }}</div>'
-          },
-          PlaylistsView: true,
-          EventsView: true
-        }
-      }
-    })
-
-    await nextTick()
-
-    expect(likedLifecycle.mounted).toHaveBeenCalledTimes(1)
-    expect(likedLifecycle.unmounted).not.toHaveBeenCalled()
-
-    likedDeferred.resolve()
+    const wrapper = await mountUserCenter()
     await flushPromises()
+
+    expect(wrapper.find('.liked-view').exists()).toBe(true)
+    expect(wrapper.find('.playlists-view').exists()).toBe(false)
+    expect(wrapper.find('.albums-view').exists()).toBe(false)
+    expect(wrapper.find('.events-view').exists()).toBe(false)
   })
 
-  it('loads non-active tabs only when the user switches to them', async () => {
-    const UserCenter = (await import('@/views/UserCenter.vue')).default
-    const wrapper = mount(UserCenter, {
-      global: {
-        stubs: {
-          UserProfileHeader: true,
-          LikedSongsView: true,
-          PlaylistsView: true,
-          EventsView: true
-        }
-      }
-    })
-
+  it('delegates tab switching to the page composable', async () => {
+    const wrapper = await mountUserCenter()
     await flushPromises()
-
-    expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
-    expect(loadPlaylistsMock).not.toHaveBeenCalled()
-    expect(loadEventsMock).not.toHaveBeenCalled()
 
     const tabButtons = wrapper.findAll('button.tab-btn')
     await tabButtons[1].trigger('click')
-    await flushPromises()
-
-    expect(loadPlaylistsMock).toHaveBeenCalledWith('user-1')
-    expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
-    expect(loadEventsMock).not.toHaveBeenCalled()
-
     await tabButtons[2].trigger('click')
-    await flushPromises()
+    await tabButtons[3].trigger('click')
 
-    expect(loadEventsMock).toHaveBeenCalledWith('user-1')
-    expect(loadEventsMock).toHaveBeenCalledTimes(1)
-
-    await tabButtons[1].trigger('click')
-    await flushPromises()
-
-    expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
+    expect(pageMocks.switchTab).toHaveBeenNthCalledWith(1, 'playlist')
+    expect(pageMocks.switchTab).toHaveBeenNthCalledWith(2, 'album')
+    expect(pageMocks.switchTab).toHaveBeenNthCalledWith(3, 'events')
   })
 
-  it('does not reload a tab while its previous request is still in flight', async () => {
-    const likedDeferred = createDeferred<void>()
-    const playlistDeferred = createDeferred<void>()
-
-    loadLikedSongsMock.mockImplementationOnce(() => likedDeferred.promise)
-    loadPlaylistsMock.mockImplementationOnce(() => playlistDeferred.promise)
-
-    const UserCenter = (await import('@/views/UserCenter.vue')).default
-    const wrapper = mount(UserCenter, {
-      global: {
-        stubs: {
-          UserProfileHeader: true,
-          LikedSongsView: true,
-          PlaylistsView: true,
-          EventsView: true
-        }
-      }
-    })
-
-    await nextTick()
-
-    expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
-
-    const tabButtons = wrapper.findAll('button.tab-btn')
-    await tabButtons[1].trigger('click')
-    await nextTick()
-
-    expect(loadPlaylistsMock).toHaveBeenCalledTimes(1)
-
-    await tabButtons[0].trigger('click')
-    await nextTick()
-
-    expect(loadLikedSongsMock).toHaveBeenCalledTimes(1)
-
-    likedDeferred.resolve()
-    playlistDeferred.resolve()
+  it('forwards liked songs actions to the page composable', async () => {
+    const wrapper = await mountUserCenter()
     await flushPromises()
+
+    await wrapper.find('.liked-play-all').trigger('click')
+    await wrapper.find('.liked-play-song').trigger('click')
+    await wrapper.find('.liked-load-more').trigger('click')
+    await wrapper.find('.liked-retry').trigger('click')
+
+    expect(pageMocks.playAllLikedSongs).toHaveBeenCalledTimes(1)
+    expect(pageMocks.playLikedSongAt).toHaveBeenCalledWith(1)
+    expect(pageMocks.loadMoreLikedSongs).toHaveBeenCalledTimes(1)
+    expect(pageMocks.retryLoadLikedSongs).toHaveBeenCalledTimes(1)
+  })
+
+  it('forwards playlist entry and playback actions to the page composable', async () => {
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    await wrapper.find('.playlist-open').trigger('click')
+    await wrapper.find('.playlist-play').trigger('click')
+
+    expect(pageMocks.openPlaylistDetail).toHaveBeenCalledWith('playlist-1')
+    expect(pageMocks.playPlaylist).toHaveBeenCalledWith('playlist-1')
+  })
+
+  it('forwards favorite album entry and playback actions to the page composable', async () => {
+    pageMocks.activeTab = 'album'
+
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    await wrapper.find('.album-open').trigger('click')
+    await wrapper.find('.album-play').trigger('click')
+
+    expect(pageMocks.openAlbumDetail).toHaveBeenCalledWith('album-1')
+    expect(pageMocks.playAlbum).toHaveBeenCalledWith('album-1')
+  })
+
+  it('renders favorite playlist content inside the collections tab and reuses playlist actions', async () => {
+    pageMocks.activeTab = 'album'
+
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    const sections = wrapper.findAll('.collection-section')
+    expect(sections[0]?.text()).toContain('收藏歌单')
+    expect(sections[0]?.find('.playlists-view').exists()).toBe(true)
+
+    await sections[0]!.find('.playlist-open').trigger('click')
+    await sections[0]!.find('.playlist-play').trigger('click')
+
+    expect(pageMocks.openPlaylistDetail).toHaveBeenCalledWith('playlist-1')
+    expect(pageMocks.playPlaylist).toHaveBeenCalledWith('playlist-1')
+  })
+
+  it('renders and wires the playlist detail panel when a playlist is selected', async () => {
+    pageMocks.activeTab = 'playlist'
+    pageMocks.selectedPlaylistId = 'playlist-1'
+    pageMocks.selectedPlaylist = {
+      id: 'playlist-1',
+      name: 'Playlist 1'
+    }
+    pageMocks.selectedPlaylistSongs = [
+      {
+        id: 'song-1',
+        name: 'Song 1'
+      }
+    ]
+
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    expect(wrapper.find('.playlist-detail-panel').exists()).toBe(true)
+
+    await wrapper.find('.detail-play-all').trigger('click')
+    await wrapper.find('.detail-play-song').trigger('click')
+    await wrapper.find('.detail-retry').trigger('click')
+    await wrapper.find('.detail-close').trigger('click')
+
+    expect(pageMocks.playPlaylist).toHaveBeenCalledWith('playlist-1')
+    expect(pageMocks.playPlaylistTrackAt).toHaveBeenCalledWith(2)
+    expect(pageMocks.retryPlaylistDetail).toHaveBeenCalledTimes(1)
+    expect(pageMocks.closePlaylistDetail).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders and wires the album detail panel when an album is selected', async () => {
+    pageMocks.activeTab = 'album'
+    pageMocks.selectedAlbumId = 'album-1'
+    pageMocks.selectedAlbum = {
+      id: 'album-1',
+      name: 'Album 1'
+    }
+    pageMocks.selectedAlbumSongs = [
+      {
+        id: 'song-1',
+        name: 'Song 1'
+      }
+    ]
+
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    expect(wrapper.find('.album-detail-panel').exists()).toBe(true)
+    const sections = wrapper.findAll('.collection-section')
+    expect(sections[1]?.text()).toContain('收藏专辑')
+    expect(sections[1]?.find('.album-detail-panel').exists()).toBe(true)
+
+    await wrapper.find('.album-detail-play-all').trigger('click')
+    await wrapper.find('.album-detail-play-song').trigger('click')
+    await wrapper.find('.album-detail-retry').trigger('click')
+    await wrapper.find('.album-detail-close').trigger('click')
+
+    expect(pageMocks.playAlbum).toHaveBeenCalledWith('album-1')
+    expect(pageMocks.playAlbumTrackAt).toHaveBeenCalledWith(3)
+    expect(pageMocks.retryAlbumDetail).toHaveBeenCalledTimes(1)
+    expect(pageMocks.closeAlbumDetail).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders the shell error state and delegates retry handling', async () => {
+    pageMocks.activeTabError = new Error('load failed')
+
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('当前内容加载失败')
+
+    await wrapper.find('.status-action').trigger('click')
+
+    expect(pageMocks.retryActiveTab).toHaveBeenCalledTimes(1)
+  })
+
+  it('forwards events controls to the page composable', async () => {
+    pageMocks.activeTab = 'events'
+
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    await wrapper.find('.events-filter').trigger('click')
+    await wrapper.find('.events-load-more').trigger('click')
+    await wrapper.find('.events-retry').trigger('click')
+    await wrapper.find('.events-play-song').trigger('click')
+
+    expect(pageMocks.setEventsFilter).toHaveBeenCalledWith('song')
+    expect(pageMocks.loadMoreEvents).toHaveBeenCalledTimes(1)
+    expect(pageMocks.retryLoadEvents).toHaveBeenCalledTimes(1)
+    expect(pageMocks.playEventSong).toHaveBeenCalledWith(pageMocks.events[0].playableSong)
+  })
+
+  it('uses the page composable navigation handler for the back button', async () => {
+    const wrapper = await mountUserCenter()
+    await flushPromises()
+
+    await wrapper.find('button.back-btn').trigger('click')
+
+    expect(pageMocks.goBack).toHaveBeenCalledTimes(1)
   })
 })

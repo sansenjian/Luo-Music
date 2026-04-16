@@ -56,6 +56,54 @@ describe('Playlist.vue', () => {
     expect(items[1].find('.server-badge.qq').exists()).toBe(true)
   })
 
+  it('renders sparse playlist songs without crashing', () => {
+    const store = usePlayerStore()
+    store.songList = [
+      createMockSong({
+        id: 1,
+        name: 'Sparse Song',
+        artists: [],
+        album: { id: 1, name: 'Album', picUrl: '' },
+        duration: 180000,
+        platform: 'netease'
+      })
+    ]
+    store.currentIndex = 0
+
+    const wrapper = mount(Playlist)
+    const items = wrapper.findAll('.list-item')
+
+    expect(items).toHaveLength(1)
+    expect(items[0].text()).toContain('Sparse Song')
+    expect(items[0].find('.list-artist').text()).toBe('')
+  })
+
+  it('re-normalizes playlist items when song objects mutate in place', async () => {
+    const store = usePlayerStore()
+    store.songList = [
+      createMockSong({
+        id: 1,
+        name: 'Song 1',
+        artists: [{ id: 1, name: 'Artist 1' }],
+        album: { id: 11, name: 'Album 1', picUrl: 'cover-1.jpg' }
+      })
+    ]
+    const wrapper = mount(Playlist)
+
+    expect(wrapper.find('.list-title').text()).toContain('Song 1')
+    expect(wrapper.find('.list-artist').text()).toBe('Artist 1')
+    expect(wrapper.find('img').attributes('src')).toBe('cover-1.jpg')
+
+    store.songList[0].name = 'Song 1 Updated'
+    store.songList[0].artists = [{ id: 2, name: 'Artist 2' }]
+    store.songList[0].album.picUrl = 'cover-2.jpg'
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('.list-title').text()).toContain('Song 1 Updated')
+    expect(wrapper.find('.list-artist').text()).toBe('Artist 2')
+    expect(wrapper.find('img').attributes('src')).toBe('cover-2.jpg')
+  })
+
   it('highlights current playing song', () => {
     const store = usePlayerStore()
     store.songList = [
@@ -119,6 +167,79 @@ describe('Playlist.vue', () => {
 
     expect(items.length).toBeGreaterThan(0)
     expect(items.length).toBeLessThan(store.songList.length)
+  })
+
+  it('progressively unlocks more playlist content after scrolling past the midpoint', async () => {
+    const store = usePlayerStore()
+    store.songList = Array.from({ length: 200 }, (_, index) =>
+      createMockSong({
+        id: index + 1,
+        name: `Song ${index + 1}`
+      })
+    )
+
+    const wrapper = mount(Playlist, {
+      attachTo: document.body
+    })
+    const listElement = wrapper.get('.playlist').element as HTMLElement
+    const trackList = wrapper.get('.track-list').element as HTMLElement
+
+    expect(trackList.style.height).toBe('3700px')
+
+    listElement.scrollTop = 1600
+    await wrapper.get('.playlist').trigger('scroll')
+    await wrapper.vm.$nextTick()
+
+    expect(trackList.style.height).toBe('7400px')
+
+    wrapper.unmount()
+  })
+
+  it('reuses normalized playlist items that were already rendered', async () => {
+    const store = usePlayerStore()
+    let firstSongArtistsReads = 0
+    const firstSong = createMockSong({
+      id: 1,
+      name: 'Song 1',
+      album: { id: 11, name: 'Album 1', picUrl: 'cover-1.jpg' },
+      duration: 180000,
+      platform: 'netease'
+    })
+
+    Object.defineProperty(firstSong, 'artists', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        firstSongArtistsReads += 1
+        return [{ id: 1, name: 'Artist 1' }]
+      }
+    })
+
+    store.songList = [
+      firstSong,
+      ...Array.from({ length: 119 }, (_, index) =>
+        createMockSong({
+          id: index + 2,
+          name: `Song ${index + 2}`
+        })
+      )
+    ]
+
+    const wrapper = mount(Playlist, {
+      attachTo: document.body
+    })
+    const listElement = wrapper.get('.playlist').element as HTMLElement
+    const initialArtistsReads = firstSongArtistsReads
+
+    expect(initialArtistsReads).toBeGreaterThan(0)
+
+    listElement.scrollTop = 1600
+    await wrapper.get('.playlist').trigger('scroll')
+    await wrapper.vm.$nextTick()
+
+    expect(firstSongArtistsReads).toBe(initialArtistsReads)
+
+    wrapper.unmount()
   })
 
   it('clamps scroll position when the playlist shrinks after a deep scroll', async () => {

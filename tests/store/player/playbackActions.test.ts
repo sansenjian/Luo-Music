@@ -255,6 +255,44 @@ describe('playbackActions', () => {
     expect(state.currentSong?.album.picUrl).toBe('detail-cover')
   })
 
+  it('tolerates incomplete playlist-track song objects before hydrating netease playback', async () => {
+    const { actions, state } = createSubject()
+    const rawPlaylistSong = {
+      id: 'playlist-track-1',
+      name: 'Playlist Track',
+      platform: 'netease',
+      originalId: 'playlist-track-1',
+      duration: 0,
+      mvid: 0
+    } as unknown as Song
+
+    state.songList = [rawPlaylistSong]
+    adapterMock.getSongDetail.mockResolvedValue(
+      createMockSong({
+        id: 'playlist-track-1',
+        platform: 'netease',
+        name: 'Hydrated Playlist Track',
+        artists: [{ id: 3, name: 'Hydrated Artist' }],
+        album: { id: 9, name: 'Hydrated Album', picUrl: 'hydrated-cover' }
+      })
+    )
+    adapterMock.getSongUrl.mockResolvedValue('https://song.test/playlist-track.mp3')
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    await expect(actions.playSongWithDetails(0)).resolves.toBeUndefined()
+
+    expect(adapterMock.getSongDetail).toHaveBeenCalledWith('netease', 'playlist-track-1')
+    expect(rawPlaylistSong.url).toBe('https://song.test/playlist-track.mp3')
+    expect(rawPlaylistSong.artists?.[0]?.name).toBe('Hydrated Artist')
+    expect(rawPlaylistSong.album?.picUrl).toBe('hydrated-cover')
+    expect(state.currentSong?.name).toBe('Hydrated Playlist Track')
+  })
+
   it('reuses cached urls for netease songs during playback transitions', async () => {
     const { actions, state, playSongByIndex } = createSubject()
     const song = createMockSong({

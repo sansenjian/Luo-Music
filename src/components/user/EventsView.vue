@@ -1,65 +1,172 @@
 <script setup lang="ts">
-import type { EventArtist, EventItem } from '@/composables/useUserEvents'
+import { computed } from 'vue'
+
+import {
+  buildCachedEventViewModels,
+  type EventFilter,
+  type EventItem,
+  type EventViewModelCacheEntry,
+  type EventViewModel
+} from '@/composables/useUserEvents'
+import type { Song } from '@/platform/music/interface'
 
 interface EventsViewProps {
   events: EventItem[]
   loading?: boolean
+  loadingMore?: boolean
+  hasMore?: boolean
+  // eslint-disable-next-line vue/require-default-prop
+  error?: unknown
+  activeFilter?: EventFilter
 }
 
-defineProps<EventsViewProps>()
+const props = withDefaults(defineProps<EventsViewProps>(), {
+  loading: false,
+  loadingMore: false,
+  hasMore: false,
+  activeFilter: 'all'
+})
 
-const formatArtists = (artists?: EventArtist[]): string => {
-  return artists?.map(artist => artist.name).join(' / ') || ''
-}
+const emit = defineEmits<{
+  retry: []
+  loadMore: []
+  'update:filter': [filter: EventFilter]
+  'play-song': [song: Song, event: EventItem]
+}>()
 
-const formatEventTime = (timestamp: number | string | undefined): string => {
-  if (timestamp === undefined) {
+const errorMessage = computed(() => {
+  if (!props.error) {
     return ''
   }
 
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
+  if (props.error instanceof Error && props.error.message) {
+    return props.error.message
+  }
 
-  if (minutes < 60) return `${minutes}分钟前`
-  if (hours < 24) return `${hours}小时前`
-  if (days < 30) return `${days}天前`
-  return date.toLocaleDateString('zh-CN')
+  return '动态加载失败，请重试'
+})
+
+const showBlockingError = computed(
+  () => Boolean(props.error) && props.events.length === 0 && !props.loading
+)
+const showInlineError = computed(() => Boolean(props.error) && props.events.length > 0)
+const emptyMessage = computed(() => (props.activeFilter === 'song' ? '暂无音乐动态' : '暂无动态'))
+const eventViewModelCache = new Map<string, EventViewModelCacheEntry>()
+const eventViewModels = computed<EventViewModel[]>(() => {
+  return buildCachedEventViewModels(props.events, eventViewModelCache, new Date())
+})
+
+const updateFilter = (filter: EventFilter): void => {
+  if (props.activeFilter === filter) {
+    return
+  }
+
+  emit('update:filter', filter)
+}
+
+const retry = (): void => {
+  emit('retry')
+}
+
+const loadMore = (): void => {
+  emit('loadMore')
+}
+
+const playSong = (event: EventItem): void => {
+  if (!event.playableSong) {
+    return
+  }
+
+  emit('play-song', event.playableSong, event)
 }
 </script>
 
 <template>
   <div class="events-section">
-    <div v-if="loading" class="loading-container">
+    <div class="events-toolbar">
+      <div class="event-filters" role="tablist" aria-label="动态筛选">
+        <button
+          type="button"
+          class="filter-chip"
+          :class="{ active: props.activeFilter === 'all' }"
+          @click="updateFilter('all')"
+        >
+          全部动态
+        </button>
+        <button
+          type="button"
+          class="filter-chip"
+          :class="{ active: props.activeFilter === 'song' }"
+          @click="updateFilter('song')"
+        >
+          音乐动态
+        </button>
+      </div>
+    </div>
+
+    <div v-if="props.loading && props.events.length === 0" class="loading-container">
       <p>加载中...</p>
     </div>
 
-    <div v-else-if="events.length === 0" class="empty-state">
-      <p>暂无动态</p>
+    <div v-else-if="showBlockingError" class="error-state">
+      <p>{{ errorMessage }}</p>
+      <button type="button" class="action-button" @click="retry">重新加载</button>
+    </div>
+
+    <div v-else-if="props.events.length === 0" class="empty-state">
+      <p>{{ emptyMessage }}</p>
     </div>
 
     <div v-else class="events-list">
-      <div v-for="event in events" :key="event.eventId" class="event-item">
+      <div v-if="showInlineError" class="error-banner">
+        <span>{{ errorMessage }}</span>
+        <button type="button" class="inline-action" @click="retry">重试</button>
+      </div>
+
+      <div v-for="eventItem in eventViewModels" :key="eventItem.key" class="event-item">
         <div class="event-header">
-          <img class="event-user-avatar" :src="event.user?.avatarUrl" :alt="event.user?.nickname" />
+          <img
+            class="event-user-avatar"
+            :src="eventItem.userAvatarUrl"
+            :alt="eventItem.userAvatarAlt"
+            loading="lazy"
+            decoding="async"
+          />
           <div class="event-user-info">
-            <span class="event-user-name">{{ event.user?.nickname }}</span>
-            <span class="event-time">{{ formatEventTime(event.eventTime) }}</span>
+            <span class="event-user-name">{{ eventItem.userName }}</span>
+            <span class="event-time">{{ eventItem.formattedTime }}</span>
           </div>
         </div>
-        <div v-if="event.message" class="event-content">
-          <p>{{ event.message }}</p>
+        <div v-if="eventItem.message" class="event-content">
+          <p>{{ eventItem.message }}</p>
         </div>
-        <div class="event-song" v-if="event.song">
-          <img class="event-song-cover" :src="event.song.album?.picUrl" :alt="event.song.name" />
+        <div v-if="eventItem.displaySong" class="event-song">
+          <img
+            class="event-song-cover"
+            :src="eventItem.songCoverUrl"
+            :alt="eventItem.songName"
+            loading="lazy"
+            decoding="async"
+          />
           <div class="event-song-info">
-            <span class="event-song-name">{{ event.song.name }}</span>
-            <span class="event-song-artist">{{ formatArtists(event.song.artists) }}</span>
+            <span class="event-song-name">{{ eventItem.songName }}</span>
+            <span class="event-song-artist">{{ eventItem.artistText }}</span>
           </div>
+          <button
+            v-if="eventItem.playableSong"
+            type="button"
+            class="event-song-play"
+            @click="playSong(eventItem.event)"
+          >
+            播放
+          </button>
         </div>
+      </div>
+
+      <div v-if="props.hasMore" class="load-more-section">
+        <button type="button" class="action-button" :disabled="props.loadingMore" @click="loadMore">
+          {{ props.loadingMore ? '加载更多中...' : '加载更多动态' }}
+        </button>
       </div>
     </div>
   </div>
@@ -74,6 +181,47 @@ const formatEventTime = (timestamp: number | string | undefined): string => {
   box-shadow: 4px 4px 0 var(--black);
 }
 
+.events-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 2px solid var(--black);
+  background: var(--bg);
+}
+
+.event-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  padding: 8px 14px;
+  border: 2px solid var(--black);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--black);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.filter-chip:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--black);
+}
+
+.filter-chip.active {
+  background: var(--black);
+  color: var(--white);
+}
+
 .loading-container {
   text-align: center;
   padding: 60px 20px;
@@ -81,24 +229,49 @@ const formatEventTime = (timestamp: number | string | undefined): string => {
   color: var(--gray);
 }
 
+.error-state,
 .empty-state {
   text-align: center;
   padding: 80px 20px;
 }
 
+.error-state p,
 .empty-state p {
   margin: 0;
   font-size: 16px;
   color: var(--gray);
 }
 
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
 .events-list {
   padding: 16px;
+}
+
+.error-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 2px solid var(--black);
+  border-radius: 10px;
+  background: #fff4e8;
+  color: var(--black);
 }
 
 .event-item {
   padding: 20px;
   border-bottom: 1px solid var(--bg-dark);
+  contain: layout paint style;
+  contain-intrinsic-size: 168px;
+  content-visibility: auto;
   transition: background 0.2s ease;
 }
 
@@ -181,6 +354,7 @@ const formatEventTime = (timestamp: number | string | undefined): string => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
 }
 
 .event-song-name {
@@ -192,5 +366,37 @@ const formatEventTime = (timestamp: number | string | undefined): string => {
 .event-song-artist {
   font-size: 12px;
   color: var(--gray);
+}
+
+.event-song-play,
+.action-button,
+.inline-action {
+  border: 2px solid var(--black);
+  background: var(--white);
+  color: var(--black);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.event-song-play {
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+
+.action-button,
+.inline-action {
+  padding: 10px 16px;
+  border-radius: 10px;
+}
+
+.action-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.load-more-section {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0 8px;
 }
 </style>

@@ -25,6 +25,9 @@ export interface SearchResultItem {
   [key: string]: unknown
 }
 
+const SEARCH_PAGE_SIZE = 50
+const MAX_SEARCH_PAGES = 100
+
 export function searchResultItemToSong(item: SearchResultItem): Song {
   const { id, name, artist, album, pic, cover, url, platform, duration, ...extraFields } = item
 
@@ -144,18 +147,26 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
           server: server.value
         })
 
+        let hasCommittedCurrentSearchResults = false
+
         try {
-          const response = await task.guard(
-            musicService.search(server.value, trimmedKeyword, 30, 1)
+          const firstPage = await task.guard(
+            musicService.search(server.value, trimmedKeyword, SEARCH_PAGE_SIZE, 1)
           )
 
-          logger.debug('searchStore', 'Search result', response)
+          logger.debug('searchStore', 'Search result page', {
+            page: 1,
+            response: firstPage
+          })
 
-          if (!response?.list || !Array.isArray(response.list)) {
+          if (!firstPage?.list || !Array.isArray(firstPage.list)) {
             throw new Error('Invalid search result payload')
           }
 
-          if (response.list.length === 0) {
+          const initialTotal =
+            typeof firstPage.total === 'number' && firstPage.total > 0 ? firstPage.total : undefined
+
+          if (firstPage.list.length === 0) {
             task.commit(() => {
               results.value = []
               totalResults.value = 0
@@ -165,14 +176,78 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
           }
 
           task.commit(() => {
-            totalResults.value = response.total || 0
-            results.value = normalizeSearchResults(response.list)
+            totalResults.value = initialTotal ?? firstPage.list.length
+            results.value = normalizeSearchResults(firstPage.list)
+            hasCommittedCurrentSearchResults = true
 
-            logger.info('searchStore', 'Search successful', {
+            logger.info('searchStore', 'Search first page loaded', {
               count: results.value.length,
               total: totalResults.value
             })
           })
+
+          let loadedCount = firstPage.list.length
+          let nextPage = 2
+          let total = initialTotal
+          let unknownTotal = total === undefined
+
+          while (unknownTotal || (total !== undefined && loadedCount < total)) {
+            if (nextPage > MAX_SEARCH_PAGES) {
+              unknownTotal = false
+              logger.warn('searchStore', 'Search paging stopped at safety limit', {
+                keyword: trimmedKeyword,
+                server: server.value,
+                loadedCount,
+                total,
+                pageLimit: MAX_SEARCH_PAGES
+              })
+              break
+            }
+
+            const pageResult = await task.guard(
+              musicService.search(server.value, trimmedKeyword, SEARCH_PAGE_SIZE, nextPage)
+            )
+
+            logger.debug('searchStore', 'Search result page', {
+              page: nextPage,
+              response: pageResult
+            })
+
+            if (!pageResult?.list || !Array.isArray(pageResult.list)) {
+              throw new Error('Invalid search result payload')
+            }
+
+            if (typeof pageResult.total === 'number' && pageResult.total > 0) {
+              total = Math.max(total ?? 0, pageResult.total)
+              unknownTotal = false
+            }
+
+            if (pageResult.list.length === 0) {
+              unknownTotal = false
+              break
+            }
+
+            const nextItems = normalizeSearchResults(pageResult.list)
+            loadedCount += pageResult.list.length
+
+            if (pageResult.list.length < SEARCH_PAGE_SIZE) {
+              unknownTotal = false
+            }
+
+            task.commit(() => {
+              totalResults.value = total ?? loadedCount
+              results.value = [...results.value, ...nextItems]
+              hasCommittedCurrentSearchResults = true
+
+              logger.info('searchStore', 'Search page appended', {
+                page: nextPage,
+                count: results.value.length,
+                total: totalResults.value
+              })
+            })
+
+            nextPage += 1
+          }
         } catch (err: unknown) {
           if (isCanceledRequestError(err)) {
             logger.debug('searchStore', 'Search canceled', {
@@ -187,8 +262,10 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
 
           task.commit(() => {
             error.value = errorMessage
-            results.value = []
-            totalResults.value = 0
+            if (!hasCommittedCurrentSearchResults) {
+              results.value = []
+              totalResults.value = 0
+            }
           })
 
           throw new Error(errorMessage, { cause: err })

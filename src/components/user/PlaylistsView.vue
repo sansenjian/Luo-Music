@@ -1,65 +1,104 @@
-<script setup>
-defineProps({
-  playlists: {
-    type: Array,
-    required: true
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
-})
+<script setup lang="ts">
+import type { PlaylistItem } from '@/composables/useUserPlaylists'
 
-const emit = defineEmits(['playlist-click'])
-
-const handlePlaylistClick = playlistId => {
-  emit('playlist-click', playlistId)
+interface PlaylistsViewProps {
+  playlists: PlaylistItem[]
+  loading?: boolean
+  activePlaylistId?: string | null
+  playingPlaylistId?: string | null
 }
 
-const formatPlayCount = count => {
-  if (count > 10000) {
-    return (count / 10000).toFixed(1) + '万'
+const props = withDefaults(defineProps<PlaylistsViewProps>(), {
+  loading: false,
+  activePlaylistId: null,
+  playingPlaylistId: null
+})
+
+const emit = defineEmits<{
+  'playlist-open': [playlistId: string | number]
+  'playlist-play': [playlistId: string | number]
+}>()
+
+function handlePlaylistOpen(playlistId: string | number): void {
+  emit('playlist-open', playlistId)
+}
+
+function handlePlaylistPlay(playlistId: string | number): void {
+  emit('playlist-play', playlistId)
+}
+
+function isPlayingPlaylist(playlistId: string | number): boolean {
+  return String(playlistId) === props.playingPlaylistId
+}
+
+function formatPlayCount(count: unknown): string | number {
+  const numericCount = Number(count)
+  if (!Number.isFinite(numericCount) || numericCount <= 0) {
+    return 0
   }
-  return count
+
+  if (numericCount > 10000) {
+    return `${(numericCount / 10000).toFixed(1)}万`
+  }
+
+  return numericCount
 }
 </script>
 
 <template>
   <div class="playlists-section">
-    <div v-if="loading" class="loading-container">
+    <div v-if="props.loading && props.playlists.length === 0" class="loading-container">
       <p>加载中...</p>
     </div>
 
-    <div v-else-if="playlists.length === 0" class="empty-state">
+    <div v-else-if="props.playlists.length === 0" class="empty-state">
       <p>暂无歌单</p>
     </div>
 
     <div v-else class="playlists-grid">
-      <div
-        v-for="playlist in playlists"
+      <article
+        v-for="playlist in props.playlists"
         :key="playlist.id"
         class="playlist-card"
-        @click="handlePlaylistClick(playlist.id)"
+        :class="{ active: String(playlist.id) === props.activePlaylistId }"
       >
-        <div class="playlist-cover">
-          <img :src="playlist.coverImgUrl" :alt="playlist.name" />
-          <div class="playlist-overlay">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z"></path>
-            </svg>
+        <button type="button" class="playlist-card-hit" @click="handlePlaylistOpen(playlist.id)">
+          <div class="playlist-cover">
+            <img
+              :src="String(playlist.coverImgUrl ?? '')"
+              :alt="playlist.name"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="playlist-overlay">
+              <div class="playlist-overlay-copy">
+                <strong>查看详情</strong>
+                <span>浏览曲目并选择播放</span>
+              </div>
+            </div>
+            <span v-if="Number(playlist.playCount) > 0" class="play-count">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"></path>
+              </svg>
+              {{ formatPlayCount(playlist.playCount) }}
+            </span>
           </div>
-          <span v-if="playlist.playCount > 0" class="play-count">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z"></path>
-            </svg>
-            {{ formatPlayCount(playlist.playCount) }}
-          </span>
-        </div>
-        <div class="playlist-info">
-          <h3 class="playlist-name">{{ playlist.name }}</h3>
-          <p class="playlist-count">{{ playlist.trackCount }} 首</p>
-        </div>
-      </div>
+          <div class="playlist-info">
+            <h3 class="playlist-name">{{ playlist.name }}</h3>
+            <p class="playlist-count">{{ playlist.trackCount ?? 0 }} 首</p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          class="playlist-play-button"
+          :class="{ loading: isPlayingPlaylist(playlist.id) }"
+          :disabled="isPlayingPlaylist(playlist.id)"
+          @click="handlePlaylistPlay(playlist.id)"
+        >
+          {{ isPlayingPlaylist(playlist.id) ? '播放中...' : '直接播放' }}
+        </button>
+      </article>
     </div>
   </div>
 </template>
@@ -92,21 +131,35 @@ const formatPlayCount = count => {
 
 .playlists-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 28px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 24px;
 }
 
 .playlist-card {
-  cursor: pointer;
-  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  contain: layout paint style;
+  contain-intrinsic-size: 320px 360px;
+  content-visibility: auto;
 }
 
-.playlist-card:hover {
-  transform: translateY(-8px);
-}
-
-.playlist-card:hover .playlist-cover {
+.playlist-card.active .playlist-card-hit {
+  transform: translate(-2px, -2px);
   box-shadow: 8px 8px 0 var(--black);
+}
+
+.playlist-card-hit {
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.playlist-card-hit:hover {
+  transform: translateY(-6px);
 }
 
 .playlist-cover {
@@ -116,9 +169,13 @@ const formatPlayCount = count => {
   overflow: hidden;
   background: var(--white);
   margin-bottom: 12px;
-  border-radius: 12px;
+  border-radius: 14px;
   box-shadow: 4px 4px 0 var(--black);
-  transition: all 0.3s ease;
+  transition: box-shadow 0.2s ease;
+}
+
+.playlist-card-hit:hover .playlist-cover {
+  box-shadow: 8px 8px 0 var(--black);
 }
 
 .playlist-cover img {
@@ -130,27 +187,32 @@ const formatPlayCount = count => {
 .playlist-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  padding: 16px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.74));
   opacity: 0;
-  transition: all 0.3s ease;
+  transition: opacity 0.2s ease;
   color: var(--white);
-  backdrop-filter: blur(2px);
 }
 
-.playlist-card:hover .playlist-overlay {
+.playlist-card-hit:hover .playlist-overlay,
+.playlist-card.active .playlist-overlay {
   opacity: 1;
 }
 
-.playlist-overlay svg {
-  transform: scale(0.8);
-  transition: transform 0.3s ease;
+.playlist-overlay-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.playlist-card:hover .playlist-overlay svg {
-  transform: scale(1);
+.playlist-overlay-copy strong {
+  font-size: 16px;
+}
+
+.playlist-overlay-copy span {
+  font-size: 12px;
 }
 
 .play-count {
@@ -172,9 +234,9 @@ const formatPlayCount = count => {
 }
 
 .playlist-name {
-  margin: 0 0 4px 0;
+  margin: 0 0 6px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--black);
   line-height: 1.4;
   display: -webkit-box;
@@ -189,9 +251,37 @@ const formatPlayCount = count => {
   color: var(--gray);
 }
 
+.playlist-play-button {
+  padding: 10px 14px;
+  border: 2px solid var(--black);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--black);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.playlist-play-button.loading,
+.playlist-play-button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.playlist-play-button:hover {
+  background: var(--black);
+  color: var(--white);
+}
+
+.playlist-play-button:hover:disabled {
+  background: var(--white);
+  color: var(--black);
+}
+
 @media (max-width: 768px) {
   .playlists-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
   }
 }

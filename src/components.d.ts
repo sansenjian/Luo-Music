@@ -11,9 +11,11 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AlbumDetailPanel: typeof import('./components/user/AlbumDetailPanel.vue')['default']
     CacheManager: typeof import('./components/CacheManager.vue')['default']
     ErrorToast: typeof import('./components/ErrorToast.vue')['default']
     EventsView: typeof import('./components/user/EventsView.vue')['default']
+    FavoriteAlbumsView: typeof import('./components/user/FavoriteAlbumsView.vue')['default']
     HomeFooter: typeof import('./components/home/HomeFooter.vue')['default']
     HomeHeader: typeof import('./components/home/HomeHeader.vue')['default']
     HomeSearchBar: typeof import('./components/home/HomeSearchBar.vue')['default']
@@ -28,12 +30,14 @@ declare module 'vue' {
     PageTransition: typeof import('./components/PageTransition.vue')['default']
     Player: typeof import('./components/Player.vue')['default']
     Playlist: typeof import('./components/Playlist.vue')['default']
+    PlaylistDetailPanel: typeof import('./components/user/PlaylistDetailPanel.vue')['default']
     PlaylistsView: typeof import('./components/user/PlaylistsView.vue')['default']
     QQLoginModal: typeof import('./components/QQLoginModal.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SearchInput: typeof import('./components/SearchInput.vue')['default']
     SettingsPanel: typeof import('./components/SettingsPanel.vue')['default']
+    SongDetailList: typeof import('./components/user/SongDetailList.vue')['default']
     Toast: typeof import('./components/Toast.vue')['default']
     UserAvatar: typeof import('./components/UserAvatar.vue')['default']
     UserProfile: typeof import('./components/UserProfile.vue')['default']

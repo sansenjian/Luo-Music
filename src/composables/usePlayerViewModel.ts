@@ -87,7 +87,10 @@ export function usePlayerViewModel(deps: PlayerViewModelDeps = {}) {
   const volumePercent = computed(() => playerStore.volume * 100)
   const volumeDisplay = computed(() => Math.round(volumePercent.value))
   const artistText = computed(
-    () => currentSong.value?.artists.map(artist => artist.name).join(' / ') || 'Unknown Artist'
+    () =>
+      (Array.isArray(currentSong.value?.artists)
+        ? currentSong.value?.artists.map(artist => artist.name).join(' / ')
+        : '') || 'Unknown Artist'
   )
   const coverUrl = computed(() => resolveCoverUrl(currentSong.value?.album?.picUrl))
   const playModeSvg = computed<PlayModeSvgElement[]>(

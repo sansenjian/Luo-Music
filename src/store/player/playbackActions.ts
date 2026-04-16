@@ -86,10 +86,24 @@ export class PlaybackActions {
   }
 
   private cloneSong(song: Song): Song {
+    const artists = Array.isArray(song.artists) ? song.artists.map(artist => ({ ...artist })) : []
+    const album =
+      song.album && typeof song.album === 'object'
+        ? {
+            id: song.album.id ?? 0,
+            name: song.album.name ?? '',
+            picUrl: song.album.picUrl ?? ''
+          }
+        : {
+            id: 0,
+            name: '',
+            picUrl: ''
+          }
+
     return {
       ...song,
-      artists: song.artists.map(artist => ({ ...artist })),
-      album: { ...song.album },
+      artists,
+      album,
       ...(song.extra ? { extra: { ...song.extra } } : {})
     }
   }

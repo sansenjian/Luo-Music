@@ -20,6 +20,7 @@ declare global {
   const animateVolumeIcon: typeof import('./composables/useAnimations').animateVolumeIcon
   const asyncComputed: typeof import('@vueuse/core').asyncComputed
   const autoResetRef: typeof import('@vueuse/core').autoResetRef
+  const buildCachedEventViewModels: typeof import('./composables/useUserEvents').buildCachedEventViewModels
   const clearSearch: typeof import('./composables/useSearch').clearSearch
   const computed: typeof import('vue').computed
   const computedAsync: typeof import('@vueuse/core').computedAsync
@@ -30,6 +31,7 @@ declare global {
   const controlledRef: typeof import('@vueuse/core').controlledRef
   const createApp: typeof import('vue').createApp
   const createEventHook: typeof import('@vueuse/core').createEventHook
+  const createEventViewModel: typeof import('./composables/useUserEvents').createEventViewModel
   const createGlobalState: typeof import('@vueuse/core').createGlobalState
   const createInjectionState: typeof import('@vueuse/core').createInjectionState
   const createPinia: typeof import('pinia').createPinia
@@ -51,10 +53,14 @@ declare global {
   const eagerComputed: typeof import('@vueuse/core').eagerComputed
   const effectScope: typeof import('vue').effectScope
   const extendRef: typeof import('@vueuse/core').extendRef
+  const formatEventArtists: typeof import('./composables/useUserEvents').formatEventArtists
+  const formatEventTimeLabel: typeof import('./composables/useUserEvents').formatEventTimeLabel
   const getActivePinia: typeof import('pinia').getActivePinia
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
+  const getEventDisplaySong: typeof import('./composables/useUserEvents').getEventDisplaySong
+  const getEventKey: typeof import('./composables/useUserEvents').getEventKey
   const getResultsForPlaylist: typeof import('./composables/useSearch').getResultsForPlaylist
   const getSongAt: typeof import('./composables/useSearch').getSongAt
   const h: typeof import('vue').h
@@ -214,6 +220,7 @@ declare global {
   const useEventSource: typeof import('@vueuse/core').useEventSource
   const useEyeDropper: typeof import('@vueuse/core').useEyeDropper
   const useFavicon: typeof import('@vueuse/core').useFavicon
+  const useFavoriteAlbums: typeof import('./composables/useFavoriteAlbums').default
   const useFetch: typeof import('@vueuse/core').useFetch
   const useFileDialog: typeof import('@vueuse/core').useFileDialog
   const useFileSystemAccess: typeof import('@vueuse/core').useFileSystemAccess
@@ -325,6 +332,7 @@ declare global {
   const useToggle: typeof import('@vueuse/core').useToggle
   const useTransition: typeof import('@vueuse/core').useTransition
   const useUrlSearchParams: typeof import('@vueuse/core').useUrlSearchParams
+  const useUserCenterPage: typeof import('./composables/useUserCenterPage').default
   const useUserData: typeof import('./composables/useUserData').useUserData
   const useUserDataQuery: typeof import('./composables/useUserDataQuery').useUserDataQuery
   const useUserEvents: typeof import('./composables/useUserEvents').useUserEvents
@@ -396,6 +404,9 @@ declare global {
   export type { CommandContextDeps } from './composables/useCommandContext'
   import('./composables/useCommandContext')
   // @ts-ignore
+  export type { FavoriteAlbumItem, UseFavoriteAlbumsReturn } from './composables/useFavoriteAlbums'
+  import('./composables/useFavoriteAlbums')
+  // @ts-ignore
   export type { MusicServerOption, HomePageDeps } from './composables/useHomePage'
   import('./composables/useHomePage')
   // @ts-ignore
@@ -420,6 +431,12 @@ declare global {
   export type { SliderOptions } from './composables/useSlider'
   import('./composables/useSlider')
   // @ts-ignore
+  export type {
+    UseUserCenterPageDeps,
+    UseUserCenterPageReturn
+  } from './composables/useUserCenterPage'
+  import('./composables/useUserCenterPage')
+  // @ts-ignore
   export type { UserStats, UseUserDataReturn } from './composables/useUserData'
   import('./composables/useUserData')
   // @ts-ignore
@@ -432,6 +449,9 @@ declare global {
     EventAlbum,
     EventSong,
     EventItem,
+    EventFilter,
+    EventViewModel,
+    EventViewModelCacheEntry,
     UseUserEventsReturn
   } from './composables/useUserEvents'
   import('./composables/useUserEvents')
@@ -486,6 +506,9 @@ declare module 'vue' {
     >
     readonly asyncComputed: UnwrapRef<(typeof import('@vueuse/core'))['asyncComputed']>
     readonly autoResetRef: UnwrapRef<(typeof import('@vueuse/core'))['autoResetRef']>
+    readonly buildCachedEventViewModels: UnwrapRef<
+      (typeof import('./composables/useUserEvents'))['buildCachedEventViewModels']
+    >
     readonly computed: UnwrapRef<(typeof import('vue'))['computed']>
     readonly computedAsync: UnwrapRef<(typeof import('@vueuse/core'))['computedAsync']>
     readonly computedEager: UnwrapRef<(typeof import('@vueuse/core'))['computedEager']>
@@ -495,6 +518,9 @@ declare module 'vue' {
     readonly controlledRef: UnwrapRef<(typeof import('@vueuse/core'))['controlledRef']>
     readonly createApp: UnwrapRef<(typeof import('vue'))['createApp']>
     readonly createEventHook: UnwrapRef<(typeof import('@vueuse/core'))['createEventHook']>
+    readonly createEventViewModel: UnwrapRef<
+      (typeof import('./composables/useUserEvents'))['createEventViewModel']
+    >
     readonly createGlobalState: UnwrapRef<(typeof import('@vueuse/core'))['createGlobalState']>
     readonly createInjectionState: UnwrapRef<
       (typeof import('@vueuse/core'))['createInjectionState']
@@ -527,10 +553,20 @@ declare module 'vue' {
     readonly eagerComputed: UnwrapRef<(typeof import('@vueuse/core'))['eagerComputed']>
     readonly effectScope: UnwrapRef<(typeof import('vue'))['effectScope']>
     readonly extendRef: UnwrapRef<(typeof import('@vueuse/core'))['extendRef']>
+    readonly formatEventArtists: UnwrapRef<
+      (typeof import('./composables/useUserEvents'))['formatEventArtists']
+    >
+    readonly formatEventTimeLabel: UnwrapRef<
+      (typeof import('./composables/useUserEvents'))['formatEventTimeLabel']
+    >
     readonly getActivePinia: UnwrapRef<(typeof import('pinia'))['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<(typeof import('vue'))['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<(typeof import('vue'))['getCurrentScope']>
     readonly getCurrentWatcher: UnwrapRef<(typeof import('vue'))['getCurrentWatcher']>
+    readonly getEventDisplaySong: UnwrapRef<
+      (typeof import('./composables/useUserEvents'))['getEventDisplaySong']
+    >
+    readonly getEventKey: UnwrapRef<(typeof import('./composables/useUserEvents'))['getEventKey']>
     readonly h: UnwrapRef<(typeof import('vue'))['h']>
     readonly ignorableWatch: UnwrapRef<(typeof import('@vueuse/core'))['ignorableWatch']>
     readonly inject: UnwrapRef<(typeof import('vue'))['inject']>
@@ -693,6 +729,9 @@ declare module 'vue' {
     readonly useEventSource: UnwrapRef<(typeof import('@vueuse/core'))['useEventSource']>
     readonly useEyeDropper: UnwrapRef<(typeof import('@vueuse/core'))['useEyeDropper']>
     readonly useFavicon: UnwrapRef<(typeof import('@vueuse/core'))['useFavicon']>
+    readonly useFavoriteAlbums: UnwrapRef<
+      (typeof import('./composables/useFavoriteAlbums'))['default']
+    >
     readonly useFetch: UnwrapRef<(typeof import('@vueuse/core'))['useFetch']>
     readonly useFileDialog: UnwrapRef<(typeof import('@vueuse/core'))['useFileDialog']>
     readonly useFileSystemAccess: UnwrapRef<(typeof import('@vueuse/core'))['useFileSystemAccess']>
@@ -842,6 +881,9 @@ declare module 'vue' {
     readonly useToggle: UnwrapRef<(typeof import('@vueuse/core'))['useToggle']>
     readonly useTransition: UnwrapRef<(typeof import('@vueuse/core'))['useTransition']>
     readonly useUrlSearchParams: UnwrapRef<(typeof import('@vueuse/core'))['useUrlSearchParams']>
+    readonly useUserCenterPage: UnwrapRef<
+      (typeof import('./composables/useUserCenterPage'))['default']
+    >
     readonly useUserData: UnwrapRef<(typeof import('./composables/useUserData'))['useUserData']>
     readonly useUserDataQuery: UnwrapRef<
       (typeof import('./composables/useUserDataQuery'))['useUserDataQuery']
