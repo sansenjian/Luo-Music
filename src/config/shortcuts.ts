@@ -63,8 +63,8 @@ export const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
   {
     id: 'compactMode',
     name: '切换紧凑模式',
-    keys: ['Escape'],
-    globalKeys: [], // ESC 不注册为全局
+    keys: ['Tab'],
+    globalKeys: [], // Tab 不注册为全局
     action: 'toggleCompact'
   }
 ]

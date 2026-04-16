@@ -1,7 +1,8 @@
 import { onMounted, onUnmounted } from 'vue'
 
 import { DEFAULT_SHORTCUTS } from '@/config/shortcuts'
-import { COMMANDS } from '@/core/commands/commands'
+import type { ShortcutConfig } from '@/config/shortcuts.d'
+import { COMMANDS, type CommandId } from '@/core/commands/commands'
 import { services } from '@/services'
 import type { CommandService } from '@/services/commandService'
 
@@ -10,10 +11,15 @@ export type KeyboardShortcutDeps = {
   target?: Pick<Window, 'addEventListener' | 'removeEventListener'>
 }
 
+type ShortcutCommand = {
+  id: CommandId
+  payload?: unknown
+}
+
 export function useKeyboardShortcuts(deps: KeyboardShortcutDeps = {}): void {
   const commandService = deps.commandService ?? services.commands()
   let target: KeyboardShortcutDeps['target'] | null = null
-  const commandMap: Record<string, { id: string; payload?: unknown }> = {
+  const commandMap: Record<ShortcutConfig['action'], ShortcutCommand> = {
     togglePlay: { id: COMMANDS.PLAYER_TOGGLE_PLAY },
     playPrev: { id: COMMANDS.PLAYER_PLAY_PREV },
     playNext: { id: COMMANDS.PLAYER_PLAY_NEXT },
@@ -24,46 +30,77 @@ export function useKeyboardShortcuts(deps: KeyboardShortcutDeps = {}): void {
     toggleCompact: { id: COMMANDS.PLAYER_TOGGLE_COMPACT_MODE }
   }
 
-  function handleKeydown(event: KeyboardEvent): void {
-    const eventTarget = event.target instanceof HTMLElement ? event.target : null
-    const isInput = eventTarget
-      ? ['INPUT', 'TEXTAREA'].includes(eventTarget.tagName) || eventTarget.isContentEditable
+  function resolveEventTarget(event: KeyboardEvent): HTMLElement | null {
+    return event.target instanceof HTMLElement ? event.target : null
+  }
+
+  function isEditableTarget(targetElement: HTMLElement | null): boolean {
+    return targetElement
+      ? ['INPUT', 'TEXTAREA'].includes(targetElement.tagName) || targetElement.isContentEditable
       : false
+  }
 
-    if (isInput) {
-      if (event.key === 'Escape') {
-        eventTarget?.blur()
-      }
+  function handleEditableKeydown(event: KeyboardEvent, targetElement: HTMLElement | null): boolean {
+    if (!isEditableTarget(targetElement)) {
+      return false
+    }
+
+    if (event.key === 'Escape') {
+      targetElement?.blur()
+    }
+
+    return true
+  }
+
+  function matchesShortcut(event: KeyboardEvent, shortcut: ShortcutConfig): boolean {
+    if (!shortcut.keys.includes(event.key) && !shortcut.keys.includes(event.code)) {
+      return false
+    }
+
+    const needsCtrlOrMeta = shortcut.modifiers?.includes('ctrlOrMeta')
+    const hasCtrlOrMeta = event.ctrlKey || event.metaKey
+
+    if (needsCtrlOrMeta && !hasCtrlOrMeta) {
+      return false
+    }
+
+    if (!needsCtrlOrMeta && hasCtrlOrMeta) {
+      return false
+    }
+
+    return true
+  }
+
+  function resolveShortcutCommand(shortcut: ShortcutConfig): ShortcutCommand | null {
+    return commandMap[shortcut.action] ?? null
+  }
+
+  function executeShortcut(event: KeyboardEvent, shortcut: ShortcutConfig): void {
+    const command = resolveShortcutCommand(shortcut)
+    if (!command) {
       return
     }
 
-    for (const shortcut of DEFAULT_SHORTCUTS) {
-      if (!shortcut.keys.includes(event.key) && !shortcut.keys.includes(event.code)) {
-        continue
-      }
-
-      const needsCtrlOrMeta = shortcut.modifiers?.includes('ctrlOrMeta')
-      const hasCtrlOrMeta = event.ctrlKey || event.metaKey
-
-      if (needsCtrlOrMeta && !hasCtrlOrMeta) {
-        continue
-      }
-
-      if (!needsCtrlOrMeta && hasCtrlOrMeta) {
-        continue
-      }
-
-      const command = commandMap[shortcut.action]
-      if (command) {
-        if (!commandService.canExecute(command.id, command.payload)) {
-          return
-        }
-
-        event.preventDefault()
-        void commandService.execute(command.id, command.payload)
-      }
+    if (!commandService.canExecute(command.id, command.payload)) {
       return
     }
+
+    event.preventDefault()
+    void commandService.execute(command.id, command.payload)
+  }
+
+  function handleKeydown(event: KeyboardEvent): void {
+    const eventTarget = resolveEventTarget(event)
+    if (handleEditableKeydown(event, eventTarget)) {
+      return
+    }
+
+    const matchedShortcut = DEFAULT_SHORTCUTS.find(shortcut => matchesShortcut(event, shortcut))
+    if (!matchedShortcut) {
+      return
+    }
+
+    executeShortcut(event, matchedShortcut)
   }
 
   onMounted(() => {
