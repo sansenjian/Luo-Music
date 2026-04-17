@@ -22,6 +22,7 @@ declare module 'vue' {
     HomeSearchBar: typeof import('./components/home/HomeSearchBar.vue')['default']
     HomeServerSelect: typeof import('./components/home/HomeServerSelect.vue')['default']
     HomeSidebar: typeof import('./components/home/HomeSidebar.vue')['default']
+    HomeSidebarFooter: typeof import('./components/home/HomeSidebarFooter.vue')['default']
     HomeTabBar: typeof import('./components/home/HomeTabBar.vue')['default']
     HomeWindowControls: typeof import('./components/home/HomeWindowControls.vue')['default']
     HomeWorkspace: typeof import('./components/home/HomeWorkspace.vue')['default']

@@ -188,6 +188,7 @@ declare global {
   const useCloned: typeof import('@vueuse/core').useCloned
   const useColorMode: typeof import('@vueuse/core').useColorMode
   const useCommandContext: typeof import('./composables/useCommandContext').useCommandContext
+  const useCompactPlayerFooterLayout: typeof import('./composables/useCompactPlayerFooterLayout').default
   const useConfirmDialog: typeof import('@vueuse/core').useConfirmDialog
   const useCountdown: typeof import('@vueuse/core').useCountdown
   const useCounter: typeof import('@vueuse/core').useCounter
@@ -230,6 +231,7 @@ declare global {
   const useFullscreen: typeof import('@vueuse/core').useFullscreen
   const useGamepad: typeof import('@vueuse/core').useGamepad
   const useGeolocation: typeof import('@vueuse/core').useGeolocation
+  const useHomeBrandPlacement: typeof import('./composables/useHomeBrandPlacement').useHomeBrandPlacement
   const useHomePage: typeof import('./composables/useHomePage').default
   const useHomeShell: typeof import('./composables/useHomeShell').useHomeShell
   const useId: typeof import('vue').useId
@@ -286,6 +288,7 @@ declare global {
   const usePrevious: typeof import('@vueuse/core').usePrevious
   const useRafFn: typeof import('@vueuse/core').useRafFn
   const useRefHistory: typeof import('@vueuse/core').useRefHistory
+  const useRenderStyle: typeof import('./composables/useRenderStyle').useRenderStyle
   const useResizeObserver: typeof import('@vueuse/core').useResizeObserver
   const useRoute: typeof import('vue-router').useRoute
   const useRouter: typeof import('vue-router').useRouter
@@ -404,8 +407,20 @@ declare global {
   export type { CommandContextDeps } from './composables/useCommandContext'
   import('./composables/useCommandContext')
   // @ts-ignore
+  export type {
+    CompactPlayerFooterLayout,
+    CompactPlayerFooterLayoutDeps
+  } from './composables/useCompactPlayerFooterLayout'
+  import('./composables/useCompactPlayerFooterLayout')
+  // @ts-ignore
   export type { FavoriteAlbumItem, UseFavoriteAlbumsReturn } from './composables/useFavoriteAlbums'
   import('./composables/useFavoriteAlbums')
+  // @ts-ignore
+  export type {
+    HomeBrandPlacement,
+    HomeBrandPlacementDeps
+  } from './composables/useHomeBrandPlacement'
+  import('./composables/useHomeBrandPlacement')
   // @ts-ignore
   export type { MusicServerOption, HomePageDeps } from './composables/useHomePage'
   import('./composables/useHomePage')
@@ -424,6 +439,9 @@ declare global {
   // @ts-ignore
   export type { PlayerViewModelDeps } from './composables/usePlayerViewModel'
   import('./composables/usePlayerViewModel')
+  // @ts-ignore
+  export type { RenderStyle, RenderStyleDeps } from './composables/useRenderStyle'
+  import('./composables/useRenderStyle')
   // @ts-ignore
   export type { SearchOptions, SearchComposableDeps, Song } from './composables/useSearch'
   import('./composables/useSearch')
@@ -689,6 +707,9 @@ declare module 'vue' {
     readonly useCommandContext: UnwrapRef<
       (typeof import('./composables/useCommandContext'))['useCommandContext']
     >
+    readonly useCompactPlayerFooterLayout: UnwrapRef<
+      (typeof import('./composables/useCompactPlayerFooterLayout'))['default']
+    >
     readonly useConfirmDialog: UnwrapRef<(typeof import('@vueuse/core'))['useConfirmDialog']>
     readonly useCountdown: UnwrapRef<(typeof import('@vueuse/core'))['useCountdown']>
     readonly useCounter: UnwrapRef<(typeof import('@vueuse/core'))['useCounter']>
@@ -741,6 +762,9 @@ declare module 'vue' {
     readonly useFullscreen: UnwrapRef<(typeof import('@vueuse/core'))['useFullscreen']>
     readonly useGamepad: UnwrapRef<(typeof import('@vueuse/core'))['useGamepad']>
     readonly useGeolocation: UnwrapRef<(typeof import('@vueuse/core'))['useGeolocation']>
+    readonly useHomeBrandPlacement: UnwrapRef<
+      (typeof import('./composables/useHomeBrandPlacement'))['useHomeBrandPlacement']
+    >
     readonly useHomePage: UnwrapRef<(typeof import('./composables/useHomePage'))['default']>
     readonly useHomeShell: UnwrapRef<(typeof import('./composables/useHomeShell'))['useHomeShell']>
     readonly useId: UnwrapRef<(typeof import('vue'))['useId']>
@@ -827,6 +851,9 @@ declare module 'vue' {
     readonly usePrevious: UnwrapRef<(typeof import('@vueuse/core'))['usePrevious']>
     readonly useRafFn: UnwrapRef<(typeof import('@vueuse/core'))['useRafFn']>
     readonly useRefHistory: UnwrapRef<(typeof import('@vueuse/core'))['useRefHistory']>
+    readonly useRenderStyle: UnwrapRef<
+      (typeof import('./composables/useRenderStyle'))['useRenderStyle']
+    >
     readonly useResizeObserver: UnwrapRef<(typeof import('@vueuse/core'))['useResizeObserver']>
     readonly useRoute: UnwrapRef<(typeof import('vue-router'))['useRoute']>
     readonly useRouter: UnwrapRef<(typeof import('vue-router'))['useRouter']>
