@@ -1,4 +1,5 @@
 import type { Song } from '@/types/schemas'
+import { isLocalLibrarySong } from '@/types/localLibrary'
 import type { MusicService } from '@/services/musicService'
 import { errorCenter, Errors } from '@/utils/error'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
@@ -12,6 +13,7 @@ export interface PlaybackActionsDeps {
   onStateChange: (changes: Partial<PlayerState>) => void
   playSongByIndex: (index: number) => Promise<void>
   setLyricsArray: (lyrics: import('@/utils/player/core/lyric').LyricLine[]) => void
+  onPlaybackCommitted?: (song: Song) => void
   musicService: Pick<MusicService, 'getSongUrl' | 'getSongDetail' | 'getLyric'>
   createErrorHandler: () => import('@/utils/player/modules/playbackErrorHandler').PlaybackErrorHandler
   getErrorHandler: () =>
@@ -77,6 +79,14 @@ export class PlaybackActions {
 
   private shouldHydrateSongForPlayback(song: Song, platformKey: string): boolean {
     return platformKey === 'netease' && !song.url
+  }
+
+  private shouldFetchLyrics(song: Song, platformKey: string): boolean {
+    if (isLocalLibrarySong(song)) {
+      return false
+    }
+
+    return platformKey === 'netease' || platformKey === 'qq'
   }
 
   private clearPlaybackFailureState(song: Song): void {
@@ -332,6 +342,8 @@ export class PlaybackActions {
         if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
           return
         }
+
+        this.deps.onPlaybackCommitted?.(playbackSong)
       } catch (playbackError) {
         const canRetryWithFreshUrl =
           platformKey === 'netease' && !shouldFetchUrl && Boolean(playbackSong.url)
@@ -355,6 +367,8 @@ export class PlaybackActions {
           if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
             return
           }
+
+          this.deps.onPlaybackCommitted?.(playbackSong)
         } catch {
           throw playbackError
         }
@@ -363,18 +377,22 @@ export class PlaybackActions {
       const lyricRequest = this.startLyricRequest(playbackSong)
 
       try {
-        const lyricData = await musicService.getLyric(platformKey, playbackSong.id)
-        const lyrics = LyricParser.parse(
-          lyricData.lrc || '',
-          lyricData.tlyric || '',
-          lyricData.romalrc || ''
-        )
+        if (!this.shouldFetchLyrics(playbackSong, platformKey)) {
+          this.deps.setLyricsArray([])
+        } else {
+          const lyricData = await musicService.getLyric(platformKey, playbackSong.id)
+          const lyrics = LyricParser.parse(
+            lyricData.lrc || '',
+            lyricData.tlyric || '',
+            lyricData.romalrc || ''
+          )
 
-        if (!this.isCurrentLyricRequest(lyricRequest.requestId, lyricRequest.songKey)) {
-          return
+          if (!this.isCurrentLyricRequest(lyricRequest.requestId, lyricRequest.songKey)) {
+            return
+          }
+
+          this.deps.setLyricsArray(lyrics)
         }
-
-        this.deps.setLyricsArray(lyrics)
       } catch (lyricError) {
         if (!this.isCurrentLyricRequest(lyricRequest.requestId, lyricRequest.songKey)) {
           return

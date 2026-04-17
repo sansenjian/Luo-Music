@@ -109,9 +109,10 @@ describe('PlayerCore', () => {
       expect(player.getVolume()).toBe(VOLUME.DEFAULT)
     })
 
-    it('should set crossOrigin attribute on audio element', () => {
-      // The audio element should have crossOrigin set in constructor
+    it('should initialize audio element without a forced crossOrigin value', () => {
       expect(player.src).toBe('')
+      const { audio } = getInternals(player)
+      expect(audio.crossOrigin).toBe('')
     })
 
     it('should initialize audio context on first play', async () => {
@@ -491,6 +492,12 @@ describe('PlayerCore', () => {
       expect(player.duration).toBe(180)
     })
 
+    it('should normalize infinite duration to 0', () => {
+      const { audio } = getInternals(player)
+      audio.duration = Infinity
+      expect(player.duration).toBe(0)
+    })
+
     it('should return paused state', () => {
       const { audio } = getInternals(player)
       audio.paused = false
@@ -735,10 +742,24 @@ describe('PlayerCore', () => {
   })
 
   describe('cross-origin setup', () => {
-    it('should setup crossOrigin attribute in constructor', () => {
-      // Verify the crossOrigin is set during initialization
+    it('should use crossOrigin for remote media URLs', async () => {
       const { audio } = getInternals(player)
+      audio.readyState = 4
+      audio.play = vi.fn().mockResolvedValue(undefined)
+
+      await player.play('https://song.test/remote.mp3')
+
       expect(audio.crossOrigin).toBe(AUDIO_CONFIG.CROSS_ORIGIN)
+    })
+
+    it('should clear crossOrigin for local file media URLs', async () => {
+      const { audio } = getInternals(player)
+      audio.readyState = 4
+      audio.play = vi.fn().mockResolvedValue(undefined)
+
+      await player.play('file:///D:/Music/local-song.mp3')
+
+      expect(audio.crossOrigin).toBe('')
     })
   })
 

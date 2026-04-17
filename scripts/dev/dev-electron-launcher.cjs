@@ -18,7 +18,28 @@ function createVitePortCandidates(basePort, count = 5) {
   return Array.from({ length: count }, (_, index) => basePort + index)
 }
 
+function resolveElectronInspectArg(value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '9223'
+  if (!trimmed) {
+    return null
+  }
+
+  const parsedPort = Number.parseInt(trimmed, 10)
+  if (!Number.isInteger(parsedPort) || parsedPort <= 0) {
+    throw new Error(`Invalid ELECTRON_INSPECTOR port: ${value}`)
+  }
+
+  return `--inspect=${parsedPort}`
+}
+
+function resolveElectronInspectPort(value) {
+  const arg = resolveElectronInspectArg(value)
+  return arg ? arg.replace('--inspect=', '') : null
+}
+
 const configuredVitePort = resolveVitePort(process.env.VITE_DEV_SERVER_PORT)
+const electronInspectArg = resolveElectronInspectArg(process.env.ELECTRON_INSPECTOR)
+const electronInspectPort = resolveElectronInspectPort(process.env.ELECTRON_INSPECTOR)
 
 // ============ 配置常量 ============
 const CONFIG = {
@@ -410,7 +431,17 @@ async function main() {
   logDebug(`Vite URL: ${viteDevServerUrl}`)
 
   const electronBinary = require('electron')
-  const child = spawn(electronBinary, ['.'], {
+  const electronArgs = []
+  if (electronInspectArg) {
+    electronArgs.push(electronInspectArg)
+  }
+  electronArgs.push('.')
+
+  if (electronInspectPort) {
+    logInfo(`Electron main process inspector listening on 127.0.0.1:${electronInspectPort}`)
+  }
+
+  const child = spawn(electronBinary, electronArgs, {
     stdio: 'inherit',
     shell: false,
     cwd: ROOT,

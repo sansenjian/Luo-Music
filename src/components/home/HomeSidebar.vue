@@ -8,6 +8,7 @@ import { useUserStore } from '@/store/userStore'
 
 import HomeBrandBadge from './HomeBrandBadge.vue'
 import HomeSidebarFooter from './HomeSidebarFooter.vue'
+import type { HomeSidebarCollectionSelection } from './homeSidebar.types'
 
 type SidebarIconName =
   | 'home'
@@ -27,15 +28,7 @@ type SidebarNavItem = {
 }
 
 type SidebarPlaylistFilter = 'created' | 'favorites'
-type SidebarCollectionKind = 'playlist' | 'album'
-type SidebarCollectionItem = {
-  uiId: string
-  sourceId: string | number
-  kind: SidebarCollectionKind
-  name: string
-  coverUrl: string
-  summary: string
-}
+type SidebarCollectionItem = HomeSidebarCollectionSelection
 
 const exploreItems: SidebarNavItem[] = [
   { id: 'home', label: '主页', icon: 'home' },
@@ -74,16 +67,23 @@ const iconMarkupMap: Record<SidebarIconName, string> = {
 
 const props = withDefaults(
   defineProps<{
+    activeItemId?: string
     collapsed?: boolean
     showBrand?: boolean
   }>(),
   {
+    activeItemId: undefined,
     collapsed: false,
     showBrand: true
   }
 )
 
-const activeItemId = ref<string>('home')
+const emit = defineEmits<{
+  'collection-select': [selection: HomeSidebarCollectionSelection]
+  'item-select': [itemId: string]
+}>()
+
+const internalActiveItemId = ref<string>('home')
 const activePlaylistFilter = ref<SidebarPlaylistFilter>('created')
 const { renderStyle } = useRenderStyle()
 const userStore = useUserStore()
@@ -114,6 +114,7 @@ const sidebarCollectionsLoading = computed(() =>
     ? playlistsLoading.value
     : playlistsLoading.value || favoriteAlbumsLoading.value
 )
+const resolvedActiveItemId = computed(() => props.activeItemId ?? internalActiveItemId.value)
 const playlistEmptyMessage = computed(() => {
   if (!userStore.isLoggedIn) {
     return '登录后查看歌单'
@@ -142,11 +143,20 @@ watch(
 )
 
 function activateItem(itemId: string): void {
-  activeItemId.value = itemId
+  if (props.activeItemId === undefined) {
+    internalActiveItemId.value = itemId
+  }
+
+  emit('item-select', itemId)
+}
+
+function activateCollection(item: HomeSidebarCollectionSelection): void {
+  activateItem(item.uiId)
+  emit('collection-select', item)
 }
 
 function isActive(itemId: string): boolean {
-  return activeItemId.value === itemId
+  return resolvedActiveItemId.value === itemId
 }
 
 function selectPlaylistFilter(filter: SidebarPlaylistFilter): void {
@@ -314,7 +324,7 @@ function resolveCollectionTone(collectionId: string): 'mono' | 'violet' | 'mist'
             class="playlist-card"
             :class="{ active: isActive(item.uiId) }"
             :aria-label="item.name"
-            @click="activateItem(item.uiId)"
+            @click="activateCollection(item)"
           >
             <span
               class="playlist-cover"

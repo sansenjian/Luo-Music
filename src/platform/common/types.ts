@@ -1,5 +1,14 @@
-﻿import type { CacheClearOptions, CacheClearResult } from '../../../electron/shared/protocol/cache'
+import type { CacheClearOptions, CacheClearResult } from '../../../electron/shared/protocol/cache'
 import type { IDisposable } from '@/base/common/lifecycle/disposable'
+import type {
+  LocalLibraryAlbumSummary,
+  LocalLibraryArtistSummary,
+  LocalLibraryPage,
+  LocalLibraryState,
+  LocalLibrarySummaryQuery,
+  LocalLibraryTrack,
+  LocalLibraryTrackQuery
+} from '@/types/localLibrary'
 
 export const enum Platform {
   Web,
@@ -39,6 +48,25 @@ export interface ICacheService {
   clearAllCache?(keepUserData?: boolean): Promise<IClearCacheResult>
 }
 
+export interface ILocalLibraryService {
+  getLocalLibraryState(): Promise<LocalLibraryState>
+  pickLocalLibraryFolder(): Promise<string | null>
+  addLocalLibraryFolder(folderPath: string): Promise<LocalLibraryState>
+  removeLocalLibraryFolder(folderId: string): Promise<LocalLibraryState>
+  setLocalLibraryFolderEnabled(folderId: string, enabled: boolean): Promise<LocalLibraryState>
+  scanLocalLibrary(): Promise<LocalLibraryState>
+  getLocalLibraryTracks(
+    query?: LocalLibraryTrackQuery
+  ): Promise<LocalLibraryPage<LocalLibraryTrack>>
+  getLocalLibraryArtists(
+    query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryArtistSummary>>
+  getLocalLibraryAlbums(
+    query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryAlbumSummary>>
+  getLocalLibraryCover(coverHash: string): Promise<string | null>
+}
+
 export interface IIPCService {
   on(channel: string, callback: IMessageHandler): IDisposable
   send(channel: string, data: unknown): void
@@ -55,6 +83,6 @@ export interface IPlatformInfoService {
 }
 
 export interface IPlatformService
-  extends IWindowService, ICacheService, IIPCService, IPlatformInfoService {
+  extends IWindowService, ICacheService, IIPCService, ILocalLibraryService, IPlatformInfoService {
   readonly name: string
 }

@@ -1,5 +1,14 @@
 import type { IMessageHandler } from '../platform/common/types'
 import { getPlatformService, initializePlatformService } from '../platform'
+import type {
+  LocalLibraryAlbumSummary,
+  LocalLibraryArtistSummary,
+  LocalLibraryPage,
+  LocalLibraryState,
+  LocalLibrarySummaryQuery,
+  LocalLibraryTrack,
+  LocalLibraryTrackQuery
+} from '@/types/localLibrary'
 
 export type PlatformService = {
   isElectron(): boolean
@@ -15,6 +24,22 @@ export type PlatformService = {
   on(channel: string, handler: (data: unknown) => void): () => void
   getCacheSize(): Promise<unknown>
   clearCache(options?: unknown): Promise<unknown>
+  getLocalLibraryState(): Promise<LocalLibraryState>
+  pickLocalLibraryFolder(): Promise<string | null>
+  addLocalLibraryFolder(folderPath: string): Promise<LocalLibraryState>
+  removeLocalLibraryFolder(folderId: string): Promise<LocalLibraryState>
+  setLocalLibraryFolderEnabled(folderId: string, enabled: boolean): Promise<LocalLibraryState>
+  scanLocalLibrary(): Promise<LocalLibraryState>
+  getLocalLibraryTracks(
+    query?: LocalLibraryTrackQuery
+  ): Promise<LocalLibraryPage<LocalLibraryTrack>>
+  getLocalLibraryArtists(
+    query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryArtistSummary>>
+  getLocalLibraryAlbums(
+    query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryAlbumSummary>>
+  getLocalLibraryCover(coverHash: string): Promise<string | null>
   getServiceStatus?(serviceId: string): Promise<{ status: string; port?: number } | null>
 }
 
@@ -128,6 +153,52 @@ export function createPlatformService(deps: PlatformServiceDeps = {}): PlatformS
 
     clearCache(options?: unknown): Promise<unknown> {
       return platform.clearCache(options as never)
+    },
+
+    getLocalLibraryState(): Promise<LocalLibraryState> {
+      return platform.getLocalLibraryState()
+    },
+
+    pickLocalLibraryFolder(): Promise<string | null> {
+      return platform.pickLocalLibraryFolder()
+    },
+
+    addLocalLibraryFolder(folderPath: string): Promise<LocalLibraryState> {
+      return platform.addLocalLibraryFolder(folderPath)
+    },
+
+    removeLocalLibraryFolder(folderId: string): Promise<LocalLibraryState> {
+      return platform.removeLocalLibraryFolder(folderId)
+    },
+
+    setLocalLibraryFolderEnabled(folderId: string, enabled: boolean): Promise<LocalLibraryState> {
+      return platform.setLocalLibraryFolderEnabled(folderId, enabled)
+    },
+
+    scanLocalLibrary(): Promise<LocalLibraryState> {
+      return platform.scanLocalLibrary()
+    },
+
+    getLocalLibraryTracks(
+      query?: LocalLibraryTrackQuery
+    ): Promise<LocalLibraryPage<LocalLibraryTrack>> {
+      return platform.getLocalLibraryTracks(query)
+    },
+
+    getLocalLibraryArtists(
+      query?: LocalLibrarySummaryQuery
+    ): Promise<LocalLibraryPage<LocalLibraryArtistSummary>> {
+      return platform.getLocalLibraryArtists(query)
+    },
+
+    getLocalLibraryAlbums(
+      query?: LocalLibrarySummaryQuery
+    ): Promise<LocalLibraryPage<LocalLibraryAlbumSummary>> {
+      return platform.getLocalLibraryAlbums(query)
+    },
+
+    getLocalLibraryCover(coverHash: string): Promise<string | null> {
+      return platform.getLocalLibraryCover(coverHash)
     },
 
     async getServiceStatus(serviceId: string): Promise<{ status: string; port?: number } | null> {

@@ -43,6 +43,7 @@ const registerServiceHandlersMock = vi.hoisted(() => vi.fn())
 const registerApiHandlersMock = vi.hoisted(() => vi.fn())
 const registerLyricHandlersMock = vi.hoisted(() => vi.fn())
 const registerLogHandlersMock = vi.hoisted(() => vi.fn())
+const registerLocalLibraryHandlersMock = vi.hoisted(() => vi.fn())
 
 let lifecycleCallbacks: AppLifecycleCallbacks | undefined
 let resolveInitializeServices: (() => void) | undefined
@@ -116,7 +117,8 @@ vi.mock('../../electron/ipc/index', () => ({
   registerServiceHandlers: registerServiceHandlersMock,
   registerApiHandlers: registerApiHandlersMock,
   registerLyricHandlers: registerLyricHandlersMock,
-  registerLogHandlers: registerLogHandlersMock
+  registerLogHandlers: registerLogHandlersMock,
+  registerLocalLibraryHandlers: registerLocalLibraryHandlersMock
 }))
 
 vi.mock('../../electron/main/app', () => ({

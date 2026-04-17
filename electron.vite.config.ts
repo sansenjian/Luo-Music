@@ -77,6 +77,7 @@ export default defineConfig({
           'electron',
           'electron-log',
           '@sentry/electron',
+          'better-sqlite3',
           'electron-store',
           'conf',
           '@neteasecloudmusicapienhanced/api',

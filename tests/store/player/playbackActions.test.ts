@@ -80,6 +80,7 @@ describe('playbackActions', () => {
       state.lyricSong = lyrics.length > 0 ? state.currentSong : null
       state.currentLyricIndex = lyrics.length > 0 ? 0 : -1
     })
+    const onPlaybackCommitted = vi.fn()
     const errorHandler: MockPlaybackErrorHandler = {
       markAsUnavailable: vi.fn(),
       playNextSkipUnavailable: vi.fn()
@@ -90,6 +91,7 @@ describe('playbackActions', () => {
       onStateChange,
       playSongByIndex,
       setLyricsArray,
+      onPlaybackCommitted,
       musicService: adapterMock,
       createErrorHandler: vi.fn(() => errorHandler),
       getErrorHandler: vi.fn(() => errorHandler),
@@ -104,6 +106,7 @@ describe('playbackActions', () => {
       onStateChange,
       playSongByIndex,
       setLyricsArray,
+      onPlaybackCommitted,
       errorHandler
     }
   }
@@ -190,7 +193,8 @@ describe('playbackActions', () => {
   })
 
   it('fetches song url, plays it, and parses lyrics', async () => {
-    const { actions, state, setLyricsArray, playSongByIndex, onStateChange } = createSubject()
+    const { actions, state, setLyricsArray, playSongByIndex, onStateChange, onPlaybackCommitted } =
+      createSubject()
     const song = createQQSong({ id: 'song-1', mediaId: 'media-1' })
     state.songList = [song]
     adapterMock.getSongUrl.mockResolvedValue('https://song.test/stream.mp3')
@@ -208,6 +212,7 @@ describe('playbackActions', () => {
     })
     expect(song.url).toBe('https://song.test/stream.mp3')
     expect(playSongByIndex).toHaveBeenCalledWith(0)
+    expect(onPlaybackCommitted).toHaveBeenCalledWith(song)
     expect(setLyricsArray).toHaveBeenCalledWith([
       { time: 0, text: 'main', trans: 'trans', roma: 'roma' }
     ])

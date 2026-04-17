@@ -234,6 +234,7 @@ declare global {
   const useLastChanged: typeof import('@vueuse/core').useLastChanged
   const useLikedSongs: typeof import('./composables/useLikedSongs').useLikedSongs
   const useLink: typeof import('vue-router').useLink
+  const useLocalLibrary: typeof import('./composables/useLocalLibrary').useLocalLibrary
   const useLocalStorage: typeof import('@vueuse/core').useLocalStorage
   const useLyricAutoScroll: typeof import('./composables/useLyricAutoScroll').useLyricAutoScroll
   const useMagicKeys: typeof import('@vueuse/core').useMagicKeys
@@ -274,6 +275,7 @@ declare global {
   const usePreferredReducedTransparency: typeof import('@vueuse/core').usePreferredReducedTransparency
   const usePrevious: typeof import('@vueuse/core').usePrevious
   const useRafFn: typeof import('@vueuse/core').useRafFn
+  const useRecentPlayStore: typeof import('./store/recentPlayStore').useRecentPlayStore
   const useRefHistory: typeof import('@vueuse/core').useRefHistory
   const useRenderStyle: typeof import('./composables/useRenderStyle').useRenderStyle
   const useResizeObserver: typeof import('@vueuse/core').useResizeObserver
@@ -466,6 +468,9 @@ declare global {
   // @ts-ignore
   export type { PlayerStoreActions, PlayerStoreDeps } from './store/playerStore'
   import('./store/playerStore')
+  // @ts-ignore
+  export type { RecentPlayItem } from './store/recentPlayStore'
+  import('./store/recentPlayStore')
   // @ts-ignore
   export type { SearchResultItem, SearchStoreDeps, SearchStoreOptions } from './store/searchStore'
   import('./store/searchStore')
@@ -775,6 +780,9 @@ declare module 'vue' {
       (typeof import('./composables/useLikedSongs'))['useLikedSongs']
     >
     readonly useLink: UnwrapRef<(typeof import('vue-router'))['useLink']>
+    readonly useLocalLibrary: UnwrapRef<
+      (typeof import('./composables/useLocalLibrary'))['useLocalLibrary']
+    >
     readonly useLocalStorage: UnwrapRef<(typeof import('@vueuse/core'))['useLocalStorage']>
     readonly useLyricAutoScroll: UnwrapRef<
       (typeof import('./composables/useLyricAutoScroll'))['useLyricAutoScroll']
@@ -837,6 +845,9 @@ declare module 'vue' {
     >
     readonly usePrevious: UnwrapRef<(typeof import('@vueuse/core'))['usePrevious']>
     readonly useRafFn: UnwrapRef<(typeof import('@vueuse/core'))['useRafFn']>
+    readonly useRecentPlayStore: UnwrapRef<
+      (typeof import('./store/recentPlayStore'))['useRecentPlayStore']
+    >
     readonly useRefHistory: UnwrapRef<(typeof import('@vueuse/core'))['useRefHistory']>
     readonly useRenderStyle: UnwrapRef<
       (typeof import('./composables/useRenderStyle'))['useRenderStyle']

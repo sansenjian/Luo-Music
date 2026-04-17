@@ -67,11 +67,23 @@ export class PlayerCore {
     return false
   }
 
-  private _setupCrossOrigin() {
-    // 始终设置 crossOrigin，这对网易云音乐等需要跨域的音频源是必需的
-    // Electron 环境下也需要设置，因为音频可能来自不同域名
-    this.audio.crossOrigin = AUDIO_CONFIG.CROSS_ORIGIN
-    console.log('[PlayerCore] CrossOrigin set to:', AUDIO_CONFIG.CROSS_ORIGIN)
+  private _shouldUseCrossOrigin(url?: string): boolean {
+    if (!url) {
+      return false
+    }
+
+    try {
+      const parsedUrl = new URL(url, window.location.href)
+      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
+    } catch {
+      return /^https?:\/\//i.test(url)
+    }
+  }
+
+  private _setupCrossOrigin(url?: string) {
+    const nextCrossOrigin = this._shouldUseCrossOrigin(url) ? AUDIO_CONFIG.CROSS_ORIGIN : ''
+    this.audio.crossOrigin = nextCrossOrigin
+    console.log('[PlayerCore] CrossOrigin set to:', nextCrossOrigin || '(empty)')
   }
 
   private _initVolume() {
@@ -216,6 +228,7 @@ export class PlayerCore {
 
       // If url provided and different, load it
       if (url && sourceChanged) {
+        this._setupCrossOrigin(url)
         // [Leak Fix] Break connection with previous source to help GC
         // When switching songs, explicit load() is crucial.
         this.audio.src = url
@@ -399,7 +412,11 @@ export class PlayerCore {
 
   // Getters
   public get duration() {
-    return this._isDestroyed ? 0 : this.audio.duration || 0
+    if (this._isDestroyed) {
+      return 0
+    }
+
+    return Number.isFinite(this.audio.duration) && this.audio.duration > 0 ? this.audio.duration : 0
   }
 
   public get currentTime() {

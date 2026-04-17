@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 
+import type { HomeSidebarCollectionSelection } from '../components/home/homeSidebar.types'
 import HomeFooter from '../components/home/HomeFooter.vue'
+import HomeCollectionDetailPanel from '../components/home/HomeCollectionDetailPanel.vue'
 import HomeHeader from '../components/home/HomeHeader.vue'
 import HomeSidebar from '../components/home/HomeSidebar.vue'
 import HomeWorkspace from '../components/home/HomeWorkspace.vue'
@@ -10,6 +12,12 @@ import { useHomeBrandPlacement } from '../composables/useHomeBrandPlacement'
 import { useHomePage } from '../composables/useHomePage'
 
 const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.vue'))
+const HomeLikedSongsPanel = defineAsyncComponent(
+  () => import('../components/home/HomeLikedSongsPanel.vue')
+)
+const HomeLocalMusicPanel = defineAsyncComponent(
+  () => import('../components/home/HomeLocalMusicPanel.vue')
+)
 const LyricDisplay = defineAsyncComponent(() => import('../components/LyricDisplay.vue'))
 const Player = defineAsyncComponent(() => import('../components/Player.vue'))
 const Playlist = defineAsyncComponent(() => import('../components/Playlist.vue'))
@@ -41,6 +49,17 @@ const { dockedPlayerBarLayout } = useDockedPlayerBarLayout()
 const usesAdaptiveSidebarFooterLayout = computed(
   () => playerStore.isPlayerDocked && dockedPlayerBarLayout.value === 'with-sidebar'
 )
+const activeWorkspaceView = ref<'home' | 'liked' | 'collection' | 'local'>('home')
+const selectedCollection = ref<HomeSidebarCollectionSelection | null>(null)
+const activeSidebarItemId = computed(() =>
+  activeWorkspaceView.value === 'liked'
+    ? 'liked'
+    : activeWorkspaceView.value === 'local'
+      ? 'local'
+      : activeWorkspaceView.value === 'collection' && selectedCollection.value
+        ? selectedCollection.value.uiId
+        : 'home'
+)
 
 const isCoreMounted = ref(false)
 
@@ -56,6 +75,30 @@ onMounted(() => {
     isCoreMounted.value = true
   }, 0)
 })
+
+function handleSidebarItemSelect(itemId: string): void {
+  if (itemId === 'liked') {
+    activeWorkspaceView.value = 'liked'
+    selectedCollection.value = null
+    return
+  }
+
+  if (itemId === 'local') {
+    activeWorkspaceView.value = 'local'
+    selectedCollection.value = null
+    return
+  }
+
+  if (itemId === 'home') {
+    activeWorkspaceView.value = 'home'
+    selectedCollection.value = null
+  }
+}
+
+function handleSidebarCollectionSelect(selection: HomeSidebarCollectionSelection): void {
+  selectedCollection.value = selection
+  activeWorkspaceView.value = 'collection'
+}
 </script>
 
 <template>
@@ -88,9 +131,12 @@ onMounted(() => {
 
     <main class="app-shell">
       <HomeSidebar
+        :active-item-id="activeSidebarItemId"
         class="sidebar-panel"
         :collapsed="!playerStore.isPlayerDocked"
         :show-brand="brandPlacement === 'sidebar'"
+        @collection-select="handleSidebarCollectionSelect"
+        @item-select="handleSidebarItemSelect"
       />
 
       <section class="left-panel">
@@ -98,7 +144,12 @@ onMounted(() => {
         <div v-else class="panel-placeholder" aria-hidden="true"></div>
       </section>
 
-      <HomeWorkspace class="workspace-panel" :active-tab="activeTab" @change-tab="switchTab">
+      <HomeWorkspace
+        v-if="activeWorkspaceView === 'home'"
+        class="workspace-panel"
+        :active-tab="activeTab"
+        @change-tab="switchTab"
+      >
         <template #lyric>
           <LyricDisplay v-if="isCoreMounted" :active="activeTab === 'lyric'" />
           <div v-else class="workspace-placeholder" aria-hidden="true"></div>
@@ -107,6 +158,9 @@ onMounted(() => {
           <Playlist v-if="isCoreMounted" @play-song="playSong" />
         </template>
       </HomeWorkspace>
+      <HomeLikedSongsPanel v-else-if="activeWorkspaceView === 'liked'" class="workspace-panel" />
+      <HomeLocalMusicPanel v-else-if="activeWorkspaceView === 'local'" class="workspace-panel" />
+      <HomeCollectionDetailPanel v-else class="workspace-panel" :collection="selectedCollection" />
 
       <HomeFooter
         class="footer-panel"

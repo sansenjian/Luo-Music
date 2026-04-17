@@ -1,5 +1,6 @@
 import { PLAY_MODE } from '../constants/playMode'
 import type { Song } from '@/types/schemas'
+import { isLocalLibrarySong } from '@/types/localLibrary'
 import type { MusicService } from '@/services/musicService'
 
 interface ErrorHandlerOptions {
@@ -57,6 +58,14 @@ export class PlaybackErrorHandler implements ErrorHandler {
       console.error('Audio error:', error)
     }
 
+    if (currentSong && isLocalLibrarySong(currentSong)) {
+      this.markAsUnavailable(
+        currentSong,
+        '本地文件无法播放，请检查文件是否存在或当前格式是否受支持'
+      )
+      return { shouldRetry: false, shouldSkip: true }
+    }
+
     if (currentSong && !currentSong.retryCount) {
       currentSong.retryCount = 1
       try {
@@ -78,6 +87,10 @@ export class PlaybackErrorHandler implements ErrorHandler {
   }
 
   async retryGetMusicUrl(song: Song): Promise<{ url: string } | null> {
+    if (isLocalLibrarySong(song)) {
+      return null
+    }
+
     const platform = song.platform || 'netease'
     const mediaId =
       typeof song.mediaId === 'string'

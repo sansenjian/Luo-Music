@@ -2,6 +2,7 @@ import { INVOKE_CHANNELS, RECEIVE_CHANNELS, SEND_CHANNELS } from '../../shared/p
 import { ipcService } from '../IpcService'
 import type { ServiceManager } from '../../ServiceManager'
 import type { WindowManager } from '../../WindowManager'
+import { isLocalLibrarySongId } from '@/types/localLibrary'
 import type { Song } from '../../../src/types/schemas'
 import { LyricParser } from '../../../src/utils/player/core/lyric'
 import { PLAY_MODE } from '../../../src/utils/player/constants/playMode'
@@ -246,6 +247,10 @@ async function fetchLyricsForSong(
   serviceManager: Pick<ServiceManager, 'handleRequest'>,
   payload: PlayerPlaySongByIdPayload
 ) {
+  if (isLocalLibrarySongId(payload.id)) {
+    return []
+  }
+
   const targetPlatform = payload.platform ?? 'netease'
   const response =
     targetPlatform === 'qq'

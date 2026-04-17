@@ -45,6 +45,18 @@ export const INVOKE_CHANNELS = {
   CONFIG_DELETE: 'config:delete',
   CONFIG_RESET: 'config:reset',
 
+  // 本地音乐
+  LOCAL_LIBRARY_GET_STATE: 'local-library:get-state',
+  LOCAL_LIBRARY_PICK_FOLDER: 'local-library:pick-folder',
+  LOCAL_LIBRARY_ADD_FOLDER: 'local-library:add-folder',
+  LOCAL_LIBRARY_REMOVE_FOLDER: 'local-library:remove-folder',
+  LOCAL_LIBRARY_SET_FOLDER_ENABLED: 'local-library:set-folder-enabled',
+  LOCAL_LIBRARY_SCAN: 'local-library:scan',
+  LOCAL_LIBRARY_GET_TRACKS: 'local-library:get-tracks',
+  LOCAL_LIBRARY_GET_ARTISTS: 'local-library:get-artists',
+  LOCAL_LIBRARY_GET_ALBUMS: 'local-library:get-albums',
+  LOCAL_LIBRARY_GET_COVER: 'local-library:get-cover',
+
   // API 服务
   API_SEARCH: 'api:search',
   API_GET_SONG_URL: 'api:get-song-url',
@@ -153,6 +165,10 @@ export const RECEIVE_CHANNELS = {
 
   // 配置变化
   CONFIG_CHANGED: 'config:changed',
+
+  // 本地音乐
+  LOCAL_LIBRARY_UPDATED: 'local-library:updated',
+  LOCAL_LIBRARY_SCAN_STATUS: 'local-library:scan-status',
 
   // 界面
   HIDE_PLAYER: 'hide-player',

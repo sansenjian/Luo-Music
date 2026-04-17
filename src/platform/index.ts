@@ -9,12 +9,22 @@ import type {
 import { Platform } from './common/types'
 import { ElectronPlatformService } from './electron/electronPlatformService'
 import { WebPlatformService } from './web/webPlatformService'
+import type {
+  LocalLibraryAlbumSummary,
+  LocalLibraryArtistSummary,
+  LocalLibraryPage,
+  LocalLibraryState,
+  LocalLibrarySummaryQuery,
+  LocalLibraryTrack,
+  LocalLibraryTrackQuery
+} from '@/types/localLibrary'
 
 export type {
   IPlatformService,
   IWindowService,
   ICacheService,
   IIPCService,
+  ILocalLibraryService,
   IPlatformInfoService,
   ICacheSize,
   IClearCacheOptions,
@@ -74,6 +84,22 @@ type LegacyPlatform = {
   getCacheSize(): Promise<ICacheSize>
   clearCache(options?: LegacyCacheOptions): Promise<IClearCacheResult>
   clearAllCache(keepUserData?: boolean): Promise<IClearCacheResult>
+  getLocalLibraryState(): Promise<LocalLibraryState>
+  pickLocalLibraryFolder(): Promise<string | null>
+  addLocalLibraryFolder(folderPath: string): Promise<LocalLibraryState>
+  removeLocalLibraryFolder(folderId: string): Promise<LocalLibraryState>
+  setLocalLibraryFolderEnabled(folderId: string, enabled: boolean): Promise<LocalLibraryState>
+  scanLocalLibrary(): Promise<LocalLibraryState>
+  getLocalLibraryTracks(
+    query?: LocalLibraryTrackQuery
+  ): Promise<LocalLibraryPage<LocalLibraryTrack>>
+  getLocalLibraryArtists(
+    query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryArtistSummary>>
+  getLocalLibraryAlbums(
+    query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryAlbumSummary>>
+  getLocalLibraryCover(coverHash: string): Promise<string | null>
 }
 
 const platform: LegacyPlatform = {
@@ -149,6 +175,55 @@ const platform: LegacyPlatform = {
           : { all: true }
       )
     )
+  },
+
+  async getLocalLibraryState(): Promise<LocalLibraryState> {
+    return getPlatformService().getLocalLibraryState()
+  },
+
+  async pickLocalLibraryFolder(): Promise<string | null> {
+    return getPlatformService().pickLocalLibraryFolder()
+  },
+
+  async addLocalLibraryFolder(folderPath: string): Promise<LocalLibraryState> {
+    return getPlatformService().addLocalLibraryFolder(folderPath)
+  },
+
+  async removeLocalLibraryFolder(folderId: string): Promise<LocalLibraryState> {
+    return getPlatformService().removeLocalLibraryFolder(folderId)
+  },
+
+  async setLocalLibraryFolderEnabled(
+    folderId: string,
+    enabled: boolean
+  ): Promise<LocalLibraryState> {
+    return getPlatformService().setLocalLibraryFolderEnabled(folderId, enabled)
+  },
+
+  async scanLocalLibrary(): Promise<LocalLibraryState> {
+    return getPlatformService().scanLocalLibrary()
+  },
+
+  async getLocalLibraryTracks(
+    query?: LocalLibraryTrackQuery
+  ): Promise<LocalLibraryPage<LocalLibraryTrack>> {
+    return getPlatformService().getLocalLibraryTracks(query)
+  },
+
+  async getLocalLibraryArtists(
+    query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryArtistSummary>> {
+    return getPlatformService().getLocalLibraryArtists(query)
+  },
+
+  async getLocalLibraryAlbums(
+    query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryAlbumSummary>> {
+    return getPlatformService().getLocalLibraryAlbums(query)
+  },
+
+  async getLocalLibraryCover(coverHash: string): Promise<string | null> {
+    return getPlatformService().getLocalLibraryCover(coverHash)
   }
 }
 

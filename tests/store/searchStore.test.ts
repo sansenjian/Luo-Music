@@ -59,9 +59,9 @@ describe('searchStore', () => {
     resetServices()
     setupServices({
       error: {
-        handleApiError: (error: unknown) => ({
+        handleApiError: ((error: unknown) => ({
           message: error instanceof Error ? error.message : String(error)
-        })
+        })) as never
       } as never,
       logger: {
         info: vi.fn(),
@@ -238,9 +238,9 @@ describe('searchStore', () => {
           error: vi.fn()
         },
         errorService: {
-          handleApiError: (error: unknown) => ({
+          handleApiError: ((error: unknown) => ({
             message: error instanceof Error ? error.message : String(error)
-          })
+          })) as never
         },
         musicService: {
           search: searchMock

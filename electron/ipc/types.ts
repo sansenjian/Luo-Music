@@ -16,6 +16,16 @@ import type {
 import type { CacheClearOptions, CacheClearResult } from '../shared/protocol/cache.ts'
 import type { LogEntry } from '../shared/log'
 import type { AppConfig, ConfigChangeEvent } from '../shared/config'
+import type {
+  LocalLibraryAlbumSummary,
+  LocalLibraryArtistSummary,
+  LocalLibraryPage,
+  LocalLibraryScanStatus,
+  LocalLibraryState,
+  LocalLibrarySummaryQuery,
+  LocalLibraryTrack,
+  LocalLibraryTrackQuery
+} from '@/types/localLibrary'
 import type { Song } from '@/types/schemas.ts'
 import type { PlayMode as PlayerPlayMode } from '../../src/types/player'
 import type { LyricLine as PlayerLyricLine } from '../../src/utils/player/core/lyric'
@@ -263,6 +273,45 @@ type InvokeChannelsDefinition = MergeChannels<
     DefineInvokeChannel<typeof INVOKE_CHANNELS.CONFIG_SET, [key: string, value: unknown], void> &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.CONFIG_DELETE, [key: string], void> &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.CONFIG_RESET, [key?: string], void> &
+    // 本地音乐
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.LOCAL_LIBRARY_GET_STATE, [], LocalLibraryState> &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.LOCAL_LIBRARY_PICK_FOLDER, [], string | null> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.LOCAL_LIBRARY_ADD_FOLDER,
+      [folderPath: string],
+      LocalLibraryState
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.LOCAL_LIBRARY_REMOVE_FOLDER,
+      [folderId: string],
+      LocalLibraryState
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.LOCAL_LIBRARY_SET_FOLDER_ENABLED,
+      [folderId: string, enabled: boolean],
+      LocalLibraryState
+    > &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.LOCAL_LIBRARY_SCAN, [], LocalLibraryState> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.LOCAL_LIBRARY_GET_TRACKS,
+      [query?: LocalLibraryTrackQuery],
+      LocalLibraryPage<LocalLibraryTrack>
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.LOCAL_LIBRARY_GET_ARTISTS,
+      [query?: LocalLibrarySummaryQuery],
+      LocalLibraryPage<LocalLibraryArtistSummary>
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.LOCAL_LIBRARY_GET_ALBUMS,
+      [query?: LocalLibrarySummaryQuery],
+      LocalLibraryPage<LocalLibraryAlbumSummary>
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.LOCAL_LIBRARY_GET_COVER,
+      [coverHash: string],
+      string | null
+    > &
     // API 服务
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_SEARCH,
@@ -439,6 +488,11 @@ type ReceiveChannelsDefinition = MergeChannels<
       { error: string; song: Song | null }
     > &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.CONFIG_CHANGED, ConfigChangeEvent> &
+    DefineReceiveChannel<typeof RECEIVE_CHANNELS.LOCAL_LIBRARY_UPDATED, LocalLibraryState> &
+    DefineReceiveChannel<
+      typeof RECEIVE_CHANNELS.LOCAL_LIBRARY_SCAN_STATUS,
+      LocalLibraryScanStatus
+    > &
     // 界面
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.HIDE_PLAYER, void> &
     // 歌词

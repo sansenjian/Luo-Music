@@ -72,6 +72,35 @@ describe('playbackErrorHandler', () => {
     expect(handler.getUnavailableSongs()).toEqual(['song-2'])
   })
 
+  it('does not retry remote url resolution for local songs', async () => {
+    const localSong = createMockSong({
+      id: 'local:track-1',
+      extra: {
+        localSource: true,
+        localFilePath: 'D:\\Music\\track.mp3'
+      }
+    })
+    const state = {
+      songList: [localSong],
+      currentIndex: 0,
+      playMode: PLAY_MODE.LIST_LOOP
+    }
+
+    const handler = new PlaybackErrorHandler({
+      musicService: musicServiceMock,
+      getState: () => state
+    })
+
+    const result = await handler.handleAudioError(new Error('decode failed'), localSong)
+
+    expect(musicServiceMock.getSongUrl).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      shouldRetry: false,
+      shouldSkip: true
+    })
+    expect(localSong.errorMessage).toContain('本地文件无法播放')
+  })
+
   it('stops skipping after too many rapid attempts or when most songs are unavailable', () => {
     const songs = [
       createMockSong({ id: 1 }),

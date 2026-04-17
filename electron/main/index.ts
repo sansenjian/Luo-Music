@@ -14,6 +14,8 @@ import logger, { initSentry } from '../logger'
 import { serviceManager } from '../ServiceManager'
 import type { ServiceConfig } from '../types/service'
 import { RENDERER_DIST, VITE_PUBLIC } from '../utils/paths'
+import { registerLocalMediaProtocol } from '../local-library/protocol'
+import { localLibraryService } from '../local-library/service'
 
 import {
   ipcService,
@@ -28,7 +30,8 @@ import {
   registerServiceHandlers,
   registerApiHandlers,
   registerLyricHandlers,
-  registerLogHandlers
+  registerLogHandlers,
+  registerLocalLibraryHandlers
 } from '../ipc/index'
 
 import {
@@ -66,6 +69,7 @@ const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
 
 async function initializeApp(): Promise<void> {
   initializeIpcService()
+  registerLocalMediaProtocol()
 
   logger.info('Initializing services via ServiceManager...')
   await serviceManager.initialize(DEFAULT_SERVICE_CONFIG)
@@ -100,6 +104,7 @@ function initializeIpcService(): void {
   registerApiHandlers(serviceManager)
   registerLyricHandlers()
   registerLogHandlers()
+  registerLocalLibraryHandlers(windowManager)
 
   ipcService.initialize()
 
@@ -135,6 +140,7 @@ function main(): void {
       desktopLyricManager.closeWindow()
       destroyTray()
       downloadManager.dispose()
+      localLibraryService.dispose()
       disposePerformanceMonitor()
       ipcService.dispose()
       await serviceManager.stopAllServices()

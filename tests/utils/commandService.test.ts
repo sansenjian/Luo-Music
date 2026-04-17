@@ -22,14 +22,75 @@ const platformServiceMock = vi.hoisted(() => ({
   sendPlayModeChange: vi.fn(),
   on: vi.fn(() => () => {}),
   getCacheSize: vi.fn().mockResolvedValue({}),
-  clearCache: vi.fn().mockResolvedValue({})
+  clearCache: vi.fn().mockResolvedValue({}),
+  getLocalLibraryState: vi.fn().mockResolvedValue({
+    supported: false,
+    folders: [],
+    tracks: [],
+    status: {
+      phase: 'idle',
+      scannedFolders: 0,
+      scannedFiles: 0,
+      discoveredTracks: 0,
+      currentFolder: null,
+      startedAt: null,
+      finishedAt: null,
+      message: 'unsupported'
+    }
+  }),
+  pickLocalLibraryFolder: vi.fn().mockResolvedValue(null),
+  addLocalLibraryFolder: vi.fn().mockResolvedValue({
+    supported: false,
+    folders: [],
+    tracks: [],
+    status: {
+      phase: 'idle',
+      scannedFolders: 0,
+      scannedFiles: 0,
+      discoveredTracks: 0,
+      currentFolder: null,
+      startedAt: null,
+      finishedAt: null,
+      message: 'unsupported'
+    }
+  }),
+  removeLocalLibraryFolder: vi.fn().mockResolvedValue({
+    supported: false,
+    folders: [],
+    tracks: [],
+    status: {
+      phase: 'idle',
+      scannedFolders: 0,
+      scannedFiles: 0,
+      discoveredTracks: 0,
+      currentFolder: null,
+      startedAt: null,
+      finishedAt: null,
+      message: 'unsupported'
+    }
+  }),
+  scanLocalLibrary: vi.fn().mockResolvedValue({
+    supported: false,
+    folders: [],
+    tracks: [],
+    status: {
+      phase: 'idle',
+      scannedFolders: 0,
+      scannedFiles: 0,
+      discoveredTracks: 0,
+      currentFolder: null,
+      startedAt: null,
+      finishedAt: null,
+      message: 'unsupported'
+    }
+  })
 }))
 
 describe('commandService', () => {
   beforeEach(() => {
     resetServices()
     registerService(IContextKeyService, createContextKeyService)
-    registerService(IPlatformService, () => platformServiceMock as PlatformService)
+    registerService(IPlatformService, () => platformServiceMock as unknown as PlatformService)
     platformServiceMock.isElectron.mockReturnValue(true)
     platformServiceMock.toggleDesktopLyric.mockClear()
     platformServiceMock.send.mockClear()

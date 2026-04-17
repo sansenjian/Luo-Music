@@ -16,7 +16,7 @@
       "preLaunchTask": "build:electron",
       "outFiles": ["${workspaceFolder}/build/electron/**/*.cjs"],
       "sourceMaps": true,
-      "console": "integratedTerminal",
+      "console": "internalConsole",
       "env": {
         "ELECTRON_ENABLE_LOGGING": "true"
       }

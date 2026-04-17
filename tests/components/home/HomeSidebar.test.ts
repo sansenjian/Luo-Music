@@ -90,6 +90,23 @@ describe('HomeSidebar', () => {
 
     expect(localMusicLink?.classes()).toContain('active')
     expect(links[0].classes()).not.toContain('active')
+    expect(wrapper.emitted('item-select')?.[0]).toEqual(['local'])
+  })
+
+  it('respects a controlled active item from the parent workspace state', () => {
+    const wrapper = mount(HomeSidebar, {
+      props: {
+        activeItemId: 'liked'
+      }
+    })
+
+    const likedLink = wrapper
+      .findAll('.sidebar-link')
+      .find(link => link.text().includes('我喜欢的音乐'))
+    const homeLink = wrapper.findAll('.sidebar-link').find(link => link.text().includes('主页'))
+
+    expect(likedLink?.classes()).toContain('active')
+    expect(homeLink?.classes()).not.toContain('active')
   })
 
   it('hides the sidebar brand block when showBrand is false', () => {
@@ -162,6 +179,35 @@ describe('HomeSidebar', () => {
     expect(wrapper.text()).toContain('Album Artist')
     expect(wrapper.text()).toContain('12 首歌')
     expect(wrapper.text()).not.toContain('我的测试歌单')
+  })
+
+  it('emits collection-select when a sidebar collection card is clicked', async () => {
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'Tester',
+        userId: 1001
+      },
+      'netease-cookie'
+    )
+
+    const wrapper = mount(HomeSidebar)
+    await flushPromises()
+
+    const collectionCard = wrapper.find('.playlist-card')
+    await collectionCard.trigger('click')
+
+    expect(wrapper.emitted('item-select')?.at(-1)).toEqual(['playlist:created-1'])
+    expect(wrapper.emitted('collection-select')?.[0]).toEqual([
+      {
+        uiId: 'playlist:created-1',
+        sourceId: 'created-1',
+        kind: 'playlist',
+        name: '我的测试歌单',
+        coverUrl: 'https://example.com/created-cover.png',
+        summary: '29 首歌'
+      }
+    ])
   })
 
   it('reflects netease and qq login state from userStore as display-only text', () => {

@@ -14,6 +14,18 @@ import type {
   Platform
 } from './types'
 import { Platform as PlatformEnum } from './types'
+import type {
+  LocalLibraryAlbumSummary,
+  LocalLibraryArtistSummary,
+  LocalLibraryPage,
+  LocalLibrarySummaryQuery,
+  LocalLibraryTrack,
+  LocalLibraryTrackQuery
+} from '@/types/localLibrary'
+import {
+  createEmptyLocalLibraryPage,
+  createUnsupportedLocalLibraryState
+} from '@/types/localLibrary'
 import { isElectronRuntime } from '@/utils/runtime'
 
 /**
@@ -131,6 +143,59 @@ export abstract class PlatformServiceBase implements IPlatformService {
       success: [],
       failed: []
     }
+  }
+
+  async getLocalLibraryState() {
+    return createUnsupportedLocalLibraryState()
+  }
+
+  async pickLocalLibraryFolder(): Promise<string | null> {
+    return null
+  }
+
+  async addLocalLibraryFolder(
+    _folderPath: string
+  ): Promise<ReturnType<typeof createUnsupportedLocalLibraryState>> {
+    return createUnsupportedLocalLibraryState()
+  }
+
+  async removeLocalLibraryFolder(
+    _folderId: string
+  ): Promise<ReturnType<typeof createUnsupportedLocalLibraryState>> {
+    return createUnsupportedLocalLibraryState()
+  }
+
+  async setLocalLibraryFolderEnabled(
+    _folderId: string,
+    _enabled: boolean
+  ): Promise<ReturnType<typeof createUnsupportedLocalLibraryState>> {
+    return createUnsupportedLocalLibraryState()
+  }
+
+  async scanLocalLibrary(): Promise<ReturnType<typeof createUnsupportedLocalLibraryState>> {
+    return createUnsupportedLocalLibraryState()
+  }
+
+  async getLocalLibraryTracks(
+    _query?: LocalLibraryTrackQuery
+  ): Promise<LocalLibraryPage<LocalLibraryTrack>> {
+    return createEmptyLocalLibraryPage()
+  }
+
+  async getLocalLibraryArtists(
+    _query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryArtistSummary>> {
+    return createEmptyLocalLibraryPage()
+  }
+
+  async getLocalLibraryAlbums(
+    _query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryAlbumSummary>> {
+    return createEmptyLocalLibraryPage()
+  }
+
+  async getLocalLibraryCover(_coverHash: string): Promise<string | null> {
+    return null
   }
 }
 

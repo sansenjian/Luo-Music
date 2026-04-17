@@ -269,6 +269,34 @@ describe('playerStore', () => {
       expect(store.playing).toBe(false)
       expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
     })
+
+    it('does not loop with playNext when a local song audio error should skip', async () => {
+      const { store } = createInjectedPlayerStore()
+      const localSong = createMockSong({
+        id: 'local:track-1',
+        name: 'Local Song',
+        url: 'luo-media://media?path=D%3A%5CMusic%5Clocal.mp3',
+        extra: {
+          localSource: true,
+          localFilePath: 'D:\\Music\\local.mp3'
+        }
+      })
+
+      store.songList = [localSong]
+      store.currentIndex = 0
+      store.currentSong = localSong
+
+      const playNextSpy = vi.spyOn(store, 'playNext').mockImplementation(() => {})
+      const playNextSkipUnavailableSpy = vi
+        .spyOn(store, 'playNextSkipUnavailable')
+        .mockRejectedValueOnce(new Error('no playable songs'))
+
+      await store.handleAudioError(new Error('decode failed'))
+
+      expect(playNextSkipUnavailableSpy).toHaveBeenCalledTimes(1)
+      expect(playNextSpy).not.toHaveBeenCalled()
+      expect(localSong.unavailable).toBe(true)
+    })
   })
 
   describe('lyrics', () => {

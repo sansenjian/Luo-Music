@@ -1,6 +1,6 @@
 export class TimeFormatter {
   formatTime(seconds: number): string {
-    if (!seconds || isNaN(seconds) || seconds < 0) {
+    if (!seconds || !Number.isFinite(seconds) || seconds < 0) {
       return '00:00'
     }
     const totalSeconds = Math.floor(seconds)
@@ -10,7 +10,7 @@ export class TimeFormatter {
   }
 
   formatTimeDetailed(seconds: number): string {
-    if (!seconds || isNaN(seconds) || seconds < 0) {
+    if (!seconds || !Number.isFinite(seconds) || seconds < 0) {
       return '00:00.00'
     }
     const mins = Math.floor(seconds / 60)
@@ -55,7 +55,7 @@ export class TimeFormatter {
   }
 
   formatTimeWithHours(seconds: number): string {
-    if (!seconds || isNaN(seconds) || seconds < 0) {
+    if (!seconds || !Number.isFinite(seconds) || seconds < 0) {
       return '00:00:00'
     }
     const totalSeconds = Math.floor(seconds)

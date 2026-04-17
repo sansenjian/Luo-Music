@@ -48,6 +48,7 @@ export { registerServiceHandlers } from './handlers/service.handler'
 export { registerApiHandlers } from './handlers/api.handler'
 export { registerLyricHandlers } from './handlers/lyric.handler'
 export { registerLogHandlers } from './handlers/log.handler'
+export { registerLocalLibraryHandlers } from './handlers/localLibrary.handler'
 
 // 工具
 export {

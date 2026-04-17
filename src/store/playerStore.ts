@@ -28,6 +28,7 @@ import { LyricEngine, type LyricLine } from '@/utils/player/core/lyric'
 import { playerCore as defaultAudioManager } from '@/utils/player/core/playerCore'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
 import { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
+import { useRecentPlayStore } from '@/store/recentPlayStore'
 
 import { SEND_CHANNELS } from '../../electron/shared/protocol/channels'
 import type { PlayerStateSnapshot } from '../../electron/ipc/types'
@@ -397,6 +398,9 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       },
       playSongByIndex: index => store.playSongByIndex(index),
       setLyricsArray: lyrics => store.setLyricsArray(lyrics),
+      onPlaybackCommitted: song => {
+        useRecentPlayStore().recordSong(song)
+      },
       musicService: getMusicService(),
       createErrorHandler: () => runtime.ensureErrorHandler(() => store.createErrorHandler()),
       getErrorHandler: () => runtime.getErrorHandler(),
@@ -479,7 +483,15 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
               }
             },
             onLoadedMetadata: (duration: number) => {
-              this.duration = duration
+              const fallbackDuration =
+                this.currentSong &&
+                Number.isFinite(this.currentSong.duration) &&
+                this.currentSong.duration > 0
+                  ? this.currentSong.duration / 1000
+                  : 0
+
+              this.duration =
+                Number.isFinite(duration) && duration > 0 ? duration : fallbackDuration
             },
             onEnded: () => {
               this.handleSongEnd()
@@ -634,11 +646,27 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
             )
             const retryResult = await errorHandler.handleAudioError(retryError, this.currentSong)
             if (retryResult.shouldSkip) {
-              this.playNext()
+              try {
+                await this.playNextSkipUnavailable()
+              } catch (skipError) {
+                reportPlayerStoreError(
+                  skipError,
+                  'handleAudioError.retry.skip',
+                  'No playable songs remain after retry failure'
+                )
+              }
             }
           }
         } else if (result.shouldSkip) {
-          this.playNext()
+          try {
+            await this.playNextSkipUnavailable()
+          } catch (skipError) {
+            reportPlayerStoreError(
+              skipError,
+              'handleAudioError.skip',
+              'No playable songs remain after audio error'
+            )
+          }
         }
       },
 

@@ -12,6 +12,15 @@ import type {
   IClearCacheResult,
   IMessageHandler
 } from '../common/types'
+import type {
+  LocalLibraryAlbumSummary,
+  LocalLibraryArtistSummary,
+  LocalLibraryPage,
+  LocalLibraryState,
+  LocalLibrarySummaryQuery,
+  LocalLibraryTrack,
+  LocalLibraryTrackQuery
+} from '@/types/localLibrary'
 
 interface IElectronAPI {
   minimizeWindow(): void
@@ -197,6 +206,117 @@ export class ElectronPlatformService extends PlatformServiceBase {
     }
 
     return super.clearAllCache(keepUserData)
+  }
+
+  override async getLocalLibraryState(): Promise<LocalLibraryState> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<LocalLibraryState>(INVOKE_CHANNELS.LOCAL_LIBRARY_GET_STATE)
+    }
+
+    return super.getLocalLibraryState()
+  }
+
+  override async pickLocalLibraryFolder(): Promise<string | null> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<string | null>(INVOKE_CHANNELS.LOCAL_LIBRARY_PICK_FOLDER)
+    }
+
+    return super.pickLocalLibraryFolder()
+  }
+
+  override async addLocalLibraryFolder(folderPath: string): Promise<LocalLibraryState> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<LocalLibraryState>(
+        INVOKE_CHANNELS.LOCAL_LIBRARY_ADD_FOLDER,
+        folderPath
+      )
+    }
+
+    return super.addLocalLibraryFolder(folderPath)
+  }
+
+  override async removeLocalLibraryFolder(folderId: string): Promise<LocalLibraryState> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<LocalLibraryState>(
+        INVOKE_CHANNELS.LOCAL_LIBRARY_REMOVE_FOLDER,
+        folderId
+      )
+    }
+
+    return super.removeLocalLibraryFolder(folderId)
+  }
+
+  override async setLocalLibraryFolderEnabled(
+    folderId: string,
+    enabled: boolean
+  ): Promise<LocalLibraryState> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<LocalLibraryState>(
+        INVOKE_CHANNELS.LOCAL_LIBRARY_SET_FOLDER_ENABLED,
+        folderId,
+        enabled
+      )
+    }
+
+    return super.setLocalLibraryFolderEnabled(folderId, enabled)
+  }
+
+  override async scanLocalLibrary(): Promise<LocalLibraryState> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<LocalLibraryState>(INVOKE_CHANNELS.LOCAL_LIBRARY_SCAN)
+    }
+
+    return super.scanLocalLibrary()
+  }
+
+  override async getLocalLibraryTracks(
+    query?: LocalLibraryTrackQuery
+  ): Promise<LocalLibraryPage<LocalLibraryTrack>> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<LocalLibraryPage<LocalLibraryTrack>>(
+        INVOKE_CHANNELS.LOCAL_LIBRARY_GET_TRACKS,
+        query
+      )
+    }
+
+    return super.getLocalLibraryTracks()
+  }
+
+  override async getLocalLibraryArtists(
+    query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryArtistSummary>> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<LocalLibraryPage<LocalLibraryArtistSummary>>(
+        INVOKE_CHANNELS.LOCAL_LIBRARY_GET_ARTISTS,
+        query
+      )
+    }
+
+    return super.getLocalLibraryArtists()
+  }
+
+  override async getLocalLibraryAlbums(
+    query?: LocalLibrarySummaryQuery
+  ): Promise<LocalLibraryPage<LocalLibraryAlbumSummary>> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<LocalLibraryPage<LocalLibraryAlbumSummary>>(
+        INVOKE_CHANNELS.LOCAL_LIBRARY_GET_ALBUMS,
+        query
+      )
+    }
+
+    return super.getLocalLibraryAlbums()
+  }
+
+  override async getLocalLibraryCover(coverHash: string): Promise<string | null> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<string | null>(
+        INVOKE_CHANNELS.LOCAL_LIBRARY_GET_COVER,
+        coverHash
+      )
+    }
+
+    return super.getLocalLibraryCover(coverHash)
   }
 
   dispose(): void {
