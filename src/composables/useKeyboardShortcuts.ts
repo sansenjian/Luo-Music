@@ -27,7 +27,7 @@ export function useKeyboardShortcuts(deps: KeyboardShortcutDeps = {}): void {
     volumeDown: { id: COMMANDS.PLAYER_VOLUME_DOWN },
     seekForward: { id: COMMANDS.PLAYER_SEEK_FORWARD },
     seekBack: { id: COMMANDS.PLAYER_SEEK_BACK },
-    toggleCompact: { id: COMMANDS.PLAYER_TOGGLE_COMPACT_MODE }
+    togglePlayerDocked: { id: COMMANDS.PLAYER_TOGGLE_PLAYER_DOCKED }
   }
 
   function resolveEventTarget(event: KeyboardEvent): HTMLElement | null {

@@ -53,8 +53,8 @@ export interface PlayerState {
   initialized: boolean
   /** 是否加载中 */
   loading: boolean
-  /** 是否紧凑模式 */
-  isCompact: boolean
+  /** 播放器是否停靠到底栏 */
+  isPlayerDocked: boolean
   /** IPC 是否已初始化 */
   ipcInitialized: boolean
 }
@@ -101,7 +101,7 @@ export function createInitialState(): PlayerState {
     showPlaylist: false,
     initialized: false,
     loading: false,
-    isCompact: true,
+    isPlayerDocked: true,
     ipcInitialized: false
   }
 }

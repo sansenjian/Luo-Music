@@ -33,7 +33,7 @@ export interface PlayerStateResponse {
   currentLyricIndex: number
   showLyric: boolean
   showPlaylist: boolean
-  isCompact: boolean
+  isPlayerDocked: boolean
 }
 
 /**

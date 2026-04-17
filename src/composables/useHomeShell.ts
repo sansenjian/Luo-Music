@@ -9,7 +9,8 @@ import { useToastStore } from '../store/toastStore'
 
 export type HomeTab = 'lyric' | 'playlist'
 
-const COMPACT_MODE_PREFERENCE_KEY = 'compactModeUserToggled'
+const PLAYER_DOCKED_PREFERENCE_KEY = 'playerDockedUserToggled'
+const LEGACY_COMPACT_MODE_PREFERENCE_KEY = 'compactModeUserToggled'
 
 export type HomeShellDeps = {
   playerStore?: ReturnType<typeof usePlayerStore>
@@ -63,10 +64,12 @@ export function useHomeShell(deps: HomeShellDeps = {}) {
     return platformService.isMobile()
   }
 
-  const userPreferenceSet = storageService.getItem(COMPACT_MODE_PREFERENCE_KEY)
-  if (isMobile() && !playerStore.isCompact && !userPreferenceSet) {
-    playerStore.isCompact = true
-    storageService.setItem(COMPACT_MODE_PREFERENCE_KEY, 'true')
+  const userPreferenceSet =
+    storageService.getItem(PLAYER_DOCKED_PREFERENCE_KEY) ??
+    storageService.getItem(LEGACY_COMPACT_MODE_PREFERENCE_KEY)
+  if (isMobile() && !playerStore.isPlayerDocked && !userPreferenceSet) {
+    playerStore.isPlayerDocked = true
+    storageService.setItem(PLAYER_DOCKED_PREFERENCE_KEY, 'true')
   }
 
   onMounted(() => {

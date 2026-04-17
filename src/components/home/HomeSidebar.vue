@@ -19,7 +19,6 @@ type SidebarIconName =
   | 'favorites'
   | 'artists'
   | 'local'
-  | 'settings'
 
 type SidebarNavItem = {
   id: string
@@ -70,21 +69,17 @@ const iconMarkupMap: Record<SidebarIconName, string> = {
   artists:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M8.1 11.2a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Zm7.8 0a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Z"/><path d="M3.9 18.8a4.2 4.2 0 0 1 8.4 0"/><path d="M11.7 18.8a4.2 4.2 0 0 1 8.4 0"/></svg>',
   local:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5.2 6.2h13.6a1.2 1.2 0 0 1 1.2 1.2v9.2a1.2 1.2 0 0 1-1.2 1.2H5.2A1.2 1.2 0 0 1 4 16.6V7.4a1.2 1.2 0 0 1 1.2-1.2Z"/><path d="M8 18.8h8"/><path d="M8.6 11.6h6.8"/></svg>',
-  settings:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m12 4.8 1 .6 1.5-.3.8 1.3 1.4.5v1.6l1 1-.7 1.4.4 1.4-1.3.8-.5 1.4h-1.6l-1 1-1.4-.7-1.4.4-.8-1.3-1.4-.5v-1.6l-1-1 .7-1.4-.4-1.4 1.3-.8.5-1.4h1.6l1-1Z"/><circle cx="12" cy="12" r="2.4"/></svg>'
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5.2 6.2h13.6a1.2 1.2 0 0 1 1.2 1.2v9.2a1.2 1.2 0 0 1-1.2 1.2H5.2A1.2 1.2 0 0 1 4 16.6V7.4a1.2 1.2 0 0 1 1.2-1.2Z"/><path d="M8 18.8h8"/><path d="M8.6 11.6h6.8"/></svg>'
 }
 
 const props = withDefaults(
   defineProps<{
     collapsed?: boolean
     showBrand?: boolean
-    showFooter?: boolean
   }>(),
   {
     collapsed: false,
-    showBrand: true,
-    showFooter: true
+    showBrand: true
   }
 )
 
@@ -348,7 +343,7 @@ function resolveCollectionTone(collectionId: string): 'mono' | 'violet' | 'mist'
       </section>
     </div>
 
-    <footer v-if="props.showFooter" class="sidebar-footer">
+    <footer class="sidebar-footer">
       <HomeSidebarFooter :collapsed="props.collapsed" />
     </footer>
   </aside>
@@ -427,8 +422,7 @@ function resolveCollectionTone(collectionId: string): 'mono' | 'violet' | 'mist'
   color: var(--white);
 }
 
-.sidebar-icon,
-.settings-icon {
+.sidebar-icon {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
@@ -438,8 +432,7 @@ function resolveCollectionTone(collectionId: string): 'mono' | 'violet' | 'mist'
   color: currentColor;
 }
 
-.sidebar-icon :deep(svg),
-.settings-icon :deep(svg) {
+.sidebar-icon :deep(svg) {
   width: 100%;
   height: 100%;
   display: block;

@@ -21,7 +21,6 @@ declare global {
   const asyncComputed: typeof import('@vueuse/core').asyncComputed
   const autoResetRef: typeof import('@vueuse/core').autoResetRef
   const buildCachedEventViewModels: typeof import('./composables/useUserEvents').buildCachedEventViewModels
-  const clearSearch: typeof import('./composables/useSearch').clearSearch
   const computed: typeof import('vue').computed
   const computedAsync: typeof import('@vueuse/core').computedAsync
   const computedEager: typeof import('@vueuse/core').computedEager
@@ -43,7 +42,6 @@ declare global {
   const createSharedComposable: typeof import('@vueuse/core').createSharedComposable
   const createTemplatePromise: typeof import('@vueuse/core').createTemplatePromise
   const createUnrefFn: typeof import('@vueuse/core').createUnrefFn
-  const currentSongInfo: typeof import('./store/playerStore').currentSongInfo
   const customRef: typeof import('vue').customRef
   const debouncedRef: typeof import('@vueuse/core').debouncedRef
   const debouncedWatch: typeof import('@vueuse/core').debouncedWatch
@@ -61,15 +59,11 @@ declare global {
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
   const getEventDisplaySong: typeof import('./composables/useUserEvents').getEventDisplaySong
   const getEventKey: typeof import('./composables/useUserEvents').getEventKey
-  const getResultsForPlaylist: typeof import('./composables/useSearch').getResultsForPlaylist
-  const getSongAt: typeof import('./composables/useSearch').getSongAt
   const h: typeof import('vue').h
-  const hasResults: typeof import('./composables/useSearch').hasResults
   const ignorableWatch: typeof import('@vueuse/core').ignorableWatch
   const inject: typeof import('vue').inject
   const injectLocal: typeof import('@vueuse/core').injectLocal
   const isDefined: typeof import('@vueuse/core').isDefined
-  const isLoading: typeof import('./composables/useSearch').isLoading
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive
   const isReadonly: typeof import('vue').isReadonly
@@ -105,9 +99,7 @@ declare global {
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
   const pausableWatch: typeof import('@vueuse/core').pausableWatch
-  const performSearch: typeof import('./composables/useSearch').performSearch
   const pinia: typeof import('./store/pinia').default
-  const platform: typeof import('./composables/useSearch').platform
   const provide: typeof import('vue').provide
   const provideLocal: typeof import('@vueuse/core').provideLocal
   const reactify: typeof import('@vueuse/core').reactify
@@ -126,14 +118,9 @@ declare global {
   const refWithControl: typeof import('@vueuse/core').refWithControl
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveRef: typeof import('@vueuse/core').resolveRef
-  const searchError: typeof import('./composables/useSearch').searchError
-  const searchKeyword: typeof import('./composables/useSearch').searchKeyword
   const searchResultItemToSong: typeof import('./store/searchStore').searchResultItemToSong
-  const searchResults: typeof import('./composables/useSearch').searchResults
-  const searchTotal: typeof import('./composables/useSearch').searchTotal
   const setActivePinia: typeof import('pinia').setActivePinia
   const setMapStoreSuffix: typeof import('pinia').setMapStoreSuffix
-  const setSearchPlatform: typeof import('./composables/useSearch').setSearchPlatform
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
@@ -188,7 +175,6 @@ declare global {
   const useCloned: typeof import('@vueuse/core').useCloned
   const useColorMode: typeof import('@vueuse/core').useColorMode
   const useCommandContext: typeof import('./composables/useCommandContext').useCommandContext
-  const useCompactPlayerFooterLayout: typeof import('./composables/useCompactPlayerFooterLayout').default
   const useConfirmDialog: typeof import('@vueuse/core').useConfirmDialog
   const useCountdown: typeof import('@vueuse/core').useCountdown
   const useCounter: typeof import('@vueuse/core').useCounter
@@ -208,6 +194,7 @@ declare global {
   const useDevicePixelRatio: typeof import('@vueuse/core').useDevicePixelRatio
   const useDevicesList: typeof import('@vueuse/core').useDevicesList
   const useDisplayMedia: typeof import('@vueuse/core').useDisplayMedia
+  const useDockedPlayerBarLayout: typeof import('./composables/useDockedPlayerBarLayout').default
   const useDocumentVisibility: typeof import('@vueuse/core').useDocumentVisibility
   const useDraggable: typeof import('@vueuse/core').useDraggable
   const useDropZone: typeof import('@vueuse/core').useDropZone
@@ -408,10 +395,10 @@ declare global {
   import('./composables/useCommandContext')
   // @ts-ignore
   export type {
-    CompactPlayerFooterLayout,
-    CompactPlayerFooterLayoutDeps
-  } from './composables/useCompactPlayerFooterLayout'
-  import('./composables/useCompactPlayerFooterLayout')
+    DockedPlayerBarLayout,
+    DockedPlayerBarLayoutDeps
+  } from './composables/useDockedPlayerBarLayout'
+  import('./composables/useDockedPlayerBarLayout')
   // @ts-ignore
   export type { FavoriteAlbumItem, UseFavoriteAlbumsReturn } from './composables/useFavoriteAlbums'
   import('./composables/useFavoriteAlbums')
@@ -707,9 +694,6 @@ declare module 'vue' {
     readonly useCommandContext: UnwrapRef<
       (typeof import('./composables/useCommandContext'))['useCommandContext']
     >
-    readonly useCompactPlayerFooterLayout: UnwrapRef<
-      (typeof import('./composables/useCompactPlayerFooterLayout'))['default']
-    >
     readonly useConfirmDialog: UnwrapRef<(typeof import('@vueuse/core'))['useConfirmDialog']>
     readonly useCountdown: UnwrapRef<(typeof import('@vueuse/core'))['useCountdown']>
     readonly useCounter: UnwrapRef<(typeof import('@vueuse/core'))['useCounter']>
@@ -733,6 +717,9 @@ declare module 'vue' {
     readonly useDevicePixelRatio: UnwrapRef<(typeof import('@vueuse/core'))['useDevicePixelRatio']>
     readonly useDevicesList: UnwrapRef<(typeof import('@vueuse/core'))['useDevicesList']>
     readonly useDisplayMedia: UnwrapRef<(typeof import('@vueuse/core'))['useDisplayMedia']>
+    readonly useDockedPlayerBarLayout: UnwrapRef<
+      (typeof import('./composables/useDockedPlayerBarLayout'))['default']
+    >
     readonly useDocumentVisibility: UnwrapRef<
       (typeof import('@vueuse/core'))['useDocumentVisibility']
     >

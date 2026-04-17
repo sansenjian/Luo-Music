@@ -28,7 +28,7 @@ type SearchStoreLike = Pick<
 >
 type HomePagePlayerStoreLike = Pick<ReturnType<typeof useHomeShell>['playerStore'], 'setSongList'> &
   Partial<
-    Pick<ReturnType<typeof useHomeShell>['playerStore'], 'isCompact' | 'loading' | 'songList'>
+    Pick<ReturnType<typeof useHomeShell>['playerStore'], 'isPlayerDocked' | 'loading' | 'songList'>
   >
 type HomeShellReturn = ReturnType<typeof useHomeShell>
 

@@ -63,7 +63,7 @@ describe('playerStore', () => {
       expect(store.currentIndex).toBe(-1)
       expect(store.currentSong).toBeNull()
       expect(store.initialized).toBe(false)
-      expect(store.isCompact).toBe(true)
+      expect(store.isPlayerDocked).toBe(true)
     })
 
     it('has correct getters', () => {
@@ -326,7 +326,7 @@ describe('playerStore', () => {
     })
   })
 
-  describe('compact mode', () => {
+  describe('docked player mode', () => {
     beforeEach(() => {
       const store = usePlayerStore()
       store.setSongList([
@@ -336,15 +336,15 @@ describe('playerStore', () => {
       ])
     })
 
-    it('toggleCompactMode toggles compact mode', () => {
+    it('togglePlayerDocked toggles the docked player mode', () => {
       const { store, storageService } = createInjectedPlayerStore()
 
-      expect(store.isCompact).toBe(true)
-      store.toggleCompactMode()
-      expect(store.isCompact).toBe(false)
-      store.toggleCompactMode()
-      expect(store.isCompact).toBe(true)
-      expect(storageService.setItem).toHaveBeenCalledWith('compactModeUserToggled', 'true')
+      expect(store.isPlayerDocked).toBe(true)
+      store.togglePlayerDocked()
+      expect(store.isPlayerDocked).toBe(false)
+      store.togglePlayerDocked()
+      expect(store.isPlayerDocked).toBe(true)
+      expect(storageService.setItem).toHaveBeenCalledWith('playerDockedUserToggled', 'true')
     })
   })
 })

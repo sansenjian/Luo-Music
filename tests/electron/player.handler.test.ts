@@ -106,7 +106,7 @@ describe('player.handler', () => {
       currentLyricIndex: 0,
       showLyric: true,
       showPlaylist: false,
-      isCompact: false,
+      isPlayerDocked: false,
       lyrics: [{ time: 42, text: 'line', trans: '', roma: '' }],
       desktopLyricSequence: 3
     })
@@ -210,7 +210,7 @@ describe('player.handler', () => {
       currentLyricIndex: 0,
       showLyric: true,
       showPlaylist: false,
-      isCompact: false,
+      isPlayerDocked: false,
       lyrics: [{ time: 42, text: 'current line', trans: '', roma: '' }],
       desktopLyricSequence: 1
     })
@@ -282,7 +282,7 @@ describe('player.handler', () => {
       currentLyricIndex: -1,
       showLyric: true,
       showPlaylist: false,
-      isCompact: false,
+      isPlayerDocked: false,
       lyrics: [],
       desktopLyricSequence: 0
     })
@@ -365,7 +365,7 @@ describe('player.handler', () => {
       currentLyricIndex: 0,
       showLyric: true,
       showPlaylist: false,
-      isCompact: false,
+      isPlayerDocked: false,
       lyrics: [{ time: 42, text: 'stale line', trans: '', roma: '' }],
       desktopLyricSequence: 9
     })
@@ -443,7 +443,7 @@ describe('player.handler', () => {
       currentLyricIndex: 0,
       showLyric: true,
       showPlaylist: false,
-      isCompact: false,
+      isPlayerDocked: false,
       lyrics: [{ time: 42, text: 'stale line', trans: '', roma: '' }],
       desktopLyricSequence: 9
     })

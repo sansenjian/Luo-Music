@@ -113,7 +113,7 @@ export interface PlayerStateResponse {
   currentLyricIndex: number
   showLyric: boolean
   showPlaylist: boolean
-  isCompact: boolean
+  isPlayerDocked: boolean
 }
 
 export interface PlayerStateSnapshot extends PlayerStateResponse {
@@ -421,7 +421,7 @@ type ReceiveChannelsDefinition = MergeChannels<
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.MUSIC_VOLUME_UP, void> &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.MUSIC_VOLUME_DOWN, void> &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.MUSIC_PROCESS_CONTROL, 'forward' | 'back'> &
-    DefineReceiveChannel<typeof RECEIVE_CHANNELS.MUSIC_COMPACT_MODE_CONTROL, void> &
+    DefineReceiveChannel<typeof RECEIVE_CHANNELS.MUSIC_PLAYER_DOCK_CONTROL, void> &
     DefineReceiveChannel<
       typeof RECEIVE_CHANNELS.PLAYER_STATE_CHANGE,
       { isPlaying: boolean; currentTime: number }

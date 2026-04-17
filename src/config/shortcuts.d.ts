@@ -14,7 +14,7 @@ export interface ShortcutConfig {
     | 'volumeDown'
     | 'seekBack'
     | 'seekForward'
-    | 'toggleCompact'
+    | 'togglePlayerDocked'
 }
 
 export const DEFAULT_SHORTCUTS: ShortcutConfig[]

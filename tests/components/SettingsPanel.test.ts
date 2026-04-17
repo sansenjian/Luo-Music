@@ -141,7 +141,7 @@ describe('SettingsPanel.vue', () => {
     wrapper.unmount()
   })
 
-  it('persists the selected compact player footer layout', async () => {
+  it('persists the selected docked player bar layout', async () => {
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
     const wrapper = mount(SettingsPanel, {
@@ -157,7 +157,7 @@ describe('SettingsPanel.vue', () => {
 
     await wrapper.find('.settings-btn').trigger('click')
 
-    const footerLayoutGroup = document.body.querySelector('[aria-label="紧凑播放器底栏"]')
+    const footerLayoutGroup = document.body.querySelector('[aria-label="紧贴底栏播放器布局"]')
     const options = Array.from(footerLayoutGroup?.querySelectorAll('.placement-option') ?? [])
     expect(options.map(option => option.textContent?.trim())).toEqual(['铺满底栏', '给侧边栏留位'])
 
@@ -169,10 +169,7 @@ describe('SettingsPanel.vue', () => {
     withSidebarOption?.click()
     await wrapper.vm.$nextTick()
 
-    expect(storageServiceMock.setItem).toHaveBeenCalledWith(
-      'compactPlayerFooterLayout',
-      'with-sidebar'
-    )
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith('dockedPlayerBarLayout', 'with-sidebar')
     expect(withSidebarOption?.classList.contains('active')).toBe(true)
 
     wrapper.unmount()

@@ -19,7 +19,7 @@ export type ShortcutAction =
   | 'volumeDown'
   | 'seekBack'
   | 'seekForward'
-  | 'toggleCompact'
+  | 'togglePlayerDocked'
 
 /**
  * 快捷键配置类型
@@ -55,7 +55,7 @@ function getActionHandler(action: ShortcutAction): (() => void) | null {
     volumeDown: () => windowManager?.send('music-volume-down'),
     seekBack: () => windowManager?.send('music-process-control', 'back'),
     seekForward: () => windowManager?.send('music-process-control', 'forward'),
-    toggleCompact: () => windowManager?.send('hide-player')
+    togglePlayerDocked: () => windowManager?.send('hide-player')
   }
 
   return actions[action] || null

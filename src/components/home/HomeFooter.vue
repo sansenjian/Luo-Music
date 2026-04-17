@@ -1,30 +1,27 @@
 <script setup lang="ts">
-import type { CompactPlayerFooterLayout } from '@/composables/useCompactPlayerFooterLayout'
+import type { DockedPlayerBarLayout } from '@/composables/useDockedPlayerBarLayout'
 
 const props = withDefaults(
   defineProps<{
-    isCompact: boolean
+    isPlayerDocked: boolean
     isLoading: boolean
     trackCount: number
-    compactPlayerFooterLayout?: CompactPlayerFooterLayout
+    dockedPlayerBarLayout?: DockedPlayerBarLayout
   }>(),
   {
-    compactPlayerFooterLayout: 'full'
+    dockedPlayerBarLayout: 'full'
   }
 )
 </script>
 
 <template>
   <footer
-    v-if="props.isCompact"
-    class="compact-player"
-    :class="`layout-${props.compactPlayerFooterLayout}`"
+    v-if="props.isPlayerDocked"
+    class="docked-player-bar"
+    :class="`layout-${props.dockedPlayerBarLayout}`"
   >
-    <div v-if="props.compactPlayerFooterLayout === 'with-sidebar'" class="compact-sidebar-fill">
-      <slot name="compact-sidebar-fill" />
-    </div>
-    <div class="compact-player-body">
-      <slot name="compact-player" />
+    <div class="docked-player-bar-body">
+      <slot name="docked-player" />
     </div>
   </footer>
 
@@ -55,7 +52,7 @@ const props = withDefaults(
   background: var(--bg);
 }
 
-.compact-player {
+.docked-player-bar {
   display: flex;
   flex-shrink: 0;
   background: var(--bg);
@@ -64,7 +61,7 @@ const props = withDefaults(
   overflow: hidden;
 }
 
-.compact-player-body {
+.docked-player-bar-body {
   flex: 1;
   min-width: 0;
   background: var(--white);
@@ -72,25 +69,8 @@ const props = withDefaults(
   overflow: hidden;
 }
 
-.compact-player.layout-full .compact-player-body {
+.docked-player-bar.layout-full .docked-player-bar-body {
   width: 100%;
-}
-
-.compact-sidebar-fill {
-  display: flex;
-  align-items: stretch;
-  flex: 0 0 var(--home-sidebar-width, 236px);
-  width: var(--home-sidebar-width, 236px);
-  min-width: var(--home-sidebar-width, 236px);
-  border-top: 3px solid var(--black);
-  border-right: 3px solid var(--black);
-  background:
-    radial-gradient(circle at top left, var(--sidebar-shell-glow), transparent 28%),
-    var(--sidebar-shell-bg);
-}
-
-.compact-sidebar-fill :deep(.sidebar-login-panel) {
-  padding-bottom: calc(12px + var(--safe-bottom));
 }
 
 .status-left {

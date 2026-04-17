@@ -10,7 +10,8 @@ type PlayerState = {
   volume: number
   playMode: number
   lyricType: string[]
-  isCompact: boolean
+  isPlayerDocked: boolean
+  isCompact?: boolean
 }
 
 const platformService = services.platform()
@@ -25,7 +26,7 @@ const DEFAULT_PLAYER_STATE: PlayerState = {
   volume: 0.7,
   playMode: PLAY_MODE.SEQUENTIAL,
   lyricType: ['original', 'trans'],
-  isCompact: true
+  isPlayerDocked: true
 }
 const VALID_LYRIC_TYPES = new Set(['original', 'trans', 'roma'])
 
@@ -52,8 +53,8 @@ const sanitizeLyricType = (value: unknown): string[] => {
   return sanitized.length > 0 ? [...new Set(sanitized)] : [...DEFAULT_PLAYER_STATE.lyricType]
 }
 
-const sanitizeIsCompact = (value: unknown): boolean => {
-  return typeof value === 'boolean' ? value : DEFAULT_PLAYER_STATE.isCompact
+const sanitizeIsPlayerDocked = (value: unknown): boolean => {
+  return typeof value === 'boolean' ? value : DEFAULT_PLAYER_STATE.isPlayerDocked
 }
 
 const sanitizePlayerState = (value: unknown): PlayerState => {
@@ -67,7 +68,9 @@ const sanitizePlayerState = (value: unknown): PlayerState => {
     volume: sanitizeVolume(record.volume as unknown),
     playMode: sanitizePlayMode(record.playMode as unknown),
     lyricType: sanitizeLyricType(record.lyricType as unknown),
-    isCompact: sanitizeIsCompact(record.isCompact as unknown)
+    isPlayerDocked: sanitizeIsPlayerDocked(
+      record.isPlayerDocked ?? (record as { isCompact?: unknown }).isCompact
+    )
   }
 }
 

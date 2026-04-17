@@ -126,28 +126,28 @@ describe('useHomeShell', () => {
     expect(setupIpcListeners).toHaveBeenCalledTimes(1)
   })
 
-  it('enables compact mode before first paint on mobile without user preference', () => {
+  it('enables the docked player mode before first paint on mobile without user preference', () => {
     platformServiceMock.isMobile.mockReturnValue(true)
 
     const playerStore = usePlayerStore()
-    playerStore.isCompact = false
+    playerStore.isPlayerDocked = false
 
     mountShell()
 
-    expect(playerStore.isCompact).toBe(true)
-    expect(storageServiceMock.setItem).toHaveBeenCalledWith('compactModeUserToggled', 'true')
+    expect(playerStore.isPlayerDocked).toBe(true)
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith('playerDockedUserToggled', 'true')
   })
 
-  it('does not force compact mode after the user has already chosen a preference', () => {
+  it('does not force the docked player mode after the user has already chosen a preference', () => {
     platformServiceMock.isMobile.mockReturnValue(true)
     storageServiceMock.getItem.mockReturnValue('1')
 
     const playerStore = usePlayerStore()
-    playerStore.isCompact = false
+    playerStore.isPlayerDocked = false
 
     mountShell()
 
-    expect(playerStore.isCompact).toBe(false)
+    expect(playerStore.isPlayerDocked).toBe(false)
     expect(storageServiceMock.setItem).not.toHaveBeenCalled()
   })
 })

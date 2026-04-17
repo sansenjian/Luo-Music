@@ -25,7 +25,7 @@ describe('ipcHandlers music-playing-control', () => {
   const seek = vi.fn()
   const setVolume = vi.fn()
   const toggleMute = vi.fn()
-  const toggleCompactMode = vi.fn()
+  const togglePlayerDocked = vi.fn()
 
   const platform = {
     isElectron: vi.fn(() => true),
@@ -55,7 +55,7 @@ describe('ipcHandlers music-playing-control', () => {
     seek,
     setVolume,
     toggleMute,
-    toggleCompactMode,
+    togglePlayerDocked,
     platform,
     ...overrides
   })
@@ -77,7 +77,7 @@ describe('ipcHandlers music-playing-control', () => {
     seek.mockClear()
     setVolume.mockClear()
     toggleMute.mockClear()
-    toggleCompactMode.mockClear()
+    togglePlayerDocked.mockClear()
     platform.on.mockClear()
     platform.isElectron.mockClear()
     state.playing = false
@@ -153,7 +153,7 @@ describe('ipcHandlers music-playing-control', () => {
     expect(setVolume).toHaveBeenCalledWith(0.25)
   })
 
-  it('handles song, playmode, volume, compact and hide-player channels', () => {
+  it('handles song, playmode, volume, dock and hide-player channels', () => {
     const handlers = createIpcHandlers(createDeps())
     const song = {
       id: 'song-1',
@@ -192,7 +192,7 @@ describe('ipcHandlers music-playing-control', () => {
 
     listeners.get('music-process-control')?.('back')
     listeners.get('music-process-control')?.('forward')
-    listeners.get('music-compact-mode-control')?.()
+    listeners.get('music-player-dock-control')?.()
     listeners.get('hide-player')?.()
 
     expect(playPrev).toHaveBeenCalledTimes(1)
@@ -206,7 +206,7 @@ describe('ipcHandlers music-playing-control', () => {
     expect(setPlayMode).toHaveBeenNthCalledWith(2, 2)
     expect(setVolume).toHaveBeenNthCalledWith(1, 1)
     expect(setVolume).toHaveBeenNthCalledWith(2, 0)
-    expect(toggleCompactMode).toHaveBeenCalledTimes(2)
+    expect(togglePlayerDocked).toHaveBeenCalledTimes(2)
   })
 
   it('ignores invalid music-playmode-control payloads', () => {

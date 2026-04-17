@@ -143,7 +143,7 @@ export const RECEIVE_CHANNELS = {
   MUSIC_VOLUME_UP: 'music-volume-up',
   MUSIC_VOLUME_DOWN: 'music-volume-down',
   MUSIC_PROCESS_CONTROL: 'music-process-control',
-  MUSIC_COMPACT_MODE_CONTROL: 'music-compact-mode-control',
+  MUSIC_PLAYER_DOCK_CONTROL: 'music-player-dock-control',
 
   // 播放器状态变化
   PLAYER_STATE_CHANGE: 'player:state-change',

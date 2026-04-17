@@ -134,24 +134,27 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   padding: 50vh 40px;
 }
 
-:global(.player-compact) .lyric-line {
+:global(.player-docked) .lyric-line {
   margin-bottom: 12px;
   padding: 6px 10px;
 }
 
-:global(.player-compact) .lyric-main {
+:global(.player-docked) .lyric-main {
   font-size: 16px;
 }
 
-:global(.player-compact) .lyric-trans,
-:global(.player-compact) .lyric-roma {
+:global(.player-docked) .lyric-trans,
+:global(.player-docked) .lyric-roma {
   font-size: 11px;
 }
 
 .lyric-line {
   margin-bottom: 16px;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
   padding: 8px 12px;
   border-left: 3px solid transparent;
   position: relative;

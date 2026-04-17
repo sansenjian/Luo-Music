@@ -37,7 +37,7 @@ describe('useKeyboardShortcuts', () => {
     expect(removeEventListener).toHaveBeenCalledWith('keydown', handler)
   })
 
-  it('toggles compact mode when Tab is pressed outside inputs', () => {
+  it('toggles the docked player mode when Tab is pressed outside inputs', () => {
     const addEventListener = vi.fn()
     const removeEventListener = vi.fn()
     const target = {
@@ -75,11 +75,11 @@ describe('useKeyboardShortcuts', () => {
 
     expect(preventDefault).toHaveBeenCalledTimes(1)
     expect(commandService.canExecute).toHaveBeenCalledWith(
-      COMMANDS.PLAYER_TOGGLE_COMPACT_MODE,
+      COMMANDS.PLAYER_TOGGLE_PLAYER_DOCKED,
       undefined
     )
     expect(commandService.execute).toHaveBeenCalledWith(
-      COMMANDS.PLAYER_TOGGLE_COMPACT_MODE,
+      COMMANDS.PLAYER_TOGGLE_PLAYER_DOCKED,
       undefined
     )
   })

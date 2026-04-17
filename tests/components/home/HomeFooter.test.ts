@@ -4,10 +4,10 @@ import { mount } from '@vue/test-utils'
 import HomeFooter from '@/components/home/HomeFooter.vue'
 
 describe('HomeFooter', () => {
-  it('renders the status bar in non-compact mode', () => {
+  it('renders the status bar when the player is not docked', () => {
     const wrapper = mount(HomeFooter, {
       props: {
-        isCompact: false,
+        isPlayerDocked: false,
         isLoading: true,
         trackCount: 12
       }
@@ -18,40 +18,36 @@ describe('HomeFooter', () => {
     expect(wrapper.text()).toContain('Loading...')
   })
 
-  it('renders the compact player full width by default', () => {
+  it('renders the docked player bar full width by default', () => {
     const wrapper = mount(HomeFooter, {
       props: {
-        isCompact: true,
+        isPlayerDocked: true,
         isLoading: false,
         trackCount: 3
       },
       slots: {
-        'compact-player': '<div class="compact-player-slot">compact player</div>'
+        'docked-player': '<div class="docked-player-slot">docked player</div>'
       }
     })
 
-    expect(wrapper.find('.compact-player').classes()).toContain('layout-full')
-    expect(wrapper.find('.compact-sidebar-fill').exists()).toBe(false)
-    expect(wrapper.find('.compact-player-body').text()).toContain('compact player')
+    expect(wrapper.find('.docked-player-bar').classes()).toContain('layout-full')
+    expect(wrapper.find('.docked-player-bar-body').text()).toContain('docked player')
   })
 
-  it('reserves sidebar space when the compact footer layout is set to with-sidebar', () => {
+  it('keeps the docked player bar body intact when the adaptive sidebar layout is enabled', () => {
     const wrapper = mount(HomeFooter, {
       props: {
-        isCompact: true,
+        isPlayerDocked: true,
         isLoading: false,
         trackCount: 3,
-        compactPlayerFooterLayout: 'with-sidebar'
+        dockedPlayerBarLayout: 'with-sidebar'
       },
       slots: {
-        'compact-sidebar-fill': '<div class="sidebar-fill-slot">sidebar footer</div>',
-        'compact-player': '<div class="compact-player-slot">compact player</div>'
+        'docked-player': '<div class="docked-player-slot">docked player</div>'
       }
     })
 
-    expect(wrapper.find('.compact-player').classes()).toContain('layout-with-sidebar')
-    expect(wrapper.find('.compact-sidebar-fill').exists()).toBe(true)
-    expect(wrapper.find('.compact-sidebar-fill').text()).toContain('sidebar footer')
-    expect(wrapper.find('.compact-player-body').text()).toContain('compact player')
+    expect(wrapper.find('.docked-player-bar').classes()).toContain('layout-with-sidebar')
+    expect(wrapper.find('.docked-player-bar-body').text()).toContain('docked player')
   })
 })

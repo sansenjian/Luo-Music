@@ -4,10 +4,9 @@ import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import HomeFooter from '../components/home/HomeFooter.vue'
 import HomeHeader from '../components/home/HomeHeader.vue'
 import HomeSidebar from '../components/home/HomeSidebar.vue'
-import HomeSidebarFooter from '../components/home/HomeSidebarFooter.vue'
 import HomeWorkspace from '../components/home/HomeWorkspace.vue'
+import { useDockedPlayerBarLayout } from '../composables/useDockedPlayerBarLayout'
 import { useHomeBrandPlacement } from '../composables/useHomeBrandPlacement'
-import { useCompactPlayerFooterLayout } from '../composables/useCompactPlayerFooterLayout'
 import { useHomePage } from '../composables/useHomePage'
 
 const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.vue'))
@@ -38,9 +37,9 @@ const {
   isLoading
 } = useHomePage()
 const { brandPlacement } = useHomeBrandPlacement()
-const { compactPlayerFooterLayout } = useCompactPlayerFooterLayout()
-const shouldDockSidebarFooter = computed(
-  () => playerStore.isCompact && compactPlayerFooterLayout.value === 'with-sidebar'
+const { dockedPlayerBarLayout } = useDockedPlayerBarLayout()
+const usesAdaptiveSidebarFooterLayout = computed(
+  () => playerStore.isPlayerDocked && dockedPlayerBarLayout.value === 'with-sidebar'
 )
 
 const isCoreMounted = ref(false)
@@ -62,7 +61,11 @@ onMounted(() => {
 <template>
   <div
     class="window"
-    :class="{ 'compact-mode': playerStore.isCompact, 'sidebar-collapsed': !playerStore.isCompact }"
+    :class="{
+      'player-docked': playerStore.isPlayerDocked,
+      'sidebar-collapsed': !playerStore.isPlayerDocked,
+      'footer-with-sidebar': usesAdaptiveSidebarFooterLayout
+    }"
   >
     <HomeHeader
       :show-brand="brandPlacement === 'header'"
@@ -83,12 +86,11 @@ onMounted(() => {
       @toggle-select="toggleSelect"
     />
 
-    <main class="main">
+    <main class="app-shell">
       <HomeSidebar
         class="sidebar-panel"
-        :collapsed="!playerStore.isCompact"
+        :collapsed="!playerStore.isPlayerDocked"
         :show-brand="brandPlacement === 'sidebar'"
-        :show-footer="!shouldDockSidebarFooter"
       />
 
       <section class="left-panel">
@@ -96,7 +98,7 @@ onMounted(() => {
         <div v-else class="panel-placeholder" aria-hidden="true"></div>
       </section>
 
-      <HomeWorkspace :active-tab="activeTab" @change-tab="switchTab">
+      <HomeWorkspace class="workspace-panel" :active-tab="activeTab" @change-tab="switchTab">
         <template #lyric>
           <LyricDisplay v-if="isCoreMounted" :active="activeTab === 'lyric'" />
           <div v-else class="workspace-placeholder" aria-hidden="true"></div>
@@ -105,22 +107,20 @@ onMounted(() => {
           <Playlist v-if="isCoreMounted" @play-song="playSong" />
         </template>
       </HomeWorkspace>
-    </main>
 
-    <HomeFooter
-      :is-compact="playerStore.isCompact"
-      :is-loading="playerStore.loading"
-      :track-count="playerStore.songList.length"
-      :compact-player-footer-layout="compactPlayerFooterLayout"
-    >
-      <template #compact-sidebar-fill>
-        <HomeSidebarFooter v-if="shouldDockSidebarFooter" />
-      </template>
-      <template #compact-player>
-        <Player v-if="isCoreMounted" :loading="playerStore.loading" :compact="true" />
-        <div v-else class="compact-placeholder" aria-hidden="true"></div>
-      </template>
-    </HomeFooter>
+      <HomeFooter
+        class="footer-panel"
+        :is-player-docked="playerStore.isPlayerDocked"
+        :is-loading="playerStore.loading"
+        :track-count="playerStore.songList.length"
+        :docked-player-bar-layout="dockedPlayerBarLayout"
+      >
+        <template #docked-player>
+          <Player v-if="isCoreMounted" :loading="playerStore.loading" :docked="true" />
+          <div v-else class="docked-player-placeholder" aria-hidden="true"></div>
+        </template>
+      </HomeFooter>
+    </main>
 
     <Toast v-if="isCoreMounted" />
     <ErrorToast v-if="isCoreMounted" />
@@ -138,26 +138,41 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.main {
+.app-shell {
   flex: 1;
   display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   grid-template-columns: var(--home-sidebar-width) minmax(0, 1fr);
   min-height: 0;
-  transition: grid-template-columns 0.3s ease;
+  grid-template-areas:
+    'sidebar workspace'
+    'footer footer';
+  transition:
+    grid-template-columns 0.3s ease,
+    grid-template-areas 0.3s ease;
 }
 
-.window.sidebar-collapsed .main {
+.window.player-docked.footer-with-sidebar .app-shell {
+  grid-template-areas:
+    'sidebar workspace'
+    'sidebar footer';
+}
+
+.window.sidebar-collapsed .app-shell {
   grid-template-columns:
     var(--home-collapsed-sidebar-width)
     var(--home-player-width)
     minmax(0, 1fr);
+  grid-template-areas:
+    'sidebar player workspace'
+    'footer footer footer';
 }
 
-.window.compact-mode .left-panel {
+.window.player-docked .left-panel {
   display: none;
 }
 
-.window.compact-mode {
+.window.player-docked {
   justify-content: space-between;
   background: var(--bg);
   height: 100%;
@@ -166,6 +181,7 @@ onMounted(() => {
 }
 
 .left-panel {
+  grid-area: player;
   border-right: 3px solid var(--black);
   display: flex;
   flex-direction: column;
@@ -175,12 +191,25 @@ onMounted(() => {
 }
 
 .sidebar-panel {
+  grid-area: sidebar;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace-panel {
+  grid-area: workspace;
+  min-width: 0;
+  min-height: 0;
+}
+
+.footer-panel {
+  grid-area: footer;
   min-width: 0;
 }
 
 .panel-placeholder,
 .workspace-placeholder,
-.compact-placeholder {
+.docked-player-placeholder {
   position: relative;
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.015)),
@@ -203,7 +232,7 @@ onMounted(() => {
   min-height: 0;
 }
 
-.compact-placeholder {
+.docked-player-placeholder {
   height: 100%;
 }
 
@@ -213,7 +242,7 @@ onMounted(() => {
     --home-collapsed-sidebar-width: 92px;
   }
 
-  .main {
+  .app-shell {
     grid-template-columns: var(--home-sidebar-width) minmax(0, 1fr);
   }
 
@@ -222,7 +251,7 @@ onMounted(() => {
     min-width: 0;
   }
 
-  .window.sidebar-collapsed .main {
+  .window.sidebar-collapsed .app-shell {
     grid-template-columns:
       var(--home-collapsed-sidebar-width)
       var(--home-player-width)
@@ -235,16 +264,28 @@ onMounted(() => {
     --home-sidebar-width: clamp(168px, 32vw, 220px);
   }
 
-  .main {
+  .app-shell {
     grid-template-columns: var(--home-sidebar-width) minmax(0, 1fr);
+    grid-template-areas:
+      'sidebar workspace'
+      'footer footer';
   }
 
   .left-panel {
     display: none;
   }
 
-  .window.sidebar-collapsed .main {
+  .window.sidebar-collapsed .app-shell {
     grid-template-columns: var(--home-sidebar-width) minmax(0, 1fr);
+    grid-template-areas:
+      'sidebar workspace'
+      'footer footer';
+  }
+
+  .window.player-docked.footer-with-sidebar .app-shell {
+    grid-template-areas:
+      'sidebar workspace'
+      'footer footer';
   }
 }
 </style>

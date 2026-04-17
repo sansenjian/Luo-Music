@@ -6,12 +6,12 @@ import { usePlayerViewModel } from '../composables/usePlayerViewModel'
 const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'))
 
 interface PlayerProps {
-  compact?: boolean
+  docked?: boolean
   loading?: boolean
 }
 
 const props = withDefaults(defineProps<PlayerProps>(), {
-  compact: false,
+  docked: false,
   loading: false
 })
 
@@ -45,10 +45,10 @@ const {
 </script>
 
 <template>
-  <div class="player-section" :class="{ 'is-compact': props.compact }">
-    <!-- Compact: Top progress bar -->
+  <div class="player-section" :class="{ 'is-docked': props.docked }">
+    <!-- Docked: Top progress bar -->
     <div
-      v-if="props.compact"
+      v-if="props.docked"
       class="top-progress-wrapper"
       @pointerdown="progressSlider.handlePointerDown"
       @pointermove="progressSlider.handlePointerMove"
@@ -88,7 +88,7 @@ const {
     </div>
 
     <!-- Normal: Bottom progress -->
-    <div v-if="!props.compact" class="progress-section">
+    <div v-if="!props.docked" class="progress-section">
       <div class="time-row">
         <span>{{ playerStore.formattedProgress }}</span>
         <span>{{ playerStore.formattedDuration }}</span>

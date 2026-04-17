@@ -34,7 +34,7 @@ const DEFAULT_PLAYER_STATE: PlayerStateSnapshot = {
   currentLyricIndex: -1,
   showLyric: true,
   showPlaylist: false,
-  isCompact: false,
+  isPlayerDocked: false,
   lyrics: [],
   desktopLyricSequence: 0
 }

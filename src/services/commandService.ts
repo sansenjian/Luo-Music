@@ -197,8 +197,8 @@ export function createCommandService(
     }
   )
 
-  register(COMMANDS.PLAYER_TOGGLE_COMPACT_MODE, () => {
-    getPlayerStore().toggleCompactMode()
+  register(COMMANDS.PLAYER_TOGGLE_PLAYER_DOCKED, () => {
+    getPlayerStore().togglePlayerDocked()
   })
 
   register(

@@ -142,7 +142,7 @@ test.describe('Responsive Design', () => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/')
 
-    const player = page.locator('.player-section.is-compact')
+    const player = page.locator('.player-section.is-docked')
     await expect(player).toBeVisible()
   })
 
@@ -150,7 +150,7 @@ test.describe('Responsive Design', () => {
     await page.setViewportSize({ width: 768, height: 1024 })
     await page.goto('/')
 
-    const player = page.locator('.player-section.is-compact')
+    const player = page.locator('.player-section.is-docked')
     await expect(player).toBeVisible()
   })
 })

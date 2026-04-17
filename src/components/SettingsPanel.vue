@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { services } from '../services'
-import { useCompactPlayerFooterLayout } from '../composables/useCompactPlayerFooterLayout'
+import { useDockedPlayerBarLayout } from '../composables/useDockedPlayerBarLayout'
 import { useHomeBrandPlacement } from '../composables/useHomeBrandPlacement'
 import { useRenderStyle } from '../composables/useRenderStyle'
 import { usePlayerStore } from '../store/playerStore.ts'
@@ -11,7 +11,7 @@ const playerStore = usePlayerStore()
 const platformService = services.platform()
 const showSettings = ref(false)
 const { brandPlacement, setBrandPlacement } = useHomeBrandPlacement()
-const { compactPlayerFooterLayout, setCompactPlayerFooterLayout } = useCompactPlayerFooterLayout()
+const { dockedPlayerBarLayout, setDockedPlayerBarLayout } = useDockedPlayerBarLayout()
 const { renderStyle, setRenderStyle } = useRenderStyle()
 
 const isElectron = computed(() => {
@@ -34,8 +34,8 @@ function isRenderStyleActive(style) {
   return renderStyle.value === style
 }
 
-function isCompactPlayerFooterLayoutActive(layout) {
-  return compactPlayerFooterLayout.value === layout
+function isDockedPlayerBarLayoutActive(layout) {
+  return dockedPlayerBarLayout.value === layout
 }
 </script>
 
@@ -171,21 +171,21 @@ function isCompactPlayerFooterLayoutActive(layout) {
                     </button>
                   </div>
 
-                  <span class="setting-label">紧凑播放器底栏</span>
-                  <div class="placement-switch" role="group" aria-label="紧凑播放器底栏">
+                  <span class="setting-label">紧贴底栏播放器布局</span>
+                  <div class="placement-switch" role="group" aria-label="紧贴底栏播放器布局">
                     <button
                       type="button"
                       class="placement-option"
-                      :class="{ active: isCompactPlayerFooterLayoutActive('full') }"
-                      @click="setCompactPlayerFooterLayout('full')"
+                      :class="{ active: isDockedPlayerBarLayoutActive('full') }"
+                      @click="setDockedPlayerBarLayout('full')"
                     >
                       铺满底栏
                     </button>
                     <button
                       type="button"
                       class="placement-option"
-                      :class="{ active: isCompactPlayerFooterLayoutActive('with-sidebar') }"
-                      @click="setCompactPlayerFooterLayout('with-sidebar')"
+                      :class="{ active: isDockedPlayerBarLayoutActive('with-sidebar') }"
+                      @click="setDockedPlayerBarLayout('with-sidebar')"
                     >
                       给侧边栏留位
                     </button>

@@ -74,6 +74,7 @@ describe('HomeSidebar', () => {
     expect(wrapper.text()).toContain('未登录')
     expect(wrapper.text()).toContain('登录后查看歌单')
     expect(wrapper.find('.sidebar-user-avatar-image').exists()).toBe(false)
+    expect(wrapper.find('.sidebar-footer').exists()).toBe(true)
   })
 
   it('switches the active item when a sidebar link is clicked', async () => {
@@ -100,17 +101,6 @@ describe('HomeSidebar', () => {
 
     expect(wrapper.text()).not.toContain('LUO Music')
     expect(wrapper.find('.sidebar-brand').exists()).toBe(false)
-  })
-
-  it('can hide the inline sidebar footer when the footer is docked to the bottom bar', () => {
-    const wrapper = mount(HomeSidebar, {
-      props: {
-        showFooter: false
-      }
-    })
-
-    expect(wrapper.text()).not.toContain('登录信息')
-    expect(wrapper.find('.sidebar-footer').exists()).toBe(false)
   })
 
   it('shows only icons when collapsed is true', () => {

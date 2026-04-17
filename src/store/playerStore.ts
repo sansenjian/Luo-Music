@@ -60,7 +60,7 @@ export type PlayerStoreActions = {
   setPlayMode: (mode: PlayerState['playMode']) => void
   setLyric: (lyric: unknown) => void
   toggleLyricType: (type: 'trans' | 'roma') => void
-  toggleCompactMode: () => void
+  togglePlayerDocked: () => void
   setLyricsArray: (lyrics: LyricLine[]) => void
   clearPlaylist: () => void
 }
@@ -276,7 +276,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       currentLyricIndex: store.currentLyricIndex,
       showLyric: store.showLyric,
       showPlaylist: store.showPlaylist,
-      isCompact: store.isCompact,
+      isPlayerDocked: store.isPlayerDocked,
       lyrics: toIpcSerializable(store.lyricsArray) as PlayerStateSnapshot['lyrics'],
       desktopLyricSequence: getDesktopLyricSequence(store)
     }
@@ -583,7 +583,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           setPlayMode: mode => store.setPlayMode(mode),
           seek: time => store.seek(time),
           setVolume: vol => store.setVolume(vol),
-          toggleCompactMode: () => store.toggleCompactMode(),
+          togglePlayerDocked: () => store.togglePlayerDocked(),
           platform: {
             isElectron: () => getPlatformService().isElectron(),
             on: (channel, callback) => getPlatformService().on(channel, callback)
@@ -822,9 +822,9 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.lyricType = ['original', ...new Set(nextOptionalTypes)]
       },
 
-      toggleCompactMode(): void {
-        this.isCompact = !this.isCompact
-        getStorageService().setItem('compactModeUserToggled', 'true')
+      togglePlayerDocked(): void {
+        this.isPlayerDocked = !this.isPlayerDocked
+        getStorageService().setItem('playerDockedUserToggled', 'true')
       },
 
       setLyricsArray(lyrics: LyricLine[]): void {
@@ -866,8 +866,29 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
 
     persist: {
       storage: storageAdapter,
-      pick: ['volume', 'playMode', 'lyricType', 'isCompact'],
+      pick: ['volume', 'playMode', 'lyricType', 'isPlayerDocked'],
       beforeHydrate: (_context: unknown) => {
+        const rawPlayerState = storageAdapter.getItem(storeId)
+
+        if (!rawPlayerState) {
+          console.log('Restoring player state...')
+          return
+        }
+
+        try {
+          const parsed = JSON.parse(rawPlayerState) as Record<string, unknown>
+          if (
+            !Object.prototype.hasOwnProperty.call(parsed, 'isPlayerDocked') &&
+            Object.prototype.hasOwnProperty.call(parsed, 'isCompact')
+          ) {
+            parsed.isPlayerDocked = parsed.isCompact
+            delete parsed.isCompact
+            storageAdapter.setItem(storeId, JSON.stringify(parsed))
+          }
+        } catch {
+          // Ignore invalid persisted JSON here; existing hydration recovery handles it later.
+        }
+
         console.log('Restoring player state...')
       },
       afterHydrate: (context: unknown) => {

@@ -22,29 +22,29 @@ vi.mock('@/composables/useAnimations', () => ({
 describe('Player Component', () => {
   it('renders normal mode layout with progress section and volume row', () => {
     const wrapper = mount(Player, {
-      props: { compact: false, loading: false }
+      props: { docked: false, loading: false }
     })
 
     expect(wrapper.find('.player-section').exists()).toBe(true)
-    expect(wrapper.find('.player-section').classes()).not.toContain('is-compact')
+    expect(wrapper.find('.player-section').classes()).not.toContain('is-docked')
     expect(wrapper.find('.progress-section').exists()).toBe(true)
     expect(wrapper.find('.top-progress-wrapper').exists()).toBe(false)
     expect(wrapper.find('.volume-row').exists()).toBe(true)
   })
 
-  it('renders compact mode layout with top progress bar', () => {
+  it('renders docked player layout with top progress bar', () => {
     const wrapper = mount(Player, {
-      props: { compact: true, loading: false }
+      props: { docked: true, loading: false }
     })
 
-    expect(wrapper.find('.player-section').classes()).toContain('is-compact')
+    expect(wrapper.find('.player-section').classes()).toContain('is-docked')
     expect(wrapper.find('.top-progress-wrapper').exists()).toBe(true)
     expect(wrapper.find('.progress-section').exists()).toBe(false)
   })
 
   it('renders play control buttons with correct roles', () => {
     const wrapper = mount(Player, {
-      props: { compact: false, loading: false }
+      props: { docked: false, loading: false }
     })
 
     const buttons = wrapper.findAll('button')
@@ -61,7 +61,7 @@ describe('Player Component', () => {
 
   it('shows default track info when no song is playing', () => {
     const wrapper = mount(Player, {
-      props: { compact: false, loading: false }
+      props: { docked: false, loading: false }
     })
 
     expect(wrapper.find('.track-title').text()).toBe('Unknown Track')
@@ -69,7 +69,7 @@ describe('Player Component', () => {
 
   it('shows play icon when not playing', () => {
     const wrapper = mount(Player, {
-      props: { compact: false, loading: false }
+      props: { docked: false, loading: false }
     })
 
     // The play SVG path (triangle) should be visible when not playing
@@ -78,23 +78,23 @@ describe('Player Component', () => {
     expect(mainButton.find('svg').exists()).toBe(true)
   })
 
-  it('responds to compact prop changes', async () => {
+  it('responds to docked prop changes', async () => {
     const wrapper = mount(Player, {
-      props: { compact: false, loading: false }
+      props: { docked: false, loading: false }
     })
 
     expect(wrapper.find('.progress-section').exists()).toBe(true)
 
-    await wrapper.setProps({ compact: true })
+    await wrapper.setProps({ docked: true })
 
-    expect(wrapper.find('.player-section').classes()).toContain('is-compact')
+    expect(wrapper.find('.player-section').classes()).toContain('is-docked')
     expect(wrapper.find('.top-progress-wrapper').exists()).toBe(true)
     expect(wrapper.find('.progress-section').exists()).toBe(false)
   })
 
   it('can access playerStore', () => {
     const wrapper = mount(Player, {
-      props: { compact: false, loading: false }
+      props: { docked: false, loading: false }
     })
 
     const store = (wrapper.vm as unknown as { playerStore: { playing: boolean } }).playerStore

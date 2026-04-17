@@ -10,8 +10,8 @@
   transition: all 0.3s ease;
 }
 
-/* ===== Compact Mode ===== */
-.player-section.is-compact {
+/* ===== Docked Player Mode ===== */
+.player-section.is-docked {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   padding: 12px 16px 8px;
@@ -87,7 +87,7 @@
 
 /* Compact layout adjustments */
 /* Left: Cover + Track Info wrapper */
-.player-section.is-compact .player-left {
+.player-section.is-docked .player-left {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -96,7 +96,7 @@
   justify-self: start;
 }
 
-.player-section.is-compact .cover-frame {
+.player-section.is-docked .cover-frame {
   width: 48px;
   height: 48px;
   flex-shrink: 0;
@@ -104,18 +104,18 @@
   border-width: 2px;
 }
 
-.player-section.is-compact .corner {
+.player-section.is-docked .corner {
   display: none;
 }
 
-.player-section.is-compact .track-info {
+.player-section.is-docked .track-info {
   min-width: 0;
   text-align: left;
   margin: 0;
   flex: 1;
 }
 
-.player-section.is-compact .track-title {
+.player-section.is-docked .track-title {
   font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
@@ -123,7 +123,7 @@
   -webkit-line-clamp: 1;
 }
 
-.player-section.is-compact .track-artist {
+.player-section.is-docked .track-artist {
   font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
@@ -131,7 +131,7 @@
 }
 
 /* Center: Controls */
-.player-section.is-compact .controls {
+.player-section.is-docked .controls {
   justify-self: center;
   padding: 0;
   gap: 8px;
@@ -139,11 +139,11 @@
 }
 
 /* Right: Volume */
-.player-section.is-compact .lyric-btn:hover {
+.player-section.is-docked .lyric-btn:hover {
   color: var(--accent);
 }
 
-.player-section.is-compact .volume-row {
+.player-section.is-docked .volume-row {
   width: 200px;
   justify-self: end;
   border: none;
@@ -151,11 +151,11 @@
   grid-column: 3;
 }
 
-.player-section.is-compact .volume-row::before {
+.player-section.is-docked .volume-row::before {
   display: none;
 }
 
-.player-section.is-compact .progress-section {
+.player-section.is-docked .progress-section {
   display: none;
 }
 
@@ -411,7 +411,7 @@
 
 /* Responsive */
 @media (max-width: 600px) {
-  .player-section:not(.is-compact) {
+  .player-section:not(.is-docked) {
     padding: 10px;
     gap: 8px;
   }
@@ -434,90 +434,90 @@
     height: 50px;
   }
 
-  .player-section.is-compact {
+  .player-section.is-docked {
     padding: 12px 12px 8px;
     gap: 8px;
   }
 
-  .player-section.is-compact .cover-frame {
+  .player-section.is-docked .cover-frame {
     width: 40px;
     height: 40px;
   }
 
-  .player-section.is-compact .track-title {
+  .player-section.is-docked .track-title {
     font-size: 12px;
   }
 
-  .player-section.is-compact .track-artist {
+  .player-section.is-docked .track-artist {
     font-size: 10px;
   }
 
-  .player-section.is-compact .controls {
+  .player-section.is-docked .controls {
     gap: 6px;
   }
 
-  .player-section.is-compact .ctrl-btn {
+  .player-section.is-docked .ctrl-btn {
     width: 32px;
     height: 32px;
   }
 
-  .player-section.is-compact .ctrl-btn svg {
+  .player-section.is-docked .ctrl-btn svg {
     width: 16px;
     height: 16px;
   }
 
-  .player-section.is-compact .ctrl-main {
+  .player-section.is-docked .ctrl-main {
     width: 36px;
     height: 36px;
   }
 
-  .player-section.is-compact .ctrl-main svg {
+  .player-section.is-docked .ctrl-main svg {
     width: 20px;
     height: 20px;
   }
 
-  .player-section.is-compact .volume-row {
+  .player-section.is-docked .volume-row {
     width: 80px;
   }
 
-  .player-section.is-compact .volume-row::before {
+  .player-section.is-docked .volume-row::before {
     display: none;
   }
 }
 
 @media (max-width: 480px) {
-  .player-section.is-compact {
+  .player-section.is-docked {
     grid-template-columns: auto 1fr auto;
     gap: 8px;
     padding: 10px 12px 6px;
   }
 
-  .player-section.is-compact .track-info {
+  .player-section.is-docked .track-info {
     display: none;
   }
 
   /* Keep volume controls visible with smaller layout */
-  .player-section.is-compact .volume-row {
+  .player-section.is-docked .volume-row {
     width: 100px;
     gap: 4px;
   }
 
-  .player-section.is-compact .volume-label {
+  .player-section.is-docked .volume-label {
     font-size: 9px;
     min-width: 18px;
   }
 
-  .player-section.is-compact .volume-value {
+  .player-section.is-docked .volume-value {
     font-size: 9px;
     min-width: 16px;
   }
 
-  .player-section.is-compact .volume-row :deep(.settings-btn) {
+  .player-section.is-docked .volume-row :deep(.settings-btn) {
     width: 24px;
     height: 24px;
   }
 
-  .player-section.is-compact .volume-row :deep(.settings-btn svg) {
+  .player-section.is-docked .volume-row :deep(.settings-btn svg) {
     width: 14px;
     height: 14px;
   }
