@@ -1,49 +1,150 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
+import { useFavoriteAlbums, type FavoriteAlbumItem } from '@/composables/useFavoriteAlbums'
 import { useRenderStyle } from '@/composables/useRenderStyle'
+import { useUserPlaylists, type PlaylistItem } from '@/composables/useUserPlaylists'
+import { useUserStore } from '@/store/userStore'
 
 import HomeBrandBadge from './HomeBrandBadge.vue'
+import HomeSidebarFooter from './HomeSidebarFooter.vue'
+
+type SidebarIconName =
+  | 'home'
+  | 'discover'
+  | 'roaming'
+  | 'liked'
+  | 'history'
+  | 'songs'
+  | 'favorites'
+  | 'artists'
+  | 'local'
+  | 'settings'
 
 type SidebarNavItem = {
   id: string
   label: string
-  icon: string
-  helper?: string
-  indicator?: string
+  icon: SidebarIconName
 }
 
-const primaryItems: SidebarNavItem[] = [
-  { id: 'recommend', label: '推荐', icon: 'R' },
-  { id: 'curated', label: '精选', icon: 'C' },
-  { id: 'podcast', label: '播客', icon: 'P' },
-  { id: 'roaming', label: '漫游', icon: 'W' },
-  { id: 'followed', label: '关注', icon: 'F', indicator: 'new' }
+type SidebarPlaylistFilter = 'created' | 'favorites'
+type SidebarCollectionKind = 'playlist' | 'album'
+type SidebarCollectionItem = {
+  uiId: string
+  sourceId: string | number
+  kind: SidebarCollectionKind
+  name: string
+  coverUrl: string
+  summary: string
+}
+
+const exploreItems: SidebarNavItem[] = [
+  { id: 'home', label: '主页', icon: 'home' },
+  { id: 'discover', label: '发现', icon: 'discover' },
+  { id: 'roaming', label: '漫游', icon: 'roaming' }
 ]
 
 const libraryItems: SidebarNavItem[] = [
-  { id: 'liked', label: '我喜欢的音乐', icon: 'L', helper: '99' },
-  { id: 'history', label: '最近播放', icon: 'H' },
-  { id: 'my-podcast', label: '我的播客', icon: 'B' },
-  { id: 'favorites', label: '我的收藏', icon: 'S' },
-  { id: 'downloads', label: '下载管理', icon: 'D' },
-  { id: 'local', label: '本地音乐', icon: 'M' },
-  { id: 'cloud', label: '我的音乐网盘', icon: 'C' }
+  { id: 'liked', label: '我喜欢的音乐', icon: 'liked' },
+  { id: 'history', label: '最近播放', icon: 'history' },
+  { id: 'songs', label: '歌曲', icon: 'songs' },
+  { id: 'favorites', label: '收藏', icon: 'favorites' },
+  { id: 'artists', label: '艺人', icon: 'artists' },
+  { id: 'local', label: '本地音乐', icon: 'local' }
 ]
+
+const iconMarkupMap: Record<SidebarIconName, string> = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 11.8 12 5l8 6.8V20a1 1 0 0 1-1 1h-4.8v-5.2H9.8V21H5a1 1 0 0 1-1-1z"/></svg>',
+  discover:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5A8.5 8.5 0 0 0 12 3.5Zm2.9 5.6-1.8 5-5 1.8 1.8-5 5-1.8Z"/></svg>',
+  roaming:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3.8 15.8c2.1-2.5 4.7-3.8 7.8-3.8s5.7 1.3 7.8 3.8"/><path d="M7 10.4a5.2 5.2 0 0 1 10 0"/><circle cx="12" cy="17.2" r="1.1"/></svg>',
+  liked:
+    '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M12 20.2 5 13.6a4.4 4.4 0 0 1 6.2-6.2L12 8.2l.8-.8a4.4 4.4 0 0 1 6.2 6.2Z"/></svg>',
+  history:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 4.2a7.8 7.8 0 1 1-6.7 3.8"/><path d="M5.3 4.8v4.4h4.4"/><path d="M12 8.2v4.2l2.8 1.8"/></svg>',
+  songs:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M15.5 5.2v8.4a2.7 2.7 0 1 1-1.4-2.4V6.4l6-1.2v7.2a2.7 2.7 0 1 1-1.4-2.4V4Z"/></svg>',
+  favorites:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4.6 6.4h4l1.3 1.8h9.5a1 1 0 0 1 1 1V18a1.5 1.5 0 0 1-1.5 1.5H5.1A1.5 1.5 0 0 1 3.6 18V7.4a1 1 0 0 1 1-1Z"/></svg>',
+  artists:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M8.1 11.2a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Zm7.8 0a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Z"/><path d="M3.9 18.8a4.2 4.2 0 0 1 8.4 0"/><path d="M11.7 18.8a4.2 4.2 0 0 1 8.4 0"/></svg>',
+  local:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5.2 6.2h13.6a1.2 1.2 0 0 1 1.2 1.2v9.2a1.2 1.2 0 0 1-1.2 1.2H5.2A1.2 1.2 0 0 1 4 16.6V7.4a1.2 1.2 0 0 1 1.2-1.2Z"/><path d="M8 18.8h8"/><path d="M8.6 11.6h6.8"/></svg>',
+  settings:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m12 4.8 1 .6 1.5-.3.8 1.3 1.4.5v1.6l1 1-.7 1.4.4 1.4-1.3.8-.5 1.4h-1.6l-1 1-1.4-.7-1.4.4-.8-1.3-1.4-.5v-1.6l-1-1 .7-1.4-.4-1.4 1.3-.8.5-1.4h1.6l1-1Z"/><circle cx="12" cy="12" r="2.4"/></svg>'
+}
 
 const props = withDefaults(
   defineProps<{
     collapsed?: boolean
     showBrand?: boolean
+    showFooter?: boolean
   }>(),
   {
     collapsed: false,
-    showBrand: true
+    showBrand: true,
+    showFooter: true
   }
 )
 
-const activeItemId = ref<string>('recommend')
+const activeItemId = ref<string>('home')
+const activePlaylistFilter = ref<SidebarPlaylistFilter>('created')
 const { renderStyle } = useRenderStyle()
+const userStore = useUserStore()
+const {
+  createdPlaylists,
+  favoritePlaylists,
+  loading: playlistsLoading,
+  loadPlaylists,
+  resetPlaylists
+} = useUserPlaylists()
+const {
+  albums: favoriteAlbums,
+  loading: favoriteAlbumsLoading,
+  loadFavoriteAlbums,
+  resetFavoriteAlbums
+} = useFavoriteAlbums()
+
+const visibleCollections = computed<SidebarCollectionItem[]>(() =>
+  activePlaylistFilter.value === 'created'
+    ? createdPlaylists.value.map(playlist => mapPlaylistToCollectionItem(playlist))
+    : [
+        ...favoritePlaylists.value.map(playlist => mapPlaylistToCollectionItem(playlist)),
+        ...favoriteAlbums.value.map(album => mapAlbumToCollectionItem(album))
+      ]
+)
+const sidebarCollectionsLoading = computed(() =>
+  activePlaylistFilter.value === 'created'
+    ? playlistsLoading.value
+    : playlistsLoading.value || favoriteAlbumsLoading.value
+)
+const playlistEmptyMessage = computed(() => {
+  if (!userStore.isLoggedIn) {
+    return '登录后查看歌单'
+  }
+
+  if (sidebarCollectionsLoading.value) {
+    return activePlaylistFilter.value === 'created' ? '歌单加载中...' : '收藏加载中...'
+  }
+
+  return activePlaylistFilter.value === 'created' ? '暂无我的歌单' : '暂无收藏歌单'
+})
+
+watch(
+  () => [userStore.isLoggedIn, userStore.userId] as const,
+  ([isLoggedIn, userId]) => {
+    if (isLoggedIn && userId !== null && userId !== undefined && userId !== '') {
+      void loadPlaylists(userId)
+      void loadFavoriteAlbums(userId)
+      return
+    }
+
+    resetPlaylists()
+    resetFavoriteAlbums()
+  },
+  { immediate: true }
+)
 
 function activateItem(itemId: string): void {
   activeItemId.value = itemId
@@ -51,6 +152,77 @@ function activateItem(itemId: string): void {
 
 function isActive(itemId: string): boolean {
   return activeItemId.value === itemId
+}
+
+function selectPlaylistFilter(filter: SidebarPlaylistFilter): void {
+  activePlaylistFilter.value = filter
+}
+
+function resolveIconMarkup(iconName: SidebarIconName): string {
+  return iconMarkupMap[iconName]
+}
+
+function mapPlaylistToCollectionItem(playlist: PlaylistItem): SidebarCollectionItem {
+  return {
+    uiId: `playlist:${playlist.id}`,
+    sourceId: playlist.id,
+    kind: 'playlist',
+    name: playlist.name,
+    coverUrl: typeof playlist.coverImgUrl === 'string' ? playlist.coverImgUrl : '',
+    summary: resolvePlaylistSummary(playlist)
+  }
+}
+
+function mapAlbumToCollectionItem(album: FavoriteAlbumItem): SidebarCollectionItem {
+  return {
+    uiId: `album:${album.id}`,
+    sourceId: album.id,
+    kind: 'album',
+    name: album.name,
+    coverUrl: album.picUrl,
+    summary: resolveAlbumSummary(album)
+  }
+}
+
+function resolvePlaylistSummary(playlist: PlaylistItem): string {
+  const trackCount = Number(playlist.trackCount)
+  if (Number.isFinite(trackCount) && trackCount > 0) {
+    return `${trackCount} 首歌`
+  }
+
+  return '歌单'
+}
+
+function resolveAlbumSummary(album: FavoriteAlbumItem): string {
+  const size = Number(album.size)
+  if (album.artistName && Number.isFinite(size) && size > 0) {
+    return `${album.artistName} · ${size} 首歌`
+  }
+
+  if (album.artistName) {
+    return album.artistName
+  }
+
+  if (Number.isFinite(size) && size > 0) {
+    return `${size} 首歌`
+  }
+
+  return '收藏'
+}
+
+function resolveCollectionCoverLabel(item: SidebarCollectionItem): string {
+  return item.name.trim().charAt(0).toUpperCase() || '歌'
+}
+
+function resolveCollectionTone(collectionId: string): 'mono' | 'violet' | 'mist' | 'ocean' {
+  const tones = ['mono', 'violet', 'mist', 'ocean'] as const
+  let hash = 0
+
+  for (const character of collectionId) {
+    hash = (hash + character.charCodeAt(0)) % tones.length
+  }
+
+  return tones[hash]
 }
 </script>
 
@@ -65,83 +237,128 @@ function isActive(itemId: string): boolean {
         <HomeBrandBadge placement="sidebar" :icon-only="props.collapsed" />
       </header>
 
-      <section class="sidebar-section" aria-label="发现">
+      <section class="sidebar-section" aria-labelledby="sidebar-explore-title">
+        <p v-if="!props.collapsed" id="sidebar-explore-title" class="section-title">探索</p>
         <button
-          v-for="item in primaryItems"
+          v-for="item in exploreItems"
           :key="item.id"
           type="button"
           class="sidebar-link"
           :class="{ active: isActive(item.id) }"
           :aria-current="isActive(item.id) ? 'page' : undefined"
+          :aria-label="item.label"
           @click="activateItem(item.id)"
         >
-          <span class="sidebar-icon" aria-hidden="true">{{ item.icon }}</span>
+          <span
+            class="sidebar-icon"
+            aria-hidden="true"
+            v-html="resolveIconMarkup(item.icon)"
+          ></span>
           <span v-if="!props.collapsed" class="sidebar-label">{{ item.label }}</span>
-          <span v-if="!props.collapsed && item.indicator" class="sidebar-indicator">
-            {{ item.indicator }}
-          </span>
         </button>
       </section>
 
-      <div class="sidebar-divider" aria-hidden="true"></div>
-
-      <section class="sidebar-section" aria-label="我的">
-        <p v-if="!props.collapsed" class="section-title">我的</p>
+      <section class="sidebar-section" aria-labelledby="sidebar-library-title">
+        <p v-if="!props.collapsed" id="sidebar-library-title" class="section-title">资料库</p>
         <button
           v-for="item in libraryItems"
           :key="item.id"
           type="button"
-          class="sidebar-link muted"
+          class="sidebar-link sidebar-link-muted"
           :class="{ active: isActive(item.id) }"
           :aria-current="isActive(item.id) ? 'page' : undefined"
+          :aria-label="item.label"
           @click="activateItem(item.id)"
         >
-          <span class="sidebar-icon" aria-hidden="true">{{ item.icon }}</span>
+          <span
+            class="sidebar-icon"
+            aria-hidden="true"
+            v-html="resolveIconMarkup(item.icon)"
+          ></span>
           <span v-if="!props.collapsed" class="sidebar-label">{{ item.label }}</span>
-          <span v-if="!props.collapsed && item.helper" class="sidebar-helper">
-            {{ item.helper }}
-          </span>
         </button>
       </section>
 
-      <div class="sidebar-divider" aria-hidden="true"></div>
+      <section class="sidebar-section" aria-labelledby="sidebar-playlists-title">
+        <p v-if="!props.collapsed" id="sidebar-playlists-title" class="section-title">歌单</p>
 
-      <section class="sidebar-section" aria-label="歌单占位">
-        <div class="section-header">
-          <p v-if="!props.collapsed" class="section-title">收藏</p>
-          <span v-if="!props.collapsed" class="section-note">Soon</span>
+        <div v-if="!props.collapsed" class="playlist-filters" role="tablist" aria-label="歌单分组">
+          <button
+            type="button"
+            class="playlist-filter"
+            :class="{ active: activePlaylistFilter === 'created' }"
+            aria-pressed="true"
+            @click="selectPlaylistFilter('created')"
+          >
+            我的歌单
+          </button>
+          <button
+            type="button"
+            class="playlist-filter"
+            :class="{ active: activePlaylistFilter === 'favorites' }"
+            :aria-pressed="activePlaylistFilter === 'favorites'"
+            @click="selectPlaylistFilter('favorites')"
+          >
+            收藏歌单
+          </button>
         </div>
 
-        <button type="button" class="sidebar-link muted" @click="activateItem('recent-save')">
-          <span class="sidebar-icon" aria-hidden="true">A</span>
-          <span v-if="!props.collapsed" class="sidebar-label">最近加入</span>
-        </button>
+        <div class="playlist-list">
+          <p
+            v-if="!props.collapsed && visibleCollections.length === 0"
+            class="playlist-empty-state"
+            aria-live="polite"
+          >
+            {{ playlistEmptyMessage }}
+          </p>
 
-        <div class="section-header playlists-header">
-          <p v-if="!props.collapsed" class="section-title">创建的歌单 1</p>
-          <button type="button" class="ghost-action" aria-label="添加歌单">+</button>
+          <button
+            v-for="item in visibleCollections"
+            :key="item.uiId"
+            type="button"
+            class="playlist-card"
+            :class="{ active: isActive(item.uiId) }"
+            :aria-label="item.name"
+            @click="activateItem(item.uiId)"
+          >
+            <span
+              class="playlist-cover"
+              :class="`tone-${resolveCollectionTone(item.uiId)}`"
+              aria-hidden="true"
+            >
+              <img
+                v-if="item.coverUrl"
+                :src="item.coverUrl"
+                :alt="item.name"
+                class="playlist-cover-image"
+                loading="lazy"
+                decoding="async"
+              />
+              <template v-else>
+                <span class="playlist-cover-glow"></span>
+                <span class="playlist-cover-label">{{ resolveCollectionCoverLabel(item) }}</span>
+              </template>
+            </span>
+            <span v-if="!props.collapsed" class="playlist-copy">
+              <strong>{{ item.name }}</strong>
+              <span>{{ item.summary }}</span>
+            </span>
+          </button>
         </div>
-
-        <button
-          type="button"
-          class="playlist-card"
-          :class="{ active: isActive('local-playlist') }"
-          @click="activateItem('local-playlist')"
-        >
-          <span class="playlist-art" aria-hidden="true">LP</span>
-          <span v-if="!props.collapsed" class="playlist-copy">
-            <strong>sansenjian 的本地音乐歌单</strong>
-            <span>侧边栏占位示例</span>
-          </span>
-        </button>
       </section>
     </div>
+
+    <footer v-if="props.showFooter" class="sidebar-footer">
+      <HomeSidebarFooter :collapsed="props.collapsed" />
+    </footer>
   </aside>
 </template>
 
 <style scoped>
 .sidebar-shell {
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   border-right: 3px solid var(--black);
   background:
     radial-gradient(circle at top left, var(--sidebar-shell-glow), transparent 28%),
@@ -150,53 +367,25 @@ function isActive(itemId: string): boolean {
 }
 
 .sidebar-scroll {
-  height: 100%;
+  flex: 1;
   overflow-y: auto;
-  padding: 18px 16px 24px;
+  padding: 18px 14px 14px;
 }
 
 .sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
-.sidebar-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.sidebar-section + .sidebar-section {
+  margin-top: 22px;
 }
 
 .section-title {
-  margin: 0 0 8px;
-  padding-left: 8px;
-  font-size: 11px;
+  margin: 0 0 10px;
+  padding-left: 6px;
+  font-size: 14px;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #8c92a2;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.section-note {
-  border: 1px solid var(--sidebar-note-border);
-  border-radius: 999px;
-  padding: 3px 8px;
-  background: var(--sidebar-note-bg);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--sidebar-note-text);
-}
-
-.playlists-header {
-  margin-top: 8px;
+  color: var(--gray-light);
 }
 
 .sidebar-link {
@@ -204,7 +393,7 @@ function isActive(itemId: string): boolean {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 11px 12px;
+  padding: 10px 12px;
   border: 0;
   border-radius: var(--sidebar-link-radius);
   background: transparent;
@@ -213,10 +402,10 @@ function isActive(itemId: string): boolean {
   text-align: left;
   cursor: pointer;
   transition:
-    transform 0.18s ease,
     background 0.18s ease,
-    box-shadow 0.18s ease,
-    color 0.18s ease;
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .sidebar-link:hover {
@@ -226,218 +415,91 @@ function isActive(itemId: string): boolean {
 
 .sidebar-link.active {
   background: var(--sidebar-active-bg);
-  color: #fff;
+  color: var(--white);
   box-shadow: var(--sidebar-active-shadow);
 }
 
-.sidebar-link.muted {
-  color: #4f5668;
+.sidebar-link-muted {
+  color: var(--gray);
 }
 
-.sidebar-link.muted.active {
-  color: #fff;
+.sidebar-link-muted.active {
+  color: var(--white);
 }
 
-.sidebar-icon {
-  width: 28px;
-  height: 28px;
+.sidebar-icon,
+.settings-icon {
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  background: var(--sidebar-icon-bg);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
 }
 
-.sidebar-link.active .sidebar-icon {
-  background: var(--sidebar-icon-active-bg);
+.sidebar-icon :deep(svg),
+.settings-icon :deep(svg) {
+  width: 100%;
+  height: 100%;
+  display: block;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .sidebar-label {
   min-width: 0;
   flex: 1;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
-.sidebar-indicator,
-.sidebar-helper {
-  flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+.playlist-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
-.sidebar-indicator {
+.playlist-filter {
+  padding: 8px 14px;
+  border: 0;
   border-radius: 999px;
-  padding: 3px 7px;
-  background: rgba(255, 255, 255, 0.16);
-  text-transform: uppercase;
-}
-
-.sidebar-helper {
-  color: rgba(17, 24, 39, 0.45);
-}
-
-.sidebar-link.active .sidebar-helper {
-  color: rgba(255, 255, 255, 0.74);
-}
-
-.sidebar-shell.is-collapsed .sidebar-brand {
-  justify-content: center;
-}
-
-.sidebar-shell.is-collapsed .sidebar-label,
-.sidebar-shell.is-collapsed .sidebar-helper,
-.sidebar-shell.is-collapsed .sidebar-indicator,
-.sidebar-shell.is-collapsed .section-note,
-.sidebar-shell.is-collapsed .playlist-copy {
-  display: none;
-}
-
-.sidebar-shell.is-collapsed .section-title {
-  padding-left: 0;
-  text-align: center;
-}
-
-.sidebar-shell.is-collapsed .sidebar-link,
-.sidebar-shell.is-collapsed .playlist-card {
-  justify-content: center;
-  padding-inline: 10px;
-}
-
-.sidebar-shell.is-collapsed .section-header {
-  justify-content: center;
-}
-
-.sidebar-shell.is-classic {
-  background: var(--white);
-}
-
-.sidebar-shell.is-classic .sidebar-scroll {
-  padding: 0 0 12px;
-}
-
-.sidebar-shell.is-classic .sidebar-brand {
-  margin-bottom: 8px;
-  padding: 12px 10px 8px;
-  border-bottom: 2px solid var(--black);
-}
-
-.sidebar-shell.is-classic .section-title {
-  margin-bottom: 8px;
-  padding-left: 10px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid var(--black);
-  color: var(--gray);
-}
-
-.sidebar-shell.is-classic .sidebar-link {
-  padding: 12px;
-  border: 2px solid transparent;
-  border-radius: 0;
-  box-shadow: none;
-  width: 100%;
-  margin-inline: 0;
-}
-
-.sidebar-shell.is-classic .sidebar-link:hover {
-  transform: none;
-  border-color: rgba(17, 24, 39, 0.14);
-}
-
-.sidebar-shell.is-classic .sidebar-link.active {
-  border-color: var(--black);
-  box-shadow: none;
-}
-
-.sidebar-shell.is-classic .sidebar-icon {
-  border-radius: 0;
-  background: #e2e4e8;
-}
-
-.sidebar-shell.is-classic .sidebar-link.active .sidebar-icon {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.sidebar-shell.is-classic .sidebar-indicator {
-  background: transparent;
-  color: rgba(255, 255, 255, 0.82);
-  padding: 0;
-  border-radius: 0;
-}
-
-.sidebar-shell.is-classic .section-note {
-  border: 2px solid var(--black);
-  border-radius: 0;
-  background: var(--white);
-  padding: 2px 6px;
-  letter-spacing: 0.08em;
-}
-
-.sidebar-shell.is-classic .ghost-action {
-  border: 2px solid var(--black);
-  border-radius: 0;
-  background: var(--white);
-  color: var(--black);
-}
-
-.sidebar-shell.is-classic .playlist-card {
-  border: 2px solid rgba(17, 24, 39, 0.14);
-  border-radius: 0;
-  box-shadow: none;
-  background: var(--white);
-  transform: none;
-  width: 100%;
-  margin-inline: 0;
-}
-
-.sidebar-shell.is-classic .playlist-card.active {
-  background: var(--black);
-  border-color: var(--black);
-  box-shadow: none;
-}
-
-.sidebar-shell.is-classic .playlist-card.active .playlist-art {
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--white);
-}
-
-.sidebar-shell.is-classic .playlist-card.active .playlist-copy strong,
-.sidebar-shell.is-classic .playlist-card.active .playlist-copy span {
-  color: var(--white);
-}
-
-.sidebar-shell.is-classic .playlist-art {
-  border: 2px solid rgba(17, 24, 39, 0.12);
-  border-radius: 0;
-  background: #eceff3;
-}
-
-.sidebar-shell.is-classic .sidebar-divider {
-  margin: 12px 10px;
-  background: rgba(17, 24, 39, 0.14);
-}
-
-.sidebar-divider {
-  height: 1px;
-  margin: 18px 4px;
-  background: linear-gradient(90deg, transparent, rgba(17, 24, 39, 0.14), transparent);
-}
-
-.ghost-action {
-  width: 28px;
-  height: 28px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  border-radius: 10px;
   background: var(--surface-muted);
-  color: #6a7285;
-  font-size: 18px;
-  line-height: 1;
+  color: var(--gray);
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.playlist-filter:hover {
+  transform: translateY(-1px);
+}
+
+.playlist-filter.active {
+  background: var(--sidebar-active-bg);
+  color: var(--white);
+}
+
+.playlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.playlist-empty-state {
+  margin: 0;
+  padding: 14px 12px;
+  border-radius: calc(var(--sidebar-link-radius) + 4px);
+  background: var(--surface-muted);
+  color: var(--gray);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .playlist-card {
@@ -445,75 +507,120 @@ function isActive(itemId: string): boolean {
   align-items: center;
   gap: 12px;
   width: 100%;
-  margin-top: 10px;
-  padding: 12px;
-  border: 1px solid transparent;
-  border-radius: 18px;
-  background: var(--surface-soft);
+  padding: 6px 4px;
+  border: 0;
+  border-radius: calc(var(--sidebar-link-radius) + 4px);
+  background: transparent;
   text-align: left;
   cursor: pointer;
   transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
+    background 0.18s ease,
+    transform 0.18s ease;
 }
 
 .playlist-card:hover {
-  transform: translateY(-1px);
-  border-color: rgba(17, 24, 39, 0.08);
-  box-shadow: 0 12px 24px rgba(17, 24, 39, 0.08);
+  background: var(--sidebar-link-hover-bg);
+  transform: translateX(2px);
 }
 
 .playlist-card.active {
-  border-color: var(--sidebar-card-active-border);
-  box-shadow: var(--sidebar-card-active-shadow);
+  background: color-mix(in srgb, var(--sidebar-link-hover-bg) 70%, transparent);
 }
 
-.playlist-art {
-  width: 48px;
-  height: 48px;
+.playlist-cover {
+  position: relative;
+  width: 54px;
+  height: 54px;
   flex-shrink: 0;
+  overflow: hidden;
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, rgba(17, 24, 39, 0.12), rgba(17, 24, 39, 0.04));
-  font-size: 12px;
+  color: var(--white);
+}
+
+.playlist-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.playlist-cover-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.25), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.18));
+}
+
+.playlist-cover-label {
+  position: relative;
+  z-index: 1;
+  font-size: 18px;
   font-weight: 800;
-  color: #596177;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
+}
+
+.tone-mono {
+  background: linear-gradient(135deg, #303744 0%, #11161f 100%);
+}
+
+.tone-violet {
+  background: linear-gradient(135deg, #7c6ef7 0%, #5442b6 100%);
+}
+
+.tone-mist {
+  background: linear-gradient(135deg, #8f9bb5 0%, #565f76 100%);
+}
+
+.tone-ocean {
+  background: linear-gradient(135deg, #4d7cff 0%, #2740a3 100%);
 }
 
 .playlist-copy {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .playlist-copy strong,
 .playlist-copy span {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.playlist-copy strong {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--black);
-  white-space: normal;
-  line-height: 1.35;
-}
-
-.playlist-copy span {
-  font-size: 11px;
-  color: #7d8598;
   white-space: nowrap;
 }
 
-@media (max-width: 1200px) {
-  .sidebar-scroll {
-    padding-inline: 12px;
-  }
+.playlist-copy strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--black);
+}
+
+.playlist-copy span {
+  font-size: 12px;
+  color: var(--gray);
+}
+
+.sidebar-footer {
+  border-top: 1px solid var(--gray-lighter);
+}
+
+.sidebar-shell.is-collapsed .section-title,
+.sidebar-shell.is-collapsed .playlist-filters,
+.sidebar-shell.is-collapsed .playlist-copy {
+  display: none;
+}
+
+.sidebar-shell.is-collapsed .sidebar-brand {
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar-shell.is-collapsed .sidebar-link,
+.sidebar-shell.is-collapsed .playlist-card {
+  justify-content: center;
 }
 
 @media (max-width: 960px) {

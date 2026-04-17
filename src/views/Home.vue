@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 
 import HomeFooter from '../components/home/HomeFooter.vue'
 import HomeHeader from '../components/home/HomeHeader.vue'
 import HomeSidebar from '../components/home/HomeSidebar.vue'
+import HomeSidebarFooter from '../components/home/HomeSidebarFooter.vue'
 import HomeWorkspace from '../components/home/HomeWorkspace.vue'
 import { useHomeBrandPlacement } from '../composables/useHomeBrandPlacement'
+import { useCompactPlayerFooterLayout } from '../composables/useCompactPlayerFooterLayout'
 import { useHomePage } from '../composables/useHomePage'
 
 const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.vue'))
@@ -36,6 +38,10 @@ const {
   isLoading
 } = useHomePage()
 const { brandPlacement } = useHomeBrandPlacement()
+const { compactPlayerFooterLayout } = useCompactPlayerFooterLayout()
+const shouldDockSidebarFooter = computed(
+  () => playerStore.isCompact && compactPlayerFooterLayout.value === 'with-sidebar'
+)
 
 const isCoreMounted = ref(false)
 
@@ -82,6 +88,7 @@ onMounted(() => {
         class="sidebar-panel"
         :collapsed="!playerStore.isCompact"
         :show-brand="brandPlacement === 'sidebar'"
+        :show-footer="!shouldDockSidebarFooter"
       />
 
       <section class="left-panel">
@@ -104,7 +111,11 @@ onMounted(() => {
       :is-compact="playerStore.isCompact"
       :is-loading="playerStore.loading"
       :track-count="playerStore.songList.length"
+      :compact-player-footer-layout="compactPlayerFooterLayout"
     >
+      <template #compact-sidebar-fill>
+        <HomeSidebarFooter v-if="shouldDockSidebarFooter" />
+      </template>
       <template #compact-player>
         <Player v-if="isCoreMounted" :loading="playerStore.loading" :compact="true" />
         <div v-else class="compact-placeholder" aria-hidden="true"></div>
@@ -118,6 +129,9 @@ onMounted(() => {
 
 <style scoped>
 .window {
+  --home-sidebar-width: 236px;
+  --home-player-width: 350px;
+  --home-collapsed-sidebar-width: 82px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -125,18 +139,18 @@ onMounted(() => {
 }
 
 .main {
-  --sidebar-width: 236px;
-  --player-width: 350px;
-  --collapsed-sidebar-width: 82px;
   flex: 1;
   display: grid;
-  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-columns: var(--home-sidebar-width) minmax(0, 1fr);
   min-height: 0;
   transition: grid-template-columns 0.3s ease;
 }
 
 .window.sidebar-collapsed .main {
-  grid-template-columns: var(--collapsed-sidebar-width) var(--player-width) minmax(0, 1fr);
+  grid-template-columns:
+    var(--home-collapsed-sidebar-width)
+    var(--home-player-width)
+    minmax(0, 1fr);
 }
 
 .window.compact-mode .left-panel {
@@ -194,10 +208,13 @@ onMounted(() => {
 }
 
 @media (max-width: 900px) {
+  .window {
+    --home-player-width: 280px;
+    --home-collapsed-sidebar-width: 92px;
+  }
+
   .main {
-    --player-width: 280px;
-    --collapsed-sidebar-width: 92px;
-    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    grid-template-columns: var(--home-sidebar-width) minmax(0, 1fr);
   }
 
   .left-panel {
@@ -206,14 +223,20 @@ onMounted(() => {
   }
 
   .window.sidebar-collapsed .main {
-    grid-template-columns: var(--collapsed-sidebar-width) var(--player-width) minmax(0, 1fr);
+    grid-template-columns:
+      var(--home-collapsed-sidebar-width)
+      var(--home-player-width)
+      minmax(0, 1fr);
   }
 }
 
 @media (max-width: 768px) {
+  .window {
+    --home-sidebar-width: clamp(168px, 32vw, 220px);
+  }
+
   .main {
-    --sidebar-width: minmax(168px, 220px);
-    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    grid-template-columns: var(--home-sidebar-width) minmax(0, 1fr);
   }
 
   .left-panel {
@@ -221,7 +244,7 @@ onMounted(() => {
   }
 
   .window.sidebar-collapsed .main {
-    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    grid-template-columns: var(--home-sidebar-width) minmax(0, 1fr);
   }
 }
 </style>

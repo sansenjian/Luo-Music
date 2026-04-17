@@ -140,4 +140,41 @@ describe('SettingsPanel.vue', () => {
 
     wrapper.unmount()
   })
+
+  it('persists the selected compact player footer layout', async () => {
+    const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
+
+    const wrapper = mount(SettingsPanel, {
+      attachTo: document.body,
+      global: {
+        stubs: {
+          Teleport: false,
+          Transition: false,
+          CacheManager: true
+        }
+      }
+    })
+
+    await wrapper.find('.settings-btn').trigger('click')
+
+    const footerLayoutGroup = document.body.querySelector('[aria-label="紧凑播放器底栏"]')
+    const options = Array.from(footerLayoutGroup?.querySelectorAll('.placement-option') ?? [])
+    expect(options.map(option => option.textContent?.trim())).toEqual(['铺满底栏', '给侧边栏留位'])
+
+    const withSidebarOption = options.find(option =>
+      option.textContent?.includes('给侧边栏留位')
+    ) as HTMLButtonElement | undefined
+    expect(withSidebarOption).toBeDefined()
+
+    withSidebarOption?.click()
+    await wrapper.vm.$nextTick()
+
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith(
+      'compactPlayerFooterLayout',
+      'with-sidebar'
+    )
+    expect(withSidebarOption?.classList.contains('active')).toBe(true)
+
+    wrapper.unmount()
+  })
 })
