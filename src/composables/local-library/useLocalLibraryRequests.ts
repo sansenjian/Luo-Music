@@ -12,6 +12,7 @@ export function useLocalLibraryRequests() {
   const mutating = ref(false)
   const activeRequestCount = ref(0)
   const activePageRequestCount = ref(0)
+  const activeMutationCount = ref(0)
 
   function beginRequest(): void {
     activeRequestCount.value += 1
@@ -52,11 +53,13 @@ export function useLocalLibraryRequests() {
   }
 
   const runMutation: LocalLibraryMutationRunner = async task => {
-    mutating.value = true
+    activeMutationCount.value += 1
+    mutating.value = activeMutationCount.value > 0
     try {
       return await runRequest(task)
     } finally {
-      mutating.value = false
+      activeMutationCount.value = Math.max(0, activeMutationCount.value - 1)
+      mutating.value = activeMutationCount.value > 0
     }
   }
 

@@ -30,10 +30,14 @@ const platformState = vi.hoisted(() => {
 const playerState = vi.hoisted(() => {
   const playStateListeners = new Set<(data: { isPlaying: boolean; currentTime: number }) => void>()
   const songChangeListeners = new Set<(data: { song: unknown; index: number }) => void>()
+  const lyricUpdateListeners = new Set<(data: { index: number; line: unknown }) => void>()
+  const desktopLyricStateListeners = new Set<(data: unknown) => void>()
 
   return {
     playStateListeners,
     songChangeListeners,
+    lyricUpdateListeners,
+    desktopLyricStateListeners,
     playerServiceMock: {
       play: vi.fn(),
       pause: vi.fn(),
@@ -89,7 +93,14 @@ const playerState = vi.hoisted(() => {
         songChangeListeners.add(listener)
         return () => songChangeListeners.delete(listener)
       }),
-      onLyricUpdate: vi.fn(),
+      onLyricUpdate: vi.fn((listener: (data: { index: number; line: unknown }) => void) => {
+        lyricUpdateListeners.add(listener)
+        return () => lyricUpdateListeners.delete(listener)
+      }),
+      onDesktopLyricState: vi.fn((listener: (data: unknown) => void) => {
+        desktopLyricStateListeners.add(listener)
+        return () => desktopLyricStateListeners.delete(listener)
+      }),
       onPlayError: vi.fn()
     }
   }
@@ -133,6 +144,8 @@ describe('LyricFloat', () => {
     ).getDesktopLyricSnapshot = undefined
     playerState.playStateListeners.clear()
     playerState.songChangeListeners.clear()
+    playerState.lyricUpdateListeners.clear()
+    playerState.desktopLyricStateListeners.clear()
     playerState.playerBridgeMock.getState.mockResolvedValue({
       isPlaying: false,
       currentIndex: -1,
@@ -179,6 +192,93 @@ describe('LyricFloat', () => {
 
     expect(wrapper.find('.lrc-main').text()).toBe('Main Line')
     expect(wrapper.find('.lrc-sub').text()).toBe('Translated Line')
+  })
+
+  it('prefers the unified desktop lyric state stream when it is available', async () => {
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.desktopLyricStateListeners.forEach(listener => {
+      listener({
+        currentSong: {
+          id: 1,
+          name: 'Song',
+          artists: [{ id: 1, name: 'Artist' }],
+          album: { id: 1, name: 'Album', picUrl: '' },
+          duration: 180000,
+          mvid: 0,
+          platform: 'netease',
+          originalId: 1
+        },
+        currentLyricIndex: 1,
+        progress: 6,
+        isPlaying: true,
+        songId: 1,
+        platform: 'netease',
+        sequence: 4,
+        lyrics: [
+          { time: 0, text: 'Line 1', trans: '', roma: '' },
+          { time: 5, text: 'Line 2', trans: 'Second', roma: '' }
+        ]
+      })
+    })
+    await nextTick()
+
+    expect(wrapper.find('.lrc-main').text()).toBe('Line 2')
+    expect(wrapper.find('.lrc-sub').text()).toBe('Second')
+  })
+
+  it('keeps the desktop lyric text aligned with player lyric-update events', async () => {
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.lyricUpdateListeners.forEach(listener => {
+      listener({
+        index: 2,
+        line: {
+          time: 12,
+          text: 'Bridge Main',
+          trans: 'Bridge Trans',
+          roma: ''
+        }
+      })
+    })
+    await nextTick()
+
+    expect(wrapper.find('.lrc-main').text()).toBe('Bridge Main')
+    expect(wrapper.find('.lrc-sub').text()).toBe('Bridge Trans')
+  })
+
+  it('does not let a following play-state refresh overwrite a fresh player lyric update', async () => {
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.lyricUpdateListeners.forEach(listener => {
+      listener({
+        index: 2,
+        line: {
+          time: 12,
+          text: 'Realtime Main',
+          trans: 'Realtime Trans',
+          roma: ''
+        }
+      })
+    })
+    await nextTick()
+
+    playerState.playStateListeners.forEach(listener => {
+      listener({ isPlaying: true, currentTime: 12 })
+    })
+    await nextTick()
+
+    expect(wrapper.find('.lrc-main').text()).toBe('Realtime Main')
+    expect(wrapper.find('.lrc-sub').text()).toBe('Realtime Trans')
   })
 
   it('hydrates the current lyric line from player snapshot before push updates arrive', async () => {
@@ -254,6 +354,45 @@ describe('LyricFloat', () => {
         }
       ).getDesktopLyricSnapshot
     ).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('.lrc-main').text()).toBe('Line 2')
+    expect(wrapper.find('.lrc-sub').text()).toBe('Second')
+  })
+
+  it('falls back to getLyric when the desktop lyric snapshot has no lyric cache', async () => {
+    ;(
+      playerState.playerBridgeMock as {
+        getDesktopLyricSnapshot?: ReturnType<typeof vi.fn>
+      }
+    ).getDesktopLyricSnapshot = vi.fn().mockResolvedValue({
+      currentSong: {
+        id: 1,
+        name: 'Song',
+        artists: [{ id: 1, name: 'Artist' }],
+        album: { id: 1, name: 'Album', picUrl: '' },
+        duration: 180000,
+        mvid: 0,
+        platform: 'netease',
+        originalId: 1
+      },
+      currentLyricIndex: 1,
+      progress: 6,
+      isPlaying: true,
+      songId: 1,
+      platform: 'netease',
+      sequence: 4,
+      lyrics: []
+    })
+    playerState.playerBridgeMock.getLyric.mockResolvedValue([
+      { time: 0, text: 'Line 1', trans: '', roma: '' },
+      { time: 5, text: 'Line 2', trans: 'Second', roma: '' }
+    ])
+
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    expect(playerState.playerBridgeMock.getLyric).toHaveBeenCalledWith(1, 'netease')
     expect(wrapper.find('.lrc-main').text()).toBe('Line 2')
     expect(wrapper.find('.lrc-sub').text()).toBe('Second')
   })

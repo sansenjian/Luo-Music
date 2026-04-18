@@ -19,6 +19,7 @@ export class LocalLibraryWatchCoordinator {
   private readonly watchTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private readonly pendingFolderChanges = new Map<string, PendingFolderChanges>()
   private readonly flushPromises = new Map<string, Promise<void>>()
+  private disposed = false
 
   constructor(private readonly options: LocalLibraryWatchCoordinatorOptions) {}
 
@@ -29,6 +30,10 @@ export class LocalLibraryWatchCoordinator {
   }
 
   startWatchingFolder(folder: PersistedFolder): void {
+    if (this.disposed) {
+      return
+    }
+
     if (this.watchers.has(folder.id)) {
       return
     }
@@ -75,6 +80,8 @@ export class LocalLibraryWatchCoordinator {
   }
 
   async dispose(): Promise<void> {
+    this.disposed = true
+
     for (const timer of this.watchTimers.values()) {
       clearTimeout(timer)
     }
@@ -94,6 +101,10 @@ export class LocalLibraryWatchCoordinator {
   }
 
   private queueFolderUpsert(folderId: string, filePath: string): void {
+    if (this.disposed) {
+      return
+    }
+
     if (!this.options.isAudioFile(filePath)) {
       return
     }
@@ -107,6 +118,10 @@ export class LocalLibraryWatchCoordinator {
   }
 
   private queueFolderRemoval(folderId: string, filePath: string): void {
+    if (this.disposed) {
+      return
+    }
+
     if (!this.options.isAudioFile(filePath)) {
       return
     }
@@ -120,6 +135,10 @@ export class LocalLibraryWatchCoordinator {
   }
 
   private queueFolderFullRescan(folderId: string): void {
+    if (this.disposed) {
+      return
+    }
+
     const pending = this.pendingFolderChanges.get(folderId) ?? createEmptyPendingFolderChanges()
     pending.requiresFullRescan = true
     pending.upsert.clear()
@@ -129,12 +148,20 @@ export class LocalLibraryWatchCoordinator {
   }
 
   private scheduleFolderSync(folderId: string): void {
+    if (this.disposed) {
+      return
+    }
+
     const existingTimer = this.watchTimers.get(folderId)
     if (existingTimer) {
       clearTimeout(existingTimer)
     }
 
     const timer = setTimeout(() => {
+      if (this.disposed) {
+        return
+      }
+
       this.watchTimers.delete(folderId)
       const queuedFlush = (this.flushPromises.get(folderId) ?? Promise.resolve())
         .then(() => this.flushFolderChanges(folderId))
@@ -166,7 +193,7 @@ export class LocalLibraryWatchCoordinator {
       return
     }
 
-    this.pendingFolderChanges.delete(folderId)
     await this.options.onFlush(folderId, pending)
+    this.pendingFolderChanges.delete(folderId)
   }
 }

@@ -120,6 +120,7 @@ const {
         ref="loopButtonRef"
         class="ctrl-btn loop-btn"
         :disabled="!canTogglePlayMode"
+        :aria-label="playModeText"
         @click="onLoopButtonClick"
         :title="playModeText"
       >
@@ -135,6 +136,7 @@ const {
         ref="prevButtonRef"
         class="ctrl-btn"
         :disabled="!canNavigatePlaylist"
+        aria-label="上一首"
         @click="onPrevButtonClick"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -146,6 +148,7 @@ const {
         ref="playButtonRef"
         class="ctrl-btn ctrl-main"
         :disabled="!canTogglePlay"
+        :aria-label="playerStore.playing ? '暂停播放' : '开始播放'"
         @click="onPlayButtonClick"
       >
         <svg
@@ -166,6 +169,7 @@ const {
         ref="nextButtonRef"
         class="ctrl-btn"
         :disabled="!canNavigatePlaylist"
+        aria-label="下一首"
         @click="onNextButtonClick"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -177,6 +181,7 @@ const {
       <button
         class="ctrl-btn lyric-btn"
         :disabled="!canToggleDesktopLyric"
+        aria-label="切换桌面歌词"
         @click="toggleDesktopLyric"
         title="Desktop Lyric"
       >

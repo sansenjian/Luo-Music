@@ -161,6 +161,7 @@ docs/.vitepress/dist/
 # Playwright
 playwright-report/
 test-results/
+tests/Test Material/
 
 # IDE
 .idea/

@@ -157,4 +157,39 @@ describe('useLikedSongs', () => {
     expect(viewModel.likeSongs.value).toHaveLength(2)
     expect(viewModel.likeSongs.value[0]?.id).toBe(11)
   })
+
+  it('normalizes raw liked-song details before exposing them to the UI', async () => {
+    getLikelistMock.mockResolvedValue({
+      ids: ['song-1']
+    })
+    getSongDetailMock.mockResolvedValue({
+      songs: [
+        {
+          id: 'song-1',
+          name: 'Raw Song',
+          ar: [{ id: 7, name: 'Raw Artist' }],
+          al: { id: 9, name: 'Raw Album', picUrl: 'raw-cover.jpg' },
+          dt: 215000,
+          mv: 11
+        }
+      ]
+    })
+
+    const viewModel = mountUseLikedSongs()
+
+    await viewModel.loadLikedSongs(1)
+    await flushPromises()
+
+    expect(viewModel.likeSongs.value).toHaveLength(1)
+    expect(viewModel.likeSongs.value[0]).toMatchObject({
+      id: 'song-1',
+      name: 'Raw Song',
+      artists: [{ id: 7, name: 'Raw Artist' }],
+      album: { id: 9, name: 'Raw Album', picUrl: 'raw-cover.jpg' },
+      duration: 215000,
+      mvid: 11,
+      platform: 'netease',
+      originalId: 'song-1'
+    })
+  })
 })

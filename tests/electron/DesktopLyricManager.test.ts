@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { RECEIVE_CHANNELS } from '../../electron/shared/protocol/channels'
+
 const storeData = new Map<string, unknown>()
 const originalNodeEnv = process.env.NODE_ENV
 
@@ -14,6 +16,37 @@ vi.mock('electron-store', () => ({
     }
   }
 }))
+
+type ManagerInternals = {
+  win: {
+    isDestroyed: () => boolean
+    isDestroyedMock?: ReturnType<typeof vi.fn>
+    show: ReturnType<typeof vi.fn>
+    hide: ReturnType<typeof vi.fn>
+    isVisible?: ReturnType<typeof vi.fn>
+    webContents: { send: ReturnType<typeof vi.fn> }
+  } | null
+  isWindowReady: boolean
+  isRendererReady: boolean
+}
+
+function setInternals(manager: DesktopLyricManager, patch: Partial<ManagerInternals>): void {
+  Object.assign(manager as unknown as ManagerInternals, patch)
+}
+
+type DesktopLyricManager = import('../../electron/DesktopLyricManager').DesktopLyricManager
+
+function createMockWindow(
+  overrides: { isVisible?: boolean } = {}
+): ManagerInternals['win'] & NonNullable<ManagerInternals['win']> {
+  return {
+    isDestroyed: vi.fn(() => false),
+    show: vi.fn(),
+    hide: vi.fn(),
+    isVisible: vi.fn(() => overrides.isVisible ?? false),
+    webContents: { send: vi.fn() }
+  }
+}
 
 describe('DesktopLyricManager', () => {
   beforeEach(() => {
@@ -36,40 +69,21 @@ describe('DesktopLyricManager', () => {
       roma: 'roma',
       playing: true
     }
-    const mockWindow = {
-      isDestroyed: vi.fn(() => false),
-      show: vi.fn(),
-      webContents: {
-        send: vi.fn()
-      }
-    }
+    const mockWindow = createMockWindow()
 
     manager.sendLyric(payload)
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).win = mockWindow
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).isWindowReady = true
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).isRendererReady = true
+    setInternals(manager, {
+      win: mockWindow,
+      isWindowReady: true,
+      isRendererReady: true
+    })
 
     manager.show()
 
-    expect(mockWindow.webContents.send).toHaveBeenCalledWith('lyric-time-update', payload)
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      RECEIVE_CHANNELS.LYRIC_TIME_UPDATE,
+      payload
+    )
     expect(mockWindow.show).toHaveBeenCalledTimes(1)
   })
 
@@ -84,36 +98,21 @@ describe('DesktopLyricManager', () => {
       roma: '',
       playing: true
     }
-    const mockWindow = {
-      isDestroyed: vi.fn(() => false),
-      show: vi.fn(),
-      webContents: {
-        send: vi.fn()
-      }
-    }
+    const mockWindow = createMockWindow()
 
     manager.sendLyric(payload)
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).win = mockWindow
-    ;(
-      manager as unknown as {
-        isWindowReady: boolean
-      }
-    ).isWindowReady = true
-    ;(
-      manager as unknown as {
-        isRendererReady: boolean
-      }
-    ).isRendererReady = false
+    setInternals(manager, {
+      win: mockWindow,
+      isWindowReady: true,
+      isRendererReady: false
+    })
 
     manager.show()
 
-    expect(mockWindow.webContents.send).toHaveBeenCalledWith('lyric-time-update', payload)
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      RECEIVE_CHANNELS.LYRIC_TIME_UPDATE,
+      payload
+    )
     expect(mockWindow.show).toHaveBeenCalledTimes(1)
   })
 
@@ -128,39 +127,22 @@ describe('DesktopLyricManager', () => {
       roma: '',
       playing: false
     }
-    const mockWindow = {
-      isDestroyed: vi.fn(() => false),
-      webContents: {
-        send: vi.fn()
-      }
-    }
+    const mockWindow = createMockWindow()
 
     manager.sendLyric(payload)
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).win = mockWindow
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).isWindowReady = true
+    setInternals(manager, {
+      win: mockWindow,
+      isWindowReady: true,
+      isRendererReady: false
+    })
 
     manager.onRendererReady()
 
-    expect(mockWindow.webContents.send).toHaveBeenCalledWith('lyric-time-update', payload)
-    expect(
-      (
-        manager as unknown as {
-          isRendererReady: boolean
-        }
-      ).isRendererReady
-    ).toBe(true)
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      RECEIVE_CHANNELS.LYRIC_TIME_UPDATE,
+      payload
+    )
+    expect((manager as unknown as ManagerInternals).isRendererReady).toBe(true)
   })
 
   it('waits for window ready before replaying cached lyric on renderer readiness', async () => {
@@ -174,43 +156,28 @@ describe('DesktopLyricManager', () => {
       roma: '',
       playing: true
     }
-    const mockWindow = {
-      isDestroyed: vi.fn(() => false),
-      show: vi.fn(),
-      webContents: {
-        send: vi.fn()
-      }
-    }
+    const mockWindow = createMockWindow()
 
     manager.sendLyric(payload)
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).win = mockWindow
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).isWindowReady = false
+    setInternals(manager, {
+      win: mockWindow,
+      isWindowReady: false,
+      isRendererReady: false
+    })
 
     manager.onRendererReady()
 
     expect(mockWindow.webContents.send).not.toHaveBeenCalled()
-    ;(
-      manager as unknown as {
-        isWindowReady: boolean
-      }
-    ).isWindowReady = true
+    setInternals(manager, { isWindowReady: true })
 
     manager.show()
 
     expect(mockWindow.webContents.send).toHaveBeenCalledTimes(1)
-    expect(mockWindow.webContents.send).toHaveBeenNthCalledWith(1, 'lyric-time-update', payload)
+    expect(mockWindow.webContents.send).toHaveBeenNthCalledWith(
+      1,
+      RECEIVE_CHANNELS.LYRIC_TIME_UPDATE,
+      payload
+    )
   })
 
   it('caches lyric updates for a hidden warm window until it is shown', async () => {
@@ -224,43 +191,57 @@ describe('DesktopLyricManager', () => {
       roma: '',
       playing: true
     }
-    const mockWindow = {
-      isDestroyed: vi.fn(() => false),
-      isVisible: vi.fn(() => false),
-      show: vi.fn(),
-      webContents: {
-        send: vi.fn()
-      }
-    }
+    const mockWindow = createMockWindow({ isVisible: false })
 
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).win = mockWindow
-    ;(
-      manager as unknown as {
-        isWindowReady: boolean
-      }
-    ).isWindowReady = true
-    ;(
-      manager as unknown as {
-        isRendererReady: boolean
-      }
-    ).isRendererReady = false
+    setInternals(manager, {
+      win: mockWindow,
+      isWindowReady: true,
+      isRendererReady: false
+    })
 
     manager.sendLyric(payload)
 
     expect(mockWindow.webContents.send).not.toHaveBeenCalled()
 
-    mockWindow.isVisible.mockReturnValue(true)
+    mockWindow.isVisible!.mockReturnValue(true)
     manager.show()
 
     expect(mockWindow.webContents.send).toHaveBeenCalledTimes(1)
-    expect(mockWindow.webContents.send).toHaveBeenCalledWith('lyric-time-update', payload)
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      RECEIVE_CHANNELS.LYRIC_TIME_UPDATE,
+      payload
+    )
     expect(mockWindow.show).toHaveBeenCalledTimes(1)
+  })
+
+  it('sends lock state through the whitelisted renderer channel', async () => {
+    const { DesktopLyricManager } = await import('../../electron/DesktopLyricManager')
+    const manager = new DesktopLyricManager()
+    const mockWindow = {
+      ...createMockWindow(),
+      setIgnoreMouseEvents: vi.fn()
+    }
+
+    setInternals(manager, {
+      win: mockWindow,
+      isWindowReady: true,
+      isRendererReady: true
+    })
+
+    manager.setLocked(true)
+
+    expect(mockWindow.setIgnoreMouseEvents).toHaveBeenCalledWith(true, { forward: true })
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      RECEIVE_CHANNELS.DESKTOP_LYRIC_LOCK_STATE,
+      { locked: true }
+    )
+
+    manager.setLocked(false)
+
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      RECEIVE_CHANNELS.DESKTOP_LYRIC_LOCK_STATE,
+      { locked: false }
+    )
   })
 
   it('builds the desktop lyric route target in development mode', async () => {
@@ -298,30 +279,16 @@ describe('DesktopLyricManager', () => {
       sequence: 4,
       cause: 'seek' as const
     }
-    const mockWindow = {
-      isDestroyed: vi.fn(() => false),
-      isVisible: vi.fn(() => false),
-      show: vi.fn(),
-      webContents: {
-        send: vi.fn()
-      }
-    }
+    const mockWindow = createMockWindow({ isVisible: false })
 
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).win = mockWindow
-    ;(
-      manager as unknown as {
-        isWindowReady: boolean
-      }
-    ).isWindowReady = true
+    setInternals(manager, {
+      win: mockWindow,
+      isWindowReady: true,
+      isRendererReady: false
+    })
 
     manager.sendLyric(payload)
-    mockWindow.isVisible.mockReturnValue(true)
+    mockWindow.isVisible!.mockReturnValue(true)
     manager.show()
 
     expect(debugSpy).toHaveBeenCalledWith(
@@ -364,30 +331,16 @@ describe('DesktopLyricManager', () => {
       sequence: 5,
       cause: 'lyric-change' as const
     }
-    const mockWindow = {
-      isDestroyed: vi.fn(() => false),
-      isVisible: vi.fn(() => false),
-      show: vi.fn(),
-      webContents: {
-        send: vi.fn()
-      }
-    }
+    const mockWindow = createMockWindow({ isVisible: false })
 
-    ;(
-      manager as unknown as {
-        win: typeof mockWindow
-        isWindowReady: boolean
-        isRendererReady: boolean
-      }
-    ).win = mockWindow
-    ;(
-      manager as unknown as {
-        isWindowReady: boolean
-      }
-    ).isWindowReady = true
+    setInternals(manager, {
+      win: mockWindow,
+      isWindowReady: true,
+      isRendererReady: false
+    })
 
     manager.sendLyric(payload)
-    mockWindow.isVisible.mockReturnValue(true)
+    mockWindow.isVisible!.mockReturnValue(true)
     manager.show()
 
     expect(debugSpy).toHaveBeenCalledWith(
@@ -409,6 +362,34 @@ describe('DesktopLyricManager', () => {
         sequence: 5,
         currentLyricIndex: 3
       })
+    )
+  })
+
+  it('emits live lyric via the whitelisted channel when the window and renderer are ready', async () => {
+    const { DesktopLyricManager } = await import('../../electron/DesktopLyricManager')
+    const manager = new DesktopLyricManager()
+    const payload = {
+      time: 55,
+      index: 4,
+      text: 'Live line',
+      trans: '',
+      roma: '',
+      playing: true
+    }
+    const mockWindow = createMockWindow()
+
+    setInternals(manager, {
+      win: mockWindow,
+      isWindowReady: true,
+      isRendererReady: true
+    })
+
+    manager.sendLyric(payload)
+
+    expect(mockWindow.webContents.send).toHaveBeenCalledTimes(1)
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      RECEIVE_CHANNELS.LYRIC_TIME_UPDATE,
+      payload
     )
   })
 })

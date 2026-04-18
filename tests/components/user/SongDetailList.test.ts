@@ -70,6 +70,26 @@ describe('SongDetailList', () => {
     expect(cover.attributes('src')).toBe('album-cover.jpg')
   })
 
+  it('renders incomplete song objects without requiring album metadata', () => {
+    expect(() =>
+      mount(SongDetailList, {
+        props: {
+          songs: [
+            {
+              id: 'song-1',
+              name: 'Song 1',
+              artists: [{ id: 'artist-1', name: 'Artist 1' }],
+              duration: 180000,
+              mvid: 0,
+              platform: 'netease',
+              originalId: 'song-1'
+            } as any
+          ]
+        }
+      })
+    ).not.toThrow()
+  })
+
   it('virtualizes large song lists instead of rendering every detail row at once', async () => {
     const resizeObserverMock = installResizeObserverMock()
     const wrapper = mount(SongDetailList, {

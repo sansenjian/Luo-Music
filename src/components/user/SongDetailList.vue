@@ -6,12 +6,16 @@ import { isLocalLibrarySong } from '@/types/localLibrary'
 
 interface SongDetailListProps {
   songs: Song[]
+  activeSongId?: string | number | null
   fallbackCover?: string
+  variant?: 'card' | 'table'
   virtualizeThreshold?: number
 }
 
 const props = withDefaults(defineProps<SongDetailListProps>(), {
+  activeSongId: null,
   fallbackCover: '',
+  variant: 'card',
   virtualizeThreshold: 80
 })
 
@@ -57,11 +61,18 @@ const staticSongs = computed(() =>
 )
 
 function resolveSongCover(song: Song): string {
-  return song.album.picUrl || props.fallbackCover || ''
+  const album = song && typeof song === 'object' && 'album' in song ? song.album : undefined
+  return album &&
+    typeof album === 'object' &&
+    'picUrl' in album &&
+    typeof album.picUrl === 'string' &&
+    album.picUrl.length > 0
+    ? album.picUrl
+    : props.fallbackCover || ''
 }
 
 function formatArtists(song: Song): string {
-  return song.artists
+  return (song && typeof song === 'object' && Array.isArray(song.artists) ? song.artists : [])
     .map(artist => artist.name)
     .filter(Boolean)
     .join(' / ')
@@ -76,19 +87,28 @@ function formatDuration(duration: number): string {
 }
 
 function resolveDurationLabel(song: Song): string {
+  const duration = typeof song?.duration === 'number' ? song.duration : 0
+
   if (
     isLocalLibrarySong(song) &&
-    (!Number.isFinite(song.duration) || song.duration <= 0) &&
+    (!Number.isFinite(duration) || duration <= 0) &&
     song.extra?.localDurationKnown !== true
   ) {
     return '--:--'
   }
 
-  return formatDuration(song.duration)
+  return formatDuration(duration)
 }
 
 function emitPlaySong(index: number): void {
   emit('play-song', index)
+}
+
+function resolveAlbumName(song: Song): string {
+  const album = song && typeof song === 'object' && 'album' in song ? song.album : undefined
+  return album && typeof album === 'object' && 'name' in album && typeof album.name === 'string'
+    ? album.name || '单曲'
+    : '单曲'
 }
 
 function readItemHeight(): number {
@@ -228,7 +248,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="rootRef" class="song-detail-list">
+  <div ref="rootRef" class="song-detail-list" :class="`is-${props.variant}`">
     <div
       v-if="isVirtualized"
       ref="listRef"
@@ -242,7 +262,12 @@ onUnmounted(() => {
             :key="`${song.id}-${index}`"
             class="detail-song-row"
           >
-            <button type="button" class="detail-song" @click="emitPlaySong(index)">
+            <button
+              type="button"
+              class="detail-song"
+              :class="{ active: props.activeSongId === song.id }"
+              @click="emitPlaySong(index)"
+            >
               <span class="detail-song-index">{{ String(index + 1).padStart(2, '0') }}</span>
               <img
                 v-if="coverUrl"
@@ -260,6 +285,9 @@ onUnmounted(() => {
                 <span class="detail-song-name">{{ song.name }}</span>
                 <span class="detail-song-artist">{{ formatArtists(song) || '未知歌手' }}</span>
               </div>
+              <span v-if="props.variant === 'table'" class="detail-song-album">
+                {{ resolveAlbumName(song) }}
+              </span>
               <span class="detail-song-duration">{{ resolveDurationLabel(song) }}</span>
             </button>
           </div>
@@ -273,6 +301,7 @@ onUnmounted(() => {
         :key="`${song.id}-${index}`"
         type="button"
         class="detail-song"
+        :class="{ active: props.activeSongId === song.id }"
         @click="emitPlaySong(index)"
       >
         <span class="detail-song-index">{{ String(index + 1).padStart(2, '0') }}</span>
@@ -288,6 +317,9 @@ onUnmounted(() => {
           <span class="detail-song-name">{{ song.name }}</span>
           <span class="detail-song-artist">{{ formatArtists(song) || '未知歌手' }}</span>
         </div>
+        <span v-if="props.variant === 'table'" class="detail-song-album">
+          {{ resolveAlbumName(song) }}
+        </span>
         <span class="detail-song-duration">{{ resolveDurationLabel(song) }}</span>
       </button>
     </div>
@@ -298,6 +330,11 @@ onUnmounted(() => {
 .song-detail-list {
   --detail-song-height: 98px;
   --detail-song-gap: 10px;
+}
+
+.song-detail-list.is-table {
+  --detail-song-height: 72px;
+  --detail-song-gap: 0px;
 }
 
 .detail-list-static {
@@ -354,6 +391,54 @@ onUnmounted(() => {
   box-shadow: 4px 4px 0 var(--black);
 }
 
+.song-detail-list.is-table .detail-list-static {
+  gap: 0;
+}
+
+.song-detail-list.is-table .detail-list-virtualized {
+  max-height: none;
+  padding-right: 0;
+}
+
+.song-detail-list.is-table .detail-song-row {
+  height: var(--detail-song-height);
+  padding-bottom: 0;
+}
+
+.song-detail-list.is-table .detail-song {
+  grid-template-columns: 40px 40px minmax(0, 2fr) minmax(120px, 1.3fr) 64px;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 0;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 0;
+  background: transparent;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+  box-shadow: none;
+}
+
+.song-detail-list.is-table .detail-song:hover {
+  transform: none;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.detail-song.active {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 3px 3px 0 rgba(255, 66, 89, 0.42);
+}
+
+.detail-song.active .detail-song-name {
+  color: var(--accent);
+}
+
+.song-detail-list.is-table .detail-song.active {
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.92);
+}
+
 .detail-song-index,
 .detail-song-duration {
   font-size: 12px;
@@ -364,6 +449,14 @@ onUnmounted(() => {
 
 .detail-song-duration {
   text-align: right;
+}
+
+.detail-song-album {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--gray);
 }
 
 .detail-song-cover {
@@ -377,6 +470,17 @@ onUnmounted(() => {
 
 .detail-song-cover-fallback {
   background: linear-gradient(135deg, rgba(255, 112, 59, 0.2), rgba(0, 0, 0, 0.06)), var(--bg);
+}
+
+.song-detail-list.is-table .detail-song-cover {
+  width: 40px;
+  height: 40px;
+  border-width: 1px;
+  border-color: rgba(17, 24, 39, 0.12);
+}
+
+.song-detail-list.is-table .detail-song-cover-fallback {
+  background: linear-gradient(135deg, rgba(255, 112, 59, 0.14), rgba(0, 0, 0, 0.04)), var(--bg);
 }
 
 .detail-song-copy {
@@ -412,6 +516,15 @@ onUnmounted(() => {
   .detail-song-duration {
     grid-column: 3;
     justify-self: end;
+  }
+
+  .song-detail-list.is-table .detail-song {
+    grid-template-columns: 34px 40px minmax(0, 1fr) 60px;
+    gap: 10px;
+  }
+
+  .song-detail-list.is-table .detail-song-album {
+    display: none;
   }
 }
 </style>

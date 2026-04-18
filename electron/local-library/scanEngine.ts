@@ -78,7 +78,7 @@ export class LocalLibraryScanEngine {
       return null
     }
 
-    const normalizedModifiedAt = Math.round(fileStats.mtimeMs)
+    const normalizedModifiedAt = fileStats.mtimeMs
     const existingTrack = this.options.repository.findTrackByFilePath(normalizedPath)
 
     if (

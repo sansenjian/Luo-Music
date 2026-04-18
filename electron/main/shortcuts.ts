@@ -7,6 +7,7 @@
 
 import { globalShortcut } from 'electron'
 import logger from '../logger'
+import { RECEIVE_CHANNELS } from '../shared/protocol/channels'
 
 /**
  * 快捷键动作映射类型
@@ -48,14 +49,14 @@ export function setWindowManager(manager: typeof windowManager): void {
  */
 function getActionHandler(action: ShortcutAction): (() => void) | null {
   const actions: Record<ShortcutAction, () => void> = {
-    togglePlay: () => windowManager?.send('music-playing-control'),
-    playPrev: () => windowManager?.send('music-song-control', 'prev'),
-    playNext: () => windowManager?.send('music-song-control', 'next'),
-    volumeUp: () => windowManager?.send('music-volume-up'),
-    volumeDown: () => windowManager?.send('music-volume-down'),
-    seekBack: () => windowManager?.send('music-process-control', 'back'),
-    seekForward: () => windowManager?.send('music-process-control', 'forward'),
-    togglePlayerDocked: () => windowManager?.send('hide-player')
+    togglePlay: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL),
+    playPrev: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'prev'),
+    playNext: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'next'),
+    volumeUp: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_VOLUME_UP),
+    volumeDown: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_VOLUME_DOWN),
+    seekBack: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_PROCESS_CONTROL, 'back'),
+    seekForward: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_PROCESS_CONTROL, 'forward'),
+    togglePlayerDocked: () => windowManager?.send(RECEIVE_CHANNELS.HIDE_PLAYER)
   }
 
   return actions[action] || null

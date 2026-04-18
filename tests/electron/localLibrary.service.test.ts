@@ -254,6 +254,7 @@ describe('LocalLibraryService', () => {
   })
 
   it('watches folders and debounces automatic rescans after local file changes', async () => {
+    vi.useFakeTimers()
     const tempDir = await createTempPath('local-library-service-watch')
     const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))
     const folderPath = join(tempDir, 'Music')
@@ -293,15 +294,18 @@ describe('LocalLibraryService', () => {
     watcherHarness.emit('change', trackPath)
     watcherHarness.emit('change', trackPath)
 
-    await new Promise(resolve => setTimeout(resolve, 1700))
+    await vi.advanceTimersByTimeAsync(1700)
+    await vi.waitFor(() => {
+      expect(metadataReader).toHaveBeenCalledTimes(2)
+    })
 
-    expect(metadataReader).toHaveBeenCalledTimes(2)
     expect((await service.getTracksPage()).items[0]).toMatchObject({
       title: 'Watcher Song Updated',
       duration: 2000
     })
 
     await service.dispose()
+    vi.useRealTimers()
   })
 
   it('toggles folder enablement and exposes artist and album pages', async () => {
@@ -408,11 +412,11 @@ describe('LocalLibraryService', () => {
 
     await vi.waitFor(() => {
       expect(metadataReader).toHaveBeenCalledWith(trackPath)
+      return service.getTracksPage().then(repairedPage => {
+        expect(repairedPage.items[0]?.duration).toBe(189000)
+        expect(repairedPage.items[0]?.song.duration).toBe(189000)
+      })
     })
-
-    const repairedPage = await service.getTracksPage()
-    expect(repairedPage.items[0]?.duration).toBe(189000)
-    expect(repairedPage.items[0]?.song.duration).toBe(189000)
 
     await service.dispose()
   })

@@ -2,6 +2,7 @@ import path from 'node:path'
 import type { BrowserWindow } from 'electron'
 import type { SongPlatform } from '@/types/schemas'
 import type { DesktopLyricUpdateCause } from './ipc/types'
+import { RECEIVE_CHANNELS, type ReceiveChannel } from './shared/protocol/channels'
 
 import { MAIN_DIST, RENDERER_DIST } from './utils/paths'
 
@@ -14,6 +15,10 @@ type ElectronStoreInstance = {
 }
 
 let store: ElectronStoreInstance | null = null
+const DESKTOP_LYRIC_RENDERER_CHANNELS = new Set<ReceiveChannel>([
+  RECEIVE_CHANNELS.DESKTOP_LYRIC_LOCK_STATE,
+  RECEIVE_CHANNELS.LYRIC_TIME_UPDATE
+])
 
 function getStore(): ElectronStoreInstance {
   if (!store) {
@@ -129,6 +134,10 @@ export class DesktopLyricManager {
   private isRendererReady = false
 
   private sendToRenderer(channel: string, payload: unknown): boolean {
+    if (!DESKTOP_LYRIC_RENDERER_CHANNELS.has(channel as ReceiveChannel)) {
+      return false
+    }
+
     if (!this.win || this.win.isDestroyed()) {
       return false
     }
@@ -294,7 +303,7 @@ export class DesktopLyricManager {
     }
 
     this.win.setIgnoreMouseEvents(locked, { forward: true })
-    this.sendToRenderer('desktop-lyric-lock-state', { locked })
+    this.sendToRenderer(RECEIVE_CHANNELS.DESKTOP_LYRIC_LOCK_STATE, { locked })
   }
 
   setAlwaysOnTop(alwaysOnTop: boolean): void {
@@ -319,7 +328,7 @@ export class DesktopLyricManager {
       currentTime: this.lastLyric.time,
       currentLyricIndex: this.lastLyric.index
     })
-    this.sendToRenderer('lyric-time-update', this.lastLyric)
+    this.sendToRenderer(RECEIVE_CHANNELS.LYRIC_TIME_UPDATE, this.lastLyric)
   }
 
   sendLyric(data: LyricUpdateData): void {
@@ -346,7 +355,7 @@ export class DesktopLyricManager {
       currentTime: data.time,
       currentLyricIndex: data.index
     })
-    this.sendToRenderer('lyric-time-update', data)
+    this.sendToRenderer(RECEIVE_CHANNELS.LYRIC_TIME_UPDATE, data)
   }
 
   toggle(): void {

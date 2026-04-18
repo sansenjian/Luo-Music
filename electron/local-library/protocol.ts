@@ -1,6 +1,7 @@
 import path from 'node:path'
-import { realpathSync } from 'node:fs'
-import { pathToFileURL } from 'node:url'
+import { constants as fsConstants, realpathSync } from 'node:fs'
+import { open, type FileHandle } from 'node:fs/promises'
+import { Readable } from 'node:stream'
 
 import { LOCAL_MEDIA_SCHEME } from './protocol.privileged'
 
@@ -38,15 +39,6 @@ export type ElectronLocalMediaProtocolModule = {
     ) => void
     handle?: (scheme: string, handler: (request: Request) => Response | Promise<Response>) => void
   }
-  net?: {
-    fetch: (
-      input: string | URL,
-      init?: {
-        headers?: HeadersInit
-        method?: string
-      }
-    ) => Promise<Response>
-  }
 }
 
 function getElectronProtocolModule(): ElectronLocalMediaProtocolModule {
@@ -74,6 +66,162 @@ export function buildLocalMediaFetchInit(request: Request): {
     headers: request.headers,
     method: request.method
   }
+}
+
+function inferLocalMediaContentType(filePath: string): string {
+  switch (path.extname(filePath).toLocaleLowerCase()) {
+    case '.mp3':
+      return 'audio/mpeg'
+    case '.flac':
+      return 'audio/flac'
+    case '.m4a':
+      return 'audio/mp4'
+    case '.ogg':
+    case '.opus':
+      return 'audio/ogg'
+    case '.wav':
+      return 'audio/wav'
+    case '.aac':
+      return 'audio/aac'
+    case '.ape':
+      return 'audio/ape'
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg'
+    case '.png':
+      return 'image/png'
+    case '.webp':
+      return 'image/webp'
+    default:
+      return 'application/octet-stream'
+  }
+}
+
+function parseByteRange(
+  rangeHeader: string | null,
+  fileSize: number
+): { start: number; end: number } | null {
+  if (!rangeHeader) {
+    return null
+  }
+
+  const matched = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader.trim())
+  if (!matched) {
+    return null
+  }
+
+  const rawStart = matched[1]
+  const rawEnd = matched[2]
+
+  if (rawStart === '' && rawEnd === '') {
+    return null
+  }
+
+  if (rawStart === '') {
+    const suffixLength = Number.parseInt(rawEnd ?? '0', 10)
+    if (!Number.isFinite(suffixLength) || suffixLength <= 0) {
+      return null
+    }
+
+    return {
+      start: Math.max(0, fileSize - suffixLength),
+      end: fileSize - 1
+    }
+  }
+
+  const start = Number.parseInt(rawStart, 10)
+  const requestedEnd = rawEnd && rawEnd.length > 0 ? Number.parseInt(rawEnd, 10) : fileSize - 1
+
+  if (
+    !Number.isFinite(start) ||
+    !Number.isFinite(requestedEnd) ||
+    start < 0 ||
+    requestedEnd < start ||
+    start >= fileSize
+  ) {
+    return null
+  }
+
+  return {
+    start,
+    end: Math.min(requestedEnd, fileSize - 1)
+  }
+}
+
+async function openValidatedLocalMediaFile(
+  filePath: string
+): Promise<{ handle: FileHandle; fileSize: number } | null> {
+  const flags =
+    fsConstants.O_RDONLY | (typeof fsConstants.O_NOFOLLOW === 'number' ? fsConstants.O_NOFOLLOW : 0)
+
+  let handle: FileHandle | null = null
+  try {
+    handle = await open(filePath, flags)
+    const stat = await handle.stat()
+    const resolvedPath = resolveRealPath(filePath)
+
+    if (!resolvedPath || resolvedPath !== filePath || !stat.isFile()) {
+      await handle.close()
+      return null
+    }
+
+    return {
+      handle,
+      fileSize: stat.size
+    }
+  } catch {
+    if (handle) {
+      await handle.close().catch(() => {})
+    }
+    return null
+  }
+}
+
+async function createLocalMediaResponse(filePath: string, request: Request): Promise<Response> {
+  const openedFile = await openValidatedLocalMediaFile(filePath)
+  if (!openedFile) {
+    return new Response('Unauthorized local media path', {
+      status: 403
+    })
+  }
+
+  const { handle, fileSize } = openedFile
+  const byteRange = parseByteRange(request.headers.get('range'), fileSize)
+  const stream = handle.createReadStream(
+    byteRange
+      ? {
+          start: byteRange.start,
+          end: byteRange.end
+        }
+      : undefined
+  )
+  const closeHandle = () => {
+    void handle.close().catch(() => {})
+  }
+  stream.once('close', closeHandle)
+  stream.once('error', closeHandle)
+
+  const headers = new Headers({
+    'Accept-Ranges': 'bytes',
+    'Content-Type': inferLocalMediaContentType(filePath)
+  })
+
+  if (byteRange) {
+    const contentLength = byteRange.end - byteRange.start + 1
+    headers.set('Content-Length', String(contentLength))
+    headers.set('Content-Range', `bytes ${byteRange.start}-${byteRange.end}/${fileSize}`)
+
+    return new Response(Readable.toWeb(stream) as ReadableStream, {
+      status: 206,
+      headers
+    })
+  }
+
+  headers.set('Content-Length', String(fileSize))
+  return new Response(Readable.toWeb(stream) as ReadableStream, {
+    status: 200,
+    headers
+  })
 }
 
 function resolveRealPath(targetPath: string): string | null {
@@ -170,8 +318,8 @@ export function registerLocalMediaProtocol(
     return
   }
 
-  const { net, protocol } = electronModule
-  if (!net?.fetch || !protocol?.handle) {
+  const { protocol } = electronModule
+  if (!protocol?.handle) {
     return
   }
 
@@ -184,7 +332,7 @@ export function registerLocalMediaProtocol(
     }
 
     try {
-      return await net.fetch(pathToFileURL(filePath).toString(), buildLocalMediaFetchInit(request))
+      return await createLocalMediaResponse(filePath, request)
     } catch {
       return new Response('Failed to read local media file', {
         status: 500

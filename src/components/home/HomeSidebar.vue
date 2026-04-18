@@ -3,7 +3,6 @@ import { computed, ref } from 'vue'
 
 import {
   HOME_SIDEBAR_EXPLORE_ITEMS,
-  HOME_SIDEBAR_ICON_MARKUP_MAP,
   HOME_SIDEBAR_LIBRARY_ITEMS
 } from '@/components/home/homeSidebar.constants'
 import { useHomeSidebarCollections } from '@/composables/useHomeSidebarCollections'
@@ -11,7 +10,8 @@ import { useRenderStyle } from '@/composables/useRenderStyle'
 
 import HomeBrandBadge from './HomeBrandBadge.vue'
 import HomeSidebarFooter from './HomeSidebarFooter.vue'
-import type { HomeSidebarCollectionSelection, SidebarIconName } from './homeSidebar.types'
+import HomeSidebarIcon from './HomeSidebarIcon.vue'
+import type { HomeSidebarCollectionSelection } from './homeSidebar.types'
 
 const props = withDefaults(
   defineProps<{
@@ -64,8 +64,16 @@ function isActive(itemId: string): boolean {
   return resolvedActiveItemId.value === itemId
 }
 
-function resolveIconMarkup(iconName: SidebarIconName): string {
-  return HOME_SIDEBAR_ICON_MARKUP_MAP[iconName]
+function resolveCollectionImageLoading(index: number): 'eager' | 'lazy' {
+  return index === 0 ? 'eager' : 'lazy'
+}
+
+function resolveCollectionImageFetchPriority(index: number): 'high' | 'auto' {
+  return index === 0 ? 'high' : 'auto'
+}
+
+function resolveCollectionImageDecoding(index: number): 'sync' | 'async' {
+  return index === 0 ? 'sync' : 'async'
 }
 </script>
 
@@ -80,7 +88,11 @@ function resolveIconMarkup(iconName: SidebarIconName): string {
         <HomeBrandBadge placement="sidebar" :icon-only="props.collapsed" />
       </header>
 
-      <section class="sidebar-section" aria-labelledby="sidebar-explore-title">
+      <section
+        class="sidebar-section"
+        :aria-labelledby="!props.collapsed ? 'sidebar-explore-title' : undefined"
+        :aria-label="props.collapsed ? '探索' : undefined"
+      >
         <p v-if="!props.collapsed" id="sidebar-explore-title" class="section-title">探索</p>
         <button
           v-for="item in HOME_SIDEBAR_EXPLORE_ITEMS"
@@ -92,16 +104,16 @@ function resolveIconMarkup(iconName: SidebarIconName): string {
           :aria-label="item.label"
           @click="activateItem(item.id)"
         >
-          <span
-            class="sidebar-icon"
-            aria-hidden="true"
-            v-html="resolveIconMarkup(item.icon)"
-          ></span>
+          <span class="sidebar-icon" aria-hidden="true"><HomeSidebarIcon :icon="item.icon" /></span>
           <span v-if="!props.collapsed" class="sidebar-label">{{ item.label }}</span>
         </button>
       </section>
 
-      <section class="sidebar-section" aria-labelledby="sidebar-library-title">
+      <section
+        class="sidebar-section"
+        :aria-labelledby="!props.collapsed ? 'sidebar-library-title' : undefined"
+        :aria-label="props.collapsed ? '资料库' : undefined"
+      >
         <p v-if="!props.collapsed" id="sidebar-library-title" class="section-title">资料库</p>
         <button
           v-for="item in HOME_SIDEBAR_LIBRARY_ITEMS"
@@ -113,16 +125,16 @@ function resolveIconMarkup(iconName: SidebarIconName): string {
           :aria-label="item.label"
           @click="activateItem(item.id)"
         >
-          <span
-            class="sidebar-icon"
-            aria-hidden="true"
-            v-html="resolveIconMarkup(item.icon)"
-          ></span>
+          <span class="sidebar-icon" aria-hidden="true"><HomeSidebarIcon :icon="item.icon" /></span>
           <span v-if="!props.collapsed" class="sidebar-label">{{ item.label }}</span>
         </button>
       </section>
 
-      <section class="sidebar-section" aria-labelledby="sidebar-playlists-title">
+      <section
+        class="sidebar-section"
+        :aria-labelledby="!props.collapsed ? 'sidebar-playlists-title' : undefined"
+        :aria-label="props.collapsed ? '歌单' : undefined"
+      >
         <p v-if="!props.collapsed" id="sidebar-playlists-title" class="section-title">歌单</p>
 
         <div v-if="!props.collapsed" class="playlist-filters" role="tablist" aria-label="歌单分组">
@@ -156,7 +168,7 @@ function resolveIconMarkup(iconName: SidebarIconName): string {
           </p>
 
           <button
-            v-for="item in visibleCollections"
+            v-for="(item, index) in visibleCollections"
             :key="item.uiId"
             type="button"
             class="playlist-card"
@@ -174,8 +186,11 @@ function resolveIconMarkup(iconName: SidebarIconName): string {
                 :src="item.coverUrl"
                 :alt="item.name"
                 class="playlist-cover-image"
-                loading="lazy"
-                decoding="async"
+                width="54"
+                height="54"
+                :loading="resolveCollectionImageLoading(index)"
+                :fetchpriority="resolveCollectionImageFetchPriority(index)"
+                :decoding="resolveCollectionImageDecoding(index)"
               />
               <template v-else>
                 <span class="playlist-cover-glow"></span>

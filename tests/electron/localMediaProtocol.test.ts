@@ -1,14 +1,11 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
-import { pathToFileURL } from 'node:url'
-import { realpathSync } from 'node:fs'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const registerSchemesAsPrivilegedMock = vi.hoisted(() => vi.fn())
 const protocolHandleMock = vi.hoisted(() => vi.fn())
-const netFetchMock = vi.hoisted(() => vi.fn())
 
 const createdPaths: string[] = []
 
@@ -93,16 +90,11 @@ describe('localMediaProtocol', () => {
     await writeFile(blockedPath, 'pdf')
     await writeFile(outsideSongPath, 'outside')
 
-    netFetchMock.mockResolvedValue(new Response('ok', { status: 200 }))
-
     const protocolModule = await import('../../electron/local-library/protocol')
     protocolModule.configureLocalMediaRootsResolver(() => [rootPath])
     protocolModule.registerLocalMediaProtocol({
       protocol: {
         handle: protocolHandleMock
-      },
-      net: {
-        fetch: netFetchMock
       }
     })
 
@@ -117,21 +109,29 @@ describe('localMediaProtocol', () => {
       new Request(`luo-media://media?path=${encodeURIComponent(songPath)}`)
     )
     expect(allowedResponse.status).toBe(200)
-    expect(netFetchMock).toHaveBeenCalledTimes(1)
-    expect(String(netFetchMock.mock.calls[0]?.[0])).toBe(
-      pathToFileURL(realpathSync.native(songPath)).toString()
+    await expect(allowedResponse.text()).resolves.toBe('song')
+    expect(allowedResponse.headers.get('content-type')).toBe('audio/mpeg')
+    expect(allowedResponse.headers.get('accept-ranges')).toBe('bytes')
+
+    const rangedResponse = await handler!(
+      new Request(`luo-media://media?path=${encodeURIComponent(songPath)}`, {
+        headers: {
+          Range: 'bytes=1-2'
+        }
+      })
     )
+    expect(rangedResponse.status).toBe(206)
+    await expect(rangedResponse.text()).resolves.toBe('on')
+    expect(rangedResponse.headers.get('content-range')).toBe('bytes 1-2/4')
 
     const blockedExtensionResponse = await handler!(
       new Request(`luo-media://media?path=${encodeURIComponent(blockedPath)}`)
     )
     expect(blockedExtensionResponse.status).toBe(403)
-    expect(netFetchMock).toHaveBeenCalledTimes(1)
 
     const outsideRootResponse = await handler!(
       new Request(`luo-media://media?path=${encodeURIComponent(outsideSongPath)}`)
     )
     expect(outsideRootResponse.status).toBe(403)
-    expect(netFetchMock).toHaveBeenCalledTimes(1)
   })
 })

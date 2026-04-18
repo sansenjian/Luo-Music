@@ -37,8 +37,9 @@ describe('useRenderStyle', () => {
     const { useRenderStyle: useRenderStyleFactory } = await import('@/composables/useRenderStyle')
     const { renderStyle, setRenderStyle } = useRenderStyleFactory()
 
-    expect(renderStyle.value).toBe('red')
-    expect(document.documentElement.dataset.renderStyle).toBe('red')
+    expect(renderStyle.value).toBe('brand')
+    expect(document.documentElement.dataset.renderStyle).toBe('brand')
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith('renderStyle', 'brand')
 
     setRenderStyle('classic')
 

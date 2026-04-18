@@ -4,8 +4,8 @@ export function appendTrackFilters(
   clauses: string[],
   params: unknown[],
   query: LocalLibraryTrackQuery,
-  trackAlias = 'track',
-  folderAlias = 'folder'
+  trackAlias: 'track' = 'track',
+  folderAlias: 'folder' = 'folder'
 ): void {
   clauses.push(`${folderAlias}.enabled = 1`)
 
@@ -53,9 +53,9 @@ export function appendSummarySearchFilter(
 function createContainsSearchPattern(search: string): string {
   const escapedSearch = search
     .trim()
-    .replaceAll('\\', '\\\\')
-    .replaceAll('%', '\\%')
-    .replaceAll('_', '\\_')
+    .replace(/\\/g, '\\\\')
+    .replace(/%/g, '\\%')
+    .replace(/_/g, '\\_')
   return `%${escapedSearch}%`
 }
 

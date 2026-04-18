@@ -161,6 +161,7 @@ export const RECEIVE_CHANNELS = {
   PLAYER_STATE_CHANGE: 'player:state-change',
   PLAYER_TRACK_CHANGED: 'player:track-changed',
   PLAYER_LYRIC_UPDATE: 'player:lyric-update',
+  PLAYER_DESKTOP_LYRIC_STATE: 'player:desktop-lyric-state',
   PLAYER_PLAY_ERROR: 'player:play-error',
 
   // 配置变化

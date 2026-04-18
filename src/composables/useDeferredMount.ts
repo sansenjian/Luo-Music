@@ -1,7 +1,8 @@
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 
 export function useDeferredMount() {
   const isMounted = ref(false)
+  let fallbackTimer: ReturnType<typeof setTimeout> | null = null
 
   onMounted(() => {
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
@@ -11,9 +12,16 @@ export function useDeferredMount() {
       return
     }
 
-    setTimeout(() => {
+    fallbackTimer = setTimeout(() => {
       isMounted.value = true
     }, 0)
+  })
+
+  onUnmounted(() => {
+    if (fallbackTimer) {
+      clearTimeout(fallbackTimer)
+      fallbackTimer = null
+    }
   })
 
   return {

@@ -313,6 +313,35 @@ describe('playerStore', () => {
       expect(playNextSpy).not.toHaveBeenCalled()
       expect(localSong.unavailable).toBe(true)
     })
+
+    it('keeps the current song index stable when add-to-next moves an earlier queued song', () => {
+      const { store, platformAccessor } = createInjectedPlayerStore({ isElectron: true })
+      const songs = [
+        createMockSong({ id: 1, name: 'Song 1' }),
+        createMockSong({ id: 2, name: 'Song 2' }),
+        createMockSong({ id: 3, name: 'Song 3' }),
+        createMockSong({ id: 4, name: 'Song 4' }),
+        createMockSong({ id: 5, name: 'Song 5' })
+      ]
+
+      store.songList = [...songs]
+      store.currentIndex = 3
+      store.currentSong = songs[3]
+      store.initAudio()
+
+      const onCalls = platformAccessor.on.mock.calls as unknown as Array<
+        [string, (payload: unknown) => void]
+      >
+      const songControlListener = onCalls.find(
+        ([channel]) => channel === 'music-song-control'
+      )?.[1] as ((payload: unknown) => void) | undefined
+
+      songControlListener?.({ type: 'add-to-next', song: songs[2] })
+
+      expect(store.songList.map(song => song.id)).toEqual([1, 2, 4, 3, 5])
+      expect(store.currentIndex).toBe(2)
+      expect(store.currentSong?.id).toBe(4)
+    })
   })
 
   describe('lyrics', () => {

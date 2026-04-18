@@ -49,7 +49,7 @@ describe('LocalLibraryScanEngine', () => {
       album: 'Album',
       duration: 0,
       fileSize: trackStats.size,
-      modifiedAt: Math.round(trackStats.mtimeMs),
+      modifiedAt: trackStats.mtimeMs,
       coverHash: null,
       song: {
         id: trackId,
@@ -122,7 +122,7 @@ describe('LocalLibraryScanEngine', () => {
       album: 'Album',
       duration: 0,
       fileSize: trackStats.size,
-      modifiedAt: Math.round(trackStats.mtimeMs),
+      modifiedAt: trackStats.mtimeMs,
       coverHash: null,
       song: {
         id: trackId,
@@ -186,5 +186,108 @@ describe('LocalLibraryScanEngine', () => {
       localDurationKnown: true,
       localSource: true
     })
+  })
+
+  it('returns null for non-audio files without invoking metadata reads', async () => {
+    const tempDir = await createTempPath('local-library-scan-engine-text')
+    const folderPath = join(tempDir, 'Music')
+    const filePath = join(folderPath, 'notes.txt')
+    await mkdir(folderPath, { recursive: true })
+    await writeFile(filePath, 'plain-text')
+
+    const metadataReader = vi.fn()
+    const scanEngine = new LocalLibraryScanEngine({
+      coverManager: {
+        saveEmbeddedCover: vi.fn()
+      } as never,
+      isDisposed: () => false,
+      metadataReader,
+      repository: {
+        findTrackByFilePath: vi.fn()
+      } as never
+    })
+
+    const track = await scanEngine.scanSingleFile(
+      {
+        id: createFolderId(folderPath),
+        path: folderPath,
+        name: 'Music',
+        enabled: true,
+        createdAt: Date.now(),
+        lastScannedAt: Date.now()
+      },
+      filePath
+    )
+
+    expect(track).toBeNull()
+    expect(metadataReader).not.toHaveBeenCalled()
+  })
+
+  it('preserves the existing cover hash when metadata refresh does not include cover data', async () => {
+    const tempDir = await createTempPath('local-library-scan-engine-cover')
+    const folderPath = join(tempDir, 'Music')
+    const trackPath = join(folderPath, 'Covered Song.ogg')
+    await mkdir(folderPath, { recursive: true })
+    await writeFile(trackPath, 'ogg-data')
+    const trackStats = await stat(trackPath)
+    const folderId = createFolderId(folderPath)
+    const trackId = createTrackId(LOCAL_LIBRARY_SONG_ID_PREFIX, trackPath)
+
+    const existingTrack = {
+      id: trackId,
+      folderId,
+      filePath: trackPath,
+      fileName: 'Covered Song.ogg',
+      title: 'Covered Song',
+      artist: 'Artist',
+      album: 'Album',
+      duration: 1000,
+      fileSize: trackStats.size,
+      modifiedAt: trackStats.mtimeMs,
+      coverHash: 'cover-hash',
+      song: {
+        id: trackId,
+        name: 'Covered Song',
+        artists: [{ id: 'artist-1', name: 'Artist' }],
+        album: { id: 'album-1', name: 'Album', picUrl: '' },
+        duration: 1000,
+        mvid: 0,
+        platform: 'local',
+        originalId: trackId
+      }
+    }
+
+    const scanEngine = new LocalLibraryScanEngine({
+      coverManager: {
+        saveEmbeddedCover: vi.fn()
+      } as never,
+      isDisposed: () => false,
+      metadataReader: vi.fn().mockResolvedValue({
+        title: 'Covered Song',
+        artist: 'Artist',
+        album: 'Album',
+        duration: 1000
+      }),
+      repository: {
+        findTrackByFilePath: vi.fn().mockReturnValue(existingTrack)
+      } as never
+    })
+
+    const track = await scanEngine.scanSingleFile(
+      {
+        id: folderId,
+        path: folderPath,
+        name: 'Music',
+        enabled: true,
+        createdAt: Date.now(),
+        lastScannedAt: Date.now()
+      },
+      trackPath,
+      {
+        forceMetadataRefresh: true
+      }
+    )
+
+    expect(track?.coverHash).toBe('cover-hash')
   })
 })

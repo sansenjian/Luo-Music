@@ -8,7 +8,7 @@ export function formatLocalLibraryDateTime(timestamp: number): string {
 }
 
 export function formatLocalLibraryBytes(bytes: number): string {
-  if (!bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
     return '0 B'
   }
 

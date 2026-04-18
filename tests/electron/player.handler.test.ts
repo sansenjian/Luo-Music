@@ -149,6 +149,16 @@ describe('player.handler', () => {
       index: 0,
       line: { time: 42, text: 'line', trans: '', roma: '' }
     })
+    expect(broadcastMock).toHaveBeenCalledWith('player:desktop-lyric-state', {
+      currentSong: song,
+      currentLyricIndex: 0,
+      progress: 42,
+      isPlaying: true,
+      lyrics: [{ time: 42, text: 'line', trans: '', roma: '' }],
+      songId: 'song-1',
+      platform: 'netease',
+      sequence: 3
+    })
   })
 
   it('fetches lyrics for a non-current song by payload instead of returning current cached lyrics', async () => {
@@ -458,5 +468,32 @@ describe('player.handler', () => {
       platform: 'netease',
       sequence: 0
     })
+  })
+
+  it('rejects invalid seek, volume, and add-to-next payloads', async () => {
+    const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
+
+    const { registerPlayerHandlers } = await import('../../electron/ipc/handlers/player.handler')
+
+    const windowManager = {
+      send: vi.fn(),
+      syncPlaybackState: vi.fn(),
+      syncTrayPlayMode: vi.fn()
+    }
+
+    registerPlayerHandlers(windowManager as never, { handleRequest: vi.fn() } as never)
+
+    await expect(invokeHandlers.get('player:seek-to')?.(-1)).rejects.toThrow('Invalid seek time')
+    await expect(invokeHandlers.get('player:set-volume')?.(1.5)).rejects.toThrow('Invalid volume')
+    await expect(invokeHandlers.get('player:add-to-next')?.({ id: 'song-1' })).rejects.toThrow(
+      'Invalid song payload'
+    )
+
+    expect(windowManager.send).not.toHaveBeenCalled()
   })
 })

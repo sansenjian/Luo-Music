@@ -3,6 +3,7 @@ import { ipcService } from '../IpcService'
 import type { ServiceManager } from '../../ServiceManager'
 import type { WindowManager } from '../../WindowManager'
 import { isLocalLibrarySongId } from '@/types/localLibrary'
+import { SongSchema } from '@/types/schemas'
 import type { Song } from '../../../src/types/schemas'
 import { LyricParser } from '../../../src/utils/player/core/lyric'
 import { PLAY_MODE } from '../../../src/utils/player/constants/playMode'
@@ -119,6 +120,31 @@ class StateBroadcastManager {
 
 let stateBroadcastManager: StateBroadcastManager | null = null
 
+function parseSeekTime(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new Error('Invalid seek time')
+  }
+
+  return value
+}
+
+function parseVolume(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error('Invalid volume')
+  }
+
+  return value
+}
+
+function parseSongPayload(value: unknown): Song {
+  const result = SongSchema.safeParse(value)
+  if (!result.success) {
+    throw new Error('Invalid song payload')
+  }
+
+  return result.data
+}
+
 function getStateBroadcastManager(): StateBroadcastManager {
   if (!stateBroadcastManager) {
     stateBroadcastManager = new StateBroadcastManager()
@@ -161,17 +187,17 @@ function normalizePlayerState(snapshot: PlayerStateSnapshot | undefined): Player
  * @returns A snapshot containing `currentSong`, `progress`, `isPlaying`, and lyric-related fields; if the lyric cache is not usable the `lyrics` array will be empty, `currentLyricIndex` will be `-1`, and `sequence` will be `0`.
  */
 function createDesktopLyricSnapshot(playerState: PlayerStateSnapshot): DesktopLyricSnapshot {
-  const hasCurrentSongLyrics = hasUsableLyricCache(playerState)
-  const currentSong = playerState.currentSong
+  const lyricSong = playerState.lyricSong ?? playerState.currentSong
+  const hasCurrentSongLyrics = playerState.lyrics.length > 0 && lyricSong !== null
 
   return {
-    currentSong,
+    currentSong: lyricSong,
     currentLyricIndex: hasCurrentSongLyrics ? playerState.currentLyricIndex : -1,
     progress: playerState.progress,
     isPlaying: playerState.isPlaying,
     lyrics: hasCurrentSongLyrics ? [...playerState.lyrics] : [],
-    songId: currentSong?.id ?? null,
-    platform: currentSong?.platform ?? null,
+    songId: lyricSong?.id ?? null,
+    platform: lyricSong?.platform ?? null,
     sequence: hasCurrentSongLyrics ? playerState.desktopLyricSequence : 0
   }
 }
@@ -299,12 +325,18 @@ export function registerPlayerHandlers(
     windowManager.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'next')
   })
 
-  ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_SEEK_TO, async (time: number) => {
-    windowManager.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL, { type: 'seek', time })
+  ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_SEEK_TO, async (time: unknown) => {
+    windowManager.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL, {
+      type: 'seek',
+      time: parseSeekTime(time)
+    })
   })
 
-  ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_SET_VOLUME, async (volume: number) => {
-    windowManager.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL, { type: 'volume', volume })
+  ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_SET_VOLUME, async (volume: unknown) => {
+    windowManager.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL, {
+      type: 'volume',
+      volume: parseVolume(volume)
+    })
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_TOGGLE_MUTE, async () => {
@@ -337,8 +369,11 @@ export function registerPlayerHandlers(
     return createDesktopLyricSnapshot(playerState)
   })
 
-  ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_ADD_TO_NEXT, async (song: Song) => {
-    windowManager.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, { type: 'add-to-next', song })
+  ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_ADD_TO_NEXT, async (song: unknown) => {
+    windowManager.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, {
+      type: 'add-to-next',
+      song: parseSongPayload(song)
+    })
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_REMOVE_FROM_PLAYLIST, async (index: number) => {
@@ -423,6 +458,23 @@ export function registerPlayerHandlers(
           index: playerState.currentLyricIndex,
           line: playerState.lyrics[playerState.currentLyricIndex] ?? null
         })
+      })
+    }
+
+    if (
+      previousState.isPlaying !== playerState.isPlaying ||
+      previousState.progress !== playerState.progress ||
+      previousState.currentLyricIndex !== playerState.currentLyricIndex ||
+      previousState.desktopLyricSequence !== playerState.desktopLyricSequence ||
+      !isSameSong(previousState.currentSong, playerState.currentSong) ||
+      !isSameSong(previousState.lyricSong, playerState.lyricSong) ||
+      previousState.lyrics.length !== playerState.lyrics.length
+    ) {
+      stateManager.schedule('desktop-lyric-state', () => {
+        ipcService.broadcast(
+          RECEIVE_CHANNELS.PLAYER_DESKTOP_LYRIC_STATE,
+          createDesktopLyricSnapshot(playerState)
+        )
       })
     }
   })

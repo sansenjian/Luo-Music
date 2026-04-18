@@ -124,19 +124,19 @@ describe('SettingsPanel.vue', () => {
     await wrapper.find('.settings-btn').trigger('click')
 
     const options = Array.from(document.body.querySelectorAll('.placement-option'))
-    expect(options.map(option => option.textContent?.trim())).toContain('经典配色')
-    expect(options.map(option => option.textContent?.trim())).toContain('红色风格')
+    expect(options.map(option => option.textContent?.trim())).toContain('经典风格')
+    expect(options.map(option => option.textContent?.trim())).toContain('品牌风格')
 
-    const redOption = options.find(option => option.textContent?.includes('红色风格')) as
+    const brandOption = options.find(option => option.textContent?.includes('品牌风格')) as
       | HTMLButtonElement
       | undefined
-    expect(redOption).toBeDefined()
+    expect(brandOption).toBeDefined()
 
-    redOption?.click()
+    brandOption?.click()
     await wrapper.vm.$nextTick()
 
-    expect(storageServiceMock.setItem).toHaveBeenCalledWith('renderStyle', 'red')
-    expect(document.documentElement.dataset.renderStyle).toBe('red')
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith('renderStyle', 'brand')
+    expect(document.documentElement.dataset.renderStyle).toBe('brand')
 
     wrapper.unmount()
   })

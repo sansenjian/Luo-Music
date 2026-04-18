@@ -4,7 +4,7 @@ import { createLegacyElectronAPI, type ElectronAPI } from './legacyElectronApi'
 
 // 导入服务代理
 import { LogProxy, ConfigProxy, ApiProxy, WindowProxy, PlayerProxy } from './services'
-import type { Song, LyricLine } from './services/playerProxy'
+import type { Song, LyricLine, DesktopLyricSnapshot } from './services/playerProxy'
 
 console.log('--- Preload script loaded (TypeScript) ---')
 
@@ -91,6 +91,7 @@ type PlayerServiceAPI = Pick<
   | 'onPlayStateChange'
   | 'onSongChange'
   | 'onLyricUpdate'
+  | 'onDesktopLyricState'
   | 'onPlayError'
 >
 
@@ -272,6 +273,8 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
       playerProxy.onSongChange(listener),
     onLyricUpdate: (listener: (data: { index: number; line: LyricLine | null }) => void) =>
       playerProxy.onLyricUpdate(listener),
+    onDesktopLyricState: (listener: (data: DesktopLyricSnapshot) => void) =>
+      playerProxy.onDesktopLyricState(listener),
     onPlayError: (listener: (data: { error: string; song: Song | null }) => void) =>
       playerProxy.onPlayError(listener)
   }

@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { dialog } from 'electron'
 import type { OpenDialogOptions } from 'electron'
 
@@ -8,6 +9,8 @@ import type { WindowManager } from '../../WindowManager'
 import type { LocalLibrarySummaryQuery, LocalLibraryTrackQuery } from '@/types/localLibrary'
 
 let listenersRegistered = false
+const LOCAL_LIBRARY_FOLDER_ID_PATTERN = /^local-folder:[a-f0-9]{40}$/i
+const LOCAL_LIBRARY_COVER_HASH_PATTERN = /^[a-f0-9]{40}$/i
 
 function parseOptionalString(value: unknown, fieldName: string): string | undefined {
   if (value === undefined || value === null || value === '') {
@@ -19,6 +22,49 @@ function parseOptionalString(value: unknown, fieldName: string): string | undefi
   }
 
   return value
+}
+
+function parseRequiredString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`Invalid ${fieldName}`)
+  }
+
+  return value.trim()
+}
+
+function parseBoolean(value: unknown, fieldName: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new Error(`Invalid ${fieldName}`)
+  }
+
+  return value
+}
+
+function parseAbsoluteFolderPath(value: unknown): string {
+  const folderPath = parseRequiredString(value, 'folderPath')
+  if (!path.isAbsolute(folderPath)) {
+    throw new Error('Invalid folderPath')
+  }
+
+  return folderPath
+}
+
+function parseFolderId(value: unknown, fieldName = 'folderId'): string {
+  const folderId = parseRequiredString(value, fieldName)
+  if (!LOCAL_LIBRARY_FOLDER_ID_PATTERN.test(folderId)) {
+    throw new Error(`Invalid ${fieldName}`)
+  }
+
+  return folderId
+}
+
+function parseCoverHash(value: unknown): string {
+  const coverHash = parseRequiredString(value, 'coverHash')
+  if (!LOCAL_LIBRARY_COVER_HASH_PATTERN.test(coverHash)) {
+    throw new Error('Invalid coverHash')
+  }
+
+  return coverHash
 }
 
 function parseOptionalLimit(value: unknown): number | undefined {
@@ -119,22 +165,25 @@ export function registerLocalLibraryHandlers(
 
   ipcService.registerInvoke(
     INVOKE_CHANNELS.LOCAL_LIBRARY_ADD_FOLDER,
-    async (folderPath: string) => {
-      return localLibraryService.addFolder(folderPath)
+    async (folderPath: unknown) => {
+      return localLibraryService.addFolder(parseAbsoluteFolderPath(folderPath))
     }
   )
 
   ipcService.registerInvoke(
     INVOKE_CHANNELS.LOCAL_LIBRARY_REMOVE_FOLDER,
-    async (folderId: string) => {
-      return localLibraryService.removeFolder(folderId)
+    async (folderId: unknown) => {
+      return localLibraryService.removeFolder(parseFolderId(folderId))
     }
   )
 
   ipcService.registerInvoke(
     INVOKE_CHANNELS.LOCAL_LIBRARY_SET_FOLDER_ENABLED,
-    async (folderId: string, enabled: boolean) => {
-      return localLibraryService.setFolderEnabled(folderId, enabled)
+    async (folderId: unknown, enabled: unknown) => {
+      return localLibraryService.setFolderEnabled(
+        parseFolderId(folderId),
+        parseBoolean(enabled, 'enabled')
+      )
     }
   )
 
@@ -154,7 +203,7 @@ export function registerLocalLibraryHandlers(
     return localLibraryService.getAlbumsPage(parseSummaryQuery(query))
   })
 
-  ipcService.registerInvoke(INVOKE_CHANNELS.LOCAL_LIBRARY_GET_COVER, async (coverHash: string) => {
-    return localLibraryService.getCoverDataUrl(coverHash)
+  ipcService.registerInvoke(INVOKE_CHANNELS.LOCAL_LIBRARY_GET_COVER, async (coverHash: unknown) => {
+    return localLibraryService.getCoverDataUrl(parseCoverHash(coverHash))
   })
 }

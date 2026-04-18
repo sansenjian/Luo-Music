@@ -8,6 +8,7 @@ import path from 'node:path'
 
 import { downloadManager } from './DownloadManager'
 import logger from './logger'
+import { RECEIVE_CHANNELS } from './shared/protocol/channels'
 import { MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
 const StoreModule = require('electron-store') as {
   default?: new (options?: { projectName: string }) => {
@@ -252,19 +253,19 @@ export class WindowManager {
       {
         tooltip: 'Previous',
         icon: nativeImage.createFromPath(path.join(iconsPath, 'icons/prev.png')),
-        click: () => this.send('music-song-control', 'prev')
+        click: () => this.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'prev')
       },
       {
         tooltip: playing ? 'Pause' : 'Play',
         icon: playing
           ? nativeImage.createFromPath(path.join(iconsPath, 'icons/pause.png'))
           : nativeImage.createFromPath(path.join(iconsPath, 'icons/play.png')),
-        click: () => this.send('music-playing-control')
+        click: () => this.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL)
       },
       {
         tooltip: 'Next',
         icon: nativeImage.createFromPath(path.join(iconsPath, 'icons/next.png')),
-        click: () => this.send('music-song-control', 'next')
+        click: () => this.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'next')
       }
     ]
 

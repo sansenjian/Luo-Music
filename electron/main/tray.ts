@@ -10,6 +10,7 @@ import type { Tray as TrayType, MenuItemConstructorOptions } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import logger from '../logger'
+import { RECEIVE_CHANNELS } from '../shared/protocol/channels'
 import { VITE_PUBLIC, __dirname } from '../utils/paths'
 
 /**
@@ -56,7 +57,7 @@ function createTrayMenu(): MenuItemConstructorOptions[] {
     {
       label: '播放/暂停',
       click: () => {
-        windowManager?.send('music-playing-control')
+        windowManager?.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL)
       }
     },
     {

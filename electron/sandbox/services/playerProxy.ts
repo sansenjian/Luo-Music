@@ -13,7 +13,7 @@ import type {
 export type PlayerState = PlayerStateResponse
 
 // Re-export types for convenience
-export type { Song, PlayMode, LyricLine }
+export type { Song, PlayMode, LyricLine, DesktopLyricSnapshot }
 
 export class PlayerProxy {
   private readonly ipcProxy: ReturnType<typeof getIpcProxy>
@@ -124,6 +124,10 @@ export class PlayerProxy {
 
   onLyricUpdate(listener: (data: { index: number; line: LyricLine | null }) => void): () => void {
     return this.ipcProxy.on(RECEIVE_CHANNELS.PLAYER_LYRIC_UPDATE, listener)
+  }
+
+  onDesktopLyricState(listener: (data: DesktopLyricSnapshot) => void): () => void {
+    return this.ipcProxy.on(RECEIVE_CHANNELS.PLAYER_DESKTOP_LYRIC_STATE, listener)
   }
 
   onPlayError(listener: (data: { error: string; song: Song | null }) => void): () => void {

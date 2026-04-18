@@ -61,11 +61,10 @@ describe('HomeHeader', () => {
 
   it('emits window control events only in electron mode', async () => {
     const wrapper = createWrapper(true)
-    const winButtons = wrapper.findAll('.win-btn')
 
-    await winButtons[0].trigger('click')
-    await winButtons[1].trigger('click')
-    await winButtons[2].trigger('click')
+    await wrapper.get('button[title="Minimize"]').trigger('click')
+    await wrapper.get('button[title="Maximize"]').trigger('click')
+    await wrapper.get('button[title="Close"]').trigger('click')
 
     expect(wrapper.emitted('minimize-window')).toHaveLength(1)
     expect(wrapper.emitted('maximize-window')).toHaveLength(1)

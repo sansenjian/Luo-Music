@@ -29,8 +29,8 @@ const {
       <section class="settings-section">
         <h3>播放设置</h3>
         <div class="setting-item">
-          <label>播放模式</label>
-          <select v-model="playerStore.playMode" class="setting-select">
+          <label for="workspace-play-mode">播放模式</label>
+          <select id="workspace-play-mode" v-model="playerStore.playMode" class="setting-select">
             <option :value="0">顺序播放</option>
             <option :value="1">列表循环</option>
             <option :value="2">单曲循环</option>
@@ -38,14 +38,16 @@ const {
           </select>
         </div>
         <div class="setting-item">
-          <label>音量</label>
+          <label for="workspace-volume">音量</label>
           <input
+            id="workspace-volume"
             v-model.number="playerStore.volume"
             type="range"
             min="0"
             max="1"
             step="0.01"
             class="setting-range"
+            aria-label="播放器音量"
           />
           <span class="volume-value">{{ Math.round(playerStore.volume * 100) }}%</span>
         </div>
@@ -54,16 +56,18 @@ const {
       <section class="settings-section">
         <h3>歌词设置</h3>
         <div class="setting-item">
-          <label>显示翻译</label>
+          <label for="workspace-lyric-trans">显示翻译</label>
           <input
+            id="workspace-lyric-trans"
             type="checkbox"
             :checked="playerStore.lyricType.includes('trans')"
             @change="playerStore.toggleLyricType('trans')"
           />
         </div>
         <div class="setting-item">
-          <label>显示罗马音</label>
+          <label for="workspace-lyric-roma">显示罗马音</label>
           <input
+            id="workspace-lyric-roma"
             type="checkbox"
             :checked="playerStore.lyricType.includes('roma')"
             @change="playerStore.toggleLyricType('roma')"
@@ -82,15 +86,15 @@ const {
               :class="{ active: isRenderStyleActive('classic') }"
               @click="setRenderStyle('classic')"
             >
-              经典配色
+              经典风格
             </button>
             <button
               type="button"
               class="placement-option"
-              :class="{ active: isRenderStyleActive('red') }"
-              @click="setRenderStyle('red')"
+              :class="{ active: isRenderStyleActive('brand') }"
+              @click="setRenderStyle('brand')"
             >
-              红色风格
+              品牌风格
             </button>
           </div>
 

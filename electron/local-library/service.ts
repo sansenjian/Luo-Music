@@ -36,6 +36,13 @@ import { LocalLibraryWatchCoordinator } from './watchCoordinator'
 
 const LOCAL_LIBRARY_STORE_KEY = 'localLibraryState'
 const WATCH_DEBOUNCE_MS = 1500
+const DURATION_REPAIR_CONCURRENCY = 3
+const PLimitModule = require('p-limit') as {
+  default?: (concurrency: number) => <T>(fn: () => Promise<T>) => Promise<T>
+}
+const createPromiseLimiter =
+  PLimitModule.default ??
+  (PLimitModule as unknown as (concurrency: number) => <T>(fn: () => Promise<T>) => Promise<T>)
 
 export class LocalLibraryService {
   private readonly eventHub = new LocalLibraryEventHub()
@@ -46,8 +53,10 @@ export class LocalLibraryService {
   private readonly metadataReader: LocalTrackMetadataReader
   private readonly watcherFactory: LocalLibraryWatcherFactory
   private readonly coverManager: LocalLibraryCoverManager
+  private readonly durationRepairLimiter = createPromiseLimiter(DURATION_REPAIR_CONCURRENCY)
   private readonly durationRepairPromises = new Map<string, Promise<void>>()
   private scanPromise: Promise<LocalLibraryState> | null = null
+  private mutationQueue: Promise<void> = Promise.resolve()
   private currentStatus = createLocalLibraryScanStatus()
   private disposed = false
 
@@ -153,98 +162,108 @@ export class LocalLibraryService {
   }
 
   async addFolder(folderPath: string): Promise<LocalLibraryState> {
-    if (this.scanPromise) {
-      await this.scanPromise
-    }
+    return this.runExclusiveMutation(async () => {
+      if (this.scanPromise) {
+        await this.scanPromise
+      }
 
-    const resolvedPath = normalizeFolderPath(folderPath)
-    const folderStats = await resolveFileStats(resolvedPath)
-    if (!folderStats?.isDirectory()) {
-      throw new Error('请选择有效的本地音乐文件夹')
-    }
+      if (!folderPath.trim()) {
+        throw new Error('请选择有效的本地音乐文件夹')
+      }
 
-    const existingFolder = this.repository.findFolderByPath(resolvedPath)
-    if (existingFolder) {
-      this.setStatus(
-        this.createIdleStatus({
-          message: '该文件夹已在本地音乐列表中'
-        })
+      const resolvedPath = normalizeFolderPath(folderPath)
+      const folderStats = await resolveFileStats(resolvedPath)
+      if (!folderStats?.isDirectory()) {
+        throw new Error('请选择有效的本地音乐文件夹')
+      }
+
+      const existingFolder = this.repository.findFolderByPath(resolvedPath)
+      if (existingFolder) {
+        this.setStatus(
+          this.createIdleStatus({
+            message: '该文件夹已在本地音乐列表中'
+          })
+        )
+        return this.getState()
+      }
+
+      const nextFolder: PersistedFolder = {
+        id: createFolderId(resolvedPath),
+        path: resolvedPath,
+        name: resolvedPath.split(/[\\/]/).pop() || resolvedPath,
+        enabled: true,
+        createdAt: Date.now(),
+        lastScannedAt: null
+      }
+
+      this.repository.upsertFolder(nextFolder)
+      this.watchCoordinator.startWatchingFolder(nextFolder)
+      this.emitUpdated()
+
+      return this.runExclusiveScan(() =>
+        this.performScanForFolders([nextFolder], '正在扫描本地音乐...')
       )
-      return this.getState()
-    }
-
-    const nextFolder: PersistedFolder = {
-      id: createFolderId(resolvedPath),
-      path: resolvedPath,
-      name: resolvedPath.split(/[\\/]/).pop() || resolvedPath,
-      enabled: true,
-      createdAt: Date.now(),
-      lastScannedAt: null
-    }
-
-    this.repository.upsertFolder(nextFolder)
-    this.watchCoordinator.startWatchingFolder(nextFolder)
-    this.emitUpdated()
-
-    return this.runExclusiveScan(() =>
-      this.performScanForFolders([nextFolder], '正在扫描本地音乐...')
-    )
+    })
   }
 
   async removeFolder(folderId: string): Promise<LocalLibraryState> {
-    if (this.scanPromise) {
-      await this.scanPromise
-    }
+    return this.runExclusiveMutation(async () => {
+      if (this.scanPromise) {
+        await this.scanPromise
+      }
 
-    await this.watchCoordinator.stopWatchingFolder(folderId)
-    this.repository.removeFolder(folderId)
-    this.setStatus(this.createIdleStatus())
-    this.emitUpdated()
-    void this.cleanupUnusedCovers()
+      await this.watchCoordinator.stopWatchingFolder(folderId)
+      this.repository.removeFolder(folderId)
+      this.setStatus(this.createIdleStatus())
+      this.emitUpdated()
+      void this.cleanupUnusedCovers()
 
-    return this.getState()
+      return this.getState()
+    })
   }
 
   async setFolderEnabled(folderId: string, enabled: boolean): Promise<LocalLibraryState> {
-    if (this.scanPromise) {
-      await this.scanPromise
-    }
+    return this.runExclusiveMutation(async () => {
+      if (this.scanPromise) {
+        await this.scanPromise
+      }
 
-    const folder = this.repository.listFolders().find(entry => entry.id === folderId)
-    if (!folder) {
-      throw new Error('未找到对应的本地音乐文件夹')
-    }
+      const folder = this.repository.listFolders().find(entry => entry.id === folderId)
+      if (!folder) {
+        throw new Error('未找到对应的本地音乐文件夹')
+      }
 
-    if (folder.enabled === enabled) {
-      return this.getState()
-    }
+      if (folder.enabled === enabled) {
+        return this.getState()
+      }
 
-    this.repository.setFolderEnabled(folderId, enabled)
+      this.repository.setFolderEnabled(folderId, enabled)
 
-    if (!enabled) {
-      await this.watchCoordinator.stopWatchingFolder(folderId)
-      this.setStatus(
-        this.createIdleStatus({
-          message: '已停用本地音乐文件夹'
-        })
+      if (!enabled) {
+        await this.watchCoordinator.stopWatchingFolder(folderId)
+        this.setStatus(
+          this.createIdleStatus({
+            message: '已停用本地音乐文件夹'
+          })
+        )
+        this.emitUpdated()
+        return this.getState()
+      }
+
+      const enabledFolder: PersistedFolder = {
+        id: folder.id,
+        path: folder.path,
+        name: folder.name,
+        enabled: true,
+        createdAt: folder.createdAt,
+        lastScannedAt: folder.lastScannedAt
+      }
+      this.watchCoordinator.startWatchingFolder(enabledFolder)
+
+      return this.runExclusiveScan(() =>
+        this.performScanForFolders([enabledFolder], `正在启用 ${enabledFolder.name}`)
       )
-      this.emitUpdated()
-      return this.getState()
-    }
-
-    const enabledFolder: PersistedFolder = {
-      id: folder.id,
-      path: folder.path,
-      name: folder.name,
-      enabled: true,
-      createdAt: folder.createdAt,
-      lastScannedAt: folder.lastScannedAt
-    }
-    this.watchCoordinator.startWatchingFolder(enabledFolder)
-
-    return this.runExclusiveScan(() =>
-      this.performScanForFolders([enabledFolder], `正在启用 ${enabledFolder.name}`)
-    )
+    })
   }
 
   async scan(): Promise<LocalLibraryState> {
@@ -257,8 +276,20 @@ export class LocalLibraryService {
 
   async dispose(): Promise<void> {
     this.disposed = true
+    await this.mutationQueue.catch(() => {})
+    await this.scanPromise?.catch(() => {})
+    await Promise.allSettled([...this.durationRepairPromises.values()])
     await this.watchCoordinator.dispose()
     this.repository.close()
+  }
+
+  private runExclusiveMutation<T>(task: () => Promise<T>): Promise<T> {
+    const queuedTask = this.mutationQueue.then(task, task)
+    this.mutationQueue = queuedTask.then(
+      () => undefined,
+      () => undefined
+    )
+    return queuedTask
   }
 
   private runExclusiveScan(task: () => Promise<LocalLibraryState>): Promise<LocalLibraryState> {
@@ -579,7 +610,7 @@ export class LocalLibraryService {
         continue
       }
 
-      const repairPromise = this.repairTrackDuration(track)
+      const repairPromise = this.durationRepairLimiter(() => this.repairTrackDuration(track))
         .catch(error => {
           if (!this.disposed) {
             console.warn('[LocalLibraryService] Failed to repair track duration:', error)
@@ -625,6 +656,10 @@ export class LocalLibraryService {
       repairedTrack.duration <= 0 ||
       repairedTrack.duration === track.duration
     ) {
+      return
+    }
+
+    if (this.disposed) {
       return
     }
 

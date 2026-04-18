@@ -1,65 +1,77 @@
 <script setup lang="ts">
-import { useHomeLikedSongsPanel } from '@/composables/home/useHomeLikedSongsPanel'
-import { formatDuration } from '@/utils/songFormatter'
+import AlbumDetailPanel from '@/components/user/AlbumDetailPanel.vue'
+import FavoriteAlbumsView from '@/components/user/FavoriteAlbumsView.vue'
+import SongDetailList from '@/components/user/SongDetailList.vue'
+import type { HomeLikedSongsPanelModel } from '@/composables/home/useHomeLikedSongsPanel'
+
+const props = defineProps<{
+  model: HomeLikedSongsPanelModel
+}>()
 
 const {
-  count,
+  albumCount,
+  albumDetailError,
+  albumDetailLoading,
+  albums,
+  albumsError,
+  albumsErrorMessage,
+  albumsLoading,
   clearSearch,
+  closeAlbumDetail,
   coverUrl,
   currentSongId,
   error,
-  errorMessage,
-  filteredSongs,
-  handlePlayAll,
+  filteredAlbums,
+  filteredPlaybackSongs,
+  handlePrimaryAction,
   hasMore,
+  heroKicker,
+  isAlbumsSectionActive,
+  isSongsSectionActive,
   loadMoreLikedSongs,
   loading,
   loadingMore,
   mediaSongs,
+  openAlbumDetail,
+  playAlbum,
+  playAlbumTrackAt,
   playLikedSongsAt,
+  playingAlbumId,
+  primaryActionDisabled,
+  primaryActionLabel,
+  retryAlbumDetail,
+  retryLoadAlbums,
   retryLoadLikedSongs,
   searchQuery,
+  selectSection,
+  selectedAlbum,
+  selectedAlbumId,
+  selectedAlbumSongs,
+  shouldShowAlbumsLoginGate,
+  shouldShowLoginGate,
+  songsErrorMessage,
   totalSongCountLabel,
   userMetaLabel,
   userStore
-} = useHomeLikedSongsPanel()
+} = props.model
 </script>
 
 <template>
   <section class="liked-panel">
-    <div v-if="!userStore.isLoggedIn" class="liked-empty-state">
+    <div v-if="shouldShowLoginGate" class="liked-empty-state">
       <div class="empty-icon">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 20.2 5 13.6a4.4 4.4 0 0 1 6.2-6.2L12 8.2l.8-.8a4.4 4.4 0 0 1 6.2 6.2Z" />
         </svg>
       </div>
-      <h2>登录后查看我喜欢的音乐</h2>
-      <p>侧边栏的“我喜欢的音乐”会与用户中心同步展示。</p>
-    </div>
-
-    <div v-else-if="loading && mediaSongs.length === 0" class="liked-empty-state">
-      <div class="empty-icon">♪</div>
-      <h2>正在载入我喜欢的音乐</h2>
-      <p>稍等片刻，正在同步你的默认喜欢歌单。</p>
-    </div>
-
-    <div
-      v-else-if="error && mediaSongs.length === 0"
-      class="liked-empty-state is-error"
-      role="alert"
-    >
-      <div class="empty-icon">!</div>
-      <h2>喜欢的音乐加载失败</h2>
-      <p>{{ errorMessage }}</p>
-      <button type="button" class="hero-action hero-action-primary" @click="retryLoadLikedSongs">
-        重新加载
-      </button>
+      <h2>登录后查看我的喜欢</h2>
+      <p>侧边栏的“我的喜欢”会与用户中心同步展示。</p>
     </div>
 
     <div v-else class="liked-shell">
       <section class="liked-hero">
         <div class="liked-cover">
-          <img v-if="coverUrl" :src="coverUrl" alt="我喜欢的音乐封面" class="liked-cover-image" />
+          <img v-if="coverUrl" :src="coverUrl" alt="我的喜欢封面" class="liked-cover-image" />
           <div v-else class="liked-cover-image liked-cover-fallback"></div>
           <div class="liked-cover-heart" aria-hidden="true">
             <svg viewBox="0 0 24 24">
@@ -69,8 +81,8 @@ const {
         </div>
 
         <div class="liked-summary">
-          <p class="liked-kicker">歌单</p>
-          <h1>我喜欢的音乐</h1>
+          <p class="liked-kicker">{{ heroKicker }}</p>
+          <h1>我的喜欢</h1>
           <div class="liked-meta">
             <img
               v-if="userStore.avatarUrl"
@@ -86,8 +98,13 @@ const {
           </div>
 
           <div class="liked-actions">
-            <button type="button" class="hero-action hero-action-primary" @click="handlePlayAll">
-              播放全部
+            <button
+              type="button"
+              class="hero-action hero-action-primary"
+              :disabled="primaryActionDisabled"
+              @click="handlePrimaryAction"
+            >
+              {{ primaryActionLabel }}
             </button>
             <button type="button" class="hero-action" :disabled="true" title="即将推出">
               下载
@@ -109,14 +126,40 @@ const {
         <div class="liked-content-header">
           <div class="liked-content-main">
             <div class="liked-subtabs" aria-label="喜欢的音乐分区">
-              <button type="button" class="subtab active">歌曲 {{ count }}</button>
-              <button type="button" class="subtab" disabled>评论</button>
-              <button type="button" class="subtab" disabled>收藏者</button>
+              <button
+                type="button"
+                class="subtab"
+                :class="{ active: isSongsSectionActive }"
+                @click="selectSection('songs')"
+              >
+                歌曲 {{ mediaSongs.length }}
+              </button>
+              <button
+                type="button"
+                class="subtab"
+                :class="{ active: isAlbumsSectionActive }"
+                @click="selectSection('albums')"
+              >
+                专辑 {{ albumCount }}
+              </button>
+              <button type="button" class="subtab" disabled>MV</button>
             </div>
 
-            <div v-if="error" class="liked-inline-error" role="alert">
-              <span>{{ errorMessage }}</span>
+            <div
+              v-if="isSongsSectionActive && error && mediaSongs.length > 0"
+              class="liked-inline-error"
+              role="alert"
+            >
+              <span>{{ songsErrorMessage }}</span>
               <button type="button" class="inline-action" @click="retryLoadLikedSongs">重试</button>
+            </div>
+            <div
+              v-else-if="isAlbumsSectionActive && albumsError && albums.length > 0"
+              class="liked-inline-error"
+              role="alert"
+            >
+              <span>{{ albumsErrorMessage }}</span>
+              <button type="button" class="inline-action" @click="retryLoadAlbums">重试</button>
             </div>
           </div>
 
@@ -138,58 +181,95 @@ const {
           </label>
         </div>
 
-        <div class="liked-table">
-          <div class="liked-table-head">
-            <span class="col-index">#</span>
-            <span class="col-title">标题</span>
-            <span class="col-album">专辑</span>
-            <span class="col-like">喜欢</span>
-            <span class="col-duration">时长</span>
-          </div>
+        <div v-if="isSongsSectionActive" class="liked-table">
+          <template v-if="loading && mediaSongs.length === 0">
+            <div class="liked-content-state">
+              <p>正在载入我的喜欢歌曲。</p>
+            </div>
+          </template>
+          <template v-else-if="error && mediaSongs.length === 0">
+            <div class="liked-content-state is-error" role="alert">
+              <p>{{ songsErrorMessage }}</p>
+              <button type="button" class="hero-action" @click="retryLoadLikedSongs">重试</button>
+            </div>
+          </template>
+          <template v-else>
+            <div v-if="filteredPlaybackSongs.length > 0" class="liked-table-head">
+              <span class="col-index">#</span>
+              <span class="col-title">标题</span>
+              <span class="col-album">专辑</span>
+              <span class="col-duration">时长</span>
+            </div>
 
-          <div v-if="filteredSongs.length === 0" class="liked-search-empty">
-            <p>没有找到匹配的歌曲。</p>
-          </div>
+            <div v-if="filteredPlaybackSongs.length === 0" class="liked-search-empty">
+              <p>{{ searchQuery ? '没有找到匹配的歌曲。' : '暂无喜欢歌曲。' }}</p>
+            </div>
 
-          <button
-            v-for="(song, index) in filteredSongs"
-            :key="`${song.id}-${index}`"
-            type="button"
-            class="liked-row"
-            :class="{ active: currentSongId === song.id }"
-            @click="playLikedSongsAt(index)"
-          >
-            <span class="col-index">{{ String(index + 1).padStart(2, '0') }}</span>
-            <span class="col-title song-primary">
-              <img :src="song.cover" :alt="song.name" class="song-cover" />
-              <span class="song-copy">
-                <strong>{{ song.name }}</strong>
-                <span>{{ song.artist }}</span>
-              </span>
-            </span>
-            <span class="col-album">{{ song.album || '单曲' }}</span>
-            <span class="col-like">
-              <span class="like-indicator" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path
-                    d="M12 20.2 5 13.6a4.4 4.4 0 0 1 6.2-6.2L12 8.2l.8-.8a4.4 4.4 0 0 1 6.2 6.2Z"
-                  />
-                </svg>
-              </span>
-            </span>
-            <span class="col-duration">{{ formatDuration(song.durationMs) }}</span>
-          </button>
+            <SongDetailList
+              v-else
+              :songs="filteredPlaybackSongs"
+              :active-song-id="currentSongId"
+              variant="table"
+              @play-song="playLikedSongsAt"
+            />
 
-          <div v-if="hasMore" class="liked-load-more">
-            <button
-              type="button"
-              class="hero-action"
-              :disabled="loadingMore"
-              @click="loadMoreLikedSongs"
-            >
-              {{ loadingMore ? '加载中...' : '加载更多' }}
-            </button>
-          </div>
+            <div v-if="hasMore" class="liked-load-more">
+              <button
+                type="button"
+                class="hero-action"
+                :disabled="loadingMore"
+                @click="loadMoreLikedSongs"
+              >
+                {{ loadingMore ? '加载中...' : '加载更多' }}
+              </button>
+            </div>
+          </template>
+        </div>
+
+        <div v-else class="liked-albums-panel">
+          <template v-if="shouldShowAlbumsLoginGate">
+            <div class="liked-content-state">
+              <p>登录后查看收藏专辑。</p>
+            </div>
+          </template>
+          <template v-else-if="albumsLoading && albums.length === 0">
+            <div class="liked-content-state">
+              <p>正在载入收藏专辑。</p>
+            </div>
+          </template>
+          <template v-else-if="albumsError && albums.length === 0">
+            <div class="liked-content-state is-error" role="alert">
+              <p>{{ albumsErrorMessage }}</p>
+              <button type="button" class="hero-action" @click="retryLoadAlbums">重试</button>
+            </div>
+          </template>
+          <template v-else-if="!shouldShowAlbumsLoginGate">
+            <div v-if="filteredAlbums.length === 0" class="liked-search-empty">
+              <p>{{ searchQuery ? '没有找到匹配的专辑。' : '暂无收藏专辑。' }}</p>
+            </div>
+
+            <FavoriteAlbumsView
+              v-else
+              :albums="filteredAlbums"
+              :loading="albumsLoading"
+              :active-album-id="selectedAlbumId"
+              :playing-album-id="playingAlbumId"
+              @album-open="openAlbumDetail"
+              @album-play="playAlbum"
+            />
+
+            <AlbumDetailPanel
+              v-if="selectedAlbumId"
+              :album="selectedAlbum"
+              :songs="selectedAlbumSongs"
+              :loading="albumDetailLoading"
+              :error="albumDetailError"
+              @close="closeAlbumDetail"
+              @retry="retryAlbumDetail"
+              @play-all="playAlbum(selectedAlbumId)"
+              @play-song="playAlbumTrackAt"
+            />
+          </template>
         </div>
       </section>
     </div>
@@ -408,7 +488,7 @@ const {
 
 .subtab:disabled {
   cursor: default;
-  opacity: 0.7;
+  opacity: 0.5;
 }
 
 .liked-inline-error {
@@ -463,107 +543,54 @@ const {
   margin-top: 2px;
 }
 
-.liked-table-head,
-.liked-row {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 2.3fr) minmax(120px, 1.4fr) 58px 72px;
-  gap: 16px;
-  align-items: center;
+.liked-albums-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 8px;
 }
 
 .liked-table-head {
-  padding: 8px 18px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 2fr) minmax(120px, 1.3fr) 64px;
+  gap: 14px;
+  align-items: center;
+  padding: 8px 12px;
   color: var(--gray);
   font-size: 12px;
   font-weight: 700;
 }
 
-.liked-row {
-  width: 100%;
-  padding: 12px 18px;
-  border: 0;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.18s ease;
-}
-
-.liked-row:hover {
-  background: rgba(255, 255, 255, 0.68);
-}
-
-.liked-row.active {
-  background: rgba(255, 255, 255, 0.9);
-}
-
 .col-index,
-.col-like,
 .col-duration {
   text-align: center;
-  font-variant-numeric: tabular-nums;
-  color: var(--gray);
-}
-
-.song-primary {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.song-cover {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  object-fit: cover;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-}
-
-.song-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.song-copy strong,
-.song-copy span,
-.col-album {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.song-copy strong {
-  font-size: 15px;
-  color: var(--black);
-}
-
-.song-copy span,
-.col-album {
-  font-size: 13px;
-  color: var(--gray);
-}
-
-.like-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #ff4259;
-}
-
-.like-indicator svg {
-  width: 18px;
-  height: 18px;
-  display: block;
-  fill: currentColor;
 }
 
 .liked-load-more {
   padding: 18px 0 0;
   display: flex;
   justify-content: center;
+}
+
+.liked-content-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  padding: 32px 24px;
+  border: 2px dashed rgba(17, 24, 39, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  text-align: center;
+  color: var(--gray);
+}
+
+.liked-content-state p {
+  margin: 0;
+}
+
+.liked-content-state.is-error {
+  color: #b42318;
 }
 
 .liked-search-empty,

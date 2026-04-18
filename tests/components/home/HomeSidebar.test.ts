@@ -61,6 +61,7 @@ describe('HomeSidebar', () => {
 
   it('renders the new sidebar sections, playlist tabs, and login info footer', () => {
     const wrapper = mount(HomeSidebar)
+    const sidebarLabels = wrapper.findAll('.sidebar-link .sidebar-label').map(link => link.text())
 
     expect(wrapper.text()).toContain('LUO Music')
     expect(wrapper.text()).toContain('探索')
@@ -73,6 +74,8 @@ describe('HomeSidebar', () => {
     expect(wrapper.text()).toContain('QQ音乐')
     expect(wrapper.text()).toContain('未登录')
     expect(wrapper.text()).toContain('登录后查看歌单')
+    expect(sidebarLabels).not.toContain('歌曲')
+    expect(sidebarLabels).not.toContain('收藏')
     expect(wrapper.find('.sidebar-user-avatar-image').exists()).toBe(false)
     expect(wrapper.find('.sidebar-footer').exists()).toBe(true)
   })
@@ -113,7 +116,7 @@ describe('HomeSidebar', () => {
 
     const likedLink = wrapper
       .findAll('.sidebar-link')
-      .find(link => link.text().includes('我喜欢的音乐'))
+      .find(link => link.text().includes('我的喜欢'))
     const homeLink = wrapper.findAll('.sidebar-link').find(link => link.text().includes('主页'))
 
     expect(likedLink?.classes()).toContain('active')
@@ -165,6 +168,11 @@ describe('HomeSidebar', () => {
 
     const playlistImage = wrapper.get('.playlist-cover-image')
     expect(playlistImage.attributes('src')).toBe('https://example.com/created-cover.png')
+    expect(playlistImage.attributes('loading')).toBe('eager')
+    expect(playlistImage.attributes('fetchpriority')).toBe('high')
+    expect(playlistImage.attributes('decoding')).toBe('sync')
+    expect(playlistImage.attributes('width')).toBe('54')
+    expect(playlistImage.attributes('height')).toBe('54')
   })
 
   it('switches playlist group labels using synced favorite collections', async () => {
@@ -190,6 +198,46 @@ describe('HomeSidebar', () => {
     expect(wrapper.text()).toContain('Album Artist')
     expect(wrapper.text()).toContain('12 首歌')
     expect(wrapper.text()).not.toContain('我的测试歌单')
+  })
+
+  it('keeps non-leading collection covers lazy loaded', async () => {
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'Tester',
+        userId: 1001
+      },
+      'netease-cookie'
+    )
+
+    getUserPlaylistMock.mockResolvedValue({
+      playlist: [
+        {
+          id: 'created-1',
+          name: '我的测试歌单',
+          trackCount: 29,
+          coverImgUrl: 'https://example.com/created-cover.png',
+          subscribed: false
+        },
+        {
+          id: 'created-2',
+          name: '第二个歌单',
+          trackCount: 10,
+          coverImgUrl: 'https://example.com/created-cover-2.png',
+          subscribed: false
+        }
+      ]
+    })
+
+    const wrapper = mount(HomeSidebar)
+    await flushPromises()
+
+    const playlistImages = wrapper.findAll('.playlist-cover-image')
+
+    expect(playlistImages).toHaveLength(2)
+    expect(playlistImages[1].attributes('loading')).toBe('lazy')
+    expect(playlistImages[1].attributes('fetchpriority')).toBe('auto')
+    expect(playlistImages[1].attributes('decoding')).toBe('async')
   })
 
   it('emits collection-select when a sidebar collection card is clicked', async () => {

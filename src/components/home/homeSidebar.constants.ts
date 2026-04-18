@@ -7,10 +7,8 @@ export const HOME_SIDEBAR_EXPLORE_ITEMS: HomeSidebarNavItem[] = [
 ]
 
 export const HOME_SIDEBAR_LIBRARY_ITEMS: HomeSidebarNavItem[] = [
-  { id: 'liked', label: '我喜欢的音乐', icon: 'liked' },
+  { id: 'liked', label: '我的喜欢', icon: 'liked' },
   { id: 'history', label: '最近播放', icon: 'history' },
-  { id: 'songs', label: '歌曲', icon: 'songs' },
-  { id: 'favorites', label: '收藏', icon: 'favorites' },
   { id: 'artists', label: '艺人', icon: 'artists' },
   { id: 'local', label: '本地音乐', icon: 'local' }
 ]

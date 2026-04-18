@@ -166,4 +166,92 @@ describe('useKeyboardShortcuts', () => {
     expect(commandService.canExecute).not.toHaveBeenCalled()
     expect(commandService.execute).not.toHaveBeenCalled()
   })
+
+  it('executes previous-track with ctrl/meta arrow-left and seek-forward with plain arrow-right', () => {
+    const addEventListener = vi.fn()
+    const target = {
+      addEventListener,
+      removeEventListener: vi.fn()
+    }
+    const commandService = {
+      canExecute: vi.fn(() => true),
+      execute: vi.fn()
+    }
+
+    const Harness = defineComponent({
+      setup() {
+        useKeyboardShortcuts({ commandService, target })
+        return () => null
+      }
+    })
+
+    mount(Harness)
+
+    const handler = addEventListener.mock.calls[0]?.[1] as
+      | ((event: KeyboardEvent) => void)
+      | undefined
+
+    handler?.({
+      key: 'ArrowLeft',
+      code: 'ArrowLeft',
+      ctrlKey: true,
+      metaKey: false,
+      target: document.body,
+      preventDefault: vi.fn()
+    } as unknown as KeyboardEvent)
+    handler?.({
+      key: 'ArrowRight',
+      code: 'ArrowRight',
+      ctrlKey: false,
+      metaKey: false,
+      target: document.body,
+      preventDefault: vi.fn()
+    } as unknown as KeyboardEvent)
+
+    expect(commandService.execute).toHaveBeenNthCalledWith(1, COMMANDS.PLAYER_PLAY_PREV, undefined)
+    expect(commandService.execute).toHaveBeenNthCalledWith(
+      2,
+      COMMANDS.PLAYER_SEEK_FORWARD,
+      undefined
+    )
+  })
+
+  it('does not execute matched shortcuts when the command service rejects them', () => {
+    const addEventListener = vi.fn()
+    const target = {
+      addEventListener,
+      removeEventListener: vi.fn()
+    }
+    const commandService = {
+      canExecute: vi.fn(() => false),
+      execute: vi.fn()
+    }
+
+    const Harness = defineComponent({
+      setup() {
+        useKeyboardShortcuts({ commandService, target })
+        return () => null
+      }
+    })
+
+    mount(Harness)
+
+    const handler = addEventListener.mock.calls[0]?.[1] as
+      | ((event: KeyboardEvent) => void)
+      | undefined
+    const preventDefault = vi.fn()
+
+    handler?.({
+      key: 'ArrowUp',
+      code: 'ArrowUp',
+      ctrlKey: false,
+      metaKey: false,
+      target: document.body,
+      preventDefault
+    } as unknown as KeyboardEvent)
+
+    expect(commandService.canExecute).toHaveBeenCalledWith(COMMANDS.PLAYER_VOLUME_UP, undefined)
+    expect(preventDefault).not.toHaveBeenCalled()
+    expect(commandService.execute).not.toHaveBeenCalled()
+  })
 })

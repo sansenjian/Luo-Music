@@ -59,6 +59,12 @@ export function useHomeCollectionPanel(
   const filteredSongs = computed(() =>
     filterMediaSongsByQuery(formattedSongs.value, searchQuery.value)
   )
+  const filteredPlaybackSongs = computed<Song[]>(() => {
+    const sourceSongsById = new Map(songs.value.map(song => [song.id, song]))
+    return filteredSongs.value
+      .map(song => sourceSongsById.get(song.id))
+      .filter((song): song is Song => Boolean(song))
+  })
 
   watch(
     () => collection.value?.uiId ?? null,
@@ -143,6 +149,7 @@ export function useHomeCollectionPanel(
     error,
     errorMessage,
     filteredSongs,
+    filteredPlaybackSongs,
     kicker,
     loadCollectionSongs,
     loading,

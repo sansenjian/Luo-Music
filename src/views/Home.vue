@@ -9,8 +9,10 @@ import HomeWorkspace from '../components/home/HomeWorkspace.vue'
 import { useDockedPlayerBarLayout } from '../composables/useDockedPlayerBarLayout'
 import { useDeferredMount } from '../composables/useDeferredMount'
 import { useHomeBrandPlacement } from '../composables/useHomeBrandPlacement'
+import { useHomeLikedSongsPanel } from '../composables/home/useHomeLikedSongsPanel'
 import { useHomePage } from '../composables/useHomePage'
 import { useHomeWorkspaceState } from '../composables/useHomeWorkspaceState'
+import { useLocalLibrary } from '../composables/useLocalLibrary'
 
 const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.vue'))
 const HomeLikedSongsPanel = defineAsyncComponent(
@@ -18,6 +20,9 @@ const HomeLikedSongsPanel = defineAsyncComponent(
 )
 const HomeLocalMusicPanel = defineAsyncComponent(
   () => import('../components/home/HomeLocalMusicPanel.vue')
+)
+const HomeRecentPlayPanel = defineAsyncComponent(
+  () => import('../components/home/HomeRecentPlayPanel.vue')
 )
 const HomeSettingsPanel = defineAsyncComponent(
   () => import('../components/home/HomeSettingsPanel.vue')
@@ -60,6 +65,10 @@ const {
   handleSidebarItemSelect,
   selectedCollection
 } = useHomeWorkspaceState()
+const sharedLocalLibrary = useLocalLibrary()
+const homeLikedSongsPanelModel = useHomeLikedSongsPanel({
+  localLibrary: sharedLocalLibrary
+})
 const { isMounted: isCoreMounted } = useDeferredMount()
 </script>
 
@@ -120,7 +129,12 @@ const { isMounted: isCoreMounted } = useDeferredMount()
           <Playlist v-if="isCoreMounted" @play-song="playSong" />
         </template>
       </HomeWorkspace>
-      <HomeLikedSongsPanel v-else-if="activeWorkspaceView === 'liked'" class="workspace-panel" />
+      <HomeLikedSongsPanel
+        v-else-if="activeWorkspaceView === 'liked'"
+        class="workspace-panel"
+        :model="homeLikedSongsPanelModel"
+      />
+      <HomeRecentPlayPanel v-else-if="activeWorkspaceView === 'history'" class="workspace-panel" />
       <HomeLocalMusicPanel v-else-if="activeWorkspaceView === 'local'" class="workspace-panel" />
       <HomeSettingsPanel v-else-if="activeWorkspaceView === 'settings'" class="workspace-panel" />
       <HomeCollectionDetailPanel v-else class="workspace-panel" :collection="selectedCollection" />

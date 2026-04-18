@@ -347,6 +347,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
   }
 
   function addToNextFromIpc(store: PlayerStoreInstance, song: Song): void {
+    const originalCurrentIndex = store.currentIndex
     const existingIndex = store.songList.findIndex(candidate => isSameSong(candidate, song))
     if (existingIndex !== -1) {
       store.songList.splice(existingIndex, 1)
@@ -357,7 +358,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
 
     const insertIndex = Math.max(0, Math.min(store.currentIndex + 1, store.songList.length))
     store.songList.splice(insertIndex, 0, song)
-    if (existingIndex === store.currentIndex) {
+    if (existingIndex === originalCurrentIndex) {
       store.currentIndex = insertIndex
     }
     notifyPlayerStateSnapshot(store)

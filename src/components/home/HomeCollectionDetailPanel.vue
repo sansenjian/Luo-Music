@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { toRef } from 'vue'
 
+import SongDetailList from '@/components/user/SongDetailList.vue'
 import { useHomeCollectionPanel } from '@/composables/home/useHomeCollectionPanel'
-import { formatDuration } from '@/utils/songFormatter'
 
 import type { HomeSidebarCollectionSelection } from './homeSidebar.types'
 
@@ -16,7 +16,7 @@ const {
   currentSongId,
   error,
   errorMessage,
-  filteredSongs,
+  filteredPlaybackSongs,
   kicker,
   loadCollectionSongs,
   loading,
@@ -118,46 +118,24 @@ const {
         </div>
 
         <div v-else class="collection-table">
-          <div class="collection-table-head">
+          <div v-if="filteredPlaybackSongs.length > 0" class="collection-table-head">
             <span class="col-index">#</span>
             <span class="col-title">标题</span>
             <span class="col-album">专辑</span>
-            <span class="col-like">喜欢</span>
             <span class="col-duration">时长</span>
           </div>
 
-          <div v-if="filteredSongs.length === 0" class="collection-empty-state">
+          <div v-if="filteredPlaybackSongs.length === 0" class="collection-empty-state">
             <p>没有找到匹配的歌曲。</p>
           </div>
 
-          <button
-            v-for="(song, index) in filteredSongs"
-            :key="`${song.id}-${index}`"
-            type="button"
-            class="collection-row"
-            :class="{ active: currentSongId === song.id }"
-            @click="playCollectionAt(index)"
-          >
-            <span class="col-index">{{ String(index + 1).padStart(2, '0') }}</span>
-            <span class="col-title song-primary">
-              <img :src="song.cover" :alt="song.name" class="song-cover" />
-              <span class="song-copy">
-                <strong>{{ song.name }}</strong>
-                <span>{{ song.artist }}</span>
-              </span>
-            </span>
-            <span class="col-album">{{ song.album }}</span>
-            <span class="col-like">
-              <span class="like-indicator" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path
-                    d="M12 20.2 5 13.6a4.4 4.4 0 0 1 6.2-6.2L12 8.2l.8-.8a4.4 4.4 0 0 1 6.2 6.2Z"
-                  />
-                </svg>
-              </span>
-            </span>
-            <span class="col-duration">{{ formatDuration(song.durationMs) }}</span>
-          </button>
+          <SongDetailList
+            v-else
+            :songs="filteredPlaybackSongs"
+            :active-song-id="currentSongId"
+            variant="table"
+            @play-song="playCollectionAt"
+          />
         </div>
       </section>
     </div>
@@ -406,101 +384,20 @@ const {
   margin-top: 2px;
 }
 
-.collection-table-head,
-.collection-row {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 2.3fr) minmax(120px, 1.4fr) 58px 72px;
-  gap: 16px;
-  align-items: center;
-}
-
 .collection-table-head {
-  padding: 8px 18px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 2fr) minmax(120px, 1.3fr) 64px;
+  gap: 14px;
+  align-items: center;
+  padding: 8px 12px;
   color: var(--gray);
   font-size: 12px;
   font-weight: 700;
 }
 
-.collection-row {
-  width: 100%;
-  padding: 12px 18px;
-  border: 0;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.18s ease;
-}
-
-.collection-row:hover {
-  background: rgba(255, 255, 255, 0.68);
-}
-
-.collection-row.active {
-  background: rgba(255, 255, 255, 0.9);
-}
-
 .col-index,
-.col-like,
 .col-duration {
   text-align: center;
-  font-variant-numeric: tabular-nums;
-  color: var(--gray);
-}
-
-.song-primary {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.song-cover {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  object-fit: cover;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-}
-
-.song-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.song-copy strong,
-.song-copy span,
-.col-album {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.song-copy strong {
-  font-size: 15px;
-  color: var(--black);
-}
-
-.song-copy span,
-.col-album {
-  font-size: 13px;
-  color: var(--gray);
-}
-
-.like-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #ff4259;
-}
-
-.like-indicator svg {
-  width: 18px;
-  height: 18px;
-  display: block;
-  fill: currentColor;
 }
 
 .collection-empty-state {

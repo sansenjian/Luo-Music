@@ -38,9 +38,13 @@ export function useLocalLibraryQueries(
   )
   const albumsPage = ref<LocalLibraryPage<LocalLibraryAlbumSummary>>(createEmptyLocalLibraryPage())
   const coverUrls = ref<Record<string, string>>({})
+  const inflightCoverRequests = new Map<string, Promise<readonly [string, string] | null>>()
   const lastTrackQuery = ref<LocalLibraryTrackQuery | null>(null)
   const lastArtistQuery = ref<LocalLibrarySummaryQuery | null>(null)
   const lastAlbumQuery = ref<LocalLibrarySummaryQuery | null>(null)
+  let trackRequestVersion = 0
+  let artistRequestVersion = 0
+  let albumRequestVersion = 0
 
   async function ensureCoverUrls(coverHashes: Array<string | null | undefined>): Promise<void> {
     const uniqueHashes = [
@@ -60,13 +64,29 @@ export function useLocalLibraryQueries(
           return [coverHash, cachedUrl] as const
         }
 
-        const nextUrl = await platformService.getLocalLibraryCover(coverHash)
-        if (!nextUrl) {
-          return null
+        const inflightRequest = inflightCoverRequests.get(coverHash)
+        if (inflightRequest) {
+          return inflightRequest
         }
 
-        CoverCacheManager.set(coverHash, nextUrl)
-        return [coverHash, nextUrl] as const
+        const nextRequest = platformService
+          .getLocalLibraryCover(coverHash)
+          .then(nextUrl => {
+            if (!nextUrl) {
+              return null
+            }
+
+            CoverCacheManager.set(coverHash, nextUrl)
+            return [coverHash, nextUrl] as const
+          })
+          .finally(() => {
+            if (inflightCoverRequests.get(coverHash) === nextRequest) {
+              inflightCoverRequests.delete(coverHash)
+            }
+          })
+
+        inflightCoverRequests.set(coverHash, nextRequest)
+        return nextRequest
       })
     )
 
@@ -84,6 +104,7 @@ export function useLocalLibraryQueries(
   }
 
   async function loadTracks(query: LocalLibraryTrackQuery = {}, append = false): Promise<void> {
+    const requestVersion = ++trackRequestVersion
     const requestQuery = append
       ? {
           ...(lastTrackQuery.value ?? query),
@@ -100,6 +121,9 @@ export function useLocalLibraryQueries(
 
     const nextPage = await runPageRequest(() => platformService.getLocalLibraryTracks(requestQuery))
     await ensureCoverUrls(nextPage.items.map(track => track.coverHash))
+    if (requestVersion !== trackRequestVersion) {
+      return
+    }
     songsPage.value = mergePageItems(songsPage.value, nextPage, append)
     lastTrackQuery.value = {
       ...requestQuery,
@@ -108,6 +132,7 @@ export function useLocalLibraryQueries(
   }
 
   async function loadArtists(query: LocalLibrarySummaryQuery = {}, append = false): Promise<void> {
+    const requestVersion = ++artistRequestVersion
     const requestQuery = append
       ? {
           ...(lastArtistQuery.value ?? query),
@@ -126,6 +151,9 @@ export function useLocalLibraryQueries(
       platformService.getLocalLibraryArtists(requestQuery)
     )
     await ensureCoverUrls(nextPage.items.map(artist => artist.coverHash))
+    if (requestVersion !== artistRequestVersion) {
+      return
+    }
     artistsPage.value = mergePageItems(artistsPage.value, nextPage, append)
     lastArtistQuery.value = {
       ...requestQuery,
@@ -134,6 +162,7 @@ export function useLocalLibraryQueries(
   }
 
   async function loadAlbums(query: LocalLibrarySummaryQuery = {}, append = false): Promise<void> {
+    const requestVersion = ++albumRequestVersion
     const requestQuery = append
       ? {
           ...(lastAlbumQuery.value ?? query),
@@ -150,6 +179,9 @@ export function useLocalLibraryQueries(
 
     const nextPage = await runPageRequest(() => platformService.getLocalLibraryAlbums(requestQuery))
     await ensureCoverUrls(nextPage.items.map(album => album.coverHash))
+    if (requestVersion !== albumRequestVersion) {
+      return
+    }
     albumsPage.value = mergePageItems(albumsPage.value, nextPage, append)
     lastAlbumQuery.value = {
       ...requestQuery,

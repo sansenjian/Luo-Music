@@ -499,6 +499,7 @@ type ReceiveChannelsDefinition = MergeChannels<
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.LYRIC_UPDATE, LyricData> &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.LYRIC_TIME_UPDATE, LyricTimeUpdate> &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.DESKTOP_LYRIC_LOCK_STATE, { locked: boolean }> &
+    DefineReceiveChannel<typeof RECEIVE_CHANNELS.PLAYER_DESKTOP_LYRIC_STATE, DesktopLyricSnapshot> &
     // 下载
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.DOWNLOAD_PROGRESS, DownloadProgress> &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.DOWNLOAD_COMPLETE, DownloadComplete> &

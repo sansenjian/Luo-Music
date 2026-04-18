@@ -30,7 +30,7 @@ const props = withDefaults(
       <span>{{ props.trackCount }} Tracks</span>
       <span v-if="props.isLoading" class="status-loading">Loading...</span>
     </div>
-    <div>44.1kHz / 320kbps</div>
+    <div>播放品质取决于当前音源</div>
   </footer>
 </template>
 

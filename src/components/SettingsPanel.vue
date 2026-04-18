@@ -124,15 +124,15 @@ function closeSettings() {
                       :class="{ active: isRenderStyleActive('classic') }"
                       @click="setRenderStyle('classic')"
                     >
-                      经典配色
+                      经典风格
                     </button>
                     <button
                       type="button"
                       class="placement-option"
-                      :class="{ active: isRenderStyleActive('red') }"
-                      @click="setRenderStyle('red')"
+                      :class="{ active: isRenderStyleActive('brand') }"
+                      @click="setRenderStyle('brand')"
                     >
-                      红色风格
+                      品牌风格
                     </button>
                   </div>
 

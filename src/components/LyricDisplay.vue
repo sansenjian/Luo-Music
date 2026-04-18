@@ -21,15 +21,40 @@ function handleLyricClick(time: number) {
   playerStore.seek(time)
 }
 
+function handleLyricKeydown(event: KeyboardEvent, time: number) {
+  if (event.key !== 'Enter' && event.key !== ' ') {
+    return
+  }
+
+  event.preventDefault()
+  handleLyricClick(time)
+}
+
 function shouldShowOriginalLine(item: LyricLine) {
   if (showOriginal.value) {
     return true
   }
 
-  const hasVisibleTrans = showTrans.value && Boolean(item.trans)
-  const hasVisibleRoma = showRoma.value && Boolean(item.roma)
+  const hasVisibleTrans = Boolean(getVisibleTransText(item))
+  const hasVisibleRoma = shouldShowRomaLine(item)
 
   return !hasVisibleTrans && !hasVisibleRoma
+}
+
+function shouldShowRomaLine(item: LyricLine) {
+  return showRoma.value && Boolean(item.roma)
+}
+
+function getVisibleTransText(item: LyricLine) {
+  if (!showTrans.value) {
+    return ''
+  }
+
+  if (item.trans) {
+    return item.trans
+  }
+
+  return showRoma.value ? '' : item.roma
 }
 
 const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
@@ -62,21 +87,24 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
           v-for="(item, index) in lyrics"
           :key="`${item.time}-${index}`"
           class="lyric-line"
+          role="button"
+          tabindex="0"
           :aria-current="index === currentLyricIndex ? 'true' : undefined"
           :class="{
             active: index === currentLyricIndex,
             passed: index < currentLyricIndex
           }"
           @click="handleLyricClick(item.time)"
+          @keydown="handleLyricKeydown($event, item.time)"
         >
-          <div v-if="item.roma && showRoma" class="lyric-roma">
+          <div v-if="shouldShowRomaLine(item)" class="lyric-roma">
             {{ item.roma }}
           </div>
           <div v-if="shouldShowOriginalLine(item)" class="lyric-main">
             {{ item.text }}
           </div>
-          <div v-if="item.trans && showTrans" class="lyric-trans">
-            {{ item.trans }}
+          <div v-if="getVisibleTransText(item)" class="lyric-trans">
+            {{ getVisibleTransText(item) }}
           </div>
         </div>
       </div>

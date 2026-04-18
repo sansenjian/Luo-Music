@@ -1,7 +1,6 @@
 import type { LocalLibraryTrack } from '@/types/localLibrary'
 
 import type { LocalLibraryRepository } from './repository'
-import type { PersistedFolder } from './repository.types'
 import { isLegacyState, type LegacyStoreShape } from './service.helpers'
 
 export function migrateLegacyLocalLibraryStateIfNeeded(
@@ -18,21 +17,23 @@ export function migrateLegacyLocalLibraryStateIfNeeded(
     return
   }
 
-  for (const folder of legacyState.folders) {
-    repository.upsertFolder(folder)
-  }
+  repository.runInTransaction(() => {
+    for (const folder of legacyState.folders) {
+      repository.upsertFolder(folder)
+    }
 
-  const tracksByFolder = new Map<string, LocalLibraryTrack[]>()
-  for (const track of legacyState.tracks) {
-    const collection = tracksByFolder.get(track.folderId) ?? []
-    collection.push({
-      ...track,
-      coverHash: track.coverHash ?? null
-    })
-    tracksByFolder.set(track.folderId, collection)
-  }
+    const tracksByFolder = new Map<string, LocalLibraryTrack[]>()
+    for (const track of legacyState.tracks) {
+      const collection = tracksByFolder.get(track.folderId) ?? []
+      collection.push({
+        ...track,
+        coverHash: track.coverHash ?? null
+      })
+      tracksByFolder.set(track.folderId, collection)
+    }
 
-  for (const folder of legacyState.folders as PersistedFolder[]) {
-    repository.replaceFolderTracks(folder.id, tracksByFolder.get(folder.id) ?? [])
-  }
+    for (const folder of legacyState.folders) {
+      repository.replaceFolderTracks(folder.id, tracksByFolder.get(folder.id) ?? [])
+    }
+  })
 }

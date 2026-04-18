@@ -477,7 +477,7 @@ describe('UserCenter', () => {
 
     expect(wrapper.find('.profile-header').text()).toContain('user-1|avatar.png|tester')
     const tabButtons = wrapper.findAll('button.tab-btn')
-    expect(tabButtons[0].text()).toContain('我喜欢的音乐')
+    expect(tabButtons[0].text()).toContain('我的喜欢')
     expect(tabButtons[0].text()).toContain('1')
     expect(tabButtons[1].text()).toContain('歌单')
     expect(tabButtons[2].text()).toContain('我的收藏')

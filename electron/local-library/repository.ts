@@ -52,6 +52,7 @@ export class LocalLibraryRepository {
   private readonly listArtistSummarySourceRowsStatement: BetterSqlite3Statement
   private readonly findTrackByFilePathKeyStatement: BetterSqlite3Statement
   private readonly enabledTrackCountStatement: BetterSqlite3Statement
+  private readonly listUsedCoverHashesStatement: BetterSqlite3Statement
   private readonly deleteTracksByFolderStatement: BetterSqlite3Statement
   private readonly deleteTrackByFilePathKeyStatement: BetterSqlite3Statement
   private readonly insertTrackStatement: BetterSqlite3Statement
@@ -60,6 +61,7 @@ export class LocalLibraryRepository {
     tracks: LocalLibraryTrack[]
   ) => void
   private readonly upsertTracksTransaction: (tracks: LocalLibraryTrack[]) => void
+  private closed = false
 
   constructor(databasePath = resolveDefaultDatabasePath()) {
     if (!existsSync(path.dirname(databasePath))) {
@@ -240,6 +242,15 @@ export class LocalLibraryRepository {
         ON folder.id = track.folder_id
       WHERE folder.enabled = 1
     `)
+    this.listUsedCoverHashesStatement = this.db.prepare(`
+      SELECT DISTINCT track.cover_hash AS cover_hash
+      FROM local_library_tracks AS track
+      INNER JOIN local_library_folders AS folder
+        ON folder.id = track.folder_id
+      WHERE folder.enabled = 1
+        AND track.cover_hash IS NOT NULL
+        AND track.cover_hash != ''
+    `)
     this.hasAnyFolderStatement = this.db.prepare(`
       SELECT 1 AS value
       FROM local_library_folders
@@ -367,21 +378,13 @@ export class LocalLibraryRepository {
   }
 
   listUsedCoverHashes(): string[] {
-    const rows = this.db
-      .prepare(
-        `
-      SELECT DISTINCT track.cover_hash AS cover_hash
-      FROM local_library_tracks AS track
-      INNER JOIN local_library_folders AS folder
-        ON folder.id = track.folder_id
-      WHERE folder.enabled = 1
-        AND track.cover_hash IS NOT NULL
-        AND track.cover_hash != ''
-    `
-      )
-      .all() as Array<{ cover_hash: string }>
+    const rows = this.listUsedCoverHashesStatement.all() as Array<{ cover_hash: string }>
 
     return rows.map(row => row.cover_hash)
+  }
+
+  runInTransaction<T>(task: () => T): T {
+    return this.db.transaction(task)()
   }
 
   replaceFolderTracks(folderId: string, tracks: LocalLibraryTrack[]): void {
@@ -436,43 +439,65 @@ export class LocalLibraryRepository {
       ${whereSql}
     `
 
-    const totalRow = this.db
-      .prepare(`SELECT COUNT(track.id) AS count ${fromSql}`)
-      .get(...params) as { count: number }
-
     if (artistFilter) {
-      const filteredRows = (
-        this.db
-          .prepare(
-            `
-            SELECT
-              track.id,
-              track.folder_id,
-              track.file_path,
-              track.file_name,
-              track.title,
-              track.artist,
-              track.album,
-              track.duration,
-              track.file_size,
-              track.modified_at,
-              track.cover_hash
-            ${fromSql}
-            ORDER BY track.title COLLATE NOCASE ASC, track.file_path COLLATE NOCASE ASC
-          `
-          )
-          .all(...params) as TrackRow[]
-      ).filter(row => matchesLocalArtistName(row.artist, artistFilter))
+      const batchSize = Math.max(200, limit)
+      const filteredRows: TrackRow[] = []
+      let filteredCount = 0
+      let fetchOffset = 0
 
-      const pagedRows = filteredRows.slice(offset, offset + limit)
+      const selectRowsStatement = this.db.prepare(`
+        SELECT
+          track.id,
+          track.folder_id,
+          track.file_path,
+          track.file_name,
+          track.title,
+          track.artist,
+          track.album,
+          track.duration,
+          track.file_size,
+          track.modified_at,
+          track.cover_hash
+        ${fromSql}
+        ORDER BY track.title COLLATE NOCASE ASC, track.file_path COLLATE NOCASE ASC
+        LIMIT ? OFFSET ?
+      `)
+
+      while (true) {
+        const batchRows = selectRowsStatement.all(...params, batchSize, fetchOffset) as TrackRow[]
+        if (batchRows.length === 0) {
+          break
+        }
+
+        for (const row of batchRows) {
+          if (!matchesLocalArtistName(row.artist, artistFilter)) {
+            continue
+          }
+
+          if (filteredCount >= offset && filteredRows.length < limit) {
+            filteredRows.push(row)
+          }
+
+          filteredCount += 1
+        }
+
+        fetchOffset += batchRows.length
+        if (batchRows.length < batchSize) {
+          break
+        }
+      }
 
       return {
-        items: pagedRows.map(mapTrackRow),
-        nextCursor: encodeCursor(offset + pagedRows.length, filteredRows.length),
-        total: filteredRows.length,
+        items: filteredRows.map(mapTrackRow),
+        nextCursor: encodeCursor(offset + filteredRows.length, filteredCount),
+        total: filteredCount,
         limit
       }
     }
+
+    const totalRow = this.db
+      .prepare(`SELECT COUNT(track.id) AS count ${fromSql}`)
+      .get(...params) as { count: number }
 
     const rows = this.db
       .prepare(
@@ -573,7 +598,12 @@ export class LocalLibraryRepository {
   }
 
   close(): void {
+    if (this.closed) {
+      return
+    }
+
     this.db.close()
+    this.closed = true
   }
 
   private ensureTrackColumn(columnName: string, columnDefinition: string): void {

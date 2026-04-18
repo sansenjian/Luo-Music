@@ -127,11 +127,14 @@ describe('localLibrary.handler', () => {
     await expect(invokeHandlers.get('local-library:add-folder')?.('D:\\Music')).resolves.toEqual(
       libraryState
     )
-    await expect(invokeHandlers.get('local-library:remove-folder')?.('folder-1')).resolves.toEqual(
-      libraryState
-    )
     await expect(
-      invokeHandlers.get('local-library:set-folder-enabled')?.('folder-1', false)
+      invokeHandlers.get('local-library:remove-folder')?.(`local-folder:${'a'.repeat(40)}`)
+    ).resolves.toEqual(libraryState)
+    await expect(
+      invokeHandlers.get('local-library:set-folder-enabled')?.(
+        `local-folder:${'a'.repeat(40)}`,
+        false
+      )
     ).resolves.toEqual(libraryState)
     await expect(invokeHandlers.get('local-library:scan')?.()).resolves.toEqual(libraryState)
     await expect(invokeHandlers.get('local-library:get-tracks')?.({ limit: 20 })).resolves.toEqual({
@@ -152,7 +155,7 @@ describe('localLibrary.handler', () => {
       total: 0,
       limit: 60
     })
-    await expect(invokeHandlers.get('local-library:get-cover')?.('cover-1')).resolves.toBe(
+    await expect(invokeHandlers.get('local-library:get-cover')?.('a'.repeat(40))).resolves.toBe(
       'data:image/png;base64,ZmFrZQ=='
     )
 
@@ -160,13 +163,13 @@ describe('localLibrary.handler', () => {
     statusListener!(libraryState.status)
 
     expect(addFolderMock).toHaveBeenCalledWith('D:\\Music')
-    expect(removeFolderMock).toHaveBeenCalledWith('folder-1')
-    expect(setFolderEnabledMock).toHaveBeenCalledWith('folder-1', false)
+    expect(removeFolderMock).toHaveBeenCalledWith(`local-folder:${'a'.repeat(40)}`)
+    expect(setFolderEnabledMock).toHaveBeenCalledWith(`local-folder:${'a'.repeat(40)}`, false)
     expect(scanMock).toHaveBeenCalled()
     expect(getTracksPageMock).toHaveBeenCalledWith({ limit: 20 })
     expect(getArtistsPageMock).toHaveBeenCalledWith(undefined)
     expect(getAlbumsPageMock).toHaveBeenCalledWith(undefined)
-    expect(getCoverDataUrlMock).toHaveBeenCalledWith('cover-1')
+    expect(getCoverDataUrlMock).toHaveBeenCalledWith('a'.repeat(40))
     expect(broadcastMock).toHaveBeenCalledWith('local-library:updated', libraryState)
     expect(broadcastMock).toHaveBeenCalledWith('local-library:scan-status', libraryState.status)
   })
@@ -192,5 +195,36 @@ describe('localLibrary.handler', () => {
     } as never)
 
     await expect(invokeHandlers.get('local-library:pick-folder')?.()).resolves.toBeNull()
+  })
+
+  it('rejects invalid folder, enablement, and cover arguments before reaching the service', async () => {
+    const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
+    onUpdatedMock.mockReturnValue(vi.fn())
+    onStatusChangeMock.mockReturnValue(vi.fn())
+
+    const { registerLocalLibraryHandlers } =
+      await import('../../electron/ipc/handlers/localLibrary.handler')
+    registerLocalLibraryHandlers({
+      getWindow: vi.fn(() => null)
+    } as never)
+
+    await expect(invokeHandlers.get('local-library:add-folder')?.('Music')).rejects.toThrow(
+      'Invalid folderPath'
+    )
+    await expect(
+      invokeHandlers.get('local-library:set-folder-enabled')?.('folder-1', 'yes')
+    ).rejects.toThrow('Invalid folderId')
+    await expect(invokeHandlers.get('local-library:get-cover')?.('cover-1')).rejects.toThrow(
+      'Invalid coverHash'
+    )
+
+    expect(addFolderMock).not.toHaveBeenCalled()
+    expect(setFolderEnabledMock).not.toHaveBeenCalled()
+    expect(getCoverDataUrlMock).not.toHaveBeenCalled()
   })
 })

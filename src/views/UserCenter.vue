@@ -134,10 +134,10 @@ const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'liked' }"
-              :aria-label="getTabAriaLabel('我喜欢的音乐', tabCounts.liked)"
+              :aria-label="getTabAriaLabel('我的喜欢', tabCounts.liked)"
               @click="switchTab('liked')"
             >
-              <span class="tab-btn-label">我喜欢的音乐</span>
+              <span class="tab-btn-label">我的喜欢</span>
               <span
                 class="count"
                 :class="{ empty: tabCounts.liked <= 0 }"

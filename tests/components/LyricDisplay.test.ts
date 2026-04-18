@@ -226,6 +226,40 @@ describe('LyricDisplay', () => {
     expect(lyricLines[1].find('.lyric-trans').exists()).toBe(false)
   })
 
+  it('falls back to romanized lyrics when translated lyrics are unavailable', async () => {
+    const store = usePlayerStore()
+    store.initAudio()
+    store.lyricType = ['original', 'trans']
+    store.setLyricsArray([{ time: 0, text: '星降る海', trans: '', roma: 'Hoshifuru Umi' }])
+    store.progress = 0
+    store.updateLyricIndex(0)
+
+    const wrapper = mount(LyricDisplay)
+    await nextTick()
+
+    const lyricLine = wrapper.find('.lyric-line')
+    expect(lyricLine.find('.lyric-main').text()).toBe('星降る海')
+    expect(lyricLine.find('.lyric-trans').text()).toBe('Hoshifuru Umi')
+    expect(lyricLine.find('.lyric-roma').exists()).toBe(false)
+  })
+
+  it('does not duplicate romanized lyrics when roma display is enabled', async () => {
+    const store = usePlayerStore()
+    store.initAudio()
+    store.lyricType = ['original', 'trans', 'roma']
+    store.setLyricsArray([{ time: 0, text: '星降る海', trans: '', roma: 'Hoshifuru Umi' }])
+    store.progress = 0
+    store.updateLyricIndex(0)
+
+    const wrapper = mount(LyricDisplay)
+    await nextTick()
+
+    const lyricLine = wrapper.find('.lyric-line')
+    expect(lyricLine.find('.lyric-main').text()).toBe('星降る海')
+    expect(lyricLine.find('.lyric-roma').text()).toBe('Hoshifuru Umi')
+    expect(lyricLine.find('.lyric-trans').exists()).toBe(false)
+  })
+
   it('re-centers the active lyric when lyrics are replaced but the active index resolves to the same value', async () => {
     const store = usePlayerStore()
     store.initAudio()
