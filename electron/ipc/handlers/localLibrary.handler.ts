@@ -1,7 +1,7 @@
 import { dialog } from 'electron'
 import type { OpenDialogOptions } from 'electron'
 
-import { localLibraryService } from '../../local-library/service'
+import { getLocalLibraryService } from '../../local-library/service'
 import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channels.ts'
 import { ipcService } from '../IpcService'
 import type { WindowManager } from '../../WindowManager'
@@ -79,6 +79,7 @@ function ensureLocalLibraryListenersRegistered(): void {
     return
   }
 
+  const localLibraryService = getLocalLibraryService()
   localLibraryService.onUpdated(state => {
     ipcService.broadcast(RECEIVE_CHANNELS.LOCAL_LIBRARY_UPDATED, state)
   })
@@ -93,6 +94,7 @@ export function registerLocalLibraryHandlers(
   windowManager: Pick<WindowManager, 'getWindow'>
 ): void {
   ensureLocalLibraryListenersRegistered()
+  const localLibraryService = getLocalLibraryService()
 
   ipcService.registerInvoke(INVOKE_CHANNELS.LOCAL_LIBRARY_GET_STATE, async () => {
     return localLibraryService.getState()

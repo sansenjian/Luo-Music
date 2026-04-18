@@ -111,7 +111,7 @@ export abstract class PlatformServiceBase implements IPlatformService {
   }
 
   supportsSendChannel(_channel: string): boolean {
-    return true
+    return false
   }
 
   sendPlayingState(_playing: boolean): void {

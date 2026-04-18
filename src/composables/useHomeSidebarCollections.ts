@@ -78,13 +78,13 @@ export function useHomeSidebarCollections() {
   }
 
   function resolveCollectionTone(collectionId: string): HomeSidebarCollectionTone {
-    let hash = 0
+    let hash = 5381
 
     for (const character of collectionId) {
-      hash = (hash + character.charCodeAt(0)) % COLLECTION_TONES.length
+      hash = ((hash << 5) + hash) ^ character.charCodeAt(0)
     }
 
-    return COLLECTION_TONES[hash]
+    return COLLECTION_TONES[Math.abs(hash) % COLLECTION_TONES.length]
   }
 
   return {

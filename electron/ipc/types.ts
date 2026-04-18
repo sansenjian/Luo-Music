@@ -26,7 +26,7 @@ import type {
   LocalLibraryTrack,
   LocalLibraryTrackQuery
 } from '@/types/localLibrary'
-import type { Song } from '@/types/schemas.ts'
+import type { Song, SongPlatform } from '@/types/schemas.ts'
 import type { PlayMode as PlayerPlayMode } from '../../src/types/player'
 import type { LyricLine as PlayerLyricLine } from '../../src/utils/player/core/lyric'
 
@@ -102,7 +102,7 @@ export type LyricTimeUpdate = {
   roma: string
   playing?: boolean
   songId?: string | number | null
-  platform?: 'netease' | 'qq' | null
+  platform?: SongPlatform | null
   sequence?: number
   cause?: DesktopLyricUpdateCause
 }
@@ -139,7 +139,7 @@ export interface DesktopLyricSnapshot {
   isPlaying: boolean
   lyrics: PlayerLyricLine[]
   songId: string | number | null
-  platform: 'netease' | 'qq' | null
+  platform: SongPlatform | null
   sequence: number
 }
 
@@ -150,7 +150,7 @@ export interface PlayerPlaySongPayload {
 
 export interface PlayerPlaySongByIdPayload {
   id: string | number
-  platform?: 'netease' | 'qq'
+  platform?: SongPlatform
 }
 
 export type PlayerSongControlPayload =

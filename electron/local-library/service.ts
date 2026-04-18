@@ -24,6 +24,7 @@ import {
   normalizeFilePath,
   normalizeFolderPath,
   readTrackMetadata,
+  requiresFullDurationParse,
   resolveFileStats,
   type LegacyStoreShape,
   type LocalLibraryWatcherFactory,
@@ -45,6 +46,7 @@ export class LocalLibraryService {
   private readonly metadataReader: LocalTrackMetadataReader
   private readonly watcherFactory: LocalLibraryWatcherFactory
   private readonly coverManager: LocalLibraryCoverManager
+  private readonly durationRepairPromises = new Map<string, Promise<void>>()
   private scanPromise: Promise<LocalLibraryState> | null = null
   private currentStatus = createLocalLibraryScanStatus()
   private disposed = false
@@ -61,7 +63,9 @@ export class LocalLibraryService {
     this.metadataReader = metadataReader
     this.watcherFactory = watcherFactory
     this.coverManager = coverManager
-    configureLocalMediaRootsResolver(() => this.repository.listFolders().map(folder => folder.path))
+    configureLocalMediaRootsResolver(() =>
+      this.repository.listEnabledFolders().map(folder => folder.path)
+    )
     this.scanEngine = new LocalLibraryScanEngine({
       coverManager: this.coverManager,
       isDisposed: () => this.disposed,
@@ -127,7 +131,9 @@ export class LocalLibraryService {
   async getTracksPage(
     query: LocalLibraryTrackQuery = {}
   ): Promise<LocalLibraryPage<LocalLibraryTrack>> {
-    return this.repository.getTracksPage(query)
+    const trackPage = this.repository.getTracksPage(query)
+    this.scheduleMissingDurationRepair(trackPage.items)
+    return trackPage
   }
 
   async getArtistsPage(
@@ -249,9 +255,9 @@ export class LocalLibraryService {
     return this.runExclusiveScan(() => this.performScan())
   }
 
-  dispose(): void {
+  async dispose(): Promise<void> {
     this.disposed = true
-    this.watchCoordinator.dispose()
+    await this.watchCoordinator.dispose()
     this.repository.close()
   }
 
@@ -566,6 +572,83 @@ export class LocalLibraryService {
 
     await this.coverManager.cleanupUnusedCovers(usedHashes)
   }
+
+  private scheduleMissingDurationRepair(tracks: LocalLibraryTrack[]): void {
+    for (const track of tracks) {
+      if (!this.shouldRepairTrackDuration(track) || this.durationRepairPromises.has(track.id)) {
+        continue
+      }
+
+      const repairPromise = this.repairTrackDuration(track)
+        .catch(error => {
+          if (!this.disposed) {
+            console.warn('[LocalLibraryService] Failed to repair track duration:', error)
+          }
+        })
+        .finally(() => {
+          if (this.durationRepairPromises.get(track.id) === repairPromise) {
+            this.durationRepairPromises.delete(track.id)
+          }
+        })
+
+      this.durationRepairPromises.set(track.id, repairPromise)
+    }
+  }
+
+  private shouldRepairTrackDuration(track: LocalLibraryTrack): boolean {
+    return track.duration <= 0 && requiresFullDurationParse(track.filePath)
+  }
+
+  private async repairTrackDuration(track: LocalLibraryTrack): Promise<void> {
+    if (this.disposed) {
+      return
+    }
+
+    if (this.scanPromise) {
+      await this.scanPromise
+    }
+
+    if (this.disposed) {
+      return
+    }
+
+    const folder = this.repository.listEnabledFolders().find(entry => entry.id === track.folderId)
+    if (!folder) {
+      return
+    }
+
+    const repairedTrack = await this.scanEngine.scanSingleFile(folder, track.filePath, {
+      forceMetadataRefresh: true
+    })
+    if (
+      !repairedTrack ||
+      repairedTrack.duration <= 0 ||
+      repairedTrack.duration === track.duration
+    ) {
+      return
+    }
+
+    this.repository.upsertTracks([repairedTrack])
+    this.emitUpdated()
+  }
 }
 
-export const localLibraryService = new LocalLibraryService()
+let localLibraryServiceInstance: LocalLibraryService | null = null
+
+export function getLocalLibraryService(): LocalLibraryService {
+  if (!localLibraryServiceInstance) {
+    localLibraryServiceInstance = new LocalLibraryService()
+  }
+
+  return localLibraryServiceInstance
+}
+
+export async function disposeLocalLibraryService(): Promise<void> {
+  if (!localLibraryServiceInstance) {
+    return
+  }
+
+  const service = localLibraryServiceInstance
+  localLibraryServiceInstance = null
+  await service.dispose()
+}

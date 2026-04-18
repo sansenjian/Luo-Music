@@ -1,7 +1,7 @@
 import { getIpcProxy } from './ipcProxy'
 import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channels'
 
-import type { Song } from '../../../src/types/schemas'
+import type { Song, SongPlatform } from '../../../src/types/schemas'
 import type { PlayMode, PlayerStateResponse } from '../../../src/types/player'
 import type { LyricLine } from '../../../src/utils/player/core/lyric'
 import type {
@@ -39,7 +39,7 @@ export class PlayerProxy {
     await this.ipcProxy.invoke(INVOKE_CHANNELS.PLAYER_PLAY_SONG, payload)
   }
 
-  async playSongById(id: string | number, platform: 'netease' | 'qq' = 'netease'): Promise<void> {
+  async playSongById(id: string | number, platform: SongPlatform = 'netease'): Promise<void> {
     const payload: PlayerPlaySongByIdPayload = { id, platform }
     await this.ipcProxy.invoke(INVOKE_CHANNELS.PLAYER_PLAY_SONG_BY_ID, payload)
   }
@@ -104,7 +104,7 @@ export class PlayerProxy {
 
   async getLyric(
     songId: string | number,
-    platform: 'netease' | 'qq' = 'netease'
+    platform: SongPlatform = 'netease'
   ): Promise<LyricLine[]> {
     return this.ipcProxy.invoke<LyricLine[]>(INVOKE_CHANNELS.PLAYER_GET_LYRIC, {
       id: songId,

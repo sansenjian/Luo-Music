@@ -2,6 +2,7 @@ import type { Song } from './schemas'
 
 export const LOCAL_LIBRARY_SONG_ID_PREFIX = 'local:'
 export const LOCAL_LIBRARY_DEFAULT_PAGE_SIZE = 60
+export type LocalLibrarySongId = string & { readonly __brand: 'LocalLibrarySongId' }
 
 export type LocalLibraryFolder = {
   id: string
@@ -129,7 +130,7 @@ export function createEmptyLocalLibraryPage<T>(
   }
 }
 
-export function isLocalLibrarySongId(id: string | number): id is string {
+export function isLocalLibrarySongId(id: string | number): id is LocalLibrarySongId {
   return typeof id === 'string' && id.startsWith(LOCAL_LIBRARY_SONG_ID_PREFIX)
 }
 
@@ -148,4 +149,23 @@ export function isLocalLibrarySong(song: Pick<Song, 'id' | 'extra'> | null | und
   }
 
   return (extra as Record<string, unknown>).localSource === true
+}
+
+export function hasKnownLocalSongDuration(
+  song: Pick<Song, 'extra' | 'duration' | 'id'> | null | undefined
+): boolean {
+  if (!song || !isLocalLibrarySong(song)) {
+    return false
+  }
+
+  if (song.duration > 0) {
+    return true
+  }
+
+  const extra = song.extra
+  if (!extra || typeof extra !== 'object') {
+    return false
+  }
+
+  return (extra as Record<string, unknown>).localDurationKnown === true
 }

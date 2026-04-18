@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -301,8 +301,7 @@ describe('LocalLibraryService', () => {
       duration: 2000
     })
 
-    service.dispose()
-    repository.close()
+    await service.dispose()
   })
 
   it('toggles folder enablement and exposes artist and album pages', async () => {
@@ -335,5 +334,86 @@ describe('LocalLibraryService', () => {
     expect((await service.getTracksPage()).total).toBe(2)
 
     repository.close()
+  })
+
+  it('repairs previously scanned ogg tracks with unknown duration when tracks are listed', async () => {
+    const tempDir = await createTempPath('local-library-service-repair-ogg')
+    const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))
+    const folderPath = join(tempDir, 'Music')
+    const trackPath = join(folderPath, 'Unknown Duration.ogg')
+    await mkdir(folderPath, { recursive: true })
+    await writeFile(trackPath, 'ogg-data')
+    const trackStats = await stat(trackPath)
+
+    const folderId = createFolderId(folderPath)
+    const trackId = createTrackId(LOCAL_LIBRARY_SONG_ID_PREFIX, trackPath)
+
+    repository.upsertFolder({
+      id: folderId,
+      path: folderPath,
+      name: 'Music',
+      enabled: true,
+      createdAt: Date.now(),
+      lastScannedAt: Date.now()
+    })
+    repository.upsertTracks([
+      {
+        id: trackId,
+        folderId,
+        filePath: trackPath,
+        fileName: 'Unknown Duration.ogg',
+        title: 'Unknown Duration',
+        artist: 'Artist',
+        album: 'Album',
+        duration: 0,
+        fileSize: trackStats.size,
+        modifiedAt: Math.round(trackStats.mtimeMs),
+        coverHash: null,
+        song: {
+          id: trackId,
+          name: 'Unknown Duration',
+          artists: [{ id: 'artist-1', name: 'Artist' }],
+          album: { id: 'album-1', name: 'Album', picUrl: '' },
+          duration: 0,
+          mvid: 0,
+          platform: 'local',
+          originalId: trackId,
+          url: 'luo-media://media?path=unknown.ogg',
+          extra: {
+            localSource: true,
+            localDurationKnown: false
+          }
+        }
+      }
+    ])
+
+    const metadataReader = vi.fn(async () => ({
+      title: 'Unknown Duration',
+      artist: 'Artist',
+      album: 'Album',
+      duration: 189000
+    }))
+
+    const service = new LocalLibraryService(
+      repository,
+      {
+        get: <T>() => undefined as T
+      },
+      metadataReader,
+      undefined
+    )
+
+    const firstPage = await service.getTracksPage()
+    expect(firstPage.items[0]?.duration).toBe(0)
+
+    await vi.waitFor(() => {
+      expect(metadataReader).toHaveBeenCalledWith(trackPath)
+    })
+
+    const repairedPage = await service.getTracksPage()
+    expect(repairedPage.items[0]?.duration).toBe(189000)
+    expect(repairedPage.items[0]?.song.duration).toBe(189000)
+
+    await service.dispose()
   })
 })

@@ -85,7 +85,7 @@ function normalizePlaylistTrack(track: RawPlaylistTrack): Song | null {
     },
     duration: track.duration ?? track.dt ?? 0,
     mvid: track.mvid ?? track.mv ?? 0,
-    platform: track.platform ?? track.server ?? 'netease',
+    platform: track.platform === 'qq' || track.server === 'qq' ? 'qq' : 'netease',
     originalId: track.originalId ?? track.id,
     ...(track.url ? { url: track.url } : {}),
     ...(track.mediaId !== undefined ? { mediaId: track.mediaId } : {}),

@@ -56,6 +56,10 @@ function activateCollection(item: HomeSidebarCollectionSelection): void {
   emit('collection-select', item)
 }
 
+function activateSettings(): void {
+  activateItem('settings')
+}
+
 function isActive(itemId: string): boolean {
   return resolvedActiveItemId.value === itemId
 }
@@ -188,7 +192,11 @@ function resolveIconMarkup(iconName: SidebarIconName): string {
     </div>
 
     <footer class="sidebar-footer">
-      <HomeSidebarFooter :collapsed="props.collapsed" />
+      <HomeSidebarFooter
+        :collapsed="props.collapsed"
+        :settings-active="isActive('settings')"
+        @open-settings="activateSettings"
+      />
     </footer>
   </aside>
 </template>

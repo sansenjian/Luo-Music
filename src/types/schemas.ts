@@ -11,6 +11,8 @@ export const AlbumSchema = z.object({
   picUrl: z.string()
 })
 
+export const SongPlatformSchema = z.enum(['netease', 'qq', 'local'])
+
 export const SongSchema = z.object({
   id: z.union([z.string(), z.number()]),
   name: z.string(),
@@ -18,7 +20,7 @@ export const SongSchema = z.object({
   album: AlbumSchema,
   duration: z.number(),
   mvid: z.union([z.string(), z.number()]),
-  platform: z.enum(['netease', 'qq']),
+  platform: SongPlatformSchema,
   originalId: z.union([z.string(), z.number()]),
   extra: z.record(z.string(), z.unknown()).optional(),
   // 运行时属性（非 API 返回）
@@ -191,6 +193,7 @@ export const ServiceConfigSchema = z.object({
 export type Artist = z.infer<typeof ArtistSchema>
 export type Song = z.infer<typeof SongSchema>
 export type Album = z.infer<typeof AlbumSchema>
+export type SongPlatform = z.infer<typeof SongPlatformSchema>
 export type PlaylistDetail = z.infer<typeof PlaylistDetailSchema>
 export type SearchResult = z.infer<typeof SearchResultSchema>
 export type LyricResult = z.infer<typeof LyricResultSchema>

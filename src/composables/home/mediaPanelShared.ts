@@ -40,8 +40,9 @@ export function buildPlaybackSelection<T extends { id: string | number }>(
     return null
   }
 
+  const sourceSongsById = new Map(sourceSongs.map(song => [song.id, song]))
   const playbackSongs = filteredSongs
-    .map(song => sourceSongs.find(candidate => candidate.id === song.id))
+    .map(song => sourceSongsById.get(song.id))
     .filter((song): song is Song => Boolean(song))
   const playbackIndex = playbackSongs.findIndex(song => song.id === targetSong.id)
 

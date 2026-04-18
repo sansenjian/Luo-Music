@@ -6,11 +6,16 @@ import { useUserStore } from '@/store/userStore'
 const props = withDefaults(
   defineProps<{
     collapsed?: boolean
+    settingsActive?: boolean
   }>(),
   {
-    collapsed: false
+    collapsed: false,
+    settingsActive: false
   }
 )
+const emit = defineEmits<{
+  'open-settings': []
+}>()
 
 const userStore = useUserStore()
 
@@ -52,13 +57,27 @@ const qqMusicLoginState = computed(() => (userStore.isQQMusicLoggedIn ? '已登�
       </div>
     </div>
 
-    <button type="button" class="settings-button" aria-label="打开设置" title="即将推出" disabled>
+    <button
+      type="button"
+      class="settings-button"
+      :class="{ 'is-active': props.settingsActive }"
+      aria-label="打开设置"
+      title="打开设置"
+      @click="emit('open-settings')"
+    >
       <span class="settings-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="3"></circle>
           <path
-            d="m12 4.8 1 .6 1.5-.3.8 1.3 1.4.5v1.6l1 1-.7 1.4.4 1.4-1.3.8-.5 1.4h-1.6l-1 1-1.4-.7-1.4.4-.8-1.3-1.4-.5v-1.6l-1-1 .7-1.4-.4-1.4 1.3-.8.5-1.4h1.6l1-1Z"
-          />
-          <circle cx="12" cy="12" r="2.4" />
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+          ></path>
         </svg>
       </span>
     </button>
@@ -179,6 +198,12 @@ const qqMusicLoginState = computed(() => (userStore.isQQMusicLoggedIn ? '已登�
   background: var(--sidebar-link-hover-bg);
   color: var(--black);
   transform: translateY(-1px);
+}
+
+.settings-button.is-active {
+  background: var(--sidebar-active-bg);
+  color: var(--white);
+  box-shadow: var(--sidebar-active-shadow);
 }
 
 .settings-icon {

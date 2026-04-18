@@ -14,6 +14,7 @@ const getAlbumsPageMock = vi.hoisted(() => vi.fn())
 const getCoverDataUrlMock = vi.hoisted(() => vi.fn())
 const onUpdatedMock = vi.hoisted(() => vi.fn())
 const onStatusChangeMock = vi.hoisted(() => vi.fn())
+const getLocalLibraryServiceMock = vi.hoisted(() => vi.fn())
 
 describe('localLibrary.handler', () => {
   beforeEach(() => {
@@ -34,7 +35,7 @@ describe('localLibrary.handler', () => {
     }))
 
     vi.doMock('../../electron/local-library/service', () => ({
-      localLibraryService: {
+      getLocalLibraryService: getLocalLibraryServiceMock.mockReturnValue({
         onUpdated: onUpdatedMock,
         onStatusChange: onStatusChangeMock,
         getState: getStateMock,
@@ -46,7 +47,7 @@ describe('localLibrary.handler', () => {
         getArtistsPage: getArtistsPageMock,
         getAlbumsPage: getAlbumsPageMock,
         getCoverDataUrl: getCoverDataUrlMock
-      }
+      })
     }))
   })
 

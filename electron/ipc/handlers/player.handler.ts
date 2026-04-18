@@ -251,7 +251,11 @@ async function fetchLyricsForSong(
     return []
   }
 
-  const targetPlatform = payload.platform ?? 'netease'
+  if (payload.platform === 'local') {
+    return []
+  }
+
+  const targetPlatform = payload.platform === 'qq' ? 'qq' : 'netease'
   const response =
     targetPlatform === 'qq'
       ? await serviceManager.handleRequest('qq', 'getLyric', { songmid: payload.id })

@@ -53,6 +53,7 @@ export interface UseLocalLibraryQueriesGroup {
   loadAlbums: (query?: LocalLibrarySummaryQuery, append?: boolean) => Promise<void>
   loadArtists: (query?: LocalLibrarySummaryQuery, append?: boolean) => Promise<void>
   loadTracks: (query?: LocalLibraryTrackQuery, append?: boolean) => Promise<void>
+  patchTrackDuration: (trackId: string | number, durationMs: number) => void
   songsPage: Ref<LocalLibraryPage<LocalLibraryTrack>>
 }
 

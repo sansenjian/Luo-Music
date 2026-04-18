@@ -1,22 +1,19 @@
-<script setup>
-import { computed, ref } from 'vue'
-import { services } from '../services'
-import { useDockedPlayerBarLayout } from '../composables/useDockedPlayerBarLayout'
-import { useHomeBrandPlacement } from '../composables/useHomeBrandPlacement'
-import { useRenderStyle } from '../composables/useRenderStyle'
-import { usePlayerStore } from '../store/playerStore.ts'
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useAppSettings } from '../composables/useAppSettings'
 import CacheManager from './CacheManager.vue'
 
-const playerStore = usePlayerStore()
-const platformService = services.platform()
 const showSettings = ref(false)
-const { brandPlacement, setBrandPlacement } = useHomeBrandPlacement()
-const { dockedPlayerBarLayout, setDockedPlayerBarLayout } = useDockedPlayerBarLayout()
-const { renderStyle, setRenderStyle } = useRenderStyle()
-
-const isElectron = computed(() => {
-  return platformService.isElectron()
-})
+const {
+  playerStore,
+  isElectron,
+  setBrandPlacement,
+  setDockedPlayerBarLayout,
+  setRenderStyle,
+  isBrandPlacementActive,
+  isRenderStyleActive,
+  isDockedPlayerBarLayoutActive
+} = useAppSettings()
 
 function toggleSettings() {
   showSettings.value = !showSettings.value
@@ -24,18 +21,6 @@ function toggleSettings() {
 
 function closeSettings() {
   showSettings.value = false
-}
-
-function isBrandPlacementActive(placement) {
-  return brandPlacement.value === placement
-}
-
-function isRenderStyleActive(style) {
-  return renderStyle.value === style
-}
-
-function isDockedPlayerBarLayoutActive(layout) {
-  return dockedPlayerBarLayout.value === layout
 }
 </script>
 

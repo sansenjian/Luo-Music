@@ -11,6 +11,7 @@ export enum PlayerState {
 type AudioEventMap = {
   timeupdate: Event
   loadedmetadata: Event
+  durationchange: Event
   ended: Event
   play: Event
   pause: Event
@@ -120,6 +121,7 @@ export class PlayerCore {
     const events = [
       'timeupdate',
       'loadedmetadata',
+      'durationchange',
       'ended',
       'play',
       'pause',

@@ -10,6 +10,7 @@ import type { PlatformService } from '@/services/platformService'
 import { storageAdapter } from '@/services/storageService'
 import type { StorageService } from '@/services/storageService'
 import { isSameSongIdentity } from '@/utils/songIdentity'
+import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@/types/localLibrary'
 import {
   createLyricTimeUpdatePayload,
   getCurrentLyricLine,
@@ -30,6 +31,7 @@ import { playerCore as defaultAudioManager } from '@/utils/player/core/playerCor
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
 import { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
 import { useRecentPlayStore } from '@/store/recentPlayStore'
+import type { SongPlatform } from '@/types/schemas'
 
 import { SEND_CHANNELS } from '../../electron/shared/protocol/channels'
 import type { PlayerStateSnapshot } from '../../electron/ipc/types'
@@ -82,7 +84,9 @@ type PlayerStorePlatformService = Pick<
 type PlayerStoreAudioManager = Pick<
   typeof defaultAudioManager,
   'getMuted' | 'pause' | 'play' | 'seek' | 'setMuted' | 'setVolume' | 'toggle'
->
+> & {
+  src?: string
+}
 
 export type PlayerStoreDeps = {
   getMusicService?: () => PlayerStoreMusicService
@@ -212,6 +216,14 @@ function normalizeLyricTypes(value: unknown): Array<'original' | 'trans' | 'roma
   return ['original', ...nextOptionalTypes] as Array<'original' | 'trans' | 'roma'>
 }
 
+function isCurrentAudioSourceSong(song: Song | null, currentAudioSrc: string): boolean {
+  if (!song?.url || !currentAudioSrc) {
+    return false
+  }
+
+  return song.url === currentAudioSrc
+}
+
 async function playSongFromIpc(
   store: PlayerStoreInstance,
   song: Song,
@@ -308,7 +320,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
   async function playSongByIdFromIpc(
     store: PlayerStoreInstance,
     id: string | number,
-    platform: 'netease' | 'qq' = 'netease'
+    platform: SongPlatform = 'netease'
   ): Promise<void> {
     const existingIndex = store.songList.findIndex(
       song => song.id === id && (song.platform ?? 'netease') === platform
@@ -316,6 +328,10 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
     if (existingIndex !== -1) {
       await store.playSongWithDetails(existingIndex)
       return
+    }
+
+    if (platform === 'local') {
+      throw new Error(`Unable to load local song detail for ${String(id)}`)
     }
 
     const song = await getMusicService().getSongDetail(platform, id)
@@ -484,15 +500,46 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
               }
             },
             onLoadedMetadata: (duration: number) => {
-              const fallbackDuration =
+              const currentAudioSrc = typeof audioManager.src === 'string' ? audioManager.src : ''
+              const hasTrustedSongDuration =
                 this.currentSong &&
                 Number.isFinite(this.currentSong.duration) &&
-                this.currentSong.duration > 0
+                this.currentSong.duration > 0 &&
+                (!isLocalLibrarySong(this.currentSong) ||
+                  hasKnownLocalSongDuration(this.currentSong))
+              const canUseSongDurationFallback =
+                hasTrustedSongDuration &&
+                isCurrentAudioSourceSong(this.currentSong, currentAudioSrc)
+              const fallbackDuration =
+                canUseSongDurationFallback && this.currentSong
                   ? this.currentSong.duration / 1000
                   : 0
 
-              this.duration =
+              const resolvedDuration =
                 Number.isFinite(duration) && duration > 0 ? duration : fallbackDuration
+
+              this.duration = resolvedDuration
+
+              if (
+                resolvedDuration > 0 &&
+                this.currentSong &&
+                isLocalLibrarySong(this.currentSong)
+              ) {
+                const resolvedDurationMs = Math.round(resolvedDuration * 1000)
+                this.currentSong.duration = resolvedDurationMs
+                this.currentSong.extra = {
+                  ...(this.currentSong.extra ?? {}),
+                  localDurationKnown: true
+                }
+
+                if (this.currentIndex >= 0 && this.currentIndex < this.songList.length) {
+                  this.songList[this.currentIndex].duration = resolvedDurationMs
+                  this.songList[this.currentIndex].extra = {
+                    ...(this.songList[this.currentIndex].extra ?? {}),
+                    localDurationKnown: true
+                  }
+                }
+              }
             },
             onEnded: () => {
               this.handleSongEnd()

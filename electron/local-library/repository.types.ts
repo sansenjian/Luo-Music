@@ -47,6 +47,12 @@ export type ArtistRow = {
   cover_hash: string | null
 }
 
+export type ArtistSummarySourceRow = {
+  artist: string
+  duration: number
+  cover_hash: string | null
+}
+
 export type AlbumRow = {
   album: string
   artist: string

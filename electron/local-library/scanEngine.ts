@@ -22,6 +22,10 @@ type LocalLibraryScanEngineOptions = {
   repository: LocalLibraryRepository
 }
 
+type ScanSingleFileOptions = {
+  forceMetadataRefresh?: boolean
+}
+
 export class LocalLibraryScanEngine {
   constructor(private readonly options: LocalLibraryScanEngineOptions) {}
 
@@ -57,7 +61,8 @@ export class LocalLibraryScanEngine {
 
   async scanSingleFile(
     folder: PersistedFolder,
-    filePath: string
+    filePath: string,
+    scanOptions: ScanSingleFileOptions = {}
   ): Promise<LocalLibraryTrack | null> {
     if (this.options.isDisposed()) {
       return null
@@ -77,6 +82,7 @@ export class LocalLibraryScanEngine {
     const existingTrack = this.options.repository.findTrackByFilePath(normalizedPath)
 
     if (
+      !scanOptions.forceMetadataRefresh &&
       existingTrack &&
       existingTrack.modifiedAt === normalizedModifiedAt &&
       existingTrack.fileSize === fileStats.size

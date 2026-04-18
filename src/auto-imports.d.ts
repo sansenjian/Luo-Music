@@ -148,6 +148,7 @@ declare global {
   const useActiveLyricState: typeof import('./composables/useActiveLyricState').useActiveLyricState
   const useAnimate: typeof import('@vueuse/core').useAnimate
   const useAnimations: typeof import('./composables/useAnimations').default
+  const useAppSettings: typeof import('./composables/useAppSettings').useAppSettings
   const useArrayDifference: typeof import('@vueuse/core').useArrayDifference
   const useArrayEvery: typeof import('@vueuse/core').useArrayEvery
   const useArrayFilter: typeof import('@vueuse/core').useArrayFilter
@@ -676,6 +677,9 @@ declare module 'vue' {
     >
     readonly useAnimate: UnwrapRef<(typeof import('@vueuse/core'))['useAnimate']>
     readonly useAnimations: UnwrapRef<(typeof import('./composables/useAnimations'))['default']>
+    readonly useAppSettings: UnwrapRef<
+      (typeof import('./composables/useAppSettings'))['useAppSettings']
+    >
     readonly useArrayDifference: UnwrapRef<(typeof import('@vueuse/core'))['useArrayDifference']>
     readonly useArrayEvery: UnwrapRef<(typeof import('@vueuse/core'))['useArrayEvery']>
     readonly useArrayFilter: UnwrapRef<(typeof import('@vueuse/core'))['useArrayFilter']>

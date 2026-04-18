@@ -62,7 +62,7 @@ export class LocalLibraryWatchCoordinator {
 
     const watcher = this.watchers.get(folderId)
     if (watcher) {
-      void watcher.close()
+      await Promise.resolve(watcher.close()).catch(this.options.onError)
       this.watchers.delete(folderId)
     }
 
@@ -74,17 +74,22 @@ export class LocalLibraryWatchCoordinator {
     }
   }
 
-  dispose(): void {
+  async dispose(): Promise<void> {
     for (const timer of this.watchTimers.values()) {
       clearTimeout(timer)
     }
     this.watchTimers.clear()
 
-    for (const watcher of this.watchers.values()) {
-      void watcher.close()
-    }
+    const watcherClosePromises = [...this.watchers.values()].map(watcher =>
+      Promise.resolve(watcher.close()).catch(this.options.onError)
+    )
+    const inflightFlushes = [...this.flushPromises.values()].map(flush =>
+      flush.catch(this.options.onError)
+    )
+
     this.watchers.clear()
     this.pendingFolderChanges.clear()
+    await Promise.all([...watcherClosePromises, ...inflightFlushes])
     this.flushPromises.clear()
   }
 

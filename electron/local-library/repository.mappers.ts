@@ -7,29 +7,30 @@ import type {
 } from '@/types/localLibrary'
 
 import { createLocalMediaUrl } from './protocol'
-import { createAlbumId, createArtistId } from './repository.helpers'
+import { createAlbumId, createArtistId, createLocalSongArtists } from './repository.helpers'
 import type { AlbumRow, ArtistRow, FolderListRow, FolderRow, TrackRow } from './repository.types'
 
 function createTrackSong(row: TrackRow): Song {
   return {
     id: row.id,
     name: row.title,
-    artists: [{ id: `local-artist:${row.artist}`, name: row.artist }],
+    artists: createLocalSongArtists(row.artist),
     album: {
-      id: `local-album:${row.album}`,
+      id: createAlbumId(row.artist, row.album),
       name: row.album,
       picUrl: ''
     },
     duration: row.duration,
     mvid: 0,
-    platform: 'netease',
+    platform: 'local',
     originalId: row.id,
     url: createLocalMediaUrl(row.file_path),
     extra: {
       localSource: true,
       localFilePath: row.file_path,
       localAlbum: row.album,
-      localCoverHash: row.cover_hash
+      localCoverHash: row.cover_hash,
+      localDurationKnown: row.duration > 0
     }
   }
 }

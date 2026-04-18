@@ -1,4 +1,9 @@
-import type { IMessageHandler } from '../platform/common/types'
+import type {
+  ICacheSize,
+  IClearCacheOptions,
+  IClearCacheResult,
+  IMessageHandler
+} from '../platform/common/types'
 import { getPlatformService, initializePlatformService } from '../platform'
 import type {
   LocalLibraryAlbumSummary,
@@ -22,8 +27,8 @@ export type PlatformService = {
   sendPlayingState(playing: boolean): void
   sendPlayModeChange(mode: number): void
   on(channel: string, handler: (data: unknown) => void): () => void
-  getCacheSize(): Promise<unknown>
-  clearCache(options?: unknown): Promise<unknown>
+  getCacheSize(): Promise<ICacheSize>
+  clearCache(options?: IClearCacheOptions): Promise<IClearCacheResult>
   getLocalLibraryState(): Promise<LocalLibraryState>
   pickLocalLibraryFolder(): Promise<string | null>
   addLocalLibraryFolder(folderPath: string): Promise<LocalLibraryState>
@@ -147,12 +152,12 @@ export function createPlatformService(deps: PlatformServiceDeps = {}): PlatformS
       return () => disposable.dispose()
     },
 
-    getCacheSize(): Promise<unknown> {
+    getCacheSize(): Promise<ICacheSize> {
       return platform.getCacheSize()
     },
 
-    clearCache(options?: unknown): Promise<unknown> {
-      return platform.clearCache(options as never)
+    clearCache(options: IClearCacheOptions = {}): Promise<IClearCacheResult> {
+      return platform.clearCache(options)
     },
 
     getLocalLibraryState(): Promise<LocalLibraryState> {

@@ -49,33 +49,38 @@ export function useLocalLibraryQueries(
       )
     ]
 
-    await Promise.all(
+    const nextCoverEntries = await Promise.all(
       uniqueHashes.map(async coverHash => {
         if (coverUrls.value[coverHash]) {
-          return
+          return null
         }
 
         const cachedUrl = CoverCacheManager.get(coverHash)
         if (cachedUrl) {
-          coverUrls.value = {
-            ...coverUrls.value,
-            [coverHash]: cachedUrl
-          }
-          return
+          return [coverHash, cachedUrl] as const
         }
 
         const nextUrl = await platformService.getLocalLibraryCover(coverHash)
         if (!nextUrl) {
-          return
+          return null
         }
 
         CoverCacheManager.set(coverHash, nextUrl)
-        coverUrls.value = {
-          ...coverUrls.value,
-          [coverHash]: nextUrl
-        }
+        return [coverHash, nextUrl] as const
       })
     )
+
+    const resolvedEntries = nextCoverEntries.filter((entry): entry is readonly [string, string] =>
+      Array.isArray(entry)
+    )
+    if (resolvedEntries.length === 0) {
+      return
+    }
+
+    coverUrls.value = {
+      ...coverUrls.value,
+      ...Object.fromEntries(resolvedEntries)
+    }
   }
 
   async function loadTracks(query: LocalLibraryTrackQuery = {}, append = false): Promise<void> {
@@ -156,6 +161,34 @@ export function useLocalLibraryQueries(
     await Promise.all([loadTracks(), loadArtists(), loadAlbums()])
   }
 
+  function patchTrackDuration(trackId: string | number, durationMs: number): void {
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      return
+    }
+
+    songsPage.value = {
+      ...songsPage.value,
+      items: songsPage.value.items.map(track => {
+        if (track.id !== trackId || track.duration === durationMs) {
+          return track
+        }
+
+        return {
+          ...track,
+          duration: durationMs,
+          song: {
+            ...track.song,
+            duration: durationMs,
+            extra: {
+              ...(track.song.extra ?? {}),
+              localDurationKnown: true
+            }
+          }
+        }
+      })
+    }
+  }
+
   async function reloadLoadedPages(): Promise<void> {
     const tasks: Array<Promise<void>> = []
 
@@ -184,6 +217,7 @@ export function useLocalLibraryQueries(
     loadArtists,
     loadInitialPages,
     loadTracks,
+    patchTrackDuration,
     reloadLoadedPages,
     songsPage
   }

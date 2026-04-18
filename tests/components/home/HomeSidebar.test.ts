@@ -77,6 +77,17 @@ describe('HomeSidebar', () => {
     expect(wrapper.find('.sidebar-footer').exists()).toBe(true)
   })
 
+  it('emits settings selection when the footer gear is clicked', async () => {
+    const wrapper = mount(HomeSidebar)
+
+    const settingsButton = wrapper.get('.settings-button')
+    expect(settingsButton.attributes('disabled')).toBeUndefined()
+
+    await settingsButton.trigger('click')
+
+    expect(wrapper.emitted('item-select')?.at(-1)).toEqual(['settings'])
+  })
+
   it('switches the active item when a sidebar link is clicked', async () => {
     const wrapper = mount(HomeSidebar)
     const links = wrapper.findAll('.sidebar-link')

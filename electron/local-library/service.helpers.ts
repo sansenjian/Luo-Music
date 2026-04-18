@@ -8,7 +8,10 @@ import type { Song } from '@/types/schemas'
 import type { LocalLibraryTrack } from '@/types/localLibrary'
 
 import { createLocalMediaUrl } from './protocol'
+import { createAlbumId, createLocalSongArtists } from './repository.helpers'
 import type { PersistedFolder } from './repository.types'
+
+export { normalizeFilePath, normalizeFolderPath } from './repository.helpers'
 
 export type PersistedState = {
   folders: PersistedFolder[]
@@ -48,6 +51,9 @@ const AUDIO_FILE_EXTENSIONS = new Set([
   '.ape',
   '.opus'
 ])
+const MAX_AUDIO_SCAN_DEPTH = 10
+const MAX_AUDIO_FILE_COUNT = 10000
+const FULL_DURATION_PARSE_EXTENSIONS = new Set(['.ogg', '.opus'])
 
 const StoreModule = require('electron-store') as {
   default?: new (options?: { projectName: string }) => LegacyStoreShape
@@ -57,14 +63,6 @@ const Store = StoreModule.default ?? (StoreModule as unknown as new () => Legacy
 
 export function createDefaultLegacyStore(): LegacyStoreShape {
   return new Store({ projectName: 'luo-music' })
-}
-
-export function normalizeFolderPath(folderPath: string): string {
-  return path.resolve(folderPath).replace(/[\\/]+$/, '')
-}
-
-export function normalizeFilePath(filePath: string): string {
-  return path.resolve(filePath)
 }
 
 export function parseTrackDisplayName(fileName: string): { artist: string; title: string } {
@@ -110,7 +108,11 @@ export async function readTrackMetadata(
   filePath: string
 ): Promise<ParsedLocalTrackMetadata | null> {
   try {
-    const metadata = await parseFile(filePath)
+    const shouldReadFullDuration = requiresFullDurationParse(filePath)
+    const metadata = await parseFile(
+      filePath,
+      shouldReadFullDuration ? { duration: true } : undefined
+    )
     const picture = metadata.common.picture?.[0]
     const title =
       typeof metadata.common.title === 'string' && metadata.common.title.trim().length > 0
@@ -146,6 +148,10 @@ export async function readTrackMetadata(
   }
 }
 
+export function requiresFullDurationParse(filePath: string): boolean {
+  return FULL_DURATION_PARSE_EXTENSIONS.has(path.extname(filePath).toLocaleLowerCase())
+}
+
 export function createTrackSong(
   trackId: string,
   title: string,
@@ -158,22 +164,23 @@ export function createTrackSong(
   return {
     id: trackId,
     name: title,
-    artists: [{ id: `local-artist:${artist}`, name: artist }],
+    artists: createLocalSongArtists(artist),
     album: {
-      id: `local-album:${album}`,
+      id: createAlbumId(artist, album),
       name: album,
       picUrl: ''
     },
     duration,
     mvid: 0,
-    platform: 'netease',
+    platform: 'local',
     originalId: trackId,
     url: createLocalMediaUrl(filePath),
     extra: {
       localSource: true,
       localFilePath: filePath,
       localAlbum: album,
-      localCoverHash: coverHash
+      localCoverHash: coverHash,
+      localDurationKnown: duration > 0
     }
   }
 }
@@ -200,14 +207,16 @@ export function createEmptyPendingFolderChanges(): PendingFolderChanges {
 }
 
 export async function collectAudioFiles(rootPath: string): Promise<string[]> {
-  const queue = [rootPath]
+  const queue = [{ path: rootPath, depth: 0 }]
   const files: string[] = []
 
   while (queue.length > 0) {
-    const currentPath = queue.pop()
-    if (!currentPath) {
+    const currentEntry = queue.pop()
+    if (!currentEntry) {
       continue
     }
+
+    const { path: currentPath, depth } = currentEntry
 
     const entries = await readdir(currentPath, {
       withFileTypes: true
@@ -221,12 +230,17 @@ export async function collectAudioFiles(rootPath: string): Promise<string[]> {
       const entryPath = path.join(currentPath, entry.name)
 
       if (entry.isDirectory()) {
-        queue.push(entryPath)
+        if (depth < MAX_AUDIO_SCAN_DEPTH) {
+          queue.push({ path: entryPath, depth: depth + 1 })
+        }
         continue
       }
 
       if (entry.isFile() && isAudioFile(entryPath)) {
         files.push(entryPath)
+        if (files.length >= MAX_AUDIO_FILE_COUNT) {
+          return files
+        }
       }
     }
   }

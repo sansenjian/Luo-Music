@@ -10,6 +10,7 @@ import type {
   LocalLibraryTrackQuery,
   LocalLibraryViewMode
 } from '@/types/localLibrary'
+import { isLocalLibrarySong } from '@/types/localLibrary'
 import {
   formatLocalLibraryBytes,
   formatLocalLibraryDateTime,
@@ -76,8 +77,16 @@ export function useHomeLocalMusicPanel() {
   const toastStore = useToastStore()
   const localLibrary = useLocalLibrary()
   const { state, status, loading, mutating, pageLoading } = localLibrary.stateGroup
-  const { albumsPage, artistsPage, coverUrls, loadAlbums, loadArtists, loadTracks, songsPage } =
-    localLibrary.queries
+  const {
+    albumsPage,
+    artistsPage,
+    coverUrls,
+    loadAlbums,
+    loadArtists,
+    loadTracks,
+    patchTrackDuration,
+    songsPage
+  } = localLibrary.queries
   const { addFolder, removeFolder, rescan, setFolderEnabled } = localLibrary.commands
 
   const activeView = ref<LocalLibraryViewMode>('songs')
@@ -218,6 +227,22 @@ export function useHomeLocalMusicPanel() {
   watch(activeView, nextView => {
     void loadView(nextView)
   })
+
+  watch(
+    () => [playerStore.currentSong, playerStore.duration] as const,
+    ([currentSong, durationSeconds]) => {
+      if (!currentSong || !isLocalLibrarySong(currentSong) || !Number.isFinite(durationSeconds)) {
+        return
+      }
+
+      const durationMs = Math.round(durationSeconds * 1000)
+      if (durationMs <= 0) {
+        return
+      }
+
+      patchTrackDuration(currentSong.id, durationMs)
+    }
+  )
 
   async function loadView(view: LocalLibraryViewMode, append = false): Promise<void> {
     const query = appliedSearch.value || undefined

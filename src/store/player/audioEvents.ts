@@ -31,6 +31,7 @@ export class AudioEventHandler implements IDisposable {
   private readonly eventDisposables = new DisposableStore()
   private lastUiUpdateTime = 0
   private lastBroadcastTime = 0
+  private lastKnownDuration = 0
   private progressSyncTimer: ReturnType<typeof setInterval> | null = null
   private config: TimeUpdateConfig = {
     uiUpdateInterval: 250,
@@ -66,6 +67,7 @@ export class AudioEventHandler implements IDisposable {
     this.cleanupEvents()
     this.registerTimeUpdateListener()
     this.registerMetadataListener()
+    this.registerDurationChangeListener()
     this.registerEndedListener()
     this.registerPlayListener()
     this.registerPauseListener()
@@ -85,6 +87,7 @@ export class AudioEventHandler implements IDisposable {
     this.stopProgressSyncLoop()
     this.lastUiUpdateTime = 0
     this.lastBroadcastTime = 0
+    this.lastKnownDuration = 0
     // 重置差量检查状态
     this.lastBroadcastLyricIndex = -1
     this.lastBroadcastLyricData = null
@@ -97,7 +100,7 @@ export class AudioEventHandler implements IDisposable {
     }
 
     const currentLyricLine = this.config.getCurrentLyricLine?.() ?? null
-    const currentTime = Number(playerCore.currentTime) || this.state.progress
+    const currentTime = this.getCurrentTimeOrFallback(this.state.progress)
 
     // 差量检查：只有当歌词索引或内容真正变化时才发送
     const hasIndexChanged = this.state.currentLyricIndex !== this.lastBroadcastLyricIndex
@@ -138,8 +141,18 @@ export class AudioEventHandler implements IDisposable {
 
   private handleProgressUpdate(force = false, forcedCause?: DesktopLyricUpdateCause): void {
     const now = Date.now()
-    const currentTime = Number(playerCore.currentTime) || 0
+    const currentTime = this.getCurrentTimeOrFallback(0)
+    const currentDuration = Number(playerCore.duration) || 0
     const lyricIndexChanged = this.config.syncLyricIndex?.(currentTime) ?? false
+
+    if (
+      Number.isFinite(currentDuration) &&
+      currentDuration > 0 &&
+      currentDuration !== this.lastKnownDuration
+    ) {
+      this.lastKnownDuration = currentDuration
+      this.callbacks.onLoadedMetadata?.(currentDuration)
+    }
 
     if (force || now - this.lastUiUpdateTime >= this.config.uiUpdateInterval) {
       this.lastUiUpdateTime = now
@@ -209,7 +222,15 @@ export class AudioEventHandler implements IDisposable {
 
   private registerMetadataListener(): void {
     const unsubscribe = playerCore.on('loadedmetadata', () => {
-      this.callbacks.onLoadedMetadata?.(playerCore.duration)
+      this.handleDurationUpdate()
+    })
+
+    this.eventDisposables.add(Disposable.from(unsubscribe))
+  }
+
+  private registerDurationChangeListener(): void {
+    const unsubscribe = playerCore.on('durationchange', () => {
+      this.handleDurationUpdate()
     })
 
     this.eventDisposables.add(Disposable.from(unsubscribe))
@@ -251,6 +272,23 @@ export class AudioEventHandler implements IDisposable {
     })
 
     this.eventDisposables.add(Disposable.from(unsubscribe))
+  }
+
+  private handleDurationUpdate(): void {
+    const currentDuration = Number(playerCore.duration) || 0
+    if (currentDuration > 0) {
+      this.lastKnownDuration = currentDuration
+    }
+    this.callbacks.onLoadedMetadata?.(currentDuration)
+  }
+
+  private getCurrentTimeOrFallback(fallback: number): number {
+    const currentTime = Number(playerCore.currentTime)
+    if (Number.isFinite(currentTime) && currentTime >= 0) {
+      return currentTime
+    }
+
+    return fallback
   }
 
   dispose(): void {

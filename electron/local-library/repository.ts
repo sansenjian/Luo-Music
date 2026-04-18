@@ -16,21 +16,17 @@ import {
   createPathKey,
   decodeCursor,
   encodeCursor,
+  matchesLocalArtistName,
   normalizeFilePath,
   normalizeFolderPath,
   resolveDefaultDatabasePath,
+  summarizeLocalArtists,
   toPageLimit
 } from './repository.helpers'
-import {
-  mapFolderListRow,
-  mapFolderRow,
-  mapTrackRow,
-  toAlbumSummary,
-  toArtistSummary
-} from './repository.mappers'
+import { mapFolderListRow, mapFolderRow, mapTrackRow, toAlbumSummary } from './repository.mappers'
 import type {
   AlbumRow,
-  ArtistRow,
+  ArtistSummarySourceRow,
   BetterSqlite3Constructor,
   BetterSqlite3Database,
   BetterSqlite3Statement,
@@ -52,6 +48,7 @@ export class LocalLibraryRepository {
   private readonly listEnabledFoldersStatement: BetterSqlite3Statement
   private readonly listTracksStatement: BetterSqlite3Statement
   private readonly listTracksByFolderStatement: BetterSqlite3Statement
+  private readonly listArtistSummarySourceRowsStatement: BetterSqlite3Statement
   private readonly findTrackByFilePathKeyStatement: BetterSqlite3Statement
   private readonly enabledTrackCountStatement: BetterSqlite3Statement
   private readonly deleteTracksByFolderStatement: BetterSqlite3Statement
@@ -207,6 +204,16 @@ export class LocalLibraryRepository {
       FROM local_library_tracks
       WHERE folder_id = ?
       ORDER BY title COLLATE NOCASE ASC, file_path COLLATE NOCASE ASC
+    `)
+    this.listArtistSummarySourceRowsStatement = this.db.prepare(`
+      SELECT
+        track.artist,
+        track.duration,
+        track.cover_hash
+      FROM local_library_tracks AS track
+      INNER JOIN local_library_folders AS folder
+        ON folder.id = track.folder_id
+      WHERE folder.enabled = 1
     `)
     this.findTrackByFilePathKeyStatement = this.db.prepare(`
       SELECT
@@ -405,10 +412,17 @@ export class LocalLibraryRepository {
   getTracksPage(query: LocalLibraryTrackQuery = {}): LocalLibraryPage<LocalLibraryTrack> {
     const limit = toPageLimit(query.limit)
     const offset = decodeCursor(query.cursor)
+    const artistFilter = query.artist?.trim() ? query.artist.trim() : null
+    const databaseQuery = artistFilter
+      ? {
+          ...query,
+          artist: undefined
+        }
+      : query
     const params: unknown[] = []
     const whereClauses: string[] = []
 
-    appendTrackFilters(whereClauses, params, query)
+    appendTrackFilters(whereClauses, params, databaseQuery)
 
     const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : ''
     const fromSql = `
@@ -421,6 +435,40 @@ export class LocalLibraryRepository {
     const totalRow = this.db
       .prepare(`SELECT COUNT(track.id) AS count ${fromSql}`)
       .get(...params) as { count: number }
+
+    if (artistFilter) {
+      const filteredRows = (
+        this.db
+          .prepare(
+            `
+            SELECT
+              track.id,
+              track.folder_id,
+              track.file_path,
+              track.file_name,
+              track.title,
+              track.artist,
+              track.album,
+              track.duration,
+              track.file_size,
+              track.modified_at,
+              track.cover_hash
+            ${fromSql}
+            ORDER BY track.title COLLATE NOCASE ASC, track.file_path COLLATE NOCASE ASC
+          `
+          )
+          .all(...params) as TrackRow[]
+      ).filter(row => matchesLocalArtistName(row.artist, artistFilter))
+
+      const pagedRows = filteredRows.slice(offset, offset + limit)
+
+      return {
+        items: pagedRows.map(mapTrackRow),
+        nextCursor: encodeCursor(offset + pagedRows.length, filteredRows.length),
+        total: filteredRows.length,
+        limit
+      }
+    }
 
     const rows = this.db
       .prepare(
@@ -457,43 +505,16 @@ export class LocalLibraryRepository {
   ): LocalLibraryPage<LocalLibraryArtistSummary> {
     const limit = toPageLimit(query.limit)
     const offset = decodeCursor(query.cursor)
-    const params: unknown[] = []
-    const whereClauses: string[] = []
-
-    appendSummarySearchFilter(whereClauses, params, query, ['track.artist'])
-
-    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : ''
-    const groupedSql = `
-      FROM local_library_tracks AS track
-      INNER JOIN local_library_folders AS folder
-        ON folder.id = track.folder_id
-      ${whereSql}
-      GROUP BY track.artist
-    `
-
-    const totalRow = this.db
-      .prepare(`SELECT COUNT(*) AS count FROM (SELECT track.artist ${groupedSql})`)
-      .get(...params) as { count: number }
-
-    const rows = this.db
-      .prepare(
-        `
-        SELECT
-          track.artist AS artist,
-          COUNT(track.id) AS track_count,
-          SUM(track.duration) AS total_duration,
-          MAX(track.cover_hash) AS cover_hash
-        ${groupedSql}
-        ORDER BY track.artist COLLATE NOCASE ASC
-        LIMIT ? OFFSET ?
-      `
-      )
-      .all(...params, limit, offset) as ArtistRow[]
+    const artistSummaries = summarizeLocalArtists(
+      this.listArtistSummarySourceRowsStatement.all() as ArtistSummarySourceRow[],
+      query.search
+    )
+    const pagedItems = artistSummaries.slice(offset, offset + limit)
 
     return {
-      items: rows.map(toArtistSummary),
-      nextCursor: encodeCursor(offset + rows.length, totalRow.count),
-      total: totalRow.count,
+      items: pagedItems,
+      nextCursor: encodeCursor(offset + pagedItems.length, artistSummaries.length),
+      total: artistSummaries.length,
       limit
     }
   }

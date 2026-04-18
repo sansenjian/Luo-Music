@@ -1,5 +1,6 @@
 import path from 'node:path'
 import type { BrowserWindow } from 'electron'
+import type { SongPlatform } from '@/types/schemas'
 import type { DesktopLyricUpdateCause } from './ipc/types'
 
 import { MAIN_DIST, RENDERER_DIST } from './utils/paths'
@@ -37,7 +38,7 @@ interface LyricUpdateData {
   roma: string
   playing?: boolean
   songId?: string | number | null
-  platform?: 'netease' | 'qq' | null
+  platform?: SongPlatform | null
   sequence?: number
   cause?: DesktopLyricUpdateCause
 }

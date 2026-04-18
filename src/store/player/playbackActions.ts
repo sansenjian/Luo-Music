@@ -1,5 +1,5 @@
 import type { Song } from '@/types/schemas'
-import { isLocalLibrarySong } from '@/types/localLibrary'
+import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@/types/localLibrary'
 import type { MusicService } from '@/services/musicService'
 import { cloneSongData, getSongPlatformKey, isSameSongIdentity } from '@/utils/songIdentity'
 import { errorCenter, Errors } from '@/utils/error'
@@ -92,6 +92,18 @@ export class PlaybackActions {
     song.errorMessage = null
   }
 
+  private resolveInitialDurationSeconds(song: Song): number {
+    if (!Number.isFinite(song.duration) || song.duration <= 0) {
+      return 0
+    }
+
+    if (isLocalLibrarySong(song) && !hasKnownLocalSongDuration(song)) {
+      return 0
+    }
+
+    return song.duration / 1000
+  }
+
   private cloneSong(song: Song): Song {
     return cloneSongData(song)
   }
@@ -177,8 +189,10 @@ export class PlaybackActions {
     if (state.songList.length === 1) return 0
 
     let newIndex = Math.floor(Math.random() * state.songList.length)
-    if (excludeCurrent && newIndex === state.currentIndex) {
-      newIndex = (newIndex + 1) % state.songList.length
+    if (excludeCurrent) {
+      while (newIndex === state.currentIndex) {
+        newIndex = Math.floor(Math.random() * state.songList.length)
+      }
     }
     return newIndex
   }
@@ -250,7 +264,9 @@ export class PlaybackActions {
     this.deps.onStateChange({
       currentIndex: index,
       currentSong: nextSong,
-      currentLyricIndex: isSwitchingSong ? -1 : state.currentLyricIndex
+      currentLyricIndex: isSwitchingSong ? -1 : state.currentLyricIndex,
+      progress: isSwitchingSong ? 0 : state.progress,
+      duration: isSwitchingSong ? this.resolveInitialDurationSeconds(nextSong) : state.duration
     })
 
     if (isSwitchingSong) {
@@ -268,9 +284,17 @@ export class PlaybackActions {
     }
 
     const playbackRequestId = this.startPlaybackRequest()
-    this.deps.onStateChange({ loading: true })
+    this.deps.onStateChange({
+      loading: true,
+      ...(!this.isSameSong(state.currentSong, song)
+        ? {
+            progress: 0,
+            duration: 0
+          }
+        : {})
+    })
 
-    const platformKey = song.platform || (song as { server?: string }).server || 'netease'
+    const platformKey = getSongPlatformKey(song)
     const musicService = this.deps.musicService
 
     console.log(`[Player] Playing song: ${song.name} (ID: ${song.id}, Platform: ${platformKey})`)

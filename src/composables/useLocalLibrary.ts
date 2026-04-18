@@ -29,6 +29,7 @@ export function useLocalLibrary() {
     loadArtists,
     loadInitialPages,
     loadTracks,
+    patchTrackDuration,
     reloadLoadedPages,
     songsPage
   } = useLocalLibraryQueries(platformService, runPageRequest)
@@ -56,11 +57,16 @@ export function useLocalLibrary() {
       })
     )
 
-    void refresh().then(() => {
-      if (state.value.supported) {
-        void loadInitialPages()
+    void (async () => {
+      try {
+        await refresh()
+        if (state.value.supported) {
+          await loadInitialPages()
+        }
+      } catch {
+        // The request layer already updates loading state; keep mount resilient.
       }
-    })
+    })()
   })
 
   onUnmounted(() => {
@@ -85,6 +91,7 @@ export function useLocalLibrary() {
     loadAlbums,
     loadArtists,
     loadTracks,
+    patchTrackDuration,
     songsPage
   }
 

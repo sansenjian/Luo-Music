@@ -76,6 +76,22 @@ describe('playerStore', () => {
       expect(store.playModeText).toBe('顺序播放')
     })
 
+    it('keeps player formattedDuration at 00:00 for local songs with unknown duration', () => {
+      const store = usePlayerStore()
+      store.currentSong = createMockSong({
+        id: 'local:unknown',
+        platform: 'local',
+        duration: 0,
+        extra: {
+          localSource: true,
+          localDurationKnown: false
+        }
+      })
+      store.duration = 0
+
+      expect(store.formattedDuration).toBe('00:00')
+    })
+
     it('prefers committed currentSong over playlist index for currentSongInfo', () => {
       const store = usePlayerStore()
       const currentSong = createMockSong({ id: 9, name: 'Playing Song' })

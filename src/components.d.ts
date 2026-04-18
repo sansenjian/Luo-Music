@@ -24,6 +24,7 @@ declare module 'vue' {
     HomeLocalMusicPanel: typeof import('./components/home/HomeLocalMusicPanel.vue')['default']
     HomeSearchBar: typeof import('./components/home/HomeSearchBar.vue')['default']
     HomeServerSelect: typeof import('./components/home/HomeServerSelect.vue')['default']
+    HomeSettingsPanel: typeof import('./components/home/HomeSettingsPanel.vue')['default']
     HomeSidebar: typeof import('./components/home/HomeSidebar.vue')['default']
     HomeSidebarFooter: typeof import('./components/home/HomeSidebarFooter.vue')['default']
     HomeTabBar: typeof import('./components/home/HomeTabBar.vue')['default']

@@ -1,5 +1,5 @@
 // 从 Zod schema 导出统一类型，避免重复定义
-export type { Song, Artist, Album } from '@/types/schemas'
+export type { Song, Artist, Album, SongPlatform } from '@/types/schemas'
 
 export interface PlaylistDetail {
   id: string | number

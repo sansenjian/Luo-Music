@@ -136,7 +136,7 @@ async function mountHome(options: {
             }
           },
           template:
-            '<aside class="home-sidebar-stub" :data-active-item="activeItemId" :data-collapsed="String(collapsed)" :data-show-brand="String(showBrand)"><button class="sidebar-home-trigger" @click="$emit(\'item-select\', \'home\')">home</button><button class="sidebar-liked-trigger" @click="$emit(\'item-select\', \'liked\')">liked</button><button class="sidebar-local-trigger" @click="$emit(\'item-select\', \'local\')">local</button><button class="sidebar-collection-trigger" @click="$emit(\'collection-select\', { uiId: \'playlist:123\', sourceId: 123, kind: \'playlist\', name: \'测试歌单\', coverUrl: \'cover.jpg\', summary: \'12 首歌\' })">collection</button></aside>'
+            '<aside class="home-sidebar-stub" :data-active-item="activeItemId" :data-collapsed="String(collapsed)" :data-show-brand="String(showBrand)"><button class="sidebar-home-trigger" @click="$emit(\'item-select\', \'home\')">home</button><button class="sidebar-liked-trigger" @click="$emit(\'item-select\', \'liked\')">liked</button><button class="sidebar-local-trigger" @click="$emit(\'item-select\', \'local\')">local</button><button class="sidebar-settings-trigger" @click="$emit(\'item-select\', \'settings\')">settings</button><button class="sidebar-collection-trigger" @click="$emit(\'collection-select\', { uiId: \'playlist:123\', sourceId: 123, kind: \'playlist\', name: \'测试歌单\', coverUrl: \'cover.jpg\', summary: \'12 首歌\' })">collection</button></aside>'
         }),
         HomeLikedSongsPanel: defineComponent({
           name: 'HomeLikedSongsPanelStub',
@@ -145,6 +145,10 @@ async function mountHome(options: {
         HomeLocalMusicPanel: defineComponent({
           name: 'HomeLocalMusicPanelStub',
           template: '<section class="home-local-music-stub"></section>'
+        }),
+        HomeSettingsPanel: defineComponent({
+          name: 'HomeSettingsPanelStub',
+          template: '<section class="home-settings-stub"></section>'
         }),
         HomeCollectionDetailPanel: defineComponent({
           name: 'HomeCollectionDetailPanelStub',
@@ -236,6 +240,20 @@ describe('Home view layout', () => {
     expect(wrapper.find('.home-local-music-stub').exists()).toBe(true)
     expect(wrapper.find('.home-workspace-stub').exists()).toBe(false)
     expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(false)
+  })
+
+  it('switches the workspace content to settings when the sidebar footer selects settings', async () => {
+    const wrapper = await mountHome({
+      isPlayerDocked: true,
+      dockedPlayerBarLayout: 'full'
+    })
+
+    await wrapper.get('.sidebar-settings-trigger').trigger('click')
+
+    expect(wrapper.find('.home-sidebar-stub').attributes('data-active-item')).toBe('settings')
+    expect(wrapper.find('.home-settings-stub').exists()).toBe(true)
+    expect(wrapper.find('.home-workspace-stub').exists()).toBe(false)
+    expect(wrapper.find('.home-local-music-stub').exists()).toBe(false)
   })
 
   it('keeps the docked full-width footer mode separate from the adaptive sidebar layout', async () => {

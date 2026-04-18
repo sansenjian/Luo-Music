@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import { mount, type MountingOptions } from '@vue/test-utils'
 
-import type { Song } from '@/platform/music/interface'
+import type { Song, SongPlatform } from '@/platform/music/interface'
 
 /**
  * Create a mock Song object with sensible defaults.
@@ -19,7 +19,7 @@ export function createMockSong(overrides: Partial<Song> & Record<string, unknown
     },
     duration: Number(overrides.duration ?? 180000),
     mvid: overrides.mvid ?? 0,
-    platform: (overrides.platform as 'netease' | 'qq') ?? 'netease',
+    platform: (overrides.platform as SongPlatform) ?? 'netease',
     originalId: overrides.originalId ?? overrides.id ?? 1,
     ...overrides
   }

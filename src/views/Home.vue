@@ -19,6 +19,9 @@ const HomeLikedSongsPanel = defineAsyncComponent(
 const HomeLocalMusicPanel = defineAsyncComponent(
   () => import('../components/home/HomeLocalMusicPanel.vue')
 )
+const HomeSettingsPanel = defineAsyncComponent(
+  () => import('../components/home/HomeSettingsPanel.vue')
+)
 const LyricDisplay = defineAsyncComponent(() => import('../components/LyricDisplay.vue'))
 const Player = defineAsyncComponent(() => import('../components/Player.vue'))
 const Playlist = defineAsyncComponent(() => import('../components/Playlist.vue'))
@@ -119,6 +122,7 @@ const { isMounted: isCoreMounted } = useDeferredMount()
       </HomeWorkspace>
       <HomeLikedSongsPanel v-else-if="activeWorkspaceView === 'liked'" class="workspace-panel" />
       <HomeLocalMusicPanel v-else-if="activeWorkspaceView === 'local'" class="workspace-panel" />
+      <HomeSettingsPanel v-else-if="activeWorkspaceView === 'settings'" class="workspace-panel" />
       <HomeCollectionDetailPanel v-else class="workspace-panel" :collection="selectedCollection" />
 
       <HomeFooter

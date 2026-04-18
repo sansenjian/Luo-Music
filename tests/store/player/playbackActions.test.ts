@@ -185,6 +185,37 @@ describe('playbackActions', () => {
     expect(playSongByIndex).toHaveBeenCalledWith(0)
   })
 
+  it('clears stale progress and duration when switching to a different song', async () => {
+    const { actions, state, onStateChange } = createSubject()
+    const currentSong = createMockSong({ id: 'song-1', url: 'https://song.test/1.mp3' })
+    const nextSong = createMockSong({ id: 'song-2', url: 'https://song.test/2.mp3' })
+
+    state.songList = [currentSong, nextSong]
+    state.currentSong = currentSong
+    state.currentIndex = 0
+    state.progress = 88
+    state.duration = 233
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    await actions.playSongWithDetails(1)
+
+    expect(onStateChange).toHaveBeenCalledWith({
+      loading: true,
+      progress: 0,
+      duration: 0
+    })
+    expect(onStateChange).toHaveBeenCalledWith({
+      currentIndex: 1,
+      currentSong: nextSong,
+      currentLyricIndex: -1
+    })
+  })
+
   it('throws when playSongByIndex is asked to play a song without a url', async () => {
     const { actions, state } = createSubject()
     state.songList = [createMockSong()]

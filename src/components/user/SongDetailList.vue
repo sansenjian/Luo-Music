@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import type { Song } from '@/platform/music/interface'
+import { isLocalLibrarySong } from '@/types/localLibrary'
 
 interface SongDetailListProps {
   songs: Song[]
@@ -72,6 +73,18 @@ function formatDuration(duration: number): string {
   const seconds = totalSeconds % 60
 
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function resolveDurationLabel(song: Song): string {
+  if (
+    isLocalLibrarySong(song) &&
+    (!Number.isFinite(song.duration) || song.duration <= 0) &&
+    song.extra?.localDurationKnown !== true
+  ) {
+    return '--:--'
+  }
+
+  return formatDuration(song.duration)
 }
 
 function emitPlaySong(index: number): void {
@@ -247,7 +260,7 @@ onUnmounted(() => {
                 <span class="detail-song-name">{{ song.name }}</span>
                 <span class="detail-song-artist">{{ formatArtists(song) || '未知歌手' }}</span>
               </div>
-              <span class="detail-song-duration">{{ formatDuration(song.duration) }}</span>
+              <span class="detail-song-duration">{{ resolveDurationLabel(song) }}</span>
             </button>
           </div>
         </div>
@@ -275,7 +288,7 @@ onUnmounted(() => {
           <span class="detail-song-name">{{ song.name }}</span>
           <span class="detail-song-artist">{{ formatArtists(song) || '未知歌手' }}</span>
         </div>
-        <span class="detail-song-duration">{{ formatDuration(song.duration) }}</span>
+        <span class="detail-song-duration">{{ resolveDurationLabel(song) }}</span>
       </button>
     </div>
   </div>

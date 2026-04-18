@@ -1,7 +1,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { services } from '../services'
-import type { Song } from '../types/schemas'
+import type { Song, SongPlatform } from '../types/schemas'
 import type { LyricLine } from '../utils/player/core/lyric'
 import type {
   DesktopLyricSnapshot,
@@ -25,7 +25,7 @@ interface PlayerBridge {
   getDesktopLyricSnapshot?: () => Promise<DesktopLyricSnapshot>
   getState?: () => Promise<PlayerStateSnapshot>
   getCurrentSong?: () => Promise<Song | null>
-  getLyric?: (songId: string | number, platform?: 'netease' | 'qq') => Promise<LyricLine[]>
+  getLyric?: (songId: string | number, platform?: SongPlatform) => Promise<LyricLine[]>
   onPlayStateChange?: (
     listener: (data: { isPlaying: boolean; currentTime: number }) => void
   ) => () => void
@@ -105,7 +105,7 @@ function resolveLyricIndexByTime(lyrics: LyricLine[], currentTime: number): numb
 function isSameSong(
   song: Song | null,
   songId?: string | number | null,
-  platform?: 'netease' | 'qq' | null
+  platform?: SongPlatform | null
 ): boolean {
   if (!song || songId == null) {
     return false

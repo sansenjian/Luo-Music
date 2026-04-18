@@ -14,8 +14,9 @@ import logger, { initSentry } from '../logger'
 import { serviceManager } from '../ServiceManager'
 import type { ServiceConfig } from '../types/service'
 import { RENDERER_DIST, VITE_PUBLIC } from '../utils/paths'
+import { registerPrivilegedLocalMediaScheme } from '../local-library/protocol.privileged'
 import { registerLocalMediaProtocol } from '../local-library/protocol'
-import { localLibraryService } from '../local-library/service'
+import { disposeLocalLibraryService } from '../local-library/service'
 
 import {
   ipcService,
@@ -53,6 +54,8 @@ console.log = logger.log.bind(logger)
 console.error = logger.error.bind(logger)
 console.warn = logger.warn.bind(logger)
 console.info = logger.info.bind(logger)
+
+registerPrivilegedLocalMediaScheme()
 
 const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
   services: {
@@ -140,7 +143,7 @@ function main(): void {
       desktopLyricManager.closeWindow()
       destroyTray()
       downloadManager.dispose()
-      localLibraryService.dispose()
+      await disposeLocalLibraryService()
       disposePerformanceMonitor()
       ipcService.dispose()
       await serviceManager.stopAllServices()

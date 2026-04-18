@@ -2,12 +2,27 @@ import path from 'node:path'
 import { realpathSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
-export const LOCAL_MEDIA_SCHEME = 'luo-media'
+import { LOCAL_MEDIA_SCHEME } from './protocol.privileged'
 
 let localMediaProtocolRegistered = false
 let localMediaRootsResolver: () => string[] = () => []
 
-type ElectronProtocolModule = {
+const ALLOWED_LOCAL_MEDIA_EXTENSIONS = new Set([
+  '.mp3',
+  '.flac',
+  '.m4a',
+  '.ogg',
+  '.wav',
+  '.aac',
+  '.ape',
+  '.opus',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp'
+])
+
+export type ElectronLocalMediaProtocolModule = {
   protocol?: {
     registerSchemesAsPrivileged?: (
       customSchemes: Array<{
@@ -24,12 +39,18 @@ type ElectronProtocolModule = {
     handle?: (scheme: string, handler: (request: Request) => Response | Promise<Response>) => void
   }
   net?: {
-    fetch: (input: string | URL) => Promise<Response>
+    fetch: (
+      input: string | URL,
+      init?: {
+        headers?: HeadersInit
+        method?: string
+      }
+    ) => Promise<Response>
   }
 }
 
-function getElectronProtocolModule(): ElectronProtocolModule {
-  const electronModule = require('electron') as ElectronProtocolModule | string
+function getElectronProtocolModule(): ElectronLocalMediaProtocolModule {
+  const electronModule = require('electron') as ElectronLocalMediaProtocolModule | string
   if (typeof electronModule !== 'object' || electronModule === null) {
     return {}
   }
@@ -37,30 +58,22 @@ function getElectronProtocolModule(): ElectronProtocolModule {
   return electronModule
 }
 
-function registerPrivilegedLocalMediaScheme(): void {
-  const { protocol } = getElectronProtocolModule()
-  protocol?.registerSchemesAsPrivileged?.([
-    {
-      scheme: LOCAL_MEDIA_SCHEME,
-      privileges: {
-        standard: true,
-        secure: true,
-        supportFetchAPI: true,
-        stream: true,
-        corsEnabled: true
-      }
-    }
-  ])
-}
-
-registerPrivilegedLocalMediaScheme()
-
 export function createLocalMediaUrl(filePath: string): string {
   return `${LOCAL_MEDIA_SCHEME}://media?path=${encodeURIComponent(path.resolve(filePath))}`
 }
 
 export function configureLocalMediaRootsResolver(resolver: () => string[]): void {
   localMediaRootsResolver = resolver
+}
+
+export function buildLocalMediaFetchInit(request: Request): {
+  headers: Headers
+  method: string
+} {
+  return {
+    headers: request.headers,
+    method: request.method
+  }
 }
 
 function resolveRealPath(targetPath: string): string | null {
@@ -81,6 +94,10 @@ function isPathWithinRoot(targetPath: string, rootPath: string): boolean {
   const relativePath = path.relative(normalizedRootPath, normalizedTargetPath)
 
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
+}
+
+function isAllowedLocalMediaFile(filePath: string): boolean {
+  return ALLOWED_LOCAL_MEDIA_EXTENSIONS.has(path.extname(filePath).toLocaleLowerCase())
 }
 
 function resolveRequestFilePath(requestUrl: string): { filePath: string | null; status: number } {
@@ -127,6 +144,13 @@ function resolveRequestFilePath(requestUrl: string): { filePath: string | null; 
       }
     }
 
+    if (!isAllowedLocalMediaFile(resolvedFilePath)) {
+      return {
+        filePath: null,
+        status: 403
+      }
+    }
+
     return {
       filePath: resolvedFilePath,
       status: 200
@@ -139,12 +163,14 @@ function resolveRequestFilePath(requestUrl: string): { filePath: string | null; 
   }
 }
 
-export function registerLocalMediaProtocol(): void {
+export function registerLocalMediaProtocol(
+  electronModule: ElectronLocalMediaProtocolModule = getElectronProtocolModule()
+): void {
   if (localMediaProtocolRegistered) {
     return
   }
 
-  const { net, protocol } = getElectronProtocolModule()
+  const { net, protocol } = electronModule
   if (!net?.fetch || !protocol?.handle) {
     return
   }
@@ -158,7 +184,7 @@ export function registerLocalMediaProtocol(): void {
     }
 
     try {
-      return await net.fetch(pathToFileURL(filePath).toString())
+      return await net.fetch(pathToFileURL(filePath).toString(), buildLocalMediaFetchInit(request))
     } catch {
       return new Response('Failed to read local media file', {
         status: 500
