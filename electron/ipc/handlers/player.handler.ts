@@ -37,6 +37,7 @@ const DEFAULT_PLAYER_STATE: PlayerStateSnapshot = {
   showLyric: true,
   showPlaylist: false,
   isPlayerDocked: false,
+  lyricType: ['original', 'trans'],
   lyrics: [],
   desktopLyricSequence: 0
 }
@@ -175,6 +176,7 @@ function normalizePlayerState(snapshot: PlayerStateSnapshot | undefined): Player
     currentSong: snapshot?.currentSong ?? null,
     lyricSong: snapshot?.lyricSong ?? null,
     lyrics: Array.isArray(snapshot?.lyrics) ? snapshot.lyrics : [],
+    lyricType: Array.isArray(snapshot?.lyricType) ? snapshot.lyricType : ['original', 'trans'],
     desktopLyricSequence:
       typeof snapshot?.desktopLyricSequence === 'number' ? snapshot.desktopLyricSequence : 0
   }
@@ -187,18 +189,19 @@ function normalizePlayerState(snapshot: PlayerStateSnapshot | undefined): Player
  * @returns A snapshot containing `currentSong`, `progress`, `isPlaying`, and lyric-related fields; if the lyric cache is not usable the `lyrics` array will be empty, `currentLyricIndex` will be `-1`, and `sequence` will be `0`.
  */
 function createDesktopLyricSnapshot(playerState: PlayerStateSnapshot): DesktopLyricSnapshot {
-  const lyricSong = playerState.lyricSong ?? playerState.currentSong
-  const hasCurrentSongLyrics = playerState.lyrics.length > 0 && lyricSong !== null
+  const hasCurrentSongLyrics =
+    playerState.lyrics.length > 0 && isSameSong(playerState.lyricSong, playerState.currentSong)
 
   return {
-    currentSong: lyricSong,
+    currentSong: playerState.currentSong,
     currentLyricIndex: hasCurrentSongLyrics ? playerState.currentLyricIndex : -1,
     progress: playerState.progress,
     isPlaying: playerState.isPlaying,
     lyrics: hasCurrentSongLyrics ? [...playerState.lyrics] : [],
-    songId: lyricSong?.id ?? null,
-    platform: lyricSong?.platform ?? null,
-    sequence: hasCurrentSongLyrics ? playerState.desktopLyricSequence : 0
+    songId: playerState.currentSong?.id ?? null,
+    platform: playerState.currentSong?.platform ?? null,
+    sequence: hasCurrentSongLyrics ? playerState.desktopLyricSequence : 0,
+    lyricType: [...playerState.lyricType]
   }
 }
 
@@ -466,6 +469,7 @@ export function registerPlayerHandlers(
       previousState.progress !== playerState.progress ||
       previousState.currentLyricIndex !== playerState.currentLyricIndex ||
       previousState.desktopLyricSequence !== playerState.desktopLyricSequence ||
+      previousState.lyricType.join(',') !== playerState.lyricType.join(',') ||
       !isSameSong(previousState.currentSong, playerState.currentSong) ||
       !isSameSong(previousState.lyricSong, playerState.lyricSong) ||
       previousState.lyrics.length !== playerState.lyrics.length

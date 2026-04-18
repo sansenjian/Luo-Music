@@ -226,7 +226,7 @@ describe('LyricDisplay', () => {
     expect(lyricLines[1].find('.lyric-trans').exists()).toBe(false)
   })
 
-  it('falls back to romanized lyrics when translated lyrics are unavailable', async () => {
+  it('does not render romanized lyrics when roma display is disabled', async () => {
     const store = usePlayerStore()
     store.initAudio()
     store.lyricType = ['original', 'trans']
@@ -239,11 +239,11 @@ describe('LyricDisplay', () => {
 
     const lyricLine = wrapper.find('.lyric-line')
     expect(lyricLine.find('.lyric-main').text()).toBe('星降る海')
-    expect(lyricLine.find('.lyric-trans').text()).toBe('Hoshifuru Umi')
+    expect(lyricLine.find('.lyric-trans').exists()).toBe(false)
     expect(lyricLine.find('.lyric-roma').exists()).toBe(false)
   })
 
-  it('does not duplicate romanized lyrics when roma display is enabled', async () => {
+  it('renders romanized lyrics only in the dedicated roma line when enabled', async () => {
     const store = usePlayerStore()
     store.initAudio()
     store.lyricType = ['original', 'trans', 'roma']

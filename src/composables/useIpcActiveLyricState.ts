@@ -2,6 +2,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { services } from '../services'
 import type { Song, SongPlatform } from '../types/schemas'
+import type { LyricDisplayType } from '../types/player'
 import type { LyricLine } from '../utils/player/core/lyric'
 import type {
   DesktopLyricSnapshot,
@@ -19,6 +20,7 @@ interface PlayerStateSnapshot {
   currentSong: Song | null
   currentLyricIndex: number
   progress?: number
+  lyricType?: LyricDisplayType[]
 }
 
 interface PlayerBridge {
@@ -118,6 +120,15 @@ function isSameSong(
   return song.id === songId && (song.platform ?? 'netease') === (platform ?? 'netease')
 }
 
+function normalizeLyricTypes(value: unknown): LyricDisplayType[] {
+  const allowedOptionalTypes: LyricDisplayType[] = ['trans', 'roma']
+  const nextOptionalTypes = Array.isArray(value)
+    ? allowedOptionalTypes.filter(type => value.includes(type))
+    : ['trans']
+
+  return ['original', ...nextOptionalTypes]
+}
+
 const DESKTOP_LYRIC_DEBUG_STORAGE_KEY = 'luo.desktopLyricDebug'
 
 /**
@@ -193,9 +204,9 @@ function logDesktopLyricDebug(
  * - `currentLyric`: displayed original lyric text (falls back to `emptyText`)
  * - `currentTrans`: displayed translated lyric text
  * - `currentRoma`: displayed romanization text
- * - `secondaryLyric`: `currentTrans` or `currentRoma`, whichever is present
+ * - `secondaryLyric`: a compatibility secondary lyric string respecting the current lyric display settings
  * - `isPlaying`: whether playback is currently active
- * - `showOriginal`, `showTrans`, `showRoma`: display flags (always `true`)
+ * - `showOriginal`, `showTrans`, `showRoma`: display flags synchronized from player state
  */
 export function useIpcActiveLyricState(emptyText = '') {
   const RECENT_LYRIC_PUSH_GUARD_MS = 1200
@@ -209,6 +220,7 @@ export function useIpcActiveLyricState(emptyText = '') {
   const ipcIsPlaying = ref(false)
   const cachedLyrics = ref<LyricLine[]>([])
   const currentSong = ref<Song | null>(null)
+  const visibleLyricTypes = ref<LyricDisplayType[]>(['original', 'trans'])
   const unsubscribers: Array<() => void> = []
   let hydrationVersion = 0
   let lastLyricPushAt = 0
@@ -233,6 +245,10 @@ export function useIpcActiveLyricState(emptyText = '') {
     ipcLyricText.value = line?.text ?? emptyText
     ipcLyricTrans.value = line?.trans ?? ''
     ipcLyricRoma.value = line?.roma ?? ''
+  }
+
+  function setVisibleLyricTypes(lyricType?: unknown) {
+    visibleLyricTypes.value = normalizeLyricTypes(lyricType)
   }
 
   function resolveCurrentLine(
@@ -262,6 +278,7 @@ export function useIpcActiveLyricState(emptyText = '') {
     ipcProgress.value = snapshot.progress ?? 0
     ipcIsPlaying.value = snapshot.isPlaying ?? false
     currentSong.value = snapshot.currentSong ?? null
+    setVisibleLyricTypes(snapshot.lyricType)
 
     const snapshotLyrics = Array.isArray(snapshot.lyrics) ? snapshot.lyrics : []
     cachedLyrics.value = snapshotLyrics
@@ -336,6 +353,7 @@ export function useIpcActiveLyricState(emptyText = '') {
         snapshotIndex = state.currentLyricIndex ?? -1
         snapshotProgress = state.progress ?? 0
         snapshotPlaying = state.isPlaying ?? false
+        setVisibleLyricTypes(state.lyricType)
 
         if (snapshotSong) {
           snapshotLyrics = await playerBridge.getLyric(snapshotSong.id, snapshotSong.platform)
@@ -386,7 +404,6 @@ export function useIpcActiveLyricState(emptyText = '') {
           applyDesktopLyricSnapshot(snapshot)
         })
       )
-      return
     }
 
     if (playerBridge?.onPlayStateChange) {
@@ -543,10 +560,20 @@ export function useIpcActiveLyricState(emptyText = '') {
   const currentLyric = computed(() => ipcLyricText.value ?? emptyText)
   const currentTrans = computed(() => ipcLyricTrans.value)
   const currentRoma = computed(() => ipcLyricRoma.value)
-  const secondaryLyric = computed(() => currentTrans.value || currentRoma.value)
-  const showOriginal = computed(() => true)
-  const showTrans = computed(() => true)
-  const showRoma = computed(() => true)
+  const showOriginal = computed(() => visibleLyricTypes.value.includes('original'))
+  const showTrans = computed(() => visibleLyricTypes.value.includes('trans'))
+  const showRoma = computed(() => visibleLyricTypes.value.includes('roma'))
+  const secondaryLyric = computed(() => {
+    if (showTrans.value && currentTrans.value) {
+      return currentTrans.value
+    }
+
+    if (showRoma.value && currentRoma.value) {
+      return currentRoma.value
+    }
+
+    return ''
+  })
 
   return {
     lyrics: computed<LyricLine[]>(() => cachedLyrics.value),

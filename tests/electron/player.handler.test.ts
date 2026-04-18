@@ -107,6 +107,7 @@ describe('player.handler', () => {
       showLyric: true,
       showPlaylist: false,
       isPlayerDocked: false,
+      lyricType: ['original', 'trans', 'roma'],
       lyrics: [{ time: 42, text: 'line', trans: '', roma: '' }],
       desktopLyricSequence: 3
     })
@@ -131,7 +132,8 @@ describe('player.handler', () => {
       lyrics: [{ time: 42, text: 'line', trans: '', roma: '' }],
       songId: 'song-1',
       platform: 'netease',
-      sequence: 3
+      sequence: 3,
+      lyricType: ['original', 'trans', 'roma']
     })
     await expect(
       invokeHandlers.get('player:get-lyric')?.({ id: 'song-1', platform: 'netease' })
@@ -157,7 +159,8 @@ describe('player.handler', () => {
       lyrics: [{ time: 42, text: 'line', trans: '', roma: '' }],
       songId: 'song-1',
       platform: 'netease',
-      sequence: 3
+      sequence: 3,
+      lyricType: ['original', 'trans', 'roma']
     })
   })
 
@@ -466,7 +469,101 @@ describe('player.handler', () => {
       lyrics: [],
       songId: 'song-2',
       platform: 'netease',
-      sequence: 0
+      sequence: 0,
+      lyricType: ['original', 'trans']
+    })
+  })
+
+  it('rebroadcasts desktop lyric state when lyric display settings change', async () => {
+    const sendHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(() => {})
+    registerSendMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        sendHandlers.set(channel, handler)
+      }
+    )
+
+    const { flushStateBroadcasts, registerPlayerHandlers } =
+      await import('../../electron/ipc/handlers/player.handler')
+
+    const song = {
+      id: 'song-1',
+      name: 'Song 1',
+      artists: [{ id: 'artist-1', name: 'Artist 1' }],
+      album: { id: 'album-1', name: 'Album 1', picUrl: '' },
+      duration: 180000,
+      mvid: 0,
+      platform: 'netease',
+      originalId: 'song-1'
+    } as const
+
+    registerPlayerHandlers(
+      {
+        send: vi.fn(),
+        syncPlaybackState: vi.fn(),
+        syncTrayPlayMode: vi.fn()
+      } as never,
+      {
+        handleRequest: vi.fn()
+      } as never
+    )
+
+    const syncState = sendHandlers.get('player:sync-state')
+    syncState?.({
+      isPlaying: true,
+      isLoading: false,
+      progress: 42,
+      duration: 180,
+      volume: 0.8,
+      isMuted: false,
+      playMode: 1,
+      playlist: [song],
+      currentIndex: 0,
+      currentSong: song,
+      lyricSong: song,
+      currentLyricIndex: 0,
+      showLyric: true,
+      showPlaylist: false,
+      isPlayerDocked: false,
+      lyricType: ['original', 'trans'],
+      lyrics: [{ time: 42, text: 'line', trans: 'trans', roma: 'roma' }],
+      desktopLyricSequence: 3
+    })
+    flushStateBroadcasts()
+    broadcastMock.mockClear()
+
+    syncState?.({
+      isPlaying: true,
+      isLoading: false,
+      progress: 42,
+      duration: 180,
+      volume: 0.8,
+      isMuted: false,
+      playMode: 1,
+      playlist: [song],
+      currentIndex: 0,
+      currentSong: song,
+      lyricSong: song,
+      currentLyricIndex: 0,
+      showLyric: true,
+      showPlaylist: false,
+      isPlayerDocked: false,
+      lyricType: ['original', 'trans', 'roma'],
+      lyrics: [{ time: 42, text: 'line', trans: 'trans', roma: 'roma' }],
+      desktopLyricSequence: 3
+    })
+    flushStateBroadcasts()
+
+    expect(broadcastMock).toHaveBeenCalledWith('player:desktop-lyric-state', {
+      currentSong: song,
+      currentLyricIndex: 0,
+      progress: 42,
+      isPlaying: true,
+      lyrics: [{ time: 42, text: 'line', trans: 'trans', roma: 'roma' }],
+      songId: 'song-1',
+      platform: 'netease',
+      sequence: 3,
+      lyricType: ['original', 'trans', 'roma']
     })
   })
 

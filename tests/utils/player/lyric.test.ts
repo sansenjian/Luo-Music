@@ -53,6 +53,46 @@ describe('LyricParser', () => {
     ])
   })
 
+  it('merges netease-style romanized lyrics with moderate timestamp drift into the same block', () => {
+    const lyrics = LyricParser.parse(
+      '[00:01.00]ほら 見失わないように',
+      '[00:01.00]来 别再走丢了',
+      '[00:01.35]hora mi u shi na wa na i yo u ni'
+    )
+
+    expect(lyrics).toEqual([
+      {
+        time: 1,
+        text: 'ほら 見失わないように',
+        trans: '来 别再走丢了',
+        roma: 'hora mi u shi na wa na i yo u ni'
+      }
+    ])
+  })
+
+  it('falls back to sequential original-line matching when later romanized timestamps drift too far', () => {
+    const lyrics = LyricParser.parse(
+      '[00:01.00]きみと辿り着けるさ\n[00:05.00]心には会いたい誰かがいて',
+      '[00:01.00]我定会与你共同抵达\n[00:05.00]心中还有一道渴望相见的身影',
+      '[00:01.20]ki mi to ta do ri tsu ke ru sa\n[00:07.40]ko ko ro ni wa a i ta i da re ka ga i te'
+    )
+
+    expect(lyrics).toEqual([
+      {
+        time: 1,
+        text: 'きみと辿り着けるさ',
+        trans: '我定会与你共同抵达',
+        roma: 'ki mi to ta do ri tsu ke ru sa'
+      },
+      {
+        time: 5,
+        text: '心には会いたい誰かがいて',
+        trans: '心中还有一道渴望相见的身影',
+        roma: 'ko ko ro ni wa a i ta i da re ka ga i te'
+      }
+    ])
+  })
+
   it('appends same-timestamp content instead of overwriting it', () => {
     const lyrics = LyricParser.parse(
       '[00:01.00]Line A\n[00:01.00]Line B',

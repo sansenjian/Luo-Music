@@ -194,6 +194,48 @@ describe('LyricFloat', () => {
     expect(wrapper.find('.lrc-sub').text()).toBe('Translated Line')
   })
 
+  it('renders romanized lyrics on desktop when lyric settings enable them', async () => {
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.desktopLyricStateListeners.forEach(listener => {
+      listener({
+        currentSong: {
+          id: 1,
+          name: 'Song',
+          artists: [{ id: 1, name: 'Artist' }],
+          album: { id: 1, name: 'Album', picUrl: '' },
+          duration: 180000,
+          mvid: 0,
+          platform: 'netease',
+          originalId: 1
+        },
+        currentLyricIndex: 0,
+        progress: 1,
+        isPlaying: true,
+        songId: 1,
+        platform: 'netease',
+        sequence: 4,
+        lyricType: ['original', 'trans', 'roma'],
+        lyrics: [
+          {
+            time: 0,
+            text: 'Main Line',
+            trans: 'Translated Line',
+            roma: 'Roma Line'
+          }
+        ]
+      })
+    })
+    await nextTick()
+
+    expect(wrapper.find('.lrc-main').text()).toBe('Main Line')
+    expect(wrapper.find('.lrc-roma').text()).toBe('Roma Line')
+    expect(wrapper.find('.lrc-trans').text()).toBe('Translated Line')
+  })
+
   it('prefers the unified desktop lyric state stream when it is available', async () => {
     const wrapper = mount(LyricFloat)
     await nextTick()
@@ -877,6 +919,23 @@ describe('LyricFloat', () => {
   it('falls back to roma lyric when translated lyric is empty', async () => {
     const wrapper = mount(LyricFloat)
     await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.desktopLyricStateListeners.forEach(listener => {
+      listener({
+        currentSong: null,
+        currentLyricIndex: -1,
+        progress: 0,
+        isPlaying: false,
+        songId: null,
+        platform: null,
+        sequence: 1,
+        lyricType: ['original', 'roma'],
+        lyrics: []
+      })
+    })
+    await nextTick()
 
     const lyricListeners = platformState.listeners.get('lyric-time-update')
     lyricListeners?.forEach(listener => {
@@ -888,7 +947,8 @@ describe('LyricFloat', () => {
     })
     await nextTick()
 
-    expect(wrapper.find('.lrc-sub').text()).toBe('Roma Line')
+    expect(wrapper.find('.lrc-roma').text()).toBe('Roma Line')
+    expect(wrapper.find('.lrc-trans').exists()).toBe(false)
   })
 
   it('requires a deliberate click after unlock activation instead of unlocking on hover', async () => {

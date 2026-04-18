@@ -5,6 +5,7 @@ import { useActiveLyricState } from '../composables/useActiveLyricState'
 import { useLyricAutoScroll } from '../composables/useLyricAutoScroll'
 import { usePlayerStore } from '../store/playerStore'
 import type { LyricLine } from '../utils/player/core/lyric'
+import { resolveLyricDisplayLine } from '../utils/player/lyric-display'
 
 const props = defineProps({
   active: {
@@ -31,30 +32,35 @@ function handleLyricKeydown(event: KeyboardEvent, time: number) {
 }
 
 function shouldShowOriginalLine(item: LyricLine) {
-  if (showOriginal.value) {
-    return true
-  }
-
-  const hasVisibleTrans = Boolean(getVisibleTransText(item))
-  const hasVisibleRoma = shouldShowRomaLine(item)
-
-  return !hasVisibleTrans && !hasVisibleRoma
+  return getDisplayLine(item).showOriginal
 }
 
 function shouldShowRomaLine(item: LyricLine) {
-  return showRoma.value && Boolean(item.roma)
+  return getDisplayLine(item).showRoma
+}
+
+function shouldShowTransLine(item: LyricLine) {
+  return getDisplayLine(item).showTrans
+}
+
+function getVisibleOriginalText(item: LyricLine) {
+  return getDisplayLine(item).original
+}
+
+function getVisibleRomaText(item: LyricLine) {
+  return getDisplayLine(item).roma
 }
 
 function getVisibleTransText(item: LyricLine) {
-  if (!showTrans.value) {
-    return ''
-  }
+  return getDisplayLine(item).trans
+}
 
-  if (item.trans) {
-    return item.trans
-  }
-
-  return showRoma.value ? '' : item.roma
+function getDisplayLine(item: LyricLine) {
+  return resolveLyricDisplayLine(item, {
+    showOriginal: showOriginal.value,
+    showTrans: showTrans.value,
+    showRoma: showRoma.value
+  })
 }
 
 const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
@@ -98,12 +104,12 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
           @keydown="handleLyricKeydown($event, item.time)"
         >
           <div v-if="shouldShowRomaLine(item)" class="lyric-roma">
-            {{ item.roma }}
+            {{ getVisibleRomaText(item) }}
           </div>
           <div v-if="shouldShowOriginalLine(item)" class="lyric-main">
-            {{ item.text }}
+            {{ getVisibleOriginalText(item) }}
           </div>
-          <div v-if="getVisibleTransText(item)" class="lyric-trans">
+          <div v-if="shouldShowTransLine(item)" class="lyric-trans">
             {{ getVisibleTransText(item) }}
           </div>
         </div>

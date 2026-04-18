@@ -1,15 +1,41 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { useActiveLyricState } from '../composables/useActiveLyricState'
 import { services } from '../services'
+import { resolveLyricDisplayLine } from '../utils/player/lyric-display'
 
 const platformService = services.platform()
 const playerService = services.player()
-const { currentLyric, secondaryLyric, isPlaying } = useActiveLyricState({
+const {
+  currentLine,
+  currentLyric,
+  currentTrans,
+  currentRoma,
+  showOriginal,
+  showTrans,
+  showRoma,
+  isPlaying
+} = useActiveLyricState({
   source: 'ipc',
   emptyText: 'Desktop Lyric'
 })
+
+const displayLine = computed(() =>
+  resolveLyricDisplayLine(
+    currentLine.value ?? {
+      text: currentLyric.value === 'Desktop Lyric' ? '' : currentLyric.value,
+      trans: currentTrans.value,
+      roma: currentRoma.value
+    },
+    {
+      showOriginal: showOriginal.value,
+      showTrans: showTrans.value,
+      showRoma: showRoma.value
+    },
+    currentLyric.value
+  )
+)
 
 const isLocked = ref(false)
 const isHovering = ref(false)
@@ -260,9 +286,14 @@ onUnmounted(() => {
     <div v-if="!isLocked" class="background"></div>
 
     <div class="lyric-content">
-      <div class="lrc-main" :data-text="currentLyric">{{ currentLyric }}</div>
-      <div v-if="secondaryLyric" class="lrc-sub">
-        {{ secondaryLyric }}
+      <div v-if="displayLine.showRoma" class="lrc-sub lrc-roma">
+        {{ displayLine.roma }}
+      </div>
+      <div v-if="displayLine.showOriginal" class="lrc-main" :data-text="displayLine.original">
+        {{ displayLine.original }}
+      </div>
+      <div v-if="displayLine.showTrans" class="lrc-sub lrc-trans">
+        {{ displayLine.trans }}
       </div>
     </div>
 
@@ -414,6 +445,14 @@ onUnmounted(() => {
   -webkit-text-stroke: 1px #fff;
   paint-order: stroke fill;
   text-shadow: 2px 2px 0px #fff;
+}
+
+.lrc-roma {
+  margin-bottom: 4px;
+}
+
+.lrc-trans {
+  margin-top: 4px;
 }
 
 .controls {

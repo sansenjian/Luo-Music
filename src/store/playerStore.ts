@@ -291,6 +291,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       showLyric: store.showLyric,
       showPlaylist: store.showPlaylist,
       isPlayerDocked: store.isPlayerDocked,
+      lyricType: [...store.lyricType],
       lyrics: toIpcSerializable(store.lyricsArray) as PlayerStateSnapshot['lyrics'],
       desktopLyricSequence: getDesktopLyricSequence(store)
     }

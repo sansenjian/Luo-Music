@@ -27,7 +27,7 @@ import type {
   LocalLibraryTrackQuery
 } from '@/types/localLibrary'
 import type { Song, SongPlatform } from '@/types/schemas.ts'
-import type { PlayMode as PlayerPlayMode } from '../../src/types/player'
+import type { LyricDisplayType, PlayMode as PlayerPlayMode } from '../../src/types/player'
 import type { LyricLine as PlayerLyricLine } from '../../src/utils/player/core/lyric'
 
 // 导出 PlayMode 类型供 handlers 使用
@@ -124,6 +124,7 @@ export interface PlayerStateResponse {
   showLyric: boolean
   showPlaylist: boolean
   isPlayerDocked: boolean
+  lyricType: LyricDisplayType[]
 }
 
 export interface PlayerStateSnapshot extends PlayerStateResponse {
@@ -141,6 +142,7 @@ export interface DesktopLyricSnapshot {
   songId: string | number | null
   platform: SongPlatform | null
   sequence: number
+  lyricType: LyricDisplayType[]
 }
 
 export interface PlayerPlaySongPayload {
