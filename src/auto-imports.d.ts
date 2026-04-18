@@ -189,6 +189,7 @@ declare global {
   const useDebounce: typeof import('@vueuse/core').useDebounce
   const useDebounceFn: typeof import('@vueuse/core').useDebounceFn
   const useDebouncedRefHistory: typeof import('@vueuse/core').useDebouncedRefHistory
+  const useDeferredMount: typeof import('./composables/useDeferredMount').useDeferredMount
   const useDeviceMotion: typeof import('@vueuse/core').useDeviceMotion
   const useDeviceOrientation: typeof import('@vueuse/core').useDeviceOrientation
   const useDevicePixelRatio: typeof import('@vueuse/core').useDevicePixelRatio
@@ -221,6 +222,8 @@ declare global {
   const useHomeBrandPlacement: typeof import('./composables/useHomeBrandPlacement').useHomeBrandPlacement
   const useHomePage: typeof import('./composables/useHomePage').default
   const useHomeShell: typeof import('./composables/useHomeShell').useHomeShell
+  const useHomeSidebarCollections: typeof import('./composables/useHomeSidebarCollections').useHomeSidebarCollections
+  const useHomeWorkspaceState: typeof import('./composables/useHomeWorkspaceState').useHomeWorkspaceState
   const useId: typeof import('vue').useId
   const useIdle: typeof import('@vueuse/core').useIdle
   const useImage: typeof import('@vueuse/core').useImage
@@ -416,6 +419,9 @@ declare global {
   // @ts-ignore
   export type { HomeTab, HomeShellDeps } from './composables/useHomeShell'
   import('./composables/useHomeShell')
+  // @ts-ignore
+  export type { HomeWorkspaceView } from './composables/useHomeWorkspaceState'
+  import('./composables/useHomeWorkspaceState')
   // @ts-ignore
   export type { KeyboardShortcutDeps } from './composables/useKeyboardShortcuts'
   import('./composables/useKeyboardShortcuts')
@@ -715,6 +721,9 @@ declare module 'vue' {
     readonly useDebouncedRefHistory: UnwrapRef<
       (typeof import('@vueuse/core'))['useDebouncedRefHistory']
     >
+    readonly useDeferredMount: UnwrapRef<
+      (typeof import('./composables/useDeferredMount'))['useDeferredMount']
+    >
     readonly useDeviceMotion: UnwrapRef<(typeof import('@vueuse/core'))['useDeviceMotion']>
     readonly useDeviceOrientation: UnwrapRef<
       (typeof import('@vueuse/core'))['useDeviceOrientation']
@@ -759,6 +768,12 @@ declare module 'vue' {
     >
     readonly useHomePage: UnwrapRef<(typeof import('./composables/useHomePage'))['default']>
     readonly useHomeShell: UnwrapRef<(typeof import('./composables/useHomeShell'))['useHomeShell']>
+    readonly useHomeSidebarCollections: UnwrapRef<
+      (typeof import('./composables/useHomeSidebarCollections'))['useHomeSidebarCollections']
+    >
+    readonly useHomeWorkspaceState: UnwrapRef<
+      (typeof import('./composables/useHomeWorkspaceState'))['useHomeWorkspaceState']
+    >
     readonly useId: UnwrapRef<(typeof import('vue'))['useId']>
     readonly useIdle: UnwrapRef<(typeof import('@vueuse/core'))['useIdle']>
     readonly useImage: UnwrapRef<(typeof import('@vueuse/core'))['useImage']>

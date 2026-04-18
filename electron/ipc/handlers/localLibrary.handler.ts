@@ -5,8 +5,74 @@ import { localLibraryService } from '../../local-library/service'
 import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channels.ts'
 import { ipcService } from '../IpcService'
 import type { WindowManager } from '../../WindowManager'
+import type { LocalLibrarySummaryQuery, LocalLibraryTrackQuery } from '@/types/localLibrary'
 
 let listenersRegistered = false
+
+function parseOptionalString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+
+  if (typeof value !== 'string') {
+    throw new Error(`Invalid ${fieldName}`)
+  }
+
+  return value
+}
+
+function parseOptionalLimit(value: unknown): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    !Number.isInteger(value) ||
+    value < 1
+  ) {
+    throw new Error('Invalid query.limit')
+  }
+
+  return value
+}
+
+function parseSummaryQuery(query: unknown): LocalLibrarySummaryQuery | undefined {
+  if (query === undefined || query === null) {
+    return undefined
+  }
+
+  if (typeof query !== 'object') {
+    throw new Error('Invalid local library summary query')
+  }
+
+  const candidate = query as Record<string, unknown>
+  return {
+    cursor:
+      candidate.cursor === null ? null : parseOptionalString(candidate.cursor, 'query.cursor'),
+    limit: parseOptionalLimit(candidate.limit),
+    search: parseOptionalString(candidate.search, 'query.search')
+  }
+}
+
+function parseTrackQuery(query: unknown): LocalLibraryTrackQuery | undefined {
+  if (query === undefined || query === null) {
+    return undefined
+  }
+
+  if (typeof query !== 'object') {
+    throw new Error('Invalid local library track query')
+  }
+
+  const candidate = query as Record<string, unknown>
+  return {
+    ...parseSummaryQuery(query),
+    album: parseOptionalString(candidate.album, 'query.album'),
+    artist: parseOptionalString(candidate.artist, 'query.artist'),
+    folderId: parseOptionalString(candidate.folderId, 'query.folderId')
+  }
+}
 
 function ensureLocalLibraryListenersRegistered(): void {
   if (listenersRegistered) {
@@ -75,15 +141,15 @@ export function registerLocalLibraryHandlers(
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.LOCAL_LIBRARY_GET_TRACKS, async query => {
-    return localLibraryService.getTracksPage(query)
+    return localLibraryService.getTracksPage(parseTrackQuery(query))
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.LOCAL_LIBRARY_GET_ARTISTS, async query => {
-    return localLibraryService.getArtistsPage(query)
+    return localLibraryService.getArtistsPage(parseSummaryQuery(query))
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.LOCAL_LIBRARY_GET_ALBUMS, async query => {
-    return localLibraryService.getAlbumsPage(query)
+    return localLibraryService.getAlbumsPage(parseSummaryQuery(query))
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.LOCAL_LIBRARY_GET_COVER, async (coverHash: string) => {

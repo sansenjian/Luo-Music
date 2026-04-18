@@ -9,6 +9,7 @@ import type { MusicService } from '@/services/musicService'
 import type { PlatformService } from '@/services/platformService'
 import { storageAdapter } from '@/services/storageService'
 import type { StorageService } from '@/services/storageService'
+import { isSameSongIdentity } from '@/utils/songIdentity'
 import {
   createLyricTimeUpdatePayload,
   getCurrentLyricLine,
@@ -199,7 +200,7 @@ function toPlayMode(mode: number): StorePlayMode {
 }
 
 function isSameSong(left: Song, right: Song): boolean {
-  return left.id === right.id && left.platform === right.platform
+  return isSameSongIdentity(left, right)
 }
 
 function normalizeLyricTypes(value: unknown): Array<'original' | 'trans' | 'roma'> {

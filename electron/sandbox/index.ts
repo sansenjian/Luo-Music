@@ -153,11 +153,17 @@ function createValidatedIpcBridge(renderer: Electron.IpcRenderer): ValidatedIpcB
     },
 
     removeListener(channel: string, callback: (...args: unknown[]) => void): void {
+      if (!validReceiveChannels.has(channel as ReceiveChannel)) {
+        throw new Error(`Invalid receive channel: ${channel}`)
+      }
       renderer.removeListener(channel as ReceiveChannel, callback)
     },
 
     removeAllListeners(channel?: string): void {
-      renderer.removeAllListeners(channel)
+      if (!channel || !validReceiveChannels.has(channel as ReceiveChannel)) {
+        throw new Error(`Invalid receive channel: ${String(channel)}`)
+      }
+      renderer.removeAllListeners(channel as ReceiveChannel)
     },
 
     invoke<T = unknown>(channel: string, ...args: unknown[]): Promise<T> {

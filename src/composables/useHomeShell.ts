@@ -64,15 +64,15 @@ export function useHomeShell(deps: HomeShellDeps = {}) {
     return platformService.isMobile()
   }
 
-  const userPreferenceSet =
-    storageService.getItem(PLAYER_DOCKED_PREFERENCE_KEY) ??
-    storageService.getItem(LEGACY_COMPACT_MODE_PREFERENCE_KEY)
-  if (isMobile() && !playerStore.isPlayerDocked && !userPreferenceSet) {
-    playerStore.isPlayerDocked = true
-    storageService.setItem(PLAYER_DOCKED_PREFERENCE_KEY, 'true')
-  }
-
   onMounted(() => {
+    const userPreferenceSet =
+      storageService.getItem(PLAYER_DOCKED_PREFERENCE_KEY) ??
+      storageService.getItem(LEGACY_COMPACT_MODE_PREFERENCE_KEY)
+    if (isMobile() && !playerStore.isPlayerDocked && !userPreferenceSet) {
+      playerStore.isPlayerDocked = true
+      storageService.setItem(PLAYER_DOCKED_PREFERENCE_KEY, 'true')
+    }
+
     if (isElectron.value && !playerStore.ipcInitialized) {
       playerStore.setupIpcListeners()
     }

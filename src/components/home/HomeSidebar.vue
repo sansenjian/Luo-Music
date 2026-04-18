@@ -1,69 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
-import { useFavoriteAlbums, type FavoriteAlbumItem } from '@/composables/useFavoriteAlbums'
+import {
+  HOME_SIDEBAR_EXPLORE_ITEMS,
+  HOME_SIDEBAR_ICON_MARKUP_MAP,
+  HOME_SIDEBAR_LIBRARY_ITEMS
+} from '@/components/home/homeSidebar.constants'
+import { useHomeSidebarCollections } from '@/composables/useHomeSidebarCollections'
 import { useRenderStyle } from '@/composables/useRenderStyle'
-import { useUserPlaylists, type PlaylistItem } from '@/composables/useUserPlaylists'
-import { useUserStore } from '@/store/userStore'
 
 import HomeBrandBadge from './HomeBrandBadge.vue'
 import HomeSidebarFooter from './HomeSidebarFooter.vue'
-import type { HomeSidebarCollectionSelection } from './homeSidebar.types'
-
-type SidebarIconName =
-  | 'home'
-  | 'discover'
-  | 'roaming'
-  | 'liked'
-  | 'history'
-  | 'songs'
-  | 'favorites'
-  | 'artists'
-  | 'local'
-
-type SidebarNavItem = {
-  id: string
-  label: string
-  icon: SidebarIconName
-}
-
-type SidebarPlaylistFilter = 'created' | 'favorites'
-type SidebarCollectionItem = HomeSidebarCollectionSelection
-
-const exploreItems: SidebarNavItem[] = [
-  { id: 'home', label: '主页', icon: 'home' },
-  { id: 'discover', label: '发现', icon: 'discover' },
-  { id: 'roaming', label: '漫游', icon: 'roaming' }
-]
-
-const libraryItems: SidebarNavItem[] = [
-  { id: 'liked', label: '我喜欢的音乐', icon: 'liked' },
-  { id: 'history', label: '最近播放', icon: 'history' },
-  { id: 'songs', label: '歌曲', icon: 'songs' },
-  { id: 'favorites', label: '收藏', icon: 'favorites' },
-  { id: 'artists', label: '艺人', icon: 'artists' },
-  { id: 'local', label: '本地音乐', icon: 'local' }
-]
-
-const iconMarkupMap: Record<SidebarIconName, string> = {
-  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 11.8 12 5l8 6.8V20a1 1 0 0 1-1 1h-4.8v-5.2H9.8V21H5a1 1 0 0 1-1-1z"/></svg>',
-  discover:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5A8.5 8.5 0 0 0 12 3.5Zm2.9 5.6-1.8 5-5 1.8 1.8-5 5-1.8Z"/></svg>',
-  roaming:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3.8 15.8c2.1-2.5 4.7-3.8 7.8-3.8s5.7 1.3 7.8 3.8"/><path d="M7 10.4a5.2 5.2 0 0 1 10 0"/><circle cx="12" cy="17.2" r="1.1"/></svg>',
-  liked:
-    '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M12 20.2 5 13.6a4.4 4.4 0 0 1 6.2-6.2L12 8.2l.8-.8a4.4 4.4 0 0 1 6.2 6.2Z"/></svg>',
-  history:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 4.2a7.8 7.8 0 1 1-6.7 3.8"/><path d="M5.3 4.8v4.4h4.4"/><path d="M12 8.2v4.2l2.8 1.8"/></svg>',
-  songs:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M15.5 5.2v8.4a2.7 2.7 0 1 1-1.4-2.4V6.4l6-1.2v7.2a2.7 2.7 0 1 1-1.4-2.4V4Z"/></svg>',
-  favorites:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4.6 6.4h4l1.3 1.8h9.5a1 1 0 0 1 1 1V18a1.5 1.5 0 0 1-1.5 1.5H5.1A1.5 1.5 0 0 1 3.6 18V7.4a1 1 0 0 1 1-1Z"/></svg>',
-  artists:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M8.1 11.2a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Zm7.8 0a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Z"/><path d="M3.9 18.8a4.2 4.2 0 0 1 8.4 0"/><path d="M11.7 18.8a4.2 4.2 0 0 1 8.4 0"/></svg>',
-  local:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5.2 6.2h13.6a1.2 1.2 0 0 1 1.2 1.2v9.2a1.2 1.2 0 0 1-1.2 1.2H5.2A1.2 1.2 0 0 1 4 16.6V7.4a1.2 1.2 0 0 1 1.2-1.2Z"/><path d="M8 18.8h8"/><path d="M8.6 11.6h6.8"/></svg>'
-}
+import type { HomeSidebarCollectionSelection, SidebarIconName } from './homeSidebar.types'
 
 const props = withDefaults(
   defineProps<{
@@ -84,63 +32,16 @@ const emit = defineEmits<{
 }>()
 
 const internalActiveItemId = ref<string>('home')
-const activePlaylistFilter = ref<SidebarPlaylistFilter>('created')
 const { renderStyle } = useRenderStyle()
-const userStore = useUserStore()
 const {
-  createdPlaylists,
-  favoritePlaylists,
-  loading: playlistsLoading,
-  loadPlaylists,
-  resetPlaylists
-} = useUserPlaylists()
-const {
-  albums: favoriteAlbums,
-  loading: favoriteAlbumsLoading,
-  loadFavoriteAlbums,
-  resetFavoriteAlbums
-} = useFavoriteAlbums()
-
-const visibleCollections = computed<SidebarCollectionItem[]>(() =>
-  activePlaylistFilter.value === 'created'
-    ? createdPlaylists.value.map(playlist => mapPlaylistToCollectionItem(playlist))
-    : [
-        ...favoritePlaylists.value.map(playlist => mapPlaylistToCollectionItem(playlist)),
-        ...favoriteAlbums.value.map(album => mapAlbumToCollectionItem(album))
-      ]
-)
-const sidebarCollectionsLoading = computed(() =>
-  activePlaylistFilter.value === 'created'
-    ? playlistsLoading.value
-    : playlistsLoading.value || favoriteAlbumsLoading.value
-)
+  activePlaylistFilter,
+  emptyMessage: playlistEmptyMessage,
+  resolveCollectionCoverLabel,
+  resolveCollectionTone,
+  selectPlaylistFilter,
+  visibleCollections
+} = useHomeSidebarCollections()
 const resolvedActiveItemId = computed(() => props.activeItemId ?? internalActiveItemId.value)
-const playlistEmptyMessage = computed(() => {
-  if (!userStore.isLoggedIn) {
-    return '登录后查看歌单'
-  }
-
-  if (sidebarCollectionsLoading.value) {
-    return activePlaylistFilter.value === 'created' ? '歌单加载中...' : '收藏加载中...'
-  }
-
-  return activePlaylistFilter.value === 'created' ? '暂无我的歌单' : '暂无收藏歌单'
-})
-
-watch(
-  () => [userStore.isLoggedIn, userStore.userId] as const,
-  ([isLoggedIn, userId]) => {
-    if (isLoggedIn && userId !== null && userId !== undefined && userId !== '') {
-      void loadPlaylists(userId)
-      void loadFavoriteAlbums(userId)
-      return
-    }
-
-    resetPlaylists()
-    resetFavoriteAlbums()
-  },
-  { immediate: true }
-)
 
 function activateItem(itemId: string): void {
   if (props.activeItemId === undefined) {
@@ -159,75 +60,8 @@ function isActive(itemId: string): boolean {
   return resolvedActiveItemId.value === itemId
 }
 
-function selectPlaylistFilter(filter: SidebarPlaylistFilter): void {
-  activePlaylistFilter.value = filter
-}
-
 function resolveIconMarkup(iconName: SidebarIconName): string {
-  return iconMarkupMap[iconName]
-}
-
-function mapPlaylistToCollectionItem(playlist: PlaylistItem): SidebarCollectionItem {
-  return {
-    uiId: `playlist:${playlist.id}`,
-    sourceId: playlist.id,
-    kind: 'playlist',
-    name: playlist.name,
-    coverUrl: typeof playlist.coverImgUrl === 'string' ? playlist.coverImgUrl : '',
-    summary: resolvePlaylistSummary(playlist)
-  }
-}
-
-function mapAlbumToCollectionItem(album: FavoriteAlbumItem): SidebarCollectionItem {
-  return {
-    uiId: `album:${album.id}`,
-    sourceId: album.id,
-    kind: 'album',
-    name: album.name,
-    coverUrl: album.picUrl,
-    summary: resolveAlbumSummary(album)
-  }
-}
-
-function resolvePlaylistSummary(playlist: PlaylistItem): string {
-  const trackCount = Number(playlist.trackCount)
-  if (Number.isFinite(trackCount) && trackCount > 0) {
-    return `${trackCount} 首歌`
-  }
-
-  return '歌单'
-}
-
-function resolveAlbumSummary(album: FavoriteAlbumItem): string {
-  const size = Number(album.size)
-  if (album.artistName && Number.isFinite(size) && size > 0) {
-    return `${album.artistName} · ${size} 首歌`
-  }
-
-  if (album.artistName) {
-    return album.artistName
-  }
-
-  if (Number.isFinite(size) && size > 0) {
-    return `${size} 首歌`
-  }
-
-  return '收藏'
-}
-
-function resolveCollectionCoverLabel(item: SidebarCollectionItem): string {
-  return item.name.trim().charAt(0).toUpperCase() || '歌'
-}
-
-function resolveCollectionTone(collectionId: string): 'mono' | 'violet' | 'mist' | 'ocean' {
-  const tones = ['mono', 'violet', 'mist', 'ocean'] as const
-  let hash = 0
-
-  for (const character of collectionId) {
-    hash = (hash + character.charCodeAt(0)) % tones.length
-  }
-
-  return tones[hash]
+  return HOME_SIDEBAR_ICON_MARKUP_MAP[iconName]
 }
 </script>
 
@@ -245,7 +79,7 @@ function resolveCollectionTone(collectionId: string): 'mono' | 'violet' | 'mist'
       <section class="sidebar-section" aria-labelledby="sidebar-explore-title">
         <p v-if="!props.collapsed" id="sidebar-explore-title" class="section-title">探索</p>
         <button
-          v-for="item in exploreItems"
+          v-for="item in HOME_SIDEBAR_EXPLORE_ITEMS"
           :key="item.id"
           type="button"
           class="sidebar-link"
@@ -266,7 +100,7 @@ function resolveCollectionTone(collectionId: string): 'mono' | 'violet' | 'mist'
       <section class="sidebar-section" aria-labelledby="sidebar-library-title">
         <p v-if="!props.collapsed" id="sidebar-library-title" class="section-title">资料库</p>
         <button
-          v-for="item in libraryItems"
+          v-for="item in HOME_SIDEBAR_LIBRARY_ITEMS"
           :key="item.id"
           type="button"
           class="sidebar-link sidebar-link-muted"
@@ -292,7 +126,7 @@ function resolveCollectionTone(collectionId: string): 'mono' | 'violet' | 'mist'
             type="button"
             class="playlist-filter"
             :class="{ active: activePlaylistFilter === 'created' }"
-            aria-pressed="true"
+            :aria-pressed="activePlaylistFilter === 'created'"
             @click="selectPlaylistFilter('created')"
           >
             我的歌单

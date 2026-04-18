@@ -91,15 +91,18 @@ export class IpcProxy {
   }
 
   removeListener(channel: Channel, listener: (...args: unknown[]) => void): void {
+    if (!isValidReceiveChannel(channel)) {
+      throw new Error(`[IpcProxy] Invalid receive channel: ${channel}`)
+    }
     this.ipcRenderer.removeListener(channel, listener)
   }
 
   removeAllListeners(channel?: Channel): void {
-    if (channel) {
-      this.ipcRenderer.removeAllListeners(channel)
-    } else {
-      this.ipcRenderer.removeAllListeners()
+    if (!channel || !isValidReceiveChannel(channel)) {
+      throw new Error(`[IpcProxy] Invalid receive channel: ${String(channel)}`)
     }
+
+    this.ipcRenderer.removeAllListeners(channel)
   }
 }
 

@@ -25,29 +25,26 @@ vi.mock('@/store/toastStore', () => ({
   useToastStore: () => toastStoreMock
 }))
 
-describe('HomeLocalMusicPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('renders the unsupported state outside Electron', async () => {
-    useLocalLibraryMock.mockReturnValue({
-      state: ref({
-        supported: false,
-        folders: [],
-        tracks: [],
-        status: {
-          phase: 'idle',
-          scannedFolders: 0,
-          scannedFiles: 0,
-          discoveredTracks: 0,
-          currentFolder: null,
-          startedAt: null,
-          finishedAt: null,
-          message: '本地音乐仅支持 Electron 桌面端'
-        }
-      }),
-      status: computed(() => ({
+function createLocalLibraryMock(
+  overrides: {
+    albumsPage?: ReturnType<typeof ref>
+    artistsPage?: ReturnType<typeof ref>
+    coverUrls?: ReturnType<typeof ref>
+    loading?: ReturnType<typeof ref>
+    mutating?: ReturnType<typeof ref>
+    pageLoading?: ReturnType<typeof ref>
+    songsPage?: ReturnType<typeof ref>
+    state?: ReturnType<typeof ref>
+    status?: ReturnType<typeof ref>
+  } = {}
+) {
+  const state =
+    overrides.state ??
+    ref({
+      supported: false,
+      folders: [],
+      tracks: [],
+      status: {
         phase: 'idle',
         scannedFolders: 0,
         scannedFiles: 0,
@@ -56,38 +53,98 @@ describe('HomeLocalMusicPanel', () => {
         startedAt: null,
         finishedAt: null,
         message: '本地音乐仅支持 Electron 桌面端'
-      })),
-      loading: ref(false),
-      pageLoading: ref(false),
-      mutating: ref(false),
-      songsPage: ref({
-        items: [],
-        nextCursor: null,
-        total: 0,
-        limit: 60
-      }),
-      artistsPage: ref({
-        items: [],
-        nextCursor: null,
-        total: 0,
-        limit: 60
-      }),
-      albumsPage: ref({
-        items: [],
-        nextCursor: null,
-        total: 0,
-        limit: 60
-      }),
-      coverUrls: ref({}),
-      refresh: vi.fn(),
-      addFolder: vi.fn(),
-      removeFolder: vi.fn(),
-      setFolderEnabled: vi.fn(),
-      rescan: vi.fn(),
-      loadTracks: vi.fn(),
-      loadArtists: vi.fn(),
-      loadAlbums: vi.fn()
+      }
     })
+  const status = overrides.status ?? computed(() => state.value.status)
+  const loading = overrides.loading ?? ref(false)
+  const pageLoading = overrides.pageLoading ?? ref(false)
+  const mutating = overrides.mutating ?? ref(false)
+  const songsPage =
+    overrides.songsPage ??
+    ref({
+      items: [],
+      nextCursor: null,
+      total: 0,
+      limit: 60
+    })
+  const artistsPage =
+    overrides.artistsPage ??
+    ref({
+      items: [],
+      nextCursor: null,
+      total: 0,
+      limit: 60
+    })
+  const albumsPage =
+    overrides.albumsPage ??
+    ref({
+      items: [],
+      nextCursor: null,
+      total: 0,
+      limit: 60
+    })
+  const coverUrls = overrides.coverUrls ?? ref({})
+
+  const refresh = vi.fn()
+  const addFolder = vi.fn()
+  const removeFolder = vi.fn()
+  const setFolderEnabled = vi.fn()
+  const rescan = vi.fn()
+  const loadTracks = vi.fn()
+  const loadArtists = vi.fn()
+  const loadAlbums = vi.fn()
+
+  return {
+    stateGroup: {
+      loading,
+      mutating,
+      pageLoading,
+      refresh,
+      state,
+      status
+    },
+    queries: {
+      albumsPage,
+      artistsPage,
+      coverUrls,
+      loadAlbums,
+      loadArtists,
+      loadTracks,
+      songsPage
+    },
+    commands: {
+      addFolder,
+      removeFolder,
+      rescan,
+      setFolderEnabled
+    },
+    state,
+    status,
+    loading,
+    pageLoading,
+    mutating,
+    songsPage,
+    artistsPage,
+    albumsPage,
+    coverUrls,
+    refresh,
+    addFolder,
+    removeFolder,
+    setFolderEnabled,
+    rescan,
+    loadTracks,
+    loadArtists,
+    loadAlbums
+  }
+}
+
+describe('HomeLocalMusicPanel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders the unsupported state outside Electron', async () => {
+    useLocalLibraryMock.mockReturnValue(createLocalLibraryMock())
 
     const { default: HomeLocalMusicPanel } =
       await import('@/components/home/HomeLocalMusicPanel.vue')
@@ -112,36 +169,48 @@ describe('HomeLocalMusicPanel', () => {
       }
     }
 
-    useLocalLibraryMock.mockReturnValue({
-      state: ref({
-        supported: true,
-        folders: [
-          {
-            id: 'folder-1',
-            path: 'D:\\Music',
-            name: 'Music',
-            enabled: true,
-            createdAt: Date.now(),
-            lastScannedAt: Date.now(),
-            songCount: 1
+    useLocalLibraryMock.mockReturnValue(
+      createLocalLibraryMock({
+        state: ref({
+          supported: true,
+          folders: [
+            {
+              id: 'folder-1',
+              path: 'D:\\Music',
+              name: 'Music',
+              enabled: true,
+              createdAt: Date.now(),
+              lastScannedAt: Date.now(),
+              songCount: 1
+            }
+          ],
+          tracks: [
+            {
+              id: 'local:track-1',
+              folderId: 'folder-1',
+              filePath: 'D:\\Music\\夜航.mp3',
+              fileName: '夜航.mp3',
+              title: '夜航',
+              artist: '本地歌手',
+              album: '本地专辑',
+              duration: 0,
+              fileSize: 1024,
+              modifiedAt: Date.now(),
+              song: localSong
+            }
+          ],
+          status: {
+            phase: 'idle',
+            scannedFolders: 1,
+            scannedFiles: 1,
+            discoveredTracks: 1,
+            currentFolder: null,
+            startedAt: Date.now(),
+            finishedAt: Date.now(),
+            message: '已收录 1 首本地歌曲'
           }
-        ],
-        tracks: [
-          {
-            id: 'local:track-1',
-            folderId: 'folder-1',
-            filePath: 'D:\\Music\\夜航.mp3',
-            fileName: '夜航.mp3',
-            title: '夜航',
-            artist: '本地歌手',
-            album: '本地专辑',
-            duration: 0,
-            fileSize: 1024,
-            modifiedAt: Date.now(),
-            song: localSong
-          }
-        ],
-        status: {
+        }),
+        status: computed(() => ({
           phase: 'idle',
           scannedFolders: 1,
           scannedFiles: 1,
@@ -150,64 +219,30 @@ describe('HomeLocalMusicPanel', () => {
           startedAt: Date.now(),
           finishedAt: Date.now(),
           message: '已收录 1 首本地歌曲'
-        }
-      }),
-      status: computed(() => ({
-        phase: 'idle',
-        scannedFolders: 1,
-        scannedFiles: 1,
-        discoveredTracks: 1,
-        currentFolder: null,
-        startedAt: Date.now(),
-        finishedAt: Date.now(),
-        message: '已收录 1 首本地歌曲'
-      })),
-      loading: ref(false),
-      pageLoading: ref(false),
-      mutating: ref(false),
-      songsPage: ref({
-        items: [
-          {
-            id: 'local:track-1',
-            folderId: 'folder-1',
-            filePath: 'D:\\Music\\夜航.mp3',
-            fileName: '夜航.mp3',
-            title: '夜航',
-            artist: '本地歌手',
-            album: '本地专辑',
-            duration: 0,
-            fileSize: 1024,
-            modifiedAt: Date.now(),
-            coverHash: null,
-            song: localSong
-          }
-        ],
-        nextCursor: null,
-        total: 1,
-        limit: 60
-      }),
-      artistsPage: ref({
-        items: [],
-        nextCursor: null,
-        total: 0,
-        limit: 60
-      }),
-      albumsPage: ref({
-        items: [],
-        nextCursor: null,
-        total: 0,
-        limit: 60
-      }),
-      coverUrls: ref({}),
-      refresh: vi.fn(),
-      addFolder: vi.fn(),
-      removeFolder: vi.fn(),
-      setFolderEnabled: vi.fn(),
-      rescan: vi.fn(),
-      loadTracks: vi.fn(),
-      loadArtists: vi.fn(),
-      loadAlbums: vi.fn()
-    })
+        })),
+        songsPage: ref({
+          items: [
+            {
+              id: 'local:track-1',
+              folderId: 'folder-1',
+              filePath: 'D:\\Music\\夜航.mp3',
+              fileName: '夜航.mp3',
+              title: '夜航',
+              artist: '本地歌手',
+              album: '本地专辑',
+              duration: 0,
+              fileSize: 1024,
+              modifiedAt: Date.now(),
+              coverHash: null,
+              song: localSong
+            }
+          ],
+          nextCursor: null,
+          total: 1,
+          limit: 60
+        })
+      })
+    )
 
     const { default: HomeLocalMusicPanel } =
       await import('@/components/home/HomeLocalMusicPanel.vue')
@@ -228,5 +263,104 @@ describe('HomeLocalMusicPanel', () => {
 
     expect(playerStoreMock.setSongList).toHaveBeenCalledWith([localSong])
     expect(playerStoreMock.playSongWithDetails).toHaveBeenCalledWith(0)
+  })
+
+  it('passes loaded local songs into SongDetailList for rendering', async () => {
+    const localSong = {
+      id: 'local:track-1',
+      name: '夜航',
+      artists: [{ id: 'artist-1', name: '本地歌手' }],
+      album: { id: 'album-1', name: '本地专辑', picUrl: '' },
+      duration: 0,
+      mvid: 0,
+      platform: 'netease' as const,
+      originalId: 'local:track-1',
+      url: 'luo-media://media?path=D%3A%5CMusic%5C%E5%A4%9C%E8%88%AA.mp3',
+      extra: {
+        localSource: true
+      }
+    }
+
+    useLocalLibraryMock.mockReturnValue(
+      createLocalLibraryMock({
+        state: ref({
+          supported: true,
+          folders: [
+            {
+              id: 'folder-1',
+              path: 'D:\\Music',
+              name: 'Music',
+              enabled: true,
+              createdAt: Date.now(),
+              lastScannedAt: Date.now(),
+              songCount: 1
+            }
+          ],
+          tracks: [],
+          status: {
+            phase: 'idle',
+            scannedFolders: 1,
+            scannedFiles: 1,
+            discoveredTracks: 1,
+            currentFolder: null,
+            startedAt: Date.now(),
+            finishedAt: Date.now(),
+            message: '已收录 1 首本地歌曲'
+          }
+        }),
+        status: computed(() => ({
+          phase: 'idle',
+          scannedFolders: 1,
+          scannedFiles: 1,
+          discoveredTracks: 1,
+          currentFolder: null,
+          startedAt: Date.now(),
+          finishedAt: Date.now(),
+          message: '已收录 1 首本地歌曲'
+        })),
+        songsPage: ref({
+          items: [
+            {
+              id: 'local:track-1',
+              folderId: 'folder-1',
+              filePath: 'D:\\Music\\夜航.mp3',
+              fileName: '夜航.mp3',
+              title: '夜航',
+              artist: '本地歌手',
+              album: '本地专辑',
+              duration: 0,
+              fileSize: 1024,
+              modifiedAt: Date.now(),
+              coverHash: null,
+              song: localSong
+            }
+          ],
+          nextCursor: null,
+          total: 1,
+          limit: 60
+        })
+      })
+    )
+
+    const { default: HomeLocalMusicPanel } =
+      await import('@/components/home/HomeLocalMusicPanel.vue')
+    const wrapper = mount(HomeLocalMusicPanel, {
+      global: {
+        stubs: {
+          SongDetailList: defineComponent({
+            name: 'SongDetailListStub',
+            props: {
+              songs: {
+                type: Array,
+                required: true
+              }
+            },
+            template: '<div class="song-detail-list-stub">{{ songs.length }}</div>'
+          })
+        }
+      }
+    })
+
+    expect(wrapper.get('.song-detail-list-stub').text()).toBe('1')
   })
 })

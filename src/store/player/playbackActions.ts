@@ -1,6 +1,7 @@
 import type { Song } from '@/types/schemas'
 import { isLocalLibrarySong } from '@/types/localLibrary'
 import type { MusicService } from '@/services/musicService'
+import { cloneSongData, getSongPlatformKey, isSameSongIdentity } from '@/utils/songIdentity'
 import { errorCenter, Errors } from '@/utils/error'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
@@ -31,15 +32,11 @@ export class PlaybackActions {
   constructor(private readonly deps: PlaybackActionsDeps) {}
 
   private isSameSong(left: Song | null | undefined, right: Song | null | undefined): boolean {
-    if (!left || !right) {
-      return false
-    }
-
-    return this.createSongRequestKey(left) === this.createSongRequestKey(right)
+    return isSameSongIdentity(left, right)
   }
 
   private createSongRequestKey(song: Song): string {
-    return `${song.platform || (song as { server?: string }).server || 'netease'}:${song.id}`
+    return `${getSongPlatformKey(song)}:${song.id}`
   }
 
   private startLyricRequest(song: Song): { requestId: number; songKey: string } {
@@ -96,26 +93,7 @@ export class PlaybackActions {
   }
 
   private cloneSong(song: Song): Song {
-    const artists = Array.isArray(song.artists) ? song.artists.map(artist => ({ ...artist })) : []
-    const album =
-      song.album && typeof song.album === 'object'
-        ? {
-            id: song.album.id ?? 0,
-            name: song.album.name ?? '',
-            picUrl: song.album.picUrl ?? ''
-          }
-        : {
-            id: 0,
-            name: '',
-            picUrl: ''
-          }
-
-    return {
-      ...song,
-      artists,
-      album,
-      ...(song.extra ? { extra: { ...song.extra } } : {})
-    }
+    return cloneSongData(song)
   }
 
   private mergeSongDetail(song: Song, detail: Song): void {

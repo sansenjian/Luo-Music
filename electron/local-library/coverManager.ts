@@ -3,6 +3,8 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+const RESOLVED_PATH_CACHE_MAX_ENTRIES = 500
+
 function resolveCoverDirectoryPath(): string {
   const electronModule = require('electron') as
     | string
@@ -78,7 +80,7 @@ export class LocalLibraryCoverManager {
       await writeFile(filePath, data)
     }
 
-    this.resolvedPathCache.set(hash, filePath)
+    this.setResolvedPathCache(hash, filePath)
     return hash
   }
 
@@ -120,6 +122,7 @@ export class LocalLibraryCoverManager {
   private async resolveCoverPath(hash: string): Promise<string | null> {
     const cachedPath = this.resolvedPathCache.get(hash)
     if (cachedPath && existsSync(cachedPath)) {
+      this.setResolvedPathCache(hash, cachedPath)
       return cachedPath
     }
 
@@ -130,7 +133,24 @@ export class LocalLibraryCoverManager {
     }
 
     const filePath = path.join(this.coverDirectoryPath, matchedEntry.name)
-    this.resolvedPathCache.set(hash, filePath)
+    this.setResolvedPathCache(hash, filePath)
     return filePath
+  }
+
+  private setResolvedPathCache(hash: string, filePath: string): void {
+    if (this.resolvedPathCache.has(hash)) {
+      this.resolvedPathCache.delete(hash)
+    }
+
+    this.resolvedPathCache.set(hash, filePath)
+
+    if (this.resolvedPathCache.size <= RESOLVED_PATH_CACHE_MAX_ENTRIES) {
+      return
+    }
+
+    const oldestEntryKey = this.resolvedPathCache.keys().next().value
+    if (typeof oldestEntryKey === 'string') {
+      this.resolvedPathCache.delete(oldestEntryKey)
+    }
   }
 }

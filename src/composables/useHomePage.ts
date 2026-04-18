@@ -52,17 +52,22 @@ export interface HomePageDeps {
 export function useHomePage(deps: HomePageDeps = {}) {
   const toastStore = deps.toastStore ?? useToastStore()
   const searchStore = deps.searchStore ?? useSearchStore()
-  const actualHomeShell = useHomeShell()
+  const actualHomeShell = deps.homeShell ? null : useHomeShell()
+  const resolvedPlayerStore = deps.homeShell?.playerStore ?? actualHomeShell?.playerStore
+  if (!resolvedPlayerStore) {
+    throw new Error('useHomePage requires a playerStore when homeShell deps are provided')
+  }
+
   const homeShell: HomeShellReturn = {
-    ...actualHomeShell,
-    activeTab: deps.homeShell?.activeTab ?? actualHomeShell.activeTab,
-    closeWindow: deps.homeShell?.closeWindow ?? actualHomeShell.closeWindow,
-    isElectron: deps.homeShell?.isElectron ?? actualHomeShell.isElectron,
-    maximizeWindow: deps.homeShell?.maximizeWindow ?? actualHomeShell.maximizeWindow,
-    minimizeWindow: deps.homeShell?.minimizeWindow ?? actualHomeShell.minimizeWindow,
-    playSong: deps.homeShell?.playSong ?? actualHomeShell.playSong,
-    playerStore: actualHomeShell.playerStore,
-    switchTab: deps.homeShell?.switchTab ?? actualHomeShell.switchTab
+    ...(actualHomeShell ?? {}),
+    activeTab: deps.homeShell?.activeTab ?? actualHomeShell?.activeTab ?? ref('lyric'),
+    closeWindow: deps.homeShell?.closeWindow ?? actualHomeShell?.closeWindow ?? (() => {}),
+    isElectron: deps.homeShell?.isElectron ?? actualHomeShell?.isElectron ?? computed(() => false),
+    maximizeWindow: deps.homeShell?.maximizeWindow ?? actualHomeShell?.maximizeWindow ?? (() => {}),
+    minimizeWindow: deps.homeShell?.minimizeWindow ?? actualHomeShell?.minimizeWindow ?? (() => {}),
+    playSong: deps.homeShell?.playSong ?? actualHomeShell?.playSong ?? (async () => {}),
+    playerStore: resolvedPlayerStore as HomeShellReturn['playerStore'],
+    switchTab: deps.homeShell?.switchTab ?? actualHomeShell?.switchTab ?? (() => {})
   }
   const effectivePlayerStore = homeShell.playerStore
 

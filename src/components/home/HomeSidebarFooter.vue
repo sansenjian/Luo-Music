@@ -52,7 +52,7 @@ const qqMusicLoginState = computed(() => (userStore.isQQMusicLoggedIn ? '已登�
       </div>
     </div>
 
-    <button type="button" class="settings-button" aria-label="打开设置">
+    <button type="button" class="settings-button" aria-label="打开设置" title="即将推出" disabled>
       <span class="settings-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path

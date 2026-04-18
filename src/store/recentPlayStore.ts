@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 
 import { storageAdapter } from '@/services/storageService'
 import type { Song } from '@/types/schemas'
+import { cloneSongData, isSameSongIdentity } from '@/utils/songIdentity'
 
 const MAX_RECENT_PLAYS = 100
 
@@ -10,28 +11,8 @@ export type RecentPlayItem = {
   song: Song
 }
 
-function cloneSong(song: Song): Song {
-  return {
-    ...song,
-    artists: Array.isArray(song.artists) ? song.artists.map(artist => ({ ...artist })) : [],
-    album:
-      song.album && typeof song.album === 'object'
-        ? {
-            id: song.album.id ?? 0,
-            name: song.album.name ?? '',
-            picUrl: song.album.picUrl ?? ''
-          }
-        : {
-            id: 0,
-            name: '',
-            picUrl: ''
-          },
-    ...(song.extra ? { extra: { ...song.extra } } : {})
-  }
-}
-
 function isSameSong(left: Song, right: Song): boolean {
-  return left.id === right.id && (left.platform ?? 'netease') === (right.platform ?? 'netease')
+  return isSameSongIdentity(left, right)
 }
 
 export const useRecentPlayStore = defineStore('recentPlay', {
@@ -43,7 +24,7 @@ export const useRecentPlayStore = defineStore('recentPlay', {
     recordSong(song: Song): void {
       const nextEntry: RecentPlayItem = {
         playedAt: Date.now(),
-        song: cloneSong(song)
+        song: cloneSongData(song)
       }
 
       this.items = [nextEntry, ...this.items.filter(item => !isSameSong(item.song, song))].slice(

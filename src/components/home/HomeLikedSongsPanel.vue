@@ -1,113 +1,28 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-
-import { useLikedSongs } from '@/composables/useLikedSongs'
-import { usePlayerStore } from '@/store/playerStore'
-import { useToastStore } from '@/store/toastStore'
-import { useUserStore } from '@/store/userStore'
+import { useHomeLikedSongsPanel } from '@/composables/home/useHomeLikedSongsPanel'
 import { formatDuration } from '@/utils/songFormatter'
 
-const userStore = useUserStore()
-const playerStore = usePlayerStore()
-const toastStore = useToastStore()
 const {
   count,
+  clearSearch,
+  coverUrl,
+  currentSongId,
   error,
-  formattedSongs,
+  errorMessage,
+  filteredSongs,
+  handlePlayAll,
   hasMore,
-  likeSongs,
-  loadLikedSongs,
   loadMoreLikedSongs,
   loading,
   loadingMore,
+  mediaSongs,
+  playLikedSongsAt,
   retryLoadLikedSongs,
-  resetLikedSongs
-} = useLikedSongs()
-
-const searchQuery = ref('')
-
-const normalizedQuery = computed(() => searchQuery.value.trim().toLocaleLowerCase())
-const filteredSongs = computed(() => {
-  if (!normalizedQuery.value) {
-    return formattedSongs.value
-  }
-
-  return formattedSongs.value.filter(song => {
-    const fields = [song.name, song.artist, song.album]
-    return fields.some(field => field.toLocaleLowerCase().includes(normalizedQuery.value))
-  })
-})
-
-const coverUrl = computed(
-  () => filteredSongs.value[0]?.cover || formattedSongs.value[0]?.cover || ''
-)
-const totalSongCountLabel = computed(() => `${count.value} 首歌曲`)
-const userMetaLabel = computed(() =>
-  userStore.nickname ? `${userStore.nickname} · 默认喜欢歌单` : '默认喜欢歌单'
-)
-const errorMessage = computed(() => {
-  if (!error.value) {
-    return ''
-  }
-
-  if (error.value instanceof Error && error.value.message) {
-    return error.value.message
-  }
-
-  if (typeof error.value === 'string') {
-    return error.value
-  }
-
-  return '喜欢的音乐加载失败，请稍后重试。'
-})
-const currentSongId = computed(() => playerStore.currentSong?.id ?? null)
-
-watch(
-  () => [userStore.isLoggedIn, userStore.userId] as const,
-  ([isLoggedIn, userId]) => {
-    if (isLoggedIn && userId !== null && userId !== undefined && userId !== '') {
-      void loadLikedSongs(userId)
-      return
-    }
-
-    resetLikedSongs()
-  },
-  { immediate: true }
-)
-
-async function playLikedSongsAt(index: number): Promise<void> {
-  if (loading.value || filteredSongs.value.length === 0) {
-    return
-  }
-
-  const sourceSong = filteredSongs.value[index]
-  if (!sourceSong) {
-    return
-  }
-
-  const playbackList = filteredSongs.value.map(song => likeSongs.value[song.index]).filter(Boolean)
-  const playbackIndex = playbackList.findIndex(song => song.id === sourceSong.id)
-  if (playbackIndex === -1) {
-    return
-  }
-
-  try {
-    playerStore.setSongList(playbackList)
-    await playerStore.playSongWithDetails(playbackIndex)
-  } catch (playbackError) {
-    const message =
-      playbackError instanceof Error ? playbackError.message : '播放喜欢的音乐时发生错误。'
-    toastStore.error(message)
-  }
-}
-
-function handlePlayAll(): void {
-  void playLikedSongsAt(0)
-}
-
-function clearSearch(): void {
-  searchQuery.value = ''
-}
+  searchQuery,
+  totalSongCountLabel,
+  userMetaLabel,
+  userStore
+} = useHomeLikedSongsPanel()
 </script>
 
 <template>
@@ -122,14 +37,14 @@ function clearSearch(): void {
       <p>侧边栏的“我喜欢的音乐”会与用户中心同步展示。</p>
     </div>
 
-    <div v-else-if="loading && formattedSongs.length === 0" class="liked-empty-state">
+    <div v-else-if="loading && mediaSongs.length === 0" class="liked-empty-state">
       <div class="empty-icon">♪</div>
       <h2>正在载入我喜欢的音乐</h2>
       <p>稍等片刻，正在同步你的默认喜欢歌单。</p>
     </div>
 
     <div
-      v-else-if="error && formattedSongs.length === 0"
+      v-else-if="error && mediaSongs.length === 0"
       class="liked-empty-state is-error"
       role="alert"
     >
@@ -174,10 +89,16 @@ function clearSearch(): void {
             <button type="button" class="hero-action hero-action-primary" @click="handlePlayAll">
               播放全部
             </button>
-            <button type="button" class="hero-action" :disabled="filteredSongs.length === 0">
+            <button type="button" class="hero-action" :disabled="true" title="即将推出">
               下载
             </button>
-            <button type="button" class="hero-action hero-action-icon" aria-label="更多操作">
+            <button
+              type="button"
+              class="hero-action hero-action-icon"
+              aria-label="更多操作"
+              title="即将推出"
+              disabled
+            >
               ···
             </button>
           </div>
@@ -232,7 +153,7 @@ function clearSearch(): void {
 
           <button
             v-for="(song, index) in filteredSongs"
-            :key="`${song.id}-${song.index}`"
+            :key="`${song.id}-${index}`"
             type="button"
             class="liked-row"
             :class="{ active: currentSongId === song.id }"
@@ -256,7 +177,7 @@ function clearSearch(): void {
                 </svg>
               </span>
             </span>
-            <span class="col-duration">{{ formatDuration(song.duration * 1000) }}</span>
+            <span class="col-duration">{{ formatDuration(song.durationMs) }}</span>
           </button>
 
           <div v-if="hasMore" class="liked-load-more">

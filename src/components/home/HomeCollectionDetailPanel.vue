@@ -1,12 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { toRef } from 'vue'
 
-import { useFavoriteAlbums } from '@/composables/useFavoriteAlbums'
-import { useUserPlaylists } from '@/composables/useUserPlaylists'
-import { usePlayerStore } from '@/store/playerStore'
-import { useToastStore } from '@/store/toastStore'
-import { useUserStore } from '@/store/userStore'
-import type { Song } from '@/platform/music/interface'
+import { useHomeCollectionPanel } from '@/composables/home/useHomeCollectionPanel'
 import { formatDuration } from '@/utils/songFormatter'
 
 import type { HomeSidebarCollectionSelection } from './homeSidebar.types'
@@ -15,169 +10,24 @@ const props = defineProps<{
   collection: HomeSidebarCollectionSelection | null
 }>()
 
-type FormattedDetailSong = {
-  id: string | number
-  name: string
-  artist: string
-  album: string
-  cover: string
-  duration: number
-}
-
-const userStore = useUserStore()
-const playerStore = usePlayerStore()
-const toastStore = useToastStore()
-const { loadPlaylistSongs } = useUserPlaylists()
-const { loadAlbumSongs } = useFavoriteAlbums()
-
-const songs = ref<Song[]>([])
-const loading = ref(false)
-const error = ref<unknown>(null)
-const requestVersion = ref(0)
-const searchQuery = ref('')
-
-const normalizedQuery = computed(() => searchQuery.value.trim().toLocaleLowerCase())
-const title = computed(() => props.collection?.name ?? '已选择歌单')
-const kicker = computed(() => (props.collection?.kind === 'album' ? '收藏专辑' : '歌单'))
-const metaLabel = computed(() => {
-  if (!props.collection) {
-    return ''
-  }
-
-  if (props.collection.kind === 'album') {
-    return props.collection.summary
-  }
-
-  return userStore.nickname
-    ? `${userStore.nickname} · ${props.collection.summary}`
-    : props.collection.summary
-})
-const coverUrl = computed(() => props.collection?.coverUrl || '')
-const currentSongId = computed(() => playerStore.currentSong?.id ?? null)
-const errorMessage = computed(() => {
-  if (!error.value) {
-    return ''
-  }
-
-  if (error.value instanceof Error && error.value.message) {
-    return error.value.message
-  }
-
-  if (typeof error.value === 'string') {
-    return error.value
-  }
-
-  return '详情加载失败，请稍后重试。'
-})
-const formattedSongs = computed<FormattedDetailSong[]>(() =>
-  songs.value.map(song => ({
-    id: song.id,
-    name: song.name,
-    artist:
-      song.artists
-        .map(artist => artist.name)
-        .filter(Boolean)
-        .join(' / ') || '未知歌手',
-    album: song.album?.name || '单曲',
-    cover: song.album?.picUrl || coverUrl.value,
-    duration: song.duration
-  }))
-)
-const filteredSongs = computed(() => {
-  if (!normalizedQuery.value) {
-    return formattedSongs.value
-  }
-
-  return formattedSongs.value.filter(song => {
-    const fields = [song.name, song.artist, song.album]
-    return fields.some(field => field.toLocaleLowerCase().includes(normalizedQuery.value))
-  })
-})
-
-async function loadCollectionSongs(): Promise<void> {
-  const collection = props.collection
-  if (!collection) {
-    songs.value = []
-    error.value = null
-    loading.value = false
-    return
-  }
-
-  const currentRequest = requestVersion.value + 1
-  requestVersion.value = currentRequest
-  loading.value = true
-  error.value = null
-
-  try {
-    const nextSongs =
-      collection.kind === 'album'
-        ? await loadAlbumSongs(collection.sourceId)
-        : await loadPlaylistSongs(collection.sourceId)
-
-    if (requestVersion.value !== currentRequest) {
-      return
-    }
-
-    songs.value = nextSongs
-  } catch (requestError) {
-    if (requestVersion.value !== currentRequest) {
-      return
-    }
-
-    songs.value = []
-    error.value = requestError
-  } finally {
-    if (requestVersion.value === currentRequest) {
-      loading.value = false
-    }
-  }
-}
-
-watch(
-  () => props.collection?.uiId ?? null,
-  () => {
-    searchQuery.value = ''
-    void loadCollectionSongs()
-  },
-  { immediate: true }
-)
-
-async function playCollectionAt(index: number): Promise<void> {
-  if (loading.value || filteredSongs.value.length === 0) {
-    return
-  }
-
-  const targetSong = filteredSongs.value[index]
-  if (!targetSong) {
-    return
-  }
-
-  const playbackList = filteredSongs.value
-    .map(song => songs.value.find(candidate => candidate.id === song.id))
-    .filter((song): song is Song => Boolean(song))
-  const playbackIndex = playbackList.findIndex(song => song.id === targetSong.id)
-
-  if (playbackIndex === -1) {
-    return
-  }
-
-  try {
-    playerStore.setSongList(playbackList)
-    await playerStore.playSongWithDetails(playbackIndex)
-  } catch (playbackError) {
-    const message =
-      playbackError instanceof Error ? playbackError.message : '播放歌单详情时发生错误。'
-    toastStore.error(message)
-  }
-}
-
-function playAll(): void {
-  void playCollectionAt(0)
-}
-
-function clearSearch(): void {
-  searchQuery.value = ''
-}
+const {
+  clearSearch,
+  coverUrl,
+  currentSongId,
+  error,
+  errorMessage,
+  filteredSongs,
+  kicker,
+  loadCollectionSongs,
+  loading,
+  metaLabel,
+  playAll,
+  playCollectionAt,
+  searchQuery,
+  songs,
+  title,
+  userStore
+} = useHomeCollectionPanel(toRef(props, 'collection'))
 </script>
 
 <template>
@@ -214,10 +64,16 @@ function clearSearch(): void {
             <button type="button" class="hero-action hero-action-primary" @click="playAll">
               播放全部
             </button>
-            <button type="button" class="hero-action" :disabled="filteredSongs.length === 0">
+            <button type="button" class="hero-action" :disabled="true" title="即将推出">
               下载
             </button>
-            <button type="button" class="hero-action hero-action-icon" aria-label="更多操作">
+            <button
+              type="button"
+              class="hero-action hero-action-icon"
+              aria-label="更多操作"
+              title="即将推出"
+              disabled
+            >
               ···
             </button>
           </div>
@@ -300,7 +156,7 @@ function clearSearch(): void {
                 </svg>
               </span>
             </span>
-            <span class="col-duration">{{ formatDuration(song.duration) }}</span>
+            <span class="col-duration">{{ formatDuration(song.durationMs) }}</span>
           </button>
         </div>
       </section>

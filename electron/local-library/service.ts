@@ -1,14 +1,6 @@
-import { readdir, stat } from 'node:fs/promises'
-import path from 'node:path'
-
-import chokidar, { type FSWatcher } from 'chokidar'
-import { parseFile } from 'music-metadata'
-
-import type { Song } from '@/types/schemas'
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
-  LocalLibraryFolder,
   LocalLibraryPage,
   LocalLibraryScanStatus,
   LocalLibraryState,
@@ -16,210 +8,43 @@ import type {
   LocalLibraryTrack,
   LocalLibraryTrackQuery
 } from '@/types/localLibrary'
-import { createLocalLibraryScanStatus, LOCAL_LIBRARY_SONG_ID_PREFIX } from '@/types/localLibrary'
+import { createLocalLibraryScanStatus } from '@/types/localLibrary'
 
 import { LocalLibraryCoverManager } from './coverManager'
-import { createFolderId, createTrackId, LocalLibraryRepository } from './repository'
-import { createLocalMediaUrl } from './protocol'
-
-type PersistedFolder = Omit<LocalLibraryFolder, 'songCount'>
-type PersistedState = {
-  folders: PersistedFolder[]
-  tracks: Array<Omit<LocalLibraryTrack, 'coverHash'> & { coverHash?: string | null }>
-}
-
-type LegacyStoreShape = {
-  get: <T>(key: string, defaultValue?: T) => T
-}
-
-type ParsedLocalTrackMetadata = {
-  title: string | null
-  artist: string | null
-  album: string | null
-  duration: number | null
-  coverData?: Buffer | null
-  coverFormat?: string | null
-}
-
-type LocalTrackMetadataReader = (filePath: string) => Promise<ParsedLocalTrackMetadata | null>
-type LocalLibraryWatcherFactory = (folderPath: string) => FSWatcher
-type PendingFolderChanges = {
-  upsert: Set<string>
-  remove: Set<string>
-  requiresFullRescan: boolean
-}
-
-type StatusListener = (status: LocalLibraryScanStatus) => void
-type UpdatedListener = (state: LocalLibraryState) => void
+import { LocalLibraryEventHub } from './eventHub'
+import { migrateLegacyLocalLibraryStateIfNeeded } from './migration'
+import { configureLocalMediaRootsResolver } from './protocol'
+import { createFolderId, LocalLibraryRepository } from './repository'
+import type { PersistedFolder } from './repository.types'
+import { LocalLibraryScanEngine } from './scanEngine'
+import {
+  createDefaultLegacyStore,
+  createDefaultWatcher,
+  isAudioFile,
+  normalizeFilePath,
+  normalizeFolderPath,
+  readTrackMetadata,
+  resolveFileStats,
+  type LegacyStoreShape,
+  type LocalLibraryWatcherFactory,
+  type LocalTrackMetadataReader,
+  type PendingFolderChanges
+} from './service.helpers'
+import { createIdleLocalLibraryStatus, createLocalLibraryErrorStatus } from './statusPolicy'
+import { LocalLibraryWatchCoordinator } from './watchCoordinator'
 
 const LOCAL_LIBRARY_STORE_KEY = 'localLibraryState'
-const AUDIO_FILE_EXTENSIONS = new Set([
-  '.mp3',
-  '.flac',
-  '.m4a',
-  '.ogg',
-  '.wav',
-  '.aac',
-  '.ape',
-  '.opus'
-])
 const WATCH_DEBOUNCE_MS = 1500
 
-const StoreModule = require('electron-store') as {
-  default?: new (options?: { projectName: string }) => LegacyStoreShape
-}
-
-const Store = StoreModule.default ?? (StoreModule as unknown as new () => LegacyStoreShape)
-
-function createDefaultLegacyStore(): LegacyStoreShape {
-  return new Store({ projectName: 'luo-music' })
-}
-
-function normalizeFolderPath(folderPath: string): string {
-  return path.resolve(folderPath).replace(/[\\/]+$/, '')
-}
-
-function normalizeFilePath(filePath: string): string {
-  return path.resolve(filePath)
-}
-
-function parseTrackDisplayName(fileName: string): { title: string; artist: string } {
-  const stem = path.parse(fileName).name.trim()
-  if (!stem) {
-    return {
-      title: '未知歌曲',
-      artist: '未知艺术家'
-    }
-  }
-
-  const parts = stem
-    .split(' - ')
-    .map(part => part.trim())
-    .filter(Boolean)
-
-  if (parts.length >= 2) {
-    return {
-      artist: parts[0] ?? '未知艺术家',
-      title: parts.slice(1).join(' - ')
-    }
-  }
-
-  return {
-    title: stem,
-    artist: '未知艺术家'
-  }
-}
-
-function createDefaultWatcher(folderPath: string): FSWatcher {
-  return chokidar.watch(folderPath, {
-    ignored: /(^|[/\\])\../,
-    persistent: true,
-    ignoreInitial: true,
-    awaitWriteFinish: {
-      stabilityThreshold: 1200,
-      pollInterval: 100
-    }
-  })
-}
-
-async function readTrackMetadata(filePath: string): Promise<ParsedLocalTrackMetadata | null> {
-  try {
-    const metadata = await parseFile(filePath)
-    const picture = metadata.common.picture?.[0]
-    const title =
-      typeof metadata.common.title === 'string' && metadata.common.title.trim().length > 0
-        ? metadata.common.title.trim()
-        : null
-    const artist =
-      typeof metadata.common.artist === 'string' && metadata.common.artist.trim().length > 0
-        ? metadata.common.artist.trim()
-        : null
-    const album =
-      typeof metadata.common.album === 'string' && metadata.common.album.trim().length > 0
-        ? metadata.common.album.trim()
-        : null
-    const duration =
-      typeof metadata.format.duration === 'number' && Number.isFinite(metadata.format.duration)
-        ? Math.max(0, Math.round(metadata.format.duration * 1000))
-        : null
-
-    if (!title && !artist && !album && duration === null && !picture) {
-      return null
-    }
-
-    return {
-      title,
-      artist,
-      album,
-      duration,
-      coverData: picture?.data ? Buffer.from(picture.data) : null,
-      coverFormat: picture?.format ?? null
-    }
-  } catch {
-    return null
-  }
-}
-
-function createTrackSong(
-  trackId: string,
-  title: string,
-  artist: string,
-  album: string,
-  filePath: string,
-  duration: number,
-  coverHash: string | null
-): Song {
-  return {
-    id: trackId,
-    name: title,
-    artists: [{ id: `local-artist:${artist}`, name: artist }],
-    album: {
-      id: `local-album:${album}`,
-      name: album,
-      picUrl: ''
-    },
-    duration,
-    mvid: 0,
-    platform: 'netease',
-    originalId: trackId,
-    url: createLocalMediaUrl(filePath),
-    extra: {
-      localSource: true,
-      localFilePath: filePath,
-      localAlbum: album,
-      localCoverHash: coverHash
-    }
-  }
-}
-
-function isLegacyState(value: unknown): value is PersistedState {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
-
-  const candidate = value as Partial<PersistedState>
-  return Array.isArray(candidate.folders) && Array.isArray(candidate.tracks)
-}
-
-function createEmptyPendingFolderChanges(): PendingFolderChanges {
-  return {
-    upsert: new Set<string>(),
-    remove: new Set<string>(),
-    requiresFullRescan: false
-  }
-}
-
 export class LocalLibraryService {
+  private readonly eventHub = new LocalLibraryEventHub()
+  private readonly scanEngine: LocalLibraryScanEngine
+  private readonly watchCoordinator: LocalLibraryWatchCoordinator
   private readonly repository: LocalLibraryRepository
   private readonly legacyStore: LegacyStoreShape
   private readonly metadataReader: LocalTrackMetadataReader
   private readonly watcherFactory: LocalLibraryWatcherFactory
   private readonly coverManager: LocalLibraryCoverManager
-  private readonly statusListeners = new Set<StatusListener>()
-  private readonly updatedListeners = new Set<UpdatedListener>()
-  private readonly watchers = new Map<string, FSWatcher>()
-  private readonly watchTimers = new Map<string, ReturnType<typeof setTimeout>>()
-  private readonly pendingFolderChanges = new Map<string, PendingFolderChanges>()
   private scanPromise: Promise<LocalLibraryState> | null = null
   private currentStatus = createLocalLibraryScanStatus()
   private disposed = false
@@ -236,23 +61,49 @@ export class LocalLibraryService {
     this.metadataReader = metadataReader
     this.watcherFactory = watcherFactory
     this.coverManager = coverManager
-    this.migrateLegacyStateIfNeeded()
-    this.startWatchingExistingFolders()
+    configureLocalMediaRootsResolver(() => this.repository.listFolders().map(folder => folder.path))
+    this.scanEngine = new LocalLibraryScanEngine({
+      coverManager: this.coverManager,
+      isDisposed: () => this.disposed,
+      metadataReader: this.metadataReader,
+      repository: this.repository
+    })
+    this.watchCoordinator = new LocalLibraryWatchCoordinator({
+      debounceMs: WATCH_DEBOUNCE_MS,
+      isAudioFile,
+      normalizeFilePath,
+      onError: error => {
+        if (this.disposed) {
+          return
+        }
+
+        const message = error instanceof Error ? error.message : '同步本地音乐失败'
+        this.setStatus(
+          createLocalLibraryErrorStatus(
+            this.currentStatus,
+            this.currentStatus.discoveredTracks,
+            message
+          )
+        )
+      },
+      onFlush: (folderId, pending) => this.handleQueuedFolderChanges(folderId, pending),
+      watcherFactory: this.watcherFactory
+    })
+    migrateLegacyLocalLibraryStateIfNeeded(
+      this.repository,
+      this.legacyStore,
+      LOCAL_LIBRARY_STORE_KEY
+    )
+    this.watchCoordinator.startWatchingFolders(this.repository.listEnabledFolders())
     this.currentStatus = this.createIdleStatus()
   }
 
-  onStatusChange(listener: StatusListener): () => void {
-    this.statusListeners.add(listener)
-    return () => {
-      this.statusListeners.delete(listener)
-    }
+  onStatusChange(listener: (status: LocalLibraryScanStatus) => void): () => void {
+    return this.eventHub.onStatusChange(listener)
   }
 
-  onUpdated(listener: UpdatedListener): () => void {
-    this.updatedListeners.add(listener)
-    return () => {
-      this.updatedListeners.delete(listener)
-    }
+  onUpdated(listener: (state: LocalLibraryState) => void): () => void {
+    return this.eventHub.onUpdated(listener)
   }
 
   getState(): LocalLibraryState {
@@ -301,8 +152,8 @@ export class LocalLibraryService {
     }
 
     const resolvedPath = normalizeFolderPath(folderPath)
-    const folderStats = await stat(resolvedPath)
-    if (!folderStats.isDirectory()) {
+    const folderStats = await resolveFileStats(resolvedPath)
+    if (!folderStats?.isDirectory()) {
       throw new Error('请选择有效的本地音乐文件夹')
     }
 
@@ -319,17 +170,19 @@ export class LocalLibraryService {
     const nextFolder: PersistedFolder = {
       id: createFolderId(resolvedPath),
       path: resolvedPath,
-      name: path.basename(resolvedPath) || resolvedPath,
+      name: resolvedPath.split(/[\\/]/).pop() || resolvedPath,
       enabled: true,
       createdAt: Date.now(),
       lastScannedAt: null
     }
 
     this.repository.upsertFolder(nextFolder)
-    this.startWatchingFolder(nextFolder)
+    this.watchCoordinator.startWatchingFolder(nextFolder)
     this.emitUpdated()
 
-    return this.performScanForFolders([nextFolder], '正在扫描本地音乐...')
+    return this.runExclusiveScan(() =>
+      this.performScanForFolders([nextFolder], '正在扫描本地音乐...')
+    )
   }
 
   async removeFolder(folderId: string): Promise<LocalLibraryState> {
@@ -337,8 +190,7 @@ export class LocalLibraryService {
       await this.scanPromise
     }
 
-    this.stopWatchingFolder(folderId)
-    this.pendingFolderChanges.delete(folderId)
+    await this.watchCoordinator.stopWatchingFolder(folderId)
     this.repository.removeFolder(folderId)
     this.setStatus(this.createIdleStatus())
     this.emitUpdated()
@@ -364,7 +216,7 @@ export class LocalLibraryService {
     this.repository.setFolderEnabled(folderId, enabled)
 
     if (!enabled) {
-      this.stopWatchingFolder(folderId)
+      await this.watchCoordinator.stopWatchingFolder(folderId)
       this.setStatus(
         this.createIdleStatus({
           message: '已停用本地音乐文件夹'
@@ -382,9 +234,11 @@ export class LocalLibraryService {
       createdAt: folder.createdAt,
       lastScannedAt: folder.lastScannedAt
     }
-    this.startWatchingFolder(enabledFolder)
+    this.watchCoordinator.startWatchingFolder(enabledFolder)
 
-    return this.performScanForFolders([enabledFolder], `正在启用 ${enabledFolder.name}`)
+    return this.runExclusiveScan(() =>
+      this.performScanForFolders([enabledFolder], `正在启用 ${enabledFolder.name}`)
+    )
   }
 
   async scan(): Promise<LocalLibraryState> {
@@ -392,185 +246,30 @@ export class LocalLibraryService {
       return this.scanPromise
     }
 
-    this.scanPromise = this.performScan().finally(() => {
+    return this.runExclusiveScan(() => this.performScan())
+  }
+
+  dispose(): void {
+    this.disposed = true
+    this.watchCoordinator.dispose()
+    this.repository.close()
+  }
+
+  private runExclusiveScan(task: () => Promise<LocalLibraryState>): Promise<LocalLibraryState> {
+    this.scanPromise = task().finally(() => {
       this.scanPromise = null
     })
 
     return this.scanPromise
   }
 
-  dispose(): void {
-    this.disposed = true
-
-    for (const timer of this.watchTimers.values()) {
-      clearTimeout(timer)
-    }
-    this.watchTimers.clear()
-
-    for (const watcher of this.watchers.values()) {
-      void watcher.close()
-    }
-    this.watchers.clear()
-    this.pendingFolderChanges.clear()
-  }
-
-  private migrateLegacyStateIfNeeded(): void {
-    if (this.repository.hasAnyFolder()) {
-      return
-    }
-
-    const legacyState = this.legacyStore.get<unknown>(LOCAL_LIBRARY_STORE_KEY, undefined)
-    if (!isLegacyState(legacyState)) {
-      return
-    }
-
-    for (const folder of legacyState.folders) {
-      this.repository.upsertFolder(folder)
-    }
-
-    const tracksByFolder = new Map<string, LocalLibraryTrack[]>()
-    for (const track of legacyState.tracks) {
-      const collection = tracksByFolder.get(track.folderId) ?? []
-      collection.push({
-        ...track,
-        coverHash: track.coverHash ?? null
-      })
-      tracksByFolder.set(track.folderId, collection)
-    }
-
-    for (const folder of legacyState.folders) {
-      this.repository.replaceFolderTracks(folder.id, tracksByFolder.get(folder.id) ?? [])
-    }
-  }
-
-  private startWatchingExistingFolders(): void {
-    for (const folder of this.repository.listEnabledFolders()) {
-      this.startWatchingFolder(folder)
-    }
-  }
-
-  private startWatchingFolder(folder: PersistedFolder): void {
-    if (this.watchers.has(folder.id)) {
-      return
-    }
-
-    const watcher = this.watcherFactory(folder.path)
-    watcher.on('add', filePath => {
-      this.queueFolderUpsert(folder.id, filePath)
-    })
-    watcher.on('change', filePath => {
-      this.queueFolderUpsert(folder.id, filePath)
-    })
-    watcher.on('unlink', filePath => {
-      this.queueFolderRemoval(folder.id, filePath)
-    })
-    watcher.on('addDir', () => {
-      this.queueFolderFullRescan(folder.id)
-    })
-    watcher.on('unlinkDir', () => {
-      this.queueFolderFullRescan(folder.id)
-    })
-
-    this.watchers.set(folder.id, watcher)
-  }
-
-  private stopWatchingFolder(folderId: string): void {
-    const timer = this.watchTimers.get(folderId)
-    if (timer) {
-      clearTimeout(timer)
-      this.watchTimers.delete(folderId)
-    }
-
-    const watcher = this.watchers.get(folderId)
-    if (watcher) {
-      void watcher.close()
-      this.watchers.delete(folderId)
-    }
-  }
-
-  private queueFolderUpsert(folderId: string, filePath: string): void {
-    if (!this.isAudioFile(filePath)) {
-      return
-    }
-
-    const pending = this.pendingFolderChanges.get(folderId) ?? createEmptyPendingFolderChanges()
-    pending.remove.delete(normalizeFilePath(filePath))
-    pending.upsert.add(normalizeFilePath(filePath))
-    this.pendingFolderChanges.set(folderId, pending)
-    this.scheduleFolderSync(folderId)
-  }
-
-  private queueFolderRemoval(folderId: string, filePath: string): void {
-    if (!this.isAudioFile(filePath)) {
-      return
-    }
-
-    const pending = this.pendingFolderChanges.get(folderId) ?? createEmptyPendingFolderChanges()
-    const normalizedFilePath = normalizeFilePath(filePath)
-    pending.upsert.delete(normalizedFilePath)
-    pending.remove.add(normalizedFilePath)
-    this.pendingFolderChanges.set(folderId, pending)
-    this.scheduleFolderSync(folderId)
-  }
-
-  private queueFolderFullRescan(folderId: string): void {
-    const pending = this.pendingFolderChanges.get(folderId) ?? createEmptyPendingFolderChanges()
-    pending.requiresFullRescan = true
-    pending.upsert.clear()
-    pending.remove.clear()
-    this.pendingFolderChanges.set(folderId, pending)
-    this.scheduleFolderSync(folderId)
-  }
-
-  private scheduleFolderSync(folderId: string): void {
-    const existingTimer = this.watchTimers.get(folderId)
-    if (existingTimer) {
-      clearTimeout(existingTimer)
-    }
-
-    const timer = setTimeout(() => {
-      this.watchTimers.delete(folderId)
-      void this.flushFolderChanges(folderId).catch(error => {
-        if (this.disposed) {
-          return
-        }
-
-        const message = error instanceof Error ? error.message : '同步本地音乐失败'
-        this.setStatus(
-          createLocalLibraryScanStatus({
-            phase: 'error',
-            finishedAt: Date.now(),
-            currentFolder: this.currentStatus.currentFolder,
-            discoveredTracks: this.currentStatus.discoveredTracks,
-            message
-          })
-        )
-      })
-    }, WATCH_DEBOUNCE_MS)
-
-    if (
-      typeof timer === 'object' &&
-      timer !== null &&
-      'unref' in timer &&
-      typeof timer.unref === 'function'
-    ) {
-      timer.unref()
-    }
-
-    this.watchTimers.set(folderId, timer)
-  }
-
-  private async flushFolderChanges(folderId: string): Promise<void> {
+  private async handleQueuedFolderChanges(
+    folderId: string,
+    pending: PendingFolderChanges
+  ): Promise<void> {
     if (this.disposed) {
       return
     }
-
-    const pending = this.pendingFolderChanges.get(folderId)
-    if (!pending) {
-      return
-    }
-
-    this.pendingFolderChanges.delete(folderId)
 
     if (pending.requiresFullRescan) {
       await this.rescanFolder(folderId)
@@ -646,7 +345,6 @@ export class LocalLibraryService {
     }
 
     const enabledFolders = this.repository.listEnabledFolders()
-
     if (enabledFolders.length === 0) {
       this.setStatus(this.createIdleStatus())
       return this.getState()
@@ -688,18 +386,22 @@ export class LocalLibraryService {
           message: `正在扫描 ${folder.name}`
         })
 
-        const folderTracks = await this.scanFolder(folder, nextScannedFiles => {
-          if (this.disposed) {
-            return
-          }
+        const folderTracks = await this.scanEngine.scanFolder(
+          folder,
+          nextScannedFiles => {
+            if (this.disposed) {
+              return
+            }
 
-          scannedFiles = nextScannedFiles
-          this.patchStatus({
-            scannedFiles,
-            currentFolder: folder.path,
-            message: `正在分析 ${folder.name} 中的音频文件`
-          })
-        })
+            scannedFiles = nextScannedFiles
+            this.patchStatus({
+              scannedFiles,
+              currentFolder: folder.path,
+              message: `正在分析 ${folder.name} 中的音频文件`
+            })
+          },
+          this.currentStatus.scannedFiles
+        )
 
         if (this.disposed) {
           return this.getState()
@@ -727,21 +429,20 @@ export class LocalLibraryService {
         })
       )
       this.emitUpdated()
-
       return this.getState()
     } catch (error) {
       const message = error instanceof Error ? error.message : '扫描本地音乐失败'
       this.setStatus(
-        createLocalLibraryScanStatus({
-          phase: 'error',
-          startedAt,
-          finishedAt: Date.now(),
-          scannedFolders,
-          scannedFiles,
-          discoveredTracks: this.repository.getTrackCount(),
-          currentFolder: this.currentStatus.currentFolder,
-          message
-        })
+        createLocalLibraryErrorStatus(
+          this.currentStatus,
+          this.repository.getTrackCount(),
+          message,
+          {
+            startedAt,
+            scannedFolders,
+            scannedFiles
+          }
+        )
       )
       throw error
     }
@@ -781,7 +482,7 @@ export class LocalLibraryService {
           currentFolder: folder.path,
           message: `正在同步 ${folder.name} 中的变动文件`
         })
-        const track = await this.scanSingleFile(folder, filePath)
+        const track = await this.scanEngine.scanSingleFile(folder, filePath)
         if (track) {
           upsertedTracks.push(track)
         }
@@ -814,205 +515,30 @@ export class LocalLibraryService {
     } catch (error) {
       const message = error instanceof Error ? error.message : '同步本地音乐失败'
       this.setStatus(
-        createLocalLibraryScanStatus({
-          phase: 'error',
-          startedAt,
-          finishedAt: Date.now(),
-          scannedFolders: 1,
-          scannedFiles,
-          discoveredTracks: this.repository.getTrackCount(),
-          currentFolder: folder.path,
-          message
-        })
+        createLocalLibraryErrorStatus(
+          this.currentStatus,
+          this.repository.getTrackCount(),
+          message,
+          {
+            startedAt,
+            scannedFolders: 1,
+            scannedFiles,
+            currentFolder: folder.path
+          }
+        )
       )
       throw error
     }
   }
 
-  private async scanFolder(
-    folder: PersistedFolder,
-    onProgress: (nextScannedFiles: number) => void
-  ): Promise<LocalLibraryTrack[]> {
-    if (this.disposed) {
-      return []
-    }
-
-    const filePaths = await this.collectAudioFiles(folder.path)
-    const tracks: LocalLibraryTrack[] = []
-    let scannedFiles = this.currentStatus.scannedFiles
-
-    for (const filePath of filePaths) {
-      if (this.disposed) {
-        return tracks
-      }
-
-      scannedFiles += 1
-      onProgress(scannedFiles)
-
-      const track = await this.scanSingleFile(folder, filePath)
-      if (track) {
-        tracks.push(track)
-      }
-    }
-
-    return tracks
-  }
-
-  private async scanSingleFile(
-    folder: PersistedFolder,
-    filePath: string
-  ): Promise<LocalLibraryTrack | null> {
-    if (this.disposed) {
-      return null
-    }
-
-    const normalizedFilePath = normalizeFilePath(filePath)
-    if (!this.isAudioFile(normalizedFilePath)) {
-      return null
-    }
-
-    let fileStats
-    try {
-      fileStats = await stat(normalizedFilePath)
-    } catch {
-      return null
-    }
-
-    if (!fileStats.isFile()) {
-      return null
-    }
-
-    const normalizedModifiedAt = Math.round(fileStats.mtimeMs)
-    const existingTrack = this.repository.findTrackByFilePath(normalizedFilePath)
-
-    if (
-      existingTrack &&
-      existingTrack.modifiedAt === normalizedModifiedAt &&
-      existingTrack.fileSize === fileStats.size
-    ) {
-      return existingTrack
-    }
-
-    const parsedName = parseTrackDisplayName(path.basename(normalizedFilePath))
-    const metadata = await this.metadataReader(normalizedFilePath)
-    const title = metadata?.title ?? parsedName.title
-    const artist = metadata?.artist ?? parsedName.artist
-    const album =
-      metadata?.album ??
-      path.basename(path.dirname(normalizedFilePath)) ??
-      folder.name ??
-      '本地音乐'
-    const duration = metadata?.duration ?? 0
-    const coverHash = await this.resolveCoverHash(metadata, existingTrack)
-    const trackId = createTrackId(LOCAL_LIBRARY_SONG_ID_PREFIX, normalizedFilePath)
-
-    return {
-      id: trackId,
-      folderId: folder.id,
-      filePath: normalizedFilePath,
-      fileName: path.basename(normalizedFilePath),
-      title,
-      artist,
-      album,
-      duration,
-      fileSize: fileStats.size,
-      modifiedAt: normalizedModifiedAt,
-      coverHash,
-      song: createTrackSong(trackId, title, artist, album, normalizedFilePath, duration, coverHash)
-    }
-  }
-
-  private async resolveCoverHash(
-    metadata: ParsedLocalTrackMetadata | null,
-    existingTrack: LocalLibraryTrack | null
-  ): Promise<string | null> {
-    if (!metadata) {
-      return existingTrack?.coverHash ?? null
-    }
-
-    if (Object.prototype.hasOwnProperty.call(metadata, 'coverData')) {
-      if (metadata.coverData) {
-        return this.coverManager.saveEmbeddedCover(metadata.coverData, metadata.coverFormat)
-      }
-
-      return null
-    }
-
-    return existingTrack?.coverHash ?? null
-  }
-
-  private async collectAudioFiles(rootPath: string): Promise<string[]> {
-    const queue = [rootPath]
-    const files: string[] = []
-
-    while (queue.length > 0) {
-      const currentPath = queue.pop()
-      if (!currentPath) {
-        continue
-      }
-
-      const entries = await readdir(currentPath, {
-        withFileTypes: true
-      })
-
-      for (const entry of entries) {
-        if (entry.isSymbolicLink()) {
-          continue
-        }
-
-        const entryPath = path.join(currentPath, entry.name)
-
-        if (entry.isDirectory()) {
-          queue.push(entryPath)
-          continue
-        }
-
-        if (
-          entry.isFile() &&
-          AUDIO_FILE_EXTENSIONS.has(path.extname(entry.name).toLocaleLowerCase())
-        ) {
-          files.push(entryPath)
-        }
-      }
-    }
-
-    return files
-  }
-
-  private isAudioFile(filePath: string): boolean {
-    return AUDIO_FILE_EXTENSIONS.has(path.extname(filePath).toLocaleLowerCase())
-  }
-
   private createIdleStatus(
     overrides: Partial<LocalLibraryScanStatus> = {}
   ): LocalLibraryScanStatus {
-    const folders = this.repository.listFolders()
-    const enabledFolderCount = folders.filter(folder => folder.enabled).length
-    const discoveredTracks = this.repository.getTrackCount()
-    const lastScannedAt = folders.reduce<number | null>((latest, folder) => {
-      if (!folder.lastScannedAt) {
-        return latest
-      }
-
-      return latest === null ? folder.lastScannedAt : Math.max(latest, folder.lastScannedAt)
-    }, null)
-
-    let message = '还没有添加本地音乐文件夹'
-    if (folders.length > 0 && enabledFolderCount === 0) {
-      message = '已停用所有本地音乐文件夹'
-    } else if (discoveredTracks > 0) {
-      message = `已收录 ${discoveredTracks} 首本地歌曲`
-    } else if (enabledFolderCount > 0) {
-      message = '当前文件夹内还没有识别到本地音频文件'
-    }
-
-    return createLocalLibraryScanStatus({
-      phase: 'idle',
-      discoveredTracks,
-      finishedAt: lastScannedAt,
-      message,
-      ...overrides
-    })
+    return createIdleLocalLibraryStatus(
+      this.repository.listFolders(),
+      this.repository.getTrackCount(),
+      overrides
+    )
   }
 
   private patchStatus(partialStatus: Partial<LocalLibraryScanStatus>): void {
@@ -1024,16 +550,11 @@ export class LocalLibraryService {
 
   private setStatus(nextStatus: LocalLibraryScanStatus): void {
     this.currentStatus = nextStatus
-    for (const listener of this.statusListeners) {
-      listener(nextStatus)
-    }
+    this.eventHub.emitStatus(nextStatus)
   }
 
   private emitUpdated(): void {
-    const nextState = this.getState()
-    for (const listener of this.updatedListeners) {
-      listener(nextState)
-    }
+    this.eventHub.emitUpdated(this.getState())
   }
 
   private async cleanupUnusedCovers(): Promise<void> {
@@ -1041,14 +562,7 @@ export class LocalLibraryService {
       return
     }
 
-    const usedHashes = new Set(
-      this.repository
-        .listTracks()
-        .map(track => track.coverHash)
-        .filter(
-          (coverHash): coverHash is string => typeof coverHash === 'string' && coverHash.length > 0
-        )
-    )
+    const usedHashes = new Set(this.repository.listUsedCoverHashes())
 
     await this.coverManager.cleanupUnusedCovers(usedHashes)
   }

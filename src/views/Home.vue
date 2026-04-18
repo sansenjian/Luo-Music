@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 
-import type { HomeSidebarCollectionSelection } from '../components/home/homeSidebar.types'
 import HomeFooter from '../components/home/HomeFooter.vue'
 import HomeCollectionDetailPanel from '../components/home/HomeCollectionDetailPanel.vue'
 import HomeHeader from '../components/home/HomeHeader.vue'
 import HomeSidebar from '../components/home/HomeSidebar.vue'
 import HomeWorkspace from '../components/home/HomeWorkspace.vue'
 import { useDockedPlayerBarLayout } from '../composables/useDockedPlayerBarLayout'
+import { useDeferredMount } from '../composables/useDeferredMount'
 import { useHomeBrandPlacement } from '../composables/useHomeBrandPlacement'
 import { useHomePage } from '../composables/useHomePage'
+import { useHomeWorkspaceState } from '../composables/useHomeWorkspaceState'
 
 const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.vue'))
 const HomeLikedSongsPanel = defineAsyncComponent(
@@ -49,56 +50,14 @@ const { dockedPlayerBarLayout } = useDockedPlayerBarLayout()
 const usesAdaptiveSidebarFooterLayout = computed(
   () => playerStore.isPlayerDocked && dockedPlayerBarLayout.value === 'with-sidebar'
 )
-const activeWorkspaceView = ref<'home' | 'liked' | 'collection' | 'local'>('home')
-const selectedCollection = ref<HomeSidebarCollectionSelection | null>(null)
-const activeSidebarItemId = computed(() =>
-  activeWorkspaceView.value === 'liked'
-    ? 'liked'
-    : activeWorkspaceView.value === 'local'
-      ? 'local'
-      : activeWorkspaceView.value === 'collection' && selectedCollection.value
-        ? selectedCollection.value.uiId
-        : 'home'
-)
-
-const isCoreMounted = ref(false)
-
-onMounted(() => {
-  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-    window.requestAnimationFrame(() => {
-      isCoreMounted.value = true
-    })
-    return
-  }
-
-  setTimeout(() => {
-    isCoreMounted.value = true
-  }, 0)
-})
-
-function handleSidebarItemSelect(itemId: string): void {
-  if (itemId === 'liked') {
-    activeWorkspaceView.value = 'liked'
-    selectedCollection.value = null
-    return
-  }
-
-  if (itemId === 'local') {
-    activeWorkspaceView.value = 'local'
-    selectedCollection.value = null
-    return
-  }
-
-  if (itemId === 'home') {
-    activeWorkspaceView.value = 'home'
-    selectedCollection.value = null
-  }
-}
-
-function handleSidebarCollectionSelect(selection: HomeSidebarCollectionSelection): void {
-  selectedCollection.value = selection
-  activeWorkspaceView.value = 'collection'
-}
+const {
+  activeSidebarItemId,
+  activeWorkspaceView,
+  handleSidebarCollectionSelect,
+  handleSidebarItemSelect,
+  selectedCollection
+} = useHomeWorkspaceState()
+const { isMounted: isCoreMounted } = useDeferredMount()
 </script>
 
 <template>
