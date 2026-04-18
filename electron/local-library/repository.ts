@@ -39,6 +39,7 @@ const DatabaseConstructor = require('better-sqlite3') as BetterSqlite3Constructo
 
 export class LocalLibraryRepository {
   private readonly db: BetterSqlite3Database
+  private readonly hasAnyFolderStatement: BetterSqlite3Statement
   private readonly upsertFolderStatement: BetterSqlite3Statement
   private readonly updateFolderEnabledStatement: BetterSqlite3Statement
   private readonly updateFolderLastScanStatement: BetterSqlite3Statement
@@ -239,6 +240,11 @@ export class LocalLibraryRepository {
         ON folder.id = track.folder_id
       WHERE folder.enabled = 1
     `)
+    this.hasAnyFolderStatement = this.db.prepare(`
+      SELECT 1 AS value
+      FROM local_library_folders
+      LIMIT 1
+    `)
     this.deleteTracksByFolderStatement = this.db.prepare(`
       DELETE FROM local_library_tracks
       WHERE folder_id = ?
@@ -292,9 +298,7 @@ export class LocalLibraryRepository {
   }
 
   hasAnyFolder(): boolean {
-    const row = this.db.prepare(`SELECT 1 AS value FROM local_library_folders LIMIT 1`).get() as
-      | { value?: number }
-      | undefined
+    const row = this.hasAnyFolderStatement.get() as { value?: number } | undefined
 
     return row?.value === 1
   }
@@ -506,7 +510,11 @@ export class LocalLibraryRepository {
     const limit = toPageLimit(query.limit)
     const offset = decodeCursor(query.cursor)
     const artistSummaries = summarizeLocalArtists(
-      this.listArtistSummarySourceRowsStatement.all() as ArtistSummarySourceRow[],
+      (this.listArtistSummarySourceRowsStatement.all() as ArtistSummarySourceRow[]).map(row => ({
+        artist: row.artist,
+        duration: row.duration,
+        coverHash: row.cover_hash
+      })),
       query.search
     )
     const pagedItems = artistSummaries.slice(offset, offset + limit)

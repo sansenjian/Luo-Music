@@ -1,4 +1,3 @@
-import type { Song } from '@/types/schemas'
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
@@ -6,34 +5,9 @@ import type {
   LocalLibraryTrack
 } from '@/types/localLibrary'
 
-import { createLocalMediaUrl } from './protocol'
-import { createAlbumId, createArtistId, createLocalSongArtists } from './repository.helpers'
+import { createTrackSong } from './service.helpers'
+import { createAlbumId, createArtistId } from './repository.helpers'
 import type { AlbumRow, ArtistRow, FolderListRow, FolderRow, TrackRow } from './repository.types'
-
-function createTrackSong(row: TrackRow): Song {
-  return {
-    id: row.id,
-    name: row.title,
-    artists: createLocalSongArtists(row.artist),
-    album: {
-      id: createAlbumId(row.artist, row.album),
-      name: row.album,
-      picUrl: ''
-    },
-    duration: row.duration,
-    mvid: 0,
-    platform: 'local',
-    originalId: row.id,
-    url: createLocalMediaUrl(row.file_path),
-    extra: {
-      localSource: true,
-      localFilePath: row.file_path,
-      localAlbum: row.album,
-      localCoverHash: row.cover_hash,
-      localDurationKnown: row.duration > 0
-    }
-  }
-}
 
 export function mapFolderRow(row: FolderRow): Omit<LocalLibraryFolder, 'songCount'> {
   return {
@@ -66,7 +40,15 @@ export function mapTrackRow(row: TrackRow): LocalLibraryTrack {
     fileSize: row.file_size,
     modifiedAt: row.modified_at,
     coverHash: row.cover_hash ?? null,
-    song: createTrackSong(row)
+    song: createTrackSong(
+      row.id,
+      row.title,
+      row.artist,
+      row.album,
+      row.file_path,
+      row.duration,
+      row.cover_hash ?? null
+    )
   }
 }
 

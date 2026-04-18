@@ -76,8 +76,12 @@ export class LocalLibraryCoverManager {
     const extension = inferFileExtension(format)
     const filePath = path.join(this.coverDirectoryPath, `${hash}.${extension}`)
 
-    if (!existsSync(filePath)) {
-      await writeFile(filePath, data)
+    try {
+      await writeFile(filePath, data, { flag: 'wx' })
+    } catch (error) {
+      if (!isFileAlreadyExistsError(error)) {
+        throw error
+      }
     }
 
     this.setResolvedPathCache(hash, filePath)
@@ -85,13 +89,28 @@ export class LocalLibraryCoverManager {
   }
 
   async getCoverDataUrl(hash: string): Promise<string | null> {
-    const filePath = await this.resolveCoverPath(hash)
+    let filePath = await this.resolveCoverPath(hash)
     if (!filePath) {
       return null
     }
 
-    const fileBuffer = await readFile(filePath)
-    return `data:${inferMimeType(filePath)};base64,${fileBuffer.toString('base64')}`
+    try {
+      const fileBuffer = await readFile(filePath)
+      return `data:${inferMimeType(filePath)};base64,${fileBuffer.toString('base64')}`
+    } catch (error) {
+      if (!isMissingFileError(error)) {
+        throw error
+      }
+
+      this.resolvedPathCache.delete(hash)
+      filePath = await this.resolveCoverPath(hash)
+      if (!filePath) {
+        return null
+      }
+
+      const fileBuffer = await readFile(filePath)
+      return `data:${inferMimeType(filePath)};base64,${fileBuffer.toString('base64')}`
+    }
   }
 
   async cleanupUnusedCovers(usedHashes: Set<string>): Promise<void> {
@@ -121,7 +140,7 @@ export class LocalLibraryCoverManager {
 
   private async resolveCoverPath(hash: string): Promise<string | null> {
     const cachedPath = this.resolvedPathCache.get(hash)
-    if (cachedPath && existsSync(cachedPath)) {
+    if (cachedPath) {
       this.setResolvedPathCache(hash, cachedPath)
       return cachedPath
     }
@@ -153,4 +172,22 @@ export class LocalLibraryCoverManager {
       this.resolvedPathCache.delete(oldestEntryKey)
     }
   }
+}
+
+function isFileAlreadyExistsError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === 'EEXIST'
+  )
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === 'ENOENT'
+  )
 }
