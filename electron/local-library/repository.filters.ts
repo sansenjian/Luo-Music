@@ -25,9 +25,9 @@ export function appendTrackFilters(
   }
 
   if (query.search && query.search.trim()) {
-    const search = `%${query.search.trim()}%`
+    const search = createContainsSearchPattern(query.search)
     clauses.push(
-      `(${trackAlias}.title LIKE ? COLLATE NOCASE OR ${trackAlias}.artist LIKE ? COLLATE NOCASE OR ${trackAlias}.album LIKE ? COLLATE NOCASE OR ${trackAlias}.file_name LIKE ? COLLATE NOCASE)`
+      `(${createCaseInsensitiveLikeClause(`${trackAlias}.title`)} OR ${createCaseInsensitiveLikeClause(`${trackAlias}.artist`)} OR ${createCaseInsensitiveLikeClause(`${trackAlias}.album`)} OR ${createCaseInsensitiveLikeClause(`${trackAlias}.file_name`)})`
     )
     params.push(search, search, search, search)
   }
@@ -45,7 +45,20 @@ export function appendSummarySearchFilter(
     return
   }
 
-  const search = `%${query.search.trim()}%`
-  clauses.push(`(${fields.map(field => `${field} LIKE ? COLLATE NOCASE`).join(' OR ')})`)
+  const search = createContainsSearchPattern(query.search)
+  clauses.push(`(${fields.map(field => createCaseInsensitiveLikeClause(field)).join(' OR ')})`)
   params.push(...fields.map(() => search))
+}
+
+function createContainsSearchPattern(search: string): string {
+  const escapedSearch = search
+    .trim()
+    .replaceAll('\\', '\\\\')
+    .replaceAll('%', '\\%')
+    .replaceAll('_', '\\_')
+  return `%${escapedSearch}%`
+}
+
+function createCaseInsensitiveLikeClause(field: string): string {
+  return `${field} COLLATE NOCASE LIKE ? ESCAPE '\\'`
 }

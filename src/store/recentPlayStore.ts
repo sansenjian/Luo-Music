@@ -11,10 +11,6 @@ export type RecentPlayItem = {
   song: Song
 }
 
-function isSameSong(left: Song, right: Song): boolean {
-  return isSameSongIdentity(left, right)
-}
-
 export const useRecentPlayStore = defineStore('recentPlay', {
   state: () => ({
     items: [] as RecentPlayItem[]
@@ -27,10 +23,10 @@ export const useRecentPlayStore = defineStore('recentPlay', {
         song: cloneSongData(song)
       }
 
-      this.items = [nextEntry, ...this.items.filter(item => !isSameSong(item.song, song))].slice(
-        0,
-        MAX_RECENT_PLAYS
-      )
+      this.items = [
+        nextEntry,
+        ...this.items.filter(item => !isSameSongIdentity(item.song, song))
+      ].slice(0, MAX_RECENT_PLAYS)
     },
 
     clear(): void {
