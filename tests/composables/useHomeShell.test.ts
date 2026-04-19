@@ -1,10 +1,10 @@
-import { defineComponent, nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useHomeShell } from '@/composables/useHomeShell'
 import { usePlayerStore } from '@/store/playerStore'
 import { useToastStore } from '@/store/toastStore'
+import { mountComposable } from '../helpers/mountComposable'
 
 const platformServiceMock = vi.hoisted(() => ({
   closeWindow: vi.fn(),
@@ -42,14 +42,12 @@ vi.mock('@/composables/useKeyboardShortcuts', () => ({
 }))
 
 function mountShell() {
-  const Harness = defineComponent({
-    setup() {
-      return useHomeShell()
-    },
-    template: '<div />'
-  })
+  const mounted = mountComposable(() => useHomeShell())
 
-  return mount(Harness)
+  return {
+    ...mounted,
+    vm: mounted.wrapper.vm as unknown as ReturnType<typeof useHomeShell>
+  }
 }
 
 describe('useHomeShell', () => {
@@ -62,8 +60,7 @@ describe('useHomeShell', () => {
   })
 
   it('initializes keyboard shortcuts and exposes shell actions', () => {
-    const wrapper = mountShell()
-    const vm = wrapper.vm as unknown as ReturnType<typeof useHomeShell>
+    const { vm } = mountShell()
 
     expect(useKeyboardShortcutsMock).toHaveBeenCalledTimes(1)
     expect(vm.activeTab).toBe('lyric')
@@ -86,8 +83,7 @@ describe('useHomeShell', () => {
       .spyOn(playerStore, 'playSongWithDetails')
       .mockResolvedValue(undefined as never)
 
-    const wrapper = mountShell()
-    const vm = wrapper.vm as unknown as ReturnType<typeof useHomeShell>
+    const { vm } = mountShell()
 
     vm.switchTab('playlist')
     await vm.playSong(2)
@@ -103,8 +99,7 @@ describe('useHomeShell', () => {
     const toastStore = useToastStore()
     const error = vi.spyOn(toastStore, 'error').mockImplementation(() => {})
 
-    const wrapper = mountShell()
-    const vm = wrapper.vm as unknown as ReturnType<typeof useHomeShell>
+    const { vm } = mountShell()
 
     await vm.playSong(1)
 

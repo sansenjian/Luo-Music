@@ -8,6 +8,7 @@ import {
   resetServices
 } from '@/services/registry'
 import { createDecorator } from '@/services/types'
+import { createDeferred } from '../helpers/deferred'
 
 const IServiceA = createDecorator<unknown>('IServiceA')
 const IServiceB = createDecorator<unknown>('IServiceB')
@@ -19,16 +20,6 @@ type LifecycleService = {
 }
 
 const ILifecycleService = createDecorator<LifecycleService>('ITestLifecycleService')
-
-function createDeferred() {
-  let resolve!: () => void
-
-  const promise = new Promise<void>(nextResolve => {
-    resolve = nextResolve
-  })
-
-  return { promise, resolve }
-}
 
 async function flushLifecycleTasks(): Promise<void> {
   await Promise.resolve()

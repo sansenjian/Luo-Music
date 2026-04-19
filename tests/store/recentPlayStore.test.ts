@@ -1,4 +1,3 @@
-import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { normalizeRecentPlayItems, useRecentPlayStore } from '@/store/recentPlayStore'
@@ -8,7 +7,6 @@ import { createMockSong } from '../utils/test-utils'
 describe('recentPlayStore', () => {
   beforeEach(() => {
     localStorage.clear()
-    setActivePinia(createPinia())
   })
 
   it('deduplicates recent songs by identity while keeping the latest copy', () => {

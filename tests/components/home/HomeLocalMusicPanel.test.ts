@@ -10,6 +10,7 @@ import type {
   LocalLibraryTrack
 } from '@/types/localLibrary'
 import type { Song } from '@/types/schemas'
+import { createLocalLibraryMock } from '../../fixtures/localLibrary'
 
 const useLocalLibraryMock = vi.hoisted(() => vi.fn())
 const playerStoreMock = vi.hoisted(() => ({
@@ -33,119 +34,6 @@ vi.mock('@/store/playerStore', () => ({
 vi.mock('@/store/toastStore', () => ({
   useToastStore: () => toastStoreMock
 }))
-
-function createLocalLibraryMock(
-  overrides: {
-    albumsPage?: Ref<LocalLibraryPage<LocalLibraryAlbumSummary>>
-    artistsPage?: Ref<LocalLibraryPage<LocalLibraryArtistSummary>>
-    coverUrls?: Ref<Record<string, string>>
-    loading?: Ref<boolean>
-    mutating?: Ref<boolean>
-    pageLoading?: Ref<boolean>
-    songsPage?: Ref<LocalLibraryPage<LocalLibraryTrack>>
-    state?: Ref<LocalLibraryState>
-    status?: Ref<LocalLibraryScanStatus> | ComputedRef<LocalLibraryScanStatus>
-  } = {}
-) {
-  const state =
-    overrides.state ??
-    ref<LocalLibraryState>({
-      supported: false,
-      folders: [],
-      tracks: [],
-      status: {
-        phase: 'idle',
-        scannedFolders: 0,
-        scannedFiles: 0,
-        discoveredTracks: 0,
-        currentFolder: null,
-        startedAt: null,
-        finishedAt: null,
-        message: '本地音乐仅支持 Electron 桌面端'
-      }
-    })
-  const status = overrides.status ?? computed<LocalLibraryScanStatus>(() => state.value.status)
-  const loading = overrides.loading ?? ref(false)
-  const pageLoading = overrides.pageLoading ?? ref(false)
-  const mutating = overrides.mutating ?? ref(false)
-  const songsPage =
-    overrides.songsPage ??
-    ref<LocalLibraryPage<LocalLibraryTrack>>({
-      items: [],
-      nextCursor: null,
-      total: 0,
-      limit: 60
-    })
-  const artistsPage =
-    overrides.artistsPage ??
-    ref<LocalLibraryPage<LocalLibraryArtistSummary>>({
-      items: [],
-      nextCursor: null,
-      total: 0,
-      limit: 60
-    })
-  const albumsPage =
-    overrides.albumsPage ??
-    ref<LocalLibraryPage<LocalLibraryAlbumSummary>>({
-      items: [],
-      nextCursor: null,
-      total: 0,
-      limit: 60
-    })
-  const coverUrls = overrides.coverUrls ?? ref({})
-
-  const refresh = vi.fn()
-  const addFolder = vi.fn()
-  const removeFolder = vi.fn()
-  const setFolderEnabled = vi.fn()
-  const rescan = vi.fn()
-  const loadTracks = vi.fn()
-  const loadArtists = vi.fn()
-  const loadAlbums = vi.fn()
-
-  return {
-    stateGroup: {
-      loading,
-      mutating,
-      pageLoading,
-      refresh,
-      state,
-      status
-    },
-    queries: {
-      albumsPage,
-      artistsPage,
-      coverUrls,
-      loadAlbums,
-      loadArtists,
-      loadTracks,
-      songsPage
-    },
-    commands: {
-      addFolder,
-      removeFolder,
-      rescan,
-      setFolderEnabled
-    },
-    state,
-    status,
-    loading,
-    pageLoading,
-    mutating,
-    songsPage,
-    artistsPage,
-    albumsPage,
-    coverUrls,
-    refresh,
-    addFolder,
-    removeFolder,
-    setFolderEnabled,
-    rescan,
-    loadTracks,
-    loadArtists,
-    loadAlbums
-  }
-}
 
 describe('HomeLocalMusicPanel', () => {
   beforeEach(() => {

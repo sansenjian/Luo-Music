@@ -6,22 +6,7 @@ import type { Song } from '@/platform/music/interface'
 import { usePlayerStore } from '@/store/playerStore'
 import { createSearchStore, searchResultItemToSong, useSearchStore } from '@/store/searchStore'
 
-type Deferred<T> = {
-  promise: Promise<T>
-  resolve: (value: T) => void
-  reject: (reason?: unknown) => void
-}
-
-function createDeferred<T>(): Deferred<T> {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-
-  return { promise, resolve, reject }
-}
+import { createDeferred } from '../helpers/deferred'
 
 function createSearchSong(id: string | number, overrides: Partial<Song> = {}): Song {
   return {

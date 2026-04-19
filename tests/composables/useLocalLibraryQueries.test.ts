@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useLocalLibraryQueries } from '@/composables/local-library/useLocalLibraryQueries'
 import { CoverCacheManager } from '@/utils/cache/coverCache'
+import { createDeferred } from '../helpers/deferred'
 
 describe('useLocalLibraryQueries', () => {
   beforeEach(() => {
@@ -69,14 +70,3 @@ describe('useLocalLibraryQueries', () => {
     expect(platformService.getLocalLibraryCover).toHaveBeenCalledTimes(1)
   })
 })
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-
-  return { promise, resolve, reject }
-}

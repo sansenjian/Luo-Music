@@ -1,7 +1,6 @@
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { computed, ref } from 'vue'
 import type { Song } from '@/types/schemas'
 
 const getLikelistMock = vi.hoisted(() => vi.fn())
@@ -23,77 +22,9 @@ import HomeLikedSongsPanel from '@/components/home/HomeLikedSongsPanel.vue'
 import { useHomeLikedSongsPanel } from '@/composables/home/useHomeLikedSongsPanel'
 import { usePlayerStore } from '@/store/playerStore'
 import { useUserStore } from '@/store/userStore'
+import { createLocalLibraryMockFromSongs } from '../../fixtures/localLibrary'
 
 type HomeLikedSongsPanelDeps = NonNullable<Parameters<typeof useHomeLikedSongsPanel>[0]>
-
-function createLocalLibraryMock(localSongs: Song[] = []) {
-  return {
-    stateGroup: {
-      state: ref({
-        supported: true,
-        folders: localSongs.length
-          ? [
-              {
-                id: 'folder-1',
-                path: 'D:\\Music',
-                name: 'Music',
-                enabled: true,
-                createdAt: Date.now(),
-                lastScannedAt: Date.now(),
-                songCount: localSongs.length
-              }
-            ]
-          : [],
-        tracks: [],
-        status: {
-          phase: 'idle',
-          scannedFolders: localSongs.length ? 1 : 0,
-          scannedFiles: localSongs.length,
-          discoveredTracks: localSongs.length,
-          currentFolder: null,
-          startedAt: null,
-          finishedAt: Date.now(),
-          message: localSongs.length
-            ? `已收录 ${localSongs.length} 首本地歌曲`
-            : '还没有扫描本地音乐'
-        }
-      }),
-      status: computed(() => ({
-        phase: 'idle' as const,
-        scannedFolders: localSongs.length ? 1 : 0,
-        scannedFiles: localSongs.length,
-        discoveredTracks: localSongs.length,
-        currentFolder: null,
-        startedAt: null,
-        finishedAt: Date.now(),
-        message: localSongs.length ? `已收录 ${localSongs.length} 首本地歌曲` : '还没有扫描本地音乐'
-      }))
-    },
-    queries: {
-      songsPage: ref({
-        items: localSongs.map((song, index) => ({
-          id: String(song.id),
-          folderId: 'folder-1',
-          filePath: `D:\\Music\\${song.name}.mp3`,
-          fileName: `${song.name}.mp3`,
-          title: song.name,
-          artist: song.artists.map(artist => artist.name).join(' / '),
-          album: song.album.name,
-          duration: song.duration,
-          fileSize: 1024,
-          modifiedAt: Date.now() + index,
-          coverHash: null,
-          song
-        })),
-        nextCursor: null,
-        total: localSongs.length,
-        limit: 60
-      }),
-      coverUrls: ref({}),
-      loadTracks: vi.fn().mockResolvedValue(undefined)
-    }
-  } as unknown as HomeLikedSongsPanelDeps['localLibrary']
-}
 
 function mountHomeLikedSongsPanel(localLibrary?: HomeLikedSongsPanelDeps['localLibrary']) {
   const Harness = defineComponent({
@@ -338,7 +269,7 @@ describe('HomeLikedSongsPanel', () => {
       }
     }
 
-    const wrapper = mountHomeLikedSongsPanel(createLocalLibraryMock([localSong]))
+    const wrapper = mountHomeLikedSongsPanel(createLocalLibraryMockFromSongs([localSong]))
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('登录后查看我的喜欢')

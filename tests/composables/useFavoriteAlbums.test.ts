@@ -1,8 +1,9 @@
-import { defineComponent } from 'vue'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useFavoriteAlbums, type UseFavoriteAlbumsReturn } from '@/composables/useFavoriteAlbums'
+import { createDeferred } from '../helpers/deferred'
+import { mountComposable } from '../helpers/mountComposable'
 
 const getAlbumDetailMock = vi.hoisted(() => vi.fn())
 const getAlbumSublistMock = vi.hoisted(() => vi.fn())
@@ -12,29 +13,9 @@ vi.mock('@/api/album', () => ({
   getAlbumSublist: getAlbumSublistMock
 }))
 
-function createDeferred<T>() {
-  let resolve!: (value: T | PromiseLike<T>) => void
-
-  const promise = new Promise<T>(nextResolve => {
-    resolve = nextResolve
-  })
-
-  return { promise, resolve }
-}
-
 function mountUseFavoriteAlbums() {
-  let viewModel!: UseFavoriteAlbumsReturn
-
-  const Harness = defineComponent({
-    setup() {
-      viewModel = useFavoriteAlbums()
-      return () => null
-    }
-  })
-
-  mount(Harness)
-
-  return viewModel
+  const { result } = mountComposable<UseFavoriteAlbumsReturn>(() => useFavoriteAlbums())
+  return result
 }
 
 describe('useFavoriteAlbums', () => {

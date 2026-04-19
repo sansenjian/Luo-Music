@@ -1,4 +1,3 @@
-import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createPlayerStore } from '@/store/playerStore'
@@ -99,7 +98,6 @@ describe('playerStore lifecycle', () => {
     audioEventHandlerMocks.instances.length = 0
     ipcHandlerMocks.instances.length = 0
     localStorage.clear()
-    setActivePinia(createPinia())
   })
 
   afterEach(() => {

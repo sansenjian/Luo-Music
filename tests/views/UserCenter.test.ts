@@ -1,29 +1,15 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { assignDefaultUserCenterPageMockState } from '../fixtures/userCenter'
 
 const pageMocks = vi.hoisted(() => ({
   activeTab: 'liked' as 'liked' | 'playlist' | 'album' | 'events',
-  loadingMap: {
-    liked: false,
-    playlist: false,
-    album: false,
-    events: false
-  },
-  mountedTabs: {
-    liked: true,
-    playlist: true,
-    album: true,
-    events: true
-  },
-  loadedTabs: {
-    liked: true,
-    playlist: false,
-    album: false,
-    events: false
-  },
-  currentUserId: 'user-1',
-  avatarUrl: 'avatar.png',
-  nickname: 'tester',
+  loadingMap: { liked: false, playlist: false, album: false, events: false },
+  mountedTabs: { liked: true, playlist: true, album: true, events: true },
+  loadedTabs: { liked: true, playlist: false, album: false, events: false },
+  currentUserId: null as string | null,
+  avatarUrl: '',
+  nickname: '',
   playingPlaylistId: null as string | null,
   playingAlbumId: null as string | null,
   activeTabError: null as unknown,
@@ -37,66 +23,12 @@ const pageMocks = vi.hoisted(() => ({
   selectedAlbumSongs: [] as Array<Record<string, unknown>>,
   albumDetailLoading: false,
   albumDetailError: null as unknown,
-  formattedSongs: [
-    {
-      id: 'song-1',
-      name: 'Song 1',
-      artist: 'Artist 1',
-      album: 'Album 1',
-      cover: 'cover.jpg',
-      duration: 180
-    }
-  ],
-  playlists: [
-    {
-      id: 'playlist-1',
-      name: 'Playlist 1',
-      coverImgUrl: 'cover.jpg',
-      trackCount: 12,
-      playCount: 32000
-    }
-  ],
-  favoritePlaylists: [
-    {
-      id: 'playlist-favorite-1',
-      name: 'Favorite Playlist 1',
-      coverImgUrl: 'favorite-cover.jpg',
-      trackCount: 18,
-      playCount: 64000,
-      subscribed: true
-    }
-  ],
-  albums: [
-    {
-      id: 'album-1',
-      name: 'Album 1',
-      picUrl: 'album-cover.jpg',
-      size: 10,
-      artistName: 'Artist 1'
-    }
-  ],
-  events: [
-    {
-      eventId: 'event-1',
-      message: 'event message',
-      playableSong: {
-        id: 'event-song-1',
-        name: 'Event Song 1',
-        platform: 'netease'
-      },
-      user: {
-        nickname: 'tester',
-        avatarUrl: 'avatar.png'
-      },
-      eventTime: Date.now()
-    }
-  ],
-  tabCounts: {
-    liked: 1,
-    playlist: 1,
-    album: 1,
-    events: 1
-  },
+  formattedSongs: [] as Array<Record<string, unknown>>,
+  playlists: [] as Array<Record<string, unknown>>,
+  favoritePlaylists: [] as Array<Record<string, unknown>>,
+  albums: [] as Array<Record<string, unknown>>,
+  events: [] as Array<Record<string, unknown>>,
+  tabCounts: { liked: 0, playlist: 0, album: 0, events: 0 },
   likedSongsHasMore: true,
   likedSongsLoadingMore: false,
   likedSongsError: null as unknown,
@@ -419,55 +351,7 @@ async function mountUserCenter() {
 
 describe('UserCenter', () => {
   beforeEach(() => {
-    pageMocks.activeTab = 'liked'
-    pageMocks.loadingMap = {
-      liked: false,
-      playlist: false,
-      album: false,
-      events: false
-    }
-    pageMocks.mountedTabs = {
-      liked: true,
-      playlist: true,
-      album: true,
-      events: true
-    }
-    pageMocks.loadedTabs = {
-      liked: true,
-      playlist: false,
-      album: false,
-      events: false
-    }
-    pageMocks.currentUserId = 'user-1'
-    pageMocks.avatarUrl = 'avatar.png'
-    pageMocks.nickname = 'tester'
-    pageMocks.playingPlaylistId = null
-    pageMocks.playingAlbumId = null
-    pageMocks.activeTabError = null
-    pageMocks.selectedPlaylistId = null
-    pageMocks.selectedPlaylist = null
-    pageMocks.selectedPlaylistSongs = []
-    pageMocks.playlistDetailLoading = false
-    pageMocks.playlistDetailError = null
-    pageMocks.selectedAlbumId = null
-    pageMocks.selectedAlbum = null
-    pageMocks.selectedAlbumSongs = []
-    pageMocks.albumDetailLoading = false
-    pageMocks.albumDetailError = null
-    pageMocks.tabCounts = {
-      liked: 1,
-      playlist: 1,
-      album: 1,
-      events: 1
-    }
-    pageMocks.likedSongsHasMore = true
-    pageMocks.likedSongsLoadingMore = false
-    pageMocks.likedSongsError = null
-    pageMocks.eventsFilter = 'all'
-    pageMocks.eventsHasMore = true
-    pageMocks.eventsLoadingMore = false
-    pageMocks.eventsError = null
-
+    assignDefaultUserCenterPageMockState(pageMocks)
     vi.clearAllMocks()
   })
 

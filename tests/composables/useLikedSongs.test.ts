@@ -1,8 +1,9 @@
-import { defineComponent } from 'vue'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useLikedSongs, type UseLikedSongsReturn } from '@/composables/useLikedSongs'
+import { createDeferred } from '../helpers/deferred'
+import { mountComposable } from '../helpers/mountComposable'
 import { createMockSong } from '../utils/test-utils'
 
 const getLikelistMock = vi.hoisted(() => vi.fn())
@@ -12,16 +13,6 @@ vi.mock('@/api/song', () => ({
   getLikelist: getLikelistMock,
   getSongDetail: getSongDetailMock
 }))
-
-function createDeferred<T>() {
-  let resolve!: (value: T | PromiseLike<T>) => void
-
-  const promise = new Promise<T>(nextResolve => {
-    resolve = nextResolve
-  })
-
-  return { promise, resolve }
-}
 
 function buildSongsFromIds(ids: number[]) {
   return ids.map(id =>
@@ -35,18 +26,8 @@ function buildSongsFromIds(ids: number[]) {
 }
 
 function mountUseLikedSongs() {
-  let viewModel!: UseLikedSongsReturn
-
-  const Harness = defineComponent({
-    setup() {
-      viewModel = useLikedSongs()
-      return () => null
-    }
-  })
-
-  mount(Harness)
-
-  return viewModel
+  const { result } = mountComposable<UseLikedSongsReturn>(() => useLikedSongs())
+  return result
 }
 
 describe('useLikedSongs', () => {

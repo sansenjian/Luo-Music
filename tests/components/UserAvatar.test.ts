@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -52,13 +51,9 @@ vi.mock('@/services', async importOriginal => {
 })
 
 function createWrapper() {
-  const pinia = createPinia()
-  setActivePinia(pinia)
-
   return mount(UserAvatar, {
     attachTo: document.body,
     global: {
-      plugins: [pinia],
       stubs: {
         LoginModal: {
           template: '<div class="login-modal-stub">login</div>'

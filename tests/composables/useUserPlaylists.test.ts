@@ -1,8 +1,8 @@
-import { defineComponent } from 'vue'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useUserPlaylists, type UseUserPlaylistsReturn } from '@/composables/useUserPlaylists'
+import { mountComposable } from '../helpers/mountComposable'
 
 const getPlaylistDetailMock = vi.hoisted(() => vi.fn())
 const getPlaylistTracksMock = vi.hoisted(() => vi.fn())
@@ -15,18 +15,8 @@ vi.mock('@/api/playlist', () => ({
 }))
 
 function mountUseUserPlaylists() {
-  let viewModel!: UseUserPlaylistsReturn
-
-  const Harness = defineComponent({
-    setup() {
-      viewModel = useUserPlaylists()
-      return () => null
-    }
-  })
-
-  mount(Harness)
-
-  return viewModel
+  const { result } = mountComposable<UseUserPlaylistsReturn>(() => useUserPlaylists())
+  return result
 }
 
 describe('useUserPlaylists', () => {

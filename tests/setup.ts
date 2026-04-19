@@ -5,10 +5,12 @@ import { beforeEach, vi } from 'vitest'
 import { MockAudio } from './mocks/audio'
 
 vi.stubGlobal('Audio', MockAudio)
-window.Audio = MockAudio as unknown as typeof Audio
-
-config.global.plugins = []
+if (typeof window !== 'undefined') {
+  window.Audio = MockAudio as unknown as typeof Audio
+}
 
 beforeEach(() => {
-  setActivePinia(createPinia())
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  config.global.plugins = [pinia]
 })

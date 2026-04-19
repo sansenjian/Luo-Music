@@ -1,6 +1,3 @@
-import type { Component } from 'vue'
-import { mount, type MountingOptions } from '@vue/test-utils'
-
 import type { Song, SongPlatform } from '@/platform/music/interface'
 
 /**
@@ -30,28 +27,4 @@ export function createMockSong(overrides: Partial<Song> & Record<string, unknown
  */
 export function createQQSong(overrides: Partial<Song> & Record<string, unknown> = {}): Song {
   return createMockSong({ ...overrides, platform: 'qq' })
-}
-
-export function mountComponent(component: Component, options: MountingOptions<any> = {}) {
-  return mount(component, {
-    global: {
-      stubs: {
-        'router-link': true,
-        'router-view': true
-      }
-    },
-    ...options
-  })
-}
-
-export function wait(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-export function mockApiResponse<T>(data: T): Promise<{ data: T }> {
-  return Promise.resolve({ data })
-}
-
-export function mockApiError(message = 'API Error'): Promise<never> {
-  return Promise.reject(new Error(message))
 }

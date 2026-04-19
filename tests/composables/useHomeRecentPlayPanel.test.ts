@@ -1,4 +1,3 @@
-import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useHomeRecentPlayPanel } from '@/composables/home/useHomeRecentPlayPanel'
@@ -10,7 +9,6 @@ import { createMockSong } from '../utils/test-utils'
 describe('useHomeRecentPlayPanel', () => {
   beforeEach(() => {
     localStorage.clear()
-    setActivePinia(createPinia())
   })
 
   it('filters recent items by song, artist, and album metadata', () => {
