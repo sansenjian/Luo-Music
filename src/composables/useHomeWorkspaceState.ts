@@ -56,11 +56,17 @@ export function useHomeWorkspaceState() {
     activeWorkspaceView.value = 'collection'
   }
 
+  function resetToHome(): void {
+    activeWorkspaceView.value = 'home'
+    selectedCollection.value = null
+  }
+
   return {
     activeSidebarItemId,
     activeWorkspaceView,
     handleSidebarCollectionSelect,
     handleSidebarItemSelect,
+    resetToHome,
     selectedCollection
   }
 }

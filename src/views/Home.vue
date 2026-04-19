@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from 'vue'
+import { computed, watch } from 'vue'
 
+import ErrorToast from '../components/ErrorToast.vue'
 import HomeFooter from '../components/home/HomeFooter.vue'
 import HomeCollectionDetailPanel from '../components/home/HomeCollectionDetailPanel.vue'
 import HomeHeader from '../components/home/HomeHeader.vue'
+import HomeLikedSongsPanel from '../components/home/HomeLikedSongsPanel.vue'
+import HomeLocalMusicPanel from '../components/home/HomeLocalMusicPanel.vue'
+import HomeRecentPlayPanel from '../components/home/HomeRecentPlayPanel.vue'
+import HomeSettingsPanel from '../components/home/HomeSettingsPanel.vue'
 import HomeSidebar from '../components/home/HomeSidebar.vue'
 import HomeWorkspace from '../components/home/HomeWorkspace.vue'
+import LyricDisplay from '../components/LyricDisplay.vue'
+import Player from '../components/Player.vue'
+import Playlist from '../components/Playlist.vue'
+import Toast from '../components/Toast.vue'
 import { useDockedPlayerBarLayout } from '../composables/useDockedPlayerBarLayout'
 import { useDeferredMount } from '../composables/useDeferredMount'
 import { useHomeBrandPlacement } from '../composables/useHomeBrandPlacement'
@@ -13,24 +22,6 @@ import { useHomeLikedSongsPanel } from '../composables/home/useHomeLikedSongsPan
 import { useHomePage } from '../composables/useHomePage'
 import { useHomeWorkspaceState } from '../composables/useHomeWorkspaceState'
 import { useLocalLibrary } from '../composables/useLocalLibrary'
-
-const ErrorToast = defineAsyncComponent(() => import('../components/ErrorToast.vue'))
-const HomeLikedSongsPanel = defineAsyncComponent(
-  () => import('../components/home/HomeLikedSongsPanel.vue')
-)
-const HomeLocalMusicPanel = defineAsyncComponent(
-  () => import('../components/home/HomeLocalMusicPanel.vue')
-)
-const HomeRecentPlayPanel = defineAsyncComponent(
-  () => import('../components/home/HomeRecentPlayPanel.vue')
-)
-const HomeSettingsPanel = defineAsyncComponent(
-  () => import('../components/home/HomeSettingsPanel.vue')
-)
-const LyricDisplay = defineAsyncComponent(() => import('../components/LyricDisplay.vue'))
-const Player = defineAsyncComponent(() => import('../components/Player.vue'))
-const Playlist = defineAsyncComponent(() => import('../components/Playlist.vue'))
-const Toast = defineAsyncComponent(() => import('../components/Toast.vue'))
 
 const {
   activeTab,
@@ -63,13 +54,23 @@ const {
   activeWorkspaceView,
   handleSidebarCollectionSelect,
   handleSidebarItemSelect,
+  resetToHome,
   selectedCollection
 } = useHomeWorkspaceState()
+
+// When a search completes and switches to the playlist tab, ensure we're
+// showing the home workspace so the playlist is actually visible.
+watch(activeTab, tab => {
+  if (tab === 'playlist' && activeWorkspaceView.value !== 'home') {
+    resetToHome()
+  }
+})
 const sharedLocalLibrary = useLocalLibrary()
 const homeLikedSongsPanelModel = useHomeLikedSongsPanel({
   localLibrary: sharedLocalLibrary
 })
-const { isMounted: isCoreMounted } = useDeferredMount()
+const { isMounted: isCoreMounted } = useDeferredMount('frame')
+const { isMounted: isIdleMounted } = useDeferredMount('idle')
 </script>
 
 <template>
@@ -153,8 +154,8 @@ const { isMounted: isCoreMounted } = useDeferredMount()
       </HomeFooter>
     </main>
 
-    <Toast v-if="isCoreMounted" />
-    <ErrorToast v-if="isCoreMounted" />
+    <Toast v-if="isIdleMounted" />
+    <ErrorToast v-if="isIdleMounted" />
   </div>
 </template>
 

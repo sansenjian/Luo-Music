@@ -403,6 +403,9 @@ declare global {
   export type { CommandContextDeps } from './composables/useCommandContext'
   import('./composables/useCommandContext')
   // @ts-ignore
+  export type { MountTier } from './composables/useDeferredMount'
+  import('./composables/useDeferredMount')
+  // @ts-ignore
   export type {
     DockedPlayerBarLayout,
     DockedPlayerBarLayoutDeps

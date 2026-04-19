@@ -120,9 +120,10 @@ describe('playerStore', () => {
       expect(store.currentIndex).toBe(-1)
     })
 
-    it('clears stale currentSong when the new playlist no longer contains it', () => {
+    it('preserves currentSong when the new playlist no longer contains it', () => {
       const store = usePlayerStore()
-      store.currentSong = createMockSong({ id: 99, name: 'Stale Song' })
+      const staleSong = createMockSong({ id: 99, name: 'Stale Song' })
+      store.currentSong = staleSong
 
       store.setSongList([
         createMockSong({ id: 1, name: 'Song 1' }),
@@ -130,8 +131,7 @@ describe('playerStore', () => {
       ])
 
       expect(store.currentIndex).toBe(-1)
-      expect(store.currentSong).toBeNull()
-      expect(store.currentSongInfo).toBeNull()
+      expect(store.currentSong).toEqual(staleSong)
     })
 
     it('matches current songs by id and platform when replacing the playlist', () => {

@@ -748,9 +748,6 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         if (this.currentSong) {
           const newIndex = songs.findIndex(song => isSameSong(song, this.currentSong!))
           this.currentIndex = newIndex
-          if (newIndex === -1) {
-            this.currentSong = null
-          }
         } else {
           this.currentIndex = -1
         }

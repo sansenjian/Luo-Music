@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
 import type { HomeTab } from '@/composables/useHomeShell'
 
 import HomeTabBar from './HomeTabBar.vue'
@@ -15,21 +14,6 @@ const emit = defineEmits<{
 function handleTabChange(tab: HomeTab): void {
   emit('change-tab', tab)
 }
-
-const hasVisitedLyric = ref(false)
-const hasVisitedPlaylist = ref(false)
-
-watch(
-  () => props.activeTab,
-  tab => {
-    if (tab === 'lyric') {
-      hasVisitedLyric.value = true
-      return
-    }
-    hasVisitedPlaylist.value = true
-  },
-  { immediate: true }
-)
 </script>
 
 <template>
@@ -37,14 +21,10 @@ watch(
     <HomeTabBar :active-tab="props.activeTab" @change-tab="handleTabChange" />
 
     <div class="content-area">
-      <div v-if="hasVisitedLyric" v-show="props.activeTab === 'lyric'" class="lyric-view">
+      <div v-show="props.activeTab === 'lyric'" class="lyric-view">
         <slot name="lyric" />
       </div>
-      <div
-        v-if="hasVisitedPlaylist"
-        v-show="props.activeTab === 'playlist'"
-        class="playlist-view"
-      >
+      <div v-show="props.activeTab === 'playlist'" class="playlist-view">
         <slot name="playlist" />
       </div>
     </div>
