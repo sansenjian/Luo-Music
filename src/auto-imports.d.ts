@@ -209,6 +209,7 @@ declare global {
   const useEventBus: typeof import('@vueuse/core').useEventBus
   const useEventListener: typeof import('@vueuse/core').useEventListener
   const useEventSource: typeof import('@vueuse/core').useEventSource
+  const useExperimentalFeatures: typeof import('./composables/useExperimentalFeatures').useExperimentalFeatures
   const useEyeDropper: typeof import('@vueuse/core').useEyeDropper
   const useFavicon: typeof import('@vueuse/core').useFavicon
   const useFavoriteAlbums: typeof import('./composables/useFavoriteAlbums').default
@@ -246,6 +247,7 @@ declare global {
   const useManualRefHistory: typeof import('@vueuse/core').useManualRefHistory
   const useMediaControls: typeof import('@vueuse/core').useMediaControls
   const useMediaQuery: typeof import('@vueuse/core').useMediaQuery
+  const useMediaSession: typeof import('./composables/useMediaSession').useMediaSession
   const useMemoize: typeof import('@vueuse/core').useMemoize
   const useMemory: typeof import('@vueuse/core').useMemory
   const useModel: typeof import('vue').useModel
@@ -407,6 +409,12 @@ declare global {
   } from './composables/useDockedPlayerBarLayout'
   import('./composables/useDockedPlayerBarLayout')
   // @ts-ignore
+  export type {
+    ExperimentalFeaturesState,
+    ExperimentalFeaturesDeps
+  } from './composables/useExperimentalFeatures'
+  import('./composables/useExperimentalFeatures')
+  // @ts-ignore
   export type { FavoriteAlbumItem, UseFavoriteAlbumsReturn } from './composables/useFavoriteAlbums'
   import('./composables/useFavoriteAlbums')
   // @ts-ignore
@@ -433,6 +441,9 @@ declare global {
   // @ts-ignore
   export type { UseLyricAutoScrollOptions } from './composables/useLyricAutoScroll'
   import('./composables/useLyricAutoScroll')
+  // @ts-ignore
+  export type { MediaSessionDeps } from './composables/useMediaSession'
+  import('./composables/useMediaSession')
   // @ts-ignore
   export type { PlayerViewModelDeps } from './composables/usePlayerViewModel'
   import('./composables/usePlayerViewModel')
@@ -757,6 +768,9 @@ declare module 'vue' {
     readonly useEventBus: UnwrapRef<(typeof import('@vueuse/core'))['useEventBus']>
     readonly useEventListener: UnwrapRef<(typeof import('@vueuse/core'))['useEventListener']>
     readonly useEventSource: UnwrapRef<(typeof import('@vueuse/core'))['useEventSource']>
+    readonly useExperimentalFeatures: UnwrapRef<
+      (typeof import('./composables/useExperimentalFeatures'))['useExperimentalFeatures']
+    >
     readonly useEyeDropper: UnwrapRef<(typeof import('@vueuse/core'))['useEyeDropper']>
     readonly useFavicon: UnwrapRef<(typeof import('@vueuse/core'))['useFavicon']>
     readonly useFavoriteAlbums: UnwrapRef<
@@ -814,6 +828,9 @@ declare module 'vue' {
     readonly useManualRefHistory: UnwrapRef<(typeof import('@vueuse/core'))['useManualRefHistory']>
     readonly useMediaControls: UnwrapRef<(typeof import('@vueuse/core'))['useMediaControls']>
     readonly useMediaQuery: UnwrapRef<(typeof import('@vueuse/core'))['useMediaQuery']>
+    readonly useMediaSession: UnwrapRef<
+      (typeof import('./composables/useMediaSession'))['useMediaSession']
+    >
     readonly useMemoize: UnwrapRef<(typeof import('@vueuse/core'))['useMemoize']>
     readonly useMemory: UnwrapRef<(typeof import('@vueuse/core'))['useMemory']>
     readonly useModel: UnwrapRef<(typeof import('vue'))['useModel']>

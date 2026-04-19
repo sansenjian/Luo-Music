@@ -7,7 +7,9 @@ const platformServiceMock = vi.hoisted(() => ({
 
 const storageServiceMock = vi.hoisted(() => ({
   getItem: vi.fn<(key: string) => string | null>(() => null),
-  setItem: vi.fn()
+  getJSON: vi.fn<(key: string) => unknown>(() => null),
+  setItem: vi.fn(),
+  setJSON: vi.fn()
 }))
 
 vi.mock('@/services', async importOriginal => {
@@ -27,6 +29,7 @@ describe('SettingsPanel.vue', () => {
     vi.resetModules()
     vi.clearAllMocks()
     storageServiceMock.getItem.mockReturnValue(null)
+    storageServiceMock.getJSON.mockReturnValue(null)
   })
 
   it('shows cache manager section when running in Electron', async () => {
@@ -70,6 +73,45 @@ describe('SettingsPanel.vue', () => {
     await wrapper.find('.settings-btn').trigger('click')
 
     expect(document.body.querySelector('.cache-unavailable')).not.toBeNull()
+    expect(document.body.textContent).not.toContain('Windows SMTC（实验）')
+    wrapper.unmount()
+  })
+
+  it('shows and toggles the experimental SMTC setting in Electron', async () => {
+    platformServiceMock.isElectron.mockReturnValue(true)
+    storageServiceMock.getJSON.mockImplementation((key: string) =>
+      key === 'experimentalFeatures' ? { smtcEnabled: false } : null
+    )
+    const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
+
+    const wrapper = mount(SettingsPanel, {
+      attachTo: document.body,
+      global: {
+        stubs: {
+          Teleport: false,
+          Transition: false,
+          CacheManager: true
+        }
+      }
+    })
+
+    await wrapper.find('.settings-btn').trigger('click')
+
+    const smtcToggle = document.body.querySelector(
+      'input[aria-label="Windows SMTC（实验）"]'
+    ) as HTMLInputElement | null
+
+    expect(smtcToggle).not.toBeNull()
+    expect(smtcToggle?.checked).toBe(false)
+
+    smtcToggle!.checked = true
+    smtcToggle!.dispatchEvent(new Event('change'))
+    await wrapper.vm.$nextTick()
+
+    expect(storageServiceMock.setJSON).toHaveBeenCalledWith('experimentalFeatures', {
+      smtcEnabled: true
+    })
+
     wrapper.unmount()
   })
 

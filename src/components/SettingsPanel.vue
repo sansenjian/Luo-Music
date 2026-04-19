@@ -7,8 +7,10 @@ const showSettings = ref(false)
 const {
   playerStore,
   isElectron,
+  smtcEnabled,
   setBrandPlacement,
   setDockedPlayerBarLayout,
+  setSMTCEnabled,
   setRenderStyle,
   isBrandPlacementActive,
   isRenderStyleActive,
@@ -21,6 +23,10 @@ function toggleSettings() {
 
 function closeSettings() {
   showSettings.value = false
+}
+
+function handleSMTCEnabledChange(event: Event): void {
+  setSMTCEnabled((event.target as HTMLInputElement).checked)
 }
 </script>
 
@@ -175,6 +181,20 @@ function closeSettings() {
                       给侧边栏留位
                     </button>
                   </div>
+                </div>
+              </section>
+
+              <section v-if="isElectron" class="settings-section">
+                <h3>实验功能</h3>
+                <div class="setting-item">
+                  <label for="experimental-smtc-toggle">Windows SMTC（实验）</label>
+                  <input
+                    id="experimental-smtc-toggle"
+                    aria-label="Windows SMTC（实验）"
+                    type="checkbox"
+                    :checked="smtcEnabled"
+                    @change="handleSMTCEnabledChange"
+                  />
                 </div>
               </section>
 

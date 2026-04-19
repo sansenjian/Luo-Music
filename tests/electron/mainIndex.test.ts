@@ -24,6 +24,7 @@ const loggerErrorMock = vi.hoisted(() => vi.fn())
 const initSentryMock = vi.hoisted(() => vi.fn(async () => {}))
 const requestSingleInstanceLockMock = vi.hoisted(() => vi.fn())
 const setupDevUserDataMock = vi.hoisted(() => vi.fn())
+const setupWindowsShellIntegrationMock = vi.hoisted(() => vi.fn())
 const setupErrorHandlersMock = vi.hoisted(() => vi.fn())
 const setTrayWindowManagerMock = vi.hoisted(() => vi.fn())
 const destroyTrayMock = vi.hoisted(() => vi.fn())
@@ -52,6 +53,11 @@ let serviceWarmupResolved = false
 vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: vi.fn(() => [])
+  },
+  app: {
+    commandLine: {
+      appendSwitch: vi.fn()
+    }
   }
 }))
 
@@ -124,6 +130,7 @@ vi.mock('../../electron/ipc/index', () => ({
 vi.mock('../../electron/main/app', () => ({
   requestSingleInstanceLock: requestSingleInstanceLockMock,
   setupDevUserData: setupDevUserDataMock,
+  setupWindowsShellIntegration: setupWindowsShellIntegrationMock,
   setupErrorHandlers: setupErrorHandlersMock,
   registerAppLifecycle: registerAppLifecycleMock.mockImplementation(callbacks => {
     lifecycleCallbacks = callbacks
@@ -182,12 +189,25 @@ describe('electron/main/index', () => {
 
     expect(requestSingleInstanceLockMock).toHaveBeenCalledTimes(1)
     expect(setupDevUserDataMock).toHaveBeenCalledTimes(1)
+    expect(setupWindowsShellIntegrationMock).toHaveBeenCalledTimes(1)
     expect(setupErrorHandlersMock).toHaveBeenCalledTimes(1)
     expect(initSentryMock).toHaveBeenCalledTimes(1)
     expect(setTrayWindowManagerMock).toHaveBeenCalledTimes(1)
     expect(setShortcutsWindowManagerMock).toHaveBeenCalledTimes(1)
     expect(registerAppLifecycleMock).toHaveBeenCalledTimes(1)
     expect(lifecycleCallbacks?.onReady).toBeTypeOf('function')
+  })
+
+  it('enables HardwareMediaKeyHandling and MediaSessionService for SMTC support', async () => {
+    const electron = await import('electron')
+    const appendSwitchMock = vi.mocked(electron.app.commandLine.appendSwitch)
+
+    await import('../../electron/main/index.ts')
+
+    expect(appendSwitchMock).toHaveBeenCalledWith(
+      'enable-features',
+      'HardwareMediaKeyHandling,MediaSessionService'
+    )
   })
 
   it('waits for service warmup before creating the window', async () => {

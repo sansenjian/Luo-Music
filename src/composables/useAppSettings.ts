@@ -4,6 +4,7 @@ import {
   useDockedPlayerBarLayout,
   type DockedPlayerBarLayout
 } from '@/composables/useDockedPlayerBarLayout'
+import { useExperimentalFeatures } from '@/composables/useExperimentalFeatures'
 import { useHomeBrandPlacement, type HomeBrandPlacement } from '@/composables/useHomeBrandPlacement'
 import { useRenderStyle, type RenderStyle } from '@/composables/useRenderStyle'
 import { services } from '@/services'
@@ -14,6 +15,7 @@ export function useAppSettings() {
   const platformService = services.platform()
   const { brandPlacement, setBrandPlacement } = useHomeBrandPlacement()
   const { dockedPlayerBarLayout, setDockedPlayerBarLayout } = useDockedPlayerBarLayout()
+  const { experimentalFeatures, smtcEnabled, setSMTCEnabled } = useExperimentalFeatures()
   const { renderStyle, setRenderStyle } = useRenderStyle()
 
   const isElectron = computed(() => platformService.isElectron())
@@ -37,6 +39,9 @@ export function useAppSettings() {
     setBrandPlacement,
     dockedPlayerBarLayout,
     setDockedPlayerBarLayout,
+    experimentalFeatures,
+    smtcEnabled,
+    setSMTCEnabled,
     renderStyle,
     setRenderStyle,
     isBrandPlacementActive,

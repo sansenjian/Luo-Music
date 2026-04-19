@@ -38,7 +38,7 @@ type SafeCallback = (data: unknown) => void
 export class PlayerCore {
   private audio: HTMLAudioElement
   private audioContext: AudioContext | null = null
-  private source: MediaElementAudioSourceNode | null = null
+  private source: MediaElementAudioSourceNode | MediaStreamAudioSourceNode | null = null
   private analyser: AnalyserNode | null = null
   private gainNode: GainNode | null = null
 
@@ -102,17 +102,37 @@ export class PlayerCore {
       this.analyser.fftSize = 2048 // Higher resolution for visualization
 
       this.gainNode = this.audioContext.createGain()
+      this.gainNode.gain.value = 0 // Silence Web Audio output; audio element outputs directly
       this.gainNode.connect(this.audioContext.destination)
 
-      // Connect audio element to source
+      // Use captureStream() so the audio element still outputs directly to speakers.
+      // This keeps Chromium's MediaSession / Windows SMTC detection working.
+      // The Web Audio graph (source→analyser→gainNode(0)→destination) only captures
+      // a copy for visualization; the gain=0 prevents double audio output.
       try {
-        this.source = this.audioContext.createMediaElementSource(this.audio)
+        const stream = (
+          this.audio as HTMLMediaElement & { captureStream(): MediaStream }
+        ).captureStream()
+        this.source = this.audioContext.createMediaStreamSource(stream)
         this.source.connect(this.analyser)
         this.analyser.connect(this.gainNode)
       } catch (e) {
-        console.warn('Failed to create MediaElementSource, visualization may not work:', e)
-        // Fallback: connect directly if possible, or just let audio play (it plays by default if not connected?)
-        // Actually if we create source, we redirect it. If it fails, audio element plays normally.
+        console.warn(
+          '[PlayerCore] captureStream() failed, falling back to createMediaElementSource.',
+          'Note: This breaks Windows SMTC / MediaSession integration.',
+          e
+        )
+        try {
+          this.source = this.audioContext.createMediaElementSource(this.audio)
+          this.source.connect(this.analyser)
+          this.analyser.connect(this.gainNode)
+          this.gainNode.gain.value = 1 // Restore gain since audio element output is now redirected
+        } catch (e2) {
+          console.warn(
+            '[PlayerCore] Failed to create MediaElementSource, visualization may not work:',
+            e2
+          )
+        }
       }
     }
   }

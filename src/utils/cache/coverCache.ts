@@ -18,6 +18,24 @@ const coverCache = new LRUCache<string, string>({
 
 export class CoverCacheManager {
   /**
+   * 将缩略图值标准化为可直接用于 MediaMetadata.artwork 的 URL。
+   * 已有的 data/blob/http/file URL 原样返回，裸 base64 会补全 data URL 前缀。
+   */
+  static toArtworkUrl(value: string, mimeType = 'image/jpeg'): string {
+    if (
+      value.startsWith('data:') ||
+      value.startsWith('blob:') ||
+      value.startsWith('http://') ||
+      value.startsWith('https://') ||
+      value.startsWith('file://')
+    ) {
+      return value
+    }
+
+    return `data:${mimeType};base64,${value}`
+  }
+
+  /**
    * 获取缓存的封面 URL
    * @param id 歌曲 ID 或唯一标识
    */
@@ -34,6 +52,29 @@ export class CoverCacheManager {
     // 如果已存在且是 Blob URL，先不处理，让 LRU 自动处理旧值
     // 但如果直接覆盖，LRU 会调用 dispose 释放旧值吗？是的，lru-cache 会处理。
     coverCache.set(id, url)
+  }
+
+  /**
+   * 拉取本地封面并统一缓存为 data URL，供 Media Session / UI 复用。
+   */
+  static async fetchThumbnailAsDataUrl(
+    id: string,
+    fetcher: (id: string) => Promise<string | null>,
+    mimeType = 'image/jpeg'
+  ): Promise<string> {
+    const cached = this.get(id)
+    if (cached) {
+      return cached
+    }
+
+    const nextValue = await fetcher(id)
+    if (!nextValue) {
+      return ''
+    }
+
+    const dataUrl = this.toArtworkUrl(nextValue, mimeType)
+    this.set(id, dataUrl)
+    return dataUrl
   }
 
   /**

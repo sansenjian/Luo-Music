@@ -6,7 +6,7 @@
  */
 
 import 'dotenv/config'
-import { BrowserWindow } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { desktopLyricManager } from '../DesktopLyricManager'
 import { downloadManager } from '../DownloadManager'
 import { windowManager } from '../WindowManager'
@@ -38,6 +38,7 @@ import {
 import {
   requestSingleInstanceLock,
   setupDevUserData,
+  setupWindowsShellIntegration,
   setupErrorHandlers,
   registerAppLifecycle
 } from './app'
@@ -56,6 +57,11 @@ console.warn = logger.warn.bind(logger)
 console.info = logger.info.bind(logger)
 
 registerPrivilegedLocalMediaScheme()
+
+// Ensure Chromium's MediaSession service and hardware media key handling are
+// active so that Windows SMTC (System Media Transport Controls) integration
+// works via navigator.mediaSession in the renderer.
+app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaSessionService')
 
 const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
   services: {
@@ -117,6 +123,7 @@ function initializeIpcService(): void {
 function main(): void {
   requestSingleInstanceLock()
   setupDevUserData()
+  setupWindowsShellIntegration()
   setupErrorHandlers()
 
   void initSentry()

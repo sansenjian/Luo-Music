@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { useCommandContext } from './composables/useCommandContext'
+import { useExperimentalFeatures } from './composables/useExperimentalFeatures'
+import { useMediaSession } from './composables/useMediaSession'
 import { useRenderStyle } from './composables/useRenderStyle'
 import { services } from './services'
 import { PLAY_MODE } from './utils/player/constants/playMode'
@@ -18,9 +21,11 @@ const platformService = services.platform()
 const storageService = services.storage()
 const isElectron = platformService.isElectron()
 const showAnalytics = ref(false)
+const route = useRoute()
 const Analytics = defineAsyncComponent(() =>
   import('@vercel/analytics/vue').then(module => module.Analytics)
 )
+const DESKTOP_LYRIC_ROUTE_PATH = '/desktop-lyric'
 const PLAYER_STORAGE_KEY = 'player'
 const DEFAULT_PLAYER_STATE: PlayerState = {
   volume: 0.7,
@@ -29,6 +34,17 @@ const DEFAULT_PLAYER_STATE: PlayerState = {
   isPlayerDocked: true
 }
 const VALID_LYRIC_TYPES = new Set(['original', 'trans', 'roma'])
+const { smtcEnabled } = useExperimentalFeatures()
+const mediaSessionEnabled = computed(() => {
+  // The hidden desktop-lyric window preloads the full renderer app as well.
+  // Only the primary window should own the Windows media session.
+  const isDesktopLyricWindow =
+    route.path === DESKTOP_LYRIC_ROUTE_PATH ||
+    (typeof window !== 'undefined' &&
+      window.location.hash.startsWith(`#${DESKTOP_LYRIC_ROUTE_PATH}`))
+
+  return smtcEnabled.value && !isDesktopLyricWindow
+})
 
 const sanitizeVolume = (value: unknown): number => {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
@@ -75,6 +91,9 @@ const sanitizePlayerState = (value: unknown): PlayerState => {
 }
 
 useCommandContext()
+useMediaSession({
+  enabled: () => mediaSessionEnabled.value
+})
 useRenderStyle()
 
 function scheduleIdle(task: () => void): void {

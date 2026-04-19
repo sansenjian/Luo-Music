@@ -62,10 +62,21 @@ function getActionHandler(action: ShortcutAction): (() => void) | null {
   return actions[action] || null
 }
 
+const MEDIA_KEY_ACCELERATORS = new Set(['MediaPlayPause', 'MediaPreviousTrack', 'MediaNextTrack'])
+
 /**
  * 注册全局快捷键
+ *
+ * On Windows, media key accelerators (MediaPlayPause, MediaPreviousTrack,
+ * MediaNextTrack) are skipped because globalShortcut.register() installs
+ * an OS-level keyboard hook that intercepts these keys before the
+ * Chromium MediaSession / Windows SMTC pipeline can process them.
+ * When SMTC is active, media keys are handled by the renderer's
+ * navigator.mediaSession action handlers instead.
  */
 export function registerShortcuts(shortcuts: ShortcutConfig[]): void {
+  const shouldSkipMediaKeys = process.platform === 'win32'
+
   for (const shortcut of shortcuts) {
     if (!shortcut.globalKeys || shortcut.globalKeys.length === 0) continue
 
@@ -73,6 +84,11 @@ export function registerShortcuts(shortcuts: ShortcutConfig[]): void {
     if (!handler) continue
 
     for (const key of shortcut.globalKeys) {
+      if (shouldSkipMediaKeys && MEDIA_KEY_ACCELERATORS.has(key)) {
+        logger.info(`[Shortcuts] Skipped on Windows (SMTC): ${key} -> ${shortcut.action}`)
+        continue
+      }
+
       try {
         globalShortcut.register(key, handler)
         logger.info(`[Shortcuts] Registered: ${key} -> ${shortcut.action}`)
