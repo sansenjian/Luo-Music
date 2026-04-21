@@ -38,7 +38,7 @@ export class PlaybackErrorHandler implements ErrorHandler {
   private maxSkipAttempts: number = 5
   private lastSkipTime: number = 0
   private skipCooldownMs: number = 3000
-  private unavailableSongs: (string | number)[] = []
+  private unavailableSongs: Set<string | number> = new Set()
 
   constructor(options: ErrorHandlerOptions) {
     this.musicService = options.musicService
@@ -113,8 +113,8 @@ export class PlaybackErrorHandler implements ErrorHandler {
   markAsUnavailable(song: Song, message?: string) {
     song.unavailable = true
     song.errorMessage = message || '该歌曲无法播放（可能需要 VIP 或受版权限制）'
-    if (!this.unavailableSongs.includes(song.id)) {
-      this.unavailableSongs.push(song.id)
+    if (!this.unavailableSongs.has(song.id)) {
+      this.unavailableSongs.add(song.id)
     }
   }
 
@@ -134,7 +134,7 @@ export class PlaybackErrorHandler implements ErrorHandler {
     }
 
     const { songList } = this.getState()
-    if (songList.length > 0 && this.unavailableSongs.length / songList.length > 0.8) {
+    if (songList.length > 0 && this.unavailableSongs.size / songList.length > 0.8) {
       return true
     }
 
@@ -191,7 +191,7 @@ export class PlaybackErrorHandler implements ErrorHandler {
   reset() {
     this.skipAttempts = 0
     this.lastSkipTime = 0
-    this.unavailableSongs = []
+    this.unavailableSongs.clear()
     const { songList } = this.getState()
     songList.forEach(song => {
       song.unavailable = false
@@ -199,7 +199,7 @@ export class PlaybackErrorHandler implements ErrorHandler {
     })
   }
 
-  getUnavailableSongs() {
-    return this.unavailableSongs
+  getUnavailableSongs(): (string | number)[] {
+    return Array.from(this.unavailableSongs)
   }
 }

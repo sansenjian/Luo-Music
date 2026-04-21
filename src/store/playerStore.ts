@@ -50,7 +50,7 @@ export type PlayerStoreActions = {
   updateLyricIndex: (time?: number) => boolean
   setSongList: (songs: Song[]) => void
   addSong: (song: Song) => void
-  playSongByIndex: (index: number) => Promise<void>
+  playSongByIndex: (index: number, song?: Song) => Promise<void>
   playSongWithDetails: (index: number, autoSkip?: boolean) => Promise<void>
   togglePlay: () => void
   getRandomIndex: (excludeCurrent?: boolean) => number
@@ -415,7 +415,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         Object.assign(store, changes)
         notifyPlayerStateSnapshot(store)
       },
-      playSongByIndex: index => store.playSongByIndex(index),
+      playSongByIndex: (index, song?) => store.playSongByIndex(index, song),
       setLyricsArray: lyrics => store.setLyricsArray(lyrics),
       onPlaybackCommitted: song => {
         useRecentPlayStore().recordSong(song)
@@ -551,6 +551,9 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
               this.notifyPlayingState(true)
             },
             onPause: () => {
+              if (this._srcTransitioning) {
+                return
+              }
               this.playing = false
               this.notifyPlayingState(false)
             },
@@ -759,28 +762,45 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.songList.push(song)
       },
 
-      async playSongByIndex(index: number): Promise<void> {
+      async playSongByIndex(index: number, song?: Song): Promise<void> {
         if (index < 0 || index >= this.songList.length) {
           return
         }
 
         this.initAudio()
 
-        const song = this.songList[index]
+        const targetSong = song ?? this.songList[index]
 
-        if (!song.url) {
+        if (!targetSong.url) {
           const error = new Error('No URL for song')
           reportPlayerStoreError(error, 'playSongByIndex', 'No URL for song')
           throw error
         }
 
+        // Set currentSong BEFORE audio.src changes so that MediaSession
+        // watchers can populate metadata synchronously.  Both currentSong
+        // and playing are updated in the same reactive tick so the
+        // MediaSession sees the new song, not the stale one.
+        if (this.currentSong !== targetSong) {
+          this.currentSong = targetSong
+          this.currentIndex = index
+        }
+
+        // Suppress the pause event that fires when audio.src changes so
+        // that the MediaSession playbackState never drops to 'paused'
+        // during the transition.  Without this, Windows SMTC sees an
+        // inactive session and switches to another app's media control.
+        this._srcTransitioning = true
+
         try {
-          await audioManager.play(String(song.url))
+          await audioManager.play(String(targetSong.url))
           this.playing = true
         } catch (error) {
           reportPlayerStoreError(error, 'playSongByIndex', 'Playback failed')
           this.playing = false
           throw error
+        } finally {
+          this._srcTransitioning = false
         }
       },
 

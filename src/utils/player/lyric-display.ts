@@ -7,6 +7,7 @@ export interface LyricDisplayVisibility {
 }
 
 export interface ResolvedLyricDisplayLine {
+  time: number
   original: string
   trans: string
   roma: string
@@ -15,7 +16,7 @@ export interface ResolvedLyricDisplayLine {
   showRoma: boolean
 }
 
-type LyricLineLike = Pick<LyricLine, 'text' | 'trans' | 'roma'>
+type LyricLineLike = Pick<LyricLine, 'text' | 'trans' | 'roma'> & { time?: number }
 
 export function resolveLyricDisplayLine(
   line: LyricLineLike | null | undefined,
@@ -28,6 +29,7 @@ export function resolveLyricDisplayLine(
   const shouldShowOriginal = visibility.showOriginal || (!trans && !roma && Boolean(originalText))
 
   return {
+    time: line?.time ?? 0,
     original: shouldShowOriginal ? originalText : '',
     trans,
     roma,

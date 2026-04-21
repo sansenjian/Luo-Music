@@ -57,6 +57,8 @@ export interface PlayerState {
   isPlayerDocked: boolean
   /** IPC 是否已初始化 */
   ipcInitialized: boolean
+  /** audio.src 切换中，抑制 pause 事件 */
+  _srcTransitioning: boolean
 }
 
 /**
@@ -102,7 +104,8 @@ export function createInitialState(): PlayerState {
     initialized: false,
     loading: false,
     isPlayerDocked: true,
-    ipcInitialized: false
+    ipcInitialized: false,
+    _srcTransitioning: false
   }
 }
 

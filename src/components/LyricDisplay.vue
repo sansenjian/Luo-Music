@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 import HomeEmptyState from './home/HomeEmptyState.vue'
 import { uiMessages } from '@/messages/ui'
 import { useActiveLyricState } from '../composables/useActiveLyricState'
 import { useLyricAutoScroll } from '../composables/useLyricAutoScroll'
 import { usePlayerStore } from '../store/playerStore'
-import type { LyricLine } from '../utils/player/core/lyric'
 import { resolveLyricDisplayLine } from '../utils/player/lyric-display'
 
 const props = defineProps({
@@ -20,6 +19,16 @@ const playerStore = usePlayerStore()
 const lyricScrollArea = ref(null)
 const { lyrics, currentLyricIndex, showOriginal, showTrans, showRoma } = useActiveLyricState()
 
+const resolvedLyrics = computed(() =>
+  lyrics.value.map(item =>
+    resolveLyricDisplayLine(item, {
+      showOriginal: showOriginal.value,
+      showTrans: showTrans.value,
+      showRoma: showRoma.value
+    })
+  )
+)
+
 function handleLyricClick(time: number) {
   playerStore.seek(time)
 }
@@ -31,38 +40,6 @@ function handleLyricKeydown(event: KeyboardEvent, time: number) {
 
   event.preventDefault()
   handleLyricClick(time)
-}
-
-function shouldShowOriginalLine(item: LyricLine) {
-  return getDisplayLine(item).showOriginal
-}
-
-function shouldShowRomaLine(item: LyricLine) {
-  return getDisplayLine(item).showRoma
-}
-
-function shouldShowTransLine(item: LyricLine) {
-  return getDisplayLine(item).showTrans
-}
-
-function getVisibleOriginalText(item: LyricLine) {
-  return getDisplayLine(item).original
-}
-
-function getVisibleRomaText(item: LyricLine) {
-  return getDisplayLine(item).roma
-}
-
-function getVisibleTransText(item: LyricLine) {
-  return getDisplayLine(item).trans
-}
-
-function getDisplayLine(item: LyricLine) {
-  return resolveLyricDisplayLine(item, {
-    showOriginal: showOriginal.value,
-    showTrans: showTrans.value,
-    showRoma: showRoma.value
-  })
 }
 
 const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
@@ -94,7 +71,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
     >
       <div class="lyrics-list">
         <div
-          v-for="(item, index) in lyrics"
+          v-for="(item, index) in resolvedLyrics"
           :key="`${item.time}-${index}`"
           class="lyric-line"
           role="button"
@@ -107,14 +84,14 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
           @click="handleLyricClick(item.time)"
           @keydown="handleLyricKeydown($event, item.time)"
         >
-          <div v-if="shouldShowRomaLine(item)" class="lyric-roma">
-            {{ getVisibleRomaText(item) }}
+          <div v-if="item.showRoma" class="lyric-roma">
+            {{ item.roma }}
           </div>
-          <div v-if="shouldShowOriginalLine(item)" class="lyric-main">
-            {{ getVisibleOriginalText(item) }}
+          <div v-if="item.showOriginal" class="lyric-main">
+            {{ item.original }}
           </div>
-          <div v-if="shouldShowTransLine(item)" class="lyric-trans">
-            {{ getVisibleTransText(item) }}
+          <div v-if="item.showTrans" class="lyric-trans">
+            {{ item.trans }}
           </div>
         </div>
       </div>

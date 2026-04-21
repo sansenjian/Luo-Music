@@ -36,7 +36,7 @@ describe('playbackActions playback resolution', () => {
       mediaId: 'media-1'
     })
     expect(song.url).toBe('https://song.test/stream.mp3')
-    expect(playSongByIndex).toHaveBeenCalledWith(0)
+    expect(playSongByIndex).toHaveBeenCalledWith(0, expect.anything())
     expect(onPlaybackCommitted).toHaveBeenCalledWith(song)
     expect(setLyricsArray).toHaveBeenCalledWith([
       { time: 0, text: 'main', trans: 'trans', roma: 'roma' }
@@ -154,7 +154,7 @@ describe('playbackActions playback resolution', () => {
     expect(song.unavailable).toBe(false)
     expect(song.errorMessage).toBeNull()
     expect(song.retryCount).toBe(0)
-    expect(playSongByIndex).toHaveBeenCalledWith(0)
+    expect(playSongByIndex).toHaveBeenCalledWith(0, expect.anything())
   })
 
   it('refreshes cached netease urls after an initial playback failure and retries once', async () => {
@@ -184,8 +184,8 @@ describe('playbackActions playback resolution', () => {
     })
     expect(song.url).toBe('https://song.test/fresh-retry.mp3')
     expect(playSongByIndex).toHaveBeenCalledTimes(2)
-    expect(playSongByIndex).toHaveBeenNthCalledWith(1, 0)
-    expect(playSongByIndex).toHaveBeenNthCalledWith(2, 0)
+    expect(playSongByIndex).toHaveBeenNthCalledWith(1, 0, expect.anything())
+    expect(playSongByIndex).toHaveBeenNthCalledWith(2, 0, expect.anything())
   })
 
   it('keeps current lyrics when lyric loading is cancelled', async () => {

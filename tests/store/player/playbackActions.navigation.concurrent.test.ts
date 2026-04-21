@@ -76,7 +76,7 @@ describe('playbackActions navigation concurrent', () => {
     await firstPlayback
 
     expect(playSongByIndex).toHaveBeenCalledTimes(1)
-    expect(playSongByIndex).toHaveBeenCalledWith(1)
+    expect(playSongByIndex).toHaveBeenCalledWith(1, expect.anything())
 
     const switchedToFirstSong = onStateChange.mock.calls.some(
       ([changes]) => (changes as { currentSong?: Song | null }).currentSong?.id === 'song-1'

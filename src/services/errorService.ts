@@ -13,7 +13,7 @@ import {
 export type ErrorService = {
   emit(error: AppError | Error | unknown): void
   on(code: ErrorCode, handler: (error: AppError) => void | Promise<void>): void
-  onAny(handler: (error: AppError) => void | Promise<void>): void
+  onAny(handler: (error: AppError) => void | Promise<void>): () => void
   handleError: typeof handleError
   handleApiError: typeof handleApiError
   handlePlayerError: typeof handlePlayerError

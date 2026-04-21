@@ -128,7 +128,7 @@ describe('requestCanceler', () => {
       expect(controller3.signal.aborted).toBe(false)
     })
 
-    it('应该支持正则表达式匹配', () => {
+    it('应该支持子串匹配', () => {
       const controller1 = new AbortController()
       const controller2 = new AbortController()
 
@@ -136,7 +136,7 @@ describe('requestCanceler', () => {
       registerRequest({ method: 'get', url: '/song/456', params: {} }, controller2)
       registerRequest({ method: 'get', url: '/playlist/123', params: {} }, new AbortController())
 
-      cancelRequestsByUrl('/song/.*')
+      cancelRequestsByUrl('/song/')
 
       expect(getActiveRequestCount()).toBe(1)
       expect(controller1.signal.aborted).toBe(true)

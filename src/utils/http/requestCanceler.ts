@@ -61,12 +61,11 @@ export function cancelAllRequests(): void {
 
 /**
  * 取消指定 URL 的请求
- * @param urlPattern - URL 模式 (支持正则)
+ * @param urlPattern - URL 子串匹配
  */
 export function cancelRequestsByUrl(urlPattern: string): void {
-  const regex = new RegExp(urlPattern)
   for (const [key, controller] of activeRequests.entries()) {
-    if (regex.test(key)) {
+    if (key.includes(urlPattern)) {
       controller.abort()
       activeRequests.delete(key)
     }

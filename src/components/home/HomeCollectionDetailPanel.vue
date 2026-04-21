@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRef } from 'vue'
+import { computed, toRef } from 'vue'
 
 import HomeMediaHero from '@/components/home/media/HomeMediaHero.vue'
 import HomeMediaPanelShell from '@/components/home/media/HomeMediaPanelShell.vue'
@@ -34,6 +34,14 @@ const {
   title,
   userStore
 } = useHomeCollectionPanel(toRef(props, 'collection'))
+
+const countLabel = computed(() => {
+  const trackCount = props.collection?.trackCount
+  if (trackCount && trackCount > songs.value.length) {
+    return `${songs.value.length} / ${trackCount} 首歌曲`
+  }
+  return `${songs.value.length} 首歌曲`
+})
 </script>
 
 <template>
@@ -49,7 +57,7 @@ const {
         :avatar-alt="userStore.nickname || '用户头像'"
         :avatar-fallback-label="userStore.nickname?.charAt(0) || '我'"
         :meta-label="metaLabel"
-        :count-label="`${songs.length} 首歌曲`"
+        :count-label="countLabel"
         primary-action-label="播放全部"
         @primary-action="playAll"
       />
@@ -65,7 +73,9 @@ const {
         @inline-action="loadCollectionSongs"
       >
         <template #tabs>
-          <button type="button" class="subtab active">歌曲 {{ songs.length }}</button>
+          <button type="button" class="subtab active">
+            歌曲 {{ props.collection?.trackCount ?? songs.length }}
+          </button>
           <button type="button" class="subtab" disabled>评论</button>
           <button type="button" class="subtab" disabled>收藏者</button>
         </template>

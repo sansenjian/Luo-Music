@@ -1,10 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { useUserStore } from '../store/userStore'
 import { logout } from '../api/user'
 
 const userStore = useUserStore()
 
-async function handleLogout() {
+async function handleLogout(): Promise<void> {
   try {
     await logout()
   } catch (error) {

@@ -92,6 +92,12 @@ function getDefaultMediaSession(): MediaSessionLike | null {
   return navigator.mediaSession as MediaSessionLike
 }
 
+function buildArtworkInit(artworkUrl: string): MediaImage[] {
+  return artworkUrl
+    ? [{ src: artworkUrl, sizes: MEDIA_SESSION_ARTWORK_SIZE, type: getArtworkMimeType(artworkUrl) }]
+    : []
+}
+
 export function useMediaSession(deps: MediaSessionDeps = {}): void {
   const enabled = deps.enabled ?? (() => true)
   const playerStore = deps.playerStore ?? usePlayerStore()
@@ -126,7 +132,6 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   let metadataRequestId = 0
   let isSessionActive = false
   let lastPositionStateKey: string | null = null
-  let lastKnownMetadata: MediaMetadata | MediaMetadataInit | null = null
 
   function clearPositionTimer(): void {
     if (positionTimer !== null) {
@@ -200,6 +205,21 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     }
   }
 
+  // Synchronously set metadata using whatever cover URL is available right
+  // now (remote picUrl or empty).  For local-library songs the artwork is
+  // resolved asynchronously by the caller and patched in afterwards.
+  function setMetadataSync(song: Song, artworkUrl: string): void {
+    const metadata = createMetadata({
+      title: song.name || '未知标题',
+      artist: song.artists.map(artist => artist.name).join(' / ') || '未知艺术家',
+      album: song.album.name || '',
+      artwork: buildArtworkInit(artworkUrl)
+    })
+    mediaSession.metadata = metadata
+  }
+
+  // Full async metadata sync — resolves artwork (including local covers) and
+  // guards against stale requests with metadataRequestId.
   async function syncMetadata(): Promise<void> {
     const currentRequestId = metadataRequestId + 1
     metadataRequestId = currentRequestId
@@ -216,34 +236,34 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
       return
     }
 
+    // Phase 1 — set metadata synchronously with the remote picUrl so that
+    // the SMTC panel never sees a null metadata gap.  Local covers are
+    // resolved in phase 2 below.
+    const remoteArtworkUrl = normalizeArtworkUrl(song.album.picUrl)
+    if (currentRequestId === metadataRequestId) {
+      setMetadataSync(song, remoteArtworkUrl)
+    }
+
+    // Phase 2 — if the song has a local cover, resolve it asynchronously
+    // and patch the artwork.  For remote-only songs this is a no-op.
+    const localCoverHash = getLocalCoverHash(song)
+    if (!localCoverHash) {
+      updatePlaybackState()
+      syncPosition()
+      return
+    }
+
     const artworkUrl = await resolveArtworkUrl(song)
 
-    // Re-read the current song after the async gap — it may have changed.
     const songNow = playerStore.currentSong
-
-    // The song changed while we were fetching the cover — this artwork
-    // is stale.  A new syncMetadata call is already in-flight (or will
-    // be triggered by the watcher), so just bail out.
     if (!isSessionActive || currentRequestId !== metadataRequestId || songNow?.id !== song.id) {
       return
     }
 
-    const metadata = createMetadata({
-      title: song.name || '未知标题',
-      artist: song.artists.map(artist => artist.name).join(' / ') || '未知艺术家',
-      album: song.album.name || '',
-      artwork: artworkUrl
-        ? [
-            {
-              src: artworkUrl,
-              sizes: MEDIA_SESSION_ARTWORK_SIZE,
-              type: getArtworkMimeType(artworkUrl)
-            }
-          ]
-        : []
-    })
-    mediaSession.metadata = metadata
-    lastKnownMetadata = metadata
+    // Only patch if the async resolution gave us a different (local) URL.
+    if (artworkUrl && artworkUrl !== remoteArtworkUrl) {
+      setMetadataSync(song, artworkUrl)
+    }
 
     updatePlaybackState()
     syncPosition()
@@ -297,7 +317,6 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     isSessionActive = false
     clearPositionTimer()
     lastPositionStateKey = null
-    lastKnownMetadata = null
     mediaSession.metadata = null
     mediaSession.playbackState = 'none'
     clearActionHandlers()
@@ -316,19 +335,17 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
       return
     }
 
-    // Invalidate any in-flight metadata request from the song-change watcher
-    // before scheduling a new one, so the old cover can't overwrite the new.
     invalidateMetadataRequest()
 
-    // When audio starts playing after a song transition (audio.src change),
-    // Chromium clears MediaSession metadata.  Restore the last-known good
-    // metadata immediately (synchronously) to prevent Windows SMTC from
-    // seeing an empty session and switching to another app's media control.
-    if (lastKnownMetadata && !mediaSession.metadata) {
-      mediaSession.metadata = lastKnownMetadata
+    // Chromium clears MediaSession metadata when audio.src changes.  Set
+    // metadata synchronously right now from the current song so that
+    // Windows SMTC never sees an empty session and switches apps.  The
+    // full async sync below will patch the artwork for local covers.
+    const song = playerStore.currentSong
+    if (song) {
+      setMetadataSync(song, normalizeArtworkUrl(song.album.picUrl))
     }
 
-    // Then schedule a full async re-sync with up-to-date cover art.
     void syncMetadata()
     syncPlaybackPositionLifecycle()
   }
@@ -347,7 +364,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   )
 
   const stopMetadataWatcher = watch(
-    () => [playerStore.currentSong, playerStore.currentSong?.album?.picUrl] as const,
+    () => [playerStore.currentSong?.id, playerStore.currentSong?.album?.picUrl] as const,
     () => {
       if (!isSessionActive) {
         return

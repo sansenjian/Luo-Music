@@ -18,7 +18,7 @@ describe('playerStore.playSongByIndex', () => {
     vi.clearAllMocks()
   })
 
-  it('does not mutate current track selection before audio playback succeeds', async () => {
+  it('sets current song optimistically before audio playback', async () => {
     const audioManager = createAudioManagerMock()
     const usePlayerStore = createPlayerStore(
       {
@@ -54,7 +54,8 @@ describe('playerStore.playSongByIndex', () => {
 
     await expect(store.playSongByIndex(1)).rejects.toThrow('playback failed')
 
-    expect(store.currentIndex).toBe(0)
-    expect(store.currentSong).toStrictEqual(firstSong)
+    // currentSong is set optimistically before audio.src changes (for MediaSession)
+    expect(store.currentIndex).toBe(1)
+    expect(store.currentSong).toStrictEqual(secondSong)
   })
 })

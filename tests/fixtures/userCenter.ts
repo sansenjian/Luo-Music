@@ -1,4 +1,4 @@
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, shallowRef } from 'vue'
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 import { vi } from 'vitest'
 
@@ -243,6 +243,43 @@ export function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
   const loadPlaylistSongsMock = vi.fn<(playlistId: string | number) => Promise<Song[]>>(() =>
     Promise.resolve([])
   )
+
+  const playlistTracksSongs = shallowRef<Song[]>([])
+  const playlistTracksHasMore = ref(false)
+  const playlistTracksLoading = ref(false)
+  const playlistTracksLoadingMore = ref(false)
+  const playlistTracksError = ref<unknown>(null)
+  const playlistTracksState = {
+    songs: playlistTracksSongs,
+    hasMore: computed(() => playlistTracksHasMore.value),
+    loading: playlistTracksLoading,
+    loadingMore: playlistTracksLoadingMore,
+    error: playlistTracksError,
+    loadFirstPage: async (playlistId: string | number): Promise<Song[]> => {
+      playlistTracksLoading.value = true
+      playlistTracksError.value = null
+      await Promise.resolve()
+      try {
+        const result = await loadPlaylistSongsMock(playlistId)
+        playlistTracksSongs.value = result
+        playlistTracksHasMore.value = false
+        return result
+      } catch (err) {
+        playlistTracksError.value = err
+        throw err
+      } finally {
+        playlistTracksLoading.value = false
+      }
+    },
+    loadMore: async () => {},
+    reset: () => {
+      playlistTracksSongs.value = []
+      playlistTracksHasMore.value = false
+      playlistTracksLoading.value = false
+      playlistTracksLoadingMore.value = false
+      playlistTracksError.value = null
+    }
+  }
   const resetPlaylistsMock = vi.fn(() => {
     playlistsRef.value = []
     playlistsErrorRef.value = null
@@ -305,6 +342,7 @@ export function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
       error: playlistsErrorRef,
       loadPlaylists: loadPlaylistsMock,
       loadPlaylistSongs: loadPlaylistSongsMock,
+      usePlaylistTracks: () => playlistTracksState,
       resetPlaylists: resetPlaylistsMock
     },
     favoriteAlbums: {

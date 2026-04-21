@@ -26,4 +26,5 @@ export type HomeSidebarCollectionSelection = {
   name: string
   coverUrl: string
   summary: string
+  trackCount?: number
 }

@@ -33,7 +33,7 @@ describe('playbackActions navigation state', () => {
       progress: 0,
       duration: 0
     })
-    expect(playSongByIndex).toHaveBeenCalledWith(0)
+    expect(playSongByIndex).toHaveBeenCalledWith(0, expect.anything())
   })
 
   it('clears stale progress and duration when switching to a different song', async () => {

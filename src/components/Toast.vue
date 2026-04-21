@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { useToastStore } from '../store/toastStore'
 
 const toastStore = useToastStore()
 
-function remove(id) {
+function remove(id: number): void {
   toastStore.remove(id)
 }
 </script>

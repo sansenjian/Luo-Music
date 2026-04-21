@@ -6,11 +6,13 @@ export function useDeferredMount(tier: MountTier = 'frame') {
   const isMounted = ref(false)
   let fallbackTimer: ReturnType<typeof setTimeout> | null = null
   let idleHandle: number | null = null
+  let rafHandle: number | null = null
 
   onMounted(() => {
     if (tier === 'idle' && typeof window !== 'undefined' && 'requestIdleCallback' in window) {
       idleHandle = window.requestIdleCallback(
         () => {
+          idleHandle = null
           isMounted.value = true
         },
         { timeout: 2000 }
@@ -19,13 +21,15 @@ export function useDeferredMount(tier: MountTier = 'frame') {
     }
 
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => {
+      rafHandle = window.requestAnimationFrame(() => {
+        rafHandle = null
         isMounted.value = true
       })
       return
     }
 
     fallbackTimer = setTimeout(() => {
+      fallbackTimer = null
       isMounted.value = true
     }, 0)
   })
@@ -34,6 +38,10 @@ export function useDeferredMount(tier: MountTier = 'frame') {
     if (fallbackTimer) {
       clearTimeout(fallbackTimer)
       fallbackTimer = null
+    }
+    if (rafHandle !== null && typeof window !== 'undefined') {
+      cancelAnimationFrame(rafHandle)
+      rafHandle = null
     }
     if (idleHandle !== null && typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
       window.cancelIdleCallback(idleHandle)

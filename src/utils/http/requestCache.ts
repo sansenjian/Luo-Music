@@ -44,7 +44,18 @@ function getCachePolicy(): CachePolicy {
 function generateCacheKey(config: CacheRequestConfig): string {
   const { url, method, params, data } = config
   const namespace = config.cacheNamespace || DEFAULT_CACHE_NAMESPACE
-  return `ns:${namespace}:${method?.toUpperCase() || 'GET'}:${url}:${JSON.stringify(params || {})}:${JSON.stringify(data || {})}`
+  const sortedParams = sortObjectKeys(params)
+  const sortedData = sortObjectKeys(data)
+  return `ns:${namespace}:${method?.toUpperCase() || 'GET'}:${url}:${JSON.stringify(sortedParams)}:${JSON.stringify(sortedData)}`
+}
+
+function sortObjectKeys(obj: unknown): unknown {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj
+  const sorted: Record<string, unknown> = {}
+  for (const key of Object.keys(obj as Record<string, unknown>).sort()) {
+    sorted[key] = (obj as Record<string, unknown>)[key]
+  }
+  return sorted
 }
 
 function isCacheValid(cacheEntry: CacheEntry | undefined): cacheEntry is CacheEntry {
@@ -58,7 +69,9 @@ export function getCache<T = unknown>(config: CacheRequestConfig): T | null {
   const cacheEntry = cache.get(key) as CacheEntry<T> | undefined
 
   if (isCacheValid(cacheEntry)) {
-    cacheEntry.lastAccessed = Date.now()
+    // Move to end for LRU ordering
+    cache.delete(key)
+    cache.set(key, { ...cacheEntry, lastAccessed: Date.now() })
     return cacheEntry.data
   }
 
@@ -86,18 +99,10 @@ export function setCache<T = unknown>(config: CacheRequestConfig, data: T): void
 }
 
 function removeLeastRecentlyUsed(): void {
-  let oldestTime = Infinity
-  let oldestKey: string | null = null
-
-  for (const [key, entry] of cache.entries()) {
-    if (entry.lastAccessed < oldestTime) {
-      oldestTime = entry.lastAccessed
-      oldestKey = key
-    }
-  }
-
-  if (oldestKey) {
-    cache.delete(oldestKey)
+  // Map iterates in insertion order; first entry is LRU
+  const firstKey = cache.keys().next().value
+  if (firstKey !== undefined) {
+    cache.delete(firstKey)
   }
 }
 

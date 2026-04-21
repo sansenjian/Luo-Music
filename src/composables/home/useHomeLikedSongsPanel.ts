@@ -326,7 +326,7 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
       return
     }
 
-    const selection = buildPlaybackSelection(filteredSongs.value, likeSongs.value, index)
+    const selection = buildPlaybackSelection(filteredSongs.value, combinedSongs.value, index)
     if (!selection) {
       return
     }

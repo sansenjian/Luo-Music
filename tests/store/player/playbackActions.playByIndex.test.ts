@@ -23,6 +23,6 @@ describe('playbackActions playSongByIndex', () => {
       progress: 0,
       duration: 180
     })
-    expect(playSongByIndex).toHaveBeenCalledWith(0)
+    expect(playSongByIndex).toHaveBeenCalledWith(0, state.songList[0])
   })
 })

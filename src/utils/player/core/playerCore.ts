@@ -502,3 +502,7 @@ export class PlayerCore {
 }
 
 export const playerCore = new PlayerCore()
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => playerCore.destroy())
+}

@@ -56,10 +56,14 @@ export const useRecentPlayStore = defineStore('recentPlay', {
         song: cloneSongData(song)
       }
 
-      this.items = [
-        nextEntry,
-        ...this.items.filter(item => !isSameSongIdentity(item.song, song))
-      ].slice(0, MAX_RECENT_PLAYS)
+      const existingIndex = this.items.findIndex(item => isSameSongIdentity(item.song, song))
+      if (existingIndex !== -1) {
+        this.items.splice(existingIndex, 1)
+      }
+      this.items.unshift(nextEntry)
+      if (this.items.length > MAX_RECENT_PLAYS) {
+        this.items.length = MAX_RECENT_PLAYS
+      }
     },
 
     removeSong(song: Song): void {

@@ -13,7 +13,7 @@ import type { PlayerState } from './playerState'
 export interface PlaybackActionsDeps {
   getState: () => PlayerState
   onStateChange: (changes: Partial<PlayerState>) => void
-  playSongByIndex: (index: number) => Promise<void>
+  playSongByIndex: (index: number, song?: Song) => Promise<void>
   setLyricsArray: (lyrics: import('@/utils/player/core/lyric').LyricLine[]) => void
   onPlaybackCommitted?: (song: Song) => void
   musicService: Pick<MusicService, 'getSongUrl' | 'getSongDetail' | 'getLyric'>
@@ -191,8 +191,11 @@ export class PlaybackActions {
 
     let newIndex = Math.floor(Math.random() * state.songList.length)
     if (excludeCurrent) {
-      while (newIndex === state.currentIndex) {
+      let attempts = 0
+      const maxAttempts = state.songList.length * 2
+      while (newIndex === state.currentIndex && attempts < maxAttempts) {
         newIndex = Math.floor(Math.random() * state.songList.length)
+        attempts++
       }
     }
     return newIndex
@@ -256,7 +259,11 @@ export class PlaybackActions {
       throw new Error('No URL for song')
     }
 
-    await this.deps.playSongByIndex(index)
+    // Pass the hydrated playbackSong so the store can set currentSong
+    // BEFORE changing audio.src.  This lets MediaSession watchers
+    // populate metadata synchronously and avoid a gap where Windows
+    // SMTC sees an empty session.
+    await this.deps.playSongByIndex(index, nextSong)
 
     if (playbackRequestId !== undefined && !this.isCurrentPlaybackRequest(playbackRequestId)) {
       return

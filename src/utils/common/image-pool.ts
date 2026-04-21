@@ -70,10 +70,20 @@ export class ImagePool {
         priority
       }
 
-      // 按优先级插入队列
-      this.queue.push(task)
-      // 简单的排序，保持高优先级在前
-      this.queue.sort((a, b) => (b.priority || 0) - (a.priority || 0))
+      // Binary insertion by priority (descending)
+      const taskPriority = task.priority || 0
+      let lo = 0
+      let hi = this.queue.length
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1
+        const midPriority = this.queue[mid].priority || 0
+        if (midPriority > taskPriority) {
+          lo = mid + 1
+        } else {
+          hi = mid
+        }
+      }
+      this.queue.splice(lo, 0, task)
 
       void this.processQueue()
     })

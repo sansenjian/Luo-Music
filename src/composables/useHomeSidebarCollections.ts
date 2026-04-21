@@ -99,24 +99,28 @@ export function useHomeSidebarCollections() {
 }
 
 function mapPlaylistToCollectionItem(playlist: PlaylistItem): HomeSidebarCollectionSelection {
+  const trackCount = Number(playlist.trackCount)
   return {
     uiId: `playlist:${playlist.id}`,
     sourceId: playlist.id,
     kind: 'playlist',
     name: playlist.name,
     coverUrl: typeof playlist.coverImgUrl === 'string' ? playlist.coverImgUrl : '',
-    summary: resolvePlaylistSummary(playlist)
+    summary: resolvePlaylistSummary(playlist),
+    trackCount: Number.isFinite(trackCount) && trackCount > 0 ? trackCount : undefined
   }
 }
 
 function mapAlbumToCollectionItem(album: FavoriteAlbumItem): HomeSidebarCollectionSelection {
+  const size = Number(album.size)
   return {
     uiId: `album:${album.id}`,
     sourceId: album.id,
     kind: 'album',
     name: album.name,
     coverUrl: album.picUrl,
-    summary: resolveAlbumSummary(album)
+    summary: resolveAlbumSummary(album),
+    trackCount: Number.isFinite(size) && size > 0 ? size : undefined
   }
 }
 

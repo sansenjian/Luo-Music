@@ -275,7 +275,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     }
 
     if (activeTab.value === 'album') {
-      return playlistsError.value ?? albumsError.value
+      return albumsError.value
     }
 
     if (activeTab.value === 'events') {
@@ -293,6 +293,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     selectedPlaylistSongs: details.selectedPlaylistSongs,
     selectedAlbumSongs: details.selectedAlbumSongs,
     loadPlaylistDetail: details.loadPlaylistDetail,
+    loadPlaylistSongs,
     loadAlbumDetail: details.loadAlbumDetail,
     getCachedPlaylistSongs: details.getCachedPlaylistSongs,
     getCachedAlbumSongs: details.getCachedAlbumSongs

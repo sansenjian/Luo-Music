@@ -4,14 +4,14 @@
   </Transition>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { animate } from 'animejs'
 
-function onBeforeEnter(el) {
-  el.style.opacity = 0
+function onBeforeEnter(el: Element): void {
+  ;(el as HTMLElement).style.opacity = '0'
 }
 
-function onEnter(el, done) {
+function onEnter(el: Element, done: () => void): void {
   animate(el, {
     opacity: [0, 1],
     translateY: [20, 0],
@@ -21,7 +21,7 @@ function onEnter(el, done) {
   })
 }
 
-function onLeave(el, done) {
+function onLeave(el: Element, done: () => void): void {
   animate(el, {
     opacity: [1, 0],
     translateY: [0, -20],

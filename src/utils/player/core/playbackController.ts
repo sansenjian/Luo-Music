@@ -18,7 +18,7 @@ export class PlaybackController {
     } catch (error) {
       console.error('Playback failed:', error)
       audioManager.emit('playbackError', error)
-      throw error
+      return false
     }
   }
 

@@ -250,7 +250,19 @@ const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events
         />
 
         <div v-if="mountedTabs.album" v-show="activeTab === 'album'">
-          <div class="collection-sections">
+          <div v-if="selectedAlbumId" class="album-detail-wrapper">
+            <AlbumDetailPanel
+              :album="selectedAlbum"
+              :songs="selectedAlbumSongs"
+              :loading="albumDetailLoading"
+              :error="albumDetailError"
+              @close="closeAlbumDetail"
+              @retry="retryAlbumDetail"
+              @play-all="playAlbum(selectedAlbumId)"
+              @play-song="playAlbumTrackAt"
+            />
+          </div>
+          <div v-else class="collection-sections">
             <section class="collection-section">
               <div class="collection-section-header">
                 <h3 class="collection-section-title">收藏歌单</h3>
@@ -275,18 +287,6 @@ const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events
                 :playing-album-id="playingAlbumId"
                 @album-open="openAlbumDetail"
                 @album-play="playAlbum"
-              />
-
-              <AlbumDetailPanel
-                v-if="selectedAlbumId"
-                :album="selectedAlbum"
-                :songs="selectedAlbumSongs"
-                :loading="albumDetailLoading"
-                :error="albumDetailError"
-                @close="closeAlbumDetail"
-                @retry="retryAlbumDetail"
-                @play-all="playAlbum(selectedAlbumId)"
-                @play-song="playAlbumTrackAt"
               />
             </section>
           </div>

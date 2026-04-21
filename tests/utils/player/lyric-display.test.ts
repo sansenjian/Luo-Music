@@ -18,6 +18,7 @@ describe('resolveLyricDisplayLine', () => {
     )
 
     expect(line).toEqual({
+      time: 0,
       original: 'きみと辿り着けるさ',
       trans: '我定会与你共同抵达',
       roma: 'ki mi to ta do ri tsu ke ru sa',
