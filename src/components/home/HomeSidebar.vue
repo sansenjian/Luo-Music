@@ -232,6 +232,13 @@ function resolveCollectionImageDecoding(index: number): 'sync' | 'async' {
   flex: 1;
   overflow-y: auto;
   padding: 18px 14px 14px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .sidebar-brand {

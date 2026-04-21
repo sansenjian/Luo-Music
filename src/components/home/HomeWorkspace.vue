@@ -21,10 +21,22 @@ function handleTabChange(tab: HomeTab): void {
     <HomeTabBar :active-tab="props.activeTab" @change-tab="handleTabChange" />
 
     <div class="content-area">
-      <div v-show="props.activeTab === 'lyric'" class="lyric-view">
+      <div
+        id="home-panel-lyric"
+        v-show="props.activeTab === 'lyric'"
+        class="lyric-view"
+        role="tabpanel"
+        aria-labelledby="home-tab-lyric"
+      >
         <slot name="lyric" />
       </div>
-      <div v-show="props.activeTab === 'playlist'" class="playlist-view">
+      <div
+        id="home-panel-playlist"
+        v-show="props.activeTab === 'playlist'"
+        class="playlist-view"
+        role="tabpanel"
+        aria-labelledby="home-tab-playlist"
+      >
         <slot name="playlist" />
       </div>
     </div>

@@ -55,7 +55,7 @@ describe('SettingsPanel.vue', () => {
     wrapper.unmount()
   })
 
-  it('shows fallback message outside Electron', async () => {
+  it('reuses the same settings content outside Electron without experimental controls', async () => {
     platformServiceMock.isElectron.mockReturnValue(false)
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
@@ -72,7 +72,8 @@ describe('SettingsPanel.vue', () => {
 
     await wrapper.find('.settings-btn').trigger('click')
 
-    expect(document.body.querySelector('.cache-unavailable')).not.toBeNull()
+    expect(document.body.querySelector('h2')?.textContent).toContain('设置')
+    expect(document.body.querySelector('[aria-label="品牌标识位置"]')).not.toBeNull()
     expect(document.body.textContent).not.toContain('Windows SMTC（实验）')
     wrapper.unmount()
   })

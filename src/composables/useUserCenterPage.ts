@@ -59,6 +59,9 @@ export interface UseUserCenterPageReturn {
   selectedPlaylistSongs: Ref<Song[]>
   playlistDetailLoading: Ref<boolean>
   playlistDetailError: Ref<unknown>
+  playlistHasMore: Ref<boolean>
+  playlistLoadingMore: Ref<boolean>
+  loadMorePlaylistSongs: () => Promise<void>
   selectedAlbumId: Ref<string | null>
   selectedAlbum: ComputedRef<UserCenterFavoriteAlbumsLike['albums']['value'][number] | null>
   selectedAlbumSongs: Ref<Song[]>
@@ -200,6 +203,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     getCurrentUserId: () => userStore.userId,
     loadTabData: (tab, userId, force) => loadTabDataBridge(tab, userId, force),
     loadPlaylistSongs,
+    usePlaylistTracks: userPlaylists.usePlaylistTracks,
     loadAlbumSongs,
     syncRouteQuery: () => syncRouteQueryBridge()
   })
@@ -309,6 +313,9 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     selectedPlaylistSongs: details.selectedPlaylistSongs,
     playlistDetailLoading: details.playlistDetailLoading,
     playlistDetailError: details.playlistDetailError,
+    playlistHasMore: details.playlistHasMore,
+    playlistLoadingMore: details.playlistLoadingMore,
+    loadMorePlaylistSongs: details.loadMorePlaylistSongs,
     selectedAlbumId: details.selectedAlbumId,
     selectedAlbum,
     selectedAlbumSongs: details.selectedAlbumSongs,

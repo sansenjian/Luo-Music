@@ -10,30 +10,55 @@ interface SongDetailListProps {
   fallbackCover?: string
   variant?: 'card' | 'table'
   virtualizeThreshold?: number
+  infiniteScroll?: boolean
+  disableVirtualization?: boolean
+  progressiveRender?: boolean
 }
 
 const props = withDefaults(defineProps<SongDetailListProps>(), {
   activeSongId: null,
   fallbackCover: '',
   variant: 'card',
-  virtualizeThreshold: 80
+  virtualizeThreshold: 30,
+  infiniteScroll: false,
+  disableVirtualization: false,
+  progressiveRender: false
 })
 
 const emit = defineEmits<{
   'play-song': [index: number]
+  'load-more': []
 }>()
 
 const rootRef = ref<HTMLElement | null>(null)
 const listRef = ref<HTMLElement | null>(null)
+const sentinelRef = ref<HTMLElement | null>(null)
 const scrollTop = ref(0)
 const containerHeight = ref(560)
 const itemHeight = ref(98)
 let resizeObserver: ResizeObserver | null = null
+let infiniteObserver: IntersectionObserver | null = null
+let progressiveScrollParent: HTMLElement | null = null
+let progressiveResizeObserver: ResizeObserver | null = null
 
 const DEFAULT_ITEM_HEIGHT = 98
 const OVERSCAN = 6
+const PROGRESSIVE_RENDER_CHUNK_SIZE = 50
+const MIN_PROGRESSIVE_RENDERED_SCREENS = 2
 
-const isVirtualized = computed(() => props.songs.length > props.virtualizeThreshold)
+const isVirtualized = computed(
+  () =>
+    !props.disableVirtualization &&
+    !props.progressiveRender &&
+    !props.infiniteScroll &&
+    props.songs.length > props.virtualizeThreshold
+)
+const isProgressive = computed(
+  () =>
+    props.progressiveRender &&
+    !props.infiniteScroll &&
+    props.songs.length > props.virtualizeThreshold
+)
 const totalHeight = computed(() => props.songs.length * itemHeight.value)
 const maxScrollTop = computed(() => Math.max(0, totalHeight.value - containerHeight.value))
 const effectiveScrollTop = computed(() => Math.min(scrollTop.value, maxScrollTop.value))
@@ -59,6 +84,8 @@ const staticSongs = computed(() =>
     coverUrl: resolveSongCover(song)
   }))
 )
+const progressiveRenderedCount = ref(0)
+const progressiveSongs = computed(() => staticSongs.value.slice(0, progressiveRenderedCount.value))
 
 function resolveSongCover(song: Song): string {
   const album = song && typeof song === 'object' && 'album' in song ? song.album : undefined
@@ -137,6 +164,28 @@ function syncListMetrics(): void {
   syncContainerHeight()
 }
 
+function syncProgressiveMetrics(): void {
+  syncItemHeight()
+  containerHeight.value =
+    progressiveScrollParent?.clientHeight || rootRef.value?.clientHeight || 560
+}
+
+function getInitialProgressiveRenderCount(total = props.songs.length): number {
+  if (total <= 0) {
+    return 0
+  }
+
+  const viewportCount = Math.max(1, Math.ceil(containerHeight.value / itemHeight.value))
+  return Math.min(
+    total,
+    Math.max(PROGRESSIVE_RENDER_CHUNK_SIZE, viewportCount * MIN_PROGRESSIVE_RENDERED_SCREENS)
+  )
+}
+
+function setProgressiveRenderedCount(nextCount: number): void {
+  progressiveRenderedCount.value = Math.min(props.songs.length, Math.max(0, nextCount))
+}
+
 function setListScrollTop(nextScrollTop: number): void {
   const clampedScrollTop = Math.max(0, Math.min(nextScrollTop, maxScrollTop.value))
   scrollTop.value = clampedScrollTop
@@ -168,6 +217,83 @@ function bindResizeObserver(element: HTMLElement | null): void {
   resizeObserver.observe(element)
 }
 
+function cleanupProgressiveBindings(): void {
+  if (progressiveScrollParent) {
+    progressiveScrollParent.removeEventListener('scroll', handleProgressiveScroll)
+    progressiveScrollParent = null
+  }
+
+  if (progressiveResizeObserver) {
+    progressiveResizeObserver.disconnect()
+    progressiveResizeObserver = null
+  }
+}
+
+function maybeRenderMoreProgressively(): void {
+  if (!isProgressive.value || !progressiveScrollParent || !rootRef.value) {
+    return
+  }
+
+  if (
+    progressiveRenderedCount.value >= props.songs.length ||
+    progressiveRenderedCount.value === 0
+  ) {
+    return
+  }
+
+  const parentRect = progressiveScrollParent.getBoundingClientRect()
+  const rootRect = rootRef.value.getBoundingClientRect()
+  const listTop = rootRect.top - parentRect.top + progressiveScrollParent.scrollTop
+  const viewportMidpoint = progressiveScrollParent.scrollTop + containerHeight.value / 2
+  let nextCount = progressiveRenderedCount.value
+
+  while (
+    nextCount < props.songs.length &&
+    viewportMidpoint >= listTop + (nextCount * itemHeight.value) / 2
+  ) {
+    nextCount += PROGRESSIVE_RENDER_CHUNK_SIZE
+  }
+
+  if (nextCount !== progressiveRenderedCount.value) {
+    setProgressiveRenderedCount(nextCount)
+  }
+}
+
+function handleProgressiveScroll(): void {
+  maybeRenderMoreProgressively()
+}
+
+function bindProgressiveScrollParent(): void {
+  cleanupProgressiveBindings()
+
+  if (!isProgressive.value || !rootRef.value) {
+    return
+  }
+
+  const scrollParent = findScrollParent(rootRef.value)
+  if (!scrollParent) {
+    return
+  }
+
+  progressiveScrollParent = scrollParent
+  progressiveScrollParent.addEventListener('scroll', handleProgressiveScroll, { passive: true })
+
+  if (typeof ResizeObserver !== 'undefined') {
+    progressiveResizeObserver = new ResizeObserver(() => {
+      syncProgressiveMetrics()
+      maybeRenderMoreProgressively()
+    })
+    progressiveResizeObserver.observe(progressiveScrollParent)
+    progressiveResizeObserver.observe(rootRef.value)
+  }
+
+  syncProgressiveMetrics()
+  setProgressiveRenderedCount(getInitialProgressiveRenderCount())
+  void nextTick(() => {
+    maybeRenderMoreProgressively()
+  })
+}
+
 function handleScroll(): void {
   scrollTop.value = listRef.value?.scrollTop || 0
 }
@@ -187,6 +313,19 @@ watch(
 )
 
 watch(
+  () => props.songs.length,
+  () => {
+    if (!isProgressive.value) {
+      return
+    }
+
+    void nextTick(() => {
+      bindProgressiveScrollParent()
+    })
+  }
+)
+
+watch(
   isVirtualized,
   nextIsVirtualized => {
     if (!nextIsVirtualized) {
@@ -197,6 +336,22 @@ watch(
     void nextTick(() => {
       syncListMetrics()
       clampScrollPosition()
+    })
+  },
+  { immediate: true }
+)
+
+watch(
+  isProgressive,
+  nextIsProgressive => {
+    if (!nextIsProgressive) {
+      cleanupProgressiveBindings()
+      progressiveRenderedCount.value = props.songs.length
+      return
+    }
+
+    void nextTick(() => {
+      bindProgressiveScrollParent()
     })
   },
   { immediate: true }
@@ -229,8 +384,27 @@ watch(
   { flush: 'post' }
 )
 
+watch(
+  rootRef,
+  () => {
+    if (!isProgressive.value) {
+      return
+    }
+
+    void nextTick(() => {
+      bindProgressiveScrollParent()
+    })
+  },
+  { flush: 'post' }
+)
+
 onMounted(() => {
   syncItemHeight()
+  if (isProgressive.value) {
+    bindProgressiveScrollParent()
+    return
+  }
+
   if (!isVirtualized.value) {
     return
   }
@@ -244,7 +418,60 @@ onUnmounted(() => {
   if (resizeObserver) {
     resizeObserver.disconnect()
   }
+  if (infiniteObserver) {
+    infiniteObserver.disconnect()
+  }
+  cleanupProgressiveBindings()
 })
+
+function findScrollParent(el: HTMLElement): HTMLElement | null {
+  let parent = el.parentElement
+  while (parent) {
+    const style = window.getComputedStyle(parent)
+    if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+      return parent
+    }
+    parent = parent.parentElement
+  }
+  return null
+}
+
+function bindInfiniteObserver(): void {
+  if (infiniteObserver) {
+    infiniteObserver.disconnect()
+    infiniteObserver = null
+  }
+  if (!props.infiniteScroll || !sentinelRef.value || typeof IntersectionObserver === 'undefined') {
+    return
+  }
+
+  const root = findScrollParent(sentinelRef.value)
+  infiniteObserver = new IntersectionObserver(
+    entries => {
+      if (entries[0]?.isIntersecting) {
+        emit('load-more')
+      }
+    },
+    { root, rootMargin: '200px' }
+  )
+  infiniteObserver.observe(sentinelRef.value)
+}
+
+watch(sentinelRef, el => {
+  if (el) bindInfiniteObserver()
+})
+
+watch(
+  () => props.infiniteScroll,
+  val => {
+    if (val) {
+      void nextTick(bindInfiniteObserver)
+    } else if (infiniteObserver) {
+      infiniteObserver.disconnect()
+      infiniteObserver = null
+    }
+  }
+)
 </script>
 
 <template>
@@ -297,7 +524,7 @@ onUnmounted(() => {
 
     <div v-else class="detail-list detail-list-static">
       <button
-        v-for="{ song, index, coverUrl } in staticSongs"
+        v-for="{ song, index, coverUrl } in isProgressive ? progressiveSongs : staticSongs"
         :key="`${song.id}-${index}`"
         type="button"
         class="detail-song"
@@ -322,6 +549,13 @@ onUnmounted(() => {
         </span>
         <span class="detail-song-duration">{{ resolveDurationLabel(song) }}</span>
       </button>
+
+      <div
+        v-if="props.infiniteScroll"
+        ref="sentinelRef"
+        class="detail-scroll-sentinel"
+        aria-hidden="true"
+      ></div>
     </div>
   </div>
 </template>
@@ -341,6 +575,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--detail-song-gap);
+}
+
+.detail-scroll-sentinel {
+  height: 1px;
+  width: 100%;
 }
 
 .detail-list-virtualized {
@@ -396,7 +635,7 @@ onUnmounted(() => {
 }
 
 .song-detail-list.is-table .detail-list-virtualized {
-  max-height: none;
+  max-height: min(70vh, 840px);
   padding-right: 0;
 }
 

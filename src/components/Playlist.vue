@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 
+import HomeEmptyState from './home/HomeEmptyState.vue'
+import { uiMessages } from '@/messages/ui'
 import { usePlayerStore } from '../store/playerStore.ts'
 import { formatTime } from '../utils/player/helpers/timeFormatter'
 import type { Song } from '../platform/music/interface'
@@ -10,7 +12,9 @@ const listRef = ref<HTMLElement | null>(null)
 const scrollTop = ref(0)
 const containerHeight = ref(560)
 
-const emit = defineEmits(['play-song'])
+const emit = defineEmits<{
+  'play-song': [index: number]
+}>()
 
 const ITEM_HEIGHT = 74
 const OVERSCAN = 6
@@ -234,10 +238,12 @@ onUnmounted(() => {
 
 <template>
   <div ref="listRef" class="playlist" @scroll="handleScroll">
-    <div v-if="totalSongCount === 0" class="empty-state">
-      <div class="empty-icon">[]</div>
-      <div>NO TRACKS LOADED</div>
-    </div>
+    <HomeEmptyState
+      v-if="totalSongCount === 0"
+      :visual="uiMessages.home.emptyState.playlist.visual"
+      :title="uiMessages.home.emptyState.playlist.title"
+      :description="uiMessages.home.emptyState.playlist.description"
+    />
 
     <div v-else class="track-list" :style="{ height: `${totalHeight}px` }">
       <div class="track-list-window" :style="{ transform: `translateY(${offsetY}px)` }">
@@ -287,18 +293,6 @@ onUnmounted(() => {
   background: var(--bg);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 40px;
-  color: var(--gray);
-}
-
-.empty-icon {
-  font-size: 40px;
-  margin-bottom: 12px;
-  opacity: 0.3;
 }
 
 .track-list {

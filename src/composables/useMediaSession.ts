@@ -126,6 +126,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   let metadataRequestId = 0
   let isSessionActive = false
   let lastPositionStateKey: string | null = null
+  let lastKnownMetadata: MediaMetadata | MediaMetadataInit | null = null
 
   function clearPositionTimer(): void {
     if (positionTimer !== null) {
@@ -227,7 +228,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
       return
     }
 
-    mediaSession.metadata = createMetadata({
+    const metadata = createMetadata({
       title: song.name || '未知标题',
       artist: song.artists.map(artist => artist.name).join(' / ') || '未知艺术家',
       album: song.album.name || '',
@@ -241,6 +242,8 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
           ]
         : []
     })
+    mediaSession.metadata = metadata
+    lastKnownMetadata = metadata
 
     updatePlaybackState()
     syncPosition()
@@ -294,6 +297,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     isSessionActive = false
     clearPositionTimer()
     lastPositionStateKey = null
+    lastKnownMetadata = null
     mediaSession.metadata = null
     mediaSession.playbackState = 'none'
     clearActionHandlers()
@@ -317,8 +321,14 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     invalidateMetadataRequest()
 
     // When audio starts playing after a song transition (audio.src change),
-    // Chromium may have reset MediaSession state.  Re-sync everything to keep
-    // SMTC stable — this only fires on play-state false→true transitions.
+    // Chromium clears MediaSession metadata.  Restore the last-known good
+    // metadata immediately (synchronously) to prevent Windows SMTC from
+    // seeing an empty session and switching to another app's media control.
+    if (lastKnownMetadata && !mediaSession.metadata) {
+      mediaSession.metadata = lastKnownMetadata
+    }
+
+    // Then schedule a full async re-sync with up-to-date cover art.
     void syncMetadata()
     syncPlaybackPositionLifecycle()
   }
@@ -337,12 +347,13 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   )
 
   const stopMetadataWatcher = watch(
-    () => playerStore.currentSong,
+    () => [playerStore.currentSong, playerStore.currentSong?.album?.picUrl] as const,
     () => {
       if (!isSessionActive) {
         return
       }
 
+      invalidateMetadataRequest()
       void syncMetadata()
       syncPlaybackPositionLifecycle()
     }

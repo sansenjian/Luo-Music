@@ -1,38 +1,30 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useAppSettings } from '../composables/useAppSettings'
-import CacheManager from './CacheManager.vue'
+
+import { uiMessages } from '@/messages/ui'
+
+import AppSettingsContent from './settings/AppSettingsContent.vue'
 
 const showSettings = ref(false)
-const {
-  playerStore,
-  isElectron,
-  smtcEnabled,
-  setBrandPlacement,
-  setDockedPlayerBarLayout,
-  setSMTCEnabled,
-  setRenderStyle,
-  isBrandPlacementActive,
-  isRenderStyleActive,
-  isDockedPlayerBarLayoutActive
-} = useAppSettings()
 
-function toggleSettings() {
+function toggleSettings(): void {
   showSettings.value = !showSettings.value
 }
 
-function closeSettings() {
+function closeSettings(): void {
   showSettings.value = false
-}
-
-function handleSMTCEnabledChange(event: Event): void {
-  setSMTCEnabled((event.target as HTMLInputElement).checked)
 }
 </script>
 
 <template>
   <div class="settings-wrapper">
-    <button class="settings-btn" @click="toggleSettings" title="Settings">
+    <button
+      class="settings-btn"
+      type="button"
+      :aria-label="uiMessages.settings.dialogButtonLabel"
+      :title="uiMessages.settings.dialogButtonLabel"
+      @click="toggleSettings"
+    >
       <svg
         width="16"
         height="16"
@@ -55,8 +47,13 @@ function handleSMTCEnabledChange(event: Event): void {
         <div v-if="showSettings" class="settings-overlay" @click.self="closeSettings">
           <div class="settings-panel">
             <div class="settings-header">
-              <h2>设置</h2>
-              <button class="close-btn" @click="closeSettings">
+              <h2>{{ uiMessages.settings.dialogTitle }}</h2>
+              <button
+                class="close-btn"
+                type="button"
+                :aria-label="uiMessages.settings.dialogButtonLabel"
+                @click="closeSettings"
+              >
                 <svg
                   width="16"
                   height="16"
@@ -74,142 +71,7 @@ function handleSMTCEnabledChange(event: Event): void {
             </div>
 
             <div class="settings-content">
-              <section class="settings-section">
-                <h3>播放设置</h3>
-                <div class="setting-item">
-                  <label>播放模式</label>
-                  <select v-model="playerStore.playMode" class="setting-select">
-                    <option :value="0">顺序播放</option>
-                    <option :value="1">列表循环</option>
-                    <option :value="2">单曲循环</option>
-                    <option :value="3">随机播放</option>
-                  </select>
-                </div>
-                <div class="setting-item">
-                  <label>音量</label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    v-model.number="playerStore.volume"
-                    class="setting-range"
-                  />
-                  <span class="volume-value">{{ Math.round(playerStore.volume * 100) }}%</span>
-                </div>
-              </section>
-
-              <section class="settings-section">
-                <h3>歌词设置</h3>
-                <div class="setting-item">
-                  <label>显示翻译</label>
-                  <input
-                    type="checkbox"
-                    :checked="playerStore.lyricType.includes('trans')"
-                    @change="playerStore.toggleLyricType('trans')"
-                  />
-                </div>
-                <div class="setting-item">
-                  <label>显示罗马音</label>
-                  <input
-                    type="checkbox"
-                    :checked="playerStore.lyricType.includes('roma')"
-                    @change="playerStore.toggleLyricType('roma')"
-                  />
-                </div>
-              </section>
-
-              <section class="settings-section">
-                <h3>界面设置</h3>
-                <div class="setting-stack">
-                  <span class="setting-label">渲染风格</span>
-                  <div class="placement-switch" role="group" aria-label="渲染风格">
-                    <button
-                      type="button"
-                      class="placement-option"
-                      :class="{ active: isRenderStyleActive('classic') }"
-                      @click="setRenderStyle('classic')"
-                    >
-                      经典风格
-                    </button>
-                    <button
-                      type="button"
-                      class="placement-option"
-                      :class="{ active: isRenderStyleActive('brand') }"
-                      @click="setRenderStyle('brand')"
-                    >
-                      品牌风格
-                    </button>
-                  </div>
-
-                  <span class="setting-label">品牌标识位置</span>
-                  <div class="placement-switch" role="group" aria-label="品牌标识位置">
-                    <button
-                      type="button"
-                      class="placement-option"
-                      :class="{ active: isBrandPlacementActive('header') }"
-                      @click="setBrandPlacement('header')"
-                    >
-                      顶栏
-                    </button>
-                    <button
-                      type="button"
-                      class="placement-option"
-                      :class="{ active: isBrandPlacementActive('sidebar') }"
-                      @click="setBrandPlacement('sidebar')"
-                    >
-                      侧边栏
-                    </button>
-                  </div>
-
-                  <span class="setting-label">紧贴底栏播放器布局</span>
-                  <div class="placement-switch" role="group" aria-label="紧贴底栏播放器布局">
-                    <button
-                      type="button"
-                      class="placement-option"
-                      :class="{ active: isDockedPlayerBarLayoutActive('full') }"
-                      @click="setDockedPlayerBarLayout('full')"
-                    >
-                      铺满底栏
-                    </button>
-                    <button
-                      type="button"
-                      class="placement-option"
-                      :class="{ active: isDockedPlayerBarLayoutActive('with-sidebar') }"
-                      @click="setDockedPlayerBarLayout('with-sidebar')"
-                    >
-                      给侧边栏留位
-                    </button>
-                  </div>
-                </div>
-              </section>
-
-              <section v-if="isElectron" class="settings-section">
-                <h3>实验功能</h3>
-                <div class="setting-item">
-                  <label for="experimental-smtc-toggle">Windows SMTC（实验）</label>
-                  <input
-                    id="experimental-smtc-toggle"
-                    aria-label="Windows SMTC（实验）"
-                    type="checkbox"
-                    :checked="smtcEnabled"
-                    @change="handleSMTCEnabledChange"
-                  />
-                </div>
-              </section>
-
-              <section class="settings-section">
-                <h3>缓存管理</h3>
-                <CacheManager v-if="isElectron" />
-                <div v-else class="cache-unavailable">
-                  <p>缓存管理功能仅在 Electron 桌面应用中可用。</p>
-                  <p class="cache-hint">
-                    请使用
-                    <code>npm run dev</code>
-                    启动 Electron 应用，或打包后的桌面应用。
-                  </p>
-                </div>
-              </section>
+              <AppSettingsContent surface="dialog" />
             </div>
           </div>
         </div>
@@ -301,96 +163,6 @@ function handleSMTCEnabledChange(event: Event): void {
   padding: 16px;
 }
 
-.settings-section {
-  margin-bottom: 20px;
-}
-
-.settings-section:last-child {
-  margin-bottom: 0;
-}
-
-.settings-section h3 {
-  margin: 0 0 12px 0;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--gray);
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--black);
-}
-
-.setting-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.setting-item:last-child {
-  margin-bottom: 0;
-}
-
-.setting-item label {
-  flex: 1;
-  font-size: 13px;
-}
-
-.setting-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.setting-label {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.placement-switch {
-  display: inline-flex;
-  gap: 8px;
-  align-self: flex-start;
-  padding: 4px;
-  border: 2px solid var(--black);
-  background: var(--white);
-}
-
-.placement-option {
-  min-width: 76px;
-  padding: 8px 12px;
-  border: 0;
-  background: transparent;
-  color: var(--black);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.placement-option.active {
-  background: var(--black);
-  color: var(--white);
-}
-
-.setting-select {
-  padding: 6px 10px;
-  border: 2px solid var(--black);
-  background: var(--white);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.setting-range {
-  width: 80px;
-}
-
-.volume-value {
-  font-size: 11px;
-  color: var(--gray);
-  min-width: 36px;
-}
-
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
@@ -399,30 +171,5 @@ function handleSMTCEnabledChange(event: Event): void {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.cache-unavailable {
-  padding: 16px;
-  background: var(--bg-secondary, #f5f5f5);
-  border: 2px dashed var(--gray, #999);
-  text-align: center;
-}
-
-.cache-unavailable p {
-  margin: 0 0 8px 0;
-  font-size: 13px;
-  color: var(--gray, #666);
-}
-
-.cache-unavailable .cache-hint {
-  font-size: 11px;
-  margin: 0;
-}
-
-.cache-unavailable code {
-  background: var(--bg, #fff);
-  padding: 2px 6px;
-  border: 1px solid var(--gray-light, #ddd);
-  font-size: 11px;
 }
 </style>

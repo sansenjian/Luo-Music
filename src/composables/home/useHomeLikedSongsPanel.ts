@@ -29,10 +29,12 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
   const toastStore = useToastStore()
   const localLibrary = deps.localLibrary ?? useLocalLibrary()
   const {
+    allLoaded,
     count,
     error,
     hasMore,
     likeSongs,
+    loadAllRemaining,
     loadLikedSongs,
     loadMoreLikedSongs,
     loading,
@@ -54,6 +56,7 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
   const localSongsPage = localLibrary.queries.songsPage
   const localCoverUrls = localLibrary.queries.coverUrls
   const loadLocalTracks = localLibrary.queries.loadTracks
+  const localLibraryReady = localLibrary.ready
 
   const activeSection = ref<LikedContentSection>('songs')
   const searchQuery = ref('')
@@ -84,10 +87,10 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
   const mediaSongs = computed(() => combinedSongs.value.map(song => createHomeMediaSong(song)))
   const filteredSongs = computed(() => filterMediaSongsByQuery(mediaSongs.value, searchQuery.value))
   const filteredPlaybackSongs = computed<Song[]>(() => {
-    const sourceSongsById = new Map(combinedSongs.value.map(song => [song.id, song]))
-    return filteredSongs.value
-      .map(song => sourceSongsById.get(song.id))
-      .filter((song): song is Song => Boolean(song))
+    if (!searchQuery.value.trim()) return combinedSongs.value
+
+    const matchedIds = new Set(filteredSongs.value.map(s => s.id))
+    return combinedSongs.value.filter(song => matchedIds.has(song.id))
   })
   const filteredAlbums = computed<FavoriteAlbumItem[]>(() => {
     const normalizedQuery = searchQuery.value.trim().toLocaleLowerCase()
@@ -129,9 +132,19 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
       ''
     )
   })
-  const totalSongCountLabel = computed(() =>
-    isAlbumsSectionActive.value ? `${albumCount.value} 张专辑` : `${mediaSongs.value.length} 首歌曲`
-  )
+  const totalSongCountLabel = computed(() => {
+    if (isAlbumsSectionActive.value) {
+      return `${albumCount.value} 张专辑`
+    }
+
+    const loaded = mediaSongs.value.length
+    const total = count.value + localPlaybackSongs.value.length
+    if (loading.value && loaded < total) {
+      return `${loaded} / ${total} 首歌曲`
+    }
+
+    return `${loaded} 首歌曲`
+  })
   const userMetaLabel = computed(() => {
     if (isAlbumsSectionActive.value) {
       return userStore.nickname ? `${userStore.nickname} · 收藏专辑` : '收藏专辑'
@@ -152,7 +165,7 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
   const primaryActionDisabled = computed(() =>
     isAlbumsSectionActive.value
       ? albumsLoading.value || filteredAlbums.value.length === 0
-      : loading.value || filteredSongs.value.length === 0
+      : filteredSongs.value.length === 0
   )
   const songsErrorMessage = computed(() =>
     resolvePanelErrorMessage(error.value, '喜欢的音乐加载失败，请稍后重试。')
@@ -179,6 +192,16 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
         return
       }
 
+      // Wait for the shared local library to finish its initial page load
+      // so we don't race with loadInitialPages on the same loadTracks call.
+      await localLibraryReady
+
+      if (!localLibraryState.value.supported || localLibraryStatus.value.discoveredTracks <= 0) {
+        return
+      }
+
+      // If the initial page load didn't populate songsPage (e.g. refresh failed),
+      // load the first page ourselves.
       if (localSongsPage.value.items.length === 0) {
         await loadLocalTracks()
       }
@@ -193,11 +216,15 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
     return loadAllLocalSongsPromise
   }
 
+  let albumRetryCount = 0
+  const MAX_ALBUM_RETRIES = 2
+
   watch(
     () => [userStore.isLoggedIn, userStore.userId] as const,
     ([isLoggedIn, userId]) => {
       if (isLoggedIn && userId !== null && userId !== undefined && userId !== '') {
         void loadLikedSongs(userId)
+        albumRetryCount = 0
         void loadFavoriteAlbums(userId)
         return
       }
@@ -208,6 +235,42 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
     },
     { immediate: true }
   )
+
+  // Retry loading favorite albums when they haven't loaded and the user is logged in.
+  // This covers both error cases and silently-canceled requests where error is never set.
+  watch(
+    () =>
+      [albumsError.value, albums.value.length, albumsLoading.value, userStore.isLoggedIn] as const,
+    ([, albumLen, isLoading, isLoggedIn]) => {
+      if (
+        isLoggedIn &&
+        userStore.userId &&
+        albumLen === 0 &&
+        !isLoading &&
+        albumRetryCount < MAX_ALBUM_RETRIES
+      ) {
+        albumRetryCount++
+        void loadFavoriteAlbums(userStore.userId)
+      }
+    }
+  )
+
+  // Auto-load remaining liked songs in background after first page renders
+  watch(
+    () => likeSongs.value.length > 0 && hasMore.value && !loading.value,
+    shouldLoad => {
+      if (shouldLoad) {
+        void loadAllRemaining()
+      }
+    }
+  )
+
+  // Trigger full load when user searches so all songs are searchable
+  watch(searchQuery, query => {
+    if (query.trim() && hasMore.value && !loading.value && !loadingMore.value) {
+      void loadAllRemaining()
+    }
+  })
 
   watch(
     () =>
@@ -252,7 +315,6 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
       section === 'albums' &&
       userStore.isLoggedIn &&
       userStore.userId &&
-      !albumsLoading.value &&
       albums.value.length === 0
     ) {
       void loadFavoriteAlbums(userStore.userId)
@@ -393,6 +455,11 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
     void loadFavoriteAlbums(userStore.userId)
   }
 
+  const searchHint = computed(() => {
+    if (!searchQuery.value.trim() || allLoaded.value || !hasMore.value) return ''
+    return '正在加载全部歌曲以搜索...'
+  })
+
   function clearSearch(): void {
     searchQuery.value = ''
   }
@@ -420,6 +487,7 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
     albumsError,
     albumsErrorMessage,
     albumsLoading,
+    allLoaded,
     clearSearch,
     closeAlbumDetail,
     count,
@@ -458,7 +526,8 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
     songsErrorMessage,
     totalSongCountLabel,
     userMetaLabel,
-    userStore
+    userStore,
+    searchHint
   }
 }
 

@@ -1,7 +1,8 @@
 import type {
   BrowserWindow as BrowserWindowType,
   Menu as MenuType,
-  Tray as TrayType
+  Tray as TrayType,
+  Rectangle
 } from 'electron'
 import { BrowserWindow, nativeImage } from 'electron'
 import path from 'node:path'
@@ -58,6 +59,16 @@ export class WindowManager {
       minWidth: MIN_WIDTH,
       minHeight: MIN_HEIGHT,
       frame: false,
+      // Keep the frameless shell flush to the window bounds on Windows.
+      // `roundedCorners: false` removes the rounded cut-outs, while
+      // `thickFrame: false` removes the native resize frame that shows up as
+      // empty space around the four corners.
+      ...(process.platform === 'win32'
+        ? {
+            roundedCorners: false,
+            thickFrame: false
+          }
+        : {}),
       titleBarStyle: 'hidden',
       icon: path.join(VITE_PUBLIC, 'electron-vite.svg'),
       show: false,
@@ -168,6 +179,32 @@ export class WindowManager {
 
   getWindow(): BrowserWindowType | null {
     return this.win
+  }
+
+  getBounds(): Rectangle | null {
+    return this.win?.getBounds() ?? null
+  }
+
+  setBounds(bounds: Rectangle): void {
+    if (!this.win || this.win.isDestroyed()) {
+      return
+    }
+
+    if (this.win.isMaximized() || this.win.isMinimized() || this.win.isFullScreen()) {
+      return
+    }
+
+    const currentBounds = this.win.getBounds()
+    const nextBounds: Rectangle = {
+      x: Math.round(bounds.x ?? currentBounds.x),
+      y: Math.round(bounds.y ?? currentBounds.y),
+      width: Math.max(MIN_WIDTH, Math.round(bounds.width ?? currentBounds.width)),
+      height: Math.max(MIN_HEIGHT, Math.round(bounds.height ?? currentBounds.height))
+    }
+
+    this.win.setBounds(nextBounds)
+    this.lastSize = { width: nextBounds.width, height: nextBounds.height }
+    store.set('windowSize', this.lastSize)
   }
 
   show(): void {

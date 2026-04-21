@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import HomeEmptyState from './home/HomeEmptyState.vue'
+import { uiMessages } from '@/messages/ui'
 import { useActiveLyricState } from '../composables/useActiveLyricState'
 import { useLyricAutoScroll } from '../composables/useLyricAutoScroll'
 import { usePlayerStore } from '../store/playerStore'
@@ -74,11 +76,13 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 </script>
 
 <template>
-  <div class="lyric">
-    <div v-if="lyrics.length === 0" class="empty-state">
-      <div class="empty-icon">LRC</div>
-      <div>Search and play a track to view lyrics</div>
-    </div>
+  <div class="lyric" :class="{ 'is-player-docked': playerStore.isPlayerDocked }">
+    <HomeEmptyState
+      v-if="lyrics.length === 0"
+      :visual="uiMessages.home.emptyState.lyric.visual"
+      :title="uiMessages.home.emptyState.lyric.title"
+      :description="uiMessages.home.emptyState.lyric.description"
+    />
 
     <div
       v-else
@@ -126,23 +130,6 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   position: relative;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 80px 40px;
-  color: var(--gray);
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.empty-icon {
-  font-size: 32px;
-  margin-bottom: 12px;
-  letter-spacing: 0.12em;
-  opacity: 0.3;
-}
-
 .lyrics-wrapper {
   height: 100%;
   overflow-y: auto;
@@ -168,17 +155,17 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   padding: 50vh 40px;
 }
 
-:global(.player-docked) .lyric-line {
+.lyric.is-player-docked .lyric-line {
   margin-bottom: 12px;
   padding: 6px 10px;
 }
 
-:global(.player-docked) .lyric-main {
+.lyric.is-player-docked .lyric-main {
   font-size: 16px;
 }
 
-:global(.player-docked) .lyric-trans,
-:global(.player-docked) .lyric-roma {
+.lyric.is-player-docked .lyric-trans,
+.lyric.is-player-docked .lyric-roma {
   font-size: 11px;
 }
 

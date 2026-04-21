@@ -34,6 +34,7 @@ export const INVOKE_CHANNELS = {
 
   // 窗口控制
   WINDOW_GET_SIZE: 'window:get-size',
+  WINDOW_GET_BOUNDS: 'window:get-bounds',
   WINDOW_IS_MAXIMIZED: 'window:is-maximized',
   WINDOW_IS_MINIMIZED: 'window:is-minimized',
   WINDOW_GET_STATE: 'window:get-state',
@@ -106,6 +107,7 @@ export const SEND_CHANNELS = {
   WINDOW_MAXIMIZE: 'maximize-window',
   WINDOW_CLOSE: 'close-window',
   WINDOW_RESIZE: 'resize-window',
+  WINDOW_SET_BOUNDS: 'window:set-bounds',
   WINDOW_MINIMIZE_TO_TRAY: 'minimize-to-tray',
   WINDOW_SET_ALWAYS_ON_TOP: 'set-always-on-top',
   WINDOW_TOGGLE_FULLSCREEN: 'toggle-fullscreen',

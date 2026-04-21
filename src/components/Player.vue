@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
 
+import { uiMessages } from '@/messages/ui'
 import { usePlayerViewModel } from '../composables/usePlayerViewModel'
 
 const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'))
@@ -82,8 +83,12 @@ const {
       </div>
 
       <div class="track-info">
-        <h2 class="track-title">{{ currentSong?.name || 'Unknown Track' }}</h2>
-        <p class="track-artist">{{ artistText }}</p>
+        <h2 class="track-title">
+          {{ currentSong?.name || uiMessages.home.player.emptyTitle }}
+        </h2>
+        <p class="track-artist">
+          {{ currentSong ? artistText : uiMessages.home.player.emptySubtitle }}
+        </p>
       </div>
     </div>
 

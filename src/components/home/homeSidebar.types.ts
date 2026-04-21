@@ -17,7 +17,7 @@ export type HomeSidebarNavItem = {
 
 export type HomeSidebarPlaylistFilter = 'created' | 'favorites'
 export type HomeSidebarCollectionTone = 'mono' | 'violet' | 'mist' | 'ocean'
-export type HomeSidebarCollectionKind = 'playlist' | 'album'
+export type HomeSidebarCollectionKind = 'playlist' | 'album' | 'liked'
 
 export type HomeSidebarCollectionSelection = {
   uiId: string

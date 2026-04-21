@@ -136,6 +136,7 @@ export function createLocalLibraryMock(overrides: LocalLibraryMockOverrides = {}
   const loadAlbums = overrides.loadAlbums ?? vi.fn()
 
   return {
+    ready: Promise.resolve(),
     stateGroup: {
       loading,
       mutating,

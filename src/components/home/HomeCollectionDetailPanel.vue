@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { toRef } from 'vue'
 
-import SongDetailList from '@/components/user/SongDetailList.vue'
+import HomeMediaHero from '@/components/home/media/HomeMediaHero.vue'
+import HomeMediaPanelShell from '@/components/home/media/HomeMediaPanelShell.vue'
+import HomeMediaSongsSection from '@/components/home/media/HomeMediaSongsSection.vue'
+import HomeMediaToolbar from '@/components/home/media/HomeMediaToolbar.vue'
 import { useHomeCollectionPanel } from '@/composables/home/useHomeCollectionPanel'
 
 import type { HomeSidebarCollectionSelection } from './homeSidebar.types'
@@ -17,9 +20,12 @@ const {
   error,
   errorMessage,
   filteredPlaybackSongs,
+  hasMore,
   kicker,
   loadCollectionSongs,
+  loadMoreCollectionSongs,
   loading,
+  loadingMore,
   metaLabel,
   playAll,
   playCollectionAt,
@@ -31,429 +37,68 @@ const {
 </script>
 
 <template>
-  <section class="collection-panel">
-    <div v-if="!props.collection" class="collection-empty-state">
-      <p>请选择一个歌单或收藏专辑。</p>
-    </div>
+  <HomeMediaPanelShell :empty="!props.collection" empty-description="请选择一个歌单或收藏专辑。">
+    <template #hero>
+      <HomeMediaHero
+        :kicker="kicker"
+        :title="title"
+        :cover-url="coverUrl"
+        :cover-shell-class="'collection-cover'"
+        :cover-fallback-class="'collection-cover-fallback'"
+        :avatar-url="userStore.avatarUrl"
+        :avatar-alt="userStore.nickname || '用户头像'"
+        :avatar-fallback-label="userStore.nickname?.charAt(0) || '我'"
+        :meta-label="metaLabel"
+        :count-label="`${songs.length} 首歌曲`"
+        primary-action-label="播放全部"
+        @primary-action="playAll"
+      />
+    </template>
 
-    <div v-else class="collection-shell">
-      <section class="collection-hero">
-        <div class="collection-cover">
-          <img v-if="coverUrl" :src="coverUrl" :alt="title" class="collection-cover-image" />
-          <div v-else class="collection-cover-image collection-cover-fallback"></div>
-        </div>
+    <template #toolbar>
+      <HomeMediaToolbar
+        :search-query="searchQuery"
+        :inline-message="error && !loading && songs.length > 0 ? errorMessage : null"
+        :inline-action-label="error && !loading && songs.length > 0 ? '重试' : null"
+        @update:search-query="value => (searchQuery = value)"
+        @clear-search="clearSearch"
+        @inline-action="loadCollectionSongs"
+      >
+        <template #tabs>
+          <button type="button" class="subtab active">歌曲 {{ songs.length }}</button>
+          <button type="button" class="subtab" disabled>评论</button>
+          <button type="button" class="subtab" disabled>收藏者</button>
+        </template>
+      </HomeMediaToolbar>
+    </template>
 
-        <div class="collection-summary">
-          <p class="collection-kicker">{{ kicker }}</p>
-          <h1>{{ title }}</h1>
-          <div class="collection-meta">
-            <img
-              v-if="userStore.avatarUrl"
-              :src="userStore.avatarUrl"
-              :alt="userStore.nickname || '用户头像'"
-              class="collection-meta-avatar"
-            />
-            <span v-else class="collection-meta-avatar fallback">
-              {{ userStore.nickname?.charAt(0) || '我' }}
-            </span>
-            <span class="collection-meta-copy">{{ metaLabel }}</span>
-            <span class="collection-meta-count">{{ songs.length }} 首歌曲</span>
-          </div>
-
-          <div class="collection-actions">
-            <button type="button" class="hero-action hero-action-primary" @click="playAll">
-              播放全部
-            </button>
-            <button type="button" class="hero-action" :disabled="true" title="即将推出">
-              下载
-            </button>
-            <button
-              type="button"
-              class="hero-action hero-action-icon"
-              aria-label="更多操作"
-              title="即将推出"
-              disabled
-            >
-              ···
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section class="collection-content">
-        <div class="collection-content-header">
-          <div class="collection-content-main">
-            <div class="collection-subtabs" aria-label="详情分区">
-              <button type="button" class="subtab active">歌曲 {{ songs.length }}</button>
-              <button type="button" class="subtab" disabled>评论</button>
-              <button type="button" class="subtab" disabled>收藏者</button>
-            </div>
-
-            <div v-if="error" class="collection-inline-error" role="alert">
-              <span>{{ errorMessage }}</span>
-              <button type="button" class="inline-action" @click="loadCollectionSongs">重试</button>
-            </div>
-          </div>
-
-          <label class="collection-search">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <circle cx="11" cy="11" r="7"></circle>
-              <path d="m20 20-3.5-3.5"></path>
-            </svg>
-            <input v-model="searchQuery" type="search" placeholder="搜索歌曲、歌手或专辑" />
-            <button
-              v-if="searchQuery"
-              type="button"
-              class="search-clear"
-              aria-label="清空搜索"
-              @click="clearSearch"
-            >
-              ×
-            </button>
-          </label>
-        </div>
-
-        <div v-if="loading" class="collection-empty-state">
-          <p>正在加载 {{ kicker }} 内容...</p>
-        </div>
-
-        <div v-else class="collection-table">
-          <div v-if="filteredPlaybackSongs.length > 0" class="collection-table-head">
-            <span class="col-index">#</span>
-            <span class="col-title">标题</span>
-            <span class="col-album">专辑</span>
-            <span class="col-duration">时长</span>
-          </div>
-
-          <div v-if="filteredPlaybackSongs.length === 0" class="collection-empty-state">
-            <p>没有找到匹配的歌曲。</p>
-          </div>
-
-          <SongDetailList
-            v-else
-            :songs="filteredPlaybackSongs"
-            :active-song-id="currentSongId"
-            variant="table"
-            @play-song="playCollectionAt"
-          />
-        </div>
-      </section>
-    </div>
-  </section>
+    <HomeMediaSongsSection
+      :songs="filteredPlaybackSongs"
+      :active-song-id="currentSongId"
+      :loading="loading"
+      :error-message="errorMessage"
+      :show-error-state="Boolean(error && songs.length === 0)"
+      empty-description="没有找到匹配的歌曲。"
+      :has-more="hasMore"
+      :loading-more="loadingMore"
+      :show-loading-more-hint="true"
+      :load-more-enabled="hasMore"
+      :loading-description="`正在加载${kicker}内容...`"
+      @play-song="playCollectionAt"
+      @load-more="loadMoreCollectionSongs"
+      @retry="loadCollectionSongs"
+    />
+  </HomeMediaPanelShell>
 </template>
 
 <style scoped>
-.collection-panel {
-  height: 100%;
-  overflow-y: auto;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.96)), var(--bg);
-}
-
-.collection-shell {
-  min-height: 100%;
-  padding: 34px 34px 40px;
-}
-
-.collection-hero {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 28px;
-  align-items: end;
-}
-
 .collection-cover {
-  width: 180px;
-  height: 180px;
-  border: 3px solid var(--black);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.12);
   background: linear-gradient(135deg, #d3dae7, #eef2f8);
-}
-
-.collection-cover-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 .collection-cover-fallback {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0)),
     linear-gradient(160deg, #ced8e6, #eef2f8 70%, #ffffff);
-}
-
-.collection-summary h1 {
-  margin: 0;
-  font-size: clamp(30px, 4vw, 42px);
-  line-height: 1.08;
-  letter-spacing: -0.04em;
-}
-
-.collection-kicker {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gray);
-}
-
-.collection-meta {
-  margin-top: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  color: var(--gray);
-  font-size: 13px;
-}
-
-.collection-meta-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  object-fit: cover;
-  border: 2px solid var(--black);
-}
-
-.collection-meta-avatar.fallback {
-  display: grid;
-  place-items: center;
-  background: var(--black);
-  color: var(--white);
-  font-weight: 700;
-}
-
-.collection-meta-copy {
-  color: var(--black);
-  font-weight: 700;
-}
-
-.collection-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 22px;
-  flex-wrap: wrap;
-}
-
-.hero-action {
-  min-height: 42px;
-  padding: 10px 18px;
-  border: 2px solid var(--black);
-  border-radius: 12px;
-  background: var(--white);
-  color: var(--black);
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  transition:
-    transform 0.18s ease,
-    background 0.18s ease,
-    color 0.18s ease;
-}
-
-.hero-action:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.hero-action:disabled {
-  cursor: wait;
-  opacity: 0.6;
-}
-
-.hero-action-primary {
-  background: var(--accent);
-  color: var(--white);
-}
-
-.hero-action-icon {
-  min-width: 42px;
-  padding-inline: 14px;
-}
-
-.collection-content {
-  margin-top: 36px;
-}
-
-.collection-content-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  padding-bottom: 8px;
-}
-
-.collection-content-main {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.collection-subtabs {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-}
-
-.subtab {
-  position: relative;
-  padding: 0 0 14px;
-  border: 0;
-  background: transparent;
-  color: var(--gray);
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.subtab.active {
-  color: var(--black);
-}
-
-.subtab.active::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 3px;
-  background: var(--accent);
-  border-radius: 999px;
-}
-
-.subtab:disabled {
-  cursor: default;
-  opacity: 0.7;
-}
-
-.collection-inline-error {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 13px;
-  color: #b42318;
-}
-
-.inline-action {
-  border: 0;
-  background: transparent;
-  color: var(--black);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.collection-search {
-  width: min(100%, 280px);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  min-height: 38px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  border-radius: 999px;
-  background: var(--white);
-  color: var(--gray);
-}
-
-.collection-search input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  outline: none;
-  font-size: 13px;
-}
-
-.search-clear {
-  border: 0;
-  background: transparent;
-  color: var(--gray);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.collection-table {
-  margin-top: 2px;
-}
-
-.collection-table-head {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 2fr) minmax(120px, 1.3fr) 64px;
-  gap: 14px;
-  align-items: center;
-  padding: 8px 12px;
-  color: var(--gray);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.col-index,
-.col-duration {
-  text-align: center;
-}
-
-.collection-empty-state {
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  text-align: center;
-  padding: 64px 24px;
-  color: var(--gray);
-}
-
-@media (max-width: 960px) {
-  .collection-shell {
-    padding: 24px 20px 32px;
-  }
-
-  .collection-hero {
-    grid-template-columns: 140px minmax(0, 1fr);
-    gap: 20px;
-  }
-
-  .collection-cover {
-    width: 140px;
-    height: 140px;
-  }
-}
-
-@media (max-width: 760px) {
-  .collection-hero {
-    grid-template-columns: 1fr;
-  }
-
-  .collection-cover {
-    width: 180px;
-    height: 180px;
-  }
-
-  .collection-table-head,
-  .collection-row {
-    grid-template-columns: 38px minmax(0, 1fr) 56px;
-  }
-
-  .col-album,
-  .collection-table-head .col-album,
-  .collection-table-head .col-like,
-  .collection-row .col-like {
-    display: none;
-  }
-
-  .collection-content-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .collection-search {
-    width: 100%;
-  }
 }
 </style>

@@ -38,6 +38,15 @@ describe('LyricDisplay', () => {
     resizeObserverCallback = null
   })
 
+  it('shows a guided empty state when no lyrics are available', async () => {
+    const wrapper = mount(LyricDisplay)
+    await nextTick()
+
+    expect(wrapper.text()).toContain('No lyrics yet')
+    expect(wrapper.text()).toContain('Search for a track and start playback')
+    expect(wrapper.find('.empty-primary-action').exists()).toBe(false)
+  })
+
   it('scrolls the active lyric into view when the lyric index changes', async () => {
     const store = usePlayerStore()
     store.initAudio() // Initialize the LyricEngine

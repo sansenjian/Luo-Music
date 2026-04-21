@@ -316,6 +316,6 @@ describe('Home view layout', () => {
       '测试歌单'
     )
     expect(wrapper.find('.home-workspace-stub').exists()).toBe(false)
-    expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(false)
+    expect(wrapper.find('.home-local-music-stub').exists()).toBe(false)
   })
 })

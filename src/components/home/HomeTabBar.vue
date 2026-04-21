@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HomeTab } from '@/composables/useHomeShell'
+import { uiMessages } from '@/messages/ui'
 
 const props = defineProps<{
   activeTab: HomeTab
@@ -15,20 +16,30 @@ function changeTab(tab: HomeTab): void {
 </script>
 
 <template>
-  <div class="panel-tabs">
+  <div class="panel-tabs" role="tablist" aria-label="Home panels">
     <button
+      id="home-tab-lyric"
       class="tab"
       :class="{ active: props.activeTab === 'lyric' }"
+      type="button"
+      role="tab"
+      :aria-selected="props.activeTab === 'lyric'"
+      aria-controls="home-panel-lyric"
       @click="changeTab('lyric')"
     >
-      Lyrics
+      {{ uiMessages.home.tabs.lyric }}
     </button>
     <button
+      id="home-tab-playlist"
       class="tab"
       :class="{ active: props.activeTab === 'playlist' }"
+      type="button"
+      role="tab"
+      :aria-selected="props.activeTab === 'playlist'"
+      aria-controls="home-panel-playlist"
       @click="changeTab('playlist')"
     >
-      Playlist
+      {{ uiMessages.home.tabs.playlist }}
     </button>
   </div>
 </template>

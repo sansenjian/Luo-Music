@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
+import WindowResizeFrame from './components/window/WindowResizeFrame.vue'
 import { useCommandContext } from './composables/useCommandContext'
 import { useExperimentalFeatures } from './composables/useExperimentalFeatures'
 import { useMediaSession } from './composables/useMediaSession'
@@ -45,6 +46,7 @@ const mediaSessionEnabled = computed(() => {
 
   return smtcEnabled.value && !isDesktopLyricWindow
 })
+const showWindowResizeFrame = computed(() => isElectron && route.path !== DESKTOP_LYRIC_ROUTE_PATH)
 
 const sanitizeVolume = (value: unknown): number => {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
@@ -130,4 +132,5 @@ onMounted(() => {
 <template>
   <Analytics v-if="!isElectron && showAnalytics" />
   <router-view />
+  <WindowResizeFrame v-if="showWindowResizeFrame" />
 </template>

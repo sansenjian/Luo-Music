@@ -8,12 +8,16 @@ interface PlaylistDetailPanelProps {
   playlist: PlaylistItem | null
   songs: Song[]
   loading?: boolean
+  hasMore?: boolean
+  loadingMore?: boolean
   // eslint-disable-next-line vue/require-default-prop
   error?: unknown
 }
 
 const props = withDefaults(defineProps<PlaylistDetailPanelProps>(), {
-  loading: false
+  loading: false,
+  hasMore: false,
+  loadingMore: false
 })
 
 const emit = defineEmits<{
@@ -21,6 +25,7 @@ const emit = defineEmits<{
   retry: []
   'play-all': []
   'play-song': [index: number]
+  'load-more': []
 }>()
 </script>
 
@@ -31,8 +36,12 @@ const emit = defineEmits<{
         <p class="detail-eyebrow">歌单详情</p>
         <h3 class="detail-title">{{ props.playlist?.name ?? '已选择歌单' }}</h3>
         <p class="detail-meta">
-          {{ props.songs.length }} 首歌曲
-          <span v-if="props.playlist?.trackCount">/ 共 {{ props.playlist.trackCount }} 首</span>
+          <template
+            v-if="props.playlist?.trackCount && props.playlist.trackCount > props.songs.length"
+          >
+            {{ props.songs.length }} / {{ props.playlist.trackCount }} 首歌曲
+          </template>
+          <template v-else>{{ props.songs.length }} 首歌曲</template>
         </p>
       </div>
 
@@ -60,7 +69,18 @@ const emit = defineEmits<{
       <p>当前歌单暂无可播放歌曲。</p>
     </div>
 
-    <SongDetailList v-else :songs="props.songs" @play-song="emit('play-song', $event)" />
+    <SongDetailList
+      v-else
+      :songs="props.songs"
+      :infinite-scroll="props.hasMore"
+      @play-song="emit('play-song', $event)"
+      @load-more="emit('load-more')"
+    />
+
+    <div v-if="props.loadingMore" class="detail-loading-more">
+      <span class="detail-loading-spinner"></span>
+      <span>正在加载更多歌曲...</span>
+    </div>
   </section>
 </template>
 
@@ -173,6 +193,32 @@ const emit = defineEmits<{
 
   .detail-action {
     flex: 1;
+  }
+}
+
+.detail-loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 0;
+  color: var(--gray);
+  font-size: 13px;
+}
+
+.detail-loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--gray-light, #ddd);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

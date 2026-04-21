@@ -1,4 +1,4 @@
-import { computed, ref, type ComputedRef, type Ref } from 'vue'
+import { computed, ref, shallowRef, type ComputedRef, type Ref } from 'vue'
 
 import { getLikelist, getSongDetail } from '../api/song'
 import { createSong, type Song } from '../platform/music/interface'
@@ -47,6 +47,7 @@ interface RawLikedSong {
   extra?: Record<string, unknown>
 }
 
+const LIKED_SONGS_INITIAL_PAGE_SIZE = 30
 const LIKED_SONGS_PAGE_SIZE = 100
 
 function normalizeLikedSong(song: RawLikedSong): Song | null {
@@ -91,6 +92,7 @@ function normalizeLikedSong(song: RawLikedSong): Song | null {
 export interface UseLikedSongsReturn {
   likeSongs: Ref<Song[]>
   hasMore: ComputedRef<boolean>
+  allLoaded: ComputedRef<boolean>
   formattedSongs: ComputedRef<FormattedSong[]>
   count: ComputedRef<number>
   loading: Ref<boolean>
@@ -99,11 +101,12 @@ export interface UseLikedSongsReturn {
   resetLikedSongs: () => void
   loadLikedSongs: (userId: string | number) => Promise<void>
   loadMoreLikedSongs: () => Promise<void>
+  loadAllRemaining: () => Promise<void>
   retryLoadLikedSongs: () => Promise<void>
 }
 
 export function useLikedSongs(): UseLikedSongsReturn {
-  const likeSongs = ref<Song[]>([])
+  const likeSongs = shallowRef<Song[]>([])
   const likedSongIds = ref<Array<string | number>>([])
   const lastRequestedUserId = ref<string | number | null>(null)
   const nextOffset = ref(0)
@@ -117,6 +120,9 @@ export function useLikedSongs(): UseLikedSongsReturn {
   const formattedSongs = computed(() => formatSongs(likeSongs.value))
   const count = computed(() => likedSongIds.value.length)
   const hasMore = computed(() => nextOffset.value < likedSongIds.value.length)
+  const allLoaded = computed(
+    () => nextOffset.value >= likedSongIds.value.length && likedSongIds.value.length > 0
+  )
 
   const buildSongsFromDetail = (
     ids: Array<string | number>,
@@ -144,7 +150,8 @@ export function useLikedSongs(): UseLikedSongsReturn {
   }
 
   const loadSongPage = async (offset: number, append: boolean): Promise<void> => {
-    const ids = likedSongIds.value.slice(offset, offset + LIKED_SONGS_PAGE_SIZE)
+    const pageSize = append ? LIKED_SONGS_PAGE_SIZE : LIKED_SONGS_INITIAL_PAGE_SIZE
+    const ids = likedSongIds.value.slice(offset, offset + pageSize)
     if (ids.length === 0) {
       return
     }
@@ -261,6 +268,51 @@ export function useLikedSongs(): UseLikedSongsReturn {
     await loadSongPage(nextOffset.value, true)
   }
 
+  const loadAllRemaining = async (): Promise<void> => {
+    if (loading.value || !hasMore.value) return
+
+    const sessionId = activeSessionId
+    const allCollected: Song[] = [...likeSongs.value]
+
+    while (hasMore.value && sessionId === activeSessionId) {
+      const offset = nextOffset.value
+      const ids = likedSongIds.value.slice(offset, offset + LIKED_SONGS_PAGE_SIZE)
+      if (ids.length === 0) break
+
+      const task = detailRequestController.start()
+      loadingMore.value = true
+
+      try {
+        const detail = (await task.guard(getSongDetail(ids.join(',')))) as SongDetailResponse
+        const pageSongs = buildSongsFromDetail(ids, detail)
+
+        if (sessionId !== activeSessionId) return
+
+        allCollected.push(...pageSongs)
+
+        task.commit(() => {
+          if (sessionId !== activeSessionId) return
+          likeSongs.value = [...allCollected]
+          nextOffset.value = offset + ids.length
+        })
+      } catch (requestError) {
+        if (isCanceledRequestError(requestError)) return
+
+        console.error('Failed to load liked songs detail:', requestError)
+        task.commit(() => {
+          if (sessionId !== activeSessionId) return
+          error.value = requestError
+          likeSongs.value = [...allCollected]
+        })
+        break
+      } finally {
+        task.commit(() => {
+          if (sessionId === activeSessionId) loadingMore.value = false
+        })
+      }
+    }
+  }
+
   const retryLoadLikedSongs = async (): Promise<void> => {
     if (!lastRequestedUserId.value || loading.value || loadingMore.value) {
       return
@@ -272,6 +324,7 @@ export function useLikedSongs(): UseLikedSongsReturn {
   return {
     likeSongs,
     hasMore,
+    allLoaded,
     formattedSongs,
     count,
     loading,
@@ -280,6 +333,7 @@ export function useLikedSongs(): UseLikedSongsReturn {
     resetLikedSongs,
     loadLikedSongs,
     loadMoreLikedSongs,
+    loadAllRemaining,
     retryLoadLikedSongs
   }
 }

@@ -1,4 +1,4 @@
-import { computed, ref, type ComputedRef, type Ref } from 'vue'
+import { computed, ref, shallowRef, type ComputedRef, type Ref } from 'vue'
 
 import { getPlaylistDetail, getPlaylistTracks, getUserPlaylist } from '@/api/playlist'
 import { createSong, type Song } from '@/platform/music/interface'
@@ -8,20 +8,9 @@ import { createLatestRequestController } from '@/utils/http/requestScope'
 export interface PlaylistItem {
   id: string | number
   name: string
+  trackCount?: number
   subscribed?: boolean
   [key: string]: unknown
-}
-
-export interface UseUserPlaylistsReturn {
-  playlists: Ref<PlaylistItem[]>
-  createdPlaylists: ComputedRef<PlaylistItem[]>
-  favoritePlaylists: ComputedRef<PlaylistItem[]>
-  count: ComputedRef<number>
-  loading: Ref<boolean>
-  error: Ref<unknown>
-  resetPlaylists: () => void
-  loadPlaylists: (userId: string | number) => Promise<void>
-  loadPlaylistSongs: (playlistId: string | number) => Promise<Song[]>
 }
 
 interface PlaylistTrackArtist {
@@ -57,7 +46,33 @@ interface RawPlaylistTrack {
   extra?: Record<string, unknown>
 }
 
+export interface PlaylistTracksState {
+  songs: Ref<Song[]>
+  hasMore: ComputedRef<boolean>
+  loading: Ref<boolean>
+  loadingMore: Ref<boolean>
+  error: Ref<unknown>
+  loadFirstPage: (playlistId: string | number) => Promise<Song[]>
+  loadMore: () => Promise<void>
+  reset: () => void
+}
+
+export interface UseUserPlaylistsReturn {
+  playlists: Ref<PlaylistItem[]>
+  createdPlaylists: ComputedRef<PlaylistItem[]>
+  favoritePlaylists: ComputedRef<PlaylistItem[]>
+  count: ComputedRef<number>
+  loading: Ref<boolean>
+  error: Ref<unknown>
+  resetPlaylists: () => void
+  loadPlaylists: (userId: string | number) => Promise<void>
+  loadPlaylistSongs: (playlistId: string | number) => Promise<Song[]>
+  usePlaylistTracks: () => PlaylistTracksState
+}
+
+const PLAYLIST_TRACK_INITIAL_PAGE_SIZE = 50
 const PLAYLIST_TRACK_PAGE_SIZE = 100
+const PLAYLIST_TRACK_PAGE_LIMIT = 100
 
 function normalizePlaylistTrack(track: RawPlaylistTrack): Song | null {
   if (track.id === undefined || !track.name) {
@@ -98,42 +113,67 @@ function extractPlaylistTracks(payload: unknown): RawPlaylistTrack[] {
     return []
   }
 
-  if (Array.isArray((payload as { songs?: unknown }).songs)) {
-    return (payload as { songs: RawPlaylistTrack[] }).songs
+  const obj = payload as Record<string, unknown>
+
+  if (Array.isArray(obj.songs)) {
+    return obj.songs as RawPlaylistTrack[]
   }
 
-  if (Array.isArray((payload as { playlist?: { tracks?: unknown } }).playlist?.tracks)) {
-    return (payload as { playlist: { tracks: RawPlaylistTrack[] } }).playlist.tracks
+  // Nested: { data: { songs: [...] } }
+  if (
+    obj.data &&
+    typeof obj.data === 'object' &&
+    Array.isArray((obj.data as Record<string, unknown>).songs)
+  ) {
+    return (obj.data as Record<string, unknown>).songs as RawPlaylistTrack[]
+  }
+
+  if (obj.playlist && typeof obj.playlist === 'object') {
+    const pl = obj.playlist as Record<string, unknown>
+    if (Array.isArray(pl.tracks)) {
+      return pl.tracks as RawPlaylistTrack[]
+    }
   }
 
   return []
 }
 
+function parseTracksFromResponse(response: unknown): Song[] {
+  return extractPlaylistTracks(response)
+    .map(track => normalizePlaylistTrack(track))
+    .filter((track): track is Song => Boolean(track))
+}
+
+async function fetchTrackPage(playlistId: number, offset: number): Promise<Song[]> {
+  const response = await getPlaylistTracks(playlistId, PLAYLIST_TRACK_PAGE_SIZE, offset)
+  return parseTracksFromResponse(response)
+}
+
+async function fetchInitialTrackPage(playlistId: number): Promise<Song[]> {
+  const response = await getPlaylistTracks(playlistId, PLAYLIST_TRACK_INITIAL_PAGE_SIZE, 0)
+  return parseTracksFromResponse(response)
+}
+
 async function loadAllPlaylistTracks(playlistId: number): Promise<Song[]> {
-  const tracks: Song[] = []
+  const songs: Song[] = []
   let offset = 0
 
-  while (true) {
-    const response = await getPlaylistTracks(playlistId, PLAYLIST_TRACK_PAGE_SIZE, offset)
-    const rawTracks = extractPlaylistTracks(response)
-    if (!rawTracks.length) {
+  for (let page = 0; page < PLAYLIST_TRACK_PAGE_LIMIT; page += 1) {
+    const pageSongs = await fetchTrackPage(playlistId, offset)
+
+    if (pageSongs.length === 0) {
       break
     }
 
-    tracks.push(
-      ...rawTracks
-        .map(track => normalizePlaylistTrack(track))
-        .filter((track): track is Song => Boolean(track))
-    )
+    songs.push(...pageSongs)
+    offset += pageSongs.length
 
-    if (rawTracks.length < PLAYLIST_TRACK_PAGE_SIZE) {
+    if (pageSongs.length < PLAYLIST_TRACK_PAGE_SIZE) {
       break
     }
-
-    offset += rawTracks.length
   }
 
-  return tracks
+  return songs
 }
 
 export function useUserPlaylists(): UseUserPlaylistsReturn {
@@ -194,26 +234,111 @@ export function useUserPlaylists(): UseUserPlaylistsReturn {
     }
   }
 
+  // Legacy: load all tracks at once (used by home collection panel)
   const loadPlaylistSongs = async (playlistId: string | number): Promise<Song[]> => {
-    try {
+    const playlistIdNumber = Number(playlistId)
+    const songs = await loadAllPlaylistTracks(playlistIdNumber)
+    if (songs.length > 0) return songs
+
+    const response = (await getPlaylistDetail(playlistIdNumber)) as {
+      playlist?: { tracks?: RawPlaylistTrack[] }
+    }
+    return parseTracksFromResponse(response)
+  }
+
+  // Paginated track loading
+  const usePlaylistTracks = (): PlaylistTracksState => {
+    const songs = shallowRef<Song[]>([])
+    const loading = ref(false)
+    const loadingMore = ref(false)
+    const errorState = ref<unknown>(null)
+    const hasMoreState = ref(false)
+    let currentPlaylistId: number | null = null
+    let nextOffset = 0
+    let activeSessionId = 0
+
+    const hasMore = computed(() => hasMoreState.value)
+
+    const reset = (): void => {
+      activeSessionId += 1
+      currentPlaylistId = null
+      songs.value = []
+      nextOffset = 0
+      hasMoreState.value = false
+      loading.value = false
+      loadingMore.value = false
+      errorState.value = null
+    }
+
+    const loadFirstPage = async (playlistId: string | number): Promise<Song[]> => {
+      const sessionId = ++activeSessionId
       const playlistIdNumber = Number(playlistId)
-      const fullTracks = await loadAllPlaylistTracks(playlistIdNumber)
-      if (fullTracks.length > 0) {
-        return fullTracks
-      }
+      currentPlaylistId = playlistIdNumber
+      loading.value = true
+      loadingMore.value = false
+      errorState.value = null
 
-      const response = (await getPlaylistDetail(playlistIdNumber)) as {
-        playlist?: {
-          tracks?: RawPlaylistTrack[]
+      try {
+        let pageSongs = await fetchInitialTrackPage(playlistIdNumber)
+
+        if (sessionId !== activeSessionId) return pageSongs
+
+        if (pageSongs.length === 0) {
+          const response = (await getPlaylistDetail(playlistIdNumber)) as {
+            playlist?: { tracks?: RawPlaylistTrack[] }
+          }
+          pageSongs = parseTracksFromResponse(response)
         }
-      }
 
-      return extractPlaylistTracks(response)
-        .map(track => normalizePlaylistTrack(track))
-        .filter((track): track is Song => Boolean(track))
-    } catch (requestError) {
-      console.error('Failed to load playlist detail:', requestError)
-      throw requestError
+        if (sessionId !== activeSessionId) return pageSongs
+
+        songs.value = pageSongs
+        nextOffset = pageSongs.length
+        hasMoreState.value = pageSongs.length >= PLAYLIST_TRACK_INITIAL_PAGE_SIZE
+        return pageSongs
+      } catch (err) {
+        if (sessionId !== activeSessionId) return []
+        errorState.value = err
+        throw err
+      } finally {
+        if (sessionId === activeSessionId) loading.value = false
+      }
+    }
+
+    const loadMore = async (): Promise<void> => {
+      if (!currentPlaylistId || loading.value || loadingMore.value) return
+
+      const sessionId = activeSessionId
+      loadingMore.value = true
+
+      try {
+        const pageSongs = await fetchTrackPage(currentPlaylistId, nextOffset)
+        if (sessionId !== activeSessionId) return
+
+        if (pageSongs.length > 0) {
+          songs.value = [...songs.value, ...pageSongs]
+          nextOffset += pageSongs.length
+          hasMoreState.value = pageSongs.length >= PLAYLIST_TRACK_PAGE_SIZE
+        } else {
+          hasMoreState.value = false
+        }
+      } catch (err) {
+        if (sessionId !== activeSessionId) return
+        console.error('Failed to load more playlist tracks:', err)
+      } finally {
+        if (sessionId === activeSessionId) loadingMore.value = false
+      }
+    }
+
+    return {
+      songs,
+      hasMore,
+      loading,
+      loadingMore,
+      error: errorState,
+      loadFirstPage,
+      loadMore,
+      reset
     }
   }
 
@@ -226,6 +351,7 @@ export function useUserPlaylists(): UseUserPlaylistsReturn {
     error,
     resetPlaylists,
     loadPlaylists,
-    loadPlaylistSongs
+    loadPlaylistSongs,
+    usePlaylistTracks
   }
 }

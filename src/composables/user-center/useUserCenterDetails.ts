@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue'
 
+import type { PlaylistTracksState } from '@/composables/useUserPlaylists'
 import type { Song } from '@/platform/music/interface'
 
 import { parseQueryValue, type UserTab, type UserTabStateMap } from './shared'
@@ -13,6 +14,7 @@ export interface UseUserCenterDetailsOptions {
   getCurrentUserId: () => UserStoreLike['userId']
   loadTabData: (tab: UserTab, userId: string | number, force?: boolean) => Promise<void>
   loadPlaylistSongs: LoadSongsById
+  usePlaylistTracks: () => PlaylistTracksState
   loadAlbumSongs: LoadSongsById
   syncRouteQuery: () => void
 }
@@ -22,6 +24,9 @@ export interface UseUserCenterDetailsReturn {
   selectedPlaylistSongs: Ref<Song[]>
   playlistDetailLoading: Ref<boolean>
   playlistDetailError: Ref<unknown>
+  playlistHasMore: Ref<boolean>
+  playlistLoadingMore: Ref<boolean>
+  loadMorePlaylistSongs: () => Promise<void>
   selectedAlbumId: Ref<string | null>
   selectedAlbumSongs: Ref<Song[]>
   albumDetailLoading: Ref<boolean>
@@ -49,7 +54,7 @@ export function useUserCenterDetails(
     getCurrentUserId,
     isLoggedIn,
     loadAlbumSongs,
-    loadPlaylistSongs,
+    usePlaylistTracks,
     loadTabData,
     mountedTabs,
     route,
@@ -59,9 +64,12 @@ export function useUserCenterDetails(
   const selectedPlaylistId = ref<string | null>(
     activeTab.value === 'playlist' ? parseQueryValue(route.query.playlistId) : null
   )
-  const selectedPlaylistSongs = ref<Song[]>([])
-  const playlistDetailLoading = ref(false)
-  const playlistDetailError = ref<unknown>(null)
+  const tracksState = usePlaylistTracks()
+  const selectedPlaylistSongs = tracksState.songs
+  const playlistDetailLoading = tracksState.loading
+  const playlistDetailError = tracksState.error
+  const playlistHasMore = tracksState.hasMore
+  const playlistLoadingMore = tracksState.loadingMore
   const selectedAlbumId = ref<string | null>(
     activeTab.value === 'album' ? parseQueryValue(route.query.albumId) : null
   )
@@ -96,9 +104,7 @@ export function useUserCenterDetails(
   const beginPlaylistDetailTransition = (playlistId: string): void => {
     activePlaylistDetailLoadId += 1
     selectedPlaylistId.value = playlistId
-    selectedPlaylistSongs.value = []
-    playlistDetailLoading.value = true
-    playlistDetailError.value = null
+    tracksState.reset()
   }
 
   const beginAlbumDetailTransition = (albumId: string): void => {
@@ -112,9 +118,7 @@ export function useUserCenterDetails(
   const resetPlaylistDetail = (): void => {
     activePlaylistDetailLoadId += 1
     selectedPlaylistId.value = null
-    selectedPlaylistSongs.value = []
-    playlistDetailLoading.value = false
-    playlistDetailError.value = null
+    tracksState.reset()
   }
 
   const resetAlbumDetail = (): void => {
@@ -132,9 +136,7 @@ export function useUserCenterDetails(
     albumSongsCache.clear()
     selectedPlaylistId.value =
       activeTab.value === 'playlist' ? parseQueryValue(route.query.playlistId) : null
-    selectedPlaylistSongs.value = []
-    playlistDetailLoading.value = false
-    playlistDetailError.value = null
+    tracksState.reset()
     selectedAlbumId.value =
       activeTab.value === 'album' ? parseQueryValue(route.query.albumId) : null
     selectedAlbumSongs.value = []
@@ -149,17 +151,13 @@ export function useUserCenterDetails(
     const normalizedPlaylistId = String(playlistId)
     const cachedSongs = playlistSongsCache.get(normalizedPlaylistId)
     if (!force && cachedSongs) {
-      selectedPlaylistSongs.value = cachedSongs
-      playlistDetailError.value = null
       return cachedSongs
     }
 
     const loadId = ++activePlaylistDetailLoadId
-    playlistDetailLoading.value = true
-    playlistDetailError.value = null
 
     try {
-      const songs = await loadPlaylistSongs(playlistId)
+      const songs = await tracksState.loadFirstPage(playlistId)
 
       if (
         loadId !== activePlaylistDetailLoadId ||
@@ -169,7 +167,6 @@ export function useUserCenterDetails(
       }
 
       playlistSongsCache.set(normalizedPlaylistId, songs)
-      selectedPlaylistSongs.value = songs
       return songs
     } catch (error) {
       if (
@@ -179,13 +176,7 @@ export function useUserCenterDetails(
         return []
       }
 
-      selectedPlaylistSongs.value = []
-      playlistDetailError.value = error
       throw error
-    } finally {
-      if (loadId === activePlaylistDetailLoadId) {
-        playlistDetailLoading.value = false
-      }
     }
   }
 
@@ -235,11 +226,10 @@ export function useUserCenterDetails(
     syncRouteQuery()
 
     const userId = getCurrentUserId()
-    if (isLoggedIn() && userId) {
-      await loadTabData('playlist', userId)
-    }
+    const tabDataPromise =
+      isLoggedIn() && userId ? loadTabData('playlist', userId) : Promise.resolve()
 
-    await loadPlaylistDetailSafely(normalizedPlaylistId)
+    await Promise.all([tabDataPromise, loadPlaylistDetailSafely(normalizedPlaylistId)])
   }
 
   const closePlaylistDetail = (): void => {
@@ -283,6 +273,10 @@ export function useUserCenterDetails(
     await loadPlaylistDetailSafely(selectedPlaylistId.value, true)
   }
 
+  const loadMorePlaylistSongs = async (): Promise<void> => {
+    await tracksState.loadMore()
+  }
+
   const retryAlbumDetail = async (): Promise<void> => {
     if (!selectedAlbumId.value) {
       return
@@ -302,6 +296,9 @@ export function useUserCenterDetails(
     selectedPlaylistSongs,
     playlistDetailLoading,
     playlistDetailError,
+    playlistHasMore,
+    playlistLoadingMore,
+    loadMorePlaylistSongs,
     selectedAlbumId,
     selectedAlbumSongs,
     albumDetailLoading,

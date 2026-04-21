@@ -76,7 +76,7 @@ export class PlaybackActions {
   }
 
   private shouldHydrateSongForPlayback(song: Song, platformKey: string): boolean {
-    return platformKey === 'netease' && !song.url
+    return platformKey === 'netease'
   }
 
   private shouldFetchLyrics(song: Song, platformKey: string): boolean {

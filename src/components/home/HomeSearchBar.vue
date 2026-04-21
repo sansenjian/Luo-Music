@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MusicServerOption } from '@/composables/useHomePage'
+import { uiMessages } from '@/messages/ui'
 
 import HomeServerSelect from './HomeServerSelect.vue'
 
@@ -55,17 +56,21 @@ function onToggleSelect(): void {
     />
 
     <input
+      id="home-search-input"
       :value="props.searchKeyword"
       @input="updateKeyword"
       @keyup.enter="onSearch"
       class="cyber-input"
       type="text"
-      placeholder="Search..."
+      :placeholder="uiMessages.home.search.placeholder"
+      :aria-label="uiMessages.home.search.inputLabel"
     />
 
-    <button @click="onSearch" class="exec-btn" :disabled="props.isLoading">
+    <button type="button" @click="onSearch" class="exec-btn" :disabled="props.isLoading">
       <span v-if="props.isLoading" class="exec-loading" aria-hidden="true"></span>
-      <span v-else>Execute</span>
+      <span class="exec-label">
+        {{ props.isLoading ? uiMessages.home.search.loading : uiMessages.home.search.submit }}
+      </span>
     </button>
   </div>
 </template>

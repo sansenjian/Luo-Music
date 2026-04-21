@@ -196,6 +196,12 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
       })
     } catch (requestError) {
       if (isCanceledRequestError(requestError)) {
+        // Ensure loading is cleared even when superseded — the new task
+        // sets loading=true at start, but if there is no new task we must
+        // reset it here to avoid a stuck loading state.
+        if (task.isCurrent()) {
+          loading.value = false
+        }
         return
       }
 
@@ -204,9 +210,9 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
         error.value = requestError
       })
     } finally {
-      task.commit(() => {
+      if (task.isCurrent()) {
         loading.value = false
-      })
+      }
     }
   }
 

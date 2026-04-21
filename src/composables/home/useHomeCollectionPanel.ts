@@ -2,6 +2,7 @@ import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 import type { Song } from '@/platform/music/interface'
 import { useFavoriteAlbums } from '@/composables/useFavoriteAlbums'
+import { useLikedSongs } from '@/composables/useLikedSongs'
 import { useUserPlaylists } from '@/composables/useUserPlaylists'
 import { usePlayerStore } from '@/store/playerStore'
 import { useToastStore } from '@/store/toastStore'
@@ -23,18 +24,53 @@ export function useHomeCollectionPanel(
   const userStore = useUserStore()
   const playerStore = usePlayerStore()
   const toastStore = useToastStore()
-  const { loadPlaylistSongs } = useUserPlaylists()
+  const { usePlaylistTracks } = useUserPlaylists()
   const { loadAlbumSongs } = useFavoriteAlbums()
+  const {
+    likeSongs,
+    hasMore: likedSongsHasMore,
+    loading: likedSongsLoading,
+    loadingMore: likedSongsLoadingMore,
+    error: likedSongsError,
+    loadLikedSongs,
+    loadMoreLikedSongs,
+    resetLikedSongs
+  } = useLikedSongs()
 
-  const songs = ref<Song[]>([])
-  const loading = ref(false)
-  const error = ref<unknown>(null)
+  const {
+    songs: playlistSongs,
+    hasMore,
+    loading,
+    loadingMore,
+    error,
+    loadFirstPage,
+    loadMore,
+    reset
+  } = usePlaylistTracks()
+  const albumSongs = ref<Song[]>([])
+  const albumLoading = ref(false)
+  const albumError = ref<unknown>(null)
   const requestVersion = ref(0)
   const searchQuery = ref('')
 
   const collection = computed(() => toValue(collectionSource))
+  const isLikedCollection = computed(() => collection.value?.kind === 'liked')
+  const isPlaylistCollection = computed(() => collection.value?.kind === 'playlist')
+  const songs = computed(() => {
+    if (isLikedCollection.value) {
+      return likeSongs.value
+    }
+
+    return isPlaylistCollection.value ? playlistSongs.value : albumSongs.value
+  })
   const title = computed(() => collection.value?.name ?? '已选择歌单')
-  const kicker = computed(() => (collection.value?.kind === 'album' ? '收藏专辑' : '歌单'))
+  const kicker = computed(() =>
+    collection.value?.kind === 'album'
+      ? '收藏专辑'
+      : isLikedCollection.value
+        ? '喜欢的音乐'
+        : '歌单'
+  )
   const metaLabel = computed(() => {
     if (!collection.value) {
       return ''
@@ -44,14 +80,33 @@ export function useHomeCollectionPanel(
       return collection.value.summary
     }
 
+    if (isLikedCollection.value) {
+      return userStore.nickname
+        ? `${userStore.nickname} · ${collection.value.summary}`
+        : collection.value.summary
+    }
+
     return userStore.nickname
       ? `${userStore.nickname} · ${collection.value.summary}`
       : collection.value.summary
   })
-  const coverUrl = computed(() => collection.value?.coverUrl || '')
+  const coverUrl = computed(() => {
+    if (isLikedCollection.value) {
+      return songs.value[0]?.album?.picUrl || collection.value?.coverUrl || ''
+    }
+
+    return collection.value?.coverUrl || ''
+  })
   const currentSongId = computed(() => playerStore.currentSong?.id ?? null)
   const errorMessage = computed(() =>
-    resolvePanelErrorMessage(error.value, '详情加载失败，请稍后重试。')
+    resolvePanelErrorMessage(
+      isLikedCollection.value
+        ? likedSongsError.value
+        : isPlaylistCollection.value
+          ? error.value
+          : albumError.value,
+      '详情加载失败，请稍后重试。'
+    )
   )
   const formattedSongs = computed(() =>
     songs.value.map(song => createHomeMediaSong(song, coverUrl.value))
@@ -75,43 +130,91 @@ export function useHomeCollectionPanel(
     { immediate: true }
   )
 
+  watch(
+    () => [isLikedCollection.value, userStore.isLoggedIn, userStore.userId] as const,
+    ([isLiked]) => {
+      if (!isLiked) {
+        return
+      }
+
+      searchQuery.value = ''
+      void loadCollectionSongs()
+    }
+  )
+
   async function loadCollectionSongs(): Promise<void> {
     const nextCollection = collection.value
+    reset()
+    resetLikedSongs()
+    albumSongs.value = []
+    albumError.value = null
+    albumLoading.value = false
+
     if (!nextCollection) {
-      songs.value = []
-      error.value = null
-      loading.value = false
       return
     }
 
     const currentRequest = requestVersion.value + 1
     requestVersion.value = currentRequest
-    loading.value = true
-    error.value = null
+
+    if (nextCollection.kind === 'liked') {
+      if (!userStore.userId) {
+        return
+      }
+
+      await loadLikedSongs(userStore.userId)
+      return
+    }
+
+    if (nextCollection.kind === 'playlist') {
+      try {
+        await loadFirstPage(nextCollection.sourceId)
+      } catch {
+        // Playlist track state keeps its own error ref.
+      }
+
+      return
+    }
+
+    albumLoading.value = true
 
     try {
-      const nextSongs =
-        nextCollection.kind === 'album'
-          ? await loadAlbumSongs(nextCollection.sourceId)
-          : await loadPlaylistSongs(nextCollection.sourceId)
+      const nextSongs = await loadAlbumSongs(nextCollection.sourceId)
 
       if (requestVersion.value !== currentRequest) {
         return
       }
 
-      songs.value = nextSongs
+      albumSongs.value = nextSongs
     } catch (requestError) {
       if (requestVersion.value !== currentRequest) {
         return
       }
 
-      songs.value = []
-      error.value = requestError
+      albumSongs.value = []
+      albumError.value = requestError
     } finally {
       if (requestVersion.value === currentRequest) {
-        loading.value = false
+        albumLoading.value = false
       }
     }
+  }
+
+  async function loadMoreCollectionSongs(): Promise<void> {
+    if (isLikedCollection.value) {
+      if (likedSongsLoading.value || likedSongsLoadingMore.value || !likedSongsHasMore.value) {
+        return
+      }
+
+      await loadMoreLikedSongs()
+      return
+    }
+
+    if (!isPlaylistCollection.value || loading.value || loadingMore.value || !hasMore.value) {
+      return
+    }
+
+    await loadMore()
   }
 
   async function playCollectionAt(index: number): Promise<void> {
@@ -146,13 +249,30 @@ export function useHomeCollectionPanel(
     collection,
     coverUrl,
     currentSongId,
-    error,
+    error: computed(() =>
+      isLikedCollection.value
+        ? likedSongsError.value
+        : isPlaylistCollection.value
+          ? error.value
+          : albumError.value
+    ),
     errorMessage,
     filteredSongs,
     filteredPlaybackSongs,
+    hasMore: computed(() => (isLikedCollection.value ? likedSongsHasMore.value : hasMore.value)),
     kicker,
     loadCollectionSongs,
-    loading,
+    loadMoreCollectionSongs,
+    loading: computed(() =>
+      isLikedCollection.value
+        ? likedSongsLoading.value
+        : isPlaylistCollection.value
+          ? loading.value
+          : albumLoading.value
+    ),
+    loadingMore: computed(() =>
+      isLikedCollection.value ? likedSongsLoadingMore.value : loadingMore.value
+    ),
     metaLabel,
     playAll,
     playCollectionAt,

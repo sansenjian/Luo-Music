@@ -9,6 +9,7 @@ const initDownloadManagerMock = vi.fn()
 const appQuitMock = vi.fn()
 
 class BrowserWindowMock {
+  public options: unknown
   public events: Record<string, (...args: unknown[]) => void> = {}
   public webContentsEvents: Record<string, (...args: unknown[]) => void> = {}
   public webContents = {
@@ -35,7 +36,8 @@ class BrowserWindowMock {
   public setSize = vi.fn()
   public setThumbarButtons = vi.fn()
 
-  constructor(_options: unknown) {
+  constructor(options: unknown) {
+    this.options = options
     browserWindowInstances.push(this)
   }
 
@@ -104,17 +106,39 @@ vi.mock('../../electron/utils/paths', () => ({
 }))
 
 describe('electron/WindowManager', () => {
+  const platformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform')
+
   beforeEach(() => {
     vi.useFakeTimers()
     vi.resetModules()
     vi.clearAllMocks()
     browserWindowInstances.length = 0
     delete process.env.VITE_DEV_SERVER_URL
+    Object.defineProperty(process, 'platform', {
+      configurable: true,
+      value: 'win32'
+    })
   })
 
   afterEach(() => {
     vi.useRealTimers()
     delete process.env.VITE_DEV_SERVER_URL
+    if (platformDescriptor) {
+      Object.defineProperty(process, 'platform', platformDescriptor)
+    }
+  })
+
+  it('keeps the frameless main window flush on Windows', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    expect(window?.options).toMatchObject({
+      roundedCorners: false,
+      thickFrame: false
+    })
   })
 
   it('retries the dev renderer after a main-frame load failure', async () => {

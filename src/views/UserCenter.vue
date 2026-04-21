@@ -43,6 +43,7 @@ const {
   loadingMap,
   loadMoreLikedSongs,
   loadMoreEvents,
+  loadMorePlaylistSongs,
   mountedTabs,
   nickname,
   openAlbumDetail,
@@ -54,6 +55,8 @@ const {
   playEventSong,
   playlistDetailError,
   playlistDetailLoading,
+  playlistHasMore,
+  playlistLoadingMore,
   playlists,
   playPlaylistTrackAt,
   playAllLikedSongs,
@@ -237,10 +240,13 @@ const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events
           :songs="selectedPlaylistSongs"
           :loading="playlistDetailLoading"
           :error="playlistDetailError"
+          :has-more="playlistHasMore"
+          :loading-more="playlistLoadingMore"
           @close="closePlaylistDetail"
           @retry="retryPlaylistDetail"
           @play-all="playPlaylist(selectedPlaylistId)"
           @play-song="playPlaylistTrackAt"
+          @load-more="loadMorePlaylistSongs"
         />
 
         <div v-if="mountedTabs.album" v-show="activeTab === 'album'">

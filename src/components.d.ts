@@ -12,16 +12,24 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AlbumDetailPanel: typeof import('./components/user/AlbumDetailPanel.vue')['default']
+    AppSettingsContent: typeof import('./components/settings/AppSettingsContent.vue')['default']
     CacheManager: typeof import('./components/CacheManager.vue')['default']
     ErrorToast: typeof import('./components/ErrorToast.vue')['default']
     EventsView: typeof import('./components/user/EventsView.vue')['default']
     FavoriteAlbumsView: typeof import('./components/user/FavoriteAlbumsView.vue')['default']
     HomeBrandBadge: typeof import('./components/home/HomeBrandBadge.vue')['default']
     HomeCollectionDetailPanel: typeof import('./components/home/HomeCollectionDetailPanel.vue')['default']
+    HomeEmptyState: typeof import('./components/home/HomeEmptyState.vue')['default']
     HomeFooter: typeof import('./components/home/HomeFooter.vue')['default']
     HomeHeader: typeof import('./components/home/HomeHeader.vue')['default']
     HomeLikedSongsPanel: typeof import('./components/home/HomeLikedSongsPanel.vue')['default']
     HomeLocalMusicPanel: typeof import('./components/home/HomeLocalMusicPanel.vue')['default']
+    HomeMediaHero: typeof import('./components/home/media/HomeMediaHero.vue')['default']
+    HomeMediaPanelShell: typeof import('./components/home/media/HomeMediaPanelShell.vue')['default']
+    HomeMediaSongsSection: typeof import('./components/home/media/HomeMediaSongsSection.vue')['default']
+    HomeMediaState: typeof import('./components/home/media/HomeMediaState.vue')['default']
+    HomeMediaTableHead: typeof import('./components/home/media/HomeMediaTableHead.vue')['default']
+    HomeMediaToolbar: typeof import('./components/home/media/HomeMediaToolbar.vue')['default']
     HomeRecentPlayPanel: typeof import('./components/home/HomeRecentPlayPanel.vue')['default']
     HomeSearchBar: typeof import('./components/home/HomeSearchBar.vue')['default']
     HomeServerSelect: typeof import('./components/home/HomeServerSelect.vue')['default']
@@ -57,5 +65,6 @@ declare module 'vue' {
     UserAvatar: typeof import('./components/UserAvatar.vue')['default']
     UserProfile: typeof import('./components/UserProfile.vue')['default']
     UserProfileHeader: typeof import('./components/user/UserProfileHeader.vue')['default']
+    WindowResizeFrame: typeof import('./components/window/WindowResizeFrame.vue')['default']
   }
 }

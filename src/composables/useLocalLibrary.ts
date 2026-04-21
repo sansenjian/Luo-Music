@@ -39,6 +39,11 @@ export function useLocalLibrary() {
     runMutation
   )
 
+  let resolveReady: () => void
+  const ready = new Promise<void>(resolve => {
+    resolveReady = resolve
+  })
+
   async function refresh(): Promise<void> {
     const nextState = await runRequest(() => platformService.getLocalLibraryState())
     applyState(nextState)
@@ -65,6 +70,8 @@ export function useLocalLibrary() {
         }
       } catch {
         // The request layer already updates loading state; keep mount resilient.
+      } finally {
+        resolveReady()
       }
     })()
   })
@@ -103,6 +110,7 @@ export function useLocalLibrary() {
   }
 
   return {
+    ready,
     stateGroup,
     queries,
     commands,

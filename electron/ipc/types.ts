@@ -80,6 +80,13 @@ export type DownloadFailed = {
   error: string
 }
 
+export type WindowBounds = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export type LyricData = {
   text: string
   trans: string
@@ -262,6 +269,7 @@ type InvokeChannelsDefinition = MergeChannels<
       [],
       { width: number; height: number }
     > &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.WINDOW_GET_BOUNDS, [], WindowBounds> &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.WINDOW_IS_MAXIMIZED, [], boolean> &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.WINDOW_IS_MINIMIZED, [], boolean> &
     DefineInvokeChannel<
@@ -421,6 +429,7 @@ type SendChannelsDefinition = MergeChannels<
     DefineSendChannel<typeof SEND_CHANNELS.WINDOW_MAXIMIZE, []> &
     DefineSendChannel<typeof SEND_CHANNELS.WINDOW_CLOSE, []> &
     DefineSendChannel<typeof SEND_CHANNELS.WINDOW_RESIZE, [{ width: number; height: number }]> &
+    DefineSendChannel<typeof SEND_CHANNELS.WINDOW_SET_BOUNDS, [WindowBounds]> &
     DefineSendChannel<typeof SEND_CHANNELS.WINDOW_MINIMIZE_TO_TRAY, []> &
     DefineSendChannel<typeof SEND_CHANNELS.WINDOW_SET_ALWAYS_ON_TOP, [alwaysOnTop: boolean]> &
     DefineSendChannel<typeof SEND_CHANNELS.WINDOW_TOGGLE_FULLSCREEN, []> &

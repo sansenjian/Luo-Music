@@ -348,6 +348,7 @@ declare global {
   const useWebWorker: typeof import('@vueuse/core').useWebWorker
   const useWebWorkerFn: typeof import('@vueuse/core').useWebWorkerFn
   const useWindowFocus: typeof import('@vueuse/core').useWindowFocus
+  const useWindowResizeFrame: typeof import('./composables/useWindowResizeFrame').useWindowResizeFrame
   const useWindowScroll: typeof import('@vueuse/core').useWindowScroll
   const useWindowSize: typeof import('@vueuse/core').useWindowSize
   const watch: typeof import('vue').watch
@@ -485,7 +486,11 @@ declare global {
   } from './composables/useUserEvents'
   import('./composables/useUserEvents')
   // @ts-ignore
-  export type { PlaylistItem, UseUserPlaylistsReturn } from './composables/useUserPlaylists'
+  export type {
+    PlaylistItem,
+    PlaylistTracksState,
+    UseUserPlaylistsReturn
+  } from './composables/useUserPlaylists'
   import('./composables/useUserPlaylists')
   // @ts-ignore
   export type { PlayerStoreActions, PlayerStoreDeps } from './store/playerStore'
@@ -974,6 +979,9 @@ declare module 'vue' {
     readonly useWebWorker: UnwrapRef<(typeof import('@vueuse/core'))['useWebWorker']>
     readonly useWebWorkerFn: UnwrapRef<(typeof import('@vueuse/core'))['useWebWorkerFn']>
     readonly useWindowFocus: UnwrapRef<(typeof import('@vueuse/core'))['useWindowFocus']>
+    readonly useWindowResizeFrame: UnwrapRef<
+      (typeof import('./composables/useWindowResizeFrame'))['useWindowResizeFrame']
+    >
     readonly useWindowScroll: UnwrapRef<(typeof import('@vueuse/core'))['useWindowScroll']>
     readonly useWindowSize: UnwrapRef<(typeof import('@vueuse/core'))['useWindowSize']>
     readonly watch: UnwrapRef<(typeof import('vue'))['watch']>

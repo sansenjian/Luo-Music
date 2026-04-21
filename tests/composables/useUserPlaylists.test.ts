@@ -2,6 +2,7 @@ import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useUserPlaylists, type UseUserPlaylistsReturn } from '@/composables/useUserPlaylists'
+import { nextTick } from 'vue'
 import { mountComposable } from '../helpers/mountComposable'
 
 const getPlaylistDetailMock = vi.hoisted(() => vi.fn())
@@ -65,6 +66,35 @@ describe('useUserPlaylists', () => {
     })
   })
 
+  it('continues requesting playlist/track/all pages until the playlist is fully loaded', async () => {
+    getPlaylistTracksMock
+      .mockResolvedValueOnce({
+        songs: Array.from({ length: 100 }, (_, index) => ({
+          id: index + 1,
+          name: `Track ${index + 1}`
+        }))
+      })
+      .mockResolvedValueOnce({
+        songs: [
+          { id: 101, name: 'Track 101' },
+          { id: 102, name: 'Track 102' }
+        ]
+      })
+
+    const viewModel = mountUseUserPlaylists()
+    const songs = await viewModel.loadPlaylistSongs(9)
+    await flushPromises()
+
+    expect(getPlaylistTracksMock).toHaveBeenNthCalledWith(1, 9, 100, 0)
+    expect(getPlaylistTracksMock).toHaveBeenNthCalledWith(2, 9, 100, 100)
+    expect(getPlaylistDetailMock).not.toHaveBeenCalled()
+    expect(songs).toHaveLength(102)
+    expect(songs.at(-1)).toMatchObject({
+      id: 102,
+      name: 'Track 102'
+    })
+  })
+
   it('falls back to playlist detail tracks when playlist/track/all returns nothing', async () => {
     getPlaylistTracksMock.mockResolvedValue({
       songs: []
@@ -96,6 +126,40 @@ describe('useUserPlaylists', () => {
       artists: [{ id: 8, name: 'Artist 8' }],
       album: { id: 10, name: 'Album 10', picUrl: 'cover-10.jpg' }
     })
+  })
+
+  it('supports incremental playlist track loading through usePlaylistTracks', async () => {
+    getPlaylistTracksMock
+      .mockResolvedValueOnce({
+        songs: Array.from({ length: 50 }, (_, index) => ({
+          id: index + 1,
+          name: `Track ${index + 1}`
+        }))
+      })
+      .mockResolvedValueOnce({
+        songs: Array.from({ length: 52 }, (_, index) => ({
+          id: index + 51,
+          name: `Track ${index + 51}`
+        }))
+      })
+
+    const viewModel = mountUseUserPlaylists()
+    const playlistTracks = viewModel.usePlaylistTracks()
+
+    await playlistTracks.loadFirstPage(7)
+    await flushPromises()
+
+    expect(getPlaylistTracksMock).toHaveBeenNthCalledWith(1, 7, 50, 0)
+    expect(playlistTracks.songs.value).toHaveLength(50)
+    expect(playlistTracks.hasMore.value).toBe(true)
+
+    await playlistTracks.loadMore()
+    await flushPromises()
+    await nextTick()
+
+    expect(getPlaylistTracksMock).toHaveBeenNthCalledWith(2, 7, 100, 50)
+    expect(playlistTracks.songs.value).toHaveLength(102)
+    expect(playlistTracks.hasMore.value).toBe(false)
   })
 
   it('splits created playlists from favorite playlists', async () => {

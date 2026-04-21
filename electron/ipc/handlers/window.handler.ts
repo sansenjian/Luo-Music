@@ -17,6 +17,15 @@ export function registerWindowHandlers(windowManager: WindowManager): void {
     return Promise.resolve({ width, height })
   })
 
+  ipcService.registerInvoke(INVOKE_CHANNELS.WINDOW_GET_BOUNDS, async () => {
+    const bounds = windowManager.getBounds()
+    if (!bounds) {
+      throw new Error('No window available')
+    }
+
+    return Promise.resolve(bounds)
+  })
+
   ipcService.registerInvoke(INVOKE_CHANNELS.WINDOW_IS_MAXIMIZED, async () => {
     const win = windowManager.getWindow()
     return Promise.resolve(win?.isMaximized() ?? false)
@@ -79,6 +88,17 @@ export function registerWindowHandlers(windowManager: WindowManager): void {
       const validHeight = Math.max(80, Math.min(height, maxHeight))
 
       win.setSize(validWidth, validHeight)
+    }
+  )
+
+  ipcService.registerSend(
+    SEND_CHANNELS.WINDOW_SET_BOUNDS,
+    ({ x, y, width, height }: { x: number; y: number; width: number; height: number }) => {
+      if (![x, y, width, height].every(value => Number.isFinite(value))) {
+        return
+      }
+
+      windowManager.setBounds({ x, y, width, height })
     }
   )
 }

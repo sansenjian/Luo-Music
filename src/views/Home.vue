@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 
 import ErrorToast from '../components/ErrorToast.vue'
 import HomeFooter from '../components/home/HomeFooter.vue'
@@ -58,13 +58,15 @@ const {
   selectedCollection
 } = useHomeWorkspaceState()
 
-// When a search completes and switches to the playlist tab, ensure we're
-// showing the home workspace so the playlist is actually visible.
-watch(activeTab, tab => {
-  if (tab === 'playlist' && activeWorkspaceView.value !== 'home') {
+// When search results arrive, ensure the home workspace is visible so the
+// playlist tab can be shown. We must also react when activeTab is already
+// 'playlist' (e.g. a second search), where the tab watcher alone wouldn't fire.
+async function handleSearch(): Promise<void> {
+  await onSearch()
+  if (activeTab.value === 'playlist' && activeWorkspaceView.value !== 'home') {
     resetToHome()
   }
-})
+}
 const sharedLocalLibrary = useLocalLibrary()
 const homeLikedSongsPanelModel = useHomeLikedSongsPanel({
   localLibrary: sharedLocalLibrary
@@ -95,7 +97,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
       @close-window="closeWindow"
       @maximize-window="maximizeWindow"
       @minimize-window="minimizeWindow"
-      @search="onSearch"
+      @search="handleSearch"
       @search-keyword-change="setSearchKeyword"
       @select-server="selectServer"
       @toggle-select="toggleSelect"
@@ -165,8 +167,12 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
   --home-player-width: 350px;
   --home-collapsed-sidebar-width: 82px;
   height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
   overflow: hidden;
 }
 
@@ -206,7 +212,6 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
 
 .window.player-docked {
   justify-content: space-between;
-  background: var(--bg);
   height: 100%;
   display: flex;
   flex-direction: column;

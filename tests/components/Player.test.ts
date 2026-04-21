@@ -119,8 +119,8 @@ describe('Player Component', () => {
       props: { docked: false, loading: false }
     })
 
-    expect(wrapper.find('.track-title').text()).toBe('Unknown Track')
-    expect(wrapper.find('.track-artist').text()).toBe('Unknown Artist')
+    expect(wrapper.find('.track-title').text()).toBe('Start playback')
+    expect(wrapper.find('.track-artist').text()).toBe('Search for a track to begin')
   })
 
   it('wires the player control buttons to the view-model handlers', async () => {

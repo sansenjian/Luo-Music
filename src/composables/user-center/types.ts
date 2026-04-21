@@ -43,6 +43,7 @@ export type UserCenterPlaylistsLike = Pick<
   | 'loadPlaylists'
   | 'playlists'
   | 'resetPlaylists'
+  | 'usePlaylistTracks'
 >
 export type UserCenterFavoriteAlbumsLike = Pick<
   UseFavoriteAlbumsReturn,

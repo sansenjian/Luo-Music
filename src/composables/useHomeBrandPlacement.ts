@@ -6,7 +6,7 @@ import type { StorageService } from '@/services/storageService'
 export type HomeBrandPlacement = 'header' | 'sidebar'
 
 const HOME_BRAND_PLACEMENT_KEY = 'homeBrandPlacement'
-const DEFAULT_HOME_BRAND_PLACEMENT: HomeBrandPlacement = 'sidebar'
+const DEFAULT_HOME_BRAND_PLACEMENT: HomeBrandPlacement = 'header'
 const VALID_HOME_BRAND_PLACEMENTS = new Set<HomeBrandPlacement>(['header', 'sidebar'])
 
 const brandPlacementState = ref<HomeBrandPlacement>(DEFAULT_HOME_BRAND_PLACEMENT)
