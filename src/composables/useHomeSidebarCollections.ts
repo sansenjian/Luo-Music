@@ -1,7 +1,11 @@
 import { computed, ref, watch } from 'vue'
 
-import { useFavoriteAlbums, type FavoriteAlbumItem } from '@/composables/useFavoriteAlbums'
-import { useUserPlaylists, type PlaylistItem } from '@/composables/useUserPlaylists'
+import { useFavoriteAlbums } from '@/composables/useFavoriteAlbums'
+import {
+  createAlbumCollectionSelection,
+  createPlaylistCollectionSelection
+} from '@/composables/home/homeCollectionSelection'
+import { useUserPlaylists } from '@/composables/useUserPlaylists'
 import { useUserStore } from '@/store/userStore'
 
 import type {
@@ -31,10 +35,10 @@ export function useHomeSidebarCollections() {
 
   const visibleCollections = computed<HomeSidebarCollectionSelection[]>(() =>
     activePlaylistFilter.value === 'created'
-      ? createdPlaylists.value.map(mapPlaylistToCollectionItem)
+      ? createdPlaylists.value.map(createPlaylistCollectionSelection)
       : [
-          ...favoritePlaylists.value.map(mapPlaylistToCollectionItem),
-          ...favoriteAlbums.value.map(mapAlbumToCollectionItem)
+          ...favoritePlaylists.value.map(createPlaylistCollectionSelection),
+          ...favoriteAlbums.value.map(createAlbumCollectionSelection)
         ]
   )
   const loading = computed(() =>
@@ -96,56 +100,4 @@ export function useHomeSidebarCollections() {
     resolveCollectionTone,
     visibleCollections
   }
-}
-
-function mapPlaylistToCollectionItem(playlist: PlaylistItem): HomeSidebarCollectionSelection {
-  const trackCount = Number(playlist.trackCount)
-  return {
-    uiId: `playlist:${playlist.id}`,
-    sourceId: playlist.id,
-    kind: 'playlist',
-    name: playlist.name,
-    coverUrl: typeof playlist.coverImgUrl === 'string' ? playlist.coverImgUrl : '',
-    summary: resolvePlaylistSummary(playlist),
-    trackCount: Number.isFinite(trackCount) && trackCount > 0 ? trackCount : undefined
-  }
-}
-
-function mapAlbumToCollectionItem(album: FavoriteAlbumItem): HomeSidebarCollectionSelection {
-  const size = Number(album.size)
-  return {
-    uiId: `album:${album.id}`,
-    sourceId: album.id,
-    kind: 'album',
-    name: album.name,
-    coverUrl: album.picUrl,
-    summary: resolveAlbumSummary(album),
-    trackCount: Number.isFinite(size) && size > 0 ? size : undefined
-  }
-}
-
-function resolvePlaylistSummary(playlist: PlaylistItem): string {
-  const trackCount = Number(playlist.trackCount)
-  if (Number.isFinite(trackCount) && trackCount > 0) {
-    return `${trackCount} 首歌`
-  }
-
-  return '歌单'
-}
-
-function resolveAlbumSummary(album: FavoriteAlbumItem): string {
-  const size = Number(album.size)
-  if (album.artistName && Number.isFinite(size) && size > 0) {
-    return `${album.artistName} · ${size} 首歌`
-  }
-
-  if (album.artistName) {
-    return album.artistName
-  }
-
-  if (Number.isFinite(size) && size > 0) {
-    return `${size} 首歌`
-  }
-
-  return '收藏'
 }

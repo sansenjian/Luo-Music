@@ -9,13 +9,22 @@ import { useHomeBrandPlacement, type HomeBrandPlacement } from '@/composables/us
 import { useRenderStyle, type RenderStyle } from '@/composables/useRenderStyle'
 import { services } from '@/services'
 import { usePlayerStore } from '@/store/playerStore'
+import type { WebLyricAppearance } from '@/types/player'
 
 export function useAppSettings() {
   const playerStore = usePlayerStore()
   const platformService = services.platform()
   const { brandPlacement, setBrandPlacement } = useHomeBrandPlacement()
   const { dockedPlayerBarLayout, setDockedPlayerBarLayout } = useDockedPlayerBarLayout()
-  const { experimentalFeatures, smtcEnabled, setSMTCEnabled } = useExperimentalFeatures()
+  const {
+    experimentalFeatures,
+    smtcEnabled,
+    setSMTCEnabled,
+    waveformEnabled,
+    setWaveformEnabled,
+    coverSwipeEnabled,
+    setCoverSwipeEnabled
+  } = useExperimentalFeatures()
   const { renderStyle, setRenderStyle } = useRenderStyle()
 
   const isElectron = computed(() => platformService.isElectron())
@@ -32,6 +41,14 @@ export function useAppSettings() {
     return dockedPlayerBarLayout.value === layout
   }
 
+  function setWebLyricAppearance(patch: Partial<WebLyricAppearance>): void {
+    playerStore.setWebLyricAppearance(patch)
+  }
+
+  function resetWebLyricAppearance(): void {
+    playerStore.resetWebLyricAppearance()
+  }
+
   return {
     playerStore,
     isElectron,
@@ -42,6 +59,13 @@ export function useAppSettings() {
     experimentalFeatures,
     smtcEnabled,
     setSMTCEnabled,
+    waveformEnabled,
+    setWaveformEnabled,
+    coverSwipeEnabled,
+    setCoverSwipeEnabled,
+    webLyricAppearance: computed(() => playerStore.webLyricAppearance),
+    setWebLyricAppearance,
+    resetWebLyricAppearance,
     renderStyle,
     setRenderStyle,
     isBrandPlacementActive,

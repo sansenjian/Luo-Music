@@ -8,6 +8,7 @@ const userStore = useUserStore()
 const cacheSize = ref({ httpCache: 0, httpCacheFormatted: '0 B' })
 const loading = ref(false)
 const emit = defineEmits(['notify'])
+const isElectron = computed(() => platformService.isElectron())
 
 type CacheOptionKey = 'cookies' | 'localStorage' | 'sessionStorage' | 'indexDB' | 'cache'
 
@@ -38,7 +39,13 @@ const cacheTypeLabels: Record<CacheOptionKey, string> = {
   cache: 'HTTP 缓存'
 }
 
-onMounted(loadCacheSize)
+onMounted(() => {
+  if (!isElectron.value) {
+    return
+  }
+
+  void loadCacheSize()
+})
 
 async function loadCacheSize() {
   try {
@@ -127,7 +134,7 @@ function handleClearResult(result: {
 </script>
 
 <template>
-  <div class="cache-manager">
+  <div v-if="isElectron" class="cache-manager">
     <div class="cache-header">
       <h3>缓存管理</h3>
       <p class="cache-desc">管理应用程序缓存数据，清理后可能需要重新登录。</p>

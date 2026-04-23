@@ -91,6 +91,20 @@ defineProps<{
     <path d="M3.9 18.8a4.2 4.2 0 0 1 8.4 0" />
     <path d="M11.7 18.8a4.2 4.2 0 0 1 8.4 0" />
   </svg>
+  <svg
+    v-else-if="icon === 'plugins'"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    aria-hidden="true"
+  >
+    <path d="M14.5 4.5v2a1 1 0 0 0 1 1h2" />
+    <path d="M9.5 4.5v2a1 1 0 0 1-1 1h-2" />
+    <path d="M14.5 19.5v-2a1 1 0 0 1 1-1h2" />
+    <path d="M9.5 19.5v-2a1 1 0 0 0-1-1h-2" />
+    <rect x="5.5" y="7.5" width="13" height="9" rx="1.5" />
+    <circle cx="12" cy="12" r="2" />
+  </svg>
   <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
     <path
       d="M5.2 6.2h13.6a1.2 1.2 0 0 1 1.2 1.2v9.2a1.2 1.2 0 0 1-1.2 1.2H5.2A1.2 1.2 0 0 1 4 16.6V7.4a1.2 1.2 0 0 1 1.2-1.2Z"

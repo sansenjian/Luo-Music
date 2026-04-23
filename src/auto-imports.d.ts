@@ -118,6 +118,7 @@ declare global {
   const refThrottled: typeof import('@vueuse/core').refThrottled
   const refWithControl: typeof import('@vueuse/core').refWithControl
   const resolveComponent: typeof import('vue').resolveComponent
+  const resolveCoverUrl: typeof import('./composables/usePlayerViewModel').resolveCoverUrl
   const resolveRef: typeof import('@vueuse/core').resolveRef
   const searchResultItemToSong: typeof import('./store/searchStore').searchResultItemToSong
   const setActivePinia: typeof import('pinia').setActivePinia
@@ -180,6 +181,7 @@ declare global {
   const useConfirmDialog: typeof import('@vueuse/core').useConfirmDialog
   const useCountdown: typeof import('@vueuse/core').useCountdown
   const useCounter: typeof import('@vueuse/core').useCounter
+  const useCoverSwipe: typeof import('./composables/useCoverSwipe').useCoverSwipe
   const useCssModule: typeof import('vue').useCssModule
   const useCssSupports: typeof import('@vueuse/core').useCssSupports
   const useCssVar: typeof import('@vueuse/core').useCssVar
@@ -192,6 +194,7 @@ declare global {
   const useDebounceFn: typeof import('@vueuse/core').useDebounceFn
   const useDebouncedRefHistory: typeof import('@vueuse/core').useDebouncedRefHistory
   const useDeferredMount: typeof import('./composables/useDeferredMount').useDeferredMount
+  const useDesktopLyricSettings: typeof import('./composables/useDesktopLyricSettings').useDesktopLyricSettings
   const useDeviceMotion: typeof import('@vueuse/core').useDeviceMotion
   const useDeviceOrientation: typeof import('@vueuse/core').useDeviceOrientation
   const useDevicePixelRatio: typeof import('@vueuse/core').useDevicePixelRatio
@@ -243,6 +246,7 @@ declare global {
   const useLocalLibrary: typeof import('./composables/useLocalLibrary').useLocalLibrary
   const useLocalStorage: typeof import('@vueuse/core').useLocalStorage
   const useLyricAutoScroll: typeof import('./composables/useLyricAutoScroll').useLyricAutoScroll
+  const useLyricVirtualScroll: typeof import('./composables/useLyricVirtualScroll').useLyricVirtualScroll
   const useMagicKeys: typeof import('@vueuse/core').useMagicKeys
   const useManualRefHistory: typeof import('@vueuse/core').useManualRefHistory
   const useMediaControls: typeof import('@vueuse/core').useMediaControls
@@ -403,6 +407,13 @@ declare global {
   // @ts-ignore
   export type { CommandContextDeps } from './composables/useCommandContext'
   import('./composables/useCommandContext')
+  // @ts-ignore
+  export type {
+    CoverSwipeDeps,
+    SwipeDirection,
+    CoverSwipeReturn
+  } from './composables/useCoverSwipe'
+  import('./composables/useCoverSwipe')
   // @ts-ignore
   export type { MountTier } from './composables/useDeferredMount'
   import('./composables/useDeferredMount')
@@ -665,6 +676,9 @@ declare module 'vue' {
     readonly refThrottled: UnwrapRef<(typeof import('@vueuse/core'))['refThrottled']>
     readonly refWithControl: UnwrapRef<(typeof import('@vueuse/core'))['refWithControl']>
     readonly resolveComponent: UnwrapRef<(typeof import('vue'))['resolveComponent']>
+    readonly resolveCoverUrl: UnwrapRef<
+      (typeof import('./composables/usePlayerViewModel'))['resolveCoverUrl']
+    >
     readonly resolveRef: UnwrapRef<(typeof import('@vueuse/core'))['resolveRef']>
     readonly searchResultItemToSong: UnwrapRef<
       (typeof import('./store/searchStore'))['searchResultItemToSong']
@@ -735,6 +749,9 @@ declare module 'vue' {
     readonly useConfirmDialog: UnwrapRef<(typeof import('@vueuse/core'))['useConfirmDialog']>
     readonly useCountdown: UnwrapRef<(typeof import('@vueuse/core'))['useCountdown']>
     readonly useCounter: UnwrapRef<(typeof import('@vueuse/core'))['useCounter']>
+    readonly useCoverSwipe: UnwrapRef<
+      (typeof import('./composables/useCoverSwipe'))['useCoverSwipe']
+    >
     readonly useCssModule: UnwrapRef<(typeof import('vue'))['useCssModule']>
     readonly useCssSupports: UnwrapRef<(typeof import('@vueuse/core'))['useCssSupports']>
     readonly useCssVar: UnwrapRef<(typeof import('@vueuse/core'))['useCssVar']>
@@ -750,6 +767,9 @@ declare module 'vue' {
     >
     readonly useDeferredMount: UnwrapRef<
       (typeof import('./composables/useDeferredMount'))['useDeferredMount']
+    >
+    readonly useDesktopLyricSettings: UnwrapRef<
+      (typeof import('./composables/useDesktopLyricSettings'))['useDesktopLyricSettings']
     >
     readonly useDeviceMotion: UnwrapRef<(typeof import('@vueuse/core'))['useDeviceMotion']>
     readonly useDeviceOrientation: UnwrapRef<
@@ -831,6 +851,9 @@ declare module 'vue' {
     readonly useLocalStorage: UnwrapRef<(typeof import('@vueuse/core'))['useLocalStorage']>
     readonly useLyricAutoScroll: UnwrapRef<
       (typeof import('./composables/useLyricAutoScroll'))['useLyricAutoScroll']
+    >
+    readonly useLyricVirtualScroll: UnwrapRef<
+      (typeof import('./composables/useLyricVirtualScroll'))['useLyricVirtualScroll']
     >
     readonly useMagicKeys: UnwrapRef<(typeof import('@vueuse/core'))['useMagicKeys']>
     readonly useManualRefHistory: UnwrapRef<(typeof import('@vueuse/core'))['useManualRefHistory']>

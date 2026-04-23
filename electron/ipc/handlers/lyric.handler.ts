@@ -6,22 +6,25 @@ import { INVOKE_CHANNELS, SEND_CHANNELS } from '../../shared/protocol/channels.t
 import { ipcService } from '../IpcService'
 import type { LyricTimeUpdate } from '../types'
 import { desktopLyricManager } from '../../DesktopLyricManager'
+import { setConfigValue } from './config.handler'
 
 export function registerLyricHandlers(): void {
   // ========== Invoke Handlers ==========
 
   ipcService.registerInvoke(INVOKE_CHANNELS.LYRIC_TOGGLE, async (show?: boolean) => {
+    let enabled: boolean
+
     if (show === true) {
       desktopLyricManager.show()
-      return
-    }
-
-    if (show === false) {
+      enabled = true
+    } else if (show === false) {
       desktopLyricManager.hide()
-      return
+      enabled = false
+    } else {
+      enabled = desktopLyricManager.toggle()
     }
 
-    desktopLyricManager.toggle()
+    setConfigValue('enableDesktopLyric', enabled)
   })
 
   ipcService.registerInvoke(
@@ -38,19 +41,23 @@ export function registerLyricHandlers(): void {
   // ========== Send Handlers ==========
 
   ipcService.registerSend(SEND_CHANNELS.DESKTOP_LYRIC_TOGGLE, () => {
-    desktopLyricManager.toggle()
+    const enabled = desktopLyricManager.toggle()
+    setConfigValue('enableDesktopLyric', enabled)
   })
 
   ipcService.registerSend(SEND_CHANNELS.DESKTOP_LYRIC_CONTROL, (action: string) => {
     switch (action) {
       case 'show':
         desktopLyricManager.show()
+        setConfigValue('enableDesktopLyric', true)
         break
       case 'hide':
         desktopLyricManager.hide()
+        setConfigValue('enableDesktopLyric', false)
         break
       case 'close':
         desktopLyricManager.closeWindow()
+        setConfigValue('enableDesktopLyric', false)
         break
       case 'lock':
         desktopLyricManager.setLocked(true)

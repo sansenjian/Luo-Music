@@ -15,6 +15,15 @@ import {
   type ParsedLocalTrackMetadata
 } from './service.helpers'
 
+const PLimitModule = require('p-limit') as {
+  default?: (concurrency: number) => <T>(fn: () => Promise<T>) => Promise<T>
+}
+const createPromiseLimiter =
+  PLimitModule.default ??
+  (PLimitModule as unknown as (concurrency: number) => <T>(fn: () => Promise<T>) => Promise<T>)
+
+const SCAN_CONCURRENCY = 5
+
 type LocalLibraryScanEngineOptions = {
   coverManager: LocalLibraryCoverManager
   isDisposed: () => boolean
@@ -24,39 +33,47 @@ type LocalLibraryScanEngineOptions = {
 
 type ScanSingleFileOptions = {
   forceMetadataRefresh?: boolean
+  skipCover?: boolean
 }
 
 export class LocalLibraryScanEngine {
+  private readonly scanLimiter = createPromiseLimiter(SCAN_CONCURRENCY)
+
   constructor(private readonly options: LocalLibraryScanEngineOptions) {}
 
   async scanFolder(
     folder: PersistedFolder,
     onProgress: (nextScannedFiles: number) => void,
-    initialScannedFiles: number
+    initialScannedFiles: number,
+    scanOptions: ScanSingleFileOptions = {}
   ): Promise<LocalLibraryTrack[]> {
     if (this.options.isDisposed()) {
       return []
     }
 
     const filePaths = await collectAudioFiles(folder.path)
-    const tracks: LocalLibraryTrack[] = []
     let scannedFiles = initialScannedFiles
+    const results: (LocalLibraryTrack | null)[] = []
 
-    for (const filePath of filePaths) {
-      if (this.options.isDisposed()) {
-        return tracks
-      }
+    const tasks = filePaths.map(filePath =>
+      this.scanLimiter(async () => {
+        if (this.options.isDisposed()) return null
 
-      scannedFiles += 1
-      onProgress(scannedFiles)
+        scannedFiles += 1
+        onProgress(scannedFiles)
 
-      const track = await this.scanSingleFile(folder, filePath)
-      if (track) {
-        tracks.push(track)
+        return this.scanSingleFile(folder, filePath, scanOptions)
+      })
+    )
+
+    const settled = await Promise.allSettled(tasks)
+    for (const result of settled) {
+      if (result.status === 'fulfilled' && result.value) {
+        results.push(result.value)
       }
     }
 
-    return tracks
+    return results as LocalLibraryTrack[]
   }
 
   async scanSingleFile(
@@ -91,7 +108,9 @@ export class LocalLibraryScanEngine {
     }
 
     const parsedName = parseTrackDisplayName(normalizedPath.split(/[\\/]/).pop() ?? normalizedPath)
-    const metadata = await this.options.metadataReader(normalizedPath)
+    const metadata = await this.options.metadataReader(normalizedPath, {
+      skipCover: scanOptions.skipCover && !!existingTrack?.coverHash
+    })
     const title = metadata?.title ?? parsedName.title
     const artist = metadata?.artist ?? parsedName.artist
     const album =
@@ -121,6 +140,10 @@ export class LocalLibraryScanEngine {
     existingTrack: LocalLibraryTrack | null
   ): Promise<string | null> {
     if (!metadata) {
+      return existingTrack?.coverHash ?? null
+    }
+
+    if (metadata.coverData === undefined) {
       return existingTrack?.coverHash ?? null
     }
 

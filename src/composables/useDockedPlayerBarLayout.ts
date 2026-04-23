@@ -7,7 +7,7 @@ export type DockedPlayerBarLayout = 'full' | 'with-sidebar'
 
 const DOCKED_PLAYER_BAR_LAYOUT_KEY = 'dockedPlayerBarLayout'
 const LEGACY_COMPACT_PLAYER_BAR_LAYOUT_KEY = 'compactPlayerFooterLayout'
-const DEFAULT_DOCKED_PLAYER_BAR_LAYOUT: DockedPlayerBarLayout = 'with-sidebar'
+const DEFAULT_DOCKED_PLAYER_BAR_LAYOUT: DockedPlayerBarLayout = 'full'
 const VALID_DOCKED_PLAYER_BAR_LAYOUTS = new Set<DockedPlayerBarLayout>(['full', 'with-sidebar'])
 
 const dockedPlayerBarLayoutState = ref<DockedPlayerBarLayout>(DEFAULT_DOCKED_PLAYER_BAR_LAYOUT)

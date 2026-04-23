@@ -22,13 +22,18 @@ export interface SearchResultItem {
   url: null
   platform: string
   duration: number
+  /** Preserved original Song to avoid double-conversion when playing */
+  _song?: Song
   [key: string]: unknown
 }
 
 const SEARCH_PAGE_SIZE = 50
 const MAX_SEARCH_PAGES = 100
+const PARALLEL_PAGE_BATCH = 3
 
 export function searchResultItemToSong(item: SearchResultItem): Song {
+  if (item._song) return item._song
+
   const { id, name, artist, album, pic, cover, url, platform, duration, ...extraFields } = item
 
   return {
@@ -59,7 +64,8 @@ function normalizeSearchResults(songs: Song[]): SearchResultItem[] {
       cover: song.album.picUrl || '',
       url: null,
       platform: song.platform,
-      duration: Math.floor(song.duration / 1000)
+      duration: Math.floor(song.duration / 1000),
+      _song: song
     }
 
     if (song.extra) {
@@ -186,14 +192,62 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
             })
           })
 
+          // Load remaining pages in parallel batches
           let loadedCount = firstPage.list.length
           let nextPage = 2
           let total = initialTotal
-          let unknownTotal = total === undefined
+          let shouldContinue = total === undefined || loadedCount < (total ?? 0)
 
-          while (unknownTotal || (total !== undefined && loadedCount < total)) {
+          while (shouldContinue && nextPage <= MAX_SEARCH_PAGES) {
+            const remaining = total !== undefined ? total - loadedCount : SEARCH_PAGE_SIZE
+            const pagesNeeded = Math.ceil(remaining / SEARCH_PAGE_SIZE)
+            const batchSize = Math.min(pagesNeeded, PARALLEL_PAGE_BATCH)
+
+            const batchPromises = Array.from({ length: batchSize }, (_, i) =>
+              task
+                .guard(
+                  musicService.search(server.value, trimmedKeyword, SEARCH_PAGE_SIZE, nextPage + i)
+                )
+                .then(result => ({ result, page: nextPage + i }))
+            )
+
+            const batchResults = await Promise.all(batchPromises)
+
+            let hasEmptyPage = false
+            for (const entry of batchResults) {
+              if (!entry?.result) continue
+              const { result: pageResult } = entry
+
+              if (!pageResult?.list || !Array.isArray(pageResult.list)) continue
+
+              if (typeof pageResult.total === 'number' && pageResult.total > 0) {
+                total = Math.max(total ?? 0, pageResult.total)
+              }
+
+              if (pageResult.list.length === 0) {
+                hasEmptyPage = true
+                continue
+              }
+
+              const nextItems = normalizeSearchResults(pageResult.list)
+              loadedCount += pageResult.list.length
+
+              task.commit(() => {
+                totalResults.value = total ?? loadedCount
+                results.value = [...results.value, ...nextItems]
+                hasCommittedCurrentSearchResults = true
+              })
+
+              if (pageResult.list.length < SEARCH_PAGE_SIZE) {
+                hasEmptyPage = true
+              }
+            }
+
+            if (hasEmptyPage) break
+
+            nextPage += batchSize
+
             if (nextPage > MAX_SEARCH_PAGES) {
-              unknownTotal = false
               logger.warn('searchStore', 'Search paging stopped at safety limit', {
                 keyword: trimmedKeyword,
                 server: server.value,
@@ -201,52 +255,9 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
                 total,
                 pageLimit: MAX_SEARCH_PAGES
               })
-              break
             }
 
-            const pageResult = await task.guard(
-              musicService.search(server.value, trimmedKeyword, SEARCH_PAGE_SIZE, nextPage)
-            )
-
-            logger.debug('searchStore', 'Search result page', {
-              page: nextPage,
-              response: pageResult
-            })
-
-            if (!pageResult?.list || !Array.isArray(pageResult.list)) {
-              throw new Error('Invalid search result payload')
-            }
-
-            if (typeof pageResult.total === 'number' && pageResult.total > 0) {
-              total = Math.max(total ?? 0, pageResult.total)
-              unknownTotal = false
-            }
-
-            if (pageResult.list.length === 0) {
-              unknownTotal = false
-              break
-            }
-
-            const nextItems = normalizeSearchResults(pageResult.list)
-            loadedCount += pageResult.list.length
-
-            if (pageResult.list.length < SEARCH_PAGE_SIZE) {
-              unknownTotal = false
-            }
-
-            task.commit(() => {
-              totalResults.value = total ?? loadedCount
-              results.value = [...results.value, ...nextItems]
-              hasCommittedCurrentSearchResults = true
-
-              logger.info('searchStore', 'Search page appended', {
-                page: nextPage,
-                count: results.value.length,
-                total: totalResults.value
-              })
-            })
-
-            nextPage += 1
+            shouldContinue = total === undefined || loadedCount < (total ?? 0)
           }
         } catch (err: unknown) {
           if (isCanceledRequestError(err)) {

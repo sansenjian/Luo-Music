@@ -11,20 +11,20 @@ const PlaylistsView = defineAsyncComponent(() => import('../components/user/Play
 const FavoriteAlbumsView = defineAsyncComponent(
   () => import('../components/user/FavoriteAlbumsView.vue')
 )
+const AlbumDetailPanel = defineAsyncComponent(
+  () => import('../components/user/AlbumDetailPanel.vue')
+)
 const EventsView = defineAsyncComponent(() => import('../components/user/EventsView.vue'))
 const PlaylistDetailPanel = defineAsyncComponent(
   () => import('../components/user/PlaylistDetailPanel.vue')
-)
-const AlbumDetailPanel = defineAsyncComponent(
-  () => import('../components/user/AlbumDetailPanel.vue')
 )
 
 const {
   activeTab,
   activeTabError,
+  albums,
   albumDetailError,
   albumDetailLoading,
-  albums,
   avatarUrl,
   closeAlbumDetail,
   closePlaylistDetail,
@@ -250,19 +250,7 @@ const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events
         />
 
         <div v-if="mountedTabs.album" v-show="activeTab === 'album'">
-          <div v-if="selectedAlbumId" class="album-detail-wrapper">
-            <AlbumDetailPanel
-              :album="selectedAlbum"
-              :songs="selectedAlbumSongs"
-              :loading="albumDetailLoading"
-              :error="albumDetailError"
-              @close="closeAlbumDetail"
-              @retry="retryAlbumDetail"
-              @play-all="playAlbum(selectedAlbumId)"
-              @play-song="playAlbumTrackAt"
-            />
-          </div>
-          <div v-else class="collection-sections">
+          <div class="collection-sections">
             <section class="collection-section">
               <div class="collection-section-header">
                 <h3 class="collection-section-title">收藏歌单</h3>
@@ -280,11 +268,22 @@ const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events
               <div class="collection-section-header">
                 <h3 class="collection-section-title">收藏专辑</h3>
               </div>
+              <AlbumDetailPanel
+                v-if="selectedAlbumId"
+                :album="selectedAlbum"
+                :songs="selectedAlbumSongs"
+                :loading="albumDetailLoading"
+                :error="albumDetailError"
+                @close="closeAlbumDetail"
+                @retry="retryAlbumDetail"
+                @play-all="playAlbum(selectedAlbumId)"
+                @play-song="playAlbumTrackAt"
+              />
               <FavoriteAlbumsView
                 :albums="albums"
                 :loading="loadingMap.album"
-                :active-album-id="selectedAlbumId"
                 :playing-album-id="playingAlbumId"
+                interactive
                 @album-open="openAlbumDetail"
                 @album-play="playAlbum"
               />

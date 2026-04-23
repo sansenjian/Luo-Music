@@ -14,12 +14,27 @@ export const uiMessages = {
     fields: {
       playMode: '播放模式',
       volume: '音量',
-      showTranslation: '显示翻译',
-      showRomanizedLyrics: '显示罗马音',
+      enableDesktopLyric: '启用桌面歌词',
+      desktopLyricAlwaysOnTop: '启用歌词总在最前',
+      showTranslation: '外文歌词显示翻译',
+      showRomanizedLyrics: '外文歌词显示音译',
+      lyricFont: '字体',
+      lyricFontSize: '字号',
+      lyricFontWeight: '字粗',
+      lyricStrokeStyle: '描边',
+      lyricLineMode: '调整排版样式',
+      lyricFlowDirection: '显示方向',
+      lyricTextAlign: '文本对齐',
+      lyricColorPreset: '更改配色方案',
+      lyricPlayedColor: '已播放',
+      lyricUnplayedColor: '未播放',
+      lyricPreview: '预览',
       renderStyle: '渲染风格',
       brandPlacement: '品牌标识位置',
       dockedPlayerLayout: '紧贴底栏播放器布局',
-      smtc: 'Windows SMTC（实验）'
+      smtc: 'Windows SMTC（实验）',
+      waveform: '进度条波形可视化（实验）',
+      coverSwipe: '滑动封面切歌（实验）'
     },
     options: {
       playMode: {
@@ -39,6 +54,28 @@ export const uiMessages = {
       dockedPlayerLayout: {
         full: '铺满底栏',
         withSidebar: '给侧边栏留位'
+      },
+      lyricFontWeight: {
+        standard: '标准',
+        bold: '加粗',
+        heavy: '厚重'
+      },
+      lyricStrokeStyle: {
+        outline: '有描边',
+        none: '无描边'
+      },
+      lyricLineMode: {
+        'single-line': '单行显示',
+        'double-line': '双行显示'
+      },
+      lyricFlowDirection: {
+        horizontal: '横排显示',
+        vertical: '竖排显示'
+      },
+      lyricTextAlign: {
+        left: '居左',
+        center: '居中',
+        right: '居右'
       }
     }
   },

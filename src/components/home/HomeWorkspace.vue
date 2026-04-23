@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+
 import type { HomeTab } from '@/composables/useHomeShell'
 
 import HomeTabBar from './HomeTabBar.vue'
@@ -11,6 +13,19 @@ const emit = defineEmits<{
   'change-tab': [tab: HomeTab]
 }>()
 
+const mountedPanels = ref<Record<HomeTab, boolean>>({
+  lyric: props.activeTab === 'lyric',
+  playlist: props.activeTab === 'playlist'
+})
+
+watch(
+  () => props.activeTab,
+  activeTab => {
+    mountedPanels.value[activeTab] = true
+  },
+  { immediate: true }
+)
+
 function handleTabChange(tab: HomeTab): void {
   emit('change-tab', tab)
 }
@@ -22,6 +37,7 @@ function handleTabChange(tab: HomeTab): void {
 
     <div class="content-area">
       <div
+        v-if="mountedPanels.lyric"
         id="home-panel-lyric"
         v-show="props.activeTab === 'lyric'"
         class="lyric-view"
@@ -31,6 +47,7 @@ function handleTabChange(tab: HomeTab): void {
         <slot name="lyric" />
       </div>
       <div
+        v-if="mountedPanels.playlist"
         id="home-panel-playlist"
         v-show="props.activeTab === 'playlist'"
         class="playlist-view"

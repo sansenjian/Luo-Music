@@ -25,13 +25,20 @@ import {
   type PlayerStoreOwner
 } from '@/store/player/runtime'
 import { createInitialState, PLAY_MODE_TEXTS, type PlayerState } from '@/store/player/playerState'
+import { songPrefetcher } from '@/store/player/songPrefetcher'
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import { LyricEngine, type LyricLine } from '@/utils/player/core/lyric'
 import { playerCore as defaultAudioManager } from '@/utils/player/core/playerCore'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
 import { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
+import {
+  DEFAULT_WEB_LYRIC_APPEARANCE,
+  patchWebLyricAppearance,
+  sanitizeWebLyricAppearance
+} from '@/utils/player/webLyricAppearance'
 import { useRecentPlayStore } from '@/store/recentPlayStore'
 import type { SongPlatform } from '@/types/schemas'
+import type { LyricDisplayType, WebLyricAppearance } from '@/types/player'
 
 import { SEND_CHANNELS } from '../../electron/shared/protocol/channels'
 import type { PlayerStateSnapshot } from '../../electron/ipc/types'
@@ -64,6 +71,8 @@ export type PlayerStoreActions = {
   setPlayMode: (mode: PlayerState['playMode']) => void
   setLyric: (lyric: unknown) => void
   toggleLyricType: (type: 'trans' | 'roma') => void
+  setWebLyricAppearance: (patch: Partial<WebLyricAppearance>) => void
+  resetWebLyricAppearance: () => void
   togglePlayerDocked: () => void
   setLyricsArray: (lyrics: LyricLine[]) => void
   clearPlaylist: () => void
@@ -291,7 +300,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       showLyric: store.showLyric,
       showPlaylist: store.showPlaylist,
       isPlayerDocked: store.isPlayerDocked,
-      lyricType: [...store.lyricType],
+      lyricType: [...store.lyricType] as LyricDisplayType[],
       lyrics: toIpcSerializable(store.lyricsArray) as PlayerStateSnapshot['lyrics'],
       desktopLyricSequence: getDesktopLyricSequence(store)
     }
@@ -408,19 +417,58 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
 
   function getPlaybackActions(store: PlayerStoreInstance) {
     const runtime = ensurePlayerStoreRuntime(store)
+    let snapshotQueued = false
+    // Track whether a heavy snapshot (playlist/lyrics changed) is needed
+    // vs a lightweight playback-only update that the 500ms timer already covers.
+    const heavyKeys = new Set([
+      'songList',
+      'currentSong',
+      'lyricSong',
+      'lyricsArray',
+      'lyricType',
+      'currentIndex',
+      'showLyric',
+      'showPlaylist',
+      'isPlayerDocked',
+      'playMode'
+    ])
+    let needsHeavySnapshot = false
 
     return runtime.ensurePlaybackActions({
       getState: () => store.$state,
       onStateChange: changes => {
         Object.assign(store, changes)
-        notifyPlayerStateSnapshot(store)
+        // Check if any heavy (structural) field changed
+        for (const key of Object.keys(changes)) {
+          if (heavyKeys.has(key)) {
+            needsHeavySnapshot = true
+            break
+          }
+        }
+        if (!snapshotQueued) {
+          snapshotQueued = true
+          queueMicrotask(() => {
+            snapshotQueued = false
+            if (needsHeavySnapshot) {
+              needsHeavySnapshot = false
+              notifyPlayerStateSnapshot(store)
+            }
+            // Lightweight changes (progress, playing, loading, currentLyricIndex)
+            // are covered by the 500ms $subscribe state sync — no need to
+            // serialize the full playlist and lyrics on every micro-task.
+          })
+        }
       },
       playSongByIndex: (index, song?) => store.playSongByIndex(index, song),
       setLyricsArray: lyrics => store.setLyricsArray(lyrics),
       onPlaybackCommitted: song => {
         useRecentPlayStore().recordSong(song)
       },
-      musicService: getMusicService(),
+      musicService: (() => {
+        const ms = getMusicService()
+        songPrefetcher.setMusicService(ms)
+        return ms
+      })(),
       createErrorHandler: () => runtime.ensureErrorHandler(() => store.createErrorHandler()),
       getErrorHandler: () => runtime.getErrorHandler(),
       platform: {
@@ -917,6 +965,14 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.lyricType = ['original', ...new Set(nextOptionalTypes)]
       },
 
+      setWebLyricAppearance(patch: Partial<WebLyricAppearance>): void {
+        this.webLyricAppearance = patchWebLyricAppearance(this.webLyricAppearance, patch)
+      },
+
+      resetWebLyricAppearance(): void {
+        this.webLyricAppearance = { ...DEFAULT_WEB_LYRIC_APPEARANCE }
+      },
+
       togglePlayerDocked(): void {
         this.isPlayerDocked = !this.isPlayerDocked
         getStorageService().setItem('playerDockedUserToggled', 'true')
@@ -961,7 +1017,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
 
     persist: {
       storage: storageAdapter,
-      pick: ['volume', 'playMode', 'lyricType', 'isPlayerDocked'],
+      pick: ['volume', 'playMode', 'lyricType', 'webLyricAppearance', 'isPlayerDocked'],
       beforeHydrate: (_context: unknown) => {
         const rawPlayerState = storageAdapter.getItem(storeId)
 
@@ -1010,6 +1066,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         }
 
         store.lyricType = normalizeLyricTypes(store.lyricType)
+        store.webLyricAppearance = sanitizeWebLyricAppearance(store.webLyricAppearance)
       }
     }
   })

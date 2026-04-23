@@ -103,7 +103,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   const playerStore = deps.playerStore ?? usePlayerStore()
   const playerService = deps.playerService ?? services.player()
   const platformService = deps.platformService ?? services.platform()
-  const mediaSession = (deps.getMediaSession ?? getDefaultMediaSession)()
+  const maybeMediaSession = (deps.getMediaSession ?? getDefaultMediaSession)()
   const createMetadata =
     deps.createMetadata ?? ((init: MediaMetadataInit) => new MediaMetadata(init))
 
@@ -124,9 +124,11 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
       return normalizeArtworkUrl(song.album.picUrl)
     })
 
-  if (!mediaSession || !platformService.isElectron()) {
+  if (!maybeMediaSession || !platformService.isElectron()) {
     return
   }
+
+  const mediaSession = maybeMediaSession
 
   let positionTimer: ReturnType<typeof setInterval> | null = null
   let metadataRequestId = 0

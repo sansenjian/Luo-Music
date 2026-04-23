@@ -34,7 +34,21 @@ defineEmits<{
   </div>
 
   <template v-else>
-    <SongDetailList :songs="songs" fallback-cover="" @play-song="$emit('play-song', $event)" />
+    <div class="local-songs-table-shell">
+      <div class="local-songs-table-head">
+        <span class="col-index">#</span>
+        <span class="col-title">标题</span>
+        <span class="col-album">专辑</span>
+        <span class="col-duration">时长</span>
+      </div>
+
+      <SongDetailList
+        :songs="songs"
+        fallback-cover=""
+        variant="table"
+        @play-song="$emit('play-song', $event)"
+      />
+    </div>
 
     <div v-if="hasMore" class="load-more-row">
       <button type="button" class="hero-action" :disabled="pageLoading" @click="$emit('load-more')">

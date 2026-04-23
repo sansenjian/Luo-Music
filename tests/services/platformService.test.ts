@@ -9,7 +9,7 @@ const platformMock = vi.hoisted(() => ({
   maximizeWindow: vi.fn(),
   minimizeWindow: vi.fn(),
   send: vi.fn(),
-  supportsSendChannel: vi.fn(() => true),
+  supportsSendChannel: vi.fn<(channel: string) => boolean>(() => true),
   sendPlayingState: vi.fn(),
   sendPlayModeChange: vi.fn(),
   on: vi.fn(),
@@ -41,6 +41,10 @@ describe('platformService', () => {
     }))
 
     Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: undefined
+    })
+    Object.defineProperty(window, 'services', {
       configurable: true,
       value: undefined
     })
@@ -135,5 +139,20 @@ describe('platformService', () => {
     await expect(service.getServiceStatus?.('qq')).resolves.toBeNull()
     expect(getPlatform).toHaveBeenCalledTimes(1)
     expect(getElectronApi).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses desktop-lyric-control when an explicit lyric visibility target is requested without a window bridge', async () => {
+    platformMock.supportsSendChannel.mockImplementation(
+      (channel: string) => channel === 'desktop-lyric-control'
+    )
+
+    const { createPlatformService } = await import('@/services/platformService')
+    const service = createPlatformService()
+
+    await service.toggleDesktopLyric(true)
+    await service.toggleDesktopLyric(false)
+
+    expect(platformMock.send).toHaveBeenNthCalledWith(1, 'desktop-lyric-control', 'show')
+    expect(platformMock.send).toHaveBeenNthCalledWith(2, 'desktop-lyric-control', 'close')
   })
 })

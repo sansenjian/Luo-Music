@@ -150,7 +150,7 @@ function waitForServer(port, host, timeout) {
         if (Date.now() - startTime > timeout) {
           reject(new Error(`Server did not start in ${timeout}ms`))
         } else {
-          setTimeout(check, 500)
+          setTimeout(check, 150)
         }
       })
 
@@ -161,14 +161,14 @@ function waitForServer(port, host, timeout) {
         if (Date.now() - startTime > timeout) {
           reject(new Error(`Server did not start in ${timeout}ms`))
         } else {
-          setTimeout(check, 500)
+          setTimeout(check, 150)
         }
       })
 
       req.end()
     }
 
-    setTimeout(check, 1000)
+    setTimeout(check, 200)
   })
 }
 

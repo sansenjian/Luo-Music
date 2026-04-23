@@ -113,7 +113,7 @@ function waitForServer(port, host, timeout) {
         if (Date.now() - startTime > timeout) {
           reject(new Error(`Server did not start in ${timeout}ms`))
         } else {
-          setTimeout(check, 500)
+          setTimeout(check, 150)
         }
       })
 
@@ -124,15 +124,16 @@ function waitForServer(port, host, timeout) {
         if (Date.now() - startTime > timeout) {
           reject(new Error(`Server did not start in ${timeout}ms`))
         } else {
-          setTimeout(check, 500)
+          setTimeout(check, 150)
         }
       })
 
       req.end()
     }
 
-    // 延迟开始检测，给服务器启动时间
-    setTimeout(check, 1000)
+    // Start checking immediately — the server is already listening
+    // when serveNcmApi resolves, so no need for an initial delay
+    setTimeout(check, 200)
   })
 }
 

@@ -7,7 +7,7 @@
   overflow: hidden;
   min-height: 0;
   justify-content: center;
-  transition: all 0.3s ease;
+  transition: padding 0.3s ease, gap 0.3s ease;
 }
 
 /* ===== Docked Player Mode ===== */
@@ -32,6 +32,16 @@
   touch-action: none;
 }
 
+.top-waveform {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  pointer-events: none;
+  opacity: 0.95;
+}
+
 .top-progress-track {
   position: absolute;
   top: 0;
@@ -40,6 +50,17 @@
   height: 100%;
   background: var(--bg-dark);
   overflow: hidden;
+  z-index: 1;
+}
+
+/* When waveform is active, push the track below the waveform canvas */
+.top-progress-wrapper:has(.top-waveform) {
+  height: 33px;
+}
+
+.top-progress-wrapper:has(.top-waveform) .top-progress-track {
+  top: 30px;
+  height: 3px;
 }
 
 .top-progress-fill {
@@ -54,35 +75,13 @@
   height: 20px;
 }
 
+.top-progress-wrapper:has(.top-waveform):hover {
+  height: 48px;
+}
+
 .top-progress-wrapper:hover .top-progress-track {
   height: 20px;
   background: #000;
-}
-
-.top-progress-hover-info {
-  position: absolute;
-  top: 0;
-  left: 8px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  font-family: monospace;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-.top-progress-wrapper:hover .top-progress-hover-info {
-  opacity: 1;
-}
-
-.separator {
-  opacity: 0.6;
 }
 
 /* Compact layout adjustments */
@@ -103,6 +102,76 @@
   margin: 0;
   border-width: 2px;
 }
+
+/* ===== Cover Swipe (sidebar large cover) ===== */
+
+/* Swipeable cover area: extends hit target for easier PC mouse dragging */
+.cover-swipe-area {
+  width: 85%;
+  max-width: 280px;
+  aspect-ratio: 1;
+  margin: 10px 0;
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-y;
+  position: relative;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.cover-swipe-area:active {
+  cursor: grabbing;
+}
+
+.cover-swipe-area .cover-frame {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  z-index: 2;
+  transition: transform 0.2s ease;
+}
+
+.cover-swipe-area:hover .cover-frame {
+  transform: scale(1.05);
+}
+
+.cover-swipe-area .cover-frame.is-swiping {
+  transition: none;
+}
+
+.cover-swipe-area .cover-img {
+  -webkit-user-drag: none;
+}
+
+/* Peek covers: previous/next song covers stacked behind the current one */
+.swipe-peek-cover {
+  position: absolute;
+  inset: 0;
+  border: 3px solid var(--black);
+  background: var(--white);
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.swipe-peek-cover .cover-img {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  object-fit: cover;
+  background: var(--bg-dark);
+}
+
+.swipe-peek-cover.is-visible {
+  opacity: 1;
+  transform: scale(0.96);
+}
+
 
 .player-section.is-docked .corner {
   display: none;
@@ -128,6 +197,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.player-section.is-docked .docked-time {
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--gray);
+  white-space: nowrap;
 }
 
 /* Center: Controls */
@@ -215,6 +292,15 @@
   text-align: center;
   flex-shrink: 0;
   min-width: 0;
+}
+
+/* Clickable player area: cursor hint when a song is loaded */
+.player-section.has-song {
+  cursor: pointer;
+}
+
+.player-section.has-song:hover {
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .track-title {

@@ -1,4 +1,5 @@
 import type { Song } from '@/platform/music/interface'
+import { songPrefetcher } from '@/store/player/songPrefetcher'
 
 export type HomeMediaSongItem = {
   id: string | number
@@ -117,6 +118,11 @@ export async function playMediaSongSelection(
 
   try {
     playerStore.setSongList(songs)
+
+    // Prefetch the target song and its neighbors so playback doesn't
+    // stall on a network round-trip for the song URL.
+    songPrefetcher.schedulePrefetch(songs, playbackIndex)
+
     await playerStore.playSongWithDetails(playbackIndex)
   } catch (error) {
     toastStore.error(resolvePanelErrorMessage(error, fallbackMessage))

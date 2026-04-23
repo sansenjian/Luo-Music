@@ -23,6 +23,14 @@ export function isSameSongIdentity(
   return `${getSongPlatformKey(left)}:${left.id}` === `${getSongPlatformKey(right)}:${right.id}`
 }
 
+export function resolveMediaId(song: Song): string | undefined {
+  if (typeof song.mediaId === 'string') return song.mediaId
+  if (typeof song.mediaId === 'number') return String(song.mediaId)
+  const extra = song.extra as Record<string, unknown> | undefined
+  if (extra && typeof extra.mediaId === 'string') return extra.mediaId
+  return undefined
+}
+
 export function cloneSongData(song: Song): Song {
   return {
     ...song,

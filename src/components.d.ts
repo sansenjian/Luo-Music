@@ -55,6 +55,7 @@ declare module 'vue' {
     Playlist: typeof import('./components/Playlist.vue')['default']
     PlaylistDetailPanel: typeof import('./components/user/PlaylistDetailPanel.vue')['default']
     PlaylistsView: typeof import('./components/user/PlaylistsView.vue')['default']
+    ProgressWaveform: typeof import('./components/ProgressWaveform.vue')['default']
     QQLoginModal: typeof import('./components/QQLoginModal.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

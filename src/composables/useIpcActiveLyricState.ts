@@ -123,10 +123,10 @@ function isSameSong(
 function normalizeLyricTypes(value: unknown): LyricDisplayType[] {
   const allowedOptionalTypes: LyricDisplayType[] = ['trans', 'roma']
   const nextOptionalTypes = Array.isArray(value)
-    ? allowedOptionalTypes.filter(type => value.includes(type))
-    : ['trans']
+    ? allowedOptionalTypes.filter(type => (value as LyricDisplayType[]).includes(type))
+    : (['trans'] as LyricDisplayType[])
 
-  return ['original', ...nextOptionalTypes]
+  return ['original', ...nextOptionalTypes] as LyricDisplayType[]
 }
 
 const DESKTOP_LYRIC_DEBUG_STORAGE_KEY = 'luo.desktopLyricDebug'
@@ -311,6 +311,7 @@ export function useIpcActiveLyricState(emptyText = '') {
       let snapshotProgress = 0
       let snapshotPlaying = false
       let snapshotSequence = 0
+      let snapshotLyricTypes: LyricDisplayType[] = ['original', 'trans']
 
       if (playerBridge.getDesktopLyricSnapshot) {
         const snapshot = await playerBridge.getDesktopLyricSnapshot()
@@ -320,6 +321,7 @@ export function useIpcActiveLyricState(emptyText = '') {
         snapshotProgress = snapshot.progress ?? 0
         snapshotPlaying = snapshot.isPlaying ?? false
         snapshotSequence = snapshot.sequence ?? 0
+        snapshotLyricTypes = normalizeLyricTypes(snapshot.lyricType)
 
         logDesktopLyricDebug('snapshot', 'hydrate-desktop-lyric-snapshot', {
           songId: snapshot.songId ?? snapshot.currentSong?.id ?? null,
@@ -353,7 +355,7 @@ export function useIpcActiveLyricState(emptyText = '') {
         snapshotIndex = state.currentLyricIndex ?? -1
         snapshotProgress = state.progress ?? 0
         snapshotPlaying = state.isPlaying ?? false
-        setVisibleLyricTypes(state.lyricType)
+        snapshotLyricTypes = normalizeLyricTypes(state.lyricType)
 
         if (snapshotSong) {
           snapshotLyrics = await playerBridge.getLyric(snapshotSong.id, snapshotSong.platform)
@@ -381,7 +383,8 @@ export function useIpcActiveLyricState(emptyText = '') {
         songId: snapshotSong?.id ?? null,
         platform: snapshotSong?.platform ?? null,
         sequence: snapshotSequence,
-        lyrics: snapshotLyrics
+        lyrics: snapshotLyrics,
+        lyricType: snapshotLyricTypes
       })
     } catch {
       // Fall back to push-based lyric updates when snapshot hydration is unavailable.

@@ -13,15 +13,14 @@ const props = defineProps<{
 }>()
 
 const {
-  albumCount,
   albumDetailError,
   albumDetailLoading,
+  albumCount,
   albums,
   albumsError,
   albumsErrorMessage,
   albumsLoading,
   clearSearch,
-  closeAlbumDetail,
   coverUrl,
   currentSongId,
   error,
@@ -36,6 +35,7 @@ const {
   loading,
   loadingMore,
   mediaSongs,
+  closeAlbumDetail,
   openAlbumDetail,
   playAlbum,
   playAlbumTrackAt,
@@ -167,6 +167,18 @@ const {
     />
 
     <div v-else class="liked-albums-panel">
+      <AlbumDetailPanel
+        v-if="selectedAlbumId"
+        :album="selectedAlbum"
+        :songs="selectedAlbumSongs"
+        :loading="albumDetailLoading"
+        :error="albumDetailError"
+        @close="closeAlbumDetail"
+        @retry="retryAlbumDetail"
+        @play-all="playAlbum(selectedAlbumId)"
+        @play-song="playAlbumTrackAt"
+      />
+
       <template v-if="shouldShowAlbumsLoginGate">
         <HomeMediaState
           class="liked-content-state"
@@ -202,22 +214,10 @@ const {
           v-else
           :albums="filteredAlbums"
           :loading="albumsLoading"
-          :active-album-id="selectedAlbumId"
           :playing-album-id="playingAlbumId"
+          interactive
           @album-open="openAlbumDetail"
           @album-play="playAlbum"
-        />
-
-        <AlbumDetailPanel
-          v-if="selectedAlbumId"
-          :album="selectedAlbum"
-          :songs="selectedAlbumSongs"
-          :loading="albumDetailLoading"
-          :error="albumDetailError"
-          @close="closeAlbumDetail"
-          @retry="retryAlbumDetail"
-          @play-all="playAlbum(selectedAlbumId)"
-          @play-song="playAlbumTrackAt"
         />
       </template>
     </div>

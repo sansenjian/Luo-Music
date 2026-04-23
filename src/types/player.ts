@@ -15,6 +15,19 @@ export type { Song, Artist, Album } from './schemas'
 export { PLAY_MODE, PLAY_MODE_LABELS, PLAY_MODE_ICONS } from '../utils/player/constants/playMode'
 export type { PlayMode } from '../utils/player/constants/playMode'
 export type LyricDisplayType = 'original' | 'trans' | 'roma'
+export type WebLyricTextAlign = 'left' | 'center' | 'right'
+
+export interface WebLyricAppearance {
+  fontFamily: string
+  mainFontSize: number
+  subFontSize: number
+  textAlign: WebLyricTextAlign
+  inactiveOpacity: number
+  activeTextColor: string
+  inactiveTextColor: string
+  translationColor: string
+  romaColor: string
+}
 
 /**
  * IPC 播放器状态响应（简化版，用于跨进程通信）

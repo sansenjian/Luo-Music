@@ -37,7 +37,7 @@ describe('localLibrary service helpers', () => {
 
     await readTrackMetadata('D:\\Music\\sample.mp3')
 
-    expect(parseFileMock).toHaveBeenCalledWith('D:\\Music\\sample.mp3', undefined)
+    expect(parseFileMock).toHaveBeenCalledWith('D:\\Music\\sample.mp3', { skipCovers: undefined })
   })
 
   it('splits slash-delimited artist credits into multiple song artists', async () => {

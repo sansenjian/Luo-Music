@@ -1,6 +1,7 @@
 import { PLAY_MODE } from '../constants/playMode'
 import type { Song } from '@/types/schemas'
 import { isLocalLibrarySong } from '@/types/localLibrary'
+import { resolveMediaId } from '@/utils/songIdentity'
 import type { MusicService } from '@/services/musicService'
 
 interface ErrorHandlerOptions {
@@ -92,12 +93,7 @@ export class PlaybackErrorHandler implements ErrorHandler {
     }
 
     const platform = song.platform || 'netease'
-    const mediaId =
-      typeof song.mediaId === 'string'
-        ? song.mediaId
-        : typeof song.extra?.mediaId === 'string'
-          ? song.extra.mediaId
-          : undefined
+    const mediaId = resolveMediaId(song)
 
     try {
       const url = await this.musicService.getSongUrl(platform, song.id, { mediaId })

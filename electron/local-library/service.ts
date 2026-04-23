@@ -37,6 +37,7 @@ import { LocalLibraryWatchCoordinator } from './watchCoordinator'
 const LOCAL_LIBRARY_STORE_KEY = 'localLibraryState'
 const WATCH_DEBOUNCE_MS = 1500
 const DURATION_REPAIR_CONCURRENCY = 3
+const SCAN_CONCURRENCY = 5
 const PLimitModule = require('p-limit') as {
   default?: (concurrency: number) => <T>(fn: () => Promise<T>) => Promise<T>
 }
@@ -437,7 +438,8 @@ export class LocalLibraryService {
               message: `正在分析 ${folder.name} 中的音频文件`
             })
           },
-          this.currentStatus.scannedFiles
+          this.currentStatus.scannedFiles,
+          { skipCover: true }
         )
 
         if (this.disposed) {
@@ -452,6 +454,12 @@ export class LocalLibraryService {
       }
 
       await this.cleanupUnusedCovers()
+      if (this.disposed) {
+        return this.getState()
+      }
+
+      this.patchStatus({ message: '正在提取封面...' })
+      await this.extractMissingCovers()
       if (this.disposed) {
         return this.getState()
       }
@@ -665,6 +673,44 @@ export class LocalLibraryService {
 
     this.repository.upsertTracks([repairedTrack])
     this.emitUpdated()
+  }
+
+  private async extractMissingCovers(): Promise<void> {
+    if (this.disposed) {
+      return
+    }
+
+    const folders = this.repository.listEnabledFolders()
+    const coverLimiter = createPromiseLimiter(SCAN_CONCURRENCY)
+    const tasks: Promise<void>[] = []
+
+    for (const folder of folders) {
+      if (this.disposed) return
+
+      const tracks = this.repository.listTracksByFolder(folder.id)
+      for (const track of tracks) {
+        if (this.disposed) return
+        if (track.coverHash) continue
+
+        tasks.push(
+          coverLimiter(async () => {
+            if (this.disposed) return
+
+            const updatedTrack = await this.scanEngine.scanSingleFile(folder, track.filePath)
+            if (this.disposed) return
+            if (!updatedTrack || !updatedTrack.coverHash) return
+
+            this.repository.upsertTracks([updatedTrack])
+          })
+        )
+      }
+    }
+
+    await Promise.allSettled(tasks)
+
+    if (!this.disposed) {
+      this.emitUpdated()
+    }
   }
 }
 

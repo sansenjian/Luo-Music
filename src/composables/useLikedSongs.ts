@@ -5,6 +5,7 @@ import { createSong, type Song } from '../platform/music/interface'
 import { isCanceledRequestError } from '../utils/http/cancelError'
 import { createLatestRequestController } from '../utils/http/requestScope'
 import { formatSongs, type FormattedSong } from '../utils/songFormatter'
+import { songPrefetcher } from '../store/player/songPrefetcher'
 
 interface LikeListResponse {
   ids?: Array<string | number>
@@ -47,7 +48,7 @@ interface RawLikedSong {
   extra?: Record<string, unknown>
 }
 
-const LIKED_SONGS_INITIAL_PAGE_SIZE = 30
+const LIKED_SONGS_INITIAL_PAGE_SIZE = 100
 const LIKED_SONGS_PAGE_SIZE = 100
 
 function normalizeLikedSong(song: RawLikedSong): Song | null {
@@ -176,6 +177,11 @@ export function useLikedSongs(): UseLikedSongsReturn {
 
         likeSongs.value = append ? [...likeSongs.value, ...pageSongs] : pageSongs
         nextOffset.value = offset + ids.length
+
+        // Prefetch URLs for the first page so playback is instant
+        if (!append && pageSongs.length > 0) {
+          songPrefetcher.prefetchPlaylist(pageSongs)
+        }
       })
     } catch (requestError) {
       if (isCanceledRequestError(requestError)) {

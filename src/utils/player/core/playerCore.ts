@@ -100,6 +100,7 @@ export class PlayerCore {
 
       this.analyser = this.audioContext.createAnalyser()
       this.analyser.fftSize = 2048 // Higher resolution for visualization
+      this.analyser.smoothingTimeConstant = 0.82
 
       this.gainNode = this.audioContext.createGain()
       this.gainNode.gain.value = 0 // Silence Web Audio output; audio element outputs directly
@@ -236,13 +237,11 @@ export class PlayerCore {
     // Initialize AudioContext on first user interaction (play)
     this._initAudioContext()
 
-    // Resume AudioContext if suspended
+    // Resume AudioContext if suspended — fire and forget to avoid
+    // blocking the critical play path.  The resume is only needed for
+    // Chrome's autoplay policy and completes almost instantly.
     if (this.audioContext && this.audioContext.state === 'suspended') {
-      await this.audioContext.resume()
-    }
-
-    if (requestId !== this._playRequestId) {
-      return
+      void this.audioContext.resume()
     }
 
     try {
@@ -250,9 +249,12 @@ export class PlayerCore {
 
       // If url provided and different, load it
       if (url && sourceChanged) {
-        this._setupCrossOrigin(url)
-        // [Leak Fix] Break connection with previous source to help GC
-        // When switching songs, explicit load() is crucial.
+        // Only reconfigure crossOrigin when the protocol might have changed
+        const needsCrossOrigin = this._shouldUseCrossOrigin(url)
+        const nextCrossOrigin = needsCrossOrigin ? AUDIO_CONFIG.CROSS_ORIGIN : ''
+        if (this.audio.crossOrigin !== nextCrossOrigin) {
+          this.audio.crossOrigin = nextCrossOrigin
+        }
         this.audio.src = url
         this.audio.load()
       } else if (url && this.audio.src === url && this.audio.ended) {

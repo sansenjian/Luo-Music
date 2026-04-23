@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, computed } from 'vue'
 
 import { uiMessages } from '@/messages/ui'
-import { usePlayerViewModel } from '../composables/usePlayerViewModel'
+import { useAppSettings } from '@/composables/useAppSettings'
+import { useCoverSwipe } from '@/composables/useCoverSwipe'
+import { usePlayerViewModel, resolveCoverUrl } from '../composables/usePlayerViewModel'
 
 const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'))
+const ProgressWaveform = defineAsyncComponent(() => import('./ProgressWaveform.vue'))
 
 interface PlayerProps {
   docked?: boolean
@@ -15,6 +18,14 @@ const props = withDefaults(defineProps<PlayerProps>(), {
   docked: false,
   loading: false
 })
+
+const emit = defineEmits<{
+  'navigate-to-lyrics': []
+}>()
+
+const { waveformEnabled, coverSwipeEnabled } = useAppSettings()
+const showWaveform = computed(() => waveformEnabled.value)
+const showCoverSwipe = computed(() => coverSwipeEnabled.value && !props.docked)
 
 const {
   playerStore,
@@ -43,10 +54,51 @@ const {
   toggleDesktopLyric,
   onLoopButtonClick
 } = usePlayerViewModel()
+
+const {
+  offsetX: coverSwipeOffsetX,
+  isSwiping: coverIsSwiping,
+  swipeDirection: coverSwipeDirection,
+  onPointerDown: onCoverSwipePointerDown,
+  onPointerMove: onCoverSwipePointerMove,
+  onPointerUp: onCoverSwipePointerUp,
+  onPointerCancel: onCoverSwipePointerCancel
+} = useCoverSwipe()
+
+const coverFrameStyle = computed(() => {
+  if (!showCoverSwipe.value || coverSwipeOffsetX.value === 0) return {}
+  return { transform: `translateX(${coverSwipeOffsetX.value}px)` }
+})
+
+const prevSong = computed(() => {
+  const list = playerStore.songList
+  const idx = playerStore.currentIndex
+  if (list.length === 0 || idx <= 0) return null
+  return list[idx - 1]
+})
+
+const nextSong = computed(() => {
+  const list = playerStore.songList
+  const idx = playerStore.currentIndex
+  if (list.length === 0 || idx >= list.length - 1) return null
+  return list[idx + 1]
+})
+
+const prevCoverUrl = computed(() =>
+  prevSong.value?.album?.picUrl ? resolveCoverUrl(prevSong.value.album.picUrl) : ''
+)
+
+const nextCoverUrl = computed(() =>
+  nextSong.value?.album?.picUrl ? resolveCoverUrl(nextSong.value.album.picUrl) : ''
+)
 </script>
 
 <template>
-  <div class="player-section" :class="{ 'is-docked': props.docked }">
+  <div
+    class="player-section"
+    :class="{ 'is-docked': props.docked, 'has-song': !!currentSong }"
+    @click="currentSong && emit('navigate-to-lyrics')"
+  >
     <!-- Docked: Top progress bar -->
     <div
       v-if="props.docked"
@@ -55,20 +107,69 @@ const {
       @pointermove="progressSlider.handlePointerMove"
       @pointerup="progressSlider.handlePointerUp"
       @pointercancel="progressSlider.handlePointerUp"
-      @click="progressSlider.handleClick"
+      @click.stop="progressSlider.handleClick"
     >
+      <ProgressWaveform v-if="showWaveform" class="top-waveform" />
       <div class="top-progress-track">
         <div class="top-progress-fill" :style="{ width: `${progressPercent}%` }"></div>
       </div>
-      <div class="top-progress-hover-info">
-        <span>{{ playerStore.formattedProgress }}</span>
-        <span class="separator">/</span>
-        <span>{{ playerStore.formattedDuration }}</span>
-      </div>
     </div>
 
-    <div class="player-left" v-memo="[currentSong?.id, coverUrl, artistText]">
-      <div class="cover-frame">
+    <div class="player-left">
+      <div
+        class="cover-swipe-area"
+        v-if="showCoverSwipe"
+        @pointerdown="onCoverSwipePointerDown($event)"
+        @pointermove="onCoverSwipePointerMove($event)"
+        @pointerup="onCoverSwipePointerUp()"
+        @pointercancel="onCoverSwipePointerCancel()"
+        @dragstart.prevent
+        @click.stop
+      >
+        <!-- Previous song cover (revealed when swiping right) -->
+        <div
+          v-if="prevCoverUrl"
+          class="swipe-peek-cover swipe-peek-prev"
+          :class="{ 'is-visible': coverSwipeDirection === 'prev' }"
+        >
+          <img
+            :src="prevCoverUrl"
+            :alt="prevSong?.name"
+            class="cover-img"
+            draggable="false"
+            loading="lazy"
+          />
+        </div>
+        <!-- Next song cover (revealed when swiping left) -->
+        <div
+          v-if="nextCoverUrl"
+          class="swipe-peek-cover swipe-peek-next"
+          :class="{ 'is-visible': coverSwipeDirection === 'next' }"
+        >
+          <img
+            :src="nextCoverUrl"
+            :alt="nextSong?.name"
+            class="cover-img"
+            draggable="false"
+            loading="lazy"
+          />
+        </div>
+        <div class="cover-frame" :class="{ 'is-swiping': coverIsSwiping }" :style="coverFrameStyle">
+          <div class="corner corner-tl"></div>
+          <div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div>
+          <div class="corner corner-br"></div>
+          <img
+            ref="coverImgRef"
+            :src="coverUrl"
+            :alt="currentSong?.name"
+            class="cover-img"
+            draggable="false"
+            loading="lazy"
+          />
+        </div>
+      </div>
+      <div class="cover-frame" v-else>
         <div class="corner corner-tl"></div>
         <div class="corner corner-tr"></div>
         <div class="corner corner-bl"></div>
@@ -89,11 +190,15 @@ const {
         <p class="track-artist">
           {{ currentSong ? artistText : uiMessages.home.player.emptySubtitle }}
         </p>
+        <span v-if="props.docked" class="docked-time">
+          {{ playerStore.formattedProgress }} / {{ playerStore.formattedDuration }}
+        </span>
       </div>
     </div>
 
     <!-- Normal: Bottom progress -->
     <div v-if="!props.docked" class="progress-section">
+      <ProgressWaveform v-if="showWaveform" />
       <div class="time-row">
         <span>{{ playerStore.formattedProgress }}</span>
         <span>{{ playerStore.formattedDuration }}</span>
@@ -104,7 +209,7 @@ const {
         @pointermove="progressSlider.handlePointerMove"
         @pointerup="progressSlider.handlePointerUp"
         @pointercancel="progressSlider.handlePointerUp"
-        @click="progressSlider.handleClick"
+        @click.stop="progressSlider.handleClick"
       >
         <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
       </div>
@@ -126,7 +231,7 @@ const {
         class="ctrl-btn loop-btn"
         :disabled="!canTogglePlayMode"
         :aria-label="playModeText"
-        @click="onLoopButtonClick"
+        @click.stop="onLoopButtonClick"
         :title="playModeText"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -142,7 +247,7 @@ const {
         class="ctrl-btn"
         :disabled="!canNavigatePlaylist"
         aria-label="上一首"
-        @click="onPrevButtonClick"
+        @click.stop="onPrevButtonClick"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
@@ -154,7 +259,7 @@ const {
         class="ctrl-btn ctrl-main"
         :disabled="!canTogglePlay"
         :aria-label="playerStore.playing ? '暂停播放' : '开始播放'"
-        @click="onPlayButtonClick"
+        @click.stop="onPlayButtonClick"
       >
         <svg
           v-if="!playerStore.playing"
@@ -175,7 +280,7 @@ const {
         class="ctrl-btn"
         :disabled="!canNavigatePlaylist"
         aria-label="下一首"
-        @click="onNextButtonClick"
+        @click.stop="onNextButtonClick"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
@@ -187,7 +292,7 @@ const {
         class="ctrl-btn lyric-btn"
         :disabled="!canToggleDesktopLyric"
         aria-label="切换桌面歌词"
-        @click="toggleDesktopLyric"
+        @click.stop="toggleDesktopLyric"
         title="Desktop Lyric"
       >
         <svg
@@ -207,7 +312,7 @@ const {
       </button>
     </div>
 
-    <div class="volume-row" v-memo="[volumeDisplay]">
+    <div class="volume-row" v-memo="[volumeDisplay]" @click.stop>
       <span class="volume-label">VOL</span>
       <div
         class="volume-bar"
@@ -215,7 +320,7 @@ const {
         @pointermove="volumeSlider.handlePointerMove"
         @pointerup="volumeSlider.handlePointerUp"
         @pointercancel="volumeSlider.handlePointerUp"
-        @click="volumeSlider.handleClick"
+        @click.stop="volumeSlider.handleClick"
       >
         <div ref="volumeFillRef" class="volume-fill"></div>
       </div>

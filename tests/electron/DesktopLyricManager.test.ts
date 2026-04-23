@@ -262,6 +262,20 @@ describe('DesktopLyricManager', () => {
     })
   })
 
+  it('prewarms the desktop lyric window as visible when the persisted setting is enabled', async () => {
+    const { DesktopLyricManager } = await import('../../electron/DesktopLyricManager')
+    const manager = new DesktopLyricManager()
+    const createWindowSpy = vi.spyOn(manager, 'createWindow').mockImplementation(() => undefined)
+
+    storeData.set('appConfig', {
+      enableDesktopLyric: true
+    })
+
+    manager.prewarmWindow()
+
+    expect(createWindowSpy).toHaveBeenCalledWith({ showOnReady: true })
+  })
+
   it('emits debug traces for cached replay flow when desktop lyric debug is enabled', async () => {
     process.env.LUO_DESKTOP_LYRIC_DEBUG = '1'
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})

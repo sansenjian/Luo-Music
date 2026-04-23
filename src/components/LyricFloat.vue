@@ -1,25 +1,24 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
+import { useDesktopLyricSettings } from '@/composables/useDesktopLyricSettings'
+import {
+  resolveDesktopLyricAlignItems,
+  resolveDesktopLyricFontWeight,
+  resolveDesktopLyricLineClamp,
+  resolveDesktopLyricWritingMode
+} from '@/utils/player/desktopLyricSettings'
 import { useActiveLyricState } from '../composables/useActiveLyricState'
 import { services } from '../services'
 import { resolveLyricDisplayLine } from '../utils/player/lyric-display'
 
 const platformService = services.platform()
 const playerService = services.player()
-const {
-  currentLine,
-  currentLyric,
-  currentTrans,
-  currentRoma,
-  showOriginal,
-  showTrans,
-  showRoma,
-  isPlaying
-} = useActiveLyricState({
+const { currentLine, currentLyric, currentTrans, currentRoma, isPlaying } = useActiveLyricState({
   source: 'ipc',
   emptyText: 'Desktop Lyric'
 })
+const { desktopLyricSettings } = useDesktopLyricSettings()
 
 const displayLine = computed(() =>
   resolveLyricDisplayLine(
@@ -29,13 +28,39 @@ const displayLine = computed(() =>
       roma: currentRoma.value
     },
     {
-      showOriginal: showOriginal.value,
-      showTrans: showTrans.value,
-      showRoma: showRoma.value
+      showOriginal: true,
+      showTrans: desktopLyricSettings.value.showTranslation,
+      showRoma: desktopLyricSettings.value.showRomanizedLyrics
     },
     currentLyric.value
   )
 )
+
+const lyricWindowStyle = computed(() => {
+  const config = desktopLyricSettings.value
+  const weights = resolveDesktopLyricFontWeight(config.lyricFontWeight)
+  const isOutline = config.lyricStrokeStyle === 'outline'
+  const { writingMode, textOrientation } = resolveDesktopLyricWritingMode(config.lyricFlowDirection)
+
+  return {
+    '--desktop-lyric-font-family': config.lyricFontFamily,
+    '--desktop-lyric-main-size': `${config.lyricFontSize}px`,
+    '--desktop-lyric-sub-size': `${Math.max(16, Math.round(config.lyricFontSize * 0.5))}px`,
+    '--desktop-lyric-main-weight': String(weights.main),
+    '--desktop-lyric-sub-weight': String(weights.sub),
+    '--desktop-lyric-played-color': config.lyricPlayedColor,
+    '--desktop-lyric-unplayed-color': config.lyricUnplayedColor,
+    '--desktop-lyric-main-stroke': isOutline ? '3px #0a0a0a' : '0px transparent',
+    '--desktop-lyric-sub-stroke': isOutline ? '1px rgba(255, 255, 255, 0.95)' : '0px transparent',
+    '--desktop-lyric-main-filter': isOutline ? 'drop-shadow(5px 5px 0 rgba(0, 0, 0, 1))' : 'none',
+    '--desktop-lyric-sub-shadow': isOutline ? '2px 2px 0 #fff' : 'none',
+    '--desktop-lyric-line-clamp': String(resolveDesktopLyricLineClamp(config.lyricLineMode)),
+    '--desktop-lyric-writing-mode': writingMode,
+    '--desktop-lyric-text-orientation': textOrientation,
+    '--desktop-lyric-text-align': config.lyricTextAlign,
+    '--desktop-lyric-align-items': resolveDesktopLyricAlignItems(config.lyricTextAlign)
+  }
+})
 
 const isLocked = ref(false)
 const isHovering = ref(false)
@@ -279,6 +304,7 @@ onUnmounted(() => {
   <div
     class="lyric-window"
     :class="{ locked: isLocked, hover: isHovering }"
+    :style="lyricWindowStyle"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
     @mousedown="onMouseDown"
@@ -379,7 +405,7 @@ onUnmounted(() => {
   align-items: center;
   overflow: hidden;
   user-select: none;
-  font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  font-family: var(--desktop-lyric-font-family, 'Inter', 'Noto Sans SC', sans-serif);
 }
 
 .lyric-window:not(.locked) {
@@ -413,25 +439,35 @@ onUnmounted(() => {
 .lyric-content {
   position: relative;
   z-index: 10;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: var(--desktop-lyric-align-items, center);
+  text-align: var(--desktop-lyric-text-align, center);
   pointer-events: auto;
   padding: 0 20px;
   transition: transform 0.3s;
 }
 
 .lrc-main {
-  font-size: 36px;
-  font-weight: 800;
+  display: -webkit-box;
+  max-width: 100%;
+  font-size: var(--desktop-lyric-main-size, 36px);
+  font-weight: var(--desktop-lyric-main-weight, 800);
   line-height: 1.2;
   margin-bottom: 4px;
-  color: #fff;
-  -webkit-text-stroke: 3px #0a0a0a;
+  color: var(--desktop-lyric-played-color, #fff);
+  -webkit-text-stroke: var(--desktop-lyric-main-stroke, 3px #0a0a0a);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--desktop-lyric-line-clamp, 1);
   paint-order: stroke fill;
   background: none;
   -webkit-background-clip: border-box;
   background-clip: border-box;
-  -webkit-text-fill-color: #fff;
-  filter: drop-shadow(5px 5px 0px rgba(0, 0, 0, 1));
+  -webkit-text-fill-color: currentColor;
+  filter: var(--desktop-lyric-main-filter, drop-shadow(5px 5px 0 rgba(0, 0, 0, 1)));
+  overflow: hidden;
+  writing-mode: var(--desktop-lyric-writing-mode, horizontal-tb);
+  text-orientation: var(--desktop-lyric-text-orientation, mixed);
 }
 
 .lrc-main::before {
@@ -439,12 +475,19 @@ onUnmounted(() => {
 }
 
 .lrc-sub {
-  font-size: 18px;
-  font-weight: 600;
-  color: #0a0a0a;
-  -webkit-text-stroke: 1px #fff;
+  display: -webkit-box;
+  max-width: 100%;
+  font-size: var(--desktop-lyric-sub-size, 18px);
+  font-weight: var(--desktop-lyric-sub-weight, 600);
+  color: var(--desktop-lyric-unplayed-color, #0a0a0a);
+  -webkit-text-stroke: var(--desktop-lyric-sub-stroke, 1px #fff);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--desktop-lyric-line-clamp, 1);
   paint-order: stroke fill;
-  text-shadow: 2px 2px 0px #fff;
+  text-shadow: var(--desktop-lyric-sub-shadow, 2px 2px 0px #fff);
+  overflow: hidden;
+  writing-mode: var(--desktop-lyric-writing-mode, horizontal-tb);
+  text-orientation: var(--desktop-lyric-text-orientation, mixed);
 }
 
 .lrc-roma {

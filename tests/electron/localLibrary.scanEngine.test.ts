@@ -174,7 +174,7 @@ describe('LocalLibraryScanEngine', () => {
       }
     )
 
-    expect(metadataReader).toHaveBeenCalledWith(trackPath)
+    expect(metadataReader).toHaveBeenCalledWith(trackPath, { skipCover: undefined })
     expect(track).toMatchObject({
       duration: 189000,
       title: 'Unknown Duration',

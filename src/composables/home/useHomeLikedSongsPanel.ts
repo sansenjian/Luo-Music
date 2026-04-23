@@ -16,11 +16,14 @@ import {
   playMediaSongSelection,
   resolvePanelErrorMessage
 } from './mediaPanelShared'
+import type { HomeSidebarCollectionSelection } from '@/components/home/homeSidebar.types'
+import { createAlbumCollectionSelection } from '@/composables/home/homeCollectionSelection'
 
 type LikedContentSection = 'songs' | 'albums'
 
 type HomeLikedSongsPanelDeps = {
   localLibrary?: ReturnType<typeof useLocalLibrary>
+  onOpenCollection?: (selection: HomeSidebarCollectionSelection) => void
 }
 
 export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
@@ -381,6 +384,14 @@ export function useHomeLikedSongsPanel(deps: HomeLikedSongsPanelDeps = {}) {
 
   async function openAlbumDetail(albumId: string | number): Promise<void> {
     const normalizedAlbumId = String(albumId)
+    const album = albums.value.find(item => String(item.id) === normalizedAlbumId)
+
+    if (album && deps.onOpenCollection) {
+      selectedAlbumId.value = normalizedAlbumId
+      deps.onOpenCollection(createAlbumCollectionSelection(album))
+      return
+    }
+
     selectedAlbumId.value = normalizedAlbumId
     selectedAlbumSongs.value = []
     albumDetailError.value = null

@@ -1,7 +1,12 @@
 import { ipcService } from '../IpcService'
 import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channels.ts'
 
-import type { AppConfig, ConfigKey, ConfigChangeEvent } from '../../shared/config'
+import {
+  DEFAULT_APP_CONFIG,
+  type AppConfig,
+  type ConfigKey,
+  type ConfigChangeEvent
+} from '../../shared/config'
 
 type ElectronStoreShape = {
   get: <T>(key: string, defaultValue?: T) => T
@@ -21,22 +26,9 @@ const store = new Store({ projectName: 'luo-music' })
 
 const CONFIG_STORE_KEY = 'appConfig'
 
-const DEFAULT_CONFIG: AppConfig = {
-  playMode: 'list',
-  defaultVolume: 0.7,
-  autoPlay: false,
-  lyricFontSize: 20,
-  lyricFontFamily: 'Noto Sans SC',
-  showTranslation: true,
-  enableDesktopLyric: false,
-  alwaysOnTop: false,
-  cacheSize: 512,
-  enableCache: true,
-  theme: 'system',
-  language: 'zh-CN'
-}
+const DEFAULT_CONFIG: AppConfig = { ...DEFAULT_APP_CONFIG }
 
-function readConfig(): AppConfig {
+export function readConfig(): AppConfig {
   const storedConfig = store.get<Partial<AppConfig> | undefined>(CONFIG_STORE_KEY, undefined)
 
   return {
@@ -75,14 +67,35 @@ function assertConfigValue<K extends ConfigKey>(
         return isFiniteNumber(value) && value >= 0 && value <= 1
       case 'autoPlay':
       case 'showTranslation':
+      case 'showRomanizedLyrics':
       case 'enableDesktopLyric':
       case 'alwaysOnTop':
       case 'enableCache':
         return typeof value === 'boolean'
       case 'lyricFontSize':
-        return isFiniteNumber(value) && value > 0
+        return isFiniteNumber(value) && value > 0 && value <= 72
       case 'lyricFontFamily':
+      case 'lyricPlayedColor':
+      case 'lyricUnplayedColor':
         return typeof value === 'string' && value.trim().length > 0
+      case 'lyricFontWeight':
+        return value === 'standard' || value === 'bold' || value === 'heavy'
+      case 'lyricStrokeStyle':
+        return value === 'outline' || value === 'none'
+      case 'lyricLineMode':
+        return value === 'single-line' || value === 'double-line'
+      case 'lyricFlowDirection':
+        return value === 'horizontal' || value === 'vertical'
+      case 'lyricTextAlign':
+        return value === 'left' || value === 'center' || value === 'right'
+      case 'lyricColorPreset':
+        return (
+          value === 'classic-default' ||
+          value === 'vitality-purple' ||
+          value === 'midnight-neon' ||
+          value === 'mint-pop' ||
+          value === 'sunset-glow'
+        )
       case 'cacheSize':
         return isFiniteNumber(value) && value >= 0
       case 'theme':
@@ -99,6 +112,26 @@ function assertConfigValue<K extends ConfigKey>(
   }
 }
 
+export function setConfigValue<K extends ConfigKey>(key: K, value: AppConfig[K]): void {
+  assertConfigKey(key)
+  assertConfigValue(key, value)
+
+  const currentConfig = readConfig()
+  const oldValue = currentConfig[key]
+
+  if (Object.is(oldValue, value)) {
+    return
+  }
+
+  const nextConfig = {
+    ...currentConfig,
+    [key]: value
+  }
+
+  writeConfig(nextConfig)
+  emitConfigChange({ key, oldValue, newValue: nextConfig[key] })
+}
+
 export function registerConfigHandlers(): void {
   ipcService.registerInvoke(INVOKE_CHANNELS.CONFIG_GET, async (key: string) => {
     assertConfigKey(key)
@@ -112,16 +145,7 @@ export function registerConfigHandlers(): void {
   ipcService.registerInvoke(INVOKE_CHANNELS.CONFIG_SET, async (key: string, value: unknown) => {
     assertConfigKey(key)
     assertConfigValue(key, value)
-
-    const currentConfig = readConfig()
-    const oldValue = currentConfig[key]
-    const nextConfig = {
-      ...currentConfig,
-      [key]: value as AppConfig[typeof key]
-    }
-
-    writeConfig(nextConfig)
-    emitConfigChange({ key, oldValue, newValue: nextConfig[key] })
+    setConfigValue(key, value)
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.CONFIG_DELETE, async (key: string) => {

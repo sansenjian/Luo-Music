@@ -1,3 +1,11 @@
+import type { WebLyricAppearance } from '@/types/player'
+
+import { PLAY_MODE } from '../player/constants/playMode'
+import {
+  DEFAULT_WEB_LYRIC_APPEARANCE,
+  sanitizeWebLyricAppearance
+} from '../player/webLyricAppearance'
+
 export const PLAYER_STORAGE_KEY = 'player'
 export const PLAYER_DOCKED_PREFERENCE_KEY = 'playerDockedUserToggled'
 export const LEGACY_COMPACT_MODE_PREFERENCE_KEY = 'compactModeUserToggled'
@@ -6,16 +14,16 @@ export type PersistedPlayerState = {
   volume: number
   playMode: number
   lyricType: string[]
+  webLyricAppearance: WebLyricAppearance
   isPlayerDocked: boolean
   isCompact?: boolean
 }
-
-import { PLAY_MODE } from '../player/constants/playMode'
 
 const DEFAULT_PLAYER_STATE: PersistedPlayerState = {
   volume: 0.7,
   playMode: PLAY_MODE.SEQUENTIAL,
   lyricType: ['original', 'trans'],
+  webLyricAppearance: { ...DEFAULT_WEB_LYRIC_APPEARANCE },
   isPlayerDocked: true
 }
 
@@ -97,6 +105,7 @@ export function sanitizePersistedPlayerState(value: unknown): PersistedPlayerSta
     volume: sanitizeVolume(record.volume as unknown),
     playMode: sanitizePlayMode(record.playMode as unknown),
     lyricType: sanitizeLyricType(record.lyricType as unknown),
+    webLyricAppearance: sanitizeWebLyricAppearance(record.webLyricAppearance),
     isPlayerDocked: sanitizeIsPlayerDocked(
       record.isPlayerDocked ?? (record as { isCompact?: unknown }).isCompact
     )

@@ -81,9 +81,14 @@ async function initializeApp(): Promise<void> {
   registerLocalMediaProtocol()
 
   logger.info('Initializing services via ServiceManager...')
-  await serviceManager.initialize(DEFAULT_SERVICE_CONFIG)
-  const allStatus = serviceManager.getAllServiceStatus()
-  logger.info('Service status:', JSON.stringify(allStatus, null, 2))
+  try {
+    await serviceManager.initialize(DEFAULT_SERVICE_CONFIG)
+    const allStatus = serviceManager.getAllServiceStatus()
+    logger.info('Service status:', JSON.stringify(allStatus, null, 2))
+  } catch (err) {
+    logger.error('Service initialization failed:', err)
+    throw err
+  }
 
   windowManager.createWindow()
   windowManager.getWindow()?.webContents.once('did-finish-load', () => {

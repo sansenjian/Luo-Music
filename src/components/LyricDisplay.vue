@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 
 import HomeEmptyState from './home/HomeEmptyState.vue'
 import { uiMessages } from '@/messages/ui'
 import { useActiveLyricState } from '../composables/useActiveLyricState'
 import { useLyricAutoScroll } from '../composables/useLyricAutoScroll'
+import { useLyricVirtualScroll } from '../composables/useLyricVirtualScroll'
 import { usePlayerStore } from '../store/playerStore'
 import { resolveLyricDisplayLine } from '../utils/player/lyric-display'
+
+const VIRTUALIZE_THRESHOLD = 50
 
 const props = defineProps({
   active: {
@@ -16,7 +19,8 @@ const props = defineProps({
 })
 
 const playerStore = usePlayerStore()
-const lyricScrollArea = ref(null)
+const lyricScrollArea = ref<HTMLElement | null>(null)
+const lineContainer = ref<HTMLElement | null>(null)
 const { lyrics, currentLyricIndex, showOriginal, showTrans, showRoma } = useActiveLyricState()
 
 const resolvedLyrics = computed(() =>
@@ -28,6 +32,61 @@ const resolvedLyrics = computed(() =>
     })
   )
 )
+
+const shouldVirtualize = computed(() => resolvedLyrics.value.length > VIRTUALIZE_THRESHOLD)
+const lyricCount = computed(() => resolvedLyrics.value.length)
+
+const virtualScroll = useLyricVirtualScroll({
+  scrollArea: lyricScrollArea,
+  itemCount: lyricCount
+})
+
+const visibleLyrics = computed(() => {
+  if (!shouldVirtualize.value) {
+    return resolvedLyrics.value.map((item, index) => ({ item, index }))
+  }
+  const start = virtualScroll.startIndex.value
+  const end = virtualScroll.endIndex.value
+  return resolvedLyrics.value.slice(start, end).map((item, offset) => ({
+    item,
+    index: start + offset
+  }))
+})
+
+// Re-measure lines when visibility toggles change (line heights change)
+watch([showOriginal, showTrans, showRoma], () => {
+  virtualScroll.clearCache()
+  virtualScroll.updateScrollState()
+  void nextTick(() => measureVisibleLines())
+})
+
+// Pin the active line so it's always rendered (needed for auto-scroll
+// to find it via querySelector).
+watch(
+  currentLyricIndex,
+  idx => {
+    if (shouldVirtualize.value) {
+      virtualScroll.pinActiveIndex(idx)
+    }
+  },
+  { immediate: true }
+)
+
+// Re-measure when the visible range changes
+watch([virtualScroll.startIndex, virtualScroll.endIndex], () => {
+  void nextTick(() => measureVisibleLines())
+})
+
+function measureVisibleLines() {
+  if (!lineContainer.value || !shouldVirtualize.value) return
+  const children = lineContainer.value.children
+  for (let i = 0; i < children.length; i++) {
+    const el = children[i]
+    if (el instanceof HTMLElement) {
+      virtualScroll.measureLineEl(el)
+    }
+  }
+}
 
 function handleLyricClick(time: number) {
   playerStore.seek(time)
@@ -69,7 +128,45 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
       @wheel.passive="handleUserScrollStart"
       @touchstart.passive="handleUserScrollStart"
     >
-      <div class="lyrics-list">
+      <!-- Virtualized mode -->
+      <div
+        v-if="shouldVirtualize"
+        ref="lineContainer"
+        class="lyrics-list lyrics-list-virtual"
+        :style="{
+          paddingTop: virtualScroll.paddingTop.value + 'px',
+          paddingBottom: virtualScroll.paddingBottom.value + 'px'
+        }"
+      >
+        <div
+          v-for="{ item, index } in visibleLyrics"
+          :key="index"
+          :data-li="index"
+          class="lyric-line"
+          role="button"
+          tabindex="0"
+          :aria-current="index === currentLyricIndex ? 'true' : undefined"
+          :class="{
+            active: index === currentLyricIndex,
+            passed: index < currentLyricIndex
+          }"
+          @click="handleLyricClick(item.time)"
+          @keydown="handleLyricKeydown($event, item.time)"
+        >
+          <div v-if="item.showRoma" class="lyric-roma">
+            {{ item.roma }}
+          </div>
+          <div v-if="item.showOriginal" class="lyric-main">
+            {{ item.original }}
+          </div>
+          <div v-if="item.showTrans" class="lyric-trans">
+            {{ item.trans }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Non-virtualized mode (short lyrics) -->
+      <div v-else class="lyrics-list">
         <div
           v-for="(item, index) in resolvedLyrics"
           :key="`${item.time}-${index}`"
@@ -130,6 +227,15 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 .lyrics-list {
   position: relative;
   padding: 50vh 40px;
+}
+
+.lyrics-list-virtual {
+  /* Virtual mode uses dynamic padding instead of fixed top padding.
+     The bottom half of the viewport is the initial scroll anchor. */
+  padding-left: 40px;
+  padding-right: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .lyric.is-player-docked .lyric-line {
@@ -217,13 +323,17 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   color: var(--gray);
   line-height: 1.4;
   margin-top: 4px;
-  transition: all 0.3s;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease;
   word-break: break-word;
 }
 
 @media (max-width: 900px) {
-  .lyrics-list {
-    padding: 50vh 24px;
+  .lyrics-list,
+  .lyrics-list-virtual {
+    padding-left: 24px;
+    padding-right: 24px;
   }
 
   .lyric-main {
@@ -232,8 +342,10 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 }
 
 @media (max-width: 600px) {
-  .lyrics-list {
-    padding: 50vh 16px;
+  .lyrics-list,
+  .lyrics-list-virtual {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   .lyric-main {

@@ -10,6 +10,7 @@ import { getAlbumDetail, getAlbumSublist } from '@/api/album'
 import { createSong, type Song } from '@/platform/music/interface'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
 import { createLatestRequestController } from '@/utils/http/requestScope'
+import { songPrefetcher } from '@/store/player/songPrefetcher'
 
 export interface FavoriteAlbumItem {
   id: string | number
@@ -227,6 +228,12 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
         .filter((track): track is Song => Boolean(track))
 
       task.throwIfCanceled()
+
+      // Prefetch URLs for the first few tracks so playback is instant
+      if (songs.length > 0) {
+        songPrefetcher.prefetchPlaylist(songs)
+      }
+
       return songs
     } catch (requestError) {
       if (isCanceledRequestError(requestError)) {

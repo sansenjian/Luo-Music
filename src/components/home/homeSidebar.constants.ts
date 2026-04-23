@@ -3,7 +3,8 @@ import type { HomeSidebarNavItem, SidebarIconName } from './homeSidebar.types'
 export const HOME_SIDEBAR_EXPLORE_ITEMS: HomeSidebarNavItem[] = [
   { id: 'home', label: '主页', icon: 'home' },
   { id: 'discover', label: '发现', icon: 'discover' },
-  { id: 'roaming', label: '漫游', icon: 'roaming' }
+  { id: 'roaming', label: '漫游', icon: 'roaming' },
+  { id: 'plugins', label: '插件', icon: 'plugins' }
 ]
 
 export const HOME_SIDEBAR_LIBRARY_ITEMS: HomeSidebarNavItem[] = [
@@ -30,5 +31,7 @@ export const HOME_SIDEBAR_ICON_MARKUP_MAP: Record<SidebarIconName, string> = {
   artists:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M8.1 11.2a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Zm7.8 0a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Z"/><path d="M3.9 18.8a4.2 4.2 0 0 1 8.4 0"/><path d="M11.7 18.8a4.2 4.2 0 0 1 8.4 0"/></svg>',
   local:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5.2 6.2h13.6a1.2 1.2 0 0 1 1.2 1.2v9.2a1.2 1.2 0 0 1-1.2 1.2H5.2A1.2 1.2 0 0 1 4 16.6V7.4a1.2 1.2 0 0 1 1.2-1.2Z"/><path d="M8 18.8h8"/><path d="M8.6 11.6h6.8"/></svg>'
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5.2 6.2h13.6a1.2 1.2 0 0 1 1.2 1.2v9.2a1.2 1.2 0 0 1-1.2 1.2H5.2A1.2 1.2 0 0 1 4 16.6V7.4a1.2 1.2 0 0 1 1.2-1.2Z"/><path d="M8 18.8h8"/><path d="M8.6 11.6h6.8"/></svg>',
+  plugins:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M14.5 4.5v2a1 1 0 0 0 1 1h2"/><path d="M9.5 4.5v2a1 1 0 0 1-1 1h-2"/><path d="M14.5 19.5v-2a1 1 0 0 1 1-1h2"/><path d="M9.5 19.5v-2a1 1 0 0 0-1-1h-2"/><rect x="5.5" y="7.5" width="13" height="9" rx="1.5"/><circle cx="12" cy="12" r="2"/></svg>'
 }

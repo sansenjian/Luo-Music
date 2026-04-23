@@ -32,7 +32,8 @@ export type ParsedLocalTrackMetadata = {
 }
 
 export type LocalTrackMetadataReader = (
-  filePath: string
+  filePath: string,
+  options?: { skipCover?: boolean }
 ) => Promise<ParsedLocalTrackMetadata | null>
 export type LocalLibraryWatcherFactory = (folderPath: string) => FSWatcher
 export type PendingFolderChanges = {
@@ -74,15 +75,48 @@ export function parseTrackDisplayName(fileName: string): { artist: string; title
     }
   }
 
-  const parts = stem
-    .split(' - ')
+  // "艺术家 - 歌曲名" or "艺术家-歌曲名"
+  const dashParts = stem
+    .split(/\s+-\s+/)
     .map(part => part.trim())
     .filter(Boolean)
-
-  if (parts.length >= 2) {
+  if (dashParts.length >= 2) {
     return {
-      artist: parts[0] ?? '未知艺术家',
-      title: parts.slice(1).join(' - ')
+      artist: dashParts[0] ?? '未知艺术家',
+      title: dashParts.slice(1).join(' - ')
+    }
+  }
+
+  // "艺术家‖歌曲名" or "艺术家|歌曲名"
+  const pipeParts = stem
+    .split(/[‖|]/)
+    .map(part => part.trim())
+    .filter(Boolean)
+  if (pipeParts.length >= 2) {
+    return {
+      artist: pipeParts[0] ?? '未知艺术家',
+      title: pipeParts.slice(1).join('‖')
+    }
+  }
+
+  // "[艺术家] 歌曲名" or "【艺术家】歌曲名"
+  const bracketMatch = stem.match(/^[【[](.+?)[】\]]\s*(.+)$/)
+  if (bracketMatch) {
+    return {
+      artist: bracketMatch[1]?.trim() ?? '未知艺术家',
+      title: bracketMatch[2]?.trim() ?? stem
+    }
+  }
+
+  // "01. 歌曲名" or "01 歌曲名" or "01-歌曲名" (track number prefix)
+  const numberedMatch = stem.match(/^\d{1,3}[.\s\-–—]+(.+)$/)
+  if (numberedMatch) {
+    const title = numberedMatch[1]?.trim()
+    if (title) {
+      return {
+        title,
+        artist: '未知艺术家'
+      }
     }
   }
 
@@ -105,15 +139,17 @@ export function createDefaultWatcher(folderPath: string): FSWatcher {
 }
 
 export async function readTrackMetadata(
-  filePath: string
+  filePath: string,
+  options?: { skipCover?: boolean }
 ): Promise<ParsedLocalTrackMetadata | null> {
   try {
     const shouldReadFullDuration = requiresFullDurationParse(filePath)
     const metadata = await parseFile(
       filePath,
-      shouldReadFullDuration ? { duration: true } : undefined
+      shouldReadFullDuration
+        ? { duration: true, skipCovers: options?.skipCover }
+        : { skipCovers: options?.skipCover }
     )
-    const picture = metadata.common.picture?.[0]
     const title =
       typeof metadata.common.title === 'string' && metadata.common.title.trim().length > 0
         ? metadata.common.title.trim()
@@ -130,6 +166,23 @@ export async function readTrackMetadata(
       typeof metadata.format.duration === 'number' && Number.isFinite(metadata.format.duration)
         ? Math.max(0, Math.round(metadata.format.duration * 1000))
         : null
+
+    if (options?.skipCover) {
+      if (!title && !artist && !album && duration === null) {
+        return null
+      }
+
+      return {
+        title,
+        artist,
+        album,
+        duration,
+        coverData: undefined,
+        coverFormat: null
+      }
+    }
+
+    const picture = metadata.common.picture?.[0]
 
     if (!title && !artist && !album && duration === null && !picture) {
       return null

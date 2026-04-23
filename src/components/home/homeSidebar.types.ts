@@ -2,6 +2,7 @@ export type SidebarIconName =
   | 'home'
   | 'discover'
   | 'roaming'
+  | 'plugins'
   | 'liked'
   | 'history'
   | 'songs'

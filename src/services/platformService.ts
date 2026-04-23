@@ -126,6 +126,11 @@ export function createPlatformService(deps: PlatformServiceDeps = {}): PlatformS
         return
       }
 
+      if (typeof show === 'boolean' && platform.supportsSendChannel('desktop-lyric-control')) {
+        platform.send('desktop-lyric-control', show ? 'show' : 'close')
+        return
+      }
+
       if (platform.supportsSendChannel('toggle-desktop-lyric')) {
         platform.send('toggle-desktop-lyric', show)
       }

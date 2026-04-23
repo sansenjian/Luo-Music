@@ -67,9 +67,17 @@ async function handleSearch(): Promise<void> {
     resetToHome()
   }
 }
+
+function handleNavigateToLyrics(): void {
+  switchTab('lyric')
+  if (activeWorkspaceView.value !== 'home') {
+    resetToHome()
+  }
+}
 const sharedLocalLibrary = useLocalLibrary()
 const homeLikedSongsPanelModel = useHomeLikedSongsPanel({
-  localLibrary: sharedLocalLibrary
+  localLibrary: sharedLocalLibrary,
+  onOpenCollection: handleSidebarCollectionSelect
 })
 const { isMounted: isCoreMounted } = useDeferredMount('frame')
 const { isMounted: isIdleMounted } = useDeferredMount('idle')
@@ -114,7 +122,11 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
       />
 
       <section class="left-panel">
-        <Player v-if="isCoreMounted" :loading="playerStore.loading" />
+        <Player
+          v-if="isCoreMounted"
+          :loading="playerStore.loading"
+          @navigate-to-lyrics="handleNavigateToLyrics"
+        />
         <div v-else class="panel-placeholder" aria-hidden="true"></div>
       </section>
 
@@ -150,7 +162,12 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
         :docked-player-bar-layout="dockedPlayerBarLayout"
       >
         <template #docked-player>
-          <Player v-if="isCoreMounted" :loading="playerStore.loading" :docked="true" />
+          <Player
+            v-if="isCoreMounted"
+            :loading="playerStore.loading"
+            :docked="true"
+            @navigate-to-lyrics="handleNavigateToLyrics"
+          />
           <div v-else class="docked-player-placeholder" aria-hidden="true"></div>
         </template>
       </HomeFooter>
@@ -185,9 +202,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
   grid-template-areas:
     'sidebar workspace'
     'footer footer';
-  transition:
-    grid-template-columns 0.3s ease,
-    grid-template-areas 0.3s ease;
+  transition: grid-template-columns 0.2s ease;
 }
 
 .window.player-docked.footer-with-sidebar .app-shell {

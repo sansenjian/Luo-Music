@@ -25,12 +25,7 @@ function handleSearchDraftInput(event: Event): void {
 
 <template>
   <div class="local-content-header">
-    <div class="local-section-header">
-      <h2>{{ currentViewTitle }}</h2>
-      <span>{{ currentSummaryLabel }}</span>
-    </div>
-
-    <div class="local-toolbar">
+    <div class="local-toolbar-top">
       <div class="local-view-tabs">
         <button
           v-for="view in viewModes"
@@ -43,7 +38,13 @@ function handleSearchDraftInput(event: Event): void {
           {{ view.label }}
         </button>
       </div>
+    </div>
 
+    <div class="local-toolbar">
+      <div class="local-section-copy">
+        <h2>{{ currentViewTitle }}</h2>
+        <p>{{ currentSummaryLabel }}</p>
+      </div>
       <form class="local-search" @submit.prevent="$emit('submit-search')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <circle cx="11" cy="11" r="7"></circle>

@@ -67,15 +67,16 @@ type LocalLibraryMockOverrides = {
   pageLoading?: Ref<boolean>
   songsPage?: Ref<LocalLibraryPage<LocalLibraryTrack>>
   state?: Ref<LocalLibraryState>
-  status?: Ref<LocalLibraryScanStatus> | ComputedRef<LocalLibraryScanStatus>
-  refresh?: ReturnType<typeof vi.fn>
-  addFolder?: ReturnType<typeof vi.fn>
-  removeFolder?: ReturnType<typeof vi.fn>
-  setFolderEnabled?: ReturnType<typeof vi.fn>
-  rescan?: ReturnType<typeof vi.fn>
-  loadTracks?: ReturnType<typeof vi.fn>
-  loadArtists?: ReturnType<typeof vi.fn>
-  loadAlbums?: ReturnType<typeof vi.fn>
+  status?: ComputedRef<LocalLibraryScanStatus>
+  refresh?: () => Promise<void>
+  addFolder?: () => Promise<LocalLibraryState | null>
+  removeFolder?: (folderId: string) => Promise<LocalLibraryState>
+  setFolderEnabled?: (folderId: string, enabled: boolean) => Promise<LocalLibraryState>
+  rescan?: () => Promise<LocalLibraryState>
+  loadTracks?: () => Promise<void>
+  loadArtists?: () => Promise<void>
+  loadAlbums?: () => Promise<void>
+  patchTrackDuration?: (trackId: string | number, durationMs: number) => void
 }
 
 export function createLocalLibraryMock(overrides: LocalLibraryMockOverrides = {}) {
@@ -126,7 +127,7 @@ export function createLocalLibraryMock(overrides: LocalLibraryMockOverrides = {}
     })
   const coverUrls = overrides.coverUrls ?? ref({})
 
-  const refresh = overrides.refresh ?? vi.fn()
+  const refresh = overrides.refresh ?? (vi.fn() as () => Promise<void>)
   const addFolder = overrides.addFolder ?? vi.fn()
   const removeFolder = overrides.removeFolder ?? vi.fn()
   const setFolderEnabled = overrides.setFolderEnabled ?? vi.fn()
@@ -134,6 +135,7 @@ export function createLocalLibraryMock(overrides: LocalLibraryMockOverrides = {}
   const loadTracks = overrides.loadTracks ?? vi.fn()
   const loadArtists = overrides.loadArtists ?? vi.fn()
   const loadAlbums = overrides.loadAlbums ?? vi.fn()
+  const patchTrackDuration = overrides.patchTrackDuration ?? vi.fn()
 
   return {
     ready: Promise.resolve(),
@@ -152,6 +154,7 @@ export function createLocalLibraryMock(overrides: LocalLibraryMockOverrides = {}
       loadAlbums,
       loadArtists,
       loadTracks,
+      patchTrackDuration,
       songsPage
     },
     commands: {
@@ -193,6 +196,7 @@ export function createLocalLibraryMockFromSongs(localSongs: Song[] = []) {
       limit: 60
     }),
     coverUrls: ref({}),
-    loadTracks: vi.fn().mockResolvedValue(undefined)
+    loadTracks: vi.fn().mockResolvedValue(undefined) as () => Promise<void>,
+    loadAlbums: vi.fn().mockResolvedValue(undefined) as () => Promise<void>
   })
 }

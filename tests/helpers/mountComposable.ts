@@ -1,9 +1,9 @@
 import { defineComponent } from 'vue'
-import { mount, type MountingOptions, type VueWrapper } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 
 export function mountComposable<T>(
   useComposable: () => T,
-  options: MountingOptions<unknown> = {}
+  options: Record<string, unknown> = {}
 ): {
   result: T
   wrapper: VueWrapper
@@ -18,7 +18,8 @@ export function mountComposable<T>(
     template: '<div />'
   })
 
-  const wrapper = mount(Harness, options)
+  const { slots, ...rest } = options
+  const wrapper = mount(Harness, rest as any)
 
   return {
     result,

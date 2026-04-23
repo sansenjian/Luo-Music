@@ -56,11 +56,16 @@ export default defineConfig(async ({ mode }) => {
       emptyOutDir: true,
       outDir: outputDir,
       chunkSizeWarningLimit: 500,
+      target: 'es2022',
+      minify: 'esbuild',
       rollupOptions: {
         output: {
           manualChunks: webManualChunks
         }
       }
+    },
+    esbuild: {
+      drop: isProduction ? ['console', 'debugger'] : []
     },
     resolve: {
       alias: createSrcAlias(process.cwd())

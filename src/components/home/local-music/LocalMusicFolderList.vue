@@ -16,7 +16,10 @@ defineEmits<{
 <template>
   <section class="local-folders">
     <div class="local-section-header">
-      <h2>已加入的文件夹</h2>
+      <div class="local-section-copy">
+        <h2>资料源文件夹</h2>
+        <p>启用、停用或移除本地音乐扫描目录。</p>
+      </div>
       <span>{{ totalFolderLabel }}</span>
     </div>
     <div class="folder-chip-list">

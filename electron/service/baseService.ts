@@ -71,22 +71,30 @@ export abstract class BaseService {
   abstract handleRequest(endpoint: string, params: Record<string, unknown>): Promise<unknown>
 
   /**
-   * 等待服务就绪（IPC 消息 + 端口检测双重保障）
+   * 等待服务就绪（IPC 消息优先，端口检测兜底）
    */
   protected async waitForReady(timeout: number = 15000): Promise<void> {
-    // 使用 Promise.allSettled 确保两个 promise 都能完成，不会静默吞错
-    const results = await Promise.allSettled([
-      this.waitForIpcMessage(timeout),
-      this.waitForPort(timeout)
-    ])
+    // IPC message is the fastest signal — port check is only a fallback
+    const ipcPromise = this.waitForIpcMessage(timeout)
 
-    // 检查是否至少有一个成功
+    // Start port check lazily: only if IPC hasn't resolved within 500ms
+    const portPromise = new Promise<void>(resolve => {
+      const delay = setTimeout(() => {
+        resolve(this.waitForPort(timeout))
+      }, 500)
+      ipcPromise.then(
+        () => clearTimeout(delay),
+        () => clearTimeout(delay)
+      )
+    })
+
+    const results = await Promise.allSettled([ipcPromise, portPromise])
+
     const hasSuccess = results.some(r => r.status === 'fulfilled')
     if (hasSuccess) {
       return
     }
 
-    // 两个都失败，聚合错误信息
     const failures = results
       .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
       .map(r => String(r.reason?.message ?? r.reason))
@@ -155,30 +163,27 @@ export abstract class BaseService {
             port: this.port,
             path: '/',
             method: 'GET',
-            timeout: 2000
+            timeout: 1500
           },
           _res => {
-            // 任何响应都表示服务已启动，清理请求
             req.destroy()
             resolve()
           }
         )
 
         req.on('error', () => {
-          setTimeout(() => check().then(resolve, reject), 500)
+          setTimeout(() => check().then(resolve, reject), 150)
         })
 
         req.on('timeout', () => {
           req.destroy()
-          setTimeout(() => check().then(resolve, reject), 500)
+          setTimeout(() => check().then(resolve, reject), 150)
         })
 
         req.end()
       })
     }
 
-    // 延迟 1 秒开始检测
-    await new Promise(r => setTimeout(r, 1000))
     await check()
   }
 }

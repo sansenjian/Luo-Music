@@ -2,6 +2,7 @@ import path from 'node:path'
 import type { BrowserWindow } from 'electron'
 import type { SongPlatform } from '@/types/schemas'
 import type { DesktopLyricUpdateCause } from './ipc/types'
+import { DEFAULT_APP_CONFIG, type AppConfig } from './shared/config'
 import { RECEIVE_CHANNELS, type ReceiveChannel } from './shared/protocol/channels'
 
 import { MAIN_DIST, RENDERER_DIST } from './utils/paths'
@@ -35,6 +36,15 @@ function getStore(): ElectronStoreInstance {
   return store
 }
 
+function readStoredAppConfig(): Partial<AppConfig> {
+  const storedConfig = getStore().get('appConfig')
+  if (typeof storedConfig !== 'object' || storedConfig === null) {
+    return {}
+  }
+
+  return storedConfig as Partial<AppConfig>
+}
+
 interface LyricUpdateData {
   time: number
   index: number
@@ -50,6 +60,18 @@ interface LyricUpdateData {
 
 interface CreateWindowOptions {
   showOnReady?: boolean
+}
+
+function resolveDesktopLyricAlwaysOnTop(): boolean {
+  const { alwaysOnTop } = readStoredAppConfig()
+  return typeof alwaysOnTop === 'boolean' ? alwaysOnTop : DEFAULT_APP_CONFIG.alwaysOnTop
+}
+
+function resolveDesktopLyricEnabled(): boolean {
+  const { enableDesktopLyric } = readStoredAppConfig()
+  return typeof enableDesktopLyric === 'boolean'
+    ? enableDesktopLyric
+    : DEFAULT_APP_CONFIG.enableDesktopLyric
 }
 
 export const DESKTOP_LYRIC_HASH_ROUTE = '/desktop-lyric'
@@ -202,6 +224,7 @@ export class DesktopLyricManager {
     const { width, height } = primaryDisplay.workAreaSize
     const x = this.lastPosition ? this.lastPosition.x : Math.floor((width - 800) / 2)
     const y = this.lastPosition ? this.lastPosition.y : Math.floor(height - 180)
+    const alwaysOnTop = resolveDesktopLyricAlwaysOnTop()
 
     const win = new BrowserWindow({
       width: 800,
@@ -212,7 +235,7 @@ export class DesktopLyricManager {
       minHeight: 120,
       frame: false,
       transparent: true,
-      alwaysOnTop: true,
+      alwaysOnTop,
       show: false,
       skipTaskbar: true,
       hasShadow: false,
@@ -227,7 +250,7 @@ export class DesktopLyricManager {
     })
     this.win = win
 
-    win.setAlwaysOnTop(true, 'screen-saver')
+    win.setAlwaysOnTop(alwaysOnTop, alwaysOnTop ? 'screen-saver' : 'normal')
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
     win.once('ready-to-show', () => {
       this.isWindowReady = true
@@ -248,6 +271,7 @@ export class DesktopLyricManager {
     win.on('closed', () => {
       this.isWindowReady = false
       this.isRendererReady = false
+      this.shouldShowOnReady = false
       this.win = null
     })
 
@@ -265,7 +289,7 @@ export class DesktopLyricManager {
       return
     }
 
-    this.createWindow({ showOnReady: false })
+    this.createWindow({ showOnReady: resolveDesktopLyricEnabled() })
   }
 
   closeWindow(): void {
@@ -358,13 +382,26 @@ export class DesktopLyricManager {
     this.sendToRenderer(RECEIVE_CHANNELS.LYRIC_TIME_UPDATE, data)
   }
 
-  toggle(): void {
-    if (this.win && !this.win.isDestroyed() && this.win.isVisible()) {
+  isEnabled(): boolean {
+    if (this.shouldShowOnReady) {
+      return true
+    }
+
+    if (!this.win || this.win.isDestroyed()) {
+      return false
+    }
+
+    return typeof this.win.isVisible === 'function' ? this.win.isVisible() : false
+  }
+
+  toggle(): boolean {
+    if (this.isEnabled()) {
       this.closeWindow()
-      return
+      return false
     }
 
     this.show()
+    return true
   }
 
   toggleLock(): void {

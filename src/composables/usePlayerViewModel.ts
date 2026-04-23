@@ -41,7 +41,7 @@ const PLAY_MODE_TEXT = [
   '\u968f\u673a\u64ad\u653e'
 ] as const
 
-function resolveCoverUrl(url?: string): string {
+export function resolveCoverUrl(url?: string): string {
   if (!url) return DEFAULT_COVER
   if (url.startsWith('data:')) return url
   try {

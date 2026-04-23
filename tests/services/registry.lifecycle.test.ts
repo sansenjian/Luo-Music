@@ -97,9 +97,9 @@ describe('service registry lifecycle', () => {
   })
 
   it('does not let an old activation mark a re-registered instance as already activated', async () => {
-    const firstActivation = createDeferred()
+    const firstActivation = createDeferred<void>()
     const firstService: LifecycleService = {
-      onActivate: vi.fn(() => firstActivation.promise),
+      onActivate: vi.fn(() => firstActivation.promise) as () => Promise<void>,
       onDeactivate: vi.fn()
     }
     const secondService: LifecycleService = {
@@ -122,7 +122,7 @@ describe('service registry lifecycle', () => {
 
   it('waits for async onDeactivate before disposing a replaced instance', async () => {
     const calls: string[] = []
-    const deactivation = createDeferred()
+    const deactivation = createDeferred<void>()
     const firstService: LifecycleService = {
       onActivate: vi.fn(),
       onDeactivate: vi.fn(async () => {

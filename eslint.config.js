@@ -27,6 +27,7 @@ export default [
       'vitest.config.ts',
       'forge.config.js',
       'forge.config.ts',
+      'vite.config.js',
       'vite.config.ts',
       'electron.vite.config.ts',
       '**/*.cjs',
