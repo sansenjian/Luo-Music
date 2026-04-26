@@ -30,6 +30,7 @@ import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import { LyricEngine, type LyricLine } from '@/utils/player/core/lyric'
 import { playerCore as defaultAudioManager } from '@/utils/player/core/playerCore'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
+import { resolvePlaybackMediaUrl } from '@/utils/player/mediaProxy'
 import { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
 import {
   DEFAULT_WEB_LYRIC_APPEARANCE,
@@ -606,6 +607,10 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
               this.notifyPlayingState(false)
             },
             onError: (error: unknown) => {
+              if (this.trackSwitching) {
+                return
+              }
+
               reportPlayerStoreError(error, 'initAudio.onError', 'Audio error')
               void this.handleAudioError(error)
             }
@@ -727,6 +732,10 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       },
 
       async handleAudioError(error: unknown): Promise<void> {
+        if (this.trackSwitching) {
+          return
+        }
+
         const runtime = ensurePlayerStoreRuntime(this as unknown as PlayerStoreInstance)
         const errorHandler = runtime.ensureErrorHandler(() => this.createErrorHandler())
         const result = await errorHandler.handleAudioError(error, this.currentSong)
@@ -841,7 +850,11 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.trackSwitching = true
 
         try {
-          await audioManager.play(String(targetSong.url))
+          const playbackUrl = resolvePlaybackMediaUrl(
+            String(targetSong.url),
+            getPlatformService().isElectron()
+          )
+          await audioManager.play(playbackUrl)
           this.playing = true
         } catch (error) {
           reportPlayerStoreError(error, 'playSongByIndex', 'Playback failed')

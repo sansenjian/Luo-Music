@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import type { LyricLine } from '@/utils/player/core/lyric'
 import { createPlayerStore, usePlayerStore } from '@/store/playerStore.ts'
+import { createRemoteMediaProxyUrl } from '@/utils/player/mediaProxy'
 import { createMockSong } from '../utils/test-utils'
 
 let storeCounter = 0
@@ -211,6 +212,17 @@ describe('playerStore', () => {
       expect(audioManager.seek).toHaveBeenCalledWith(60)
     })
 
+    it('plays remote media through the Electron proxy protocol', async () => {
+      const { store, audioManager } = createInjectedPlayerStore({ isElectron: true })
+      const sourceUrl = 'http://m7.music.126.net/song.mp3?vuutv=a+b='
+      store.songList = [createMockSong({ id: 1, name: 'Song 1', url: sourceUrl })]
+
+      await store.playSongByIndex(0)
+
+      expect(audioManager.play).toHaveBeenCalledWith(createRemoteMediaProxyUrl(sourceUrl))
+      expect(store.songList[0]?.url).toBe(sourceUrl)
+    })
+
     it('resets playback state when togglePlay cannot start the first track', async () => {
       const { store, platformAccessor } = createInjectedPlayerStore()
       store.songList = [createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' })]
@@ -312,6 +324,28 @@ describe('playerStore', () => {
       expect(playNextSkipUnavailableSpy).toHaveBeenCalledTimes(1)
       expect(playNextSpy).not.toHaveBeenCalled()
       expect(localSong.unavailable).toBe(true)
+    })
+
+    it('lets the active playSongWithDetails request handle audio errors during track switching', async () => {
+      const { store, audioManager } = createInjectedPlayerStore()
+      const song = createMockSong({
+        id: 'song-switching-error',
+        name: 'Switching Song',
+        url: 'https://song.test/switching.mp3'
+      })
+
+      store.songList = [song]
+      store.currentIndex = 0
+      store.currentSong = song
+      store.trackSwitching = true
+
+      const playNextSkipUnavailableSpy = vi.spyOn(store, 'playNextSkipUnavailable')
+
+      await store.handleAudioError(new Error('cdn 403'))
+
+      expect(audioManager.play).not.toHaveBeenCalled()
+      expect(playNextSkipUnavailableSpy).not.toHaveBeenCalled()
+      expect(song.unavailable).toBeFalsy()
     })
 
     it('keeps the current song index stable when add-to-next moves an earlier queued song', () => {

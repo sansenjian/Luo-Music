@@ -52,6 +52,7 @@ typings/
 *.tsbuildinfo
 outDir/
 
+
 # Optional npm cache directory
 .npm
 

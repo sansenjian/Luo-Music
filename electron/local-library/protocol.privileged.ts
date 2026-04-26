@@ -43,7 +43,8 @@ export function registerPrivilegedLocalMediaScheme(
         standard: true,
         secure: true,
         supportFetchAPI: true,
-        stream: true
+        stream: true,
+        corsEnabled: true
       }
     }
   ])

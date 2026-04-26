@@ -49,6 +49,10 @@ export class MockAudio {
     }, 0)
   }
 
+  captureStream(): MediaStream {
+    return {} as MediaStream
+  }
+
   addEventListener(event: string, handler: EventHandler): void {
     if (!this._events[event]) this._events[event] = []
     this._events[event].push(handler)

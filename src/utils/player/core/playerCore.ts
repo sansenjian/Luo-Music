@@ -1,4 +1,5 @@
 import { VOLUME } from '@/utils/player/constants'
+import { isRemoteMediaProxyUrl } from '@/utils/player/mediaProxy'
 
 export enum PlayerState {
   IDLE = 'idle',
@@ -52,7 +53,7 @@ export class PlayerCore {
   constructor() {
     this.audio = new Audio()
     this._initEvents()
-    this._clearCrossOrigin()
+    this._configureCrossOrigin()
     this._initVolume()
   }
 
@@ -68,10 +69,42 @@ export class PlayerCore {
     return false
   }
 
-  private _clearCrossOrigin(url?: string) {
+  private _configureCrossOrigin(url?: string) {
+    if (url && isRemoteMediaProxyUrl(url)) {
+      this.audio.crossOrigin = 'anonymous'
+      this.audio.setAttribute('crossorigin', 'anonymous')
+      console.log('[PlayerCore] CrossOrigin enabled for proxied media', { url })
+      return
+    }
+
     this.audio.crossOrigin = null
     this.audio.removeAttribute('crossorigin')
     console.log('[PlayerCore] CrossOrigin cleared', { url })
+  }
+
+  private _canUseMediaElementSourceFallback(): boolean {
+    const src = this.audio.currentSrc || this.audio.src
+    if (!src) {
+      return false
+    }
+
+    try {
+      const baseUrl = window.location?.href || 'http://localhost/'
+      const sourceUrl = new URL(src, baseUrl)
+      if (sourceUrl.protocol === 'http:' || sourceUrl.protocol === 'https:') {
+        return sourceUrl.origin === window.location.origin
+      }
+    } catch {
+      return false
+    }
+
+    return true
+  }
+
+  private _resetVisualizationGraph() {
+    this.source = null
+    this.analyser = null
+    this.gainNode = null
   }
 
   private _initVolume() {
@@ -84,38 +117,57 @@ export class PlayerCore {
         window.AudioContext ||
         (window as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
       this.audioContext = new AudioContext()
+    }
 
+    if (!this.analyser) {
       this.analyser = this.audioContext.createAnalyser()
       this.analyser.fftSize = 2048 // Higher resolution for visualization
       this.analyser.smoothingTimeConstant = 0.82
 
       this.gainNode = this.audioContext.createGain()
-      this.gainNode.gain.value = 0 // Silence Web Audio output; audio element outputs directly
-      this.gainNode.connect(this.audioContext.destination)
 
       // Use captureStream() so the audio element still outputs directly to speakers.
       // This keeps Chromium's MediaSession / Windows SMTC detection working.
-      // The Web Audio graph (source→analyser→gainNode(0)→destination) only captures
+      // The Web Audio graph (source -> analyser -> gainNode(0) -> destination) only captures
       // a copy for visualization; the gain=0 prevents double audio output.
       try {
         const stream = (
           this.audio as HTMLMediaElement & { captureStream(): MediaStream }
         ).captureStream()
+        this.gainNode.gain.value = 0
+        this.gainNode.connect(this.audioContext.destination)
         this.source = this.audioContext.createMediaStreamSource(stream)
         this.source.connect(this.analyser)
         this.analyser.connect(this.gainNode)
       } catch (e) {
+        this._resetVisualizationGraph()
+
+        if (!this._canUseMediaElementSourceFallback()) {
+          console.warn(
+            '[PlayerCore] Visualization disabled for this media source because captureStream() ' +
+              'is unavailable and MediaElementSource can mute cross-origin audio.',
+            e
+          )
+          return
+        }
+
         console.warn(
           '[PlayerCore] captureStream() failed, falling back to createMediaElementSource.',
           'Note: This breaks Windows SMTC / MediaSession integration.',
           e
         )
         try {
+          this.analyser = this.audioContext.createAnalyser()
+          this.analyser.fftSize = 2048
+          this.analyser.smoothingTimeConstant = 0.82
+          this.gainNode = this.audioContext.createGain()
+          this.gainNode.gain.value = 1 // MediaElementSource redirects output through Web Audio.
+          this.gainNode.connect(this.audioContext.destination)
           this.source = this.audioContext.createMediaElementSource(this.audio)
           this.source.connect(this.analyser)
           this.analyser.connect(this.gainNode)
-          this.gainNode.gain.value = 1 // Restore gain since audio element output is now redirected
         } catch (e2) {
+          this._resetVisualizationGraph()
           console.warn(
             '[PlayerCore] Failed to create MediaElementSource, visualization may not work:',
             e2
@@ -233,7 +285,7 @@ export class PlayerCore {
         // Do not force CORS mode for third-party media CDNs. Most audio CDNs allow
         // element playback but do not send Access-Control-Allow-Origin, and setting
         // crossOrigin would make Chromium reject otherwise playable streams.
-        this._clearCrossOrigin(url)
+        this._configureCrossOrigin(url)
         this.audio.src = url
         this.audio.load()
       } else if (url && this.audio.src === url && this.audio.ended) {

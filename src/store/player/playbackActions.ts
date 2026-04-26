@@ -209,7 +209,7 @@ export class PlaybackActions {
     const nextSong = playbackSong ?? sourceSong
     const isSwitchingSong = !this.isSameSong(state.currentSong, nextSong)
 
-    if (!sourceSong.url) {
+    if (!nextSong.url) {
       console.error('No URL for song')
       throw new Error('No URL for song')
     }
@@ -307,7 +307,9 @@ export class PlaybackActions {
           errorCenter.emit(err)
           throw err
         }
+      }
 
+      if (resolvedUrl) {
         song.url = resolvedUrl
       }
 

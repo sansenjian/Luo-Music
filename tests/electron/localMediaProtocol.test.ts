@@ -24,6 +24,7 @@ afterEach(async () => {
 
     await rm(targetPath, { recursive: true, force: true })
   }
+  vi.unstubAllGlobals()
 })
 
 describe('localMediaProtocol', () => {
@@ -32,7 +33,7 @@ describe('localMediaProtocol', () => {
     vi.clearAllMocks()
   })
 
-  it('registers the privileged scheme explicitly without enabling CORS', async () => {
+  it('registers the privileged streaming scheme with CORS for proxied media', async () => {
     await import('../../electron/local-library/protocol')
 
     expect(registerSchemesAsPrivilegedMock).not.toHaveBeenCalled()
@@ -57,7 +58,8 @@ describe('localMediaProtocol', () => {
           standard: true,
           secure: true,
           supportFetchAPI: true,
-          stream: true
+          stream: true,
+          corsEnabled: true
         }
       }
     ])
@@ -77,6 +79,86 @@ describe('localMediaProtocol', () => {
     expect(init.method).toBe('GET')
     expect(init.headers).toBeInstanceOf(Headers)
     expect(init.headers.get('range')).toBe('bytes=32-')
+  })
+
+  it('proxies remote media through Electron net.fetch without forwarding app referrer headers', async () => {
+    const protocolModule = await import('../../electron/local-library/protocol')
+    const netFetchMock = vi.fn().mockResolvedValue(
+      new Response('on', {
+        status: 206,
+        statusText: 'Partial Content',
+        headers: {
+          'Accept-Ranges': 'bytes',
+          'Content-Length': '2',
+          'Content-Range': 'bytes 1-2/4',
+          'Content-Type': 'audio/mpeg'
+        }
+      })
+    )
+
+    protocolModule.registerLocalMediaProtocol({
+      net: {
+        fetch: netFetchMock
+      },
+      protocol: {
+        handle: protocolHandleMock
+      }
+    })
+
+    const handler = protocolHandleMock.mock.calls[0]?.[1] as
+      | ((request: Request) => Promise<Response>)
+      | undefined
+    expect(handler).toBeTypeOf('function')
+
+    const sourceUrl = 'http://m7.music.126.net/song.mp3?vuutv=a+b='
+    const response = await handler!(
+      new Request(protocolModule.createRemoteMediaUrl(sourceUrl), {
+        headers: {
+          Range: 'bytes=1-2',
+          Referer: 'file:///app/index.html'
+        }
+      })
+    )
+
+    expect(netFetchMock).toHaveBeenCalledTimes(1)
+    expect(netFetchMock.mock.calls[0]?.[0]).toBe(sourceUrl)
+    const init = netFetchMock.mock.calls[0]?.[1] as RequestInit
+    const headers = init.headers as Headers
+    expect(headers.get('range')).toBe('bytes=1-2')
+    expect(headers.get('accept')).toBe('*/*')
+    expect(headers.get('user-agent')).toContain('Chrome/')
+    expect(headers.get('referer')).toBeNull()
+    expect(response.status).toBe(206)
+    expect(response.headers.get('access-control-allow-origin')).toBe('*')
+    expect(response.headers.get('cross-origin-resource-policy')).toBe('cross-origin')
+    expect(response.headers.get('content-range')).toBe('bytes 1-2/4')
+    await expect(response.text()).resolves.toBe('on')
+  })
+
+  it('blocks remote media proxy requests to local network addresses', async () => {
+    const protocolModule = await import('../../electron/local-library/protocol')
+    const netFetchMock = vi.fn()
+
+    protocolModule.registerLocalMediaProtocol({
+      net: {
+        fetch: netFetchMock
+      },
+      protocol: {
+        handle: protocolHandleMock
+      }
+    })
+
+    const handler = protocolHandleMock.mock.calls[0]?.[1] as
+      | ((request: Request) => Promise<Response>)
+      | undefined
+    expect(handler).toBeTypeOf('function')
+
+    const response = await handler!(
+      new Request(protocolModule.createRemoteMediaUrl('http://127.0.0.1/song.mp3'))
+    )
+
+    expect(response.status).toBe(403)
+    expect(netFetchMock).not.toHaveBeenCalled()
   })
 
   it('only serves whitelisted files from configured roots', async () => {

@@ -203,6 +203,38 @@ describe('playbackActions playback resolution', () => {
     expect(song.name).toBe('Hydrated From Prefetch')
   })
 
+  it('copies a prefetched url onto the current playlist song before playback', async () => {
+    const { actions, state, playSongByIndex } = createSubject()
+    const prefetchedSong = createMockSong({
+      id: 'song-prefetched-copy',
+      platform: 'netease'
+    })
+    const playlistSong = createMockSong({
+      id: 'song-prefetched-copy',
+      platform: 'netease'
+    })
+
+    songPrefetcher.setMusicService(adapterMock)
+    adapterMock.getSongUrl.mockResolvedValue('https://song.test/copied-prefetch.mp3')
+    adapterMock.getSongDetail.mockResolvedValue(null)
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    await songPrefetcher.prefetchSong(prefetchedSong)
+    adapterMock.getSongUrl.mockClear()
+    state.songList = [playlistSong]
+
+    await actions.playSongWithDetails(0)
+
+    expect(adapterMock.getSongUrl).not.toHaveBeenCalled()
+    expect(playlistSong.url).toBe('https://song.test/copied-prefetch.mp3')
+    expect(playSongByIndex).toHaveBeenCalledWith(0, playlistSong)
+  })
+
   it('refreshes cached netease urls after an initial playback failure and retries once', async () => {
     const { actions, state, playSongByIndex } = createSubject()
     const song = createMockSong({

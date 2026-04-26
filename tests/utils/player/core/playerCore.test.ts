@@ -20,7 +20,7 @@ type PlayerCoreTestInternals = {
   audioContext: MockAudioContext | null
   analyser: MockAnalyserNode | null
   gainNode: MockGainNode | null
-  source: MockMediaElementSourceNode | null
+  source: MockMediaElementSourceNode | MockMediaStreamSourceNode | null
   callbacks: Map<string, Set<(value: unknown) => void>>
   _boundHandlers: Map<string, EventListener>
   _setState: (state: PlayerState) => void
@@ -48,6 +48,10 @@ class MockMediaElementSourceNode {
   connect(): void {}
 }
 
+class MockMediaStreamSourceNode {
+  connect(): void {}
+}
+
 class MockAudioContext {
   state = 'suspended'
   destination = {}
@@ -66,6 +70,11 @@ class MockAudioContext {
 
   createMediaElementSource(): MockMediaElementSourceNode {
     const source = new MockMediaElementSourceNode()
+    return source
+  }
+
+  createMediaStreamSource(): MockMediaStreamSourceNode {
+    const source = new MockMediaStreamSourceNode()
     return source
   }
 
@@ -640,6 +649,42 @@ describe('PlayerCore', () => {
       expect(player.frequencyBinCount).toBe(1024)
       expect(getInternals(player).analyser).toBeDefined()
     })
+
+    it('does not use MediaElementSource fallback for cross-origin media without captureStream', () => {
+      const { audio } = getInternals(player)
+      const createMediaElementSourceSpy = vi.spyOn(
+        MockAudioContext.prototype,
+        'createMediaElementSource'
+      )
+      const audioWithCaptureStream = audio as MockAudioElement & {
+        captureStream?: () => MediaStream
+      }
+
+      audioWithCaptureStream.captureStream = undefined
+      audio.src = 'https://m7.music.126.net/song.mp3'
+
+      expect(player.getWaveformData()).toBeNull()
+      expect(createMediaElementSourceSpy).not.toHaveBeenCalled()
+      expect(getInternals(player).analyser).toBeNull()
+    })
+
+    it('keeps MediaElementSource fallback audible for same-origin media without captureStream', () => {
+      const { audio } = getInternals(player)
+      const createMediaElementSourceSpy = vi.spyOn(
+        MockAudioContext.prototype,
+        'createMediaElementSource'
+      )
+      const audioWithCaptureStream = audio as MockAudioElement & {
+        captureStream?: () => MediaStream
+      }
+
+      audioWithCaptureStream.captureStream = undefined
+      audio.src = `${window.location.origin}/song.mp3`
+
+      expect(player.getWaveformData()).toBeInstanceOf(Uint8Array)
+      expect(createMediaElementSourceSpy).toHaveBeenCalledTimes(1)
+      expect(getInternals(player).gainNode?.gain.value).toBe(1)
+    })
   })
 
   describe('destroy', () => {
@@ -772,6 +817,17 @@ describe('PlayerCore', () => {
 
       expect(audio.crossOrigin).toBeNull()
       expect(audio.getAttribute('crossorigin')).toBeNull()
+    })
+
+    it('should enable anonymous CORS for proxied remote media URLs', async () => {
+      const { audio } = getInternals(player)
+      audio.readyState = 4
+      audio.play = vi.fn().mockResolvedValue(undefined)
+
+      await player.play('luo-media://remote?url=https%3A%2F%2Fsong.test%2Fremote.mp3')
+
+      expect(audio.crossOrigin).toBe('anonymous')
+      expect(audio.getAttribute('crossorigin')).toBe('anonymous')
     })
   })
 
