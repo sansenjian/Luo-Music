@@ -1,7 +1,8 @@
 // @vitest-environment node
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { songPrefetcher } from '@/store/player/songPrefetcher'
 import { createDeferred } from '../../helpers/deferred'
 import { createMockSong, createQQSong } from '../../utils/test-utils'
 import {
@@ -157,6 +158,51 @@ describe('playbackActions playback resolution', () => {
     expect(playSongByIndex).toHaveBeenCalledWith(0, expect.anything())
   })
 
+  it('starts playback from an in-flight prefetch as soon as the url resolves', async () => {
+    const { actions, state, playSongByIndex, onPlaybackCommitted } = createSubject()
+    const song = createMockSong({
+      id: 'song-prefetch-in-flight',
+      platform: 'netease'
+    })
+    const detailSong = createMockSong({
+      id: 'song-prefetch-in-flight',
+      platform: 'netease',
+      name: 'Hydrated From Prefetch'
+    })
+    const detailDeferred = createDeferred<ReturnType<typeof createMockSong>>()
+
+    state.songList = [song]
+    songPrefetcher.setMusicService(adapterMock)
+    adapterMock.getSongUrl.mockResolvedValue('https://song.test/prefetched.mp3')
+    adapterMock.getSongDetail.mockImplementation(() => detailDeferred.promise)
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    const prefetch = songPrefetcher.prefetchSong(song)
+    await vi.waitFor(() => {
+      expect(adapterMock.getSongUrl).toHaveBeenCalledTimes(1)
+    })
+
+    const playback = actions.playSongWithDetails(0)
+    try {
+      await vi.waitFor(() => {
+        expect(playSongByIndex).toHaveBeenCalledWith(0, expect.anything())
+        expect(onPlaybackCommitted).toHaveBeenCalledWith(song)
+      })
+
+      expect(adapterMock.getSongDetail).toHaveBeenCalledTimes(1)
+    } finally {
+      detailDeferred.resolve(detailSong)
+      await Promise.allSettled([prefetch, playback])
+    }
+
+    expect(song.name).toBe('Hydrated From Prefetch')
+  })
+
   it('refreshes cached netease urls after an initial playback failure and retries once', async () => {
     const { actions, state, playSongByIndex } = createSubject()
     const song = createMockSong({
@@ -183,6 +229,50 @@ describe('playbackActions playback resolution', () => {
       mediaId: undefined
     })
     expect(song.url).toBe('https://song.test/fresh-retry.mp3')
+    expect(playSongByIndex).toHaveBeenCalledTimes(2)
+    expect(playSongByIndex).toHaveBeenNthCalledWith(1, 0, expect.anything())
+    expect(playSongByIndex).toHaveBeenNthCalledWith(2, 0, expect.anything())
+  })
+
+  it('refreshes newly fetched netease urls after an initial playback failure and retries once', async () => {
+    const { actions, state, playSongByIndex } = createSubject()
+    const song = createMockSong({
+      id: 'song-netease-fresh-retry',
+      platform: 'netease'
+    })
+
+    state.songList = [song]
+    playSongByIndex.mockRejectedValueOnce(new Error('cdn 502')).mockResolvedValueOnce(undefined)
+    adapterMock.getSongUrl
+      .mockResolvedValueOnce('http://m702.music.126.net/bad.mp3')
+      .mockResolvedValueOnce('http://m802.music.126.net/fresh.mp3')
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    await actions.playSongWithDetails(0)
+
+    expect(adapterMock.getSongUrl).toHaveBeenCalledTimes(2)
+    expect(adapterMock.getSongUrl).toHaveBeenNthCalledWith(
+      1,
+      'netease',
+      'song-netease-fresh-retry',
+      {
+        mediaId: undefined
+      }
+    )
+    expect(adapterMock.getSongUrl).toHaveBeenNthCalledWith(
+      2,
+      'netease',
+      'song-netease-fresh-retry',
+      {
+        mediaId: undefined
+      }
+    )
+    expect(song.url).toBe('http://m802.music.126.net/fresh.mp3')
     expect(playSongByIndex).toHaveBeenCalledTimes(2)
     expect(playSongByIndex).toHaveBeenNthCalledWith(1, 0, expect.anything())
     expect(playSongByIndex).toHaveBeenNthCalledWith(2, 0, expect.anything())

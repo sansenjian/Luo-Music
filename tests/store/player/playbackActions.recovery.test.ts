@@ -40,7 +40,7 @@ describe('playbackActions recovery and skip flow', () => {
       .mockResolvedValue(undefined)
 
     await expect(actions.playSongWithDetails(0)).resolves.toBeUndefined()
-    expect(playNextSkipUnavailable).toHaveBeenCalled()
+    expect(playNextSkipUnavailable).toHaveBeenCalledWith(0)
   })
 
   it('delegates playNextSkipUnavailable to the error handler callback', async () => {

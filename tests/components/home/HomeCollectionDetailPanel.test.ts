@@ -131,6 +131,50 @@ describe('HomeCollectionDetailPanel', () => {
     expect(playSongWithDetailsSpy).toHaveBeenCalledWith(0)
   })
 
+  it('starts playlist playback from the loaded page without fetching all pages first', async () => {
+    getPlaylistTracksMock.mockResolvedValueOnce({
+      songs: Array.from({ length: 50 }, (_, index) => ({
+        id: `song-${index + 1}`,
+        name: `Song ${index + 1}`,
+        artists: [{ id: 'artist-1', name: 'Artist 1' }],
+        album: { id: 'album-1', name: 'Album 1', picUrl: 'cover-1.jpg' },
+        duration: 240000,
+        platform: 'netease'
+      }))
+    })
+
+    const playerStore = usePlayerStore()
+    const setSongListSpy = vi.spyOn(playerStore, 'setSongList')
+    const playSongWithDetailsSpy = vi
+      .spyOn(playerStore, 'playSongWithDetails')
+      .mockResolvedValue(undefined as never)
+
+    const wrapper = mount(HomeCollectionDetailPanel, {
+      props: {
+        collection: {
+          uiId: 'playlist:123',
+          sourceId: 123,
+          kind: 'playlist',
+          name: '测试歌单',
+          coverUrl: 'cover.jpg',
+          summary: '120 首歌',
+          trackCount: 120
+        }
+      }
+    })
+    await flushPromises()
+
+    expect(getPlaylistTracksMock).toHaveBeenCalledTimes(1)
+
+    await wrapper.get('.hero-action-primary').trigger('click')
+    await flushPromises()
+
+    expect(getPlaylistTracksMock).toHaveBeenCalledTimes(1)
+    expect(setSongListSpy).toHaveBeenCalledTimes(1)
+    expect(setSongListSpy.mock.calls[0]?.[0]).toHaveLength(50)
+    expect(playSongWithDetailsSpy).toHaveBeenCalledWith(0)
+  })
+
   it('loads album detail when the selected collection is an album', async () => {
     const wrapper = mount(HomeCollectionDetailPanel, {
       props: {

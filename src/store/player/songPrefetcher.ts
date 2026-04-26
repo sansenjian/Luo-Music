@@ -12,7 +12,11 @@ interface PrefetchedSongData {
 
 interface PrefetchEntry {
   data: Promise<PrefetchedSongData>
+  urlData: Promise<string | null>
+  detailData: Promise<Song | null>
   resolvedData: PrefetchedSongData | null
+  resolvedUrl: string | null | undefined
+  resolvedDetail: Song | null | undefined
   timestamp: number
 }
 
@@ -76,7 +80,7 @@ class SongPrefetcher {
       return null
     }
 
-    return entry.resolvedData?.url ?? null
+    return entry.resolvedUrl ?? entry.resolvedData?.url ?? null
   }
 
   /**
@@ -93,15 +97,42 @@ class SongPrefetcher {
       return null
     }
 
-    // Already resolved — return synchronously
+    // Already resolved — return synchronously.
+    if (entry.resolvedUrl !== undefined) {
+      return entry.resolvedUrl
+    }
+
     if (entry.resolvedData?.url) {
       return entry.resolvedData.url
     }
 
-    // In flight — wait for the promise to settle
+    // In flight — wait for URL only. Detail hydration may still be pending
+    // and must not block the audible start of playback.
     try {
-      const result = await entry.data
-      return result?.url ?? null
+      return await entry.urlData
+    } catch {
+      return null
+    }
+  }
+
+  async awaitPrefetchedDetail(song: Song): Promise<Song | null> {
+    const key = this.getCacheKey(song)
+    const entry = this.cache.get(key)
+
+    if (!entry || !this.isValidEntry(entry)) {
+      return null
+    }
+
+    if (entry.resolvedDetail !== undefined) {
+      return entry.resolvedDetail
+    }
+
+    if (entry.resolvedData?.detail) {
+      return entry.resolvedData.detail
+    }
+
+    try {
+      return await entry.detailData
     } catch {
       return null
     }
@@ -128,10 +159,60 @@ class SongPrefetcher {
     const platformKey = getSongPlatformKey(song)
     const mediaId = resolveMediaId(song)
 
-    const prefetchPromise = Promise.all([
-      this.musicService.getSongUrl(platformKey, song.id, { mediaId }),
-      this.musicService.getSongDetail(platformKey, song.id)
-    ]).then(([url, detail]) => ({
+    const urlPromise = this.musicService
+      .getSongUrl(platformKey, song.id, { mediaId })
+      .then(url => {
+        const entry = this.cache.get(key)
+        if (entry) {
+          entry.resolvedUrl = url ?? null
+          entry.timestamp = Date.now()
+        }
+
+        if (url && !song.url) {
+          song.url = url
+        }
+
+        return url
+      })
+      .catch(error => {
+        const entry = this.cache.get(key)
+        if (entry) {
+          entry.resolvedUrl = null
+        }
+        console.warn('[Prefetcher] Failed to prefetch song url:', song.id, error)
+        return null
+      })
+
+    const detailPromise = this.musicService
+      .getSongDetail(platformKey, song.id)
+      .then(detail => {
+        const entry = this.cache.get(key)
+        if (entry) {
+          entry.resolvedDetail = detail ?? null
+          entry.timestamp = Date.now()
+        }
+
+        if (detail) {
+          if (!song.mediaId && detail.mediaId !== undefined) {
+            song.mediaId = detail.mediaId
+          }
+          if (detail.extra) {
+            song.extra = { ...song.extra, ...detail.extra }
+          }
+        }
+
+        return detail
+      })
+      .catch(error => {
+        const entry = this.cache.get(key)
+        if (entry) {
+          entry.resolvedDetail = null
+        }
+        console.warn('[Prefetcher] Failed to prefetch song detail:', song.id, error)
+        return null
+      })
+
+    const prefetchPromise = Promise.all([urlPromise, detailPromise]).then(([url, detail]) => ({
       song,
       url,
       detail,
@@ -140,27 +221,20 @@ class SongPrefetcher {
 
     this.cache.set(key, {
       data: prefetchPromise,
+      urlData: urlPromise,
+      detailData: detailPromise,
       resolvedData: null,
+      resolvedUrl: undefined,
+      resolvedDetail: undefined,
       timestamp: Date.now()
     })
 
     try {
       const result = await prefetchPromise
       const entry = this.cache.get(key)
-      if (entry) entry.resolvedData = result
-
-      // Write URL back to the original song object so that future playback
-      // can skip the network request entirely via shouldFetchFreshSongUrl.
-      if (result.url && !song.url) {
-        song.url = result.url
-      }
-      if (result.detail) {
-        if (!song.mediaId && result.detail.mediaId !== undefined) {
-          song.mediaId = result.detail.mediaId
-        }
-        if (result.detail.extra) {
-          song.extra = { ...song.extra, ...result.detail.extra }
-        }
+      if (entry) {
+        entry.resolvedData = result
+        entry.timestamp = result.timestamp
       }
 
       return result

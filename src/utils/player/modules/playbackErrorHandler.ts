@@ -24,7 +24,10 @@ export interface ErrorHandler {
   reset(): void
   handleAudioError(error: unknown, song: Song | null): Promise<AudioErrorResult>
   markAsUnavailable(song: Song, message?: string): void
-  playNextSkipUnavailable(playNext: (index: number) => Promise<void>): Promise<void>
+  playNextSkipUnavailable(
+    playNext: (index: number) => Promise<void>,
+    startIndex?: number
+  ): Promise<void>
 }
 
 export class PlaybackErrorHandler implements ErrorHandler {
@@ -137,51 +140,97 @@ export class PlaybackErrorHandler implements ErrorHandler {
     return false
   }
 
-  async playNextSkipUnavailable(playNext: (index: number) => Promise<void>) {
+  async playNextSkipUnavailable(
+    playNext: (index: number) => Promise<void>,
+    startIndexOverride?: number
+  ) {
     if (this.shouldStopSkipping()) {
       console.warn('Skip frequency limit reached or too many unavailable songs')
       throw new Error('播放列表中可用歌曲较少，请尝试其他歌单')
     }
 
     const { currentIndex, songList } = this.getState()
-    const startIndex = currentIndex
-    let attempts = 0
-    const maxAttempts = Math.min(songList.length, 10)
+    const startIndex = startIndexOverride ?? currentIndex
+    const candidateIndices = this.getNextCandidateIndices(startIndex).filter(index => {
+      const song = songList[index]
+      return song && !song.unavailable
+    })
 
-    while (attempts < maxAttempts) {
-      const newIndex = this.getNextAvailableIndex(startIndex, attempts)
-
-      if (newIndex === startIndex && attempts > 0) {
-        console.warn('All songs in playlist are unavailable')
-        break
+    for (const newIndex of candidateIndices) {
+      const candidate = songList[newIndex]
+      if (!candidate) {
+        continue
       }
 
-      if (!songList[newIndex].unavailable) {
-        try {
-          await playNext(newIndex)
-          this.skipAttempts = 0
-          return
-        } catch {
-          this.markAsUnavailable(songList[newIndex])
-          attempts++
-          continue
-        }
+      try {
+        await playNext(newIndex)
+        this.skipAttempts = 0
+        return
+      } catch (error) {
+        const message = error instanceof Error && error.message.trim() ? error.message : undefined
+        this.markAsUnavailable(candidate, message)
       }
-
-      attempts++
     }
 
     throw new Error('无法播放任何歌曲')
   }
 
   getNextAvailableIndex(startIndex: number, attempts: number) {
+    const candidateIndices = this.getNextCandidateIndices(startIndex).filter(index => {
+      const song = this.getState().songList[index]
+      return song && !song.unavailable
+    })
+
+    if (candidateIndices.length === 0) {
+      return -1
+    }
+
+    return candidateIndices[attempts % candidateIndices.length]
+  }
+
+  private getNextCandidateIndices(startIndex: number): number[] {
     const { songList, playMode } = this.getState()
+    if (songList.length === 0) {
+      return []
+    }
+
+    const hasValidStartIndex = startIndex >= 0 && startIndex < songList.length
 
     if (playMode === PLAY_MODE.SHUFFLE) {
-      return Math.floor(Math.random() * songList.length)
-    } else {
-      return (startIndex + 1 + attempts) % songList.length
+      const indices = songList
+        .map((_, index) => index)
+        .filter(index => !hasValidStartIndex || index !== startIndex)
+      return this.shuffleIndices(indices)
     }
+
+    const indices: number[] = []
+
+    if (playMode === PLAY_MODE.SEQUENTIAL) {
+      const firstIndex = hasValidStartIndex ? startIndex + 1 : 0
+      for (let index = firstIndex; index < songList.length; index += 1) {
+        indices.push(index)
+      }
+      return indices
+    }
+
+    const candidateCount = hasValidStartIndex ? songList.length - 1 : songList.length
+    for (let offset = 1; offset <= candidateCount; offset += 1) {
+      const nextIndex = hasValidStartIndex ? (startIndex + offset) % songList.length : offset - 1
+      if (nextIndex >= 0 && nextIndex < songList.length) {
+        indices.push(nextIndex)
+      }
+    }
+
+    return indices
+  }
+
+  private shuffleIndices(indices: number[]): number[] {
+    const shuffled = [...indices]
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1))
+      ;[shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]]
+    }
+    return shuffled
   }
 
   reset() {

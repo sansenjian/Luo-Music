@@ -3,6 +3,7 @@ import { vi } from 'vitest'
 import { replaceRuntimePlatformDescriptors } from '@/platform/music/descriptors'
 import { createInitialState } from '@/store/player/playerState'
 import { PlaybackActions } from '@/store/player/playbackActions'
+import { songPrefetcher } from '@/store/player/songPrefetcher'
 import type { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
 
 type MockPlaybackErrorHandler = PlaybackErrorHandler & {
@@ -106,6 +107,11 @@ const TEST_PLATFORM_DESCRIPTORS = [
 
 export function resetPlaybackActionMocks() {
   vi.clearAllMocks()
+  adapterMock.getSongUrl.mockReset()
+  adapterMock.getSongDetail.mockReset()
+  adapterMock.getLyric.mockReset()
+  lyricParseMock.mockReset()
+  songPrefetcher.clearCache()
   replaceRuntimePlatformDescriptors(TEST_PLATFORM_DESCRIPTORS)
 }
 

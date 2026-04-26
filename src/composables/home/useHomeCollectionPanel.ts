@@ -24,7 +24,7 @@ export function useHomeCollectionPanel(
   const userStore = useUserStore()
   const playerStore = usePlayerStore()
   const toastStore = useToastStore()
-  const { loadPlaylistSongs, usePlaylistTracks } = useUserPlaylists()
+  const { usePlaylistTracks } = useUserPlaylists()
   const { loadAlbumSongs } = useFavoriteAlbums()
   const {
     likeSongs,
@@ -227,31 +227,11 @@ export function useHomeCollectionPanel(
       return
     }
 
-    let playbackSongs = selection.songs
-    let playbackIndex = selection.playbackIndex
-
-    if (isPlaylistCollection.value && hasMore.value) {
-      const sourceId = collection.value?.sourceId
-      if (sourceId != null) {
-        try {
-          const allSongs = await loadPlaylistSongs(sourceId)
-          const targetSong = playbackSongs[playbackIndex]
-          if (targetSong) {
-            playbackIndex = allSongs.findIndex(song => song.id === targetSong.id)
-            if (playbackIndex === -1) playbackIndex = 0
-          }
-          playbackSongs = allSongs
-        } catch {
-          // Fall back to paginated songs already loaded.
-        }
-      }
-    }
-
     await playMediaSongSelection(
       playerStore,
       toastStore,
-      playbackSongs,
-      playbackIndex,
+      selection.songs,
+      selection.playbackIndex,
       '播放歌单详情时发生错误。'
     )
   }

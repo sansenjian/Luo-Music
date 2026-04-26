@@ -283,7 +283,10 @@ export class PlaybackActions {
 
       const fetchDetailPromise =
         shouldHydrate && !prefetchedData?.detail
-          ? musicService.getSongDetail(platformKey, song.id)
+          ? songPrefetcher.awaitPrefetchedDetail(song).then(detail => {
+              if (detail) return detail
+              return musicService.getSongDetail(platformKey, song.id)
+            })
           : Promise.resolve(prefetchedData?.detail ?? null)
 
       const fetchLyricPromise = this.shouldFetchLyrics(song, platformKey)
@@ -329,9 +332,7 @@ export class PlaybackActions {
         songPrefetcher.schedulePrefetch(state.songList, index)
       } catch (playbackError) {
         const canRetryWithFreshUrl =
-          getPlatformCapabilities(platformKey).supportsUrlRefreshOnFailure &&
-          !shouldFetchUrl &&
-          Boolean(song.url)
+          getPlatformCapabilities(platformKey).supportsUrlRefreshOnFailure && Boolean(song.url)
 
         if (!canRetryWithFreshUrl) {
           throw playbackError
@@ -426,7 +427,7 @@ export class PlaybackActions {
       }
 
       try {
-        await this.playNextSkipUnavailable()
+        await this.playNextSkipUnavailable(index)
         return
       } catch {
         errorCenter.emit(Errors.fatal('无法播放任何歌曲，请检查网络或切换歌单'))
@@ -438,7 +439,7 @@ export class PlaybackActions {
     }
   }
 
-  async playNextSkipUnavailable(): Promise<void> {
+  async playNextSkipUnavailable(startIndex?: number): Promise<void> {
     let errorHandler = this.deps.getErrorHandler()
     if (!errorHandler) {
       errorHandler = this.deps.createErrorHandler()
@@ -446,7 +447,7 @@ export class PlaybackActions {
 
     await errorHandler.playNextSkipUnavailable(async (index: number) => {
       await this.playSongWithDetails(index, false)
-    })
+    }, startIndex)
   }
 }
 

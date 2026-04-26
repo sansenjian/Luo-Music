@@ -170,8 +170,32 @@ describe('playbackErrorHandler', () => {
     expect(songs[2].unavailable).toBe(true)
   })
 
+  it('continues from the failed song index even when currentIndex is stale', async () => {
+    const songs = [
+      createMockSong({ id: 1 }),
+      createMockSong({ id: 2 }),
+      createMockSong({ id: 3 }),
+      createMockSong({ id: 4 })
+    ]
+
+    const handler = new PlaybackErrorHandler({
+      musicService: musicServiceMock,
+      getState: () => ({
+        songList: songs,
+        currentIndex: 0,
+        playMode: PLAY_MODE.SEQUENTIAL
+      })
+    })
+
+    const playNext = vi.fn().mockResolvedValueOnce(undefined)
+
+    await handler.playNextSkipUnavailable(playNext, 2)
+
+    expect(playNext).toHaveBeenCalledWith(3)
+  })
+
   it('supports shuffle index selection and reset', () => {
-    const songs = [createMockSong({ id: 1 }), createMockSong({ id: 2, unavailable: true })]
+    const songs = [createMockSong({ id: 1 }), createMockSong({ id: 2 })]
     const handler = new PlaybackErrorHandler({
       musicService: musicServiceMock,
       getState: () => ({
