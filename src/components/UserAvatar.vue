@@ -2,10 +2,10 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { logout } from '../api/user'
-import { qqMusicApi } from '../api/qqmusic'
-import { services } from '../services'
-import { useUserStore } from '../store/userStore'
+import { logout } from '@/api/user'
+import { qqMusicApi } from '@/api/qqmusic'
+import { services } from '@/services'
+import { useUserStore } from '@/store/userStore'
 import LoginModal from './LoginModal.vue'
 import QQLoginModal from './QQLoginModal.vue'
 

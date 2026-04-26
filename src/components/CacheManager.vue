@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { services } from '../services'
-import { useUserStore } from '../store/userStore'
+import { services } from '@/services'
+import { useUserStore } from '@/store/userStore'
 
 const platformService = services.platform()
 const userStore = useUserStore()

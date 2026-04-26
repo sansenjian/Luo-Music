@@ -12,10 +12,10 @@ import type {
   INVOKE_CHANNELS,
   RECEIVE_CHANNELS,
   SEND_CHANNELS
-} from '../shared/protocol/channels.ts'
-import type { CacheClearOptions, CacheClearResult } from '../shared/protocol/cache.ts'
-import type { LogEntry } from '../shared/log'
-import type { AppConfig, ConfigChangeEvent } from '../shared/config'
+} from '@/platform/contracts/protocol/channels'
+import type { CacheClearOptions, CacheClearResult } from '@/platform/contracts/protocol/cache'
+import type { LogEntry } from '@/platform/contracts/log'
+import type { AppConfig, ConfigChangeEvent } from '@/platform/contracts/config'
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
@@ -28,9 +28,8 @@ import type {
 } from '@/types/localLibrary'
 import type { Song, SongPlatform } from '@/types/schemas.ts'
 import type { PlatformDescriptor } from '@/platform/music/descriptors'
-import type { LyricDisplayType, PlayMode as PlayerPlayMode } from '../../src/types/player'
-import type { LyricLine as PlayerLyricLine } from '../../src/utils/player/core/lyric'
-import type { PluginMethodName } from '../plugins/types'
+import type { LyricDisplayType, PlayMode as PlayerPlayMode } from '@/types/player'
+import type { LyricLine as PlayerLyricLine } from '@/utils/player/core/lyric'
 
 // 导出 PlayMode 类型供 handlers 使用
 export type PlayMode = PlayerPlayMode
@@ -38,6 +37,13 @@ export type PlayMode = PlayerPlayMode
 // ========== 基础类型 ==========
 
 export type { CacheClearOptions, CacheClearResult }
+
+export type PluginMethodName =
+  | 'search'
+  | 'getSongUrl'
+  | 'getSongDetail'
+  | 'getLyric'
+  | 'getPlaylistDetail'
 
 export type ServiceStatus = 'running' | 'stopped' | 'error'
 

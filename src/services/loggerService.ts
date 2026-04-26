@@ -1,13 +1,13 @@
-import type { Event } from '../base/common/event/event'
-import { EventEmitter } from '../base/common/event/event'
-import { Disposable } from '../base/common/lifecycle/disposable'
+import type { Event } from '@/base/common/event/event'
+import { EventEmitter } from '@/base/common/event/event'
+import { Disposable } from '@/base/common/lifecycle/disposable'
 import {
   LogLevel as LogLevels,
   type ActiveLogLevel,
   type LogEntry,
   type LogLevel,
   shouldLog
-} from '../../electron/shared/log'
+} from '@/platform/contracts/log'
 
 export { LogLevels as LogLevel }
 export type { LogEntry, LogLevel as LogLevelValue }

@@ -17,8 +17,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@electron/sandbox": ["electron/sandbox/index.ts"],
-      "@electron/shared/*": ["electron/shared/*"]
+      "@plugin-sdk": ["packages/plugin-sdk/index.ts"],
+      "@plugin-sdk/*": ["packages/plugin-sdk/*"],
+      "@electron/sandbox": ["electron/sandbox/index.ts"]
     },
     "allowJs": false,
     "checkJs": false,
@@ -32,10 +33,10 @@
     "src/**/*.tsx",
     "src/**/*.vue",
     "src/config/**/*.js",
+    "packages/plugin-sdk/**/*.ts",
     "tests/**/*.ts",
     "tests/**/*.d.ts",
-    "electron/sandbox/**/*.ts",
-    "electron/shared/**/*.ts"
+    "electron/sandbox/**/*.ts"
   ],
   "exclude": ["electron/main/**/*.ts", "electron/**/*.js"]
 }

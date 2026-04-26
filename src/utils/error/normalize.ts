@@ -1,4 +1,4 @@
-import { isCanceledRequestError } from '../http/cancelError'
+import { isCanceledRequestError } from '@/utils/http/cancelError'
 import { AppError, ErrorCode } from './types'
 
 export type ErrorContext = Record<string, unknown>

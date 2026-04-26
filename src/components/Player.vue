@@ -4,7 +4,7 @@ import { defineAsyncComponent, computed } from 'vue'
 import { uiMessages } from '@/messages/ui'
 import { useAppSettings } from '@/composables/useAppSettings'
 import { useCoverSwipe } from '@/composables/useCoverSwipe'
-import { usePlayerViewModel, resolveCoverUrl } from '../composables/usePlayerViewModel'
+import { usePlayerViewModel, resolveCoverUrl } from '@/composables/usePlayerViewModel'
 
 const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'))
 const ProgressWaveform = defineAsyncComponent(() => import('./ProgressWaveform.vue'))

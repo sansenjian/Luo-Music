@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { uiMessages } from '@/messages/ui'
 
-import AppSettingsContent from '../settings/AppSettingsContent.vue'
+import AppSettingsContent from '@/components/settings/AppSettingsContent.vue'
 </script>
 
 <template>

@@ -43,7 +43,7 @@ describe('IpcService', () => {
   it('replaces send listeners when a channel is re-registered and removes them on dispose', async () => {
     const [{ ipcService }, { SEND_CHANNELS }] = await Promise.all([
       import('../../electron/ipc/IpcService.ts'),
-      import('../../electron/shared/protocol/channels.ts')
+      import('@/platform/contracts/protocol/channels')
     ])
 
     const firstHandler = vi.fn()
@@ -68,10 +68,7 @@ describe('IpcService', () => {
     expect(windowShowRegistrations).toHaveLength(2)
     expect(secondWrapper).toBeTypeOf('function')
     expect(secondWrapper).not.toBe(firstWrapper)
-    expect(ipcMainRemoveListenerMock).toHaveBeenCalledWith(
-      SEND_CHANNELS.WINDOW_SHOW,
-      firstWrapper
-    )
+    expect(ipcMainRemoveListenerMock).toHaveBeenCalledWith(SEND_CHANNELS.WINDOW_SHOW, firstWrapper)
 
     await secondWrapper?.({} as never)
 
@@ -80,9 +77,6 @@ describe('IpcService', () => {
 
     ipcService.dispose()
 
-    expect(ipcMainRemoveListenerMock).toHaveBeenCalledWith(
-      SEND_CHANNELS.WINDOW_SHOW,
-      secondWrapper
-    )
+    expect(ipcMainRemoveListenerMock).toHaveBeenCalledWith(SEND_CHANNELS.WINDOW_SHOW, secondWrapper)
   })
 })

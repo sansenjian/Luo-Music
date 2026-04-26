@@ -4,19 +4,19 @@ import { computed, defineAsyncComponent } from 'vue'
 import { useUserCenterPage } from '@/composables/useUserCenterPage'
 
 const UserProfileHeader = defineAsyncComponent(
-  () => import('../components/user/UserProfileHeader.vue')
+  () => import('@/components/user/UserProfileHeader.vue')
 )
-const LikedSongsView = defineAsyncComponent(() => import('../components/user/LikedSongsView.vue'))
-const PlaylistsView = defineAsyncComponent(() => import('../components/user/PlaylistsView.vue'))
+const LikedSongsView = defineAsyncComponent(() => import('@/components/user/LikedSongsView.vue'))
+const PlaylistsView = defineAsyncComponent(() => import('@/components/user/PlaylistsView.vue'))
 const FavoriteAlbumsView = defineAsyncComponent(
-  () => import('../components/user/FavoriteAlbumsView.vue')
+  () => import('@/components/user/FavoriteAlbumsView.vue')
 )
 const AlbumDetailPanel = defineAsyncComponent(
-  () => import('../components/user/AlbumDetailPanel.vue')
+  () => import('@/components/user/AlbumDetailPanel.vue')
 )
-const EventsView = defineAsyncComponent(() => import('../components/user/EventsView.vue'))
+const EventsView = defineAsyncComponent(() => import('@/components/user/EventsView.vue'))
 const PlaylistDetailPanel = defineAsyncComponent(
-  () => import('../components/user/PlaylistDetailPanel.vue')
+  () => import('@/components/user/PlaylistDetailPanel.vue')
 )
 
 const {

@@ -36,7 +36,7 @@ describe('electron/ipc/handlers/log.handler', () => {
   })
 
   it('registers unified handlers for log and error send channels', async () => {
-    const { SEND_CHANNELS } = await import('../../electron/shared/protocol/channels')
+    const { SEND_CHANNELS } = await import('@/platform/contracts/protocol/channels')
     const { registerLogHandlers } = await import('../../electron/ipc/handlers/log.handler')
 
     registerLogHandlers()

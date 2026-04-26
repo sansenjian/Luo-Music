@@ -1,4 +1,4 @@
-import type { Event } from '../../base/common/event/event'
+import type { Event } from '@/base/common/event/event'
 
 export type ContextKeyValue = boolean | number | string | null | undefined
 

@@ -3,8 +3,8 @@ import type {
   IClearCacheOptions,
   IClearCacheResult,
   IMessageHandler
-} from '../platform/common/types'
-import { getPlatformService, initializePlatformService } from '../platform'
+} from '@/platform/common/types'
+import { getPlatformService, initializePlatformService } from '@/platform'
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,

@@ -1,6 +1,6 @@
 import { onBeforeUnmount } from 'vue'
 
-import { INVOKE_CHANNELS, SEND_CHANNELS } from '../../electron/shared/protocol/channels'
+import { INVOKE_CHANNELS, SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
 import { isElectronRuntime } from '@/utils/runtime'
 import {
   computeResizedWindowBounds,

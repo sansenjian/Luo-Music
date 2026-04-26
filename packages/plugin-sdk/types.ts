@@ -123,6 +123,13 @@ export interface PlaylistDetailInput {
   id: string | number
 }
 
+export type PluginMethodName =
+  | 'search'
+  | 'getSongUrl'
+  | 'getSongDetail'
+  | 'getLyric'
+  | 'getPlaylistDetail'
+
 export interface MusicPluginCapabilities {
   search: boolean
   songUrl: boolean

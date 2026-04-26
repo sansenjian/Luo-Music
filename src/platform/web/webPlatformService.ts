@@ -4,13 +4,13 @@
 
 import type { IDisposable } from '@/base/common/lifecycle/disposable'
 import { Disposable } from '@/base/common/lifecycle/disposable'
-import { PlatformServiceBase, formatBytes } from '../common/platformService'
+import { PlatformServiceBase, formatBytes } from '@/platform/common/platformService'
 import type {
   ICacheSize,
   IClearCacheOptions,
   IClearCacheResult,
   IMessageHandler
-} from '../common/types'
+} from '@/platform/common/types'
 
 export class WebPlatformService extends PlatformServiceBase {
   readonly name = 'web'

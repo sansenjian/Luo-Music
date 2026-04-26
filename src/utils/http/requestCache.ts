@@ -1,5 +1,5 @@
 ﻿import type { AxiosRequestConfig } from 'axios'
-import { CACHE_DEFAULTS } from '../../../electron/shared/protocol/cache'
+import { CACHE_DEFAULTS } from '@/platform/contracts/protocol/cache'
 import { getCacheConfig } from './requestConfig'
 
 export const AUTH_REQUEST_CACHE_NAMESPACE = 'auth'

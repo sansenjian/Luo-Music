@@ -1,5 +1,5 @@
 import { getIpcProxy } from './ipcProxy'
-import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channels'
+import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
 
 import type { Song, SongPlatform } from '../../../src/types/schemas'
 import type { PlayMode, PlayerStateResponse } from '../../../src/types/player'
@@ -8,7 +8,7 @@ import type {
   DesktopLyricSnapshot,
   PlayerPlaySongByIdPayload,
   PlayerPlaySongPayload
-} from '../../ipc/types'
+} from '@/platform/contracts/ipc'
 
 export type PlayerState = PlayerStateResponse
 

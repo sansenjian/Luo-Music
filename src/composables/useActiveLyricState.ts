@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 
-import { usePlayerStore } from '../store/playerStore'
-import type { LyricLine } from '../utils/player/core/lyric'
+import { usePlayerStore } from '@/store/playerStore'
+import type { LyricLine } from '@/utils/player/core/lyric'
 import { useIpcActiveLyricState } from './useIpcActiveLyricState'
 
 export type LyricStateSource = 'store' | 'ipc'

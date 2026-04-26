@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query'
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue'
 
-import { getUserDetail, getUserLevel, getUserSubcount } from '../api/user'
+import { getUserDetail, getUserLevel, getUserSubcount } from '@/api/user'
 
 interface UserProfile {
   nickname?: string

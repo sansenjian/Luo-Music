@@ -1,4 +1,4 @@
-import { PLAY_MODE } from '../constants/playMode'
+import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import type { Song } from '@/types/schemas'
 import { isLocalLibrarySong } from '@/types/localLibrary'
 import { resolveMediaId } from '@/utils/songIdentity'

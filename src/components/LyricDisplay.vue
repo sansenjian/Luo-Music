@@ -3,11 +3,11 @@ import { ref, computed, watch, nextTick } from 'vue'
 
 import HomeEmptyState from './home/HomeEmptyState.vue'
 import { uiMessages } from '@/messages/ui'
-import { useActiveLyricState } from '../composables/useActiveLyricState'
-import { useLyricAutoScroll } from '../composables/useLyricAutoScroll'
-import { useLyricVirtualScroll } from '../composables/useLyricVirtualScroll'
-import { usePlayerStore } from '../store/playerStore'
-import { resolveLyricDisplayLine } from '../utils/player/lyric-display'
+import { useActiveLyricState } from '@/composables/useActiveLyricState'
+import { useLyricAutoScroll } from '@/composables/useLyricAutoScroll'
+import { useLyricVirtualScroll } from '@/composables/useLyricVirtualScroll'
+import { usePlayerStore } from '@/store/playerStore'
+import { resolveLyricDisplayLine } from '@/utils/player/lyric-display'
 
 const VIRTUALIZE_THRESHOLD = 50
 

@@ -20,7 +20,7 @@ import {
   resolveDesktopLyricWritingMode
 } from '@/utils/player/desktopLyricSettings'
 
-import CacheManager from '../CacheManager.vue'
+import CacheManager from '@/components/CacheManager.vue'
 
 type SettingsSurface = 'dialog' | 'workspace'
 

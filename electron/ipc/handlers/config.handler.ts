@@ -1,12 +1,12 @@
 import { ipcService } from '../IpcService'
-import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channels.ts'
+import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
 
 import {
   DEFAULT_APP_CONFIG,
   type AppConfig,
   type ConfigKey,
   type ConfigChangeEvent
-} from '../../shared/config'
+} from '@/platform/contracts/config'
 
 type ElectronStoreShape = {
   get: <T>(key: string, defaultValue?: T) => T

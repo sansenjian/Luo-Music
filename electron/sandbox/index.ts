@@ -1,6 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { SEND_CHANNELS, RECEIVE_CHANNELS, INVOKE_CHANNELS } from '../shared/protocol/channels.ts'
-import { createLegacyElectronAPI, type ElectronAPI } from './legacyElectronApi'
+import {
+  SEND_CHANNELS,
+  RECEIVE_CHANNELS,
+  INVOKE_CHANNELS
+} from '@/platform/contracts/protocol/channels'
+import type { ElectronAPI, ServiceAPI as ExposedServiceAPI } from '@/platform/contracts/sandbox'
+import { createLegacyElectronAPI } from './legacyElectronApi'
 
 // 导入服务代理
 import { LogProxy, ConfigProxy, ApiProxy, WindowProxy, PlayerProxy, PluginProxy } from './services'
@@ -22,11 +27,6 @@ type IpcCoreAPI = {
   removeAllListeners: (channel?: Channel) => void
   supportsSendChannel: (channel: string) => channel is SendChannel
 }
-
-type LoggerServiceAPI = Pick<
-  LogProxy,
-  'trace' | 'debug' | 'info' | 'warn' | 'error' | 'errorWithStack'
->
 
 type ConfigServiceAPI = Pick<
   ConfigProxy,
@@ -66,19 +66,6 @@ type WindowServiceAPI = Pick<
   | 'lockDesktopLyric'
 >
 
-type PluginServiceAPI = Pick<
-  PluginProxy,
-  | 'list'
-  | 'installFromPath'
-  | 'pickInstallPath'
-  | 'setEnabled'
-  | 'uninstall'
-  | 'getSettings'
-  | 'updateSettings'
-  | 'call'
-  | 'onChanged'
->
-
 type PlayerServiceAPI = Pick<
   PlayerProxy,
   | 'play'
@@ -108,14 +95,7 @@ type PlayerServiceAPI = Pick<
   | 'onPlayError'
 >
 
-type ServiceAPIShape = IpcCoreAPI & {
-  createLogger: (module: string) => LoggerServiceAPI
-  config: ConfigServiceAPI
-  api: ApiServiceAPI
-  window: WindowServiceAPI
-  player: PlayerServiceAPI
-  plugins: PluginServiceAPI
-}
+type ServiceAPIShape = ExposedServiceAPI
 interface ValidatedIpcBridge {
   send: (channel: string, ...args: unknown[]) => void
   on: (channel: string, callback: (...args: unknown[]) => void) => () => void
@@ -316,7 +296,7 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
   }
 }
 
-export type ServiceAPI = ReturnType<typeof createServiceAPI>
+export type ServiceAPI = ExposedServiceAPI
 
 function exposeAPI(): void {
   const ipc = createValidatedIpcBridge(ipcRenderer)
@@ -333,6 +313,6 @@ exposeAPI()
 declare global {
   interface Window {
     electronAPI: ElectronAPI
-    services: ServiceAPI
+    services: ExposedServiceAPI
   }
 }

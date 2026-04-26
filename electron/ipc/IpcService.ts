@@ -11,7 +11,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import type { IpcMainEvent } from 'electron'
 import logger from '../logger'
 
-import { INVOKE_CHANNELS, SEND_CHANNELS } from '../shared/protocol/channels.ts'
+import { INVOKE_CHANNELS, SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
 import type {
   InvokeChannelMap,
   SendChannelMap,
@@ -19,7 +19,7 @@ import type {
   InvokeFunction,
   SendFunction,
   ReceiveCallback
-} from './types'
+} from '@/platform/contracts/ipc'
 
 // ========== 配置类型 ==========
 

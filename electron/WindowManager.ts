@@ -9,7 +9,7 @@ import path from 'node:path'
 
 import { downloadManager } from './DownloadManager'
 import logger from './logger'
-import { RECEIVE_CHANNELS } from './shared/protocol/channels'
+import { RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
 import { MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
 const StoreModule = require('electron-store') as {
   default?: new (options?: { projectName: string }) => {

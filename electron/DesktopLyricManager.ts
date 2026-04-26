@@ -1,9 +1,9 @@
 import path from 'node:path'
 import type { BrowserWindow } from 'electron'
 import type { SongPlatform } from '@/types/schemas'
-import type { DesktopLyricUpdateCause } from './ipc/types'
-import { DEFAULT_APP_CONFIG, type AppConfig } from './shared/config'
-import { RECEIVE_CHANNELS, type ReceiveChannel } from './shared/protocol/channels'
+import type { DesktopLyricUpdateCause } from '@/platform/contracts/ipc'
+import { DEFAULT_APP_CONFIG, type AppConfig } from '@/platform/contracts/config'
+import { RECEIVE_CHANNELS, type ReceiveChannel } from '@/platform/contracts/protocol/channels'
 
 import { MAIN_DIST, RENDERER_DIST } from './utils/paths'
 

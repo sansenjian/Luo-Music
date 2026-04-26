@@ -1,9 +1,9 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { COMMANDS } from '../core/commands/commands'
-import type { Song } from '../types/schemas'
-import { services } from '../services'
-import type { CommandService } from '../services/commandService'
-import { usePlayerStore } from '../store/playerStore'
+import { COMMANDS } from '@/core/commands/commands'
+import type { Song } from '@/types/schemas'
+import { services } from '@/services'
+import type { CommandService } from '@/services/commandService'
+import { usePlayerStore } from '@/store/playerStore'
 import {
   animateAlbumCover,
   animateButtonClick,

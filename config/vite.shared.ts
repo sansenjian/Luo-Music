@@ -27,9 +27,10 @@ export function resolveViteDevServerPort(
   return parsed
 }
 
-export function createSrcAlias(rootDir: string): Record<'@', string> {
+export function createSrcAlias(rootDir: string): Record<string, string> {
   return {
-    '@': resolve(rootDir, 'src')
+    '@': resolve(rootDir, 'src'),
+    '@plugin-sdk': resolve(rootDir, 'packages/plugin-sdk')
   }
 }
 

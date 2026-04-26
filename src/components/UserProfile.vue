@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useUserStore } from '../store/userStore'
-import { logout } from '../api/user'
+import { useUserStore } from '@/store/userStore'
+import { logout } from '@/api/user'
 
 const userStore = useUserStore()
 

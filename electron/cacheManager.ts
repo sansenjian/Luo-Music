@@ -1,5 +1,5 @@
 ﻿import type { ClearStorageDataOptions } from 'electron'
-import type { CacheClearOptions } from './shared/protocol/cache.ts'
+import type { CacheClearOptions } from '@/platform/contracts/protocol/cache'
 
 const { app, session, ipcMain } = require('electron')
 

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type {
   MusicPluginCapabilities,
+  PluginMethodName,
   PluginPermissionDeclaration,
   PluginSettingDefinition
 } from '../../packages/plugin-sdk'
@@ -64,12 +65,7 @@ export interface ExternalPluginRegistration extends InstalledPluginLocation {
   state: PluginStateRecord
 }
 
-export type PluginMethodName =
-  | 'search'
-  | 'getSongUrl'
-  | 'getSongDetail'
-  | 'getLyric'
-  | 'getPlaylistDetail'
+export type { PluginMethodName }
 
 export interface PluginListResponse {
   platforms: PlatformDescriptor[]

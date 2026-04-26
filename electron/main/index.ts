@@ -51,7 +51,7 @@ import {
   setWindowManager as setShortcutsWindowManager
 } from './shortcuts'
 import { DEFAULT_SHORTCUTS } from '../../src/config/shortcuts'
-import { NETEASE_API_PORT, QQ_API_PORT } from '../shared/protocol/cache'
+import { NETEASE_API_PORT, QQ_API_PORT } from '@/platform/contracts/protocol/cache'
 
 console.log = logger.log.bind(logger)
 console.error = logger.error.bind(logger)

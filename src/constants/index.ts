@@ -14,4 +14,4 @@ export * from './http'
 export * from './lyric'
 
 // 网易云音乐 API 常量
-export * from '../platform/music/netease.constants'
+export * from '@/platform/music/netease.constants'

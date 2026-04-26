@@ -3,9 +3,9 @@ import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } fr
 
 import HomeEmptyState from './home/HomeEmptyState.vue'
 import { uiMessages } from '@/messages/ui'
-import { usePlayerStore } from '../store/playerStore.ts'
-import { formatTime } from '../utils/player/helpers/timeFormatter'
-import type { Song } from '../platform/music/interface'
+import { usePlayerStore } from '@/store/playerStore.ts'
+import { formatTime } from '@/utils/player/helpers/timeFormatter'
+import type { Song } from '@/platform/music/interface'
 
 const playerStore = usePlayerStore()
 const listRef = ref<HTMLElement | null>(null)

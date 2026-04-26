@@ -1,6 +1,6 @@
-import { createPluginContext } from '../../../../packages/plugin-sdk/runtime'
-import type { MusicPluginDefinition, PluginContext } from '../../../../packages/plugin-sdk'
-import type { MusicPlatformAdapter } from '../interface'
+import { createPluginContext } from '@plugin-sdk/runtime'
+import type { MusicPluginDefinition, PluginContext } from '@plugin-sdk'
+import type { MusicPlatformAdapter } from '@/platform/music/interface'
 import { createPluginAdapterBridge } from './PluginAdapterBridge'
 
 type BuiltInPluginModule = {

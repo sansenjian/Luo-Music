@@ -1,4 +1,4 @@
-import { createPluginContext } from '../../../../packages/plugin-sdk/runtime'
+import { createPluginContext } from '@plugin-sdk/runtime'
 import type {
   LyricInput,
   MusicPluginDefinition,
@@ -8,8 +8,8 @@ import type {
   SearchInput,
   SongDetailInput,
   SongUrlInput
-} from '../../../../packages/plugin-sdk'
-import type { PlatformCapabilities } from '../descriptors'
+} from '@plugin-sdk'
+import type { PlatformCapabilities } from '@/platform/music/descriptors'
 import {
   MusicPlatformAdapter,
   type LyricResult,
@@ -17,7 +17,7 @@ import {
   type SearchResult,
   type Song,
   type SongUrlOptions
-} from '../interface'
+} from '@/platform/music/interface'
 
 export class PluginAdapterBridge extends MusicPlatformAdapter {
   constructor(

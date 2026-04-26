@@ -8,9 +8,9 @@ import {
   resolveDesktopLyricLineClamp,
   resolveDesktopLyricWritingMode
 } from '@/utils/player/desktopLyricSettings'
-import { useActiveLyricState } from '../composables/useActiveLyricState'
-import { services } from '../services'
-import { resolveLyricDisplayLine } from '../utils/player/lyric-display'
+import { useActiveLyricState } from '@/composables/useActiveLyricState'
+import { services } from '@/services'
+import { resolveLyricDisplayLine } from '@/utils/player/lyric-display'
 
 const platformService = services.platform()
 const playerService = services.player()

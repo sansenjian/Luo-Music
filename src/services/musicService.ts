@@ -1,11 +1,11 @@
-import { getMusicAdapter } from '../platform/music'
+import { getMusicAdapter } from '@/platform/music'
 import type {
   LyricResult,
   PlaylistDetail,
   SearchResult,
   Song,
   SongUrlOptions
-} from '../platform/music/interface'
+} from '@/platform/music/interface'
 
 export type MusicService = {
   search(platform: string, keyword: string, limit: number, page: number): Promise<SearchResult>

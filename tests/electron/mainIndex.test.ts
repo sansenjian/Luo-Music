@@ -164,7 +164,7 @@ vi.mock('@/config/shortcuts', () => ({
   DEFAULT_SHORTCUTS: [{ key: 'Ctrl+Shift+L' }]
 }))
 
-vi.mock('../../electron/shared/protocol/cache', () => ({
+vi.mock('@/platform/contracts/protocol/cache', () => ({
   NETEASE_API_PORT: 14532,
   QQ_API_PORT: 3200
 }))

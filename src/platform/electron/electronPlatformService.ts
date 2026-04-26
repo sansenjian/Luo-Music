@@ -4,14 +4,14 @@
 
 import type { IDisposable } from '@/base/common/lifecycle/disposable'
 import { Disposable, DisposableStore } from '@/base/common/lifecycle/disposable'
-import { INVOKE_CHANNELS, SEND_CHANNELS } from '../../../electron/shared/protocol/channels'
-import { PlatformServiceBase } from '../common/platformService'
+import { INVOKE_CHANNELS, SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { PlatformServiceBase } from '@/platform/common/platformService'
 import type {
   ICacheSize,
   IClearCacheOptions,
   IClearCacheResult,
   IMessageHandler
-} from '../common/types'
+} from '@/platform/common/types'
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,

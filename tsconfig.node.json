@@ -13,7 +13,9 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@plugin-sdk": ["packages/plugin-sdk/index.ts"],
+      "@plugin-sdk/*": ["packages/plugin-sdk/*"]
     }
   },
   "include": [
@@ -26,6 +28,7 @@
     "config/**/*.d.ts",
     "server/**/*.ts",
     "server/**/*.d.ts",
+    "packages/plugin-sdk/**/*.ts",
     "electron/**/*.js",
     "electron/**/*.ts",
     "electron/**/*.d.ts",

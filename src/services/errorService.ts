@@ -1,5 +1,5 @@
-import { errorCenter } from '../utils/error/center'
-import type { AppError, ErrorCode } from '../utils/error/types'
+import { errorCenter } from '@/utils/error/center'
+import type { AppError, ErrorCode } from '@/utils/error/types'
 
 type ErrorHandler = (error: AppError) => void | Promise<void>
 

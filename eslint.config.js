@@ -205,6 +205,32 @@ export default [
     }
   },
   {
+    files: ['src/**/*.{ts,tsx,vue}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../*', '../../*', '../../../*', '../../../../*'],
+              message: 'Imports inside src should use the @/ alias instead of parent paths.'
+            },
+            {
+              group: [
+                '../electron/*',
+                '../../electron/*',
+                '../../../electron/*',
+                '../../../../electron/*'
+              ],
+              message:
+                'Renderer code must not import from electron/. Use src/platform/contracts or src/platform instead.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
     files: ['tests/**/*.ts', 'tests/**/*.js'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',

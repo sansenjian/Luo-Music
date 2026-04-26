@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToastStore } from '../store/toastStore'
+import { useToastStore } from '@/store/toastStore'
 
 const toastStore = useToastStore()
 

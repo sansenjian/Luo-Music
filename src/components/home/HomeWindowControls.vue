@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import UserAvatar from '../UserAvatar.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 const props = defineProps<{
   isElectron: boolean

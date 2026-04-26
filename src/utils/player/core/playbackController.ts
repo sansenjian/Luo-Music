@@ -1,6 +1,6 @@
 import { playerCore as audioManager } from './playerCore'
-import { PLAY_MODE } from '../constants/playMode'
-import { shuffleHelper } from '../helpers/shuffleHelper'
+import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import { shuffleHelper } from '@/utils/player/helpers/shuffleHelper'
 
 export class PlaybackController {
   private progressTimer: ReturnType<typeof setInterval> | null = null

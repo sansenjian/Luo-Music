@@ -1,4 +1,8 @@
-import { INVOKE_CHANNELS, RECEIVE_CHANNELS, SEND_CHANNELS } from '../../shared/protocol/channels.ts'
+import {
+  INVOKE_CHANNELS,
+  RECEIVE_CHANNELS,
+  SEND_CHANNELS
+} from '@/platform/contracts/protocol/channels'
 import { ipcService } from '../IpcService'
 import type { ServiceManager } from '../../ServiceManager'
 import type { WindowManager } from '../../WindowManager'
@@ -13,7 +17,7 @@ import type {
   PlayerPlaySongByIdPayload,
   PlayerPlaySongPayload,
   PlayerStateSnapshot
-} from '../types'
+} from '@/platform/contracts/ipc'
 import { normalizeLyricResponse } from './api.normalizers'
 
 // ========== 配置常量 ==========

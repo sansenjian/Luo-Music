@@ -1,11 +1,11 @@
 import { computed, ref, shallowRef, type ComputedRef, type Ref } from 'vue'
 
-import { getLikelist, getSongDetail } from '../api/song'
-import { createSong, type Song } from '../platform/music/interface'
-import { isCanceledRequestError } from '../utils/http/cancelError'
-import { createLatestRequestController } from '../utils/http/requestScope'
-import { formatSongs, type FormattedSong } from '../utils/songFormatter'
-import { songPrefetcher } from '../store/player/songPrefetcher'
+import { getLikelist, getSongDetail } from '@/api/song'
+import { createSong, type Song } from '@/platform/music/interface'
+import { isCanceledRequestError } from '@/utils/http/cancelError'
+import { createLatestRequestController } from '@/utils/http/requestScope'
+import { formatSongs, type FormattedSong } from '@/utils/songFormatter'
+import { songPrefetcher } from '@/store/player/songPrefetcher'
 
 interface LikeListResponse {
   ids?: Array<string | number>

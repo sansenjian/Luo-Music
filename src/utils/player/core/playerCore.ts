@@ -1,4 +1,4 @@
-import { VOLUME, AUDIO_CONFIG } from '../constants'
+import { VOLUME, AUDIO_CONFIG } from '@/utils/player/constants'
 
 export enum PlayerState {
   IDLE = 'idle',

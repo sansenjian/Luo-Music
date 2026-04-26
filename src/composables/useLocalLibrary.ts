@@ -1,6 +1,6 @@
 import { onMounted, onUnmounted } from 'vue'
 
-import { RECEIVE_CHANNELS } from '../../electron/shared/protocol/channels'
+import { RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
 import { useLocalLibraryCommands } from '@/composables/local-library/useLocalLibraryCommands'
 import { useLocalLibraryQueries } from '@/composables/local-library/useLocalLibraryQueries'
 import { useLocalLibraryRequests } from '@/composables/local-library/useLocalLibraryRequests'

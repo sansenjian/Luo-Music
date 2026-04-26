@@ -2,8 +2,8 @@ import { computed, ref } from 'vue'
 
 import { getSearchPlatformOptions } from '@/platform/music'
 import { useHomeShell } from './useHomeShell'
-import { searchResultItemToSong, useSearchStore } from '../store/searchStore'
-import { useToastStore } from '../store/toastStore'
+import { searchResultItemToSong, useSearchStore } from '@/store/searchStore'
+import { useToastStore } from '@/store/toastStore'
 
 export interface MusicServerOption {
   value: string

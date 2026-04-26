@@ -1,6 +1,10 @@
-import type { Event } from '../../base/common/event/event'
-import { EventEmitter } from '../../base/common/event/event'
-import { evaluateContextExpression, parseContextExpression, type ContextExpressionAst } from './contextExpression'
+import type { Event } from '@/base/common/event/event'
+import { EventEmitter } from '@/base/common/event/event'
+import {
+  evaluateContextExpression,
+  parseContextExpression,
+  type ContextExpressionAst
+} from './contextExpression'
 import type { ContextKey, ContextKeyService, ContextKeyValue } from './contextKey.types'
 
 class BoundContextKey<T extends ContextKeyValue> implements ContextKey<T> {

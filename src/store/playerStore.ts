@@ -40,8 +40,8 @@ import { useRecentPlayStore } from '@/store/recentPlayStore'
 import type { SongPlatform } from '@/types/schemas'
 import type { LyricDisplayType, WebLyricAppearance } from '@/types/player'
 
-import { SEND_CHANNELS } from '../../electron/shared/protocol/channels'
-import type { PlayerStateSnapshot } from '../../electron/ipc/types'
+import { SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
+import type { PlayerStateSnapshot } from '@/platform/contracts/ipc'
 
 export type PlayerStoreActions = {
   seek: (time: number) => void

@@ -1,11 +1,11 @@
 import { computed, onMounted, ref } from 'vue'
 
-import { services } from '../services'
-import type { PlatformService } from '../services/platformService'
-import type { StorageService } from '../services/storageService'
+import { services } from '@/services'
+import type { PlatformService } from '@/services/platformService'
+import type { StorageService } from '@/services/storageService'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
-import { usePlayerStore } from '../store/playerStore'
-import { useToastStore } from '../store/toastStore'
+import { usePlayerStore } from '@/store/playerStore'
+import { useToastStore } from '@/store/toastStore'
 
 export type HomeTab = 'lyric' | 'playlist'
 

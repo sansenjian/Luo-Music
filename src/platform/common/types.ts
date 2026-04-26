@@ -1,4 +1,4 @@
-import type { CacheClearOptions, CacheClearResult } from '../../../electron/shared/protocol/cache'
+import type { CacheClearOptions, CacheClearResult } from '@/platform/contracts/protocol/cache'
 import type { IDisposable } from '@/base/common/lifecycle/disposable'
 import type {
   LocalLibraryAlbumSummary,

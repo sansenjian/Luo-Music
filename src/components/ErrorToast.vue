@@ -18,8 +18,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { services } from '../services'
-import type { AppError } from '../utils/error'
+import { services } from '@/services'
+import type { AppError } from '@/utils/error'
 
 interface ToastError {
   id: number

@@ -28,7 +28,7 @@ import {
   createTransport,
   type TransportRequestConfig
 } from './transportFactory'
-import { normalizeApiError } from '../error/normalize'
+import { normalizeApiError } from '@/utils/error/normalize'
 import { isElectronRenderer } from './transportShared'
 export { createLatestRequestController } from './requestScope'
 import {

@@ -1,14 +1,14 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-import { services } from '../services'
-import type { Song, SongPlatform } from '../types/schemas'
-import type { LyricDisplayType } from '../types/player'
-import type { LyricLine } from '../utils/player/core/lyric'
+import { services } from '@/services'
+import type { Song, SongPlatform } from '@/types/schemas'
+import type { LyricDisplayType } from '@/types/player'
+import type { LyricLine } from '@/utils/player/core/lyric'
 import type {
   DesktopLyricSnapshot,
   DesktopLyricUpdateCause,
   LyricTimeUpdate
-} from '../../electron/ipc/types'
+} from '@/platform/contracts/ipc'
 
 interface IpcLyricPayload extends Partial<LyricTimeUpdate> {
   romalrc?: string

@@ -3,7 +3,7 @@ import { dialog } from 'electron'
 import type { OpenDialogOptions } from 'electron'
 
 import { getLocalLibraryService } from '../../local-library/service'
-import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channels.ts'
+import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
 import { ipcService } from '../IpcService'
 import type { WindowManager } from '../../WindowManager'
 import type { LocalLibrarySummaryQuery, LocalLibraryTrackQuery } from '@/types/localLibrary'

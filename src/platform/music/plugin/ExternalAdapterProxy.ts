@@ -1,4 +1,4 @@
-import type { PlatformCapabilities } from '../descriptors'
+import type { PlatformCapabilities } from '@/platform/music/descriptors'
 import {
   MusicPlatformAdapter,
   type LyricResult,
@@ -6,7 +6,7 @@ import {
   type SearchResult,
   type Song,
   type SongUrlOptions
-} from '../interface'
+} from '@/platform/music/interface'
 
 type PluginBridge = {
   call(platformId: string, method: string, payload: unknown): Promise<unknown>

@@ -1,4 +1,4 @@
-import { normalizeApiError } from '../utils/error/normalize'
+import { normalizeApiError } from '@/utils/error/normalize'
 import {
   createTimeoutController,
   isTimeoutError,

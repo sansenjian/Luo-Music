@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { getSearchPlatformOptions } from '@/platform/music'
-import { useSearchStore } from '../store/searchStore'
+import { useSearchStore } from '@/store/searchStore'
 
 const searchStore = useSearchStore()
 

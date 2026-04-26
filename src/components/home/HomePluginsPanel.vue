@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import PluginManagerSection from '../settings/PluginManagerSection.vue'
+import PluginManagerSection from '@/components/settings/PluginManagerSection.vue'
 </script>
 
 <template>

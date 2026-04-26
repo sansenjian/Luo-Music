@@ -1,5 +1,5 @@
 import { shallowRef } from 'vue'
-import type { PluginManifest, PluginSettingDefinition } from '../../../packages/plugin-sdk'
+import type { PluginManifest, PluginSettingDefinition } from '@plugin-sdk'
 
 export type PlatformCapabilities = PluginManifest['capabilities']
 

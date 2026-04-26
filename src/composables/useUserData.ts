@@ -1,6 +1,6 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 
-import { getUserDetail, getUserLevel, getUserSubcount } from '../api/user'
+import { getUserDetail, getUserLevel, getUserSubcount } from '@/api/user'
 
 interface UserProfile {
   follows?: number

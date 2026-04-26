@@ -1,10 +1,10 @@
 import type { WebLyricAppearance } from '@/types/player'
 
-import { PLAY_MODE } from '../player/constants/playMode'
+import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import {
   DEFAULT_WEB_LYRIC_APPEARANCE,
   sanitizeWebLyricAppearance
-} from '../player/webLyricAppearance'
+} from '@/utils/player/webLyricAppearance'
 
 export const PLAYER_STORAGE_KEY = 'player'
 export const PLAYER_DOCKED_PREFERENCE_KEY = 'playerDockedUserToggled'
