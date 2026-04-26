@@ -1,5 +1,9 @@
 import { resolve } from 'node:path'
+import vue from '@vitejs/plugin-vue'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
 import type { ManualChunksOption } from 'rollup'
+import type { PluginOption } from 'vite'
 
 type RewritePath = (path: string) => string
 
@@ -10,6 +14,10 @@ type ProxyEntry = {
   secure?: boolean
   proxyTimeout?: number
   timeout?: number
+}
+
+type VueRendererPluginOptions = {
+  dts?: boolean
 }
 
 export const DEFAULT_VITE_DEV_SERVER_PORT = 5173
@@ -32,6 +40,26 @@ export function createSrcAlias(rootDir: string): Record<string, string> {
     '@': resolve(rootDir, 'src'),
     '@plugin-sdk': resolve(rootDir, 'packages/plugin-sdk')
   }
+}
+
+export function createVueRendererPlugins(options: VueRendererPluginOptions = {}): PluginOption[] {
+  const dtsEnabled = options.dts ?? true
+
+  return [
+    vue(),
+    AutoImport({
+      imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
+      dts: dtsEnabled ? 'src/auto-imports.d.ts' : false,
+      dirs: ['src/composables', 'src/store'],
+      vueTemplate: true
+    }),
+    Components({
+      dirs: ['src/components'],
+      extensions: ['vue'],
+      dts: dtsEnabled ? 'src/components.d.ts' : false,
+      deep: true
+    })
+  ]
 }
 
 export function createSharedDevProxy(

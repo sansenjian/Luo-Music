@@ -1,44 +1,26 @@
 import { defineConfig, loadEnv } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import AutoImport from 'unplugin-auto-import/vite'
-import Components from 'unplugin-vue-components/vite'
 import {
   createSharedDevProxy,
   createSrcAlias,
+  createVueRendererPlugins,
   resolveViteDevServerPort,
   webManualChunks
 } from './config/vite.shared.ts'
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const appRuntime = env.APP_RUNTIME === 'electron' ? 'electron' : 'web'
   const sentryDsn = env.SENTRY_DSN ?? ''
   const sentryRelease = env.SENTRY_RELEASE ?? ''
   const sentryTracingEnabled = env.SENTRY_TRACING_ENABLED ?? '0'
   const sentryReplayEnabled = env.SENTRY_REPLAY_ENABLED ?? '0'
-  const isProduction = mode === 'production'
+  const isBuild = command === 'build'
   const devServerPort = resolveViteDevServerPort(env.VITE_DEV_SERVER_PORT)
 
-  const outputDir = isProduction ? 'build' : 'dist'
-
-  const plugins = [
-    vue(),
-    AutoImport({
-      imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
-      dts: 'src/auto-imports.d.ts',
-      dirs: ['src/composables', 'src/store'],
-      vueTemplate: true
-    }),
-    Components({
-      dirs: ['src/components'],
-      extensions: ['vue'],
-      dts: 'src/components.d.ts',
-      deep: true
-    })
-  ]
+  const outputDir = appRuntime === 'electron' ? 'build' : 'dist'
 
   return {
-    plugins,
+    plugins: createVueRendererPlugins({ dts: !isBuild }),
     base: './',
     define: {
       'import.meta.env.APP_RUNTIME': JSON.stringify(appRuntime),
@@ -65,7 +47,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     esbuild: {
-      drop: isProduction ? ['console', 'debugger'] : []
+      drop: isBuild ? ['console', 'debugger'] : []
     },
     resolve: {
       alias: createSrcAlias(process.cwd())

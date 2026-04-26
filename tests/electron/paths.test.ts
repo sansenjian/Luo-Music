@@ -66,6 +66,20 @@ describe('electron/utils/paths', () => {
     expect(paths.VITE_PUBLIC).toBeDefined()
   })
 
+  it('开发环境按脚本类型解析 dev 和 runtime 目录', async () => {
+    process.env.APP_ROOT = '/mock/project'
+    setResourcesPath(undefined)
+
+    const paths = await import('../../electron/utils/paths')
+
+    expect(paths.getScriptPath('qq-api-server.cjs')).toBe(
+      '/mock/project/scripts/dev/qq-api-server.cjs'
+    )
+    expect(paths.getScriptPath('netease-api-server.cjs')).toBe(
+      '/mock/project/scripts/runtime/netease-api-server.cjs'
+    )
+  })
+
   it('打包环境应从 resources 下的 app.asar 解析构建目录', async () => {
     setResourcesPath('/mock/resources')
 

@@ -1,5 +1,4 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { createRequire } from 'node:module'
 
 import { describe, expect, it } from 'vitest'
 
@@ -27,9 +26,8 @@ type PortableConfig = {
   }
 }
 
-const portableConfig = JSON.parse(
-  readFileSync(resolve(process.cwd(), 'electron-builder.portable.json'), 'utf8')
-) as PortableConfig
+const require = createRequire(import.meta.url)
+const portableConfig = require('../../electron-builder.portable.cjs') as PortableConfig
 
 describe('electron-builder portable config', () => {
   it('emits a single x64 portable exe into a dedicated output directory', () => {
@@ -69,12 +67,12 @@ describe('electron-builder portable config', () => {
           filter: ['qq-api-server.cjs']
         },
         {
-          from: 'scripts/dev/qq-search-fallback.cjs',
+          from: 'scripts/runtime/qq-search-fallback.cjs',
           to: '.',
           filter: ['qq-search-fallback.cjs']
         },
         {
-          from: 'scripts/dev/netease-api-server.cjs',
+          from: 'scripts/runtime/netease-api-server.cjs',
           to: '.',
           filter: ['netease-api-server.cjs']
         }

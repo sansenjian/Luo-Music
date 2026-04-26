@@ -13,8 +13,12 @@ scripts/
 │
 ├── dev/                # 开发环境脚本
 │   ├── dev-electron-launcher.cjs  # Electron 开发启动器
-│   ├── netease-api-server.cjs     # 网易云 API 服务（端口 14532）
 │   └── qq-api-server.cjs          # QQ 音乐 API 服务（端口 3200）
+│
+├── runtime/            # 开发与打包共用运行时脚本
+│   ├── netease-api-server.cjs     # 网易云 API 服务（端口 14532）
+│   ├── qq-api-server.entry.cjs    # QQ 音乐打包入口
+│   └── qq-search-fallback.cjs     # QQ 搜索兜底实现
 │
 └── utils/              # 工具脚本
     ├── analyze-deps.js     # 依赖分析工具
@@ -95,11 +99,11 @@ node scripts/build/clean-force.js --all
 2. 删除同目录下的其他文件或临时目录
 3. 确保最终输出目录只保留单个便携版 `.exe`
 
-### dev/
+### runtime/
 
 #### netease-api-server.cjs
 
-启动网易云音乐 API 服务。
+启动网易云音乐 API 服务，开发环境与打包产物共用。
 
 **端口：** 14532（可通过 `PORT` 环境变量修改）
 
@@ -108,6 +112,12 @@ node scripts/build/clean-force.js --all
 - 启动 NeteaseCloudMusicApi Enhanced
 - 健康检查确认服务可用
 - 支持进程间通信
+
+#### qq-search-fallback.cjs
+
+QQ 音乐搜索兜底实现，供开发服务和打包后的 QQ runtime 入口复用。
+
+### dev/
 
 #### qq-api-server.cjs
 

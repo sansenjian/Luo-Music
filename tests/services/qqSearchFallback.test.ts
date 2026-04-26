@@ -9,7 +9,7 @@ const {
   normalizeQQMusicuSearchResponse,
   requestQQMusicuSearch,
   handleQQSearchRequest
-} = require('../../scripts/dev/qq-search-fallback.cjs') as {
+} = require('../../scripts/runtime/qq-search-fallback.cjs') as {
   buildQQMusicuSearchBody: (keyword: string, limit: number, page: number) => Record<string, unknown>
   extractQQSearchParams: (requestUrl: string) => { keyword: string; limit: number; page: number }
   isSearchPath: (pathname: string) => boolean

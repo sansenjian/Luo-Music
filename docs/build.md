@@ -6,7 +6,7 @@
 
 | 目标              | 命令                                               | 主要输出                                      |
 | ----------------- | -------------------------------------------------- | --------------------------------------------- |
-| Web               | `npm run build:web`                                | `build/`                                      |
+| Web               | `npm run build:web`                                | `dist/`                                       |
 | Electron bundle   | `npm run build` 或 `npm run build:electron:bundle` | `build/`、`build/electron/`、`build/service/` |
 | Electron 安装包   | `npm run build:electron`                           | `out/make/`                                   |
 | Electron portable | `npm run build:electron:portable`                  | `out/portable/`                               |
@@ -36,10 +36,11 @@ npm run build:electron
 
 流程：
 
-1. 清理 `build/` 与 `out/`
-2. 构建 QQ runtime
-3. 并行构建 server 与 electron-vite bundle
-4. 使用 Electron Forge 产出安装包
+1. 清理安装包输出目录
+2. 通过 `build:electron:bundle` 清理并重建 `build/`
+3. 构建 QQ runtime
+4. 并行构建 server 与 electron-vite bundle
+5. 使用 Electron Forge 产出安装包
 
 ### Portable
 
@@ -47,7 +48,7 @@ npm run build:electron
 npm run build:electron:portable
 ```
 
-在 Electron bundle 基础上，调用 `electron-builder.portable.json` 生成单文件便携版。
+在 Electron bundle 基础上，调用 `electron-builder.portable.cjs` 生成单文件便携版。
 
 ### 文档站
 

@@ -28,7 +28,7 @@ async function start() {
 
     console.log('[QQ Music API] Loading bundled module...')
     const qqApiModule = require('@sansenjian/qq-music-api/dist/app.js')
-    const { handleQQSearchRequest } = require('../dev/qq-search-fallback.cjs')
+    const { handleQQSearchRequest } = require('./qq-search-fallback.cjs')
     const qqApiApp = qqApiModule && (qqApiModule.default || qqApiModule)
     if (
       !qqApiApp ||

@@ -1,4 +1,5 @@
 import { readdir, rm } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import type { ForgeConfig } from '@electron-forge/shared-types'
 import { MakerSquirrel } from '@electron-forge/maker-squirrel'
@@ -7,51 +8,28 @@ import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-nati
 import { FusesPlugin } from '@electron-forge/plugin-fuses'
 import { FuseV1Options, FuseVersion } from '@electron/fuses'
 
+type PackagingSharedConfig = {
+  appId: string
+  asarUnpackPattern: string
+  packagingExtraResources: string[]
+  packagingIgnoredNodeModulePaths: string[]
+  packagingNodeModulesToRemoveAfterPrune: string[]
+  packagingWorkspaceArtifactsToRemove: string[]
+  productName: string
+}
+
+const require = createRequire(import.meta.url)
+const packagingShared = require('./config/packaging.shared.cjs') as PackagingSharedConfig
+
 const FAST_MAKE_MODE = process.env.LUO_FAST_MAKE === '1'
 const packagingLocalesToKeep = new Set(['en-US.pak', 'zh-CN.pak'] as const)
 type PackagerHookDone = (error?: Error | null) => void
-const packagingExtraResources = [
-  'build/service',
-  'build/runtime/qq-api-server.cjs',
-  'scripts/dev/qq-search-fallback.cjs',
-  'scripts/dev/netease-api-server.cjs'
-] as const
-export const packagingWorkspaceArtifactsToRemove = [
-  '.ai',
-  '.claude',
-  '.codex',
-  '.github',
-  '.husky',
-  '.idea',
-  '.kilocode',
-  '.playwright-mcp',
-  '.trae',
-  '.userData',
-  '.vite_cache',
-  '.vscode'
-] as const
-export const packagingNodeModulesToRemoveAfterPrune = [
-  'node_modules/.vite-temp',
-  'node_modules/@electron-forge',
-  'node_modules/@playwright',
-  'node_modules/@sentry/bundler-plugin-core',
-  'node_modules/@sentry/rollup-plugin',
-  'node_modules/@sentry/vite-plugin',
-  'node_modules/@types',
-  'node_modules/@vitejs',
-  'node_modules/electron',
-  'node_modules/electron-nightly',
-  'node_modules/playwright',
-  'node_modules/playwright-core',
-  'node_modules/typescript',
-  'node_modules/vite',
-  'node_modules/vitest'
-] as const
-const packagingIgnoredNodeModulePaths = [
-  'node_modules/@fontsource',
-  'node_modules/date-fns',
-  ...packagingNodeModulesToRemoveAfterPrune
-] as const
+const packagingExtraResources = packagingShared.packagingExtraResources
+export const packagingWorkspaceArtifactsToRemove =
+  packagingShared.packagingWorkspaceArtifactsToRemove
+export const packagingNodeModulesToRemoveAfterPrune =
+  packagingShared.packagingNodeModulesToRemoveAfterPrune
+const packagingIgnoredNodeModulePaths = packagingShared.packagingIgnoredNodeModulePaths
 
 function escapeRegexFragment(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -123,13 +101,12 @@ async function removePackagedBuildOnlyModules(buildPath: string): Promise<void> 
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: 'LUO Music',
-    executableName: 'LUO Music',
-    appBundleId: 'com.sansenjian.luo-music',
+    name: packagingShared.productName,
+    executableName: packagingShared.productName,
+    appBundleId: packagingShared.appId,
     prune: true,
     asar: {
-      unpack:
-        '**/node_modules/{conf,ajv,json-schema-traverse,atomically,dot-prop,uint8array-extras,type-fest}/**'
+      unpack: packagingShared.asarUnpackPattern
     },
     extraResource: [...packagingExtraResources],
     download: {
