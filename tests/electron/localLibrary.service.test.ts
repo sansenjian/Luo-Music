@@ -411,7 +411,7 @@ describe('LocalLibraryService', () => {
     expect(firstPage.items[0]?.duration).toBe(0)
 
     await vi.waitFor(() => {
-      expect(metadataReader).toHaveBeenCalledWith(trackPath)
+      expect(metadataReader).toHaveBeenCalledWith(trackPath, { skipCover: undefined })
       return service.getTracksPage().then(repairedPage => {
         expect(repairedPage.items[0]?.duration).toBe(189000)
         expect(repairedPage.items[0]?.song.duration).toBe(189000)

@@ -3,7 +3,7 @@ import { SEND_CHANNELS, RECEIVE_CHANNELS, INVOKE_CHANNELS } from '../shared/prot
 import { createLegacyElectronAPI, type ElectronAPI } from './legacyElectronApi'
 
 // 导入服务代理
-import { LogProxy, ConfigProxy, ApiProxy, WindowProxy, PlayerProxy } from './services'
+import { LogProxy, ConfigProxy, ApiProxy, WindowProxy, PlayerProxy, PluginProxy } from './services'
 import type { Song, LyricLine, DesktopLyricSnapshot } from './services/playerProxy'
 
 console.log('--- Preload script loaded (TypeScript) ---')
@@ -66,6 +66,19 @@ type WindowServiceAPI = Pick<
   | 'lockDesktopLyric'
 >
 
+type PluginServiceAPI = Pick<
+  PluginProxy,
+  | 'list'
+  | 'installFromPath'
+  | 'pickInstallPath'
+  | 'setEnabled'
+  | 'uninstall'
+  | 'getSettings'
+  | 'updateSettings'
+  | 'call'
+  | 'onChanged'
+>
+
 type PlayerServiceAPI = Pick<
   PlayerProxy,
   | 'play'
@@ -101,6 +114,7 @@ type ServiceAPIShape = IpcCoreAPI & {
   api: ApiServiceAPI
   window: WindowServiceAPI
   player: PlayerServiceAPI
+  plugins: PluginServiceAPI
 }
 interface ValidatedIpcBridge {
   send: (channel: string, ...args: unknown[]) => void
@@ -227,6 +241,8 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
     getChart: (platform, id) => apiProxy.getChart(platform, id)
   }
 
+  const pluginProxy = new PluginProxy()
+
   const windowApi: WindowServiceAPI = {
     minimize: () => windowProxy.minimize(),
     toggleMaximize: () => windowProxy.toggleMaximize(),
@@ -285,7 +301,18 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
     config,
     api,
     window: windowApi,
-    player
+    player,
+    plugins: {
+      list: () => pluginProxy.list(),
+      installFromPath: pluginPath => pluginProxy.installFromPath(pluginPath),
+      pickInstallPath: () => pluginProxy.pickInstallPath(),
+      setEnabled: (platformId, enabled) => pluginProxy.setEnabled(platformId, enabled),
+      uninstall: platformId => pluginProxy.uninstall(platformId),
+      getSettings: platformId => pluginProxy.getSettings(platformId),
+      updateSettings: (platformId, settings) => pluginProxy.updateSettings(platformId, settings),
+      call: (platformId, method, payload) => pluginProxy.call(platformId, method, payload),
+      onChanged: listener => pluginProxy.onChanged(listener)
+    }
   }
 }
 

@@ -20,7 +20,14 @@ type MediaSessionLike = {
 
 type PlayerStoreLike = Pick<
   ReturnType<typeof usePlayerStore>,
-  'currentSong' | 'playing' | 'progress' | 'duration' | 'seek' | 'playNext' | 'playPrev'
+  | 'currentSong'
+  | 'playing'
+  | 'progress'
+  | 'duration'
+  | 'trackSwitching'
+  | 'seek'
+  | 'playNext'
+  | 'playPrev'
 >
 
 export type MediaSessionDeps = {
@@ -378,6 +385,19 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     }
   )
 
+  const stopTrackSwitchWatcher = watch(
+    () => playerStore.trackSwitching,
+    (nextSwitching, previousSwitching) => {
+      if (!isSessionActive) {
+        return
+      }
+
+      if (previousSwitching && !nextSwitching && playerStore.playing && playerStore.currentSong) {
+        resyncAfterAudioPlay()
+      }
+    }
+  )
+
   const stopPlaybackLifecycleWatcher = watch(
     () => [playerStore.playing, playerStore.duration] as const,
     ([nextPlaying], [prevPlaying]) => {
@@ -421,6 +441,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   onUnmounted(() => {
     stopEnabledWatcher()
     stopMetadataWatcher()
+    stopTrackSwitchWatcher()
     stopPlaybackLifecycleWatcher()
     stopProgressWatcher()
     cleanupSession()

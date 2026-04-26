@@ -5,6 +5,7 @@
 本文档描述了 LUO Music 项目的 Vue 3 组件。所有组件都使用 **Composition API** 和 `<script setup>` 语法。
 
 ### 技术栈
+
 - **Vue 3.5+** - Composition API
 - **Pinia 3.0+** - 状态管理
 - **Naive UI 2.43+** - UI 组件库
@@ -26,7 +27,7 @@
 <template>
   <!-- 完整模式 -->
   <Player :compact="false" :loading="false" />
-  
+
   <!-- 紧凑模式 -->
   <Player compact :loading="false" />
 </template>
@@ -38,10 +39,10 @@ import Player from '@/components/Player.vue'
 
 #### Props
 
-| 属性名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| compact | boolean | 否 | false | 是否为紧凑模式 |
-| loading | boolean | 否 | false | 是否显示加载状态 |
+| 属性名  | 类型    | 必填 | 默认值 | 说明             |
+| ------- | ------- | ---- | ------ | ---------------- |
+| compact | boolean | 否   | false  | 是否为紧凑模式   |
+| loading | boolean | 否   | false  | 是否显示加载状态 |
 
 #### 功能特性
 
@@ -76,19 +77,19 @@ import Player from '@/components/Player.vue'
 
 ### Lyric 组件
 
-歌词展示组件，支持原文、翻译、罗马音多层显示。
+歌词展示组件，支持原文、翻译、罗马音多层显示。当前拆分为两个子组件：
 
-**文件位置**: `src/components/Lyric.vue`
+**文件位置**: `src/components/LyricDisplay.vue`（主歌词展示）、`src/components/LyricFloat.vue`（悬浮歌词）
 
 #### 基本用法
 
 ```vue
 <template>
-  <Lyric />
+  <LyricDisplay />
 </template>
 
 <script setup>
-import Lyric from '@/components/Lyric.vue'
+import LyricDisplay from '@/components/LyricDisplay.vue'
 </script>
 ```
 
@@ -108,21 +109,21 @@ import Lyric from '@/components/Lyric.vue'
 
 #### 状态说明
 
-| 状态 | 说明 |
-|------|------|
-| 无歌词 | 显示 "暂无歌词" |
-| 有歌词 | 显示歌词列表，当前行高亮 |
-| 用户滚动 | 暂停自动滚动 2 秒 |
-| 加载失败 | 显示 "歌词加载失败" |
+| 状态     | 说明                     |
+| -------- | ------------------------ |
+| 无歌词   | 显示 "暂无歌词"          |
+| 有歌词   | 显示歌词列表，当前行高亮 |
+| 用户滚动 | 暂停自动滚动 2 秒        |
+| 加载失败 | 显示 "歌词加载失败"      |
 
 #### 歌词格式
 
 ```typescript
 interface LyricLine {
-  time: number      // 时间（秒）
-  lyric: string     // 原文歌词
-  tlyric?: string   // 翻译歌词
-  rlyric?: string   // 罗马音歌词
+  time: number // 时间（秒）
+  lyric: string // 原文歌词
+  tlyric?: string // 翻译歌词
+  rlyric?: string // 罗马音歌词
 }
 ```
 
@@ -171,7 +172,7 @@ interface Song {
   album: string
   cover?: string
   duration: number
-  server: 'netease' | 'qq'
+  platform: string // 'netease' | 'qq' | 'local' 或插件扩展的平台 ID
   url?: string
 }
 ```
@@ -190,11 +191,7 @@ interface Song {
 
 ```vue
 <template>
-  <SearchInput 
-    v-model="keywords"
-    @search="handleSearch"
-    @clear="handleClear"
-  />
+  <SearchInput v-model="keywords" @search="handleSearch" @clear="handleClear" />
 </template>
 
 <script setup>
@@ -203,7 +200,7 @@ import SearchInput from '@/components/SearchInput.vue'
 
 const keywords = ref('')
 
-const handleSearch = (value) => {
+const handleSearch = value => {
   console.log('搜索:', value)
 }
 
@@ -215,18 +212,18 @@ const handleClear = () => {
 
 #### Props
 
-| 属性名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| modelValue | string | 否 | '' | 搜索关键词 (v-model) |
-| placeholder | string | 否 | '搜索音乐...' | 占位符文本 |
+| 属性名      | 类型   | 必填 | 默认值        | 说明                 |
+| ----------- | ------ | ---- | ------------- | -------------------- |
+| modelValue  | string | 否   | ''            | 搜索关键词 (v-model) |
+| placeholder | string | 否   | '搜索音乐...' | 占位符文本           |
 
 #### Events
 
-| 事件名 | 参数 | 说明 |
-|--------|------|------|
+| 事件名            | 参数   | 说明       |
+| ----------------- | ------ | ---------- |
 | update:modelValue | string | 输入值变化 |
-| search | string | 触发搜索 |
-| clear | - | 清除搜索 |
+| search            | string | 触发搜索   |
+| clear             | -      | 清除搜索   |
 
 #### 功能特性
 
@@ -238,24 +235,18 @@ const handleClear = () => {
 
 ---
 
-### PlatformSelector 组件
+### 平台选择器
 
-平台选择组件，切换音乐源。
+平台选择组件，切换音乐源。当前内联在 Home.vue 中，非独立组件。
 
-**文件位置**: `src/components/PlatformSelector.vue`（Home.vue 内）
-
-#### 基本用法
+**文件位置**: 集成于 `src/views/Home.vue`，通过 `searchStore.server` 控制平台切换
 
 ```vue
 <template>
   <div class="platform-selector" @click="toggleSelect">
     <span>{{ selectedServerLabel }}</span>
     <div v-if="showSelect" class="platform-dropdown">
-      <div 
-        v-for="server in servers" 
-        :key="server.value"
-        @click="selectServer(server.value)"
-      >
+      <div v-for="server in servers" :key="server.value" @click="selectServer(server.value)">
         {{ server.label }}
       </div>
     </div>
@@ -283,7 +274,7 @@ const toggleSelect = () => {
   showSelect.value = !showSelect.value
 }
 
-const selectServer = (value) => {
+const selectServer = value => {
   searchStore.setServer(value)
   showSelect.value = false
 }
@@ -431,16 +422,16 @@ onMounted(() => {
 
 #### Props
 
-| 属性名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| visible | boolean | 是 | - | 是否显示弹窗 |
+| 属性名  | 类型    | 必填 | 默认值 | 说明         |
+| ------- | ------- | ---- | ------ | ------------ |
+| visible | boolean | 是   | -      | 是否显示弹窗 |
 
 #### Events
 
-| 事件名 | 参数 | 说明 |
-|--------|------|------|
+| 事件名            | 参数    | 说明     |
+| ----------------- | ------- | -------- |
 | update:modelValue | boolean | 关闭弹窗 |
-| loginSuccess | - | 登录成功 |
+| loginSuccess      | -       | 登录成功 |
 
 #### 功能特性
 
@@ -464,12 +455,7 @@ onMounted(() => {
 
 ```vue
 <template>
-  <Toast 
-    :visible="visible"
-    :message="message"
-    :type="type"
-    @close="visible = false"
-  />
+  <Toast :visible="visible" :message="message" :type="type" @close="visible = false" />
 </template>
 
 <script setup>
@@ -484,18 +470,18 @@ const type = ref('success') // success, error, warning, info
 
 #### Props
 
-| 属性名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| visible | boolean | 是 | - | 是否显示 |
-| message | string | 是 | - | 提示消息 |
-| type | string | 否 | 'info' | 提示类型：success, error, warning, info |
-| duration | number | 否 | 3000 | 显示时长 (ms) |
+| 属性名   | 类型    | 必填 | 默认值 | 说明                                    |
+| -------- | ------- | ---- | ------ | --------------------------------------- |
+| visible  | boolean | 是   | -      | 是否显示                                |
+| message  | string  | 是   | -      | 提示消息                                |
+| type     | string  | 否   | 'info' | 提示类型：success, error, warning, info |
+| duration | number  | 否   | 3000   | 显示时长 (ms)                           |
 
 #### Events
 
-| 事件名 | 说明 |
-|--------|------|
-| close | 关闭提示 |
+| 事件名 | 说明     |
+| ------ | -------- |
+| close  | 关闭提示 |
 
 #### Store 使用方式
 
@@ -539,10 +525,10 @@ import PageTransition from '@/components/PageTransition.vue'
 
 #### Props
 
-| 属性名 | 类型 | 必填 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| name | string | 否 | 'fade' | 过渡动画名称 |
-| mode | string | 否 | 'out-in' | 过渡模式 |
+| 属性名 | 类型   | 必填 | 默认值   | 说明         |
+| ------ | ------ | ---- | -------- | ------------ |
+| name   | string | 否   | 'fade'   | 过渡动画名称 |
+| mode   | string | 否   | 'out-in' | 过渡模式     |
 
 #### 支持的动画
 
@@ -569,21 +555,27 @@ import PageTransition from '@/components/PageTransition.vue'
 ## 🎨 组件设计原则
 
 ### 1. 单一职责
+
 每个组件只负责一个明确的功能，避免功能混杂。
 
 ### 2. Props 优先
+
 通过 Props 传递数据，减少组件间的直接依赖。
 
 ### 3. 事件通信
+
 使用 Events 向父组件传递状态变化。
 
 ### 4. 状态管理
+
 复杂状态使用 Pinia Store 管理，避免 prop drilling。
 
 ### 5. 样式隔离
+
 组件样式使用 scoped，避免全局污染。
 
 ### 6. 组合式 API
+
 使用 `<script setup>` 语法，代码更简洁。
 
 ---
@@ -614,7 +606,7 @@ const togglePlay = () => {
 <script setup>
 import { animateButtonClick } from '@/composables/useAnimations'
 
-const handleClick = (event) => {
+const handleClick = event => {
   animateButtonClick(event.target)
   // 执行业务逻辑
 }
@@ -627,7 +619,7 @@ const handleClick = (event) => {
 <script setup>
 import { toastStore } from '@/store/toastStore'
 
-const handleError = (error) => {
+const handleError = error => {
   toastStore.error(error.message)
 }
 </script>
@@ -638,10 +630,7 @@ const handleError = (error) => {
 ```vue
 <!-- 父组件 -->
 <template>
-  <ChildComponent 
-    :data="parentData"
-    @update="handleUpdate"
-  />
+  <ChildComponent :data="parentData" @update="handleUpdate" />
 </template>
 
 <script setup>
@@ -649,7 +638,7 @@ import { ref } from 'vue'
 
 const parentData = ref(null)
 
-const handleUpdate = (newData) => {
+const handleUpdate = newData => {
   parentData.value = newData
 }
 </script>
@@ -666,5 +655,5 @@ const handleUpdate = (newData) => {
 
 ---
 
-**文档版本**: v2.0  
-**最后更新**: 2026-03-01
+**文档版本**: v2.1
+**最后更新**: 2026-04-24

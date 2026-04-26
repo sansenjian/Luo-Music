@@ -109,9 +109,12 @@ describe('SettingsPanel.vue', () => {
     smtcToggle!.dispatchEvent(new Event('change'))
     await wrapper.vm.$nextTick()
 
-    expect(storageServiceMock.setJSON).toHaveBeenCalledWith('experimentalFeatures', {
-      smtcEnabled: true
-    })
+    expect(storageServiceMock.setJSON).toHaveBeenCalledWith(
+      'experimentalFeatures',
+      expect.objectContaining({
+        smtcEnabled: true
+      })
+    )
 
     wrapper.unmount()
   })

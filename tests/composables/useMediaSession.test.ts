@@ -50,6 +50,7 @@ function createPlayerStoreMock() {
     playing: false,
     progress: 0,
     duration: 0,
+    trackSwitching: false,
     seek: vi.fn(),
     playNext: vi.fn(),
     playPrev: vi.fn()
@@ -635,6 +636,68 @@ describe('useMediaSession', () => {
     await flushPromises()
 
     // SMTC should now show the new song metadata and playing state
+    expect(mediaSession.metadata).toMatchObject({
+      title: 'Track 2',
+      artist: 'Artist 2'
+    })
+    expect(mediaSession.playbackState).toBe('playing')
+
+    wrapper.unmount()
+  })
+
+  it('re-syncs metadata when the explicit track-switch transition finishes', async () => {
+    const playerStore = createPlayerStoreMock()
+    playerStore.currentSong = createMockSong({
+      id: 'song-1',
+      name: 'Track 1',
+      artists: [{ id: 1, name: 'Artist 1' }],
+      album: { id: 1, name: 'Album 1', picUrl: 'https://cdn.example.com/cover.jpg' }
+    })
+    playerStore.playing = true
+    playerStore.progress = 10
+    playerStore.duration = 200
+
+    const { mediaSession } = createMediaSessionMock()
+
+    const { wrapper } = mountComposable(() =>
+      useMediaSession({
+        enabled: () => true,
+        playerStore,
+        playerService: {
+          play: vi.fn(),
+          pause: vi.fn()
+        },
+        platformService: {
+          isElectron: () => true,
+          getLocalLibraryCover: vi.fn()
+        },
+        getMediaSession: () => mediaSession,
+        createMetadata: init => init
+      })
+    )
+
+    await flushPromises()
+
+    playerStore.currentSong = createMockSong({
+      id: 'song-2',
+      name: 'Track 2',
+      artists: [{ id: 2, name: 'Artist 2' }],
+      album: { id: 2, name: 'Album 2', picUrl: 'https://cdn.example.com/cover2.jpg' }
+    })
+    playerStore.trackSwitching = true
+    playerStore.progress = 0
+    playerStore.duration = 240
+
+    await nextTick()
+
+    // Simulate Chromium clearing the session when audio.src changes.
+    mediaSession.metadata = null
+    mediaSession.playbackState = 'none'
+
+    playerStore.trackSwitching = false
+    await nextTick()
+    await flushPromises()
+
     expect(mediaSession.metadata).toMatchObject({
       title: 'Track 2',
       artist: 'Artist 2'

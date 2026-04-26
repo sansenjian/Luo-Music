@@ -1,0 +1,51 @@
+{
+  "manifestVersion": 1,
+  "id": "com.luomusic.plugin.qq",
+  "name": "QQ Music",
+  "version": "1.0.0",
+  "description": "QQ 音乐第三方插件，提供搜索、播放、歌词等功能。需要搭配 QQMusicApi 服务端。",
+  "author": "Luo-Music",
+  "platformId": "qq",
+  "source": "external",
+  "runtime": "external-host",
+  "entry": {
+    "main": "index.mjs",
+    "module": "esm"
+  },
+  "engines": {
+    "pluginApi": "^1.0.0",
+    "app": ">=2.3.0"
+  },
+  "capabilities": {
+    "search": true,
+    "songUrl": true,
+    "songDetail": true,
+    "lyric": true,
+    "playlistDetail": false,
+    "needsHydration": false,
+    "supportsLyricFetch": true,
+    "supportsUrlRefreshOnFailure": false
+  },
+  "permissions": {
+    "network": {
+      "domains": ["localhost", "y.gtimg.cn", "c.y.qq.com", "u.y.qq.com", "shc.y.qq.com"]
+    },
+    "storage": true
+  },
+  "contributions": {
+    "settings": [
+      {
+        "key": "apiBase",
+        "type": "text",
+        "label": "API 服务地址",
+        "default": "http://localhost:3300"
+      },
+      {
+        "key": "verboseLog",
+        "type": "boolean",
+        "label": "详细日志",
+        "default": false
+      }
+    ]
+  }
+}

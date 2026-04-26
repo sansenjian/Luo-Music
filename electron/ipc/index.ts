@@ -49,6 +49,7 @@ export { registerApiHandlers } from './handlers/api.handler'
 export { registerLyricHandlers } from './handlers/lyric.handler'
 export { registerLogHandlers } from './handlers/log.handler'
 export { registerLocalLibraryHandlers } from './handlers/localLibrary.handler'
+export { registerPluginHandlers } from './handlers/plugin.handler'
 
 // 工具
 export {

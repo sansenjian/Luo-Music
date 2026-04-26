@@ -7,6 +7,7 @@ import HomeCollectionDetailPanel from '../components/home/HomeCollectionDetailPa
 import HomeHeader from '../components/home/HomeHeader.vue'
 import HomeLikedSongsPanel from '../components/home/HomeLikedSongsPanel.vue'
 import HomeLocalMusicPanel from '../components/home/HomeLocalMusicPanel.vue'
+import HomePluginsPanel from '../components/home/HomePluginsPanel.vue'
 import HomeRecentPlayPanel from '../components/home/HomeRecentPlayPanel.vue'
 import HomeSettingsPanel from '../components/home/HomeSettingsPanel.vue'
 import HomeSidebar from '../components/home/HomeSidebar.vue'
@@ -151,6 +152,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
       />
       <HomeRecentPlayPanel v-else-if="activeWorkspaceView === 'history'" class="workspace-panel" />
       <HomeLocalMusicPanel v-else-if="activeWorkspaceView === 'local'" class="workspace-panel" />
+      <HomePluginsPanel v-else-if="activeWorkspaceView === 'plugins'" class="workspace-panel" />
       <HomeSettingsPanel v-else-if="activeWorkspaceView === 'settings'" class="workspace-panel" />
       <HomeCollectionDetailPanel v-else class="workspace-panel" :collection="selectedCollection" />
 

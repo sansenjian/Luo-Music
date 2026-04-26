@@ -40,6 +40,7 @@ import {
 } from './apiProxy'
 
 import { WindowProxy, getWindowProxy, type WindowState } from './windowProxy'
+import { PluginProxy, getPluginProxy } from './pluginProxy'
 
 import {
   PlayerProxy,
@@ -79,6 +80,8 @@ export {
   WindowProxy,
   getWindowProxy,
   type WindowState,
+  PluginProxy,
+  getPluginProxy,
   PlayerProxy,
   getPlayerProxy,
   type PlayMode,
@@ -133,6 +136,13 @@ export function getServices(): ServiceProxies {
         lazyProxies.window = new WindowProxy()
       }
       return lazyProxies.window as WindowProxy
+    },
+
+    get plugins() {
+      if (!lazyProxies.plugins) {
+        lazyProxies.plugins = new PluginProxy()
+      }
+      return lazyProxies.plugins as PluginProxy
     },
 
     log: (module: string) => new LogProxy(module)

@@ -58,6 +58,16 @@ export const INVOKE_CHANNELS = {
   LOCAL_LIBRARY_GET_ALBUMS: 'local-library:get-albums',
   LOCAL_LIBRARY_GET_COVER: 'local-library:get-cover',
 
+  // 插件管理
+  PLUGIN_LIST: 'plugin:list',
+  PLUGIN_INSTALL_FROM_PATH: 'plugin:install-from-path',
+  PLUGIN_PICK_INSTALL_PATH: 'plugin:pick-install-path',
+  PLUGIN_SET_ENABLED: 'plugin:set-enabled',
+  PLUGIN_UNINSTALL: 'plugin:uninstall',
+  PLUGIN_GET_SETTINGS: 'plugin:get-settings',
+  PLUGIN_UPDATE_SETTINGS: 'plugin:update-settings',
+  PLUGIN_CALL: 'plugin:call',
+
   // API 服务
   API_SEARCH: 'api:search',
   API_GET_SONG_URL: 'api:get-song-url',
@@ -168,6 +178,7 @@ export const RECEIVE_CHANNELS = {
 
   // 配置变化
   CONFIG_CHANGED: 'config:changed',
+  PLUGIN_CHANGED: 'plugin:changed',
 
   // 本地音乐
   LOCAL_LIBRARY_UPDATED: 'local-library:updated',

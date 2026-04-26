@@ -45,6 +45,7 @@ const registerApiHandlersMock = vi.hoisted(() => vi.fn())
 const registerLyricHandlersMock = vi.hoisted(() => vi.fn())
 const registerLogHandlersMock = vi.hoisted(() => vi.fn())
 const registerLocalLibraryHandlersMock = vi.hoisted(() => vi.fn())
+const registerPluginHandlersMock = vi.hoisted(() => vi.fn())
 
 let lifecycleCallbacks: AppLifecycleCallbacks | undefined
 let resolveInitializeServices: (() => void) | undefined
@@ -65,6 +66,15 @@ vi.mock('../../electron/DesktopLyricManager', () => ({
   desktopLyricManager: {
     prewarmWindow: prewarmWindowMock,
     closeWindow: closeDesktopLyricWindowMock
+  }
+}))
+
+vi.mock('../../electron/plugins/PluginCatalog', () => ({
+  PluginCatalog: class {
+    initialize = vi.fn(async () => {})
+    dispose = vi.fn(async () => {})
+    listPlatforms = vi.fn(async () => [])
+    onDidChange = vi.fn(() => () => {})
   }
 }))
 
@@ -124,7 +134,8 @@ vi.mock('../../electron/ipc/index', () => ({
   registerApiHandlers: registerApiHandlersMock,
   registerLyricHandlers: registerLyricHandlersMock,
   registerLogHandlers: registerLogHandlersMock,
-  registerLocalLibraryHandlers: registerLocalLibraryHandlersMock
+  registerLocalLibraryHandlers: registerLocalLibraryHandlersMock,
+  registerPluginHandlers: registerPluginHandlersMock
 }))
 
 vi.mock('../../electron/main/app', () => ({

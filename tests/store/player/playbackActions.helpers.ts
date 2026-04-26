@@ -1,5 +1,6 @@
 import { vi } from 'vitest'
 
+import { replaceRuntimePlatformDescriptors } from '@/platform/music/descriptors'
 import { createInitialState } from '@/store/player/playerState'
 import { PlaybackActions } from '@/store/player/playbackActions'
 import type { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
@@ -66,8 +67,46 @@ vi.mock('@/utils/http/cancelError', () => ({
   isCanceledRequestError: mocks.isCanceledRequestErrorMock
 }))
 
+const TEST_PLATFORM_DESCRIPTORS = [
+  {
+    id: 'netease',
+    displayName: 'Netease Music',
+    source: 'external' as const,
+    runtime: 'external-host' as const,
+    enabled: true,
+    capabilities: {
+      search: true,
+      songUrl: true,
+      songDetail: true,
+      lyric: true,
+      playlistDetail: true,
+      needsHydration: true,
+      supportsLyricFetch: true,
+      supportsUrlRefreshOnFailure: true
+    }
+  },
+  {
+    id: 'qq',
+    displayName: 'QQ Music',
+    source: 'external' as const,
+    runtime: 'external-host' as const,
+    enabled: true,
+    capabilities: {
+      search: true,
+      songUrl: true,
+      songDetail: true,
+      lyric: true,
+      playlistDetail: false,
+      needsHydration: false,
+      supportsLyricFetch: true,
+      supportsUrlRefreshOnFailure: false
+    }
+  }
+]
+
 export function resetPlaybackActionMocks() {
   vi.clearAllMocks()
+  replaceRuntimePlatformDescriptors(TEST_PLATFORM_DESCRIPTORS)
 }
 
 export function createSubject() {

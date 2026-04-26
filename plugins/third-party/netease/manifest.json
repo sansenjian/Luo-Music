@@ -1,0 +1,69 @@
+{
+  "manifestVersion": 1,
+  "id": "com.luomusic.plugin.netease",
+  "name": "Netease Music",
+  "version": "1.0.0",
+  "description": "网易云音乐第三方插件，提供搜索、播放、歌词、歌单等完整功能。需要搭配 NeteaseCloudMusicApi 服务端。",
+  "author": "Luo-Music",
+  "platformId": "netease",
+  "source": "external",
+  "runtime": "external-host",
+  "entry": {
+    "main": "index.mjs",
+    "module": "esm"
+  },
+  "engines": {
+    "pluginApi": "^1.0.0",
+    "app": ">=2.3.0"
+  },
+  "capabilities": {
+    "search": true,
+    "songUrl": true,
+    "songDetail": true,
+    "lyric": true,
+    "playlistDetail": true,
+    "needsHydration": true,
+    "supportsLyricFetch": true,
+    "supportsUrlRefreshOnFailure": true
+  },
+  "permissions": {
+    "network": {
+      "domains": [
+        "localhost",
+        "music.163.com",
+        "interface.music.163.com",
+        "interface3.music.163.com"
+      ]
+    },
+    "storage": true
+  },
+  "contributions": {
+    "settings": [
+      {
+        "key": "apiBase",
+        "type": "text",
+        "label": "API 服务地址",
+        "default": "http://localhost:3000"
+      },
+      {
+        "key": "audioLevel",
+        "type": "select",
+        "label": "默认音质",
+        "default": "standard",
+        "options": [
+          { "value": "standard", "label": "标准" },
+          { "value": "higher", "label": "较高" },
+          { "value": "exhigh", "label": "极高" },
+          { "value": "lossless", "label": "无损" },
+          { "value": "hires", "label": "Hi-Res" }
+        ]
+      },
+      {
+        "key": "verboseLog",
+        "type": "boolean",
+        "label": "详细日志",
+        "default": false
+      }
+    ]
+  }
+}

@@ -18,8 +18,8 @@ describe('Playlist.vue', () => {
 
     const wrapper = mount(Playlist)
 
-    expect(wrapper.find('.empty-state').exists()).toBe(true)
-    expect(wrapper.text()).toContain('NO TRACKS LOADED')
+    expect(wrapper.find('.home-empty-state').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Your queue is empty')
   })
 
   it('renders song list correctly', () => {

@@ -6,7 +6,7 @@ import type { RouteLocationNormalized } from 'vue-router'
 import './assets/main.css'
 import App from './App.vue'
 import router from './router'
-import { setupServices } from './services'
+import { services, setupServices } from './services'
 import { getLogger } from './utils/logger'
 import { isElectronRuntime } from './utils/runtime'
 
@@ -182,6 +182,15 @@ scheduleNonCriticalInit(async () => {
 
   if (import.meta.env.DEV) {
     tasks.push(initializePerformanceMonitoring())
+  }
+
+  if (isElectronRuntime()) {
+    tasks.push(
+      services
+        .plugins()
+        .refreshPlatformDescriptors()
+        .then(() => undefined)
+    )
   }
 
   await Promise.all(tasks)

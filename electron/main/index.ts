@@ -17,6 +17,7 @@ import { RENDERER_DIST, VITE_PUBLIC } from '../utils/paths'
 import { registerPrivilegedLocalMediaScheme } from '../local-library/protocol.privileged'
 import { registerLocalMediaProtocol } from '../local-library/protocol'
 import { disposeLocalLibraryService } from '../local-library/service'
+import { PluginCatalog } from '../plugins/PluginCatalog'
 
 import {
   ipcService,
@@ -32,7 +33,8 @@ import {
   registerApiHandlers,
   registerLyricHandlers,
   registerLogHandlers,
-  registerLocalLibraryHandlers
+  registerLocalLibraryHandlers,
+  registerPluginHandlers
 } from '../ipc/index'
 
 import {
@@ -57,10 +59,6 @@ console.warn = logger.warn.bind(logger)
 console.info = logger.info.bind(logger)
 
 registerPrivilegedLocalMediaScheme()
-
-// Ensure Chromium's MediaSession service and hardware media key handling are
-// active so that Windows SMTC (System Media Transport Controls) integration
-// works via navigator.mediaSession in the renderer.
 app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaSessionService')
 
 const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
@@ -76,13 +74,26 @@ const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
   }
 }
 
+let pluginCatalog: PluginCatalog | null = null
+
+function getPluginCatalog(): PluginCatalog {
+  if (!pluginCatalog) {
+    pluginCatalog = new PluginCatalog()
+  }
+
+  return pluginCatalog
+}
+
 async function initializeApp(): Promise<void> {
-  initializeIpcService()
+  const currentPluginCatalog = getPluginCatalog()
+
+  initializeIpcService(currentPluginCatalog)
   registerLocalMediaProtocol()
 
   logger.info('Initializing services via ServiceManager...')
   try {
     await serviceManager.initialize(DEFAULT_SERVICE_CONFIG)
+    await currentPluginCatalog.initialize()
     const allStatus = serviceManager.getAllServiceStatus()
     logger.info('Service status:', JSON.stringify(allStatus, null, 2))
   } catch (err) {
@@ -99,7 +110,7 @@ async function initializeApp(): Promise<void> {
   registerShortcuts(DEFAULT_SHORTCUTS)
 }
 
-function initializeIpcService(): void {
+function initializeIpcService(currentPluginCatalog: PluginCatalog): void {
   ipcService.configure({
     defaultTimeout: 15000,
     slowRequestThreshold: 1000,
@@ -119,6 +130,7 @@ function initializeIpcService(): void {
   registerLyricHandlers()
   registerLogHandlers()
   registerLocalLibraryHandlers(windowManager)
+  registerPluginHandlers(currentPluginCatalog)
 
   ipcService.initialize()
 
@@ -130,6 +142,8 @@ function main(): void {
   setupDevUserData()
   setupWindowsShellIntegration()
   setupErrorHandlers()
+
+  pluginCatalog = new PluginCatalog()
 
   void initSentry()
 
@@ -158,6 +172,7 @@ function main(): void {
       await disposeLocalLibraryService()
       disposePerformanceMonitor()
       ipcService.dispose()
+      await pluginCatalog?.dispose()
       await serviceManager.stopAllServices()
     },
 

@@ -61,8 +61,8 @@ export interface PlayerState {
   isPlayerDocked: boolean
   /** IPC 是否已初始化 */
   ipcInitialized: boolean
-  /** audio.src 切换中，抑制 pause 事件 */
-  _srcTransitioning: boolean
+  /** 当前歌曲切换过渡中，抑制 pause 事件并驱动 MediaSession 重同步 */
+  trackSwitching: boolean
 }
 
 /**
@@ -110,7 +110,7 @@ export function createInitialState(): PlayerState {
     loading: false,
     isPlayerDocked: true,
     ipcInitialized: false,
-    _srcTransitioning: false
+    trackSwitching: false
   }
 }
 

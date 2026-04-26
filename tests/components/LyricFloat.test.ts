@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
-import LyricFloat from '@/components/LyricFloat.vue'
+import { DEFAULT_APP_CONFIG } from '../../electron/shared/config'
 import { TIME_OFFSETS } from '../utils/testConstants'
 
 const platformState = vi.hoisted(() => {
@@ -118,10 +118,49 @@ vi.mock('@/services', async importOriginal => {
   }
 })
 
+const desktopLyricConfigState = { ...DEFAULT_APP_CONFIG }
+const desktopLyricConfigListeners = new Set<
+  (event: {
+    key: keyof typeof desktopLyricConfigState
+    oldValue: unknown
+    newValue: unknown
+  }) => void
+>()
+const desktopLyricConfigBridgeMock = {
+  getAll: vi.fn(async () => ({ ...desktopLyricConfigState })),
+  onConfigChange: vi.fn(
+    (
+      listener: (event: {
+        key: keyof typeof desktopLyricConfigState
+        oldValue: unknown
+        newValue: unknown
+      }) => void
+    ) => {
+      desktopLyricConfigListeners.add(listener)
+      return () => desktopLyricConfigListeners.delete(listener)
+    }
+  )
+}
+
+function resetDesktopLyricConfigState(): void {
+  Object.assign(desktopLyricConfigState, DEFAULT_APP_CONFIG)
+}
+
+function setDesktopLyricConfig<K extends keyof typeof desktopLyricConfigState>(
+  key: K,
+  value: (typeof desktopLyricConfigState)[K]
+): void {
+  const oldValue = desktopLyricConfigState[key]
+  desktopLyricConfigState[key] = value
+  desktopLyricConfigListeners.forEach(listener => listener({ key, oldValue, newValue: value }))
+}
+
 describe('LyricFloat', () => {
   const rafQueue: FrameRequestCallback[] = []
+  let LyricFloat: (typeof import('@/components/LyricFloat.vue'))['default']
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules()
     vi.useFakeTimers()
     window.localStorage.removeItem('luo.desktopLyricDebug')
     platformState.listeners.clear()
@@ -154,10 +193,16 @@ describe('LyricFloat', () => {
     })
     playerState.playerBridgeMock.getCurrentSong.mockResolvedValue(null)
     playerState.playerBridgeMock.getLyric.mockResolvedValue([])
+    resetDesktopLyricConfigState()
+    desktopLyricConfigListeners.clear()
+    desktopLyricConfigBridgeMock.getAll.mockClear()
+    desktopLyricConfigBridgeMock.onConfigChange.mockClear()
     ;(window as unknown as Record<string, unknown>).services = {
-      player: playerState.playerBridgeMock
+      player: playerState.playerBridgeMock,
+      config: desktopLyricConfigBridgeMock
     }
     rafQueue.length = 0
+    LyricFloat = (await import('@/components/LyricFloat.vue')).default
 
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
       rafQueue.push(callback)
@@ -195,6 +240,7 @@ describe('LyricFloat', () => {
   })
 
   it('renders romanized lyrics on desktop when lyric settings enable them', async () => {
+    setDesktopLyricConfig('showRomanizedLyrics', true)
     const wrapper = mount(LyricFloat)
     await nextTick()
     await Promise.resolve()
@@ -917,6 +963,7 @@ describe('LyricFloat', () => {
   })
 
   it('falls back to roma lyric when translated lyric is empty', async () => {
+    setDesktopLyricConfig('showRomanizedLyrics', true)
     const wrapper = mount(LyricFloat)
     await nextTick()
     await Promise.resolve()

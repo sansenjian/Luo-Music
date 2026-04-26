@@ -38,7 +38,7 @@
 - `package.json`
 - `electron.vite.config.ts`
 - `electron/utils/paths.ts`
-- `electron/main.ts`
+- `electron/main/index.ts`
 - `electron/WindowManager.ts`
 
 ## 提交前检查

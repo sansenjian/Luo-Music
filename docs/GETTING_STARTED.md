@@ -117,7 +117,7 @@ npm install
 
 优先检查：
 
-- `electron/main.ts`
+- `electron/main/index.ts`
 - `electron/WindowManager.ts`
 - `electron/utils/paths.ts`
 - `electron.vite.config.ts`

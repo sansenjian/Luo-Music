@@ -1,105 +1,167 @@
 import { services } from '@/services'
 import type { ILogger } from '@/services/loggerService'
 import type { MusicPlatformAdapter } from './interface'
+import { getPlatformDescriptor, getPlatformDescriptors } from './descriptors'
+import { builtInAdapterLoader } from './plugin/BuiltInAdapterLoader'
+import { externalAdapterProxyFactory } from './plugin/ExternalAdapterProxy'
+
+export * from './descriptors'
 
 type MusicPlatformLoggerFactory = () => ILogger
-type MusicPlatformEntry = {
-  name: string
-  load: () => Promise<MusicPlatformAdapter>
-}
+
+type ResolveMusicPlatformAdapter = (platformId: string) => Promise<MusicPlatformAdapter>
+
+type ResolvedPlatform =
+  | {
+      platformId: string
+      kind: 'local'
+    }
+  | {
+      platformId: string
+      kind: 'external'
+    }
 
 const defaultMusicPlatformLoggerFactory: MusicPlatformLoggerFactory = () =>
   services.logger().createLogger('musicPlatform')
 
+const defaultResolveMusicPlatformAdapter: ResolveMusicPlatformAdapter = platformId =>
+  builtInAdapterLoader.load(platformId)
+
 let createMusicPlatformLogger: MusicPlatformLoggerFactory = defaultMusicPlatformLoggerFactory
+let resolveMusicPlatformAdapter: ResolveMusicPlatformAdapter = defaultResolveMusicPlatformAdapter
+let loggerInstance: ILogger | undefined
+
+function getLogger(): ILogger {
+  if (loggerInstance === undefined) {
+    loggerInstance = createMusicPlatformLogger()
+  }
+
+  return loggerInstance
+}
+
+function getAdapterBackedPlatformIds(): string[] {
+  return getPlatformDescriptors()
+    .filter(descriptor => descriptor.enabled)
+    .map(descriptor => descriptor.id)
+}
+
+const adapterPromises = new Map<string, Promise<MusicPlatformAdapter>>()
 
 export function configureMusicPlatformDeps(deps: {
   createLogger?: MusicPlatformLoggerFactory
+  resolveAdapter?: ResolveMusicPlatformAdapter
 }): void {
   if (deps.createLogger) {
     createMusicPlatformLogger = deps.createLogger
-    _logger = undefined
+    loggerInstance = undefined
+  }
+
+  if (deps.resolveAdapter) {
+    resolveMusicPlatformAdapter = deps.resolveAdapter
+    adapterPromises.clear()
   }
 }
 
 export function resetMusicPlatformDeps(): void {
   createMusicPlatformLogger = defaultMusicPlatformLoggerFactory
-  _logger = undefined
+  resolveMusicPlatformAdapter = defaultResolveMusicPlatformAdapter
+  loggerInstance = undefined
+  adapterPromises.clear()
 }
 
-// Lazy loading to avoid circular dependency
-let _logger: ILogger | undefined
-function getLogger() {
-  if (_logger === undefined) {
-    _logger = createMusicPlatformLogger()
-  }
-  return _logger
-}
+function resolvePlatform(platformId: string): ResolvedPlatform {
+  const descriptor = getPlatformDescriptor(platformId)
+  const available = getAdapterBackedPlatformIds()
 
-const platformRegistry = {
-  netease: {
-    name: 'Netease Music',
-    load: async () => {
-      const { NeteaseAdapter } = await import('./netease')
-      return new NeteaseAdapter()
+  if (!descriptor) {
+    getLogger().warn('Music platform is not registered', {
+      requested: platformId,
+      available
+    })
+    throw new Error(`Music platform "${platformId}" is not registered`)
+  }
+
+  if (!descriptor.enabled) {
+    getLogger().warn('Music platform is disabled', {
+      requested: platformId,
+      available
+    })
+    throw new Error(`Music platform "${platformId}" is disabled`)
+  }
+
+  if (descriptor.runtime === 'local' && descriptor.source !== 'external') {
+    return {
+      platformId,
+      kind: 'local'
     }
-  },
-  qq: {
-    name: 'QQ Music',
-    load: async () => {
-      const { QQMusicAdapter } = await import('./qq')
-      return new QQMusicAdapter()
+  }
+
+  if (descriptor.runtime === 'external-host' && descriptor.source === 'external') {
+    return {
+      platformId,
+      kind: 'external'
     }
   }
-} satisfies Record<string, MusicPlatformEntry>
 
-type SupportedPlatformId = keyof typeof platformRegistry
-
-const supportedPlatformIds = Object.keys(platformRegistry) as SupportedPlatformId[]
-
-const adapterPromises = new Map<SupportedPlatformId, Promise<MusicPlatformAdapter>>()
-
-function resolvePlatformId(platform: string): SupportedPlatformId {
-  if (Object.prototype.hasOwnProperty.call(platformRegistry, platform)) {
-    return platform as SupportedPlatformId
-  }
-
-  getLogger().warn('Unknown music platform, falling back to netease', {
-    requested: platform,
-    available: supportedPlatformIds
+  getLogger().warn('Music platform adapter is unavailable for this descriptor', {
+    requested: platformId,
+    runtime: descriptor.runtime,
+    source: descriptor.source,
+    enabled: descriptor.enabled,
+    available
   })
-  return 'netease'
+  throw new Error(`Music platform "${platformId}" does not provide a supported adapter`)
 }
 
-/**
- * Get the adapter for the specified platform
- * @param platform 'netease' | 'qq'
- */
-export function getMusicAdapter(platform: string): Promise<MusicPlatformAdapter> {
-  const platformId = resolvePlatformId(platform)
-  const existingAdapterPromise = adapterPromises.get(platformId)
+export function getMusicAdapter(platformId: string): Promise<MusicPlatformAdapter> {
+  let resolvedPlatform: ResolvedPlatform
 
+  try {
+    resolvedPlatform = resolvePlatform(platformId)
+  } catch (error) {
+    return Promise.reject(error)
+  }
+
+  const existingAdapterPromise = adapterPromises.get(resolvedPlatform.platformId)
   if (existingAdapterPromise) {
     return existingAdapterPromise
   }
 
-  const adapterPromise = platformRegistry[platformId].load().catch(error => {
-    adapterPromises.delete(platformId)
+  const adapterPromise =
+    resolvedPlatform.kind === 'local'
+      ? resolveMusicPlatformAdapter(resolvedPlatform.platformId)
+      : Promise.resolve(
+          externalAdapterProxyFactory.get(
+            resolvedPlatform.platformId,
+            getPlatformDescriptor(resolvedPlatform.platformId)?.capabilities ?? {
+              search: false,
+              songUrl: false,
+              songDetail: false,
+              lyric: false,
+              playlistDetail: false,
+              needsHydration: false,
+              supportsLyricFetch: false,
+              supportsUrlRefreshOnFailure: false
+            }
+          )
+        )
+
+  const trackedAdapterPromise = adapterPromise.catch(error => {
+    adapterPromises.delete(resolvedPlatform.platformId)
     throw error
   })
 
-  adapterPromises.set(platformId, adapterPromise)
-  return adapterPromise
+  adapterPromises.set(resolvedPlatform.platformId, trackedAdapterPromise)
+  return trackedAdapterPromise
 }
 
-/**
- * Get all available platforms
- */
 export function getAvailablePlatforms(): Array<{ id: string; name: string }> {
-  return supportedPlatformIds.map(platformId => ({
-    id: platformId,
-    name: platformRegistry[platformId].name
-  }))
+  return getPlatformDescriptors()
+    .filter(descriptor => descriptor.enabled)
+    .map(descriptor => ({
+      id: descriptor.id,
+      name: descriptor.displayName
+    }))
 }
 
 export * from './interface'

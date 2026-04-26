@@ -275,6 +275,7 @@ declare global {
   const usePlayerStore: typeof import('./store/playerStore').usePlayerStore
   const usePlayerViewModel: typeof import('./composables/usePlayerViewModel').usePlayerViewModel
   const usePlaylistStore: typeof import('./store/playlistStore').usePlaylistStore
+  const usePluginManager: typeof import('./composables/usePluginManager').usePluginManager
   const usePointer: typeof import('@vueuse/core').usePointer
   const usePointerLock: typeof import('@vueuse/core').usePointerLock
   const usePointerSwipe: typeof import('@vueuse/core').usePointerSwipe
@@ -462,6 +463,9 @@ declare global {
   // @ts-ignore
   export type { PlayerViewModelDeps } from './composables/usePlayerViewModel'
   import('./composables/usePlayerViewModel')
+  // @ts-ignore
+  export type { PluginManagerDeps } from './composables/usePluginManager'
+  import('./composables/usePluginManager')
   // @ts-ignore
   export type { RenderStyle, RenderStyleDeps } from './composables/useRenderStyle'
   import('./composables/useRenderStyle')
@@ -894,6 +898,9 @@ declare module 'vue' {
     >
     readonly usePlaylistStore: UnwrapRef<
       (typeof import('./store/playlistStore'))['usePlaylistStore']
+    >
+    readonly usePluginManager: UnwrapRef<
+      (typeof import('./composables/usePluginManager'))['usePluginManager']
     >
     readonly usePointer: UnwrapRef<(typeof import('@vueuse/core'))['usePointer']>
     readonly usePointerLock: UnwrapRef<(typeof import('@vueuse/core'))['usePointerLock']>

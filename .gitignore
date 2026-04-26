@@ -167,6 +167,7 @@ tests/Test Material/
 .idea/
 .claude/
 .codex/
+.codex_tmp/
 .ai/
 .playwright-mcp/
 

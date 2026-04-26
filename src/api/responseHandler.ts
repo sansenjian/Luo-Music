@@ -1,8 +1,3 @@
-import type { SearchValidationResult } from '@/types/schemas'
-import { normalizeApiError } from '@/utils/error/normalize'
-import type { AppError } from '@/utils/error/types'
-import { isCanceledRequestError } from '@/utils/http/cancelError'
-
 export type RawApiResponse = Record<string, unknown>
 
 export interface ApiResponse<T> {
@@ -133,71 +128,4 @@ export function parseNeteaseResponse<T>(response: unknown): ApiResponse<T> {
   })
 }
 
-export function handleApiError(error: unknown, context?: string): AppError {
-  const appError = normalizeApiError(error, context)
-
-  if (!isCanceledRequestError(error)) {
-    console.error('[API Error]', appError.message, error)
-  }
-
-  return appError
-}
-
-export type { SearchValidationResult }
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function isUnknownArray(value: unknown): value is unknown[] {
-  return Array.isArray(value)
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value)
-}
-
-export function validateSearchResponse(data: unknown): SearchValidationResult {
-  if (isRecord(data) && isRecord(data.song)) {
-    const list = data.song.list
-    const totalnum = data.song.totalnum
-    if (isUnknownArray(list) && isFiniteNumber(totalnum)) {
-      return {
-        valid: true,
-        list,
-        total: totalnum
-      }
-    }
-  }
-
-  if (isRecord(data)) {
-    const songs = data.songs
-    const songCount = data.songCount
-    if (isUnknownArray(songs) && isFiniteNumber(songCount)) {
-      return {
-        valid: true,
-        list: songs,
-        total: songCount
-      }
-    }
-  }
-
-  if (isRecord(data)) {
-    const list = data.list
-    const total = data.total
-    if (isUnknownArray(list) && isFiniteNumber(total)) {
-      return {
-        valid: true,
-        list,
-        total
-      }
-    }
-  }
-
-  return {
-    valid: false,
-    list: [],
-    total: 0,
-    error: 'Unknown search response format'
-  }
-}
+export { handleApiError } from '@/utils/error/legacy'

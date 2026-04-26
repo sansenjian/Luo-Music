@@ -2,7 +2,14 @@ import { computed, ref } from 'vue'
 
 import type { HomeSidebarCollectionSelection } from '@/components/home/homeSidebar.types'
 
-export type HomeWorkspaceView = 'home' | 'liked' | 'collection' | 'local' | 'settings' | 'history'
+export type HomeWorkspaceView =
+  | 'home'
+  | 'liked'
+  | 'collection'
+  | 'local'
+  | 'settings'
+  | 'history'
+  | 'plugins'
 
 export function useHomeWorkspaceState() {
   const activeWorkspaceView = ref<HomeWorkspaceView>('home')
@@ -17,9 +24,11 @@ export function useHomeWorkspaceState() {
           ? 'history'
           : activeWorkspaceView.value === 'settings'
             ? 'settings'
-            : activeWorkspaceView.value === 'collection' && selectedCollection.value
-              ? selectedCollection.value.uiId
-              : 'home'
+            : activeWorkspaceView.value === 'plugins'
+              ? 'plugins'
+              : activeWorkspaceView.value === 'collection' && selectedCollection.value
+                ? selectedCollection.value.uiId
+                : 'home'
   )
 
   function handleSidebarItemSelect(itemId: string): void {
@@ -43,6 +52,12 @@ export function useHomeWorkspaceState() {
 
     if (itemId === 'settings') {
       activeWorkspaceView.value = 'settings'
+      selectedCollection.value = null
+      return
+    }
+
+    if (itemId === 'plugins') {
+      activeWorkspaceView.value = 'plugins'
       selectedCollection.value = null
       return
     }

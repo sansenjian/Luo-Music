@@ -599,7 +599,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
               this.notifyPlayingState(true)
             },
             onPause: () => {
-              if (this._srcTransitioning) {
+              if (this.trackSwitching) {
                 return
               }
               this.playing = false
@@ -838,7 +838,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         // that the MediaSession playbackState never drops to 'paused'
         // during the transition.  Without this, Windows SMTC sees an
         // inactive session and switches to another app's media control.
-        this._srcTransitioning = true
+        this.trackSwitching = true
 
         try {
           await audioManager.play(String(targetSong.url))
@@ -848,7 +848,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           this.playing = false
           throw error
         } finally {
-          this._srcTransitioning = false
+          this.trackSwitching = false
         }
       },
 

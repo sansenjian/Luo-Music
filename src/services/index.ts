@@ -18,6 +18,7 @@ import { createCommandService, type CommandService } from './commandService'
 import { createPlayerService, type PlayerService } from './playerService'
 import { createMusicService, type MusicService } from './musicService'
 import { createStorageService, type StorageService } from './storageService'
+import { createPluginService, type PluginService } from './pluginService'
 import {
   IPlatformService,
   IApiService,
@@ -29,6 +30,7 @@ import {
   IPlayerService,
   IMusicService,
   IStorageService,
+  IPluginService,
   type ServiceIdentifier
 } from './types'
 
@@ -48,7 +50,8 @@ export {
   ICommandService,
   IPlayerService,
   IMusicService,
-  IStorageService
+  IStorageService,
+  IPluginService
 } from './decorators'
 
 // 导出依赖注入容器（injector.ts）
@@ -77,6 +80,7 @@ export type ServiceOverrides = Partial<{
   player: PlayerService
   music: MusicService
   storage: StorageService
+  plugin: PluginService
 }>
 
 type ServiceKey = keyof ServiceOverrides
@@ -150,6 +154,11 @@ const SERVICE_REGISTRY: ServiceConfig<unknown>[] = [
     identifier: IStorageService,
     factory: createStorageService,
     overrideKey: 'storage'
+  },
+  {
+    identifier: IPluginService,
+    factory: createPluginService,
+    overrideKey: 'plugin'
   }
 ]
 
@@ -163,7 +172,8 @@ const SERVICE_IDENTIFIERS: Record<ServiceKey, ServiceIdentifier<unknown>> = {
   command: ICommandService,
   player: IPlayerService,
   music: IMusicService,
-  storage: IStorageService
+  storage: IStorageService,
+  plugin: IPluginService
 }
 
 /**
@@ -211,6 +221,7 @@ export type {
   MusicService,
   PlatformService,
   PlayerService,
+  PluginService,
   StorageService
 }
 export { getService }
@@ -326,5 +337,6 @@ export const services = {
   commands: createServiceAccessor(ICommandService, setupServices),
   player: createServiceAccessor(IPlayerService, setupServices),
   music: createServiceAccessor(IMusicService, setupServices),
-  storage: createServiceAccessor(IStorageService, setupServices)
+  storage: createServiceAccessor(IStorageService, setupServices),
+  plugins: createServiceAccessor(IPluginService, setupServices)
 }

@@ -1,12 +1,21 @@
 # Lightweight Dependency Graph
 
 Generated: 2026-03-15T09:25:48.728Z
+Updated: 2026-04-24 — 标注已失效的分组
 
 ## Scope
 
 - Scanned files: 162
 - Module groups: 20
 - Cross-group import edges: 47
+
+> **注意**：此图生成于 2026-03-15，以下分组已不存在或内容极少：
+>
+> - `src/entry` — 目录不存在
+> - `electron/core` — 目录不存在（实际代码在 `electron/ipc/` 和 `electron/types/`）
+> - `src/base` — 仅有 `common/` 子目录（event、lifecycle、types）
+> - `src/config` — 仅有 `shortcuts.ts`
+> - `src/core` — 仅有 `context/` 和 `commands/` 子目录
 
 ## Groups
 

@@ -9,7 +9,7 @@ import {
   webManualChunks
 } from './config/vite.shared.ts'
 
-export default defineConfig(async ({ mode }) => {
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const appRuntime = env.APP_RUNTIME === 'electron' ? 'electron' : 'web'
   const sentryDsn = env.SENTRY_DSN ?? ''

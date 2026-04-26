@@ -9,7 +9,8 @@ export const uiMessages = {
       playback: '播放设置',
       lyrics: '歌词设置',
       appearance: '界面设置',
-      experimental: '实验功能'
+      experimental: '实验功能',
+      plugins: '插件管理'
     },
     fields: {
       playMode: '播放模式',
@@ -34,7 +35,16 @@ export const uiMessages = {
       dockedPlayerLayout: '紧贴底栏播放器布局',
       smtc: 'Windows SMTC（实验）',
       waveform: '进度条波形可视化（实验）',
-      coverSwipe: '滑动封面切歌（实验）'
+      coverSwipe: '滑动封面切歌（实验）',
+      pluginInstallPath: '插件目录 / manifest.json 路径',
+      pluginVersion: '版本',
+      pluginStatus: '状态',
+      pluginNetworkDomains: '网络白名单',
+      pluginStorage: '本地存储',
+      pluginPermissions: '权限声明',
+      pluginCircuitTripped: '已熔断',
+      pluginFailCount: '连续失败',
+      pluginGranted: '已授权'
     },
     options: {
       playMode: {
@@ -77,6 +87,24 @@ export const uiMessages = {
         center: '居中',
         right: '居右'
       }
+    },
+    actions: {
+      installPlugin: '安装插件',
+      installingPlugin: '安装中…',
+      browsePluginPath: '浏览…',
+      refreshPlugins: '刷新列表',
+      enablePlugin: '启用',
+      disablePlugin: '停用',
+      uninstallPlugin: '卸载',
+      saveSettings: '保存设置'
+    },
+    states: {
+      loadingPlugins: '正在加载插件列表…',
+      noPluginsInstalled: '当前还没有可管理的插件。',
+      noPluginDescription: '暂无插件描述',
+      pluginReady: 'ready',
+      pluginDisabled: 'disabled',
+      pluginError: 'error'
     }
   },
   home: {

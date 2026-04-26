@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 
+import { getSearchPlatformOptions } from '@/platform/music'
 import { useHomeShell } from './useHomeShell'
 import { searchResultItemToSong, useSearchStore } from '../store/searchStore'
 import { useToastStore } from '../store/toastStore'
@@ -8,11 +9,6 @@ export interface MusicServerOption {
   value: string
   label: string
 }
-
-const SERVERS: MusicServerOption[] = [
-  { value: 'netease', label: 'Netease' },
-  { value: 'qq', label: 'QQ Music' }
-]
 
 type ToastStoreLike = Pick<ReturnType<typeof useToastStore>, 'error' | 'success'>
 type SearchStoreLike = Pick<
@@ -73,10 +69,11 @@ export function useHomePage(deps: HomePageDeps = {}) {
 
   const searchKeyword = ref('')
   const showSelect = ref(false)
+  const servers = computed<MusicServerOption[]>(() => getSearchPlatformOptions())
 
   const selectedServerLabel = computed(() => {
-    const server = SERVERS.find(item => item.value === searchStore.server)
-    return server?.label ?? SERVERS[0].label
+    const server = servers.value.find(item => item.value === searchStore.server)
+    return server?.label ?? servers.value[0]?.label ?? searchStore.server
   })
 
   const selectedServer = computed({
@@ -140,7 +137,7 @@ export function useHomePage(deps: HomePageDeps = {}) {
     selectedServer,
     selectedServerLabel,
     setSearchKeyword,
-    servers: SERVERS,
+    servers,
     showSelect,
     onSearch,
     selectServer,

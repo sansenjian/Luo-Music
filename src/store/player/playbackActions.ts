@@ -1,5 +1,6 @@
 import type { Song } from '@/types/schemas'
 import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@/types/localLibrary'
+import { getPlatformCapabilities } from '@/platform/music'
 import type { MusicService } from '@/services/musicService'
 import { getSongPlatformKey, isSameSongIdentity, resolveMediaId } from '@/utils/songIdentity'
 import { errorCenter } from '@/utils/error/center'
@@ -76,8 +77,8 @@ export class PlaybackActions {
     return !song.url
   }
 
-  private shouldHydrateSongForPlayback(song: Song, platformKey: string): boolean {
-    return platformKey === 'netease'
+  private shouldHydrateSongForPlayback(_song: Song, platformKey: string): boolean {
+    return getPlatformCapabilities(platformKey).needsHydration
   }
 
   private shouldFetchLyrics(song: Song, platformKey: string): boolean {
@@ -85,7 +86,7 @@ export class PlaybackActions {
       return false
     }
 
-    return platformKey === 'netease' || platformKey === 'qq'
+    return getPlatformCapabilities(platformKey).supportsLyricFetch
   }
 
   private clearPlaybackFailureState(song: Song): void {
@@ -328,7 +329,9 @@ export class PlaybackActions {
         songPrefetcher.schedulePrefetch(state.songList, index)
       } catch (playbackError) {
         const canRetryWithFreshUrl =
-          platformKey === 'netease' && !shouldFetchUrl && Boolean(song.url)
+          getPlatformCapabilities(platformKey).supportsUrlRefreshOnFailure &&
+          !shouldFetchUrl &&
+          Boolean(song.url)
 
         if (!canRetryWithFreshUrl) {
           throw playbackError

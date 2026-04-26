@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RECEIVE_CHANNELS } from '../../electron/shared/protocol/channels'
 
-const storeData = new Map<string, unknown>()
+const storeData = vi.hoisted(() => new Map<string, unknown>())
 const originalNodeEnv = process.env.NODE_ENV
 
 vi.mock('electron-store', () => ({
@@ -262,18 +262,18 @@ describe('DesktopLyricManager', () => {
     })
   })
 
-  it('prewarms the desktop lyric window as visible when the persisted setting is enabled', async () => {
-    const { DesktopLyricManager } = await import('../../electron/DesktopLyricManager')
-    const manager = new DesktopLyricManager()
-    const createWindowSpy = vi.spyOn(manager, 'createWindow').mockImplementation(() => undefined)
-
+  it('prewarms the desktop lyric window hidden even when the persisted setting is enabled', async () => {
     storeData.set('appConfig', {
       enableDesktopLyric: true
     })
 
+    const { DesktopLyricManager } = await import('../../electron/DesktopLyricManager')
+    const manager = new DesktopLyricManager()
+    const createWindowSpy = vi.spyOn(manager, 'createWindow').mockImplementation(() => undefined)
+
     manager.prewarmWindow()
 
-    expect(createWindowSpy).toHaveBeenCalledWith({ showOnReady: true })
+    expect(createWindowSpy).toHaveBeenCalledWith({ showOnReady: false })
   })
 
   it('emits debug traces for cached replay flow when desktop lyric debug is enabled', async () => {

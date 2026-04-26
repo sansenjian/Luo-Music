@@ -27,8 +27,10 @@ import type {
   LocalLibraryTrackQuery
 } from '@/types/localLibrary'
 import type { Song, SongPlatform } from '@/types/schemas.ts'
+import type { PlatformDescriptor } from '@/platform/music/descriptors'
 import type { LyricDisplayType, PlayMode as PlayerPlayMode } from '../../src/types/player'
 import type { LyricLine as PlayerLyricLine } from '../../src/utils/player/core/lyric'
+import type { PluginMethodName } from '../plugins/types'
 
 // 导出 PlayMode 类型供 handlers 使用
 export type PlayMode = PlayerPlayMode
@@ -322,6 +324,43 @@ type InvokeChannelsDefinition = MergeChannels<
       [coverHash: string],
       string | null
     > &
+    // 插件管理
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.PLUGIN_LIST,
+      [],
+      { platforms: PlatformDescriptor[] }
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.PLUGIN_INSTALL_FROM_PATH,
+      [pluginPath: string],
+      { platforms: PlatformDescriptor[] }
+    > &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.PLUGIN_PICK_INSTALL_PATH, [], string | null> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.PLUGIN_SET_ENABLED,
+      [platformId: string, enabled: boolean],
+      { platforms: PlatformDescriptor[] }
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.PLUGIN_UNINSTALL,
+      [platformId: string],
+      { platforms: PlatformDescriptor[] }
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.PLUGIN_GET_SETTINGS,
+      [platformId: string],
+      { settings: Record<string, unknown> }
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.PLUGIN_UPDATE_SETTINGS,
+      [platformId: string, settings: Record<string, unknown>],
+      { settings: Record<string, unknown> }
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.PLUGIN_CALL,
+      [platformId: string, method: PluginMethodName, payload: unknown],
+      unknown
+    > &
     // API 服务
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_SEARCH,
@@ -499,6 +538,10 @@ type ReceiveChannelsDefinition = MergeChannels<
       { error: string; song: Song | null }
     > &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.CONFIG_CHANGED, ConfigChangeEvent> &
+    DefineReceiveChannel<
+      typeof RECEIVE_CHANNELS.PLUGIN_CHANGED,
+      { platforms: PlatformDescriptor[] }
+    > &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.LOCAL_LIBRARY_UPDATED, LocalLibraryState> &
     DefineReceiveChannel<
       typeof RECEIVE_CHANNELS.LOCAL_LIBRARY_SCAN_STATUS,

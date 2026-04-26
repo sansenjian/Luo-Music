@@ -209,6 +209,8 @@ export default [
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
+      'vue/one-component-per-file': 'off',
+      'vue/require-default-prop': 'off',
       'no-console': 'off',
       'no-restricted-imports': [
         'error',

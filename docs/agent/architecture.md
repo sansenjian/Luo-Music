@@ -46,13 +46,13 @@
 
 ### 播放器逻辑
 
-- `src/store/playerStore.ts`
-- `src/utils/player/`
+- `src/store/playerStore.ts`（入口）/ `src/store/player/`（子模块：playbackActions、lyricSync、runtime 等）
+- `src/utils/player/`（core、modules、constants、helpers）
 - `src/components/Player.vue`
 
 ### 状态与用户数据
 
-- `src/store/`
+- `src/store/`（playerStore、searchStore、userStore、playlistStore 等）
 - `src/composables/`
 - `src/components/user/`
 - `src/views/UserCenter.vue`

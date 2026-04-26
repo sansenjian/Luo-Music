@@ -8,6 +8,7 @@ import type { PlayerProxy } from './playerProxy'
 import type { ApiProxy } from './apiProxy'
 import type { ConfigProxy } from './configProxy'
 import type { WindowProxy } from './windowProxy'
+import type { PluginProxy } from './pluginProxy'
 import type { LogProxy } from './logProxy'
 
 /**
@@ -20,4 +21,5 @@ export interface ServiceProxies {
   config: ConfigProxy
   log: (module: string) => LogProxy
   window: WindowProxy
+  plugins: PluginProxy
 }

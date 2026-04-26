@@ -264,7 +264,8 @@ describe('HomeSidebar', () => {
         kind: 'playlist',
         name: '我的测试歌单',
         coverUrl: 'https://example.com/created-cover.png',
-        summary: '29 首歌'
+        summary: '29 首歌',
+        trackCount: 29
       }
     ])
   })

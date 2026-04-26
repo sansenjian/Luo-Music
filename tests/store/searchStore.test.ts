@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { replaceRuntimePlatformDescriptors } from '@/platform/music/descriptors'
 import { resetServices } from '@/services/registry'
 import { setupServices, services } from '@/services'
 import type { Song } from '@/platform/music/interface'
@@ -22,6 +23,16 @@ function createSearchSong(id: string | number, overrides: Partial<Song> = {}): S
   }
 }
 
+const handleApiErrorMock = vi.hoisted(() =>
+  vi.fn((error: unknown) => ({
+    message: error instanceof Error ? error.message : String(error)
+  }))
+)
+
+vi.mock('@/utils/error/legacy', () => ({
+  handleApiError: handleApiErrorMock
+}))
+
 const adapterMock = {
   search: vi.fn()
 }
@@ -42,12 +53,27 @@ describe('searchStore', () => {
     localStorage.clear()
     vi.clearAllMocks()
     resetServices()
+    handleApiErrorMock.mockClear()
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true
+        }
+      }
+    ])
     setupServices({
-      error: {
-        handleApiError: ((error: unknown) => ({
-          message: error instanceof Error ? error.message : String(error)
-        })) as never
-      } as never,
       logger: {
         info: vi.fn(),
         debug: vi.fn(),
@@ -221,11 +247,6 @@ describe('searchStore', () => {
           debug: vi.fn(),
           warn: warnMock,
           error: vi.fn()
-        },
-        errorService: {
-          handleApiError: ((error: unknown) => ({
-            message: error instanceof Error ? error.message : String(error)
-          })) as never
         },
         musicService: {
           search: searchMock
