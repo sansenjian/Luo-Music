@@ -101,6 +101,7 @@ vi.mock('@/composables/useUserCenterPage', async () => {
       playlists: ref(pageMocks.playlists),
       favoritePlaylists: ref(pageMocks.favoritePlaylists),
       loadPlaylists: vi.fn(),
+      loadInitialPlaylistSongs: vi.fn(),
       loadPlaylistSongs: vi.fn(),
       resetPlaylists: vi.fn(),
       albums: ref(pageMocks.albums),

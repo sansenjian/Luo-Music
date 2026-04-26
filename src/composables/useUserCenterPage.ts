@@ -85,6 +85,7 @@ export interface UseUserCenterPageReturn {
   playlists: UserCenterPlaylistsLike['createdPlaylists']
   favoritePlaylists: UserCenterPlaylistsLike['favoritePlaylists']
   loadPlaylists: UserCenterPlaylistsLike['loadPlaylists']
+  loadInitialPlaylistSongs: UserCenterPlaylistsLike['loadInitialPlaylistSongs']
   loadPlaylistSongs: UserCenterPlaylistsLike['loadPlaylistSongs']
   resetPlaylists: UserCenterPlaylistsLike['resetPlaylists']
   albums: UserCenterFavoriteAlbumsLike['albums']
@@ -160,6 +161,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     createdPlaylists,
     error: playlistsError,
     favoritePlaylists,
+    loadInitialPlaylistSongs,
     loadPlaylistSongs,
     loadPlaylists,
     playlists,
@@ -290,10 +292,11 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     playlistStore,
     playerStore,
     likeSongs,
+    selectedPlaylistId: details.selectedPlaylistId,
     selectedPlaylistSongs: details.selectedPlaylistSongs,
     selectedAlbumSongs: details.selectedAlbumSongs,
     loadPlaylistDetail: details.loadPlaylistDetail,
-    loadPlaylistSongs,
+    loadInitialPlaylistSongs,
     loadAlbumDetail: details.loadAlbumDetail,
     getCachedPlaylistSongs: details.getCachedPlaylistSongs,
     getCachedAlbumSongs: details.getCachedAlbumSongs
@@ -340,6 +343,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     playlists: createdPlaylists,
     favoritePlaylists,
     loadPlaylists,
+    loadInitialPlaylistSongs,
     loadPlaylistSongs,
     resetPlaylists,
     albums,

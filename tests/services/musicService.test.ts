@@ -119,6 +119,22 @@ describe('musicService', () => {
 
       expect(mockAdapter.getSongUrl).toHaveBeenCalledWith(12345, undefined)
     })
+
+    it('should preserve playable http URLs returned by the adapter', async () => {
+      mockAdapter.getSongUrl.mockResolvedValue('http://m702.music.126.net/path/song.mp3?vuutv=a+b=')
+
+      const result = await musicService.getSongUrl('netease', '123')
+
+      expect(result).toBe('http://m702.music.126.net/path/song.mp3?vuutv=a+b=')
+    })
+
+    it('should keep non-http playable URLs unchanged', async () => {
+      mockAdapter.getSongUrl.mockResolvedValue('luo-media://media?path=D%3A%2FMusic%2Fsong.mp3')
+
+      const result = await musicService.getSongUrl('local', 'song-1')
+
+      expect(result).toBe('luo-media://media?path=D%3A%2FMusic%2Fsong.mp3')
+    })
   })
 
   describe('getSongDetail', () => {

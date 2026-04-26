@@ -240,6 +240,9 @@ export function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
   const loadPlaylistsMock = vi.fn<(userId: string | number) => Promise<void>>(() =>
     Promise.resolve()
   )
+  const loadInitialPlaylistSongsMock = vi.fn<(playlistId: string | number) => Promise<Song[]>>(() =>
+    Promise.resolve([])
+  )
   const loadPlaylistSongsMock = vi.fn<(playlistId: string | number) => Promise<Song[]>>(() =>
     Promise.resolve([])
   )
@@ -341,6 +344,7 @@ export function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
       ),
       error: playlistsErrorRef,
       loadPlaylists: loadPlaylistsMock,
+      loadInitialPlaylistSongs: loadInitialPlaylistSongsMock,
       loadPlaylistSongs: loadPlaylistSongsMock,
       usePlaylistTracks: () => playlistTracksState,
       resetPlaylists: resetPlaylistsMock
@@ -390,6 +394,7 @@ export function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
     retryLoadLikedSongsMock,
     resetLikedSongsMock,
     loadPlaylistsMock,
+    loadInitialPlaylistSongsMock,
     loadPlaylistSongsMock,
     resetPlaylistsMock,
     loadFavoriteAlbumsMock,

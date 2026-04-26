@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "com.luomusic.plugin.qq",
   "name": "QQ Music",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "QQ 音乐第三方插件，提供搜索、播放、歌词等功能。需要搭配 QQMusicApi 服务端。",
   "author": "Luo-Music",
   "platformId": "qq",
@@ -28,7 +28,14 @@
   },
   "permissions": {
     "network": {
-      "domains": ["localhost", "y.gtimg.cn", "c.y.qq.com", "u.y.qq.com", "shc.y.qq.com"]
+      "domains": [
+        "localhost",
+        "127.0.0.1",
+        "y.gtimg.cn",
+        "c.y.qq.com",
+        "u.y.qq.com",
+        "shc.y.qq.com"
+      ]
     },
     "storage": true
   },
@@ -38,7 +45,7 @@
         "key": "apiBase",
         "type": "text",
         "label": "API 服务地址",
-        "default": "http://localhost:3300"
+        "default": "http://127.0.0.1:3200"
       },
       {
         "key": "verboseLog",

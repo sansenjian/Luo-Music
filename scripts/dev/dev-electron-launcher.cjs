@@ -51,9 +51,10 @@ const CONFIG = {
   viteStartupTimeoutMs: 90000,
   buildOutput: {
     main: 'build/electron/main.cjs',
-    preload: 'build/electron/preload.cjs'
+    preload: 'build/electron/preload.cjs',
+    externalPluginWorker: 'build/electron/externalPluginWorker.mjs'
   },
-  electronSourcePatterns: ['.ts', '.js'],
+  electronSourcePatterns: ['.ts', '.js', '.mjs'],
   electronConfig: 'electron.vite.config.ts',
   appProcessNames: ['electron.exe', 'LUO Music.exe']
 }
@@ -96,7 +97,10 @@ function logDebug(message) {
 }
 
 // ============ 等待工具 ============
-async function waitForCondition(condition, { interval = CONFIG.pollIntervalMs, timeout = 0, description = 'condition' } = {}) {
+async function waitForCondition(
+  condition,
+  { interval = CONFIG.pollIntervalMs, timeout = 0, description = 'condition' } = {}
+) {
   return new Promise((resolve, reject) => {
     const deadline = timeout > 0 ? Date.now() + timeout : Infinity
 
@@ -108,15 +112,17 @@ async function waitForCondition(condition, { interval = CONFIG.pollIntervalMs, t
 
       const result = condition()
       if (result instanceof Promise) {
-        result.then(testResolve => {
-          if (testResolve) {
-            resolve()
-          } else {
+        result
+          .then(testResolve => {
+            if (testResolve) {
+              resolve()
+            } else {
+              setTimeout(check, interval)
+            }
+          })
+          .catch(() => {
             setTimeout(check, interval)
-          }
-        }).catch(() => {
-          setTimeout(check, interval)
-        })
+          })
       } else if (result) {
         resolve()
       } else {
@@ -132,7 +138,7 @@ async function waitForPort(port, timeoutMs = CONFIG.viteStartupTimeoutMs) {
   logDebug(`Waiting for port ${port}...`)
   return waitForCondition(
     () => {
-      return new Promise((testResolve) => {
+      return new Promise(testResolve => {
         const socket = connect(port, '127.0.0.1')
         socket.on('connect', () => {
           socket.end()
@@ -157,8 +163,8 @@ async function waitForHttpReady(
   logDebug(`Waiting for HTTP ready: ${url}`)
   return waitForCondition(
     () => {
-      return new Promise((testResolve) => {
-        const req = http.get(url, (res) => {
+      return new Promise(testResolve => {
+        const req = http.get(url, res => {
           const statusCode = res.statusCode ?? 0
           if (statusCode < 200 || statusCode >= 500) {
             res.resume()
@@ -227,29 +233,28 @@ function getLatestMTime(targetPath, predicate = () => true) {
 }
 
 function needsRebuild() {
-  const { main, preload } = CONFIG.buildOutput
-  const mainPath = path.resolve(ROOT, main)
-  const preloadPath = path.resolve(ROOT, preload)
+  const outputPaths = Object.values(CONFIG.buildOutput).map(outputPath =>
+    path.resolve(ROOT, outputPath)
+  )
 
-  if (!existsSync(mainPath) || !existsSync(preloadPath)) {
+  if (outputPaths.some(outputPath => !existsSync(outputPath))) {
     logDebug('Build output files not found')
     return true
   }
 
   try {
-    const mainStat = statSync(mainPath)
-    const preloadStat = statSync(preloadPath)
-    const latestBuiltTime = Math.min(mainStat.mtimeMs, preloadStat.mtimeMs)
+    const latestBuiltTime = Math.min(...outputPaths.map(outputPath => statSync(outputPath).mtimeMs))
 
-    const latestElectronSourceTime = getLatestMTime(
-      path.resolve(ROOT, 'electron'),
-      filePath => CONFIG.electronSourcePatterns.some(ext => filePath.endsWith(ext))
+    const latestElectronSourceTime = getLatestMTime(path.resolve(ROOT, 'electron'), filePath =>
+      CONFIG.electronSourcePatterns.some(ext => filePath.endsWith(ext))
     )
     const latestConfigTime = getLatestMTime(path.resolve(ROOT, CONFIG.electronConfig))
     const latestSourceTime = Math.max(latestElectronSourceTime, latestConfigTime)
 
     const needs = latestSourceTime > latestBuiltTime
-    logDebug(`Source time: ${latestSourceTime}, Built time: ${latestBuiltTime}, Needs rebuild: ${needs}`)
+    logDebug(
+      `Source time: ${latestSourceTime}, Built time: ${latestBuiltTime}, Needs rebuild: ${needs}`
+    )
     return needs
   } catch (error) {
     logDebug(`Error checking rebuild necessity: ${error.message}`)
@@ -259,7 +264,7 @@ function needsRebuild() {
 
 // ============ 进程管理 ============
 function killOldElectronInstances() {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     logInfo('Checking for old Electron instances...')
 
     if (process.platform === 'win32') {
@@ -326,7 +331,7 @@ function buildElectron() {
       }
     )
 
-    child.on('exit', (code) => {
+    child.on('exit', code => {
       if (code === 0) {
         logSuccess('Electron build completed')
         resolve()
@@ -453,12 +458,12 @@ async function main() {
   })
 
   // 6. 处理进程事件
-  child.on('error', (error) => {
+  child.on('error', error => {
     logError(`Failed to start Electron: ${error.message}`)
     process.exit(1)
   })
 
-  child.on('exit', (code) => {
+  child.on('exit', code => {
     logInfo(`Electron exited with code ${code}`)
     process.exit(code ?? 0)
   })
@@ -477,7 +482,7 @@ async function main() {
 }
 
 // 启动
-main().catch((error) => {
+main().catch(error => {
   logError(error.message)
   console.error(error.stack)
   process.exit(1)

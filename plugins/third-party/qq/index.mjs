@@ -35,9 +35,60 @@ function resolvePlayableUrl(playData, songId) {
   return null
 }
 
+function isRecord(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value))
+}
+
+function parseMaybeJson(value) {
+  if (typeof value !== 'string') return value
+
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
+}
+
+function unwrapQQResponse(value) {
+  const parsed = parseMaybeJson(value)
+  if (!isRecord(parsed)) return parsed
+
+  if ('response' in parsed) {
+    const response = parseMaybeJson(parsed.response)
+    if (isRecord(response)) return response
+  }
+
+  if (isRecord(parsed.data)) return parsed.data
+  if (isRecord(parsed.result)) return parsed.result
+
+  return parsed
+}
+
+function resolveSearchPayload(value) {
+  const payload = unwrapQQResponse(value)
+  if (!isRecord(payload)) return null
+
+  if (isRecord(payload.song)) {
+    return payload
+  }
+
+  const requestData = isRecord(payload.req) && isRecord(payload.req.data) ? payload.req.data : null
+  const song = requestData && isRecord(requestData.body) ? requestData.body.song : null
+  if (!isRecord(song)) {
+    return payload
+  }
+
+  return {
+    song: {
+      list: song.list,
+      totalnum: requestData.meta?.sum
+    }
+  }
+}
+
 export default {
   async create(ctx) {
-    const apiBase = (ctx.settings.apiBase || 'http://localhost:3300').replace(/\/+$/, '')
+    const apiBase = (ctx.settings.apiBase || 'http://127.0.0.1:3200').replace(/\/+$/, '')
     const verbose = Boolean(ctx.settings.verboseLog)
 
     ctx.logger.info('QQ Music plugin initialized', { apiBase })
@@ -59,11 +110,13 @@ export default {
 
     return {
       async search({ keyword, limit = 20, page = 1 }) {
-        const data = await apiGet('/getSearchByKey', {
-          key: keyword,
-          limit,
-          page
-        })
+        const data = resolveSearchPayload(
+          await apiGet('/getSearchByKey', {
+            key: keyword,
+            limit,
+            page
+          })
+        )
 
         if (!data?.song?.list || !Array.isArray(data.song.list)) {
           return { list: [], total: 0 }
@@ -71,7 +124,7 @@ export default {
 
         return {
           list: data.song.list.map(song => normalizeSong(song, ctx.platformId)),
-          total: data.song.totalnum || 0
+          total: data.song.totalnum || data.song.list.length
         }
       },
 
@@ -83,22 +136,25 @@ export default {
 
         if (!mediaId) {
           try {
-            const songInfo = await apiGet(`/getSongInfo/${id}`)
+            const songInfo = unwrapQQResponse(await apiGet(`/getSongInfo/${id}`))
             if (songInfo?.track_info) {
-              mediaId = songInfo.track_info.strMediaMid
-                || songInfo.track_info.file?.media_mid
-                || songInfo.track_info.mid
+              mediaId =
+                songInfo.track_info.strMediaMid ||
+                songInfo.track_info.file?.media_mid ||
+                songInfo.track_info.mid
             }
           } catch {
             ctx.logger.warn('getSongUrl: failed to fetch song info', { id })
           }
         }
 
-        const data = await apiGet('/getMusicPlay', {
-          songmid: id,
-          mediaId,
-          resType: 'play'
-        })
+        const data = unwrapQQResponse(
+          await apiGet('/getMusicPlay', {
+            songmid: id,
+            mediaId,
+            resType: 'play'
+          })
+        )
 
         if (!data) {
           ctx.logger.warn('getSongUrl failed', { id, mediaId })
@@ -113,14 +169,12 @@ export default {
       },
 
       async getSongDetail({ id }) {
-        const data = await apiGet(`/getSongInfo/${id}`)
-        return data?.track_info
-          ? normalizeSong(data.track_info, ctx.platformId)
-          : null
+        const data = unwrapQQResponse(await apiGet(`/getSongInfo/${id}`))
+        return data?.track_info ? normalizeSong(data.track_info, ctx.platformId) : null
       },
 
       async getLyric({ id }) {
-        const data = await apiGet('/getLyric', { songmid: id })
+        const data = unwrapQQResponse(await apiGet('/getLyric', { songmid: id }))
 
         if (!data) return { lrc: '', tlyric: '', romalrc: '' }
 

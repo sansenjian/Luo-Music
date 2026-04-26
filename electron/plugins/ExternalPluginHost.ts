@@ -23,6 +23,12 @@ type WorkerRuntime = {
   pendingCalls: Map<string, PendingCall>
 }
 
+type FetchFailureDetails = {
+  code?: unknown
+  address?: unknown
+  port?: unknown
+}
+
 export interface ExternalPluginHostDeps {
   stateStore?: PluginStateStore
   fetchImpl?: typeof fetch
@@ -291,11 +297,16 @@ export class ExternalPluginHost {
       }
     }
 
-    const response = await this.fetchImpl(requestUrl, {
-      method,
-      headers: method === 'POST' ? { 'content-type': 'application/json' } : undefined,
-      body: method === 'POST' && payload !== undefined ? JSON.stringify(payload) : undefined
-    })
+    let response: Response
+    try {
+      response = await this.fetchImpl(requestUrl, {
+        method,
+        headers: method === 'POST' ? { 'content-type': 'application/json' } : undefined,
+        body: method === 'POST' && payload !== undefined ? JSON.stringify(payload) : undefined
+      })
+    } catch (error) {
+      throw this.createHttpFetchError(method, requestUrl, error)
+    }
 
     if (!response.ok) {
       throw new Error(`Plugin HTTP request failed with status ${response.status}`)
@@ -310,6 +321,66 @@ export class ExternalPluginHost {
   }
 
   private isAllowedDomain(hostname: string, allowedDomains: string[]): boolean {
-    return allowedDomains.some(domain => hostname === domain || hostname.endsWith(`.${domain}`))
+    const normalizedHostname = hostname.toLowerCase()
+    return allowedDomains.some(domain => {
+      const normalizedDomain = domain.toLowerCase()
+
+      if (
+        normalizedHostname === normalizedDomain ||
+        normalizedHostname.endsWith(`.${normalizedDomain}`)
+      ) {
+        return true
+      }
+
+      return (
+        normalizedDomain === 'localhost' &&
+        (normalizedHostname === '127.0.0.1' || normalizedHostname === '::1')
+      )
+    })
+  }
+
+  private createHttpFetchError(method: 'GET' | 'POST', requestUrl: URL, error: unknown): Error {
+    const details = this.getFetchFailureDetails(error)
+    const message = error instanceof Error ? error.message : String(error)
+    const code = typeof details.code === 'string' ? details.code : undefined
+    const address = typeof details.address === 'string' ? details.address : undefined
+    const port =
+      typeof details.port === 'number' || typeof details.port === 'string'
+        ? String(details.port)
+        : undefined
+    const diagnostic = [
+      message,
+      code ? `(${[code, address, port].filter(Boolean).join(' ')})` : undefined
+    ]
+      .filter(Boolean)
+      .join(' ')
+    const wrapped = new Error(
+      `Plugin HTTP ${method} ${requestUrl.origin}${requestUrl.pathname} failed: ${diagnostic}`
+    )
+    ;(wrapped as Error & { cause?: unknown }).cause = error
+    return wrapped
+  }
+
+  private getFetchFailureDetails(error: unknown): FetchFailureDetails {
+    if (!error || typeof error !== 'object') {
+      return {}
+    }
+
+    const errorWithCause = error as FetchFailureDetails & { cause?: unknown }
+    const cause = errorWithCause.cause
+    if (cause && typeof cause === 'object') {
+      const causeDetails = cause as FetchFailureDetails
+      return {
+        code: causeDetails.code ?? errorWithCause.code,
+        address: causeDetails.address ?? errorWithCause.address,
+        port: causeDetails.port ?? errorWithCause.port
+      }
+    }
+
+    return {
+      code: errorWithCause.code,
+      address: errorWithCause.address,
+      port: errorWithCause.port
+    }
   }
 }

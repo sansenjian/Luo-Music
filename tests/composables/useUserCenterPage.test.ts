@@ -609,6 +609,13 @@ describe('useUserCenterPage', () => {
         platform: 'netease'
       })
     ]
+    const favoritePlaylistSongs = [
+      createSong({
+        id: 'favorite-playlist-song-1',
+        name: 'Favorite Playlist Song 1',
+        platform: 'netease'
+      })
+    ]
     const albumSongs = [
       createSong({
         id: 'album-song-1',
@@ -617,6 +624,7 @@ describe('useUserCenterPage', () => {
       })
     ]
 
+    factory.loadInitialPlaylistSongsMock.mockResolvedValue(favoritePlaylistSongs)
     factory.loadPlaylistSongsMock.mockResolvedValue(playlistSongs)
     factory.loadAlbumSongsMock.mockResolvedValue(albumSongs)
 
@@ -624,6 +632,7 @@ describe('useUserCenterPage', () => {
       viewModel,
       likedSongsRef,
       loadAlbumSongsMock,
+      loadInitialPlaylistSongsMock,
       loadPlaylistSongsMock,
       playSongWithDetailsMock,
       pushMock,
@@ -685,6 +694,17 @@ describe('useUserCenterPage', () => {
     expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
     expect(pushMock).toHaveBeenCalledWith('/')
     expect(viewModel.loadingMap.value.playlist).toBe(false)
+
+    vi.clearAllMocks()
+
+    await viewModel.playPlaylist('playlist-favorite-1')
+
+    expect(loadInitialPlaylistSongsMock).toHaveBeenCalledWith('playlist-favorite-1')
+    expect(loadPlaylistSongsMock).not.toHaveBeenCalled()
+    expect(setPlaylistMock).toHaveBeenCalledWith(favoritePlaylistSongs)
+    expect(setSongListMock).toHaveBeenCalledWith(favoritePlaylistSongs)
+    expect(playSongWithDetailsMock).toHaveBeenCalledWith(0)
+    expect(pushMock).toHaveBeenCalledWith('/')
 
     vi.clearAllMocks()
 
@@ -774,7 +794,7 @@ describe('useUserCenterPage', () => {
     ]
     const factory = createUserCenterPageDeps()
 
-    factory.loadPlaylistSongsMock.mockImplementation(playlistId => {
+    factory.loadInitialPlaylistSongsMock.mockImplementation(playlistId => {
       if (playlistId === 'playlist-1') {
         return firstPlaylistDeferred.promise
       }

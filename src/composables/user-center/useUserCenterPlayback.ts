@@ -11,10 +11,11 @@ export interface UseUserCenterPlaybackOptions {
   playlistStore: PlaylistStoreLike
   playerStore: PlayerStoreLike
   likeSongs: Ref<Song[]>
+  selectedPlaylistId: Ref<string | null>
   selectedPlaylistSongs: Ref<Song[]>
   selectedAlbumSongs: Ref<Song[]>
   loadPlaylistDetail: LoadDetailSongs
-  loadPlaylistSongs: LoadDetailSongs
+  loadInitialPlaylistSongs: LoadDetailSongs
   loadAlbumDetail: LoadDetailSongs
   getCachedPlaylistSongs: (playlistId: string | number) => Song[] | undefined
   getCachedAlbumSongs: (albumId: string | number) => Song[] | undefined
@@ -40,11 +41,13 @@ export function useUserCenterPlayback(
     getCachedPlaylistSongs,
     likeSongs,
     loadAlbumDetail,
-    loadPlaylistSongs,
+    loadInitialPlaylistSongs,
+    loadPlaylistDetail,
     playerStore,
     playlistStore,
     router,
     selectedAlbumSongs,
+    selectedPlaylistId,
     selectedPlaylistSongs
   } = options
 
@@ -75,7 +78,11 @@ export function useUserCenterPlayback(
     playingPlaylistId.value = normalizedPlaylistId
 
     try {
-      const songs = getCachedPlaylistSongs(playlistId) ?? (await loadPlaylistSongs(playlistId))
+      const songs =
+        getCachedPlaylistSongs(playlistId) ??
+        (selectedPlaylistId.value === normalizedPlaylistId
+          ? await loadPlaylistDetail(playlistId, true)
+          : await loadInitialPlaylistSongs(playlistId))
       if (playId !== activePlaylistPlayId || playingPlaylistId.value !== normalizedPlaylistId) {
         return
       }

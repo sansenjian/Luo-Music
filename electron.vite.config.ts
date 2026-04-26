@@ -1,6 +1,7 @@
 import { defineConfig } from 'electron-vite'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
-import { resolve } from 'path'
+import { copyFileSync, mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'path'
 import { config as loadDotEnv } from 'dotenv'
 import type { PluginOption } from 'vite'
 import {
@@ -21,6 +22,20 @@ function markAnalyzeExcludedPlugins(plugins: PluginOption[]): PluginOption[] {
 
     return Object.assign(plugin, { [ANALYZE_EXCLUDE_PLUGIN_MARKER]: true })
   })
+}
+
+function copyExternalPluginWorkerPlugin(): PluginOption {
+  const sourcePath = resolve(rootDir, 'electron/plugins/externalPluginWorker.mjs')
+  const outputPath = resolve(rootDir, 'build/electron/externalPluginWorker.mjs')
+
+  return {
+    name: 'luo-copy-external-plugin-worker',
+    apply: 'build',
+    closeBundle() {
+      mkdirSync(dirname(outputPath), { recursive: true })
+      copyFileSync(sourcePath, outputPath)
+    }
+  }
 }
 
 const rootDir = __dirname
@@ -65,6 +80,7 @@ if (sentryUploadEnabled) {
 
 export default defineConfig({
   main: {
+    plugins: [copyExternalPluginWorkerPlugin()],
     resolve: {
       extensions: ['.ts', '.tsx', '.mjs', '.js', '.mts', '.jsx', '.json'],
       alias: createSrcAlias(__dirname)

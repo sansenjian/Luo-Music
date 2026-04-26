@@ -39,6 +39,7 @@ export type UserCenterPlaylistsLike = Pick<
   | 'createdPlaylists'
   | 'error'
   | 'favoritePlaylists'
+  | 'loadInitialPlaylistSongs'
   | 'loadPlaylistSongs'
   | 'loadPlaylists'
   | 'playlists'

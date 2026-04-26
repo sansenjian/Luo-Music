@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "com.luomusic.plugin.netease",
   "name": "Netease Music",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "网易云音乐第三方插件，提供搜索、播放、歌词、歌单等完整功能。需要搭配 NeteaseCloudMusicApi 服务端。",
   "author": "Luo-Music",
   "platformId": "netease",
@@ -30,6 +30,7 @@
     "network": {
       "domains": [
         "localhost",
+        "127.0.0.1",
         "music.163.com",
         "interface.music.163.com",
         "interface3.music.163.com"
@@ -43,7 +44,7 @@
         "key": "apiBase",
         "type": "text",
         "label": "API 服务地址",
-        "default": "http://localhost:3000"
+        "default": "http://127.0.0.1:14532"
       },
       {
         "key": "audioLevel",

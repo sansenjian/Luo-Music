@@ -1,4 +1,4 @@
-import { VOLUME, AUDIO_CONFIG } from '@/utils/player/constants'
+import { VOLUME } from '@/utils/player/constants'
 
 export enum PlayerState {
   IDLE = 'idle',
@@ -52,7 +52,7 @@ export class PlayerCore {
   constructor() {
     this.audio = new Audio()
     this._initEvents()
-    this._setupCrossOrigin()
+    this._clearCrossOrigin()
     this._initVolume()
   }
 
@@ -68,23 +68,10 @@ export class PlayerCore {
     return false
   }
 
-  private _shouldUseCrossOrigin(url?: string): boolean {
-    if (!url) {
-      return false
-    }
-
-    try {
-      const parsedUrl = new URL(url, window.location.href)
-      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
-    } catch {
-      return /^https?:\/\//i.test(url)
-    }
-  }
-
-  private _setupCrossOrigin(url?: string) {
-    const nextCrossOrigin = this._shouldUseCrossOrigin(url) ? AUDIO_CONFIG.CROSS_ORIGIN : ''
-    this.audio.crossOrigin = nextCrossOrigin
-    console.log('[PlayerCore] CrossOrigin set to:', nextCrossOrigin || '(empty)')
+  private _clearCrossOrigin(url?: string) {
+    this.audio.crossOrigin = null
+    this.audio.removeAttribute('crossorigin')
+    console.log('[PlayerCore] CrossOrigin cleared', { url })
   }
 
   private _initVolume() {
@@ -135,6 +122,10 @@ export class PlayerCore {
           )
         }
       }
+    }
+
+    if (this.audioContext.state === 'suspended') {
+      void this.audioContext.resume()
     }
   }
 
@@ -234,27 +225,15 @@ export class PlayerCore {
     this._cancelPendingPlay?.()
     this._cancelPendingPlay = null
 
-    // Initialize AudioContext on first user interaction (play)
-    this._initAudioContext()
-
-    // Resume AudioContext if suspended — fire and forget to avoid
-    // blocking the critical play path.  The resume is only needed for
-    // Chrome's autoplay policy and completes almost instantly.
-    if (this.audioContext && this.audioContext.state === 'suspended') {
-      void this.audioContext.resume()
-    }
-
     try {
       const sourceChanged = Boolean(url && this.audio.src !== url)
 
       // If url provided and different, load it
       if (url && sourceChanged) {
-        // Only reconfigure crossOrigin when the protocol might have changed
-        const needsCrossOrigin = this._shouldUseCrossOrigin(url)
-        const nextCrossOrigin = needsCrossOrigin ? AUDIO_CONFIG.CROSS_ORIGIN : ''
-        if (this.audio.crossOrigin !== nextCrossOrigin) {
-          this.audio.crossOrigin = nextCrossOrigin
-        }
+        // Do not force CORS mode for third-party media CDNs. Most audio CDNs allow
+        // element playback but do not send Access-Control-Allow-Origin, and setting
+        // crossOrigin would make Chromium reject otherwise playable streams.
+        this._clearCrossOrigin(url)
         this.audio.src = url
         this.audio.load()
       } else if (url && this.audio.src === url && this.audio.ended) {
@@ -412,7 +391,9 @@ export class PlayerCore {
 
   // Visualization Data
   public getAnalyserData(array?: Uint8Array): Uint8Array | null {
-    if (this._isDestroyed || !this.analyser) return null
+    if (this._isDestroyed) return null
+    this._initAudioContext()
+    if (!this.analyser) return null
     // User should provide Uint8Array of size analyser.frequencyBinCount
     if (!array) {
       array = new Uint8Array(this.analyser.frequencyBinCount)
@@ -422,7 +403,9 @@ export class PlayerCore {
   }
 
   public getWaveformData(array?: Uint8Array): Uint8Array | null {
-    if (this._isDestroyed || !this.analyser) return null
+    if (this._isDestroyed) return null
+    this._initAudioContext()
+    if (!this.analyser) return null
     if (!array) {
       array = new Uint8Array(this.analyser.frequencyBinCount)
     }
@@ -431,6 +414,9 @@ export class PlayerCore {
   }
 
   public get frequencyBinCount() {
+    if (!this._isDestroyed && !this.analyser) {
+      this._initAudioContext()
+    }
     return this.analyser ? this.analyser.frequencyBinCount : 0
   }
 

@@ -105,4 +105,11 @@ describe('electron.vite.config sourcemap policy', () => {
     expect(sentryVitePluginMock).toHaveBeenCalledTimes(1)
     expect(config.renderer?.build?.sourcemap).toBe(true)
   })
+
+  it('copies the external plugin worker beside the main process bundle', async () => {
+    const config = await loadElectronViteConfig()
+    const plugins = config.main?.plugins as Array<{ name?: string }> | undefined
+
+    expect(plugins?.map(plugin => plugin.name)).toContain('luo-copy-external-plugin-worker')
+  })
 })

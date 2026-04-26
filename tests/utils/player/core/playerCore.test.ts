@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PlayerCore, PlayerState } from '@/utils/player/core/playerCore'
-import { VOLUME, AUDIO_CONFIG } from '@/utils/player/constants/volume'
+import { VOLUME } from '@/utils/player/constants/volume'
 
 type MockAudioElement = Omit<
   HTMLAudioElement,
@@ -112,13 +112,13 @@ describe('PlayerCore', () => {
     it('should initialize audio element without a forced crossOrigin value', () => {
       expect(player.src).toBe('')
       const { audio } = getInternals(player)
-      expect(audio.crossOrigin).toBe('')
+      expect(audio.crossOrigin).toBeNull()
+      expect(audio.getAttribute('crossorigin')).toBeNull()
     })
 
-    it('should initialize audio context on first play', async () => {
+    it('should not initialize audio context during plain playback', async () => {
       await player.play('test.mp3')
-      // AudioContext should be initialized
-      expect(window.AudioContext).toBeDefined()
+      expect(getInternals(player).audioContext).toBeNull()
     })
   })
 
@@ -248,8 +248,8 @@ describe('PlayerCore', () => {
       expect(audio.play).toHaveBeenCalledTimes(1)
     })
 
-    it('should resume suspended AudioContext', async () => {
-      await player.play('test.mp3')
+    it('should resume suspended AudioContext when visualization data is requested', () => {
+      player.getAnalyserData()
       const { audioContext } = getInternals(player)
       expect(audioContext?.state).toBe('running')
     })
@@ -584,70 +584,67 @@ describe('PlayerCore', () => {
   })
 
   describe('AudioContext and visualization', () => {
-    it('should create AudioContext on first play', async () => {
-      await player.play('test.mp3')
+    it('should create AudioContext on first visualization data request', () => {
+      player.getAnalyserData()
       const { audioContext } = getInternals(player)
       expect(audioContext).toBeDefined()
     })
 
-    it('should create analyser node', async () => {
-      await player.play('test.mp3')
+    it('should create analyser node', () => {
+      player.getAnalyserData()
       const { analyser } = getInternals(player)
       expect(analyser).toBeDefined()
       expect(analyser?.fftSize).toBe(2048)
     })
 
-    it('should create gain node', async () => {
-      await player.play('test.mp3')
+    it('should create gain node', () => {
+      player.getAnalyserData()
       const { gainNode } = getInternals(player)
       expect(gainNode).toBeDefined()
     })
 
-    it('should get analyser data', async () => {
-      await player.play('test.mp3')
+    it('should get analyser data', () => {
       const array = new Uint8Array(1024)
       const result = player.getAnalyserData(array)
       expect(result).toBe(array)
     })
 
-    it('should create new array for analyser data if not provided', async () => {
-      await player.play('test.mp3')
+    it('should create new array for analyser data if not provided', () => {
       const result = player.getAnalyserData()
       expect(result).toBeInstanceOf(Uint8Array)
     })
 
-    it('should get waveform data', async () => {
-      await player.play('test.mp3')
+    it('should get waveform data', () => {
       const array = new Uint8Array(1024)
       const result = player.getWaveformData(array)
       expect(result).toBe(array)
     })
 
-    it('should return frequencyBinCount', async () => {
-      await player.play('test.mp3')
+    it('should return frequencyBinCount', () => {
       expect(player.frequencyBinCount).toBe(1024)
     })
 
-    it('should return null for analyser data if destroyed', async () => {
-      await player.play('test.mp3')
+    it('should return null for analyser data if destroyed', () => {
+      player.getAnalyserData()
       player.destroy()
       expect(player.getAnalyserData()).toBeNull()
     })
 
-    it('should return null for waveform data if destroyed', async () => {
-      await player.play('test.mp3')
+    it('should return null for waveform data if destroyed', () => {
+      player.getWaveformData()
       player.destroy()
       expect(player.getWaveformData()).toBeNull()
     })
 
-    it('should return 0 for frequencyBinCount if no analyser', () => {
-      expect(player.frequencyBinCount).toBe(0)
+    it('should initialize analyser when frequencyBinCount is read', () => {
+      expect(player.frequencyBinCount).toBe(1024)
+      expect(getInternals(player).analyser).toBeDefined()
     })
   })
 
   describe('destroy', () => {
-    it('should cleanup AudioContext', async () => {
-      await player.play('test.mp3')
+    it('should cleanup AudioContext', () => {
+      player.getAnalyserData()
       const { audioContext } = getInternals(player)
       const closeSpy = vi.spyOn(audioContext!, 'close')
 
@@ -692,26 +689,26 @@ describe('PlayerCore', () => {
       expect(audio.src).toBe('')
     })
 
-    it('should set audio context to null', async () => {
-      await player.play('test.mp3')
+    it('should set audio context to null', () => {
+      player.getAnalyserData()
       player.destroy()
       expect(getInternals(player).audioContext).toBeNull()
     })
 
-    it('should set analyser to null', async () => {
-      await player.play('test.mp3')
+    it('should set analyser to null', () => {
+      player.getAnalyserData()
       player.destroy()
       expect(getInternals(player).analyser).toBeNull()
     })
 
-    it('should set gainNode to null', async () => {
-      await player.play('test.mp3')
+    it('should set gainNode to null', () => {
+      player.getAnalyserData()
       player.destroy()
       expect(getInternals(player).gainNode).toBeNull()
     })
 
-    it('should set source to null', async () => {
-      await player.play('test.mp3')
+    it('should set source to null', () => {
+      player.getAnalyserData()
       player.destroy()
       expect(getInternals(player).source).toBeNull()
     })
@@ -742,14 +739,28 @@ describe('PlayerCore', () => {
   })
 
   describe('cross-origin setup', () => {
-    it('should use crossOrigin for remote media URLs', async () => {
+    it('should not force crossOrigin for remote media URLs', async () => {
       const { audio } = getInternals(player)
       audio.readyState = 4
       audio.play = vi.fn().mockResolvedValue(undefined)
 
       await player.play('https://song.test/remote.mp3')
 
-      expect(audio.crossOrigin).toBe(AUDIO_CONFIG.CROSS_ORIGIN)
+      expect(audio.crossOrigin).toBeNull()
+      expect(audio.getAttribute('crossorigin')).toBeNull()
+    })
+
+    it('should clear a previous crossOrigin value when loading remote media URLs', async () => {
+      const { audio } = getInternals(player)
+      audio.readyState = 4
+      audio.play = vi.fn().mockResolvedValue(undefined)
+      audio.crossOrigin = 'anonymous'
+      audio.setAttribute('crossorigin', 'anonymous')
+
+      await player.play('https://song.test/remote.mp3')
+
+      expect(audio.crossOrigin).toBeNull()
+      expect(audio.getAttribute('crossorigin')).toBeNull()
     })
 
     it('should clear crossOrigin for local file media URLs', async () => {
@@ -759,7 +770,8 @@ describe('PlayerCore', () => {
 
       await player.play('file:///D:/Music/local-song.mp3')
 
-      expect(audio.crossOrigin).toBe('')
+      expect(audio.crossOrigin).toBeNull()
+      expect(audio.getAttribute('crossorigin')).toBeNull()
     })
   })
 

@@ -240,6 +240,97 @@ describe('electron/plugins/PluginStateStore', () => {
       expect(second.version).toBe('1.0.0') // version from the original record
       expect(second.installPath).toBe('/plugins/test/2.0.0')
     })
+
+    it('migrates bundled Netease legacy API defaults to the managed service port', () => {
+      const manifest = makeManifest({
+        id: 'com.luomusic.plugin.netease',
+        platformId: 'netease',
+        contributions: {
+          settings: [
+            {
+              key: 'apiBase',
+              type: 'text',
+              label: 'API Base',
+              default: 'http://127.0.0.1:14532'
+            },
+            {
+              key: 'audioLevel',
+              type: 'select',
+              label: 'Quality',
+              default: 'standard',
+              options: [{ value: 'standard', label: 'Standard' }]
+            }
+          ]
+        }
+      })
+
+      store.upsert({
+        pluginId: 'com.luomusic.plugin.netease',
+        platformId: 'netease',
+        version: '1.0.0',
+        installPath: '/plugins/netease/1.0.0',
+        enabled: true,
+        settings: { apiBase: 'http://localhost:3000/', verboseLog: false },
+        storage: {},
+        lastError: 'fetch failed',
+        consecutiveFailures: 4,
+        circuitTrippedAt: 1234,
+        diagnostics: [{ timestamp: 1000, method: 'search', error: 'fetch failed' }],
+        installedAt: 1000,
+        updatedAt: 1000
+      })
+
+      const state = store.ensureState(manifest, '/plugins/netease/1.0.1')
+
+      expect(state.settings).toEqual({
+        apiBase: 'http://127.0.0.1:14532',
+        audioLevel: 'standard',
+        verboseLog: false
+      })
+      expect(state.lastError).toBeUndefined()
+      expect(state.consecutiveFailures).toBe(0)
+      expect(state.circuitTrippedAt).toBeUndefined()
+      expect(state.diagnostics).toEqual([])
+    })
+
+    it('preserves custom bundled plugin API bases', () => {
+      const manifest = makeManifest({
+        id: 'com.luomusic.plugin.qq',
+        platformId: 'qq',
+        contributions: {
+          settings: [
+            {
+              key: 'apiBase',
+              type: 'text',
+              label: 'API Base',
+              default: 'http://127.0.0.1:3200'
+            }
+          ]
+        }
+      })
+
+      store.upsert({
+        pluginId: 'com.luomusic.plugin.qq',
+        platformId: 'qq',
+        version: '1.0.0',
+        installPath: '/plugins/qq/1.0.0',
+        enabled: true,
+        settings: { apiBase: 'http://192.168.1.2:3300' },
+        storage: {},
+        lastError: 'old error',
+        consecutiveFailures: 2,
+        diagnostics: [{ timestamp: 1000, method: 'search', error: 'old error' }],
+        installedAt: 1000,
+        updatedAt: 1000
+      })
+
+      const state = store.ensureState(manifest, '/plugins/qq/1.0.1')
+
+      expect(state.settings.apiBase).toBe('http://192.168.1.2:3300')
+      expect(state.lastError).toBe('old error')
+      expect(state.consecutiveFailures).toBe(2)
+      expect(state.diagnostics).toHaveLength(1)
+    })
   })
 
   describe('setEnabled', () => {

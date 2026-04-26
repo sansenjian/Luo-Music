@@ -14,7 +14,14 @@ module.exports = {
   },
   asar: true,
   asarUnpack: [asarUnpackPattern],
-  files: ['build/**/*', 'public/**/*', '!build/runtime{,/**}', '!build/service{,/**}', '!**/*.map'],
+  files: [
+    'build/**/*',
+    'public/**/*',
+    'plugins/third-party/**/*',
+    '!build/runtime{,/**}',
+    '!build/service{,/**}',
+    '!**/*.map'
+  ],
   extraResources: electronBuilderExtraResources,
   win: {
     target: [

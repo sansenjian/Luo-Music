@@ -66,6 +66,7 @@ export interface UseUserPlaylistsReturn {
   error: Ref<unknown>
   resetPlaylists: () => void
   loadPlaylists: (userId: string | number) => Promise<void>
+  loadInitialPlaylistSongs: (playlistId: string | number) => Promise<Song[]>
   loadPlaylistSongs: (playlistId: string | number) => Promise<Song[]>
   usePlaylistTracks: () => PlaylistTracksState
 }
@@ -234,6 +235,20 @@ export function useUserPlaylists(): UseUserPlaylistsReturn {
     }
   }
 
+  const loadInitialPlaylistSongs = async (playlistId: string | number): Promise<Song[]> => {
+    const playlistIdNumber = Number(playlistId)
+    let songs = await fetchInitialTrackPage(playlistIdNumber)
+
+    if (songs.length === 0) {
+      const response = (await getPlaylistDetail(playlistIdNumber)) as {
+        playlist?: { tracks?: RawPlaylistTrack[] }
+      }
+      songs = parseTracksFromResponse(response)
+    }
+
+    return songs
+  }
+
   // Legacy: load all tracks at once (used by home collection panel)
   const loadPlaylistSongs = async (playlistId: string | number): Promise<Song[]> => {
     const playlistIdNumber = Number(playlistId)
@@ -351,6 +366,7 @@ export function useUserPlaylists(): UseUserPlaylistsReturn {
     error,
     resetPlaylists,
     loadPlaylists,
+    loadInitialPlaylistSongs,
     loadPlaylistSongs,
     usePlaylistTracks
   }

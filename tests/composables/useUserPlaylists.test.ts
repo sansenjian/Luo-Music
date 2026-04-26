@@ -128,6 +128,23 @@ describe('useUserPlaylists', () => {
     })
   })
 
+  it('loads only the initial playlist track page for direct playback', async () => {
+    getPlaylistTracksMock.mockResolvedValue({
+      songs: Array.from({ length: 50 }, (_, index) => ({
+        id: index + 1,
+        name: `Track ${index + 1}`
+      }))
+    })
+
+    const viewModel = mountUseUserPlaylists()
+    const songs = await viewModel.loadInitialPlaylistSongs(8)
+    await flushPromises()
+
+    expect(getPlaylistTracksMock).toHaveBeenCalledWith(8, 50, 0)
+    expect(getPlaylistDetailMock).not.toHaveBeenCalled()
+    expect(songs).toHaveLength(50)
+  })
+
   it('supports incremental playlist track loading through usePlaylistTracks', async () => {
     getPlaylistTracksMock
       .mockResolvedValueOnce({

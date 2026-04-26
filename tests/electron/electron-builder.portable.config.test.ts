@@ -49,6 +49,7 @@ describe('electron-builder portable config', () => {
       expect.arrayContaining([
         'build/**/*',
         'public/**/*',
+        'plugins/third-party/**/*',
         '!build/runtime{,/**}',
         '!build/service{,/**}',
         '!**/*.map'

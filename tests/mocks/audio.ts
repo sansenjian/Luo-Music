@@ -9,7 +9,7 @@ export class MockAudio {
   ended: boolean = false
   src: string = ''
   readyState: number = 0
-  crossOrigin: string = ''
+  crossOrigin: string | null = null
   muted: boolean = false
   loop: boolean = false
   private _playbackRate: number = 1
@@ -62,7 +62,7 @@ export class MockAudio {
 
   setAttribute(name: string, value: string): void {
     this._attributes[name] = value
-    if (name === 'crossOrigin') {
+    if (name === 'crossOrigin' || name === 'crossorigin') {
       this.crossOrigin = value
     }
   }
@@ -71,6 +71,9 @@ export class MockAudio {
     delete this._attributes[name]
     if (name === 'src') {
       this.src = ''
+    }
+    if (name === 'crossOrigin' || name === 'crossorigin') {
+      this.crossOrigin = null
     }
   }
 

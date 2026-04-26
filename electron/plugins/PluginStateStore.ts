@@ -1,4 +1,5 @@
 import { app } from 'electron'
+import { NETEASE_API_PORT, QQ_API_PORT } from '@/platform/contracts/protocol/cache'
 import type { ExternalPluginManifest, PluginStateRecord } from './types'
 
 interface StoreLike {
@@ -33,6 +34,36 @@ export interface PluginStateStoreDeps {
   store?: StoreLike
 }
 
+type SettingsMigrationResult = {
+  settings: Record<string, unknown>
+  migrated: boolean
+}
+
+const BUNDLED_PLUGIN_API_BASE_MIGRATIONS: Record<
+  string,
+  {
+    legacyDefaults: string[]
+    currentDefault: string
+  }
+> = {
+  netease: {
+    legacyDefaults: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    currentDefault: `http://127.0.0.1:${NETEASE_API_PORT}`
+  },
+  qq: {
+    legacyDefaults: ['http://localhost:3300', 'http://127.0.0.1:3300'],
+    currentDefault: `http://127.0.0.1:${QQ_API_PORT}`
+  }
+}
+
+function normalizeApiBase(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  return value.replace(/\/+$/, '')
+}
+
 export class PluginStateStore {
   private readonly store: StoreLike
 
@@ -62,6 +93,7 @@ export class PluginStateStore {
   ensureState(manifest: ExternalPluginManifest, installPath: string): PluginStateRecord {
     const existing = this.get(manifest.platformId)
     const now = Date.now()
+    const settingsMigration = this.resolveSettings(manifest, existing?.settings)
 
     return this.upsert({
       pluginId: manifest.id,
@@ -69,13 +101,13 @@ export class PluginStateStore {
       version: manifest.version,
       installPath,
       enabled: existing?.enabled ?? false,
-      settings: { ...(existing?.settings ?? this.getDefaultSettings(manifest)) },
+      settings: settingsMigration.settings,
       storage: { ...(existing?.storage ?? {}) },
-      lastError: existing?.lastError,
-      consecutiveFailures: existing?.consecutiveFailures ?? 0,
-      circuitTrippedAt: existing?.circuitTrippedAt,
+      lastError: settingsMigration.migrated ? undefined : existing?.lastError,
+      consecutiveFailures: settingsMigration.migrated ? 0 : (existing?.consecutiveFailures ?? 0),
+      circuitTrippedAt: settingsMigration.migrated ? undefined : existing?.circuitTrippedAt,
       checksum: existing?.checksum,
-      diagnostics: existing?.diagnostics ?? [],
+      diagnostics: settingsMigration.migrated ? [] : (existing?.diagnostics ?? []),
       installedAt: existing?.installedAt ?? now,
       updatedAt: now
     })
@@ -243,5 +275,40 @@ export class PluginStateStore {
         .filter(definition => definition.default !== undefined)
         .map(definition => [definition.key, definition.default])
     )
+  }
+
+  private resolveSettings(
+    manifest: ExternalPluginManifest,
+    existingSettings?: Record<string, unknown>
+  ): SettingsMigrationResult {
+    const defaults = this.getDefaultSettings(manifest)
+    const settings = {
+      ...defaults,
+      ...(existingSettings ?? {})
+    }
+    const migration = BUNDLED_PLUGIN_API_BASE_MIGRATIONS[manifest.platformId]
+
+    if (!migration) {
+      return {
+        settings,
+        migrated: false
+      }
+    }
+
+    const apiBase = normalizeApiBase(settings.apiBase)
+    if (apiBase && migration.legacyDefaults.includes(apiBase)) {
+      return {
+        settings: {
+          ...settings,
+          apiBase: migration.currentDefault
+        },
+        migrated: true
+      }
+    }
+
+    return {
+      settings,
+      migrated: false
+    }
   }
 }

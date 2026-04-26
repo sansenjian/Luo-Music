@@ -21,7 +21,7 @@ function getBitrate(level, fallback = 128000) {
 
 export default {
   async create(ctx) {
-    const apiBase = (ctx.settings.apiBase || 'http://localhost:3000').replace(/\/+$/, '')
+    const apiBase = (ctx.settings.apiBase || 'http://127.0.0.1:14532').replace(/\/+$/, '')
     const verbose = Boolean(ctx.settings.verboseLog)
 
     ctx.logger.info('Netease plugin initialized', { apiBase })
@@ -63,14 +63,16 @@ export default {
       },
 
       async getSongUrl({ id, options }) {
-        const level = (typeof options === 'string' ? options : options?.level)
-          || ctx.settings.audioLevel
-          || 'standard'
+        const level =
+          (typeof options === 'string' ? options : options?.level) ||
+          ctx.settings.audioLevel ||
+          'standard'
 
         try {
           const v1Data = await apiGet('/song/url/v1', {
             id,
             level,
+            randomCNIP: true,
             timestamp: Date.now()
           })
           const v1Url = Array.isArray(v1Data?.data) ? v1Data.data[0]?.url : null
@@ -82,6 +84,7 @@ export default {
         const legacyData = await apiGet('/song/url', {
           id,
           br: getBitrate(level),
+          randomCNIP: true,
           timestamp: Date.now()
         })
 
@@ -97,11 +100,7 @@ export default {
 
         if (!data) return null
 
-        const songs = Array.isArray(data.songs)
-          ? data.songs
-          : Array.isArray(data)
-            ? data
-            : [data]
+        const songs = Array.isArray(data.songs) ? data.songs : Array.isArray(data) ? data : [data]
 
         return songs[0] ? normalizeSong(songs[0], ctx.platformId) : null
       },
@@ -114,12 +113,8 @@ export default {
 
         if (!data) return { lrc: '', tlyric: '', romalrc: '' }
 
-        const tlyric = typeof data.tlyric === 'string'
-          ? data.tlyric
-          : data.tlyric?.lyric || ''
-        const romalrc = typeof data.romalrc === 'string'
-          ? data.romalrc
-          : data.romalrc?.lyric || ''
+        const tlyric = typeof data.tlyric === 'string' ? data.tlyric : data.tlyric?.lyric || ''
+        const romalrc = typeof data.romalrc === 'string' ? data.romalrc : data.romalrc?.lyric || ''
 
         return {
           lrc: data.lrc?.lyric || data.lyric || '',

@@ -272,8 +272,6 @@ export class PluginCatalog {
   }
 
   private async ensureBundledPlugins(): Promise<void> {
-    const installedPlatformIds = new Set(this.externalPlugins.keys())
-
     let dirEntries: string[]
     try {
       const { readdir } = await import('node:fs/promises')
@@ -294,7 +292,15 @@ export class PluginCatalog {
 
       try {
         const manifest = await this.readBundledManifest(pluginDir)
-        if (installedPlatformIds.has(manifest.platformId)) continue
+        const installedPlugin = this.externalPlugins.get(manifest.platformId)
+
+        if (
+          installedPlugin &&
+          (installedPlugin.manifest.id !== manifest.id ||
+            installedPlugin.manifest.version === manifest.version)
+        ) {
+          continue
+        }
 
         await this.installFromPath(pluginDir, { enabledByDefault: true })
       } catch {
@@ -305,7 +311,7 @@ export class PluginCatalog {
 
   private async readBundledManifest(
     pluginDir: string
-  ): Promise<{ platformId: string; version: string }> {
+  ): Promise<{ id: string; platformId: string; version: string }> {
     const { readFile } = await import('node:fs/promises')
     const manifestPath = path.join(pluginDir, 'manifest.json')
     const content = await readFile(manifestPath, 'utf-8')
@@ -315,11 +321,15 @@ export class PluginCatalog {
       throw new Error(`Bundled plugin missing platformId: ${pluginDir}`)
     }
 
+    if (!parsed.id || typeof parsed.id !== 'string') {
+      throw new Error(`Bundled plugin missing id: ${pluginDir}`)
+    }
+
     if (!parsed.version || typeof parsed.version !== 'string') {
       throw new Error(`Bundled plugin missing version: ${pluginDir}`)
     }
 
-    return { platformId: parsed.platformId, version: parsed.version }
+    return { id: parsed.id, platformId: parsed.platformId, version: parsed.version }
   }
 }
 
