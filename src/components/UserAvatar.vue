@@ -44,7 +44,6 @@ let unsubscribePluginPlatforms: (() => void) | null = null
 
 const isQQMusicLoggedIn = computed(() => userStore.isQQMusicLoggedIn)
 const loginPlatforms = computed(() => getLoginCapablePlatformDescriptors())
-const defaultLoginPlatform = computed(() => loginPlatforms.value[0])
 const showPluginLoginModal = computed({
   get: () => activePluginLoginPlatform.value !== null,
   set: value => {
@@ -126,12 +125,6 @@ function openPlatformLogin(platform: PlatformDescriptor): void {
   openPluginLogin(platform)
 }
 
-function openDefaultLogin(): void {
-  if (defaultLoginPlatform.value) {
-    openPlatformLogin(defaultLoginPlatform.value)
-  }
-}
-
 function isPlatformLoggedIn(platformId: string): boolean {
   if (platformId === 'netease') {
     return userStore.isLoggedIn
@@ -142,6 +135,14 @@ function isPlatformLoggedIn(platformId: string): boolean {
   }
 
   return false
+}
+
+function getPlatformLoginTitle(platform: PlatformDescriptor): string {
+  return `${platform.displayName} ${isPlatformLoggedIn(platform.id) ? '已登录' : '未登录'}`
+}
+
+function getPlatformLoginHint(platformId: string): string {
+  return isPlatformLoggedIn(platformId) ? '已登录' : '点击登录 >'
 }
 
 function openUserCenter(): void {
@@ -235,7 +236,9 @@ onUnmounted(() => {
 watch(showDropdown, async (isOpen, wasOpen) => {
   if (isOpen) {
     await nextTick()
-    dropdownRef.value?.querySelector<HTMLButtonElement>('.menu-btn')?.focus()
+    dropdownRef.value
+      ?.querySelector<HTMLButtonElement>('button.platform-login-card, .menu-btn')
+      ?.focus()
     return
   }
 
@@ -284,35 +287,42 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 
     <Transition name="dropdown">
       <div v-if="showDropdown" ref="dropdownRef" class="dropdown">
-        <div class="dropdown-header">
-          <template v-if="userStore.isLoggedIn">
-            <img
-              v-if="userStore.avatarUrl"
-              :src="userStore.avatarUrl"
-              :alt="userStore.nickname"
-              class="dropdown-avatar"
-            />
-            <div v-else class="dropdown-avatar-placeholder"></div>
-            <div class="dropdown-info">
-              <span class="dropdown-nickname">{{ userStore.nickname }}</span>
-              <span class="dropdown-id">ID: {{ userStore.userId }}</span>
-            </div>
-            <button class="logout-btn-small" @click="handleLogout" title="退出登录">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-            </button>
-          </template>
-          <template v-else>
+        <div v-if="userStore.isLoggedIn" class="dropdown-header">
+          <img
+            v-if="userStore.avatarUrl"
+            :src="userStore.avatarUrl"
+            :alt="userStore.nickname"
+            class="dropdown-avatar"
+          />
+          <div v-else class="dropdown-avatar-placeholder"></div>
+          <div class="dropdown-info">
+            <span class="dropdown-nickname">{{ userStore.nickname }}</span>
+            <span class="dropdown-id">ID: {{ userStore.userId }}</span>
+          </div>
+          <button class="logout-btn-small" @click="handleLogout" title="退出登录">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div class="platform-login-list">
+          <button
+            v-for="platform in loginPlatforms"
+            :key="platform.id"
+            class="platform-login-card login-platform-btn"
+            type="button"
+            @click="openPlatformLogin(platform)"
+          >
             <div class="dropdown-avatar-placeholder">
               <svg
                 width="24"
@@ -321,26 +331,44 @@ watch(showDropdown, async (isOpen, wasOpen) => {
                 fill="none"
                 stroke="currentColor"
                 stroke-width="2"
+                aria-hidden="true"
               >
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
-            <div
-              class="dropdown-info"
-              :class="{ 'dropdown-info-clickable': defaultLoginPlatform }"
-              @click="openDefaultLogin"
-            >
-              <span class="dropdown-nickname">未登录</span>
-              <span class="dropdown-id login-link">
-                {{ defaultLoginPlatform ? '点击登录 >' : '暂无可登录平台' }}
+            <div class="dropdown-info">
+              <span class="dropdown-nickname platform-login-title">
+                {{ getPlatformLoginTitle(platform) }}
               </span>
+              <span class="dropdown-id login-link">{{ getPlatformLoginHint(platform.id) }}</span>
             </div>
-          </template>
+          </button>
+
+          <div v-if="loginPlatforms.length === 0" class="platform-login-card platform-login-empty">
+            <div class="dropdown-avatar-placeholder">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div class="dropdown-info">
+              <span class="dropdown-nickname">未登录</span>
+              <span class="dropdown-id login-link">暂无可登录平台</span>
+            </div>
+          </div>
         </div>
 
-        <div class="dropdown-menu">
-          <button v-if="userStore.isLoggedIn" class="menu-btn" @click="openUserCenter">
+        <div v-if="userStore.isLoggedIn" class="dropdown-menu">
+          <button class="menu-btn" @click="openUserCenter">
             <svg
               width="14"
               height="14"
@@ -353,29 +381,6 @@ watch(showDropdown, async (isOpen, wasOpen) => {
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
             个人中心
-          </button>
-
-          <button
-            v-for="platform in loginPlatforms"
-            :key="platform.id"
-            class="menu-btn login-platform-btn"
-            @click="openPlatformLogin(platform)"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-              <path d="M9 9h6"></path>
-              <path d="M9 13h6"></path>
-              <path d="M9 17h6"></path>
-            </svg>
-            {{ platform.displayName }} 登录
-            <span v-if="isPlatformLoggedIn(platform.id)" class="login-status-badge">已登录</span>
           </button>
         </div>
       </div>
@@ -448,7 +453,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   background: var(--white);
   border: 2px solid var(--black);
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15);
-  min-width: 220px;
+  min-width: 330px;
   z-index: 100;
   overflow: hidden;
   animation: slideIn 0.2s ease;
@@ -527,10 +532,6 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   overflow: hidden;
 }
 
-.dropdown-info-clickable {
-  cursor: pointer;
-}
-
 .dropdown-nickname {
   font-size: 15px;
   font-weight: 700;
@@ -549,6 +550,51 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 .dropdown-menu {
   display: flex;
   flex-direction: column;
+}
+
+.platform-login-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.platform-login-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
+  border: none;
+  border-bottom: 2px solid var(--black);
+  color: var(--black);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.platform-login-card:hover {
+  background: var(--black);
+  color: var(--white);
+}
+
+.platform-login-card:hover .login-link {
+  color: var(--white);
+}
+
+.platform-login-card:hover .dropdown-avatar-placeholder {
+  background: var(--white);
+  color: var(--black);
+}
+
+.platform-login-empty {
+  cursor: default;
+}
+
+.platform-login-empty:hover {
+  background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
+  color: var(--black);
 }
 
 .menu-btn,
@@ -580,17 +626,6 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   background: var(--black);
   color: var(--white);
   padding-left: 20px;
-}
-
-.login-status-badge {
-  margin-left: auto;
-  padding: 2px 8px;
-  background: #28a745;
-  color: white;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 10px;
-  flex-shrink: 0;
 }
 
 .menu-btn svg,

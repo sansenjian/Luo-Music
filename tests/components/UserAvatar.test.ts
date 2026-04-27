@@ -251,9 +251,9 @@ describe('UserAvatar', () => {
 
     const loginButtons = wrapper.findAll('.login-platform-btn')
     expect(loginButtons).toHaveLength(2)
-    expect(loginButtons.map(button => button.text())).toEqual([
-      'Netease Music 登录',
-      'QQ Music 登录'
+    expect(wrapper.findAll('.platform-login-title').map(title => title.text())).toEqual([
+      'Netease Music 未登录',
+      'QQ Music 未登录'
     ])
     expect(wrapper.text()).not.toContain('Disabled Auth')
     expect(wrapper.text()).not.toContain('Search Only')
@@ -302,9 +302,9 @@ describe('UserAvatar', () => {
     await wrapper.find('.user-trigger').trigger('click')
     await nextTick()
 
-    expect(wrapper.findAll('.login-platform-btn').map(button => button.text())).toEqual([
-      'Netease Music 登录',
-      'QQ Music 登录'
+    expect(wrapper.findAll('.platform-login-title').map(title => title.text())).toEqual([
+      'Netease Music 未登录',
+      'QQ Music 未登录'
     ])
   })
 })
