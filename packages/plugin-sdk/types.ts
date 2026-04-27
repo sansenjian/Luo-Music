@@ -36,12 +36,15 @@ export interface PluginPermissionDeclaration {
     domains: string[]
   }
   storage?: boolean
+  secrets?: boolean
 }
 
 export interface PluginContext {
+  pluginId: string
   platformId: string
   settings: Readonly<Record<string, unknown>>
   storage: PluginStorage
+  secrets: PluginStorage
   http: RestrictedHttpClient
   logger: PluginLogger
 }
@@ -129,6 +132,13 @@ export type PluginMethodName =
   | 'getSongDetail'
   | 'getLyric'
   | 'getPlaylistDetail'
+  | 'auth.getState'
+  | 'auth.startLogin'
+  | 'auth.pollLogin'
+  | 'auth.submitLogin'
+  | 'auth.cancelLogin'
+  | 'auth.refresh'
+  | 'auth.logout'
 
 export interface MusicPluginCapabilities {
   search: boolean
@@ -165,6 +175,7 @@ export interface MusicPluginInstance {
   getSongDetail?(input: SongDetailInput): Promise<PluginSong | null>
   getLyric?(input: LyricInput): Promise<LyricResult>
   getPlaylistDetail?(input: PlaylistDetailInput): Promise<PlaylistDetail | null>
+  [method: `auth.${string}`]: ((input?: unknown) => Promise<unknown> | unknown) | undefined
   dispose?(): Promise<void> | void
 }
 

@@ -738,14 +738,21 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
 
         const runtime = ensurePlayerStoreRuntime(this as unknown as PlayerStoreInstance)
         const errorHandler = runtime.ensureErrorHandler(() => this.createErrorHandler())
-        const result = await errorHandler.handleAudioError(error, this.currentSong)
+        const failedSong = this.currentSong
+        const result = await errorHandler.handleAudioError(error, failedSong)
 
         if (result.shouldRetry && result.url) {
+          if (!failedSong || !this.currentSong || !isSameSong(failedSong, this.currentSong)) {
+            return
+          }
+
           try {
             await audioManager.play(result.url)
-            if (this.currentSong) {
-              this.currentSong.url = result.url
+            if (!this.currentSong || !isSameSong(failedSong, this.currentSong)) {
+              return
             }
+            failedSong.url = result.url
+            this.currentSong.url = result.url
             this.playing = true
           } catch (retryError) {
             this.playing = false

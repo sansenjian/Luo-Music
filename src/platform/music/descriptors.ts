@@ -6,6 +6,7 @@ export type PlatformCapabilities = PluginManifest['capabilities']
 export interface PlatformPermissions {
   networkDomains?: string[]
   storage?: boolean
+  secrets?: boolean
 }
 
 export interface PlatformDescriptor {
@@ -79,7 +80,8 @@ function cloneDescriptor(descriptor: PlatformDescriptor): PlatformDescriptor {
       ? {
           permissions: {
             networkDomains: [...(descriptor.permissions.networkDomains ?? [])],
-            storage: descriptor.permissions.storage
+            storage: descriptor.permissions.storage,
+            secrets: descriptor.permissions.secrets
           }
         }
       : {}),

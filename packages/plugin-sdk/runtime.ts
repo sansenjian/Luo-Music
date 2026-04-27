@@ -65,16 +65,22 @@ export function createConsolePluginLogger(platformId: string): PluginLogger {
 export function createPluginContext(
   platformId: string,
   options: {
+    pluginId?: string
     settings?: Readonly<Record<string, unknown>>
     storage?: PluginStorage
+    secrets?: PluginStorage
     http?: RestrictedHttpClient
     logger?: PluginLogger
   } = {}
 ): PluginContext {
+  const pluginId = options.pluginId ?? platformId
+
   return {
+    pluginId,
     platformId,
     settings: options.settings ?? {},
-    storage: options.storage ?? new InMemoryPluginStorage(platformId),
+    storage: options.storage ?? new InMemoryPluginStorage(`plugin:${pluginId}:storage`),
+    secrets: options.secrets ?? new InMemoryPluginStorage(`plugin:${pluginId}:secrets`),
     http: options.http ?? createUnsupportedHttpClient(platformId),
     logger: options.logger ?? createConsolePluginLogger(platformId)
   }

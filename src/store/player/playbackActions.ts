@@ -124,19 +124,13 @@ export class PlaybackActions {
     }
   }
 
-  private async refreshSongUrl(song: Song, platformKey: string): Promise<boolean> {
+  private async refreshSongUrl(song: Song, platformKey: string): Promise<string | null> {
     console.log('[Player] Refreshing URL for song:', song.id)
     const mediaId = resolveMediaId(song)
     const url = await this.deps.musicService.getSongUrl(platformKey, song.id, { mediaId })
     console.log('[Player] Refreshed URL:', url ? 'Success' : 'Failed')
 
-    if (!url) {
-      return false
-    }
-
-    song.url = url
-    this.clearPlaybackFailureState(song)
-    return true
+    return url
   }
 
   getRandomIndex(excludeCurrent = true): number {
@@ -341,15 +335,17 @@ export class PlaybackActions {
         }
 
         try {
-          const refreshed = await this.refreshSongUrl(song, platformKey)
+          const refreshedUrl = await this.refreshSongUrl(song, platformKey)
           if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
             return
           }
 
-          if (!refreshed) {
+          if (!refreshedUrl) {
             throw playbackError
           }
 
+          song.url = refreshedUrl
+          this.clearPlaybackFailureState(song)
           await this.playSongByIndex(index, song, playbackRequestId)
           if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
             return

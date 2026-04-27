@@ -183,8 +183,8 @@ describe('electron/plugins/PluginStateStore', () => {
 
       const list = store.list()
       expect(Object.keys(list)).toHaveLength(2)
-      expect(list.a).toBeDefined()
-      expect(list.b).toBeDefined()
+      expect(list['com.example.a']).toBeDefined()
+      expect(list['com.example.b']).toBeDefined()
     })
   })
 
@@ -239,6 +239,34 @@ describe('electron/plugins/PluginStateStore', () => {
       expect(second.settings.quality).toBe('320')
       expect(second.version).toBe('1.0.0') // version from the original record
       expect(second.installPath).toBe('/plugins/test/2.0.0')
+    })
+
+    it('keeps state namespaces separate for plugins sharing one platformId', () => {
+      const first = makeManifest({
+        id: 'com.example.netease-a',
+        platformId: 'netease'
+      })
+      const second = makeManifest({
+        id: 'com.example.netease-b',
+        platformId: 'netease'
+      })
+
+      store.ensureState(first, '/plugins/a/1.0.0')
+      store.setStorageValue('com.example.netease-a', 'cookie', 'cookie-a')
+      store.setSecretValue('com.example.netease-a', 'cookie', 'secret-a')
+
+      store.ensureState(second, '/plugins/b/1.0.0')
+      store.setStorageValue('com.example.netease-b', 'cookie', 'cookie-b')
+      store.setSecretValue('com.example.netease-b', 'cookie', 'secret-b')
+
+      expect(store.getStorageValue('com.example.netease-a', 'cookie')).toBe('cookie-a')
+      expect(store.getStorageValue('com.example.netease-b', 'cookie')).toBe('cookie-b')
+      expect(store.getSecretValue('com.example.netease-a', 'cookie')).toBe('secret-a')
+      expect(store.getSecretValue('com.example.netease-b', 'cookie')).toBe('secret-b')
+      expect(Object.keys(store.list()).sort()).toEqual([
+        'com.example.netease-a',
+        'com.example.netease-b'
+      ])
     })
 
     it('migrates bundled Netease legacy API defaults to the managed service port', () => {
@@ -508,6 +536,47 @@ describe('electron/plugins/PluginStateStore', () => {
 
     it('throws for unknown platform', () => {
       expect(() => store.getStorageValue('unknown', 'key')).toThrow('Plugin state not found')
+    })
+  })
+
+  describe('secret operations', () => {
+    beforeEach(() => {
+      store.upsert({
+        pluginId: 'com.example.test',
+        platformId: 'test',
+        version: '1.0.0',
+        installPath: '/plugins/test/1.0.0',
+        enabled: false,
+        settings: {},
+        storage: {},
+        consecutiveFailures: 0,
+        diagnostics: [],
+        installedAt: 1000,
+        updatedAt: 1000
+      })
+    })
+
+    it('stores secrets separately from normal storage', () => {
+      store.setStorageValue('test', 'cookie', 'plain')
+      store.setSecretValue('com.example.test', 'cookie', 'secret')
+
+      expect(store.getStorageValue('test', 'cookie')).toBe('plain')
+      expect(store.getSecretValue('com.example.test', 'cookie')).toBe('secret')
+    })
+
+    it('removeSecretValue and clearSecrets remove only secrets', () => {
+      store.setStorageValue('test', 'cookie', 'plain')
+      store.setSecretValue('com.example.test', 'cookie', 'secret')
+      store.removeSecretValue('com.example.test', 'cookie')
+      expect(store.getSecretValue('com.example.test', 'cookie')).toBeUndefined()
+
+      store.setSecretValue('com.example.test', 'a', 1)
+      store.setSecretValue('com.example.test', 'b', 2)
+      store.clearSecrets('com.example.test')
+
+      expect(store.getSecretValue('com.example.test', 'a')).toBeUndefined()
+      expect(store.getSecretValue('com.example.test', 'b')).toBeUndefined()
+      expect(store.getStorageValue('test', 'cookie')).toBe('plain')
     })
   })
 })

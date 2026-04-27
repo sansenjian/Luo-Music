@@ -18,6 +18,13 @@ import {
   type Song,
   type SongUrlOptions
 } from '@/platform/music/interface'
+import {
+  normalizePluginLyricResult,
+  normalizePluginPlaylistDetail,
+  normalizePluginSearchResult,
+  normalizePluginSong,
+  normalizePluginSongUrlResult
+} from './standardModels'
 
 export class PluginAdapterBridge extends MusicPlatformAdapter {
   constructor(
@@ -46,7 +53,7 @@ export class PluginAdapterBridge extends MusicPlatformAdapter {
       input: SearchInput
     ) => Promise<SearchResult>
 
-    return handler({ keyword, limit, page })
+    return normalizePluginSearchResult(await handler({ keyword, limit, page }), this.platformId)
   }
 
   async getSongUrl(id: string | number, options?: SongUrlOptions | string): Promise<string | null> {
@@ -54,7 +61,7 @@ export class PluginAdapterBridge extends MusicPlatformAdapter {
       input: SongUrlInput
     ) => Promise<string | null>
 
-    return handler({ id, options })
+    return normalizePluginSongUrlResult(await handler({ id, options }))
   }
 
   async getSongDetail(id: string | number): Promise<Song | null> {
@@ -62,7 +69,7 @@ export class PluginAdapterBridge extends MusicPlatformAdapter {
       input: SongDetailInput
     ) => Promise<Song | null>
 
-    return handler({ id })
+    return normalizePluginSong(await handler({ id }), this.platformId)
   }
 
   async getLyric(id: string | number): Promise<LyricResult> {
@@ -70,7 +77,7 @@ export class PluginAdapterBridge extends MusicPlatformAdapter {
       input: LyricInput
     ) => Promise<LyricResult>
 
-    return handler({ id })
+    return normalizePluginLyricResult(await handler({ id }))
   }
 
   async getPlaylistDetail(id: string | number): Promise<PlaylistDetail | null> {
@@ -78,7 +85,7 @@ export class PluginAdapterBridge extends MusicPlatformAdapter {
       input: PlaylistDetailInput
     ) => Promise<PlaylistDetail | null>
 
-    return handler({ id })
+    return normalizePluginPlaylistDetail(await handler({ id }), this.platformId)
   }
 }
 
@@ -86,7 +93,11 @@ export async function createPluginAdapterBridge(
   definition: MusicPluginDefinition,
   options: { context?: PluginContext } = {}
 ): Promise<PluginAdapterBridge> {
-  const context = options.context ?? createPluginContext(definition.manifest.platformId)
+  const context =
+    options.context ??
+    createPluginContext(definition.manifest.platformId, {
+      pluginId: definition.manifest.id
+    })
   const instance = await definition.create(context)
 
   return new PluginAdapterBridge(

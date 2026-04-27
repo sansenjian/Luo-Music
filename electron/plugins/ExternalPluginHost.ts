@@ -106,6 +106,7 @@ export class ExternalPluginHost {
       {
         workerData: {
           entryUrl: pathToFileURL(registration.entryPath).href,
+          pluginId: registration.manifest.id,
           platformId: registration.manifest.platformId,
           settings: registration.state.settings
         }
@@ -176,17 +177,14 @@ export class ExternalPluginHost {
           type: 'response',
           requestId: message.requestId,
           ok: true,
-          result: this.stateStore.getStorageValue(
-            registration.manifest.platformId,
-            message.payload.key
-          )
+          result: this.stateStore.getStorageValue(registration.manifest.id, message.payload.key)
         })
         return
       }
 
       if (message.type === 'storage:set') {
         this.stateStore.setStorageValue(
-          registration.manifest.platformId,
+          registration.manifest.id,
           message.payload.key,
           message.payload.value
         )
@@ -200,7 +198,7 @@ export class ExternalPluginHost {
       }
 
       if (message.type === 'storage:remove') {
-        this.stateStore.removeStorageValue(registration.manifest.platformId, message.payload.key)
+        this.stateStore.removeStorageValue(registration.manifest.id, message.payload.key)
         worker.postMessage({
           type: 'response',
           requestId: message.requestId,
@@ -211,7 +209,54 @@ export class ExternalPluginHost {
       }
 
       if (message.type === 'storage:clear') {
-        this.stateStore.clearStorage(registration.manifest.platformId)
+        this.stateStore.clearStorage(registration.manifest.id)
+        worker.postMessage({
+          type: 'response',
+          requestId: message.requestId,
+          ok: true,
+          result: null
+        })
+        return
+      }
+
+      if (message.type === 'secrets:get') {
+        worker.postMessage({
+          type: 'response',
+          requestId: message.requestId,
+          ok: true,
+          result: this.stateStore.getSecretValue(registration.manifest.id, message.payload.key)
+        })
+        return
+      }
+
+      if (message.type === 'secrets:set') {
+        this.stateStore.setSecretValue(
+          registration.manifest.id,
+          message.payload.key,
+          message.payload.value
+        )
+        worker.postMessage({
+          type: 'response',
+          requestId: message.requestId,
+          ok: true,
+          result: null
+        })
+        return
+      }
+
+      if (message.type === 'secrets:remove') {
+        this.stateStore.removeSecretValue(registration.manifest.id, message.payload.key)
+        worker.postMessage({
+          type: 'response',
+          requestId: message.requestId,
+          ok: true,
+          result: null
+        })
+        return
+      }
+
+      if (message.type === 'secrets:clear') {
+        this.stateStore.clearSecrets(registration.manifest.id)
         worker.postMessage({
           type: 'response',
           requestId: message.requestId,

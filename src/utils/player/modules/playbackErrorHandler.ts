@@ -75,7 +75,6 @@ export class PlaybackErrorHandler implements ErrorHandler {
       try {
         const urlRes = await this.retryGetMusicUrl(currentSong)
         if (urlRes?.url) {
-          currentSong.url = urlRes.url
           return { shouldRetry: true, url: urlRes.url }
         }
       } catch (e) {

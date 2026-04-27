@@ -7,6 +7,13 @@ import {
   type Song,
   type SongUrlOptions
 } from '@/platform/music/interface'
+import {
+  normalizePluginLyricResult,
+  normalizePluginPlaylistDetail,
+  normalizePluginSearchResult,
+  normalizePluginSong,
+  normalizePluginSongUrlResult
+} from './standardModels'
 
 type PluginBridge = {
   call(platformId: string, method: string, payload: unknown): Promise<unknown>
@@ -45,27 +52,33 @@ export class ExternalAdapterProxy extends MusicPlatformAdapter {
 
   async search(keyword: string, limit: number, page: number): Promise<SearchResult> {
     this.assertCapability('search', 'search')
-    return this.call<SearchResult>('search', { keyword, limit, page })
+    return normalizePluginSearchResult(
+      await this.call<unknown>('search', { keyword, limit, page }),
+      this.platformId
+    )
   }
 
   async getSongUrl(id: string | number, options?: SongUrlOptions | string): Promise<string | null> {
     this.assertCapability('songUrl', 'getSongUrl')
-    return this.call<string | null>('getSongUrl', { id, options })
+    return normalizePluginSongUrlResult(await this.call<unknown>('getSongUrl', { id, options }))
   }
 
   async getSongDetail(id: string | number): Promise<Song | null> {
     this.assertCapability('songDetail', 'getSongDetail')
-    return this.call<Song | null>('getSongDetail', { id })
+    return normalizePluginSong(await this.call<unknown>('getSongDetail', { id }), this.platformId)
   }
 
   async getLyric(id: string | number): Promise<LyricResult> {
     this.assertCapability('lyric', 'getLyric')
-    return this.call<LyricResult>('getLyric', { id })
+    return normalizePluginLyricResult(await this.call<unknown>('getLyric', { id }))
   }
 
   async getPlaylistDetail(id: string | number): Promise<PlaylistDetail | null> {
     this.assertCapability('playlistDetail', 'getPlaylistDetail')
-    return this.call<PlaylistDetail | null>('getPlaylistDetail', { id })
+    return normalizePluginPlaylistDetail(
+      await this.call<unknown>('getPlaylistDetail', { id }),
+      this.platformId
+    )
   }
 }
 

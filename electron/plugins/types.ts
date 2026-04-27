@@ -45,6 +45,7 @@ export interface PluginStateRecord {
   enabled: boolean
   settings: Record<string, unknown>
   storage: Record<string, unknown>
+  secrets?: Record<string, unknown>
   lastError?: string
   consecutiveFailures: number
   circuitTrippedAt?: number
@@ -110,7 +111,8 @@ const pluginPermissionsSchema = z
         domains: z.array(z.string().min(1)).default([])
       })
       .optional(),
-    storage: z.boolean().optional()
+    storage: z.boolean().optional(),
+    secrets: z.boolean().optional()
   })
   .optional()
 
@@ -163,7 +165,8 @@ export function createPlatformDescriptorFromExternalPlugin(
     capabilities: { ...manifest.capabilities },
     permissions: {
       networkDomains: [...(manifest.permissions?.network?.domains ?? [])],
-      storage: Boolean(manifest.permissions?.storage)
+      storage: Boolean(manifest.permissions?.storage),
+      secrets: Boolean(manifest.permissions?.secrets)
     },
     settingsSchema: manifest.contributions?.settings,
     consecutiveFailures: state.consecutiveFailures,

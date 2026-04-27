@@ -76,22 +76,29 @@ export class PluginStateStore {
   }
 
   get(platformId: string): PluginStateRecord | undefined {
-    return this.list()[platformId]
+    return this.resolveState(platformId)
   }
 
   upsert(record: PluginStateRecord): PluginStateRecord {
     const records = this.list()
-    records[record.platformId] = {
+    if (
+      record.platformId !== record.pluginId &&
+      records[record.platformId]?.pluginId === record.pluginId
+    ) {
+      delete records[record.platformId]
+    }
+    records[record.pluginId] = {
       ...record,
       settings: { ...record.settings },
-      storage: { ...record.storage }
+      storage: { ...record.storage },
+      secrets: { ...(record.secrets ?? {}) }
     }
     this.store.set('pluginState', records)
-    return records[record.platformId]
+    return records[record.pluginId]
   }
 
   ensureState(manifest: ExternalPluginManifest, installPath: string): PluginStateRecord {
-    const existing = this.get(manifest.platformId)
+    const existing = this.resolveExistingStateForManifest(manifest)
     const now = Date.now()
     const settingsMigration = this.resolveSettings(manifest, existing?.settings)
 
@@ -103,6 +110,7 @@ export class PluginStateStore {
       enabled: existing?.enabled ?? false,
       settings: settingsMigration.settings,
       storage: { ...(existing?.storage ?? {}) },
+      secrets: { ...(existing?.secrets ?? {}) },
       lastError: settingsMigration.migrated ? undefined : existing?.lastError,
       consecutiveFailures: settingsMigration.migrated ? 0 : (existing?.consecutiveFailures ?? 0),
       circuitTrippedAt: settingsMigration.migrated ? undefined : existing?.circuitTrippedAt,
@@ -217,7 +225,12 @@ export class PluginStateStore {
 
   delete(platformId: string): void {
     const records = this.list()
-    delete records[platformId]
+    const existing = this.resolveState(platformId)
+    if (existing) {
+      delete records[existing.pluginId]
+    } else {
+      delete records[platformId]
+    }
     this.store.set('pluginState', records)
   }
 
@@ -258,13 +271,109 @@ export class PluginStateStore {
     })
   }
 
-  private requireState(platformId: string): PluginStateRecord {
-    const state = this.get(platformId)
+  getSecretValue<T = unknown>(pluginId: string, key: string): T | undefined {
+    return (this.requireState(pluginId).secrets ?? {})[key] as T | undefined
+  }
+
+  setSecretValue(pluginId: string, key: string, value: unknown): PluginStateRecord {
+    const existing = this.requireState(pluginId)
+    return this.upsert({
+      ...existing,
+      secrets: {
+        ...(existing.secrets ?? {}),
+        [key]: value
+      },
+      updatedAt: Date.now()
+    })
+  }
+
+  removeSecretValue(pluginId: string, key: string): PluginStateRecord {
+    const existing = this.requireState(pluginId)
+    const nextSecrets = { ...(existing.secrets ?? {}) }
+    delete nextSecrets[key]
+
+    return this.upsert({
+      ...existing,
+      secrets: nextSecrets,
+      updatedAt: Date.now()
+    })
+  }
+
+  clearSecrets(pluginId: string): PluginStateRecord {
+    const existing = this.requireState(pluginId)
+    return this.upsert({
+      ...existing,
+      secrets: {},
+      updatedAt: Date.now()
+    })
+  }
+
+  private requireState(platformIdOrPluginId: string): PluginStateRecord {
+    const state = this.resolveState(platformIdOrPluginId)
     if (!state) {
-      throw new Error(`Plugin state not found for platform "${platformId}"`)
+      throw new Error(`Plugin state not found for "${platformIdOrPluginId}"`)
     }
 
     return state
+  }
+
+  private resolveState(platformIdOrPluginId: string): PluginStateRecord | undefined {
+    const records = this.list()
+    const direct = records[platformIdOrPluginId]
+    if (direct) {
+      return {
+        ...direct,
+        settings: { ...direct.settings },
+        storage: { ...direct.storage },
+        secrets: { ...(direct.secrets ?? {}) }
+      }
+    }
+
+    const byPlatform = Object.values(records).find(
+      record => record.platformId === platformIdOrPluginId
+    )
+
+    return byPlatform
+      ? {
+          ...byPlatform,
+          settings: { ...byPlatform.settings },
+          storage: { ...byPlatform.storage },
+          secrets: { ...(byPlatform.secrets ?? {}) }
+        }
+      : undefined
+  }
+
+  private resolveExistingStateForManifest(
+    manifest: ExternalPluginManifest
+  ): PluginStateRecord | undefined {
+    const records = this.list()
+    const direct = records[manifest.id]
+    if (direct) {
+      return {
+        ...direct,
+        settings: { ...direct.settings },
+        storage: { ...direct.storage },
+        secrets: { ...(direct.secrets ?? {}) }
+      }
+    }
+
+    const legacy = records[manifest.platformId]
+    if (
+      legacy &&
+      (legacy.pluginId === manifest.id ||
+        legacy.pluginId === undefined ||
+        legacy.pluginId === manifest.platformId)
+    ) {
+      return {
+        ...legacy,
+        pluginId: manifest.id,
+        settings: { ...legacy.settings },
+        storage: { ...legacy.storage },
+        secrets: { ...(legacy.secrets ?? {}) }
+      }
+    }
+
+    return undefined
   }
 
   private getDefaultSettings(manifest: ExternalPluginManifest): Record<string, unknown> {

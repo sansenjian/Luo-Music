@@ -97,14 +97,14 @@ export class PluginCatalog {
     let state = this.stateStore.ensureState(installedPlugin.manifest, installedPlugin.installPath)
 
     if (options?.enabledByDefault && !state.enabled) {
-      state = this.stateStore.setEnabled(installedPlugin.manifest.platformId, true)
+      state = this.stateStore.setEnabled(installedPlugin.manifest.id, true)
     }
 
-    this.stateStore.setChecksum(installedPlugin.manifest.platformId, installedPlugin.checksum)
+    this.stateStore.setChecksum(installedPlugin.manifest.id, installedPlugin.checksum)
 
     this.externalPlugins.set(installedPlugin.manifest.platformId, {
       ...installedPlugin,
-      state: this.stateStore.get(installedPlugin.manifest.platformId) ?? state
+      state: this.stateStore.get(installedPlugin.manifest.id) ?? state
     })
 
     return this.notifyMutation(installedPlugin.manifest.platformId)
@@ -136,7 +136,7 @@ export class PluginCatalog {
 
     await this.host.stop(platformId)
     await this.installer.uninstall(registration.manifest.id)
-    this.stateStore.delete(platformId)
+    this.stateStore.delete(registration.manifest.id)
     this.externalPlugins.delete(platformId)
 
     return this.notifyMutation()

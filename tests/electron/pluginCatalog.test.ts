@@ -214,7 +214,7 @@ describe('electron/plugins/PluginCatalog', () => {
 
       expect(mockHostStop).toHaveBeenCalledWith('kugou')
       expect(mockUninstall).toHaveBeenCalledWith('com.example.kugou')
-      expect(mockDelete).toHaveBeenCalledWith('kugou')
+      expect(mockDelete).toHaveBeenCalledWith('com.example.kugou')
       expect(listener).toHaveBeenCalled()
     })
   })

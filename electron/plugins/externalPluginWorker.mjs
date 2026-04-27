@@ -44,6 +44,7 @@ function createLogger(level) {
 }
 
 const pluginContext = {
+  pluginId: workerData.pluginId,
   platformId: workerData.platformId,
   settings: Object.freeze({ ...(workerData.settings ?? {}) }),
   storage: {
@@ -51,6 +52,12 @@ const pluginContext = {
     set: (key, value) => createRequest('storage:set', { key, value }),
     remove: key => createRequest('storage:remove', { key }),
     clear: () => createRequest('storage:clear', {})
+  },
+  secrets: {
+    get: key => createRequest('secrets:get', { key }),
+    set: (key, value) => createRequest('secrets:set', { key, value }),
+    remove: key => createRequest('secrets:remove', { key }),
+    clear: () => createRequest('secrets:clear', {})
   },
   http: {
     get: (url, params = undefined) => createRequest('http:get', { url, params }),
