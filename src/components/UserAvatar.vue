@@ -45,6 +45,14 @@ let unsubscribePluginPlatforms: (() => void) | null = null
 
 const isQQMusicLoggedIn = computed(() => userStore.isQQMusicLoggedIn)
 const loginPlatforms = computed(() => getLoginCapablePlatformDescriptors())
+const visibleLoginPlatforms = computed(() =>
+  loginPlatforms.value.filter(platform => !isPlatformRepresentedByHeader(platform.id))
+)
+const showLoginPlatformList = computed(
+  () =>
+    visibleLoginPlatforms.value.length > 0 ||
+    (!userStore.isLoggedIn && loginPlatforms.value.length === 0)
+)
 const showPluginLoginModal = computed({
   get: () => activePluginLoginPlatform.value !== null,
   set: value => {
@@ -136,6 +144,10 @@ function isPlatformLoggedIn(platformId: string): boolean {
   }
 
   return false
+}
+
+function isPlatformRepresentedByHeader(platformId: string): boolean {
+  return platformId === 'netease' && userStore.isLoggedIn
 }
 
 function getPlatformLoginTitle(platform: PlatformDescriptor): string {
@@ -359,9 +371,9 @@ watch(showDropdown, async (isOpen, wasOpen) => {
           </button>
         </div>
 
-        <div class="platform-login-list">
+        <div v-if="showLoginPlatformList" class="platform-login-list">
           <button
-            v-for="platform in loginPlatforms"
+            v-for="platform in visibleLoginPlatforms"
             :key="platform.id"
             class="platform-login-card login-platform-btn"
             type="button"

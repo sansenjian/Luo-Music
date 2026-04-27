@@ -282,6 +282,76 @@ describe('UserAvatar', () => {
     expect(wrapper.text()).not.toContain('Search Only')
   })
 
+  it('hides the Netease login row when the profile header already represents it', async () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      },
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      }
+    ])
+
+    const wrapper = createWrapper()
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'sansenjian',
+        avatarUrl: 'https://example.com/avatar.png',
+        userId: 7924157898
+      },
+      'cookie'
+    )
+    await nextTick()
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('.dropdown-header').text()).toContain('sansenjian')
+    expect(wrapper.findAll('.platform-login-title').map(title => title.text())).toEqual([
+      'QQ Music 未登录'
+    ])
+    expect(wrapper.text()).not.toContain('Netease Music 已登录')
+  })
+
   it('keeps legacy Netease and QQ login entries visible before installed manifests refresh', async () => {
     replaceRuntimePlatformDescriptors([
       {
