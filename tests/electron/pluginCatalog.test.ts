@@ -130,6 +130,25 @@ describe('electron/plugins/PluginCatalog', () => {
       const kugou = platforms.find(p => p.id === 'kugou')
       expect(kugou).toBeDefined()
       expect(kugou!.source).toBe('external')
+      expect(kugou!.category).toBe('api')
+    })
+
+    it('maps manifest category onto external plugin descriptors', async () => {
+      const base = makeRegistration('theme-pack')
+      const reg = makeRegistration('theme-pack', {
+        manifest: {
+          ...base.manifest,
+          category: 'theme'
+        }
+      })
+      mockListPlatforms.mockResolvedValue([reg])
+      mockEnsureState.mockReturnValue(reg.state)
+
+      const platforms = await catalog.listPlatforms()
+
+      expect(platforms.find(p => p.id === 'theme-pack')).toMatchObject({
+        category: 'theme'
+      })
     })
   })
 

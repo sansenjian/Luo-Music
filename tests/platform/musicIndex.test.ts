@@ -144,6 +144,7 @@ describe('platform music index', () => {
         displayName: 'Netease Music',
         source: 'external',
         runtime: 'external-host',
+        category: 'api',
         enabled: true,
         capabilities: {
           search: true,
@@ -188,6 +189,7 @@ describe('platform music index', () => {
     expect(getPlatformDescriptor('netease')).toMatchObject({
       id: 'netease',
       displayName: 'Netease Music',
+      category: 'api',
       capabilities: {
         search: true,
         needsHydration: true,

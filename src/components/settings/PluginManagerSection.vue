@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import { uiMessages } from '@/messages/ui'
 import { usePluginManager } from '@/composables/usePluginManager'
 import type { PlatformCapabilities } from '@/platform/music/descriptors'
+import type { PluginCategory } from '@plugin-sdk'
 
 const {
   installPath,
@@ -29,7 +30,60 @@ const {
   saveSettings
 } = usePluginManager()
 
+interface PluginCategoryTab {
+  value: PluginCategory
+  label: string
+  description: string
+  emptyTitle: string
+  emptyDescription: string
+}
+
+const pluginCategoryTabs: PluginCategoryTab[] = [
+  {
+    value: 'api',
+    label: 'API',
+    description: '平台 API 功能',
+    emptyTitle: '当前没有平台 API 插件',
+    emptyDescription: '安装音乐平台插件后，会在这里显示搜索、播放、歌词等平台能力。'
+  },
+  {
+    value: 'extension',
+    label: '拓展',
+    description: '播放器优化功能',
+    emptyTitle: '当前没有播放器拓展',
+    emptyDescription: '播放器体验、播放控制或系统集成功能插件会显示在这里。'
+  },
+  {
+    value: 'theme',
+    label: '主题',
+    description: 'UI 优化',
+    emptyTitle: '当前没有主题插件',
+    emptyDescription: '界面外观、视觉样式或布局优化插件会显示在这里。'
+  }
+]
+
+const activeCategory = ref<PluginCategory>('api')
 const canInstall = computed(() => installPath.value.trim().length > 0 && !isInstalling.value)
+const categoryCounts = computed<Record<PluginCategory, number>>(() => ({
+  api: countPlatformsByCategory('api'),
+  extension: countPlatformsByCategory('extension'),
+  theme: countPlatformsByCategory('theme')
+}))
+const filteredPlatforms = computed(() =>
+  managedPlatforms.value.filter(platform => getPluginCategory(platform) === activeCategory.value)
+)
+const hasFilteredPlatforms = computed(() => filteredPlatforms.value.length > 0)
+const activeCategoryTab = computed(
+  () => pluginCategoryTabs.find(tab => tab.value === activeCategory.value) ?? pluginCategoryTabs[0]
+)
+
+function getPluginCategory(platform: { category?: PluginCategory }): PluginCategory {
+  return platform.category ?? 'api'
+}
+
+function countPlatformsByCategory(category: PluginCategory): number {
+  return managedPlatforms.value.filter(platform => getPluginCategory(platform) === category).length
+}
 
 function isBusy(platformId: string): boolean {
   return busyPlatformIds.value.includes(platformId)
@@ -155,9 +209,31 @@ function capabilityCount(platform: { capabilities: PlatformCapabilities }): numb
       <span>{{ uiMessages.settings.states.loadingPlugins }}</span>
     </div>
 
-    <div v-else-if="hasPlatforms" class="plugin-grid">
+    <div
+      v-if="!isLoading && hasPlatforms"
+      class="plugin-category-tabs"
+      role="tablist"
+      aria-label="插件分类"
+    >
+      <button
+        v-for="category in pluginCategoryTabs"
+        :key="category.value"
+        type="button"
+        role="tab"
+        class="plugin-category-tab"
+        :class="{ 'plugin-category-tab-active': activeCategory === category.value }"
+        :aria-selected="activeCategory === category.value"
+        @click="activeCategory = category.value"
+      >
+        <span class="plugin-category-label">{{ category.label }}</span>
+        <span class="plugin-category-description">{{ category.description }}</span>
+        <span class="plugin-category-count">{{ categoryCounts[category.value] }}</span>
+      </button>
+    </div>
+
+    <div v-if="!isLoading && hasFilteredPlatforms" class="plugin-grid">
       <article
-        v-for="platform in managedPlatforms"
+        v-for="platform in filteredPlatforms"
         :key="platform.id"
         class="plugin-card"
         :class="{
@@ -334,6 +410,21 @@ function capabilityCount(platform: { capabilities: PlatformCapabilities }): numb
           </div>
         </div>
       </article>
+    </div>
+
+    <div v-else-if="!isLoading && hasPlatforms" class="plugin-empty plugin-empty-compact">
+      <div class="plugin-empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+          <path
+            d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"
+          />
+          <path d="M7.5 8.5h9" />
+          <path d="M7.5 12h9" />
+          <path d="M7.5 15.5h5" />
+        </svg>
+      </div>
+      <h3>{{ activeCategoryTab.emptyTitle }}</h3>
+      <p>{{ activeCategoryTab.emptyDescription }}</p>
     </div>
 
     <div v-else-if="!isLoading" class="plugin-empty">
@@ -541,6 +632,93 @@ function capabilityCount(platform: { capabilities: PlatformCapabilities }): numb
   }
 }
 
+/* ---- category tabs ---- */
+.plugin-category-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid var(--sidebar-note-border);
+  border-radius: calc(var(--sidebar-link-radius, 8px) + 8px);
+  background: var(--surface-muted);
+}
+
+.plugin-category-tab {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 3px 10px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: calc(var(--sidebar-link-radius, 8px) + 4px);
+  background: transparent;
+  color: var(--gray);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.plugin-category-tab:hover {
+  background: var(--sidebar-link-hover-bg);
+  color: var(--black);
+}
+
+.plugin-category-tab-active {
+  background: var(--surface-soft);
+  color: var(--black);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.plugin-category-label {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.plugin-category-description {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--gray);
+}
+
+.plugin-category-tab-active .plugin-category-description {
+  color: var(--sidebar-note-text);
+}
+
+.plugin-category-count {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-soft) 75%, var(--white));
+  color: var(--gray);
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1px var(--sidebar-note-border);
+}
+
+.plugin-category-tab-active .plugin-category-count {
+  background: var(--sidebar-active-bg);
+  color: var(--white);
+  box-shadow: none;
+}
+
 /* ---- empty state ---- */
 .plugin-empty {
   display: grid;
@@ -578,6 +756,10 @@ function capabilityCount(platform: { capabilities: PlatformCapabilities }): numb
   margin: 8px auto 0;
   line-height: 1.7;
   font-size: 13px;
+}
+
+.plugin-empty-compact {
+  padding: 44px 24px;
 }
 
 /* ---- card grid ---- */
@@ -926,6 +1108,10 @@ function capabilityCount(platform: { capabilities: PlatformCapabilities }): numb
 
   .plugin-toolbar-actions .plugin-pill {
     flex: 1;
+  }
+
+  .plugin-category-tabs {
+    grid-template-columns: 1fr;
   }
 
   .plugin-card-head {

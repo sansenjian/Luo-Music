@@ -14,6 +14,7 @@ const VALID_MANIFEST = {
   id: 'com.example.test',
   name: 'Test',
   version: '1.0.0',
+  category: 'api',
   platformId: 'test',
   source: 'external',
   runtime: 'external-host',
@@ -99,6 +100,7 @@ describe('PluginInstaller', () => {
       expect(result.manifest.id).toBe('com.example.test')
       expect(result.manifest.name).toBe('Test')
       expect(result.manifest.version).toBe('1.0.0')
+      expect(result.manifest.category).toBe('api')
       expect(result.installPath).toBe(path.join(pluginsRoot, 'com.example.test', '1.0.0'))
       expect(result.entryPath).toBe(
         path.join(pluginsRoot, 'com.example.test', '1.0.0', 'index.mjs')

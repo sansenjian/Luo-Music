@@ -203,6 +203,7 @@ export class PluginAdapterBridge extends MusicPlatformAdapter {
   "version": "1.0.0",
   "description": "酷狗音乐平台适配插件",
   "author": "plugin-author",
+  "category": "api",
   "platformId": "kugou",
   "source": "external",
   "runtime": "external-host",
@@ -248,15 +249,16 @@ export class PluginAdapterBridge extends MusicPlatformAdapter {
 
 ### 5.2 关键字段
 
-| 字段                          | 说明                                               |
-| ----------------------------- | -------------------------------------------------- |
-| `manifestVersion`             | manifest 本身的版本，方便将来升级协议              |
-| `source`                      | `builtin` / `external`，由宿主决定信任级别         |
-| `runtime`                     | `local` 或 `external-host`                         |
-| `entry.module`                | 明确插件产物格式，避免 CJS / ESM 歧义              |
-| `engines.pluginApi`           | 声明宿主插件 SDK 兼容范围                          |
-| `permissions.network.domains` | 网络白名单，只允许宿主代理访问这些域名             |
-| `contributions.settings`      | 声明式设置项，仅描述结构，不允许注入自定义 UI 代码 |
+| 字段                          | 说明                                                            |
+| ----------------------------- | --------------------------------------------------------------- |
+| `manifestVersion`             | manifest 本身的版本，方便将来升级协议                           |
+| `category`                    | 插件管理页分组：`api` / `extension` / `theme`，未声明默认 `api` |
+| `source`                      | `builtin` / `external`，由宿主决定信任级别                      |
+| `runtime`                     | `local` 或 `external-host`                                      |
+| `entry.module`                | 明确插件产物格式，避免 CJS / ESM 歧义                           |
+| `engines.pluginApi`           | 声明宿主插件 SDK 兼容范围                                       |
+| `permissions.network.domains` | 网络白名单，只允许宿主代理访问这些域名                          |
+| `contributions.settings`      | 声明式设置项，仅描述结构，不允许注入自定义 UI 代码              |
 
 ### 5.3 Built-in 插件约束
 
@@ -681,6 +683,7 @@ electron/
 - [x] Renderer 侧已新增 `src/platform/music/plugin/ExternalAdapterProxy.ts`：外部插件的 `MusicPlatformAdapter` 代理，通过 IPC `plugin:call` 转发所有方法调用
 - [x] 设置页已新增 `src/components/settings/PluginManagerSection.vue`：包含插件安装（路径输入 + 浏览按钮）、启用/停用、卸载、设置编辑（动态渲染 boolean/select/text 控件）
 - [x] 设置页已新增 `src/composables/usePluginManager.ts`：插件管理 composable，封装所有 CRUD 操作和设置编辑状态
+- [x] 插件管理页已支持 API / 拓展 / 主题 三类自适应分组，分类来自 manifest `category`，旧插件默认归到 API
 - [x] 已新增 `plugins/examples/demo/`：示例外部插件，演示 search handler、storage、settings、logger 的使用
 - [x] 已新增 P2 基础设施测试：`tests/electron/pluginStateStore.test.ts`、`tests/electron/pluginInstaller.test.ts`、`tests/electron/pluginCatalog.test.ts`、`tests/services/pluginService.test.ts`
 

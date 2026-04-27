@@ -48,6 +48,8 @@ export interface PluginPermissionDeclaration {
   secrets?: boolean
 }
 
+export type PluginCategory = 'api' | 'extension' | 'theme'
+
 export interface PluginContext {
   pluginId: string
   platformId: string
@@ -217,6 +219,7 @@ export interface PluginManifest {
   version: string
   description?: string
   author?: string
+  category?: PluginCategory
   platformId: string
   source: 'core' | 'builtin' | 'external'
   runtime: 'local' | 'external-host'

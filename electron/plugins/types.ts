@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type {
   MusicPluginCapabilities,
+  PluginCategory,
   PluginMethodName,
   PluginPermissionDeclaration,
   PluginSettingDefinition
@@ -19,6 +20,7 @@ export interface ExternalPluginManifest {
   version: string
   description?: string
   author?: string
+  category?: PluginCategory
   platformId: string
   source: 'external'
   runtime: 'external-host'
@@ -126,6 +128,8 @@ const pluginPermissionsSchema = z
   })
   .optional()
 
+const pluginCategorySchema = z.enum(['api', 'extension', 'theme'])
+
 export const ExternalPluginManifestSchema = z.object({
   manifestVersion: z.number().int().positive(),
   id: z.string().min(1),
@@ -133,6 +137,7 @@ export const ExternalPluginManifestSchema = z.object({
   version: z.string().min(1),
   description: z.string().optional(),
   author: z.string().optional(),
+  category: pluginCategorySchema.optional(),
   platformId: z.string().min(1),
   source: z.literal('external'),
   runtime: z.literal('external-host'),
@@ -160,6 +165,7 @@ export function createPlatformDescriptorFromExternalPlugin(
     displayName: manifest.name,
     source: manifest.source,
     runtime: manifest.runtime,
+    category: manifest.category ?? 'api',
     enabled: state.enabled,
     version: manifest.version,
     description: manifest.description,

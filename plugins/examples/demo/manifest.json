@@ -5,6 +5,7 @@
   "version": "1.0.0",
   "description": "完整第三方插件示例，演示搜索、播放、歌词、设置、存储等全部接口。不可用于实际播放。",
   "author": "Luo-Music",
+  "category": "api",
   "platformId": "demo",
   "source": "external",
   "runtime": "external-host",

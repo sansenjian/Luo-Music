@@ -19,6 +19,7 @@ export interface PlatformDescriptor {
   displayName: string
   source: PluginManifest['source']
   runtime: PluginManifest['runtime']
+  category?: PluginManifest['category']
   enabled: boolean
   capabilities: PlatformCapabilities
   requiresServices?: string[]
@@ -55,6 +56,7 @@ const staticPlatformDescriptors: Record<string, PlatformDescriptor> = {
     displayName: '本地音乐',
     source: 'core',
     runtime: 'local',
+    category: 'api',
     enabled: true,
     status: 'ready',
     capabilities: {
