@@ -9,10 +9,29 @@ const mockGetPlatformDescriptors = vi.hoisted(() => vi.fn<() => PlatformDescript
 const mockReplaceRuntimePlatformDescriptors = vi.hoisted(() =>
   vi.fn<(descs: PlatformDescriptor[]) => void>()
 )
+const experimentalFeaturesMock = vi.hoisted(() => {
+  const smtcEnabled = { value: false }
+  const coverSwipeEnabled = { value: false }
+
+  return {
+    smtcEnabled,
+    coverSwipeEnabled,
+    setSMTCEnabled: vi.fn((next: boolean) => {
+      smtcEnabled.value = next
+    }),
+    setCoverSwipeEnabled: vi.fn((next: boolean) => {
+      coverSwipeEnabled.value = next
+    })
+  }
+})
 
 vi.mock('@/platform/music/descriptors', () => ({
   getPlatformDescriptors: mockGetPlatformDescriptors,
   replaceRuntimePlatformDescriptors: mockReplaceRuntimePlatformDescriptors
+}))
+
+vi.mock('@/composables/useExperimentalFeatures', () => ({
+  useExperimentalFeatures: () => experimentalFeaturesMock
 }))
 
 // ---------------------------------------------------------------------------
@@ -74,6 +93,47 @@ const pluginDescriptor: PlatformDescriptor = {
   }
 }
 
+function expectFirstPartyExtensionDescriptors(
+  platforms: PlatformDescriptor[],
+  options: { smtc?: boolean; coverSwipeEnabled?: boolean; smtcEnabled?: boolean } = {}
+): void {
+  expect(platforms).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'builtin.cover-swipe',
+        displayName: '滑动封面切歌',
+        source: 'builtin',
+        runtime: 'local',
+        category: 'extension',
+        enabled: options.coverSwipeEnabled ?? false,
+        status: options.coverSwipeEnabled ? 'ready' : 'disabled'
+      })
+    ])
+  )
+
+  if (options.smtc !== false) {
+    expect(platforms).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'builtin.smtc',
+          displayName: 'Windows SMTC',
+          source: 'builtin',
+          runtime: 'local',
+          category: 'extension',
+          enabled: options.smtcEnabled ?? false,
+          status: options.smtcEnabled ? 'ready' : 'disabled'
+        })
+      ])
+    )
+  } else {
+    expect(platforms.some(platform => platform.id === 'builtin.smtc')).toBe(false)
+  }
+}
+
+function expectExternalPluginDescriptor(platforms: PlatformDescriptor[]): void {
+  expect(platforms).toEqual(expect.arrayContaining([pluginDescriptor]))
+}
+
 function createBridge() {
   return {
     list: vi.fn<() => Promise<PlatformDescriptor[]>>(() => Promise.resolve([pluginDescriptor])),
@@ -105,6 +165,8 @@ function createBridge() {
 describe('createPluginService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    experimentalFeaturesMock.smtcEnabled.value = false
+    experimentalFeaturesMock.coverSwipeEnabled.value = false
     mockGetPlatformDescriptors.mockReturnValue(builtinDescriptors)
     mockReplaceRuntimePlatformDescriptors.mockImplementation(() => {})
   })
@@ -125,7 +187,8 @@ describe('createPluginService', () => {
     const result = await service.listPlatforms()
 
     expect(mockGetPlatformDescriptors).toHaveBeenCalled()
-    expect(result).toEqual(builtinDescriptors)
+    expect(result).toEqual(expect.arrayContaining(builtinDescriptors))
+    expectFirstPartyExtensionDescriptors(result, { smtc: false })
     expect(mockReplaceRuntimePlatformDescriptors).not.toHaveBeenCalled()
   })
 
@@ -147,8 +210,11 @@ describe('createPluginService', () => {
 
     // bridge.list is called once by auto-refresh + once by explicit listPlatforms
     expect(bridge.list).toHaveBeenCalledTimes(2)
-    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith([pluginDescriptor])
-    expect(result).toEqual([pluginDescriptor])
+    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith(
+      expect.arrayContaining([pluginDescriptor])
+    )
+    expectExternalPluginDescriptor(result)
+    expectFirstPartyExtensionDescriptors(result)
   })
 
   // -----------------------------------------------------------------------
@@ -164,7 +230,8 @@ describe('createPluginService', () => {
     const result = await service.listPlatforms()
 
     expect(mockGetPlatformDescriptors).toHaveBeenCalled()
-    expect(result).toEqual(builtinDescriptors)
+    expect(result).toEqual(expect.arrayContaining(builtinDescriptors))
+    expectFirstPartyExtensionDescriptors(result)
   })
 
   // -----------------------------------------------------------------------
@@ -195,8 +262,11 @@ describe('createPluginService', () => {
     const result = await service.installFromPath('/path/to/plugin')
 
     expect(bridge.installFromPath).toHaveBeenCalledWith('/path/to/plugin')
-    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith([pluginDescriptor])
-    expect(result).toEqual([pluginDescriptor])
+    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith(
+      expect.arrayContaining([pluginDescriptor])
+    )
+    expectExternalPluginDescriptor(result)
+    expectFirstPartyExtensionDescriptors(result)
   })
 
   // -----------------------------------------------------------------------
@@ -269,8 +339,43 @@ describe('createPluginService', () => {
     const result = await service.setEnabled('plugin-x', false)
 
     expect(bridge.setEnabled).toHaveBeenCalledWith('plugin-x', false)
-    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith([pluginDescriptor])
-    expect(result).toEqual([pluginDescriptor])
+    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith(
+      expect.arrayContaining([pluginDescriptor])
+    )
+    expectExternalPluginDescriptor(result)
+    expectFirstPartyExtensionDescriptors(result)
+  })
+
+  it('toggles the first-party SMTC extension without delegating to the bridge', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await vi.waitFor(() => expect(bridge.list).toHaveBeenCalled())
+    bridge.setEnabled.mockClear()
+
+    const result = await service.setEnabled('builtin.smtc', true)
+
+    expect(experimentalFeaturesMock.setSMTCEnabled).toHaveBeenCalledWith(true)
+    expect(bridge.setEnabled).not.toHaveBeenCalled()
+    expectExternalPluginDescriptor(result)
+    expectFirstPartyExtensionDescriptors(result, { smtcEnabled: true })
+  })
+
+  it('toggles the first-party cover swipe extension outside Electron', async () => {
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => false
+    })
+
+    const result = await service.setEnabled('builtin.cover-swipe', true)
+
+    expect(experimentalFeaturesMock.setCoverSwipeEnabled).toHaveBeenCalledWith(true)
+    expect(result).toEqual(expect.arrayContaining(builtinDescriptors))
+    expectFirstPartyExtensionDescriptors(result, { smtc: false, coverSwipeEnabled: true })
   })
 
   // -----------------------------------------------------------------------
@@ -300,8 +405,11 @@ describe('createPluginService', () => {
     const result = await service.uninstall('plugin-x')
 
     expect(bridge.uninstall).toHaveBeenCalledWith('plugin-x')
-    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith([])
-    expect(result).toEqual([])
+    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith(
+      expect.not.arrayContaining([pluginDescriptor])
+    )
+    expect(result.some(platform => platform.id === pluginDescriptor.id)).toBe(false)
+    expectFirstPartyExtensionDescriptors(result)
   })
 
   // -----------------------------------------------------------------------
@@ -438,8 +546,12 @@ describe('createPluginService', () => {
     expect(capturedListener).toBeDefined()
     capturedListener!([pluginDescriptor])
 
-    expect(listener).toHaveBeenCalledWith([pluginDescriptor])
-    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith([pluginDescriptor])
+    expect(listener).toHaveBeenCalledWith(expect.arrayContaining([pluginDescriptor]))
+    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith(
+      expect.arrayContaining([pluginDescriptor])
+    )
+    const receivedPlatforms = listener.mock.calls[0]?.[0] as PlatformDescriptor[]
+    expectFirstPartyExtensionDescriptors(receivedPlatforms)
 
     // Unsubscribe should call the bridge's unsubscribe
     unsubscribe()
@@ -464,8 +576,11 @@ describe('createPluginService', () => {
     const result = await service.refreshPlatformDescriptors()
 
     expect(bridge.list).toHaveBeenCalledOnce()
-    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith([pluginDescriptor])
-    expect(result).toEqual([pluginDescriptor])
+    expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalledWith(
+      expect.arrayContaining([pluginDescriptor])
+    )
+    expectExternalPluginDescriptor(result)
+    expectFirstPartyExtensionDescriptors(result)
   })
 
   // -----------------------------------------------------------------------

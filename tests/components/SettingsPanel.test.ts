@@ -55,7 +55,7 @@ describe('SettingsPanel.vue', () => {
     wrapper.unmount()
   })
 
-  it('reuses the same settings content outside Electron without experimental controls', async () => {
+  it('reuses the same settings content outside Electron without SMTC controls', async () => {
     platformServiceMock.isElectron.mockReturnValue(false)
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
@@ -74,14 +74,16 @@ describe('SettingsPanel.vue', () => {
 
     expect(document.body.querySelector('h2')?.textContent).toContain('设置')
     expect(document.body.querySelector('[aria-label="品牌标识位置"]')).not.toBeNull()
-    expect(document.body.textContent).not.toContain('Windows SMTC（实验）')
+    expect(document.body.textContent).not.toContain('Windows SMTC')
     wrapper.unmount()
   })
 
-  it('shows and toggles the experimental SMTC setting in Electron', async () => {
+  it('does not show first-party extension toggles in app settings', async () => {
     platformServiceMock.isElectron.mockReturnValue(true)
     storageServiceMock.getJSON.mockImplementation((key: string) =>
-      key === 'experimentalFeatures' ? { smtcEnabled: false } : null
+      key === 'experimentalFeatures'
+        ? { smtcEnabled: false, waveformEnabled: false, coverSwipeEnabled: false }
+        : null
     )
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
@@ -98,23 +100,11 @@ describe('SettingsPanel.vue', () => {
 
     await wrapper.find('.settings-btn').trigger('click')
 
-    const smtcToggle = document.body.querySelector(
-      'input[aria-label="Windows SMTC（实验）"]'
-    ) as HTMLInputElement | null
-
-    expect(smtcToggle).not.toBeNull()
-    expect(smtcToggle?.checked).toBe(false)
-
-    smtcToggle!.checked = true
-    smtcToggle!.dispatchEvent(new Event('change'))
-    await wrapper.vm.$nextTick()
-
-    expect(storageServiceMock.setJSON).toHaveBeenCalledWith(
-      'experimentalFeatures',
-      expect.objectContaining({
-        smtcEnabled: true
-      })
-    )
+    expect(document.body.querySelector('input[aria-label="Windows SMTC"]')).toBeNull()
+    expect(document.body.querySelector('input[aria-label="滑动封面切歌"]')).toBeNull()
+    expect(
+      document.body.querySelector('input[aria-label="进度条波形可视化（实验）"]')
+    ).not.toBeNull()
 
     wrapper.unmount()
   })

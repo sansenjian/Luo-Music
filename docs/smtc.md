@@ -1,10 +1,8 @@
-# SMTC 实验功能规划（修正版）
+# SMTC 第一方拓展插件规划
 
 ## Summary
 
-在 Electron 桌面端增加基于 navigator.mediaSession 的 Windows SMTC 支持，并作为实验功能提供设置开关。开关默认关
-闭，仅在 Electron 设置页显示。实现必须解决 3 个关键点：启停时立即同步状态、本地封面异步竞态、实验设置独立持久
-化。
+在 Electron 桌面端增加基于 navigator.mediaSession 的 Windows SMTC 支持，并作为 `builtin.smtc` 第一方拓展插件在插件管理页显示。开关默认关闭，仅在 Electron 的插件管理页「拓展」分类显示。实现必须解决 3 个关键点：启停时立即同步状态、本地封面异步竞态、独立持久化。
 
 ## Key Changes
 
@@ -14,9 +12,9 @@
   - 默认值为 false
   - 读写使用现有 storageService.getJSON/setJSON
   - 不并入 player 持久化对象，也不依赖单一根 settings 对象
-- 在 src/components/SettingsPanel.vue 增加“实验功能”区块。
-  - 只在 Electron 下显示
-  - 增加 Windows SMTC（实验） 开关
+- 在插件管理页「拓展」分类显示 Windows SMTC。
+  - 只在 Electron 下显示 `builtin.smtc`
+  - 通过第一方插件启用 / 停用按钮切换
   - 切换时立即生效，不要求重启
 - 重构 src/composables/useMediaSession.ts 为“响应式启停”模型：
   - 输入改为 enabled: () => boolean
@@ -29,6 +27,7 @@
   - 关闭时完整清理：
     - metadata = null
     - playbackState = 'none'
+    - setPositionState() 清空旧进度 / 时长状态
     - 所有 action handler 置空
     - 停止 position timer
 - 本地封面解析继续复用现有 src/utils/cache/coverCache.ts 和 PlatformService.getLocalLibraryCover(hash)。
@@ -68,15 +67,15 @@
   - 不会覆盖其他设置 key
 - useMediaSession 测试：
   - 启用时立即同步 metadata、playbackState、positionState
-  - 关闭时完整清理 metadata、handlers、timer
+  - 关闭时完整清理 metadata、playbackState、positionState、handlers、timer
   - 关闭后重新开启时能恢复当前播放状态，不等待下一次播放事件
   - 本地歌曲封面通过 localCoverHash 正确解析
   - 本地封面异步返回时，旧请求不会覆盖新歌曲 metadata
   - play/pause/nexttrack/previoustrack/seekto/seekforward/seekbackward 映射正确
-- 设置面板测试：
-  - Electron 下显示实验开关
-  - 非 Electron 下不显示
-  - 切换开关会更新实验设置
+- 插件管理测试：
+  - Electron 下显示 `builtin.smtc`
+  - 非 Electron 下不显示 `builtin.smtc`
+  - 切换第一方拓展插件会更新 SMTC 启用状态
 - 全量回归：
   - npm run test:run 通过
 

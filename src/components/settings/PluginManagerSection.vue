@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { uiMessages } from '@/messages/ui'
 import { usePluginManager } from '@/composables/usePluginManager'
@@ -77,6 +77,21 @@ const activeCategoryTab = computed(
   () => pluginCategoryTabs.find(tab => tab.value === activeCategory.value) ?? pluginCategoryTabs[0]
 )
 
+watch(
+  categoryCounts,
+  counts => {
+    if (counts[activeCategory.value] > 0) {
+      return
+    }
+
+    const nextCategory = pluginCategoryTabs.find(tab => counts[tab.value] > 0)?.value
+    if (nextCategory) {
+      activeCategory.value = nextCategory
+    }
+  },
+  { immediate: true }
+)
+
 function getPluginCategory(platform: { category?: PluginCategory }): PluginCategory {
   return platform.category ?? 'api'
 }
@@ -124,7 +139,7 @@ function statusLabel(status?: string): string {
 }
 
 function sourceLabel(source: string): string {
-  return source === 'builtin' ? '内置' : source === 'external' ? '第三方' : source
+  return source === 'builtin' ? '第一方' : source === 'external' ? '第三方' : source
 }
 
 function capabilityCount(platform: { capabilities: PlatformCapabilities }): number {
@@ -134,11 +149,27 @@ function capabilityCount(platform: { capabilities: PlatformCapabilities }): numb
 
   return baseCount + (platform.capabilities.auth?.login ? 1 : 0)
 }
+
+function capabilityLabel(platform: {
+  capabilities: PlatformCapabilities
+  category?: PluginCategory
+}): string {
+  const count = capabilityCount(platform)
+  if (count === 0 && getPluginCategory(platform) === 'extension') {
+    return '拓展功能'
+  }
+
+  if (count === 0 && getPluginCategory(platform) === 'theme') {
+    return '主题能力'
+  }
+
+  return `${count} 项能力`
+}
 </script>
 
 <template>
-  <section class="plugin-section" v-if="isElectron">
-    <div class="plugin-toolbar">
+  <section class="plugin-section">
+    <div v-if="isElectron" class="plugin-toolbar">
       <label class="plugin-install-field">
         <svg
           class="plugin-install-icon"
@@ -274,7 +305,7 @@ function capabilityCount(platform: { capabilities: PlatformCapabilities }): numb
           <span class="plugin-meta-item">
             {{ statusLabel(platform.status) }}
           </span>
-          <span class="plugin-meta-item">{{ capabilityCount(platform) }} 项能力</span>
+          <span class="plugin-meta-item">{{ capabilityLabel(platform) }}</span>
         </div>
 
         <div v-if="platform.source === 'external' && platform.permissions" class="plugin-perms">
@@ -315,7 +346,10 @@ function capabilityCount(platform: { capabilities: PlatformCapabilities }): numb
 
         <p v-if="platform.lastError" class="plugin-card-error">{{ platform.lastError }}</p>
 
-        <div class="plugin-card-actions" v-if="platform.source === 'external'">
+        <div
+          class="plugin-card-actions"
+          v-if="platform.source === 'external' || platform.source === 'builtin'"
+        >
           <button
             type="button"
             class="plugin-pill"
@@ -345,6 +379,7 @@ function capabilityCount(platform: { capabilities: PlatformCapabilities }): numb
             设置
           </button>
           <button
+            v-if="platform.source === 'external'"
             type="button"
             class="plugin-pill plugin-pill-danger"
             :disabled="isBusy(platform.id)"

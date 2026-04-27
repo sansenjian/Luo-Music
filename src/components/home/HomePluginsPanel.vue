@@ -9,7 +9,7 @@ import PluginManagerSection from '@/components/settings/PluginManagerSection.vue
         <p class="workspace-plugins-eyebrow">扩展</p>
         <h2 id="workspace-plugins-title">插件管理</h2>
       </div>
-      <p class="workspace-plugins-caption">安装和管理音乐源插件，扩展平台能力</p>
+      <p class="workspace-plugins-caption">管理平台 API、播放器拓展和主题插件</p>
     </header>
 
     <PluginManagerSection />

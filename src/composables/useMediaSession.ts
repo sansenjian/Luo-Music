@@ -15,7 +15,7 @@ type MediaSessionLike = {
   metadata: MediaMetadata | MediaMetadataInit | null
   playbackState: MediaSessionPlaybackState
   setActionHandler(action: MediaSessionAction, handler: MediaSessionActionHandlerLike): void
-  setPositionState?: (state: MediaPositionState) => void
+  setPositionState?: (state?: MediaPositionState) => void
 }
 
 type PlayerStoreLike = Pick<
@@ -152,6 +152,15 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   function clearActionHandlers(): void {
     for (const action of MEDIA_SESSION_ACTIONS) {
       setActionHandlerSafely(action, null)
+    }
+  }
+
+  function clearPositionState(): void {
+    try {
+      mediaSession.setPositionState?.()
+    } catch {
+      // Older Chromium builds may reject clearing position state; the rest of
+      // cleanup still removes Luo-Music's metadata, state, and handlers.
     }
   }
 
@@ -326,6 +335,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     isSessionActive = false
     clearPositionTimer()
     lastPositionStateKey = null
+    clearPositionState()
     mediaSession.metadata = null
     mediaSession.playbackState = 'none'
     clearActionHandlers()

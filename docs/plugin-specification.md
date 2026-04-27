@@ -593,16 +593,18 @@ export function normalizePlaylist(playlist, platformId) {
 
 ## 6. 第一方插件规范
 
-第一方插件随应用分发，无需用户安装。当前实验性功能将逐步迁移为第一方插件。
+第一方插件随应用分发，无需用户安装。当前已支持把功能增强项作为 `category: "extension"` 的第一方插件显示在插件管理页。
 
-### 6.1 当前实验性功能 → 插件迁移计划
+### 6.1 当前实验性功能 → 插件迁移状态
 
-| 实验性功能                 | 目标插件 ID             | 平台     | 类型     |
-| -------------------------- | ----------------------- | -------- | -------- |
-| 波形可视化 (Waveform)      | `builtin.waveform`      | 全平台   | 功能增强 |
-| Windows SMTC               | `builtin.smtc`          | Electron | 功能增强 |
-| 滑动封面切歌 (Cover Swipe) | `builtin.cover-swipe`   | 全平台   | 功能增强 |
-| 桌面歌词 (Desktop Lyric)   | `builtin.desktop-lyric` | Electron | 功能增强 |
+| 实验性功能                 | 目标插件 ID             | 平台     | 类型     | 状态                       |
+| -------------------------- | ----------------------- | -------- | -------- | -------------------------- |
+| 波形可视化 (Waveform)      | `builtin.waveform`      | 全平台   | 功能增强 | 待迁移                     |
+| Windows SMTC               | `builtin.smtc`          | Electron | 功能增强 | 已迁移到插件管理页「拓展」 |
+| 滑动封面切歌 (Cover Swipe) | `builtin.cover-swipe`   | 全平台   | 功能增强 | 已迁移到插件管理页「拓展」 |
+| 桌面歌词 (Desktop Lyric)   | `builtin.desktop-lyric` | Electron | 功能增强 | 待迁移                     |
+
+当前已迁移的第一方拓展插件复用原有运行逻辑和持久化状态，用户只通过插件管理页启用 / 停用；设置面板不再显示对应实验开关。
 
 ### 6.2 第一方插件结构
 
@@ -797,8 +799,8 @@ export default manifest
 ### 阶段二: 实验性功能迁移
 
 1. 波形可视化 → `builtin.waveform`
-2. Windows SMTC → `builtin.smtc`
-3. 滑动切歌 → `builtin.cover-swipe`
+2. Windows SMTC → `builtin.smtc`（已完成）
+3. 滑动切歌 → `builtin.cover-swipe`（已完成）
 4. 桌面歌词 → `builtin.desktop-lyric`
 
 每个功能插件化后：

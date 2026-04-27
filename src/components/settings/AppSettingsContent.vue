@@ -36,14 +36,10 @@ const props = withDefaults(
 const {
   playerStore,
   isElectron,
-  smtcEnabled,
   waveformEnabled,
-  coverSwipeEnabled,
   setBrandPlacement,
   setDockedPlayerBarLayout,
-  setSMTCEnabled,
   setWaveformEnabled,
-  setCoverSwipeEnabled,
   setRenderStyle,
   isBrandPlacementActive,
   isRenderStyleActive,
@@ -60,16 +56,8 @@ const {
 const contentClassName = computed(() => `surface-${props.surface}`)
 const fieldIdPrefix = computed(() => `app-settings-${props.surface}`)
 
-function handleSMTCEnabledChange(event: Event): void {
-  setSMTCEnabled((event.target as HTMLInputElement).checked)
-}
-
 function handleWaveformEnabledChange(event: Event): void {
   setWaveformEnabled((event.target as HTMLInputElement).checked)
-}
-
-function handleCoverSwipeEnabledChange(event: Event): void {
-  setCoverSwipeEnabled((event.target as HTMLInputElement).checked)
 }
 
 function handleDesktopLyricEnabledChange(event: Event): void {
@@ -516,30 +504,6 @@ const desktopLyricPreviewStyle = computed(() => {
           type="checkbox"
           :checked="waveformEnabled"
           @change="handleWaveformEnabledChange"
-        />
-      </div>
-      <div v-if="isElectron" class="setting-item">
-        <label :for="`${fieldIdPrefix}-experimental-smtc-toggle`">
-          {{ uiMessages.settings.fields.smtc }}
-        </label>
-        <input
-          :id="`${fieldIdPrefix}-experimental-smtc-toggle`"
-          :aria-label="uiMessages.settings.fields.smtc"
-          type="checkbox"
-          :checked="smtcEnabled"
-          @change="handleSMTCEnabledChange"
-        />
-      </div>
-      <div class="setting-item">
-        <label :for="`${fieldIdPrefix}-experimental-cover-swipe-toggle`">
-          {{ uiMessages.settings.fields.coverSwipe }}
-        </label>
-        <input
-          :id="`${fieldIdPrefix}-experimental-cover-swipe-toggle`"
-          :aria-label="uiMessages.settings.fields.coverSwipe"
-          type="checkbox"
-          :checked="coverSwipeEnabled"
-          @change="handleCoverSwipeEnabledChange"
         />
       </div>
     </section>

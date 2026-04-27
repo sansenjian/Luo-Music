@@ -56,11 +56,6 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
   }
 
   async function refresh(): Promise<void> {
-    if (!isElectron.value) {
-      platforms.value = []
-      return
-    }
-
     isLoading.value = true
     errorMessage.value = null
 
@@ -130,11 +125,12 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
   }
 
   onMounted(() => {
+    void refresh()
+
     if (!isElectron.value) {
       return
     }
 
-    void refresh()
     unsubscribe = pluginService.onPlatformsChanged(nextPlatforms => {
       platforms.value = nextPlatforms
     })

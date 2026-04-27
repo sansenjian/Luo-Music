@@ -3,7 +3,7 @@
 > 状态: 设计草案
 > 最后更新: 2026-04-27
 
-> 当前落地进度: 已完成插件存储命名空间、`ctx.secrets`、入站标准化和播放 URL 刷新竞态保护的底座实现；完整平台登录 UI 插件化仍是后续阶段。
+> 当前落地进度: 已完成插件存储命名空间、`ctx.secrets`、入站标准化、播放 URL 刷新竞态保护，以及 SMTC / 滑动封面切歌第一方拓展插件入口；完整平台登录 UI 插件化仍是后续阶段。
 
 ## 1. 目标
 
@@ -687,7 +687,9 @@ export interface PluginManifestV2Extensions {
 
 ### 阶段五: 功能插件化
 
-- 将波形可视化、SMTC、桌面歌词、滑动切歌逐步迁移到第一方插件。
+- [x] 将 Windows SMTC 暴露为 `builtin.smtc` 第一方拓展插件，由插件管理页启用 / 停用。
+- [x] 将滑动封面切歌暴露为 `builtin.cover-swipe` 第一方拓展插件，由插件管理页启用 / 停用。
+- 将波形可视化、桌面歌词逐步迁移到第一方插件。
 - 第三方 UI 插件只开放声明式贡献点。
 - 每个能力通过 manifest 声明和权限校验进入系统。
 
@@ -734,5 +736,7 @@ export interface PluginManifestV2Extensions {
 验证记录:
 
 - `npm run typecheck`
-- `npm run test:run`：182 个测试文件、1300 个测试通过。
 - `npm run lint`
+- `npx vitest run tests/composables/useMediaSession.test.ts tests/services/pluginService.test.ts tests/components/SettingsPanel.test.ts tests/composables/useExperimentalFeatures.test.ts tests/App.test.ts`：5 个测试文件、54 个测试通过。
+- `npm run test:run`：当前环境中 `better-sqlite3` 原生模块被正在运行的 Electron 进程锁定，无法切换到 Node 测试运行时。
+- `npx vitest run`：180 个测试文件通过；`tests/electron/localLibrary.repository.test.ts` 和 `tests/electron/localLibrary.service.test.ts` 因 `better-sqlite3.node` 的 Node / Electron ABI 不匹配失败，需关闭 Electron 后重新执行 `npm run test:run` 让脚本恢复原生模块。

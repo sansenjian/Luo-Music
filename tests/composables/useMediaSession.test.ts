@@ -172,6 +172,7 @@ describe('useMediaSession', () => {
 
     expect(mediaSession.metadata).toBeNull()
     expect(mediaSession.playbackState).toBe('none')
+    expect(mediaSession.setPositionState).toHaveBeenLastCalledWith()
     expect(handlers.play).toBeNull()
     expect(handlers.pause).toBeNull()
     expect(handlers.nexttrack).toBeNull()
@@ -573,6 +574,7 @@ describe('useMediaSession', () => {
 
     expect(mediaSession.metadata).toBeNull()
     expect(mediaSession.playbackState).toBe('none')
+    expect(mediaSession.setPositionState).toHaveBeenLastCalledWith()
     expect(handlers.play).toBeNull()
     expect(handlers.pause).toBeNull()
 
