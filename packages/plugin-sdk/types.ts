@@ -13,9 +13,18 @@ export interface PluginStorage {
   clear(): Promise<void> | void
 }
 
+export interface RestrictedHttpRequestOptions {
+  headers?: Record<string, string>
+  timeoutMs?: number
+}
+
 export interface RestrictedHttpClient {
-  get<T = unknown>(url: string, params?: Record<string, unknown>): Promise<T>
-  post<T = unknown>(url: string, body?: unknown): Promise<T>
+  get<T = unknown>(
+    url: string,
+    params?: Record<string, unknown>,
+    options?: RestrictedHttpRequestOptions
+  ): Promise<T>
+  post<T = unknown>(url: string, body?: unknown, options?: RestrictedHttpRequestOptions): Promise<T>
 }
 
 export interface PluginSettingOption {
@@ -126,6 +135,55 @@ export interface PlaylistDetailInput {
   id: string | number
 }
 
+export type StandardLoginMode = 'qr' | 'browser' | 'form'
+
+export interface StandardAccountProfile {
+  id: string | number
+  nickname: string
+  avatarUrl?: string
+  homepageUrl?: string
+  extra?: Record<string, unknown>
+}
+
+export interface StandardAuthState {
+  platform: string
+  status: 'anonymous' | 'pending' | 'authenticated' | 'expired' | 'error'
+  account?: StandardAccountProfile
+  expiresAt?: number
+  message?: string
+}
+
+export interface StandardLoginField {
+  key: string
+  label: string
+  type: 'text' | 'password' | 'otp'
+  required?: boolean
+}
+
+export interface StandardLoginChallenge {
+  challengeId: string
+  type: StandardLoginMode | 'none'
+  title?: string
+  statusText?: string
+  qrImageUrl?: string
+  authorizeUrl?: string
+  expiresAt?: number
+  pollIntervalMs?: number
+  canRefresh?: boolean
+  cancelable?: boolean
+  helpUrl?: string
+  fields?: StandardLoginField[]
+}
+
+export interface PluginAuthCapability {
+  login?: boolean
+  logout?: boolean
+  refresh?: boolean
+  profile?: boolean
+  preferredMode?: StandardLoginMode
+  modes?: StandardLoginMode[]
+}
+
 export type PluginMethodName =
   | 'search'
   | 'getSongUrl'
@@ -149,6 +207,7 @@ export interface MusicPluginCapabilities {
   needsHydration: boolean
   supportsLyricFetch: boolean
   supportsUrlRefreshOnFailure: boolean
+  auth?: PluginAuthCapability
 }
 
 export interface PluginManifest {

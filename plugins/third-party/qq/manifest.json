@@ -24,7 +24,15 @@
     "playlistDetail": false,
     "needsHydration": false,
     "supportsLyricFetch": true,
-    "supportsUrlRefreshOnFailure": false
+    "supportsUrlRefreshOnFailure": false,
+    "auth": {
+      "login": true,
+      "logout": true,
+      "refresh": true,
+      "profile": true,
+      "preferredMode": "qr",
+      "modes": ["qr"]
+    }
   },
   "permissions": {
     "network": {
@@ -37,7 +45,8 @@
         "shc.y.qq.com"
       ]
     },
-    "storage": true
+    "storage": true,
+    "secrets": true
   },
   "contributions": {
     "settings": [

@@ -131,6 +131,7 @@ describe('platform music index', () => {
     const {
       getAvailablePlatforms,
       getPlatformDescriptor,
+      getLoginPlatformOptions,
       getSearchPlatformOptions,
       getPlatformCapabilities,
       replaceRuntimePlatformDescriptors
@@ -152,7 +153,12 @@ describe('platform music index', () => {
           playlistDetail: true,
           needsHydration: true,
           supportsLyricFetch: true,
-          supportsUrlRefreshOnFailure: true
+          supportsUrlRefreshOnFailure: true,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
         }
       },
       {
@@ -169,7 +175,12 @@ describe('platform music index', () => {
           playlistDetail: false,
           needsHydration: false,
           supportsLyricFetch: true,
-          supportsUrlRefreshOnFailure: false
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
         }
       }
     ])
@@ -199,6 +210,10 @@ describe('platform music index', () => {
       { value: 'netease', label: 'Netease Music' },
       { value: 'qq', label: 'QQ Music' },
       { value: 'local', label: '本地音乐' }
+    ])
+    expect(getLoginPlatformOptions()).toEqual([
+      { value: 'netease', label: 'Netease Music' },
+      { value: 'qq', label: 'QQ Music' }
     ])
     expect(getAvailablePlatforms()).toEqual([
       { id: 'local', name: '本地音乐' },

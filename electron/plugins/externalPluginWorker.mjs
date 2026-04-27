@@ -60,8 +60,10 @@ const pluginContext = {
     clear: () => createRequest('secrets:clear', {})
   },
   http: {
-    get: (url, params = undefined) => createRequest('http:get', { url, params }),
-    post: (url, body = undefined) => createRequest('http:post', { url, body })
+    get: (url, params = undefined, options = undefined) =>
+      createRequest('http:get', { url, params, options }),
+    post: (url, body = undefined, options = undefined) =>
+      createRequest('http:post', { url, body, options })
   },
   logger: {
     trace: createLogger('trace'),

@@ -1,4 +1,4 @@
-import type { PlatformCapabilities } from '@/platform/music/descriptors'
+import type { PlatformBooleanCapability, PlatformCapabilities } from '@/platform/music/descriptors'
 import {
   MusicPlatformAdapter,
   type LyricResult,
@@ -40,7 +40,7 @@ export class ExternalAdapterProxy extends MusicPlatformAdapter {
     super(platformId)
   }
 
-  private assertCapability(capability: keyof PlatformCapabilities, methodName: string): void {
+  private assertCapability(capability: PlatformBooleanCapability, methodName: string): void {
     if (!this.capabilities[capability]) {
       throw new Error(`Music platform "${this.platformId}" does not support ${methodName}`)
     }

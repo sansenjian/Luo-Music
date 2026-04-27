@@ -64,6 +64,22 @@ function unwrapQQResponse(value) {
   return parsed
 }
 
+function normalizeString(value) {
+  return typeof value === 'string' ? value : ''
+}
+
+function extractSessionCookie(payload) {
+  if (!isRecord(payload)) return ''
+
+  return normalizeString(
+    payload.session?.cookie ||
+      payload.data?.session?.cookie ||
+      payload.body?.session?.cookie ||
+      payload.body?.data?.cookie ||
+      payload.cookie
+  )
+}
+
 function resolveSearchPayload(value) {
   const payload = unwrapQQResponse(value)
   if (!isRecord(payload)) return null
@@ -106,6 +122,31 @@ export default {
         ctx.logger.debug('API GET', { endpoint, params: Object.keys(params || {}) })
       }
       return ctx.http.get(url.href)
+    }
+
+    async function apiPost(endpoint, body, params) {
+      const url = new URL(endpoint, apiBase)
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value !== undefined && value !== null) {
+            url.searchParams.set(key, String(value))
+          }
+        }
+      }
+      if (verbose) {
+        ctx.logger.debug('API POST', { endpoint, params: Object.keys(params || {}) })
+      }
+      return ctx.http.post(url.href, body)
+    }
+
+    async function getAuthState() {
+      const cookie = normalizeString(await ctx.secrets.get('cookie'))
+
+      return {
+        platform: ctx.platformId,
+        status: cookie ? 'authenticated' : 'anonymous',
+        message: cookie ? '已登录' : '未登录'
+      }
     }
 
     return {
@@ -187,6 +228,109 @@ export default {
 
       async getPlaylistDetail() {
         return null
+      },
+
+      'auth.getState': getAuthState,
+
+      async 'auth.startLogin'() {
+        const data = unwrapQQResponse(await apiGet('/user/getQQLoginQr'))
+        const payload = data?.body || data
+
+        if (!payload?.img || !payload.ptqrtoken || !payload.qrsig) {
+          throw new Error('Missing QQ login QR payload')
+        }
+
+        const challengeId = `qq-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        await ctx.storage.set(`auth:${challengeId}`, {
+          ptqrtoken: String(payload.ptqrtoken),
+          qrsig: String(payload.qrsig)
+        })
+
+        return {
+          challengeId,
+          type: 'qr',
+          title: 'QQ 音乐登录',
+          statusText: '请使用 QQ 音乐 App 扫码登录',
+          qrImageUrl: String(payload.img),
+          pollIntervalMs: 2000,
+          canRefresh: true,
+          cancelable: true
+        }
+      },
+
+      async 'auth.pollLogin'({ challengeId }) {
+        const challenge = await ctx.storage.get(`auth:${challengeId}`)
+        if (!isRecord(challenge)) {
+          return {
+            platform: ctx.platformId,
+            status: 'error',
+            message: '登录参数已失效，请刷新二维码'
+          }
+        }
+
+        const data = unwrapQQResponse(
+          await apiPost('/user/checkQQLoginQr', null, {
+            ptqrtoken: challenge.ptqrtoken,
+            qrsig: challenge.qrsig
+          })
+        )
+
+        if (data?.isOk) {
+          const cookie = extractSessionCookie(data)
+          if (!cookie) {
+            return {
+              platform: ctx.platformId,
+              status: 'error',
+              message: '登录成功但未返回会话'
+            }
+          }
+
+          await ctx.secrets.set('cookie', cookie)
+          await ctx.storage.remove(`auth:${challengeId}`)
+
+          return {
+            platform: ctx.platformId,
+            status: 'authenticated',
+            message: '登录成功'
+          }
+        }
+
+        if (data?.refresh) {
+          await ctx.storage.remove(`auth:${challengeId}`)
+
+          return {
+            platform: ctx.platformId,
+            status: 'expired',
+            message: '二维码已过期，请刷新后重试'
+          }
+        }
+
+        return {
+          platform: ctx.platformId,
+          status: 'pending',
+          message: data?.message || '请使用 QQ 音乐 App 扫码登录'
+        }
+      },
+
+      async 'auth.cancelLogin'({ challengeId } = {}) {
+        if (challengeId) {
+          await ctx.storage.remove(`auth:${challengeId}`)
+        }
+        return null
+      },
+
+      async 'auth.refresh'() {
+        return getAuthState()
+      },
+
+      async 'auth.logout'() {
+        await ctx.secrets.remove('cookie')
+
+        return {
+          platform: ctx.platformId,
+          status: 'anonymous',
+          message: '已退出登录'
+        }
       },
 
       async dispose() {

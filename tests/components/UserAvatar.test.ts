@@ -3,6 +3,10 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 import UserAvatar from '@/components/UserAvatar.vue'
+import {
+  replaceRuntimePlatformDescriptors,
+  resetRuntimePlatformDescriptors
+} from '@/platform/music/descriptors'
 import { useUserStore } from '@/store/userStore'
 
 const pushMock = vi.hoisted(() => vi.fn())
@@ -11,6 +15,10 @@ const checkQQMusicLoginMock = vi.hoisted(() => vi.fn().mockResolvedValue({ data:
 const warnMock = vi.hoisted(() => vi.fn())
 const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => false)
+}))
+const pluginServiceMock = vi.hoisted(() => ({
+  refreshPlatformDescriptors: vi.fn(() => Promise.resolve([])),
+  onPlatformsChanged: vi.fn(() => () => {})
 }))
 
 vi.mock('vue-router', () => ({
@@ -45,7 +53,8 @@ vi.mock('@/services', async importOriginal => {
           warn: warnMock
         })
       }),
-      platform: () => platformServiceMock
+      platform: () => platformServiceMock,
+      plugins: () => pluginServiceMock
     }
   }
 })
@@ -60,6 +69,9 @@ function createWrapper() {
         },
         QQLoginModal: {
           template: '<div class="qq-login-modal-stub">qq</div>'
+        },
+        PluginLoginModal: {
+          template: '<div class="plugin-login-modal-stub">plugin</div>'
         }
       }
     }
@@ -70,6 +82,7 @@ describe('UserAvatar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     platformServiceMock.isElectron.mockReturnValue(true)
+    resetRuntimePlatformDescriptors()
     document.body.innerHTML = ''
   })
 
@@ -144,5 +157,105 @@ describe('UserAvatar', () => {
 
     expect(wrapper.find('.dropdown').exists()).toBe(false)
     expect(document.activeElement).toBe(triggerButton.element)
+  })
+
+  it('renders login entries from enabled auth-capable platform descriptors', async () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      },
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      },
+      {
+        id: 'disabled-auth',
+        displayName: 'Disabled Auth',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: false,
+        capabilities: {
+          search: true,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true
+          }
+        }
+      },
+      {
+        id: 'search-only',
+        displayName: 'Search Only',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false
+        }
+      }
+    ])
+
+    const wrapper = createWrapper()
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+
+    const loginButtons = wrapper.findAll('.login-platform-btn')
+    expect(loginButtons).toHaveLength(2)
+    expect(loginButtons.map(button => button.text())).toEqual([
+      'Netease Music 登录',
+      'QQ Music 登录'
+    ])
+    expect(wrapper.text()).not.toContain('Disabled Auth')
+    expect(wrapper.text()).not.toContain('Search Only')
   })
 })

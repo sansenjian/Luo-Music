@@ -258,15 +258,22 @@ export interface StandardLoginField {
 
 ```text
 用户点击某个平台登录
-  -> services.plugins().auth(platformId).startLogin()
+  -> getLoginCapablePlatformDescriptors() 发现可登录平台
+  -> services.plugins().call(platformId, 'auth.startLogin')
   -> 插件调用平台登录接口
   -> 返回 StandardLoginChallenge
   -> 宿主展示统一登录容器
-  -> services.plugins().auth(platformId).pollLogin() / submitLogin()
+  -> services.plugins().call(platformId, 'auth.pollLogin' / 'auth.submitLogin')
   -> 插件保存 Cookie / token 到 ctx.secrets
   -> 返回 StandardAuthState
   -> 宿主更新平台登录摘要和 UI
 ```
+
+当前落地策略:
+
+- 登录入口像搜索源一样由平台描述符驱动。启用的插件只要声明 `capabilities.auth.login = true`，就会自动出现在头像菜单的登录选项中；新增一个支持登录的平台 API 插件，不需要再改 `UserAvatar.vue` 的固定菜单。
+- `getLoginCapablePlatformDescriptors()` / `getLoginPlatformOptions()` 是登录入口对应的发现 API，规则与 `getSearchablePlatformDescriptors()` / `getSearchPlatformOptions()` 保持一致。
+- `PluginLoginModal.vue` 作为通用插件登录容器，支持 `auth.startLogin`、`auth.pollLogin` 和关闭时的 `auth.cancelLogin`。网易云 / QQ 插件已提供 `auth.*` handler；头像菜单暂时仍把它们路由到专属弹窗作为兼容适配，避免迁移中断现有 `userStore.cookie` / `userStore.qqCookie` 登录链路。
 
 建议的认证方法:
 
@@ -383,6 +390,29 @@ Electron 端实现建议:
 - `getLyric`
 - `getPlaylistDetail`
 
+为了让登录菜单可用优先落地，v1 `MusicPluginCapabilities` 已允许可选 `auth` 分组:
+
+```ts
+export interface MusicPluginCapabilities {
+  search: boolean
+  songUrl: boolean
+  songDetail: boolean
+  lyric: boolean
+  playlistDetail: boolean
+  needsHydration: boolean
+  supportsLyricFetch: boolean
+  supportsUrlRefreshOnFailure: boolean
+  auth?: {
+    login?: boolean
+    logout?: boolean
+    refresh?: boolean
+    profile?: boolean
+    preferredMode?: 'qr' | 'browser' | 'form'
+    modes?: Array<'qr' | 'browser' | 'form'>
+  }
+}
+```
+
 后续扩展能力通过统一贡献点注册，而不是在业务代码中硬编码插件逻辑。
 
 建议的能力分组:
@@ -451,8 +481,6 @@ export interface PluginAuthContribution {
 export interface RestrictedHttpRequestOptions {
   headers?: Record<string, string>
   timeoutMs?: number
-  retry?: number
-  redactKeys?: string[]
 }
 
 export interface RestrictedHttpClient {
@@ -469,7 +497,7 @@ export interface RestrictedHttpClient {
 
 - 请求域名必须命中 manifest `permissions.network.domains`，未声明时拒绝。
 - 域名匹配只看标准化后的 hostname，不允许通过重定向、IP 字面量、混淆域名或自定义协议绕过。
-- 默认超时由宿主控制，插件可以申请更短超时，但不能无限等待。
+- 默认超时由宿主控制，插件可以通过 `timeoutMs` 申请更短超时，但不能无限等待。
 - `headers` 允许插件显式传入 Cookie / authorization，但日志、错误对象和诊断记录必须脱敏。
 - built-in / first-party 插件可以在可信路径中使用更高权限，但仍应优先走 `ctx.http`，方便审计和迁移到第三方隔离模型。
 
@@ -613,7 +641,9 @@ export interface PluginManifestV2Extensions {
 - [x] 在 SDK 中补充 `PluginContext.pluginId`、`ctx.secrets` 和 `auth.*` 方法名。
 - 明确歌词、歌曲、歌单、播放 URL 的入站责任。
 - 补充 `StandardAuthState`、`StandardLoginChallenge` 和 `auth.*` 能力草案。
-- [x] 补充 `PluginSecretStore` / `ctx.secrets` 最小类型；`PluginCallError`、扩展 `RestrictedHttpClient`、`PluginPlayerHook` 仍待 SDK 化。
+- [x] 补充 `PluginSecretStore` / `ctx.secrets` 最小类型。
+- [x] `RestrictedHttpClient` 已支持 `headers` 和 `timeoutMs`，供插件携带自身凭据发起受控请求。
+- [ ] `PluginCallError`、`PluginPlayerHook` 仍待 SDK 化。
 
 ### 阶段二: 入站适配层
 
@@ -625,14 +655,16 @@ export interface PluginManifestV2Extensions {
 
 ### 阶段三: 登录插件化
 
-- [x] SDK 和外部插件调用链已接受 `auth.*` 方法名；统一 `PluginAuthFacade` 和 UI 仍待实现。
-- 将网易云、QQ 音乐登录请求、轮询、Cookie 提取和账号资料获取迁入对应平台插件。
-- 将平台专属登录弹窗收口为统一登录容器，具体二维码、授权 URL、表单字段由插件返回。
+- [x] SDK 和外部插件调用链已接受 `auth.*` 方法名；`PluginAuthFacade` 仍待服务层封装。
+- [x] 登录入口已像搜索源一样从已启用平台描述符自适应生成；`capabilities.auth.login = true` 的平台会自动出现在头像菜单。
+- [x] 已新增通用 `PluginLoginModal.vue`，支持二维码 / 浏览器 challenge 的最小统一容器和关闭时取消 challenge。
+- [~] 网易云、QQ 音乐插件侧已提供 `auth.*` 登录请求、轮询和 Cookie 托管；宿主旧登录组件仍保留一段兼容期。
+- 将平台专属登录弹窗完全收口为统一登录容器，具体二维码、授权 URL、表单字段由插件返回。
 - [x] 新增 `PluginSecretStore` / `ctx.secrets`，并通过 Worker 代理给外部插件。
 - [x] `storage` / `secrets` 命名空间按 `pluginId` 隔离，避免同平台替代插件互相覆盖。
 - [x] manifest 权限和平台描述已支持 `permissions.secrets`。
 - 提供一次性迁移，把 `userStore.cookie` / `userStore.qqCookie` 导入对应插件 secrets；迁移后旧字段只读读取一段时间，不再写入。
-- [x] 宿主/Worker 调用链已支持 `auth.cancelLogin` 方法名；统一登录窗口关闭时主动取消仍待 UI 层接入。
+- [x] 宿主/Worker 调用链已支持 `auth.cancelLogin` 方法名；通用插件登录窗口关闭时会主动取消 challenge，网易云 / QQ 兼容弹窗仍走现有本地轮询清理。
 - 播放、歌单、收藏等能力遇到登录失效时，通过标准状态驱动宿主提示。
 
 ### 阶段四: 扩展注册中心
@@ -682,7 +714,7 @@ export interface PluginManifestV2Extensions {
 
 - [x] 1: 入站 normalizer 已统一毫秒、非负整数和非法值降级。
 - [x] 2: `PluginStateStore`、外部 Worker storage / secrets 已改为 `pluginId` 命名空间。
-- [~] 3: 插件禁用 / 卸载会停止 Worker；统一登录窗口关闭触发 `auth.cancelLogin` 仍待 UI 接入。
+- [~] 3: 插件禁用 / 卸载会停止 Worker；通用插件登录窗口关闭会触发 `auth.cancelLogin`，网易云 / QQ 兼容弹窗仍走本地轮询清理。
 - [x] 4: 播放 URL 刷新不再在请求未校验前改写歌曲；响应回来后校验当前播放快照。
 - [~] 5: 旧模型兼容已集中到入站 normalizer；旧路径调用量统计待补。
 - [~] 6: 已在文档约束中保留；实际懒转换策略待歌单列表场景继续优化。
@@ -690,4 +722,5 @@ export interface PluginManifestV2Extensions {
 验证记录:
 
 - `npm run typecheck`
-- `npm run test:run`：182 个测试文件、1298 个测试通过。
+- `npm run test:run`：182 个测试文件、1300 个测试通过。
+- `npm run lint`

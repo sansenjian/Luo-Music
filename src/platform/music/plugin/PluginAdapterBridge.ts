@@ -9,7 +9,7 @@ import type {
   SongDetailInput,
   SongUrlInput
 } from '@plugin-sdk'
-import type { PlatformCapabilities } from '@/platform/music/descriptors'
+import type { PlatformBooleanCapability, PlatformCapabilities } from '@/platform/music/descriptors'
 import {
   MusicPlatformAdapter,
   type LyricResult,
@@ -37,7 +37,7 @@ export class PluginAdapterBridge extends MusicPlatformAdapter {
 
   private requireHandler<K extends keyof MusicPluginInstance>(
     handlerName: K,
-    capability: keyof PlatformCapabilities
+    capability: PlatformBooleanCapability
   ): NonNullable<MusicPluginInstance[K]> {
     const handler = this.handlers[handlerName]
 

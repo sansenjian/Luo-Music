@@ -24,7 +24,15 @@
     "playlistDetail": true,
     "needsHydration": true,
     "supportsLyricFetch": true,
-    "supportsUrlRefreshOnFailure": true
+    "supportsUrlRefreshOnFailure": true,
+    "auth": {
+      "login": true,
+      "logout": true,
+      "refresh": true,
+      "profile": true,
+      "preferredMode": "qr",
+      "modes": ["qr"]
+    }
   },
   "permissions": {
     "network": {
@@ -36,7 +44,8 @@
         "interface3.music.163.com"
       ]
     },
-    "storage": true
+    "storage": true,
+    "secrets": true
   },
   "contributions": {
     "settings": [

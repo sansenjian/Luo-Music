@@ -2,6 +2,11 @@ import { shallowRef } from 'vue'
 import type { PluginManifest, PluginSettingDefinition } from '@plugin-sdk'
 
 export type PlatformCapabilities = PluginManifest['capabilities']
+export type PlatformBooleanCapability = {
+  [K in keyof PlatformCapabilities]-?: NonNullable<PlatformCapabilities[K]> extends boolean
+    ? K
+    : never
+}[keyof PlatformCapabilities]
 
 export interface PlatformPermissions {
   networkDomains?: string[]
@@ -68,7 +73,17 @@ const staticPlatformDescriptors: Record<string, PlatformDescriptor> = {
 const runtimePlatformDescriptors = shallowRef<Record<string, PlatformDescriptor>>({})
 
 function cloneCapabilities(capabilities: PlatformCapabilities): PlatformCapabilities {
-  return { ...capabilities }
+  return {
+    ...capabilities,
+    ...(capabilities.auth
+      ? {
+          auth: {
+            ...capabilities.auth,
+            ...(capabilities.auth.modes ? { modes: [...capabilities.auth.modes] } : {})
+          }
+        }
+      : {})
+  }
 }
 
 function cloneDescriptor(descriptor: PlatformDescriptor): PlatformDescriptor {
@@ -128,6 +143,12 @@ export function getSearchablePlatformDescriptors(): PlatformDescriptor[] {
   return getEnabledPlatformDescriptors().filter(descriptor => descriptor.capabilities.search)
 }
 
+export function getLoginCapablePlatformDescriptors(): PlatformDescriptor[] {
+  return getEnabledPlatformDescriptors().filter(
+    descriptor => descriptor.capabilities.auth?.login === true
+  )
+}
+
 export function getPlatformCapabilities(platformId: string): PlatformCapabilities {
   const descriptors = getMergedPlatformDescriptors()
 
@@ -140,7 +161,7 @@ export function getPlatformCapabilities(platformId: string): PlatformCapabilitie
 
 export function hasPlatformCapability(
   platformId: string,
-  capability: keyof PlatformCapabilities
+  capability: PlatformBooleanCapability
 ): boolean {
   return getPlatformCapabilities(platformId)[capability]
 }
@@ -156,6 +177,13 @@ export function getSearchPlatformOptions(): PlatformOption[] {
   const nonLocal = searchable.filter(d => d.id !== 'local')
   const local = searchable.filter(d => d.id === 'local')
   return [...nonLocal, ...local].map(descriptor => ({
+    value: descriptor.id,
+    label: descriptor.displayName
+  }))
+}
+
+export function getLoginPlatformOptions(): PlatformOption[] {
+  return getLoginCapablePlatformDescriptors().map(descriptor => ({
     value: descriptor.id,
     label: descriptor.displayName
   }))

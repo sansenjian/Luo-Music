@@ -29,6 +29,11 @@ type FetchFailureDetails = {
   port?: unknown
 }
 
+type PluginHttpRequestOptions = {
+  headers?: Record<string, string>
+  timeoutMs?: number
+}
+
 export interface ExternalPluginHostDeps {
   stateStore?: PluginStateStore
   fetchImpl?: typeof fetch
@@ -272,7 +277,8 @@ export class ExternalPluginHost {
             registration,
             message.type === 'http:get' ? 'GET' : 'POST',
             message.payload.url,
-            message.payload.params ?? message.payload.body
+            message.payload.params ?? message.payload.body,
+            message.payload.options
           )
           worker.postMessage({ type: 'response', requestId: message.requestId, ok: true, result })
         } catch (error) {
@@ -324,7 +330,8 @@ export class ExternalPluginHost {
     registration: ExternalPluginRegistration,
     method: 'GET' | 'POST',
     url: string,
-    payload: unknown
+    payload: unknown,
+    options?: PluginHttpRequestOptions
   ): Promise<unknown> {
     const requestUrl = new URL(url)
     const allowedDomains = registration.manifest.permissions?.network?.domains ?? []
@@ -342,15 +349,30 @@ export class ExternalPluginHost {
       }
     }
 
+    const headers = this.createRequestHeaders(method, options)
+    const abortController =
+      options?.timeoutMs && Number.isFinite(options.timeoutMs) && options.timeoutMs > 0
+        ? new AbortController()
+        : undefined
+    const timeout =
+      abortController && options?.timeoutMs
+        ? setTimeout(() => abortController.abort(), Math.max(1, Math.round(options.timeoutMs)))
+        : undefined
+
     let response: Response
     try {
       response = await this.fetchImpl(requestUrl, {
         method,
-        headers: method === 'POST' ? { 'content-type': 'application/json' } : undefined,
-        body: method === 'POST' && payload !== undefined ? JSON.stringify(payload) : undefined
+        headers,
+        body: method === 'POST' && payload !== undefined ? JSON.stringify(payload) : undefined,
+        signal: abortController?.signal
       })
     } catch (error) {
       throw this.createHttpFetchError(method, requestUrl, error)
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout)
+      }
     }
 
     if (!response.ok) {
@@ -363,6 +385,25 @@ export class ExternalPluginHost {
     }
 
     return response.text()
+  }
+
+  private createRequestHeaders(
+    method: 'GET' | 'POST',
+    options?: PluginHttpRequestOptions
+  ): Record<string, string> | undefined {
+    const headers: Record<string, string> = {}
+
+    if (method === 'POST') {
+      headers['content-type'] = 'application/json'
+    }
+
+    for (const [key, value] of Object.entries(options?.headers ?? {})) {
+      if (typeof value === 'string') {
+        headers[key] = value
+      }
+    }
+
+    return Object.keys(headers).length > 0 ? headers : undefined
   }
 
   private isAllowedDomain(hostname: string, allowedDomains: string[]): boolean {

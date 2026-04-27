@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 import { uiMessages } from '@/messages/ui'
 import { usePluginManager } from '@/composables/usePluginManager'
+import type { PlatformCapabilities } from '@/platform/music/descriptors'
 
 const {
   installPath,
@@ -72,8 +73,12 @@ function sourceLabel(source: string): string {
   return source === 'builtin' ? '内置' : source === 'external' ? '第三方' : source
 }
 
-function capabilityCount(platform: { capabilities: Record<string, boolean> }): number {
-  return Object.values(platform.capabilities).filter(Boolean).length
+function capabilityCount(platform: { capabilities: PlatformCapabilities }): number {
+  const baseCount = Object.entries(platform.capabilities).filter(
+    ([key, value]) => key !== 'auth' && value === true
+  ).length
+
+  return baseCount + (platform.capabilities.auth?.login ? 1 : 0)
 }
 </script>
 

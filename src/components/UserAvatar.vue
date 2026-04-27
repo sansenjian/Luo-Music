@@ -4,9 +4,14 @@ import { useRouter } from 'vue-router'
 
 import { logout } from '@/api/user'
 import { qqMusicApi } from '@/api/qqmusic'
+import {
+  getLoginCapablePlatformDescriptors,
+  type PlatformDescriptor
+} from '@/platform/music/descriptors'
 import { services } from '@/services'
 import { useUserStore } from '@/store/userStore'
 import LoginModal from './LoginModal.vue'
+import PluginLoginModal from './PluginLoginModal.vue'
 import QQLoginModal from './QQLoginModal.vue'
 
 type QQLoginStatusResponse = {
@@ -23,6 +28,7 @@ type QQLoginStatusResponse = {
 const router = useRouter()
 const logger = services.logger().createLogger('userAvatar')
 const platformService = services.platform()
+const pluginService = services.plugins()
 const userStore = useUserStore()
 const isElectron = computed(() => platformService.isElectron())
 
@@ -32,9 +38,21 @@ const dropdownRef = ref<HTMLElement | null>(null)
 const showLoginModal = ref(false)
 const showQQLoginModal = ref(false)
 const showDropdown = ref(false)
+const activePluginLoginPlatform = ref<PlatformDescriptor | null>(null)
 let shouldRestoreTriggerFocus = true
+let unsubscribePluginPlatforms: (() => void) | null = null
 
 const isQQMusicLoggedIn = computed(() => userStore.isQQMusicLoggedIn)
+const loginPlatforms = computed(() => getLoginCapablePlatformDescriptors())
+const defaultLoginPlatform = computed(() => loginPlatforms.value[0])
+const showPluginLoginModal = computed({
+  get: () => activePluginLoginPlatform.value !== null,
+  set: value => {
+    if (!value) {
+      activePluginLoginPlatform.value = null
+    }
+  }
+})
 
 async function checkQQMusicLoginStatus(): Promise<void> {
   if (!userStore.qqCookie) {
@@ -83,6 +101,47 @@ function openQQLogin(): void {
   }
   showQQLoginModal.value = true
   closeDropdown({ restoreFocus: false })
+}
+
+function openPluginLogin(platform: PlatformDescriptor): void {
+  if (!isElectron.value) {
+    return
+  }
+
+  activePluginLoginPlatform.value = platform
+  closeDropdown({ restoreFocus: false })
+}
+
+function openPlatformLogin(platform: PlatformDescriptor): void {
+  if (platform.id === 'netease') {
+    openLogin()
+    return
+  }
+
+  if (platform.id === 'qq') {
+    openQQLogin()
+    return
+  }
+
+  openPluginLogin(platform)
+}
+
+function openDefaultLogin(): void {
+  if (defaultLoginPlatform.value) {
+    openPlatformLogin(defaultLoginPlatform.value)
+  }
+}
+
+function isPlatformLoggedIn(platformId: string): boolean {
+  if (platformId === 'netease') {
+    return userStore.isLoggedIn
+  }
+
+  if (platformId === 'qq') {
+    return isQQMusicLoggedIn.value
+  }
+
+  return false
 }
 
 function openUserCenter(): void {
@@ -139,9 +198,27 @@ function handleQQLoginSuccess(): void {
   openDropdown()
 }
 
+function handlePluginLoginSuccess(): void {
+  openDropdown()
+}
+
+async function refreshPluginPlatforms(): Promise<void> {
+  if (!platformService.isElectron()) {
+    return
+  }
+
+  try {
+    await pluginService.refreshPlatformDescriptors()
+  } catch (error) {
+    logger.warn('Failed to refresh plugin login platforms', error)
+  }
+}
+
 onMounted(() => {
   if (platformService.isElectron()) {
     void checkQQMusicLoginStatus()
+    void refreshPluginPlatforms()
+    unsubscribePluginPlatforms = pluginService.onPlatformsChanged(() => {})
   }
 
   document.addEventListener('pointerdown', handleDocumentPointerDown)
@@ -149,6 +226,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  unsubscribePluginPlatforms?.()
+  unsubscribePluginPlatforms = null
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
   document.removeEventListener('keydown', handleDocumentKeydown)
 })
@@ -247,9 +326,15 @@ watch(showDropdown, async (isOpen, wasOpen) => {
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
-            <div class="dropdown-info" @click="openLogin" style="cursor: pointer">
+            <div
+              class="dropdown-info"
+              :class="{ 'dropdown-info-clickable': defaultLoginPlatform }"
+              @click="openDefaultLogin"
+            >
               <span class="dropdown-nickname">未登录</span>
-              <span class="dropdown-id login-link">点击登录 &gt;</span>
+              <span class="dropdown-id login-link">
+                {{ defaultLoginPlatform ? '点击登录 >' : '暂无可登录平台' }}
+              </span>
             </div>
           </template>
         </div>
@@ -270,7 +355,12 @@ watch(showDropdown, async (isOpen, wasOpen) => {
             个人中心
           </button>
 
-          <button class="menu-btn" @click="openQQLogin">
+          <button
+            v-for="platform in loginPlatforms"
+            :key="platform.id"
+            class="menu-btn login-platform-btn"
+            @click="openPlatformLogin(platform)"
+          >
             <svg
               width="14"
               height="14"
@@ -284,8 +374,8 @@ watch(showDropdown, async (isOpen, wasOpen) => {
               <path d="M9 13h6"></path>
               <path d="M9 17h6"></path>
             </svg>
-            QQ 音乐登录
-            <span v-if="isQQMusicLoggedIn" class="login-status-badge">已登录</span>
+            {{ platform.displayName }} 登录
+            <span v-if="isPlatformLoggedIn(platform.id)" class="login-status-badge">已登录</span>
           </button>
         </div>
       </div>
@@ -293,6 +383,14 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 
     <LoginModal v-if="showLoginModal" @close="showLoginModal = false" />
     <QQLoginModal v-model="showQQLoginModal" @login-success="handleQQLoginSuccess" />
+    <PluginLoginModal
+      v-if="activePluginLoginPlatform"
+      v-model="showPluginLoginModal"
+      :platform-id="activePluginLoginPlatform.id"
+      :platform-name="activePluginLoginPlatform.displayName"
+      :preferred-mode="activePluginLoginPlatform.capabilities.auth?.preferredMode"
+      @login-success="handlePluginLoginSuccess"
+    />
   </div>
 </template>
 
@@ -427,6 +525,10 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   gap: 4px;
   flex: 1;
   overflow: hidden;
+}
+
+.dropdown-info-clickable {
+  cursor: pointer;
 }
 
 .dropdown-nickname {

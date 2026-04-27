@@ -101,7 +101,17 @@ const pluginCapabilitiesSchema = z.object({
   playlistDetail: z.boolean(),
   needsHydration: z.boolean(),
   supportsLyricFetch: z.boolean(),
-  supportsUrlRefreshOnFailure: z.boolean()
+  supportsUrlRefreshOnFailure: z.boolean(),
+  auth: z
+    .object({
+      login: z.boolean().optional(),
+      logout: z.boolean().optional(),
+      refresh: z.boolean().optional(),
+      profile: z.boolean().optional(),
+      preferredMode: z.enum(['qr', 'browser', 'form']).optional(),
+      modes: z.array(z.enum(['qr', 'browser', 'form'])).optional()
+    })
+    .optional()
 })
 
 const pluginPermissionsSchema = z

@@ -34,7 +34,11 @@ type ExternalPluginHostInternals = {
     registration: ExternalPluginRegistration,
     method: 'GET' | 'POST',
     url: string,
-    payload: unknown
+    payload: unknown,
+    options?: {
+      headers?: Record<string, string>
+      timeoutMs?: number
+    }
   ): Promise<unknown>
 }
 
@@ -131,5 +135,40 @@ describe('ExternalPluginHost HTTP proxy', () => {
     ).rejects.toThrow(
       'Plugin HTTP GET http://127.0.0.1:14532/cloudsearch failed: fetch failed (ECONNREFUSED 127.0.0.1 14532)'
     )
+  })
+
+  it('passes plugin-provided headers and timeout signal to fetch', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response('ok', {
+        status: 200,
+        headers: { 'content-type': 'text/plain' }
+      })
+    )
+    const host = new ExternalPluginHost({
+      stateStore: {} as never,
+      fetchImpl: fetchImpl as unknown as typeof fetch
+    }) as unknown as ExternalPluginHostInternals
+
+    await expect(
+      host.handleHttpRequest(
+        makeRegistration(),
+        'POST',
+        'http://127.0.0.1:14532/login',
+        { ok: true },
+        {
+          headers: {
+            Cookie: 'MUSIC_U=abc'
+          },
+          timeoutMs: 1000
+        }
+      )
+    ).resolves.toBe('ok')
+
+    const init = fetchImpl.mock.calls[0][1] as RequestInit
+    expect(init.headers).toMatchObject({
+      'content-type': 'application/json',
+      Cookie: 'MUSIC_U=abc'
+    })
+    expect(init.signal).toBeInstanceOf(AbortSignal)
   })
 })
