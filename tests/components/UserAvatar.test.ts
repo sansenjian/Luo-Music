@@ -206,6 +206,28 @@ describe('UserAvatar', () => {
         }
       },
       {
+        id: 'kugou',
+        displayName: 'Kugou Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'browser',
+            modes: ['browser']
+          }
+        }
+      },
+      {
         id: 'disabled-auth',
         displayName: 'Disabled Auth',
         source: 'external',
@@ -250,10 +272,11 @@ describe('UserAvatar', () => {
     await nextTick()
 
     const loginButtons = wrapper.findAll('.login-platform-btn')
-    expect(loginButtons).toHaveLength(2)
+    expect(loginButtons).toHaveLength(3)
     expect(wrapper.findAll('.platform-login-title').map(title => title.text())).toEqual([
       'Netease Music 未登录',
-      'QQ Music 未登录'
+      'QQ Music 未登录',
+      'Kugou Music 未登录'
     ])
     expect(wrapper.text()).not.toContain('Disabled Auth')
     expect(wrapper.text()).not.toContain('Search Only')

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, type CSSProperties } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { logout } from '@/api/user'
@@ -38,6 +38,7 @@ const dropdownRef = ref<HTMLElement | null>(null)
 const showLoginModal = ref(false)
 const showQQLoginModal = ref(false)
 const showDropdown = ref(false)
+const dropdownStyle = ref<CSSProperties>({})
 const activePluginLoginPlatform = ref<PlatformDescriptor | null>(null)
 let shouldRestoreTriggerFocus = true
 let unsubscribePluginPlatforms: (() => void) | null = null
@@ -173,6 +174,45 @@ function handleTriggerClick(): void {
   toggleDropdown()
 }
 
+function updateDropdownPlacement(): void {
+  const trigger = triggerButtonRef.value
+  const dropdown = dropdownRef.value
+
+  if (!trigger || !dropdown) {
+    dropdownStyle.value = {}
+    return
+  }
+
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const margin = 12
+  const gap = 6
+  const triggerRect = trigger.getBoundingClientRect()
+  const maxDropdownWidth = Math.max(220, viewportWidth - margin * 2)
+  const dropdownWidth = Math.min(dropdown.offsetWidth || 300, maxDropdownWidth)
+  const preferredLeft = triggerRect.right - dropdownWidth
+  const left = Math.min(
+    Math.max(preferredLeft, margin),
+    Math.max(margin, viewportWidth - margin - dropdownWidth)
+  )
+  const top = Math.min(triggerRect.bottom + gap, Math.max(margin, viewportHeight - margin - 120))
+  const maxHeight = Math.max(160, viewportHeight - top - margin)
+
+  dropdownStyle.value = {
+    top: `${Math.round(top)}px`,
+    left: `${Math.round(left)}px`,
+    maxHeight: `${Math.round(maxHeight)}px`
+  }
+}
+
+function handleWindowResize(): void {
+  if (!showDropdown.value) {
+    return
+  }
+
+  void nextTick(updateDropdownPlacement)
+}
+
 function handleDocumentPointerDown(event: PointerEvent): void {
   if (!showDropdown.value) {
     return
@@ -224,6 +264,7 @@ onMounted(() => {
 
   document.addEventListener('pointerdown', handleDocumentPointerDown)
   document.addEventListener('keydown', handleDocumentKeydown)
+  window.addEventListener('resize', handleWindowResize)
 })
 
 onUnmounted(() => {
@@ -231,11 +272,13 @@ onUnmounted(() => {
   unsubscribePluginPlatforms = null
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
   document.removeEventListener('keydown', handleDocumentKeydown)
+  window.removeEventListener('resize', handleWindowResize)
 })
 
 watch(showDropdown, async (isOpen, wasOpen) => {
   if (isOpen) {
     await nextTick()
+    updateDropdownPlacement()
     dropdownRef.value
       ?.querySelector<HTMLButtonElement>('button.platform-login-card, .menu-btn')
       ?.focus()
@@ -248,6 +291,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   }
 
   shouldRestoreTriggerFocus = true
+  dropdownStyle.value = {}
 })
 </script>
 
@@ -286,7 +330,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
     </button>
 
     <Transition name="dropdown">
-      <div v-if="showDropdown" ref="dropdownRef" class="dropdown">
+      <div v-if="showDropdown" ref="dropdownRef" class="dropdown" :style="dropdownStyle">
         <div v-if="userStore.isLoggedIn" class="dropdown-header">
           <img
             v-if="userStore.avatarUrl"
@@ -402,6 +446,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 <style scoped>
 .user-avatar-wrapper {
   position: relative;
+  width: max-content;
   -webkit-app-region: no-drag;
 }
 
@@ -447,13 +492,15 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 }
 
 .dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
+  position: fixed;
+  display: flex;
+  flex-direction: column;
   background: var(--white);
   border: 2px solid var(--black);
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15);
-  min-width: 300px;
+  width: max-content;
+  min-width: min(260px, calc(100vw - 24px));
+  max-width: min(420px, calc(100vw - 24px));
   z-index: 100;
   overflow: hidden;
   animation: slideIn 0.2s ease;
@@ -529,6 +576,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -555,15 +603,19 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 .platform-login-list {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .platform-login-card {
   width: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  min-height: 68px;
-  padding: 12px 14px;
+  gap: 12px;
+  min-height: 56px;
+  padding: 9px 12px;
   background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
   border: none;
   border-bottom: 2px solid var(--black);
@@ -576,9 +628,17 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 }
 
 .platform-login-card .dropdown-avatar-placeholder {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
+}
+
+.platform-login-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.25;
+  word-break: break-word;
 }
 
 .platform-login-card:hover,
