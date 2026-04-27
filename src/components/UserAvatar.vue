@@ -453,7 +453,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   background: var(--white);
   border: 2px solid var(--black);
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15);
-  min-width: 330px;
+  min-width: 300px;
   z-index: 100;
   overflow: hidden;
   animation: slideIn 0.2s ease;
@@ -561,8 +561,9 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  min-height: 68px;
+  padding: 12px 14px;
   background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
   border: none;
   border-bottom: 2px solid var(--black);
@@ -574,27 +575,59 @@ watch(showDropdown, async (isOpen, wasOpen) => {
     color 0.2s;
 }
 
-.platform-login-card:hover {
+.platform-login-card .dropdown-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.platform-login-card:hover,
+.platform-login-card:focus-visible {
   background: var(--black);
   color: var(--white);
+  outline: none;
 }
 
-.platform-login-card:hover .login-link {
+.platform-login-card:hover .dropdown-nickname,
+.platform-login-card:hover .dropdown-id,
+.platform-login-card:hover .login-link,
+.platform-login-card:focus-visible .dropdown-nickname,
+.platform-login-card:focus-visible .dropdown-id,
+.platform-login-card:focus-visible .login-link {
   color: var(--white);
 }
 
-.platform-login-card:hover .dropdown-avatar-placeholder {
+.platform-login-card:hover .dropdown-avatar-placeholder,
+.platform-login-card:focus-visible .dropdown-avatar-placeholder {
   background: var(--white);
   color: var(--black);
+  border-color: var(--white);
 }
 
 .platform-login-empty {
   cursor: default;
 }
 
-.platform-login-empty:hover {
+.platform-login-empty:hover,
+.platform-login-empty:focus-visible {
   background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
   color: var(--black);
+}
+
+.platform-login-empty:hover .dropdown-nickname,
+.platform-login-empty:hover .dropdown-id,
+.platform-login-empty:hover .login-link,
+.platform-login-empty:focus-visible .dropdown-nickname,
+.platform-login-empty:focus-visible .dropdown-id,
+.platform-login-empty:focus-visible .login-link {
+  color: inherit;
+}
+
+.platform-login-empty:hover .dropdown-avatar-placeholder,
+.platform-login-empty:focus-visible .dropdown-avatar-placeholder {
+  background: var(--white);
+  color: var(--gray);
+  border-color: var(--black);
 }
 
 .menu-btn,
