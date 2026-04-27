@@ -9,6 +9,7 @@ import path from 'node:path'
 
 import { downloadManager } from './DownloadManager'
 import logger from './logger'
+import { getWindowsShellIdentity } from './main/app'
 import { RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
 import { MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
 const StoreModule = require('electron-store') as {
@@ -30,6 +31,7 @@ const store = new Store({
 const MIN_WIDTH = 400
 const MIN_HEIGHT = 80
 const LOAD_RETRY_DELAY_MS = 1000
+const WINDOWS_APP_ICON_FILE = 'tray.ico'
 
 process.env.DIST = RENDERER_DIST
 process.env.VITE_PUBLIC = VITE_PUBLIC
@@ -85,6 +87,7 @@ export class WindowManager {
       }
     })
     this.win = win
+    this.applyWindowsAppDetails(win)
 
     let hasRecoveredRenderer = false
 
@@ -175,6 +178,25 @@ export class WindowManager {
         store.set('windowSize', this.lastSize)
       }
     })
+  }
+
+  private applyWindowsAppDetails(win: BrowserWindowType): void {
+    const shellIdentity = getWindowsShellIdentity()
+    if (!shellIdentity) {
+      return
+    }
+
+    try {
+      win.setAppDetails({
+        appId: shellIdentity.appUserModelId,
+        appIconPath: path.join(VITE_PUBLIC, WINDOWS_APP_ICON_FILE),
+        appIconIndex: 0,
+        relaunchCommand: process.execPath,
+        relaunchDisplayName: shellIdentity.displayName
+      })
+    } catch (error) {
+      logger.warn('[WindowManager] Failed to set Windows app details', error)
+    }
   }
 
   getWindow(): BrowserWindowType | null {

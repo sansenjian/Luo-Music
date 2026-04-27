@@ -12,9 +12,14 @@ import { app } from 'electron'
 import logger from '../logger'
 import { PROJECT_ROOT } from '../utils/paths'
 
-const WINDOWS_APP_USER_MODEL_ID = 'com.sansenjian.luo-music'
+export const WINDOWS_APP_USER_MODEL_ID = 'com.sansenjian.luo-music'
 const WINDOWS_SQUIRREL_PACKAGE_ID = 'LUO_Music'
-const APP_DISPLAY_NAME = 'LUO Music'
+export const APP_DISPLAY_NAME = 'LUO Music'
+
+export interface WindowsShellIdentity {
+  appUserModelId: string
+  displayName: string
+}
 
 /**
  * 单实例锁状态
@@ -68,17 +73,28 @@ export function setupDevUserData(): void {
  * 向 HKCU 注册表写入 DisplayName，确保 SMTC 正确显示 "LUO Music"。
  */
 export function setupWindowsShellIntegration(): void {
-  if (process.platform !== 'win32') {
+  const shellIdentity = getWindowsShellIdentity()
+  if (!shellIdentity) {
     return
   }
 
-  app.setName(APP_DISPLAY_NAME)
+  app.setName(shellIdentity.displayName)
 
-  const appUserModelId = resolveWindowsAppUserModelId()
-  app.setAppUserModelId(appUserModelId)
-  logger.info(`[App] Windows AppUserModelId: ${appUserModelId}`)
+  app.setAppUserModelId(shellIdentity.appUserModelId)
+  logger.info(`[App] Windows AppUserModelId: ${shellIdentity.appUserModelId}`)
 
-  registerAppUserModelIdDisplayName(appUserModelId)
+  registerAppUserModelIdDisplayName(shellIdentity.appUserModelId)
+}
+
+export function getWindowsShellIdentity(): WindowsShellIdentity | null {
+  if (process.platform !== 'win32') {
+    return null
+  }
+
+  return {
+    appUserModelId: resolveWindowsAppUserModelId(),
+    displayName: APP_DISPLAY_NAME
+  }
 }
 
 function resolveWindowsAppUserModelId(): string {

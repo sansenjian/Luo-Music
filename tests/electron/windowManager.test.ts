@@ -33,6 +33,7 @@ class BrowserWindowMock {
   public isDestroyed = vi.fn(() => false)
   public isMaximized = vi.fn(() => false)
   public isMinimized = vi.fn(() => false)
+  public setAppDetails = vi.fn()
   public setSize = vi.fn()
   public setThumbarButtons = vi.fn()
 
@@ -138,6 +139,21 @@ describe('electron/WindowManager', () => {
     expect(window?.options).toMatchObject({
       roundedCorners: false,
       thickFrame: false
+    })
+  })
+
+  it('sets Windows app details on the main window for shell and SMTC identity', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window?.setAppDetails).toHaveBeenCalledWith({
+      appId: 'com.sansenjian.luo-music',
+      appIconPath: '/public/tray.ico',
+      appIconIndex: 0,
+      relaunchCommand: process.execPath,
+      relaunchDisplayName: 'LUO Music'
     })
   })
 
