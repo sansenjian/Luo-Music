@@ -109,7 +109,7 @@ describe('UserAvatar', () => {
     expect(wrapper.find('.dropdown').exists()).toBe(false)
   })
 
-  it('navigates to user center from the dropdown menu item', async () => {
+  it('navigates to Netease user center from the profile header', async () => {
     const wrapper = createWrapper()
     const userStore = useUserStore()
     userStore.login(
@@ -123,9 +123,12 @@ describe('UserAvatar', () => {
     await nextTick()
 
     await wrapper.find('.user-trigger').trigger('click')
-    await wrapper.find('.menu-btn').trigger('click')
+    await wrapper.find('.platform-profile-card').trigger('click')
 
-    expect(pushMock).toHaveBeenCalledWith('/user')
+    expect(pushMock).toHaveBeenCalledWith({
+      path: '/user',
+      query: { platform: 'netease' }
+    })
     expect(wrapper.find('.dropdown').exists()).toBe(false)
   })
 
@@ -148,8 +151,8 @@ describe('UserAvatar', () => {
     await triggerButton.trigger('click')
     await nextTick()
 
-    const firstMenuButton = wrapper.get('.menu-btn')
-    expect(document.activeElement).toBe(firstMenuButton.element)
+    const profileCard = wrapper.get('.platform-profile-card')
+    expect(document.activeElement).toBe(profileCard.element)
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
@@ -350,6 +353,50 @@ describe('UserAvatar', () => {
       'QQ Music 未登录'
     ])
     expect(wrapper.text()).not.toContain('Netease Music 已登录')
+  })
+
+  it('opens QQ Music user center from the logged-in QQ row', async () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      }
+    ])
+
+    const wrapper = createWrapper()
+    const userStore = useUserStore()
+    userStore.setQQCookie('qq-cookie')
+    await nextTick()
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('.platform-login-title').text()).toBe('QQ Music 已登录')
+    await wrapper.find('.login-platform-btn').trigger('click')
+
+    expect(pushMock).toHaveBeenCalledWith({
+      path: '/user',
+      query: { platform: 'qq' }
+    })
+    expect(wrapper.find('.dropdown').exists()).toBe(false)
   })
 
   it('keeps legacy Netease and QQ login entries visible before installed manifests refresh', async () => {

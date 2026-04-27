@@ -121,6 +121,11 @@ function openPluginLogin(platform: PlatformDescriptor): void {
 }
 
 function openPlatformLogin(platform: PlatformDescriptor): void {
+  if (isPlatformLoggedIn(platform.id)) {
+    openPlatformCenter(platform.id)
+    return
+  }
+
   if (platform.id === 'netease') {
     openLogin()
     return
@@ -132,6 +137,14 @@ function openPlatformLogin(platform: PlatformDescriptor): void {
   }
 
   openPluginLogin(platform)
+}
+
+function openPlatformCenter(platformId: string): void {
+  void router.push({
+    path: '/user',
+    query: { platform: platformId }
+  })
+  closeDropdown({ restoreFocus: false })
 }
 
 function isPlatformLoggedIn(platformId: string): boolean {
@@ -155,12 +168,7 @@ function getPlatformLoginTitle(platform: PlatformDescriptor): string {
 }
 
 function getPlatformLoginHint(platformId: string): string {
-  return isPlatformLoggedIn(platformId) ? '已登录' : '点击登录 >'
-}
-
-function openUserCenter(): void {
-  void router.push('/user')
-  closeDropdown({ restoreFocus: false })
+  return isPlatformLoggedIn(platformId) ? '打开个人中心 >' : '点击登录 >'
 }
 
 function closeDropdown(options: { restoreFocus?: boolean } = {}): void {
@@ -292,7 +300,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
     await nextTick()
     updateDropdownPlacement()
     dropdownRef.value
-      ?.querySelector<HTMLButtonElement>('button.platform-login-card, .menu-btn')
+      ?.querySelector<HTMLElement>('.platform-profile-card, button.platform-login-card')
       ?.focus()
     return
   }
@@ -343,7 +351,15 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 
     <Transition name="dropdown">
       <div v-if="showDropdown" ref="dropdownRef" class="dropdown" :style="dropdownStyle">
-        <div v-if="userStore.isLoggedIn" class="dropdown-header">
+        <div
+          v-if="userStore.isLoggedIn"
+          class="dropdown-header platform-profile-card"
+          role="button"
+          tabindex="0"
+          @click="openPlatformCenter('netease')"
+          @keydown.enter.prevent="openPlatformCenter('netease')"
+          @keydown.space.prevent="openPlatformCenter('netease')"
+        >
           <img
             v-if="userStore.avatarUrl"
             :src="userStore.avatarUrl"
@@ -355,7 +371,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
             <span class="dropdown-nickname">{{ userStore.nickname }}</span>
             <span class="dropdown-id">ID: {{ userStore.userId }}</span>
           </div>
-          <button class="logout-btn-small" @click="handleLogout" title="退出登录">
+          <button class="logout-btn-small" @click.stop="handleLogout" title="退出登录">
             <svg
               width="18"
               height="18"
@@ -421,23 +437,6 @@ watch(showDropdown, async (isOpen, wasOpen) => {
               <span class="dropdown-id login-link">暂无可登录平台</span>
             </div>
           </div>
-        </div>
-
-        <div v-if="userStore.isLoggedIn" class="dropdown-menu">
-          <button class="menu-btn" @click="openUserCenter">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            个人中心
-          </button>
         </div>
       </div>
     </Transition>
@@ -534,10 +533,22 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   padding: 16px;
   background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
   border-bottom: 2px solid var(--black);
   position: relative;
+  color: var(--black);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.dropdown-header:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
 }
 
 .logout-btn-small {
