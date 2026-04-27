@@ -274,6 +274,7 @@ export interface StandardLoginField {
 - 登录入口像搜索源一样由平台描述符驱动。启用的插件只要声明 `capabilities.auth.login = true`，就会自动出现在头像菜单的登录选项中；新增一个支持登录的平台 API 插件，不需要再改 `UserAvatar.vue` 的固定菜单。
 - `getLoginCapablePlatformDescriptors()` / `getLoginPlatformOptions()` 是登录入口对应的发现 API，规则与 `getSearchablePlatformDescriptors()` / `getSearchPlatformOptions()` 保持一致。
 - `PluginLoginModal.vue` 作为通用插件登录容器，支持 `auth.startLogin`、`auth.pollLogin` 和关闭时的 `auth.cancelLogin`。网易云 / QQ 插件已提供 `auth.*` handler；头像菜单暂时仍把它们路由到专属弹窗作为兼容适配，避免迁移中断现有 `userStore.cookie` / `userStore.qqCookie` 登录链路。
+- 内置第三方插件 manifest 增加 `auth` 能力时必须 bump 插件版本，确保 `ensureBundledPlugins()` 能自动刷新已安装插件。过渡期内，已安装但尚未刷新 manifest 的网易云 / QQ 插件仍通过兼容桥显示登录入口，避免用户看到“暂无可登录平台”。
 
 建议的认证方法:
 

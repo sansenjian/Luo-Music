@@ -258,4 +258,53 @@ describe('UserAvatar', () => {
     expect(wrapper.text()).not.toContain('Disabled Auth')
     expect(wrapper.text()).not.toContain('Search Only')
   })
+
+  it('keeps legacy Netease and QQ login entries visible before installed manifests refresh', async () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true
+        }
+      },
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false
+        }
+      }
+    ])
+
+    const wrapper = createWrapper()
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+
+    expect(wrapper.findAll('.login-platform-btn').map(button => button.text())).toEqual([
+      'Netease Music 登录',
+      'QQ Music 登录'
+    ])
+  })
 })

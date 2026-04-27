@@ -71,6 +71,7 @@ const staticPlatformDescriptors: Record<string, PlatformDescriptor> = {
 }
 
 const runtimePlatformDescriptors = shallowRef<Record<string, PlatformDescriptor>>({})
+const legacyLoginPlatformIds = new Set(['netease', 'qq'])
 
 function cloneCapabilities(capabilities: PlatformCapabilities): PlatformCapabilities {
   return {
@@ -144,9 +145,15 @@ export function getSearchablePlatformDescriptors(): PlatformDescriptor[] {
 }
 
 export function getLoginCapablePlatformDescriptors(): PlatformDescriptor[] {
-  return getEnabledPlatformDescriptors().filter(
-    descriptor => descriptor.capabilities.auth?.login === true
-  )
+  return getEnabledPlatformDescriptors().filter(descriptor => {
+    if (descriptor.capabilities.auth?.login === true) {
+      return true
+    }
+
+    // Compatibility bridge for already-installed first-party platform plugins whose
+    // manifest has not been refreshed to the auth-capability schema yet.
+    return legacyLoginPlatformIds.has(descriptor.id)
+  })
 }
 
 export function getPlatformCapabilities(platformId: string): PlatformCapabilities {

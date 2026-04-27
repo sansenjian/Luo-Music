@@ -222,6 +222,50 @@ describe('platform music index', () => {
     ])
   })
 
+  it('keeps legacy first-party login platforms discoverable before manifest auth refresh', async () => {
+    const { getLoginPlatformOptions, replaceRuntimePlatformDescriptors } =
+      await import('@/platform/music')
+
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true
+        }
+      },
+      {
+        id: 'search-only',
+        displayName: 'Search Only',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false
+        }
+      }
+    ])
+
+    expect(getLoginPlatformOptions()).toEqual([{ value: 'netease', label: 'Netease Music' }])
+  })
+
   it('reuses the lazily created logger across repeated invalid lookups', async () => {
     const { getMusicAdapter } = await import('@/platform/music')
 

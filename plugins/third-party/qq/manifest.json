@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "com.luomusic.plugin.qq",
   "name": "QQ Music",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "QQ 音乐第三方插件，提供搜索、播放、歌词等功能。需要搭配 QQMusicApi 服务端。",
   "author": "Luo-Music",
   "platformId": "qq",
