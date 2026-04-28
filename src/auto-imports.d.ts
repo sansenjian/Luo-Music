@@ -8,6 +8,7 @@ export {}
 declare global {
   const EffectScope: typeof import('vue').EffectScope
   const acceptHMRUpdate: typeof import('pinia').acceptHMRUpdate
+  const addUniqueSongsToLocalPlaylist: typeof import('./store/localPlaylistStore').addUniqueSongsToLocalPlaylist
   const animate: typeof import('./composables/useAnimations').animate
   const animateAlbumCover: typeof import('./composables/useAnimations').animateAlbumCover
   const animateButtonClick: typeof import('./composables/useAnimations').animateButtonClick
@@ -21,6 +22,7 @@ declare global {
   const asyncComputed: typeof import('@vueuse/core').asyncComputed
   const autoResetRef: typeof import('@vueuse/core').autoResetRef
   const buildCachedEventViewModels: typeof import('./composables/useUserEvents').buildCachedEventViewModels
+  const clearLocalPlaylistCover: typeof import('./store/localPlaylistStore').clearLocalPlaylistCover
   const computed: typeof import('vue').computed
   const computedAsync: typeof import('@vueuse/core').computedAsync
   const computedEager: typeof import('@vueuse/core').computedEager
@@ -117,11 +119,14 @@ declare global {
   const refManualReset: typeof import('@vueuse/core').refManualReset
   const refThrottled: typeof import('@vueuse/core').refThrottled
   const refWithControl: typeof import('@vueuse/core').refWithControl
+  const removeLocalPlaylistById: typeof import('./store/localPlaylistStore').removeLocalPlaylistById
+  const removeSongFromLocalPlaylist: typeof import('./store/localPlaylistStore').removeSongFromLocalPlaylist
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveCoverUrl: typeof import('./composables/usePlayerViewModel').resolveCoverUrl
   const resolveRef: typeof import('@vueuse/core').resolveRef
   const searchResultItemToSong: typeof import('./store/searchStore').searchResultItemToSong
   const setActivePinia: typeof import('pinia').setActivePinia
+  const setLocalPlaylistCover: typeof import('./store/localPlaylistStore').setLocalPlaylistCover
   const setMapStoreSuffix: typeof import('pinia').setMapStoreSuffix
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
@@ -244,6 +249,7 @@ declare global {
   const useLikedSongs: typeof import('./composables/useLikedSongs').useLikedSongs
   const useLink: typeof import('vue-router').useLink
   const useLocalLibrary: typeof import('./composables/useLocalLibrary').useLocalLibrary
+  const useLocalPlaylistStore: typeof import('./store/localPlaylistStore').useLocalPlaylistStore
   const useLocalStorage: typeof import('@vueuse/core').useLocalStorage
   const useLyricAutoScroll: typeof import('./composables/useLyricAutoScroll').useLyricAutoScroll
   const useLyricVirtualScroll: typeof import('./composables/useLyricVirtualScroll').useLyricVirtualScroll
@@ -505,6 +511,13 @@ declare global {
   } from './composables/useUserPlaylists'
   import('./composables/useUserPlaylists')
   // @ts-ignore
+  export type {
+    LocalPlaylist,
+    AddSongsToLocalPlaylistResult,
+    RemoveSongFromLocalPlaylistResult
+  } from './store/localPlaylistStore'
+  import('./store/localPlaylistStore')
+  // @ts-ignore
   export type { PlayerStoreActions, PlayerStoreDeps } from './store/playerStore'
   import('./store/playerStore')
   // @ts-ignore
@@ -525,6 +538,9 @@ declare module 'vue' {
   interface ComponentCustomProperties {
     readonly EffectScope: UnwrapRef<(typeof import('vue'))['EffectScope']>
     readonly acceptHMRUpdate: UnwrapRef<(typeof import('pinia'))['acceptHMRUpdate']>
+    readonly addUniqueSongsToLocalPlaylist: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['addUniqueSongsToLocalPlaylist']
+    >
     readonly animate: UnwrapRef<(typeof import('./composables/useAnimations'))['animate']>
     readonly animateAlbumCover: UnwrapRef<
       (typeof import('./composables/useAnimations'))['animateAlbumCover']
@@ -557,6 +573,9 @@ declare module 'vue' {
     readonly autoResetRef: UnwrapRef<(typeof import('@vueuse/core'))['autoResetRef']>
     readonly buildCachedEventViewModels: UnwrapRef<
       (typeof import('./composables/useUserEvents'))['buildCachedEventViewModels']
+    >
+    readonly clearLocalPlaylistCover: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['clearLocalPlaylistCover']
     >
     readonly computed: UnwrapRef<(typeof import('vue'))['computed']>
     readonly computedAsync: UnwrapRef<(typeof import('@vueuse/core'))['computedAsync']>
@@ -676,6 +695,12 @@ declare module 'vue' {
     readonly refManualReset: UnwrapRef<(typeof import('@vueuse/core'))['refManualReset']>
     readonly refThrottled: UnwrapRef<(typeof import('@vueuse/core'))['refThrottled']>
     readonly refWithControl: UnwrapRef<(typeof import('@vueuse/core'))['refWithControl']>
+    readonly removeLocalPlaylistById: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['removeLocalPlaylistById']
+    >
+    readonly removeSongFromLocalPlaylist: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['removeSongFromLocalPlaylist']
+    >
     readonly resolveComponent: UnwrapRef<(typeof import('vue'))['resolveComponent']>
     readonly resolveCoverUrl: UnwrapRef<
       (typeof import('./composables/usePlayerViewModel'))['resolveCoverUrl']
@@ -685,6 +710,9 @@ declare module 'vue' {
       (typeof import('./store/searchStore'))['searchResultItemToSong']
     >
     readonly setActivePinia: UnwrapRef<(typeof import('pinia'))['setActivePinia']>
+    readonly setLocalPlaylistCover: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['setLocalPlaylistCover']
+    >
     readonly setMapStoreSuffix: UnwrapRef<(typeof import('pinia'))['setMapStoreSuffix']>
     readonly shallowReactive: UnwrapRef<(typeof import('vue'))['shallowReactive']>
     readonly shallowReadonly: UnwrapRef<(typeof import('vue'))['shallowReadonly']>
@@ -848,6 +876,9 @@ declare module 'vue' {
     readonly useLink: UnwrapRef<(typeof import('vue-router'))['useLink']>
     readonly useLocalLibrary: UnwrapRef<
       (typeof import('./composables/useLocalLibrary'))['useLocalLibrary']
+    >
+    readonly useLocalPlaylistStore: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['useLocalPlaylistStore']
     >
     readonly useLocalStorage: UnwrapRef<(typeof import('@vueuse/core'))['useLocalStorage']>
     readonly useLyricAutoScroll: UnwrapRef<

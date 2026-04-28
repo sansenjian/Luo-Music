@@ -4,6 +4,13 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Song } from '@/platform/music/interface'
 import { isLocalLibrarySong } from '@/types/localLibrary'
 
+type SongDetailContextMenuPayload = {
+  clientX: number
+  clientY: number
+  index: number
+  song: Song
+}
+
 interface SongDetailListProps {
   songs: Song[]
   activeSongId?: string | number | null
@@ -27,6 +34,7 @@ const props = withDefaults(defineProps<SongDetailListProps>(), {
 
 const emit = defineEmits<{
   'play-song': [index: number]
+  'song-context-menu': [payload: SongDetailContextMenuPayload]
   'load-more': []
 }>()
 
@@ -129,6 +137,16 @@ function resolveDurationLabel(song: Song): string {
 
 function emitPlaySong(index: number): void {
   emit('play-song', index)
+}
+
+function emitSongContextMenu(index: number, song: Song, event: MouseEvent): void {
+  event.preventDefault()
+  emit('song-context-menu', {
+    clientX: event.clientX,
+    clientY: event.clientY,
+    index,
+    song
+  })
 }
 
 function resolveAlbumName(song: Song): string {
@@ -494,6 +512,7 @@ watch(
               class="detail-song"
               :class="{ active: props.activeSongId === song.id }"
               @click="emitPlaySong(index)"
+              @contextmenu="emitSongContextMenu(index, song, $event)"
             >
               <span class="detail-song-index">{{ String(index + 1).padStart(2, '0') }}</span>
               <img
@@ -530,6 +549,7 @@ watch(
         class="detail-song"
         :class="{ active: props.activeSongId === song.id }"
         @click="emitPlaySong(index)"
+        @contextmenu="emitSongContextMenu(index, song, $event)"
       >
         <span class="detail-song-index">{{ String(index + 1).padStart(2, '0') }}</span>
         <img

@@ -3,8 +3,15 @@ import { computed, ref, watch } from 'vue'
 import { useFavoriteAlbums } from '@/composables/useFavoriteAlbums'
 import {
   createAlbumCollectionSelection,
+  createLocalPlaylistCollectionSelection,
   createPlaylistCollectionSelection
 } from '@/composables/home/homeCollectionSelection'
+import {
+  clearLocalPlaylistCover,
+  removeLocalPlaylistById,
+  setLocalPlaylistCover,
+  useLocalPlaylistStore
+} from '@/store/localPlaylistStore'
 import { useUserPlaylists } from '@/composables/useUserPlaylists'
 import { useUserStore } from '@/store/userStore'
 
@@ -19,6 +26,7 @@ const COLLECTION_TONES: HomeSidebarCollectionTone[] = ['mono', 'violet', 'mist',
 export function useHomeSidebarCollections() {
   const activePlaylistFilter = ref<HomeSidebarPlaylistFilter>('created')
   const userStore = useUserStore()
+  const localPlaylistStore = useLocalPlaylistStore()
   const {
     createdPlaylists,
     favoritePlaylists,
@@ -33,20 +41,36 @@ export function useHomeSidebarCollections() {
     resetFavoriteAlbums
   } = useFavoriteAlbums()
 
-  const visibleCollections = computed<HomeSidebarCollectionSelection[]>(() =>
-    activePlaylistFilter.value === 'created'
-      ? createdPlaylists.value.map(createPlaylistCollectionSelection)
-      : [
-          ...favoritePlaylists.value.map(createPlaylistCollectionSelection),
-          ...favoriteAlbums.value.map(createAlbumCollectionSelection)
-        ]
+  const localPlaylistCollections = computed(() =>
+    localPlaylistStore.sortedPlaylists.map(createLocalPlaylistCollectionSelection)
   )
+  const visibleCollections = computed<HomeSidebarCollectionSelection[]>(() => {
+    if (activePlaylistFilter.value === 'created') {
+      return [
+        ...localPlaylistCollections.value,
+        ...createdPlaylists.value.map(createPlaylistCollectionSelection)
+      ]
+    }
+
+    return [
+      ...favoritePlaylists.value.map(createPlaylistCollectionSelection),
+      ...favoriteAlbums.value.map(createAlbumCollectionSelection)
+    ]
+  })
   const loading = computed(() =>
     activePlaylistFilter.value === 'created'
       ? playlistsLoading.value
       : playlistsLoading.value || favoriteAlbumsLoading.value
   )
   const emptyMessage = computed(() => {
+    if (
+      !userStore.isLoggedIn &&
+      activePlaylistFilter.value === 'created' &&
+      localPlaylistCollections.value.length > 0
+    ) {
+      return '暂无在线歌单'
+    }
+
     if (!userStore.isLoggedIn) {
       return '登录后查看歌单'
     }
@@ -91,11 +115,81 @@ export function useHomeSidebarCollections() {
     return COLLECTION_TONES[Math.abs(hash) % COLLECTION_TONES.length]
   }
 
+  function removeLocalPlaylist(collection: HomeSidebarCollectionSelection): boolean {
+    if (collection.kind !== 'localPlaylist') {
+      return false
+    }
+
+    const runtimeStore = localPlaylistStore as {
+      removePlaylist?: unknown
+    }
+
+    if (typeof runtimeStore.removePlaylist === 'function') {
+      return localPlaylistStore.removePlaylist(String(collection.sourceId))
+    }
+
+    return removeLocalPlaylistById(localPlaylistStore.playlists, String(collection.sourceId))
+  }
+
+  function setLocalPlaylistCustomCover(
+    collection: HomeSidebarCollectionSelection,
+    coverUrl: string
+  ): boolean {
+    if (collection.kind !== 'localPlaylist') {
+      return false
+    }
+
+    const playlistId = String(collection.sourceId)
+    const runtimeStore = localPlaylistStore as {
+      setPlaylistCover?: unknown
+    }
+
+    if (typeof runtimeStore.setPlaylistCover === 'function') {
+      localPlaylistStore.setPlaylistCover(playlistId, coverUrl)
+      return true
+    }
+
+    const playlist = localPlaylistStore.getPlaylistById(playlistId)
+    if (!playlist) {
+      return false
+    }
+
+    setLocalPlaylistCover(playlist, coverUrl)
+    return true
+  }
+
+  function clearLocalPlaylistCustomCover(collection: HomeSidebarCollectionSelection): boolean {
+    if (collection.kind !== 'localPlaylist') {
+      return false
+    }
+
+    const playlistId = String(collection.sourceId)
+    const runtimeStore = localPlaylistStore as {
+      clearPlaylistCover?: unknown
+    }
+
+    if (typeof runtimeStore.clearPlaylistCover === 'function') {
+      localPlaylistStore.clearPlaylistCover(playlistId)
+      return true
+    }
+
+    const playlist = localPlaylistStore.getPlaylistById(playlistId)
+    if (!playlist) {
+      return false
+    }
+
+    clearLocalPlaylistCover(playlist)
+    return true
+  }
+
   return {
     activePlaylistFilter,
+    clearLocalPlaylistCustomCover,
     emptyMessage,
     loading,
+    removeLocalPlaylist,
     selectPlaylistFilter,
+    setLocalPlaylistCustomCover,
     resolveCollectionCoverLabel,
     resolveCollectionTone,
     visibleCollections

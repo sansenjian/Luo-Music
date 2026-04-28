@@ -19,7 +19,9 @@ vi.mock('@/api/album', () => ({
 }))
 
 import HomeSidebar from '@/components/home/HomeSidebar.vue'
+import { useLocalPlaylistStore } from '@/store/localPlaylistStore'
 import { useUserStore } from '@/store/userStore'
+import { createMockSong } from '../../utils/test-utils'
 
 describe('HomeSidebar', () => {
   beforeEach(() => {
@@ -173,6 +175,101 @@ describe('HomeSidebar', () => {
     expect(playlistImage.attributes('decoding')).toBe('sync')
     expect(playlistImage.attributes('width')).toBe('54')
     expect(playlistImage.attributes('height')).toBe('54')
+  })
+
+  it('shows local playlists in my playlists without requiring login', () => {
+    const localPlaylistStore = useLocalPlaylistStore()
+    localPlaylistStore.createPlaylist('本地夜航', [
+      createMockSong({
+        id: 'local:track-1',
+        name: '夜航',
+        originalId: 'local:track-1',
+        platform: 'local',
+        extra: {
+          localSource: true
+        }
+      })
+    ])
+
+    const wrapper = mount(HomeSidebar)
+
+    expect(wrapper.text()).toContain('本地夜航')
+    expect(wrapper.text()).toContain('1 首本地歌曲')
+    expect(wrapper.text()).not.toContain('登录后查看歌单')
+  })
+
+  it('deletes a local playlist from the sidebar context menu', async () => {
+    const localPlaylistStore = useLocalPlaylistStore()
+    const playlist = localPlaylistStore.createPlaylist('本地夜航', [
+      createMockSong({
+        id: 'local:track-1',
+        name: '夜航',
+        originalId: 'local:track-1',
+        platform: 'local',
+        extra: {
+          localSource: true
+        }
+      })
+    ])
+
+    const wrapper = mount(HomeSidebar, {
+      props: {
+        activeItemId: playlist.id
+      }
+    })
+
+    await wrapper.get('.playlist-card').trigger('contextmenu', {
+      clientX: 24,
+      clientY: 40
+    })
+
+    expect(wrapper.find('.playlist-context-menu').exists()).toBe(true)
+    expect(wrapper.text()).toContain('删除本地歌单')
+
+    await wrapper.get('.playlist-context-menu-remove').trigger('click')
+    await flushPromises()
+
+    expect(localPlaylistStore.getPlaylistById(playlist.id)).toBeNull()
+    expect(wrapper.find('.playlist-context-menu').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('本地夜航')
+    expect(wrapper.emitted('item-select')?.at(-1)).toEqual(['local'])
+  })
+
+  it('renders and clears a custom local playlist cover from the sidebar context menu', async () => {
+    const localPlaylistStore = useLocalPlaylistStore()
+    const playlist = localPlaylistStore.createPlaylist('本地夜航', [
+      createMockSong({
+        id: 'local:track-1',
+        name: '夜航',
+        originalId: 'local:track-1',
+        platform: 'local',
+        extra: {
+          localSource: true
+        }
+      })
+    ])
+    localPlaylistStore.setPlaylistCover(playlist.id, 'data:image/jpeg;base64,cover')
+
+    const wrapper = mount(HomeSidebar)
+
+    expect(wrapper.get('.playlist-cover-image').attributes('src')).toBe(
+      'data:image/jpeg;base64,cover'
+    )
+
+    await wrapper.get('.playlist-card').trigger('contextmenu', {
+      clientX: 24,
+      clientY: 40
+    })
+
+    expect(wrapper.text()).toContain('自定义封面')
+    expect(wrapper.text()).toContain('恢复默认封面')
+
+    await wrapper.get('.playlist-context-menu-reset-cover').trigger('click')
+    await flushPromises()
+
+    expect(localPlaylistStore.getPlaylistById(playlist.id)?.coverUrl).toBeUndefined()
+    expect(wrapper.find('.playlist-context-menu').exists()).toBe(false)
+    expect(wrapper.find('.playlist-cover-image').exists()).toBe(false)
   })
 
   it('switches playlist group labels using synced favorite collections', async () => {

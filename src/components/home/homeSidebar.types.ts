@@ -18,7 +18,7 @@ export type HomeSidebarNavItem = {
 
 export type HomeSidebarPlaylistFilter = 'created' | 'favorites'
 export type HomeSidebarCollectionTone = 'mono' | 'violet' | 'mist' | 'ocean'
-export type HomeSidebarCollectionKind = 'playlist' | 'album' | 'liked'
+export type HomeSidebarCollectionKind = 'playlist' | 'album' | 'liked' | 'localPlaylist'
 
 export type HomeSidebarCollectionSelection = {
   uiId: string
@@ -26,6 +26,7 @@ export type HomeSidebarCollectionSelection = {
   kind: HomeSidebarCollectionKind
   name: string
   coverUrl: string
+  hasCustomCover?: boolean
   summary: string
   trackCount?: number
 }

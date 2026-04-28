@@ -15,6 +15,12 @@ export type LocalMusicSummaryCard = {
   title: string
 }
 
+export type LocalMusicPlaylistOption = {
+  id: string
+  name: string
+  songCount: number
+}
+
 export type LocalMusicViewModeOption = {
   id: LocalLibraryViewMode
   label: string

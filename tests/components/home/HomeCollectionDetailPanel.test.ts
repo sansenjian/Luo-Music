@@ -26,8 +26,10 @@ vi.mock('@/api/album', () => ({
 }))
 
 import HomeCollectionDetailPanel from '@/components/home/HomeCollectionDetailPanel.vue'
+import { useLocalPlaylistStore } from '@/store/localPlaylistStore'
 import { usePlayerStore } from '@/store/playerStore'
 import { useUserStore } from '@/store/userStore'
+import { createMockSong } from '../../utils/test-utils'
 
 describe('HomeCollectionDetailPanel', () => {
   beforeEach(() => {
@@ -223,6 +225,145 @@ describe('HomeCollectionDetailPanel', () => {
     expect(getSongDetailMock).toHaveBeenCalledWith('liked-song-1')
     expect(wrapper.text()).toContain('我的喜欢')
     expect(wrapper.text()).toContain('Liked Song 1')
+  })
+
+  it('renders local playlist songs without calling remote playlist APIs', async () => {
+    const localSong = createMockSong({
+      id: 'local:track-1',
+      name: '本地夜航',
+      originalId: 'local:track-1',
+      platform: 'local',
+      extra: {
+        localSource: true
+      }
+    })
+    const localPlaylistStore = useLocalPlaylistStore()
+    const playlist = localPlaylistStore.createPlaylist('本地歌单', [localSong])
+
+    const wrapper = mount(HomeCollectionDetailPanel, {
+      props: {
+        collection: {
+          uiId: playlist.id,
+          sourceId: playlist.id,
+          kind: 'localPlaylist',
+          name: playlist.name,
+          coverUrl: '',
+          summary: '1 首本地歌曲',
+          trackCount: 1
+        }
+      }
+    })
+    await flushPromises()
+
+    expect(getPlaylistTracksMock).not.toHaveBeenCalled()
+    expect(getPlaylistDetailMock).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('本地歌单')
+    expect(wrapper.text()).toContain('本地夜航')
+  })
+
+  it('uses a custom cover for local playlist detail', async () => {
+    const localSong = createMockSong({
+      id: 'local:track-1',
+      name: '本地夜航',
+      originalId: 'local:track-1',
+      platform: 'local',
+      album: {
+        id: 'local-album',
+        name: '本地专辑',
+        picUrl: 'song-cover.jpg'
+      },
+      extra: {
+        localSource: true
+      }
+    })
+    const localPlaylistStore = useLocalPlaylistStore()
+    const playlist = localPlaylistStore.createPlaylist('本地歌单', [localSong])
+    localPlaylistStore.setPlaylistCover(playlist.id, 'custom-cover.jpg')
+
+    const wrapper = mount(HomeCollectionDetailPanel, {
+      props: {
+        collection: {
+          uiId: playlist.id,
+          sourceId: playlist.id,
+          kind: 'localPlaylist',
+          name: playlist.name,
+          coverUrl: '',
+          summary: '1 首本地歌曲',
+          trackCount: 1
+        }
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.get('.media-cover .media-cover-image').attributes('src')).toBe(
+      'custom-cover.jpg'
+    )
+  })
+
+  it('removes a song from a local playlist through the song context menu', async () => {
+    const firstSong = createMockSong({
+      id: 'local:track-1',
+      name: '本地夜航',
+      originalId: 'local:track-1',
+      platform: 'local',
+      extra: {
+        localSource: true
+      }
+    })
+    const secondSong = createMockSong({
+      id: 'local:track-2',
+      name: '本地晨光',
+      originalId: 'local:track-2',
+      platform: 'local',
+      extra: {
+        localSource: true
+      }
+    })
+    const localPlaylistStore = useLocalPlaylistStore()
+    const playlist = localPlaylistStore.createPlaylist('本地歌单', [firstSong, secondSong])
+
+    const wrapper = mount(HomeCollectionDetailPanel, {
+      props: {
+        collection: {
+          uiId: playlist.id,
+          sourceId: playlist.id,
+          kind: 'localPlaylist',
+          name: playlist.name,
+          coverUrl: '',
+          summary: '2 首本地歌曲',
+          trackCount: 2
+        }
+      },
+      global: {
+        stubs: {
+          SongDetailList: defineComponent({
+            name: 'SongDetailListStub',
+            props: {
+              songs: {
+                type: Array,
+                required: true
+              }
+            },
+            emits: ['song-context-menu'],
+            template:
+              '<button class="song-detail-list-stub" @contextmenu.prevent="$emit(\'song-context-menu\', { index: 0, song: songs[0], clientX: 24, clientY: 40 })">list</button>'
+          })
+        }
+      }
+    })
+    await flushPromises()
+
+    await wrapper.get('.song-detail-list-stub').trigger('contextmenu')
+    expect(wrapper.find('.collection-song-context-menu').exists()).toBe(true)
+
+    await wrapper.get('.collection-menu-remove-song').trigger('click')
+    await flushPromises()
+
+    expect(localPlaylistStore.getPlaylistById(playlist.id)?.songs.map(song => song.id)).toEqual([
+      'local:track-2'
+    ])
+    expect(wrapper.find('.collection-song-context-menu').exists()).toBe(false)
+    expect(wrapper.text()).toContain('歌曲 1')
   })
 
   it('requests the next playlist page when the detail list asks to load more', async () => {

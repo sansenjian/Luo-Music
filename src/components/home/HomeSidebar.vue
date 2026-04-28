@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 
 import {
   HOME_SIDEBAR_EXPLORE_ITEMS,
@@ -7,11 +7,20 @@ import {
 } from '@/components/home/homeSidebar.constants'
 import { useHomeSidebarCollections } from '@/composables/useHomeSidebarCollections'
 import { useRenderStyle } from '@/composables/useRenderStyle'
+import { useToastStore } from '@/store/toastStore'
+import { readLocalPlaylistCoverFile } from '@/utils/localPlaylistCoverImage'
 
 import HomeBrandBadge from './HomeBrandBadge.vue'
 import HomeSidebarFooter from './HomeSidebarFooter.vue'
 import HomeSidebarIcon from './HomeSidebarIcon.vue'
 import type { HomeSidebarCollectionSelection } from './homeSidebar.types'
+
+type PlaylistContextMenuState = {
+  clientX: number
+  clientY: number
+  collection: HomeSidebarCollectionSelection | null
+  visible: boolean
+}
 
 const props = withDefaults(
   defineProps<{
@@ -33,15 +42,32 @@ const emit = defineEmits<{
 
 const internalActiveItemId = ref<string>('home')
 const { renderStyle } = useRenderStyle()
+const toastStore = useToastStore()
 const {
   activePlaylistFilter,
+  clearLocalPlaylistCustomCover,
   emptyMessage: playlistEmptyMessage,
+  removeLocalPlaylist,
   resolveCollectionCoverLabel,
   resolveCollectionTone,
   selectPlaylistFilter,
+  setLocalPlaylistCustomCover,
   visibleCollections
 } = useHomeSidebarCollections()
 const resolvedActiveItemId = computed(() => props.activeItemId ?? internalActiveItemId.value)
+const playlistCoverInputRef = ref<HTMLInputElement | null>(null)
+const playlistCoverTarget = ref<HomeSidebarCollectionSelection | null>(null)
+const playlistContextMenuRef = ref<HTMLElement | null>(null)
+const playlistContextMenu = ref<PlaylistContextMenuState>({
+  clientX: 0,
+  clientY: 0,
+  collection: null,
+  visible: false
+})
+const playlistContextMenuStyle = computed(() => ({
+  left: `${playlistContextMenu.value.clientX}px`,
+  top: `${playlistContextMenu.value.clientY}px`
+}))
 
 function activateItem(itemId: string): void {
   if (props.activeItemId === undefined) {
@@ -64,6 +90,141 @@ function isActive(itemId: string): boolean {
   return resolvedActiveItemId.value === itemId
 }
 
+function closePlaylistContextMenu(): void {
+  playlistContextMenu.value.visible = false
+  playlistContextMenu.value.collection = null
+}
+
+function clampPlaylistContextMenuPosition(): void {
+  if (typeof window === 'undefined' || !playlistContextMenuRef.value) {
+    return
+  }
+
+  const rect = playlistContextMenuRef.value.getBoundingClientRect()
+  const padding = 8
+  const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding)
+  const maxTop = Math.max(padding, window.innerHeight - rect.height - padding)
+
+  playlistContextMenu.value.clientX = Math.min(playlistContextMenu.value.clientX, maxLeft)
+  playlistContextMenu.value.clientY = Math.min(playlistContextMenu.value.clientY, maxTop)
+}
+
+function openPlaylistContextMenu(event: MouseEvent, item: HomeSidebarCollectionSelection): void {
+  if (item.kind !== 'localPlaylist') {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+
+  playlistContextMenu.value = {
+    clientX: event.clientX,
+    clientY: event.clientY,
+    collection: item,
+    visible: true
+  }
+
+  void nextTick(clampPlaylistContextMenuPosition)
+}
+
+function deleteSelectedLocalPlaylist(): void {
+  const collection = playlistContextMenu.value.collection
+  if (!collection) {
+    closePlaylistContextMenu()
+    return
+  }
+
+  const wasActive = isActive(collection.uiId)
+  const removed = removeLocalPlaylist(collection)
+  closePlaylistContextMenu()
+
+  if (removed && wasActive) {
+    activateItem('local')
+  }
+}
+
+function choosePlaylistCover(): void {
+  const collection = playlistContextMenu.value.collection
+  if (!collection) {
+    closePlaylistContextMenu()
+    return
+  }
+
+  playlistCoverTarget.value = collection
+  closePlaylistContextMenu()
+
+  if (playlistCoverInputRef.value) {
+    playlistCoverInputRef.value.value = ''
+    playlistCoverInputRef.value.click()
+  }
+}
+
+async function handlePlaylistCoverInputChange(event: Event): Promise<void> {
+  const input = event.target
+  if (!(input instanceof HTMLInputElement)) {
+    return
+  }
+
+  const file = input.files?.[0]
+  const collection = playlistCoverTarget.value
+  playlistCoverTarget.value = null
+  input.value = ''
+
+  if (!file || !collection) {
+    return
+  }
+
+  try {
+    const coverUrl = await readLocalPlaylistCoverFile(file)
+    const updated = setLocalPlaylistCustomCover(collection, coverUrl)
+    if (!updated) {
+      toastStore.error('设置本地歌单封面失败')
+      return
+    }
+
+    toastStore.success(`已更新本地歌单「${collection.name}」封面`)
+  } catch (error) {
+    toastStore.error(error instanceof Error ? error.message : '设置本地歌单封面失败')
+  }
+}
+
+function clearSelectedLocalPlaylistCover(): void {
+  const collection = playlistContextMenu.value.collection
+  if (!collection) {
+    closePlaylistContextMenu()
+    return
+  }
+
+  const cleared = clearLocalPlaylistCustomCover(collection)
+  closePlaylistContextMenu()
+
+  if (!cleared) {
+    toastStore.error('恢复默认封面失败')
+    return
+  }
+
+  toastStore.success(`已恢复「${collection.name}」默认封面`)
+}
+
+function handleDocumentPointerDown(event: PointerEvent): void {
+  if (!playlistContextMenu.value.visible) {
+    return
+  }
+
+  const target = event.target
+  if (target instanceof Node && playlistContextMenuRef.value?.contains(target)) {
+    return
+  }
+
+  closePlaylistContextMenu()
+}
+
+function handleDocumentKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    closePlaylistContextMenu()
+  }
+}
+
 function resolveCollectionImageLoading(index: number): 'eager' | 'lazy' {
   return index === 0 ? 'eager' : 'lazy'
 }
@@ -75,6 +236,16 @@ function resolveCollectionImageFetchPriority(index: number): 'high' | 'auto' {
 function resolveCollectionImageDecoding(index: number): 'sync' | 'async' {
   return index === 0 ? 'sync' : 'async'
 }
+
+onMounted(() => {
+  document.addEventListener('pointerdown', handleDocumentPointerDown, true)
+  document.addEventListener('keydown', handleDocumentKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', handleDocumentPointerDown, true)
+  document.removeEventListener('keydown', handleDocumentKeydown)
+})
 </script>
 
 <template>
@@ -175,6 +346,7 @@ function resolveCollectionImageDecoding(index: number): 'sync' | 'async' {
             :class="{ active: isActive(item.uiId) }"
             :aria-label="item.name"
             @click="activateCollection(item)"
+            @contextmenu="openPlaylistContextMenu($event, item)"
           >
             <span
               class="playlist-cover"
@@ -194,6 +366,12 @@ function resolveCollectionImageDecoding(index: number): 'sync' | 'async' {
               />
               <template v-else>
                 <span class="playlist-cover-glow"></span>
+                <span class="playlist-cover-disc"></span>
+                <span class="playlist-cover-bars">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </span>
                 <span class="playlist-cover-label">{{ resolveCollectionCoverLabel(item) }}</span>
               </template>
             </span>
@@ -205,6 +383,51 @@ function resolveCollectionImageDecoding(index: number): 'sync' | 'async' {
         </div>
       </section>
     </div>
+
+    <div
+      v-if="playlistContextMenu.visible"
+      ref="playlistContextMenuRef"
+      class="playlist-context-menu"
+      :style="playlistContextMenuStyle"
+      role="menu"
+      aria-label="本地歌单菜单"
+    >
+      <button
+        type="button"
+        class="playlist-context-menu-item playlist-context-menu-cover"
+        role="menuitem"
+        @click="choosePlaylistCover"
+      >
+        自定义封面
+      </button>
+      <button
+        v-if="playlistContextMenu.collection?.hasCustomCover"
+        type="button"
+        class="playlist-context-menu-item playlist-context-menu-reset-cover"
+        role="menuitem"
+        @click="clearSelectedLocalPlaylistCover"
+      >
+        恢复默认封面
+      </button>
+      <button
+        type="button"
+        class="playlist-context-menu-item playlist-context-menu-remove"
+        role="menuitem"
+        @click="deleteSelectedLocalPlaylist"
+      >
+        删除本地歌单
+      </button>
+    </div>
+
+    <input
+      ref="playlistCoverInputRef"
+      class="playlist-cover-file-input"
+      type="file"
+      accept="image/*"
+      tabindex="-1"
+      aria-hidden="true"
+      @change="handlePlaylistCoverInputChange"
+    />
 
     <footer class="sidebar-footer">
       <HomeSidebarFooter
@@ -404,6 +627,10 @@ function resolveCollectionImageDecoding(index: number): 'sync' | 'async' {
   display: grid;
   place-items: center;
   color: var(--white);
+  background: var(--playlist-cover-bg);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 0 -16px 28px rgba(0, 0, 0, 0.18);
 }
 
 .playlist-cover-image {
@@ -417,32 +644,111 @@ function resolveCollectionImageDecoding(index: number): 'sync' | 'async' {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.25), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.18));
+    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.34), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.14), transparent 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.2));
+}
+
+.playlist-cover-disc {
+  position: absolute;
+  right: -9px;
+  bottom: -7px;
+  width: 43px;
+  height: 43px;
+  border-radius: 999px;
+  background:
+    repeating-radial-gradient(
+      circle,
+      transparent 0 4px,
+      rgba(0, 0, 0, 0.1) 4px 5px,
+      transparent 5px 9px
+    ),
+    radial-gradient(
+      circle,
+      var(--playlist-cover-accent) 0 4px,
+      rgba(255, 255, 255, 0.92) 4.5px 7px,
+      rgba(255, 255, 255, 0.24) 7.5px 9px,
+      rgba(255, 255, 255, 0.82) 9.5px 100%
+    );
+  box-shadow: -8px -8px 18px rgba(0, 0, 0, 0.16);
+}
+
+.playlist-cover-disc::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: inherit;
+}
+
+.playlist-cover-bars {
+  position: absolute;
+  left: 11px;
+  bottom: 10px;
+  display: flex;
+  align-items: end;
+  gap: 3px;
+}
+
+.playlist-cover-bars span {
+  width: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.16);
+}
+
+.playlist-cover-bars span:nth-child(1) {
+  height: 12px;
+}
+
+.playlist-cover-bars span:nth-child(2) {
+  height: 18px;
+}
+
+.playlist-cover-bars span:nth-child(3) {
+  height: 9px;
 }
 
 .playlist-cover-label {
-  position: relative;
-  z-index: 1;
-  font-size: 18px;
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 2;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 5px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .tone-mono {
-  background: linear-gradient(135deg, #303744 0%, #11161f 100%);
+  --playlist-cover-bg: linear-gradient(135deg, #323946 0%, #11161f 100%);
+  --playlist-cover-accent: #ffbf57;
 }
 
 .tone-violet {
-  background: linear-gradient(135deg, #7c6ef7 0%, #5442b6 100%);
+  --playlist-cover-bg: linear-gradient(135deg, #7f5cf4 0%, #d9507f 100%);
+  --playlist-cover-accent: #ffdf6e;
 }
 
 .tone-mist {
-  background: linear-gradient(135deg, #8f9bb5 0%, #565f76 100%);
+  --playlist-cover-bg: linear-gradient(135deg, #5d7189 0%, #28a89c 100%);
+  --playlist-cover-accent: #ffd166;
 }
 
 .tone-ocean {
-  background: linear-gradient(135deg, #4d7cff 0%, #2740a3 100%);
+  --playlist-cover-bg: linear-gradient(135deg, #2f7cf6 0%, #19b6d2 100%);
+  --playlist-cover-accent: #ff8f5a;
 }
 
 .playlist-copy {
@@ -468,6 +774,63 @@ function resolveCollectionImageDecoding(index: number): 'sync' | 'async' {
 .playlist-copy span {
   font-size: 12px;
   color: var(--gray);
+}
+
+.playlist-context-menu {
+  position: fixed;
+  z-index: 80;
+  min-width: 148px;
+  max-width: min(260px, calc(100vw - 16px));
+  padding: 6px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 44px rgba(17, 24, 39, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.playlist-context-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--black);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.playlist-context-menu-item:hover,
+.playlist-context-menu-item:focus-visible {
+  background: rgba(17, 24, 39, 0.06);
+  color: var(--black);
+  outline: none;
+}
+
+.playlist-context-menu-remove {
+  margin-top: 4px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.playlist-context-menu-remove:hover,
+.playlist-context-menu-remove:focus-visible {
+  background: rgba(255, 66, 89, 0.1);
+  color: var(--accent);
+  outline: none;
+}
+
+.playlist-cover-file-input {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sidebar-footer {

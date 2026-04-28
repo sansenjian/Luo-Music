@@ -1,6 +1,12 @@
 import { computed, ref, watch } from 'vue'
 
 import { useLocalLibrary } from '@/composables/useLocalLibrary'
+import type { Song } from '@/platform/music/interface'
+import {
+  addUniqueSongsToLocalPlaylist,
+  useLocalPlaylistStore,
+  type AddSongsToLocalPlaylistResult
+} from '@/store/localPlaylistStore'
 import { usePlayerStore } from '@/store/playerStore'
 import { useToastStore } from '@/store/toastStore'
 import type {
@@ -19,6 +25,7 @@ import {
 
 import type {
   LocalMusicEmptyStateModel,
+  LocalMusicPlaylistOption,
   LocalMusicSummaryCard,
   LocalMusicViewModeOption
 } from './localMusic.types'
@@ -75,6 +82,7 @@ const ALBUMS_EMPTY_STATE: LocalMusicEmptyStateModel = {
 export function useHomeLocalMusicPanel() {
   const playerStore = usePlayerStore()
   const toastStore = useToastStore()
+  const localPlaylistStore = useLocalPlaylistStore()
   const localLibrary = useLocalLibrary()
   const { state, status, loading, mutating, pageLoading } = localLibrary.stateGroup
   const {
@@ -222,6 +230,13 @@ export function useHomeLocalMusicPanel() {
         return sum + track.fileSize
       }, 0)
     )
+  )
+  const localPlaylistOptions = computed<LocalMusicPlaylistOption[]>(() =>
+    localPlaylistStore.sortedPlaylists.map(playlist => ({
+      id: playlist.id,
+      name: playlist.name,
+      songCount: playlist.songs.length
+    }))
   )
 
   watch(activeView, nextView => {
@@ -375,6 +390,59 @@ export function useHomeLocalMusicPanel() {
     )
   }
 
+  function createLocalPlaylistFromSong(song: Song, playlistName: string): void {
+    if (!isLocalLibrarySong(song)) {
+      toastStore.error('只能为本地音乐创建本地歌单')
+      return
+    }
+
+    try {
+      const playlist = localPlaylistStore.createPlaylist(playlistName, [song])
+      toastStore.success(`已创建本地歌单「${playlist.name}」`)
+    } catch (error) {
+      toastStore.error(resolvePanelErrorMessage(error, '创建本地歌单失败'))
+    }
+  }
+
+  function addSongsToLocalPlaylist(
+    playlistId: string,
+    songs: Song[]
+  ): AddSongsToLocalPlaylistResult {
+    const runtimeStore = localPlaylistStore as {
+      addSongsToPlaylist?: unknown
+    }
+
+    if (typeof runtimeStore.addSongsToPlaylist === 'function') {
+      return localPlaylistStore.addSongsToPlaylist(playlistId, songs)
+    }
+
+    const playlist = localPlaylistStore.playlists.find(item => item.id === playlistId)
+    if (!playlist) {
+      throw new Error('找不到该本地歌单')
+    }
+
+    return addUniqueSongsToLocalPlaylist(playlist, songs)
+  }
+
+  function addLocalSongToPlaylist(song: Song, playlistId: string): void {
+    if (!isLocalLibrarySong(song)) {
+      toastStore.error('只能将本地音乐添加到本地歌单')
+      return
+    }
+
+    try {
+      const { playlist, addedCount } = addSongsToLocalPlaylist(playlistId, [song])
+      if (addedCount === 0) {
+        toastStore.info(`「${song.name}」已在「${playlist.name}」中`)
+        return
+      }
+
+      toastStore.success(`已添加到本地歌单「${playlist.name}」`)
+    } catch (error) {
+      toastStore.error(resolvePanelErrorMessage(error, '添加到本地歌单失败'))
+    }
+  }
+
   function resolveCoverUrl(coverHash: string | null): string {
     return coverHash ? (coverUrls.value[coverHash] ?? '') : ''
   }
@@ -391,6 +459,7 @@ export function useHomeLocalMusicPanel() {
     currentPageSizeLabel,
     currentSummaryLabel,
     currentViewTitle,
+    createLocalPlaylistFromSong,
     folders,
     handleAddFolder,
     handleLoadMore,
@@ -405,8 +474,10 @@ export function useHomeLocalMusicPanel() {
     isScanning,
     lastScanLabel,
     loadingEmptyState: LOADING_EMPTY_STATE,
+    localPlaylistOptions,
     mutating,
     pageLoading,
+    addLocalSongToPlaylist,
     playbackSongs,
     playLocalSongAt,
     rootEmptyState: ROOT_EMPTY_STATE,

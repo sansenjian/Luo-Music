@@ -4,6 +4,11 @@ import type { Song } from '@/platform/music/interface'
 import { useFavoriteAlbums } from '@/composables/useFavoriteAlbums'
 import { useLikedSongs } from '@/composables/useLikedSongs'
 import { useUserPlaylists } from '@/composables/useUserPlaylists'
+import {
+  removeSongFromLocalPlaylist,
+  useLocalPlaylistStore,
+  type RemoveSongFromLocalPlaylistResult
+} from '@/store/localPlaylistStore'
 import { usePlayerStore } from '@/store/playerStore'
 import { useToastStore } from '@/store/toastStore'
 import { useUserStore } from '@/store/userStore'
@@ -24,6 +29,7 @@ export function useHomeCollectionPanel(
   const userStore = useUserStore()
   const playerStore = usePlayerStore()
   const toastStore = useToastStore()
+  const localPlaylistStore = useLocalPlaylistStore()
   const { usePlaylistTracks } = useUserPlaylists()
   const { loadAlbumSongs } = useFavoriteAlbums()
   const {
@@ -56,9 +62,22 @@ export function useHomeCollectionPanel(
   const collection = computed(() => toValue(collectionSource))
   const isLikedCollection = computed(() => collection.value?.kind === 'liked')
   const isPlaylistCollection = computed(() => collection.value?.kind === 'playlist')
+  const isLocalPlaylistCollection = computed(() => collection.value?.kind === 'localPlaylist')
+  const localPlaylist = computed(() => {
+    const nextCollection = collection.value
+    if (!nextCollection || nextCollection.kind !== 'localPlaylist') {
+      return null
+    }
+
+    return localPlaylistStore.getPlaylistById(String(nextCollection.sourceId))
+  })
   const songs = computed(() => {
     if (isLikedCollection.value) {
       return likeSongs.value
+    }
+
+    if (isLocalPlaylistCollection.value) {
+      return localPlaylist.value?.songs ?? []
     }
 
     return isPlaylistCollection.value ? playlistSongs.value : albumSongs.value
@@ -67,9 +86,11 @@ export function useHomeCollectionPanel(
   const kicker = computed(() =>
     collection.value?.kind === 'album'
       ? '收藏专辑'
-      : isLikedCollection.value
-        ? '喜欢的音乐'
-        : '歌单'
+      : isLocalPlaylistCollection.value
+        ? '本地歌单'
+        : isLikedCollection.value
+          ? '喜欢的音乐'
+          : '歌单'
   )
   const metaLabel = computed(() => {
     if (!collection.value) {
@@ -86,6 +107,10 @@ export function useHomeCollectionPanel(
         : collection.value.summary
     }
 
+    if (isLocalPlaylistCollection.value) {
+      return collection.value.summary
+    }
+
     return userStore.nickname
       ? `${userStore.nickname} · ${collection.value.summary}`
       : collection.value.summary
@@ -95,6 +120,10 @@ export function useHomeCollectionPanel(
       return songs.value[0]?.album?.picUrl || collection.value?.coverUrl || ''
     }
 
+    if (isLocalPlaylistCollection.value) {
+      return localPlaylist.value?.coverUrl || songs.value[0]?.album?.picUrl || ''
+    }
+
     return collection.value?.coverUrl || ''
   })
   const currentSongId = computed(() => playerStore.currentSong?.id ?? null)
@@ -102,9 +131,11 @@ export function useHomeCollectionPanel(
     resolvePanelErrorMessage(
       isLikedCollection.value
         ? likedSongsError.value
-        : isPlaylistCollection.value
-          ? error.value
-          : albumError.value,
+        : isLocalPlaylistCollection.value
+          ? null
+          : isPlaylistCollection.value
+            ? error.value
+            : albumError.value,
       '详情加载失败，请稍后重试。'
     )
   )
@@ -176,6 +207,10 @@ export function useHomeCollectionPanel(
       return
     }
 
+    if (nextCollection.kind === 'localPlaylist') {
+      return
+    }
+
     albumLoading.value = true
 
     try {
@@ -210,7 +245,13 @@ export function useHomeCollectionPanel(
       return
     }
 
-    if (!isPlaylistCollection.value || loading.value || loadingMore.value || !hasMore.value) {
+    if (
+      isLocalPlaylistCollection.value ||
+      !isPlaylistCollection.value ||
+      loading.value ||
+      loadingMore.value ||
+      !hasMore.value
+    ) {
       return
     }
 
@@ -244,6 +285,41 @@ export function useHomeCollectionPanel(
     void playCollectionAt(0)
   }
 
+  function removeSongFromCurrentLocalPlaylist(song: Song): RemoveSongFromLocalPlaylistResult {
+    const playlist = localPlaylist.value
+    if (!playlist) {
+      throw new Error('找不到该本地歌单')
+    }
+
+    const runtimeStore = localPlaylistStore as {
+      removeSongFromPlaylist?: unknown
+    }
+
+    if (typeof runtimeStore.removeSongFromPlaylist === 'function') {
+      return localPlaylistStore.removeSongFromPlaylist(playlist.id, song)
+    }
+
+    return removeSongFromLocalPlaylist(playlist, song)
+  }
+
+  function removeLocalPlaylistSong(song: Song): void {
+    if (!isLocalPlaylistCollection.value) {
+      return
+    }
+
+    try {
+      const { playlist, removed } = removeSongFromCurrentLocalPlaylist(song)
+      if (!removed) {
+        toastStore.info(`「${song.name}」已不在「${playlist.name}」中`)
+        return
+      }
+
+      toastStore.success(`已从本地歌单「${playlist.name}」移除`)
+    } catch (requestError) {
+      toastStore.error(resolvePanelErrorMessage(requestError, '从本地歌单移除失败'))
+    }
+  }
+
   return {
     clearSearch,
     collection,
@@ -252,33 +328,49 @@ export function useHomeCollectionPanel(
     error: computed(() =>
       isLikedCollection.value
         ? likedSongsError.value
-        : isPlaylistCollection.value
-          ? error.value
-          : albumError.value
+        : isLocalPlaylistCollection.value
+          ? null
+          : isPlaylistCollection.value
+            ? error.value
+            : albumError.value
     ),
     errorMessage,
     filteredSongs,
     filteredPlaybackSongs,
-    hasMore: computed(() => (isLikedCollection.value ? likedSongsHasMore.value : hasMore.value)),
+    hasMore: computed(() =>
+      isLikedCollection.value
+        ? likedSongsHasMore.value
+        : isLocalPlaylistCollection.value
+          ? false
+          : hasMore.value
+    ),
     kicker,
     loadCollectionSongs,
     loadMoreCollectionSongs,
     loading: computed(() =>
       isLikedCollection.value
         ? likedSongsLoading.value
-        : isPlaylistCollection.value
-          ? loading.value
-          : albumLoading.value
+        : isLocalPlaylistCollection.value
+          ? false
+          : isPlaylistCollection.value
+            ? loading.value
+            : albumLoading.value
     ),
     loadingMore: computed(() =>
-      isLikedCollection.value ? likedSongsLoadingMore.value : loadingMore.value
+      isLikedCollection.value
+        ? likedSongsLoadingMore.value
+        : isLocalPlaylistCollection.value
+          ? false
+          : loadingMore.value
     ),
     metaLabel,
     playAll,
     playCollectionAt,
+    removeLocalPlaylistSong,
     searchQuery,
     songs,
     title,
+    isLocalPlaylistCollection,
     userStore
   }
 }

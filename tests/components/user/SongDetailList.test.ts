@@ -140,6 +140,38 @@ describe('SongDetailList', () => {
     expect(wrapper.findAll('.detail-song')).toHaveLength(200)
   })
 
+  it('emits context menu details for the selected row', async () => {
+    const song = createMockSong({
+      id: 'local:track-1',
+      name: 'Local Song',
+      originalId: 'local:track-1',
+      platform: 'local',
+      extra: {
+        localSource: true
+      }
+    })
+    const wrapper = mount(SongDetailList, {
+      props: {
+        disableVirtualization: true,
+        songs: [song]
+      }
+    })
+
+    await wrapper.get('.detail-song').trigger('contextmenu', {
+      clientX: 42,
+      clientY: 64
+    })
+
+    expect(wrapper.emitted('song-context-menu')?.[0]).toEqual([
+      {
+        clientX: 42,
+        clientY: 64,
+        index: 0,
+        song
+      }
+    ])
+  })
+
   it('progressively renders more songs when the outer scroll container advances', async () => {
     const resizeObserverMock = installResizeObserverMock()
     const scrollContainer = document.createElement('div')

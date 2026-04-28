@@ -18,6 +18,7 @@ const {
   artistsEmptyState,
   clearSearch,
   clearSongScope,
+  createLocalPlaylistFromSong,
   currentPageSizeLabel,
   currentSummaryLabel,
   currentViewTitle,
@@ -33,8 +34,10 @@ const {
   hasMoreForActiveView,
   hasSongFilters,
   isScanning,
+  addLocalSongToPlaylist,
   lastScanLabel,
   loadingEmptyState,
+  localPlaylistOptions,
   mutating,
   pageLoading,
   playbackSongs,
@@ -104,9 +107,12 @@ const {
             :empty-state="songsEmptyState"
             :footnote-size-label="currentPageSizeLabel"
             :has-more="hasMoreForActiveView"
+            :local-playlists="localPlaylistOptions"
             :page-loading="pageLoading"
             :songs="playbackSongs"
+            @add-to-local-playlist="addLocalSongToPlaylist"
             @clear-scope="clearSongScope"
+            @create-local-playlist="createLocalPlaylistFromSong"
             @load-more="handleLoadMore"
             @play-song="playLocalSongAt"
           />

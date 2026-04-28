@@ -1,6 +1,7 @@
 import type { HomeSidebarCollectionSelection } from '@/components/home/homeSidebar.types'
 import type { FavoriteAlbumItem } from '@/composables/useFavoriteAlbums'
 import type { PlaylistItem } from '@/composables/useUserPlaylists'
+import type { LocalPlaylist } from '@/store/localPlaylistStore'
 
 export function createPlaylistCollectionSelection(
   playlist: PlaylistItem
@@ -34,6 +35,23 @@ export function createAlbumCollectionSelection(
   }
 }
 
+export function createLocalPlaylistCollectionSelection(
+  playlist: LocalPlaylist
+): HomeSidebarCollectionSelection {
+  const coverUrl = playlist.coverUrl || playlist.songs[0]?.album?.picUrl || ''
+
+  return {
+    uiId: playlist.id,
+    sourceId: playlist.id,
+    kind: 'localPlaylist',
+    name: playlist.name,
+    coverUrl,
+    hasCustomCover: Boolean(playlist.coverUrl),
+    summary: resolveLocalPlaylistCollectionSummary(playlist),
+    trackCount: playlist.songs.length
+  }
+}
+
 function resolvePlaylistCollectionSummary(playlist: PlaylistItem): string {
   const trackCount = Number(playlist.trackCount)
   if (Number.isFinite(trackCount) && trackCount > 0) {
@@ -58,4 +76,13 @@ function resolveAlbumCollectionSummary(album: FavoriteAlbumItem): string {
   }
 
   return '收藏'
+}
+
+function resolveLocalPlaylistCollectionSummary(playlist: LocalPlaylist): string {
+  const trackCount = playlist.songs.length
+  if (trackCount > 0) {
+    return `${trackCount} 首本地歌曲`
+  }
+
+  return '本地歌单'
 }

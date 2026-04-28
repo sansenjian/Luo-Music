@@ -6,6 +6,13 @@ import SongDetailList from '@/components/user/SongDetailList.vue'
 import HomeMediaState from './HomeMediaState.vue'
 import HomeMediaTableHead from './HomeMediaTableHead.vue'
 
+type SongContextMenuPayload = {
+  clientX: number
+  clientY: number
+  index: number
+  song: Song
+}
+
 const props = withDefaults(
   defineProps<{
     songs: Song[]
@@ -36,6 +43,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'play-song': [index: number]
+  'song-context-menu': [payload: SongContextMenuPayload]
   'load-more': []
   retry: []
 }>()
@@ -79,6 +87,7 @@ const emit = defineEmits<{
         :infinite-scroll="props.loadMoreEnabled && props.hasMore"
         variant="table"
         @play-song="emit('play-song', $event)"
+        @song-context-menu="emit('song-context-menu', $event)"
         @load-more="emit('load-more')"
       />
 

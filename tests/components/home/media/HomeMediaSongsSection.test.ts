@@ -33,7 +33,7 @@ function mountSongsSection(props: Record<string, unknown> = {}) {
               default: false
             }
           },
-          emits: ['play-song', 'load-more'],
+          emits: ['play-song', 'song-context-menu', 'load-more'],
           template: `
             <div
               class="song-detail-list-stub"
@@ -42,6 +42,7 @@ function mountSongsSection(props: Record<string, unknown> = {}) {
               :data-infinite-scroll="String(infiniteScroll)"
             >
               <button class="play-song-trigger" @click="$emit('play-song', 1)">play</button>
+              <button class="song-context-menu-trigger" @click="$emit('song-context-menu', { index: 0, song: songs[0], clientX: 24, clientY: 40 })">menu</button>
               <button class="load-more-trigger" @click="$emit('load-more')">more</button>
             </div>
           `
@@ -105,9 +106,15 @@ describe('HomeMediaSongsSection', () => {
     expect(wrapper.text()).toContain('正在加载更多歌曲...')
 
     await wrapper.get('.play-song-trigger').trigger('click')
+    await wrapper.get('.song-context-menu-trigger').trigger('click')
     await wrapper.get('.load-more-trigger').trigger('click')
 
     expect(wrapper.emitted('play-song')).toEqual([[1]])
+    expect(wrapper.emitted('song-context-menu')?.[0]?.[0]).toMatchObject({
+      clientX: 24,
+      clientY: 40,
+      index: 0
+    })
     expect(wrapper.emitted('load-more')).toHaveLength(1)
   })
 })
