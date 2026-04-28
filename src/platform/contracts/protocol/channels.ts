@@ -68,6 +68,9 @@ export const INVOKE_CHANNELS = {
   PLUGIN_UPDATE_SETTINGS: 'plugin:update-settings',
   PLUGIN_CALL: 'plugin:call',
 
+  // 第一方拓展运行时
+  SMTC_SET_ENABLED: 'smtc:set-enabled',
+
   // API 服务
   API_SEARCH: 'api:search',
   API_GET_SONG_URL: 'api:get-song-url',

@@ -36,6 +36,11 @@ type EventCallback<K extends keyof AudioEventMap> = (data: AudioEventMap[K]) => 
 // 允许 unknown 数据传入回调，但在 emit 时保持类型安全
 type SafeCallback = (data: unknown) => void
 
+type SystemMediaSessionAudioElement = HTMLAudioElement & {
+  disableRemotePlayback?: boolean
+  controlsList?: Pick<DOMTokenList, 'add' | 'remove'>
+}
+
 export class PlayerCore {
   private audio: HTMLAudioElement
   private audioContext: AudioContext | null = null
@@ -49,9 +54,11 @@ export class PlayerCore {
   private _isDestroyed = false
   private _playRequestId = 0
   private _cancelPendingPlay: (() => void) | null = null
+  private _systemMediaSessionEnabled = true
 
   constructor() {
     this.audio = new Audio()
+    this._syncSystemMediaSessionExposure()
     this._initEvents()
     this._configureCrossOrigin()
     this._initVolume()
@@ -109,6 +116,22 @@ export class PlayerCore {
 
   private _initVolume() {
     this.audio.volume = VOLUME.DEFAULT
+  }
+
+  private _syncSystemMediaSessionExposure(): void {
+    const audio = this.audio as SystemMediaSessionAudioElement
+    const shouldDisableSystemExposure = !this._systemMediaSessionEnabled
+
+    audio.disableRemotePlayback = shouldDisableSystemExposure
+
+    if (shouldDisableSystemExposure) {
+      audio.setAttribute('disableremoteplayback', '')
+      audio.controlsList?.add('noremoteplayback')
+      return
+    }
+
+    audio.removeAttribute('disableremoteplayback')
+    audio.controlsList?.remove('noremoteplayback')
   }
 
   private _initAudioContext() {
@@ -439,6 +462,15 @@ export class PlayerCore {
 
   public getPlaybackRate() {
     return this._isDestroyed ? 1 : this.audio.playbackRate
+  }
+
+  public setSystemMediaSessionEnabled(enabled: boolean): void {
+    if (this._checkDestroyed()) {
+      return
+    }
+
+    this._systemMediaSessionEnabled = enabled
+    this._syncSystemMediaSessionExposure()
   }
 
   // Visualization Data

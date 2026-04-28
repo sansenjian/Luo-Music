@@ -3,7 +3,7 @@
 > 状态: 设计草案
 > 最后更新: 2026-04-27
 
-> 当前落地进度: 已完成插件存储命名空间、`ctx.secrets`、入站标准化、播放 URL 刷新竞态保护，以及 SMTC / 滑动封面切歌第一方拓展插件入口；完整平台登录 UI 插件化仍是后续阶段。
+> 当前落地进度: 已完成插件存储命名空间、`ctx.secrets`、入站标准化、播放 URL 刷新竞态保护，以及 SMTC / 滑动封面切歌第一方拓展插件入口；SMTC 已收口到 `useSmtcExtension()` 启动器，主进程会按插件开关启用 / 禁用 Chromium MediaSession features，停用时会 relaunch 使系统媒体面板彻底消失；完整平台登录 UI 插件化仍是后续阶段。
 
 ## 1. 目标
 
@@ -688,6 +688,9 @@ export interface PluginManifestV2Extensions {
 ### 阶段五: 功能插件化
 
 - [x] 将 Windows SMTC 暴露为 `builtin.smtc` 第一方拓展插件，由插件管理页启用 / 停用。
+- [x] `App.vue` 不再直接组合 SMTC 细节；SMTC 的 Electron 判断、插件开关、窗口归属和 MediaSession 注册已集中到 `src/extensions/smtc/useSmtcExtension.ts`。
+- [x] `builtin.smtc` 停用时会同步调用 `playerCore.setSystemMediaSessionEnabled(false)`，避免清空 metadata 后仍以浏览器默认媒体源残留到 Windows 媒体面板。
+- [x] `builtin.smtc` 开关会通过 `smtc:set-enabled` 同步到主进程；应用启动时按该状态设置 `enable-features` 或 `disable-features`，运行时开关不一致时在 Windows 下 relaunch 使 Chromium feature 状态真正生效。
 - [x] 将滑动封面切歌暴露为 `builtin.cover-swipe` 第一方拓展插件，由插件管理页启用 / 停用。
 - 将波形可视化、桌面歌词逐步迁移到第一方插件。
 - 第三方 UI 插件只开放声明式贡献点。
@@ -738,5 +741,8 @@ export interface PluginManifestV2Extensions {
 - `npm run typecheck`
 - `npm run lint`
 - `npx vitest run tests/composables/useMediaSession.test.ts tests/services/pluginService.test.ts tests/components/SettingsPanel.test.ts tests/composables/useExperimentalFeatures.test.ts tests/App.test.ts`：5 个测试文件、54 个测试通过。
+- `npx vitest run tests/composables/useMediaSession.test.ts tests/utils/player/core/playerCore.test.ts tests/App.test.ts`：3 个测试文件、107 个测试通过，覆盖 SMTC 停用时的底层 Audio 系统媒体暴露同步。
+- `npx vitest run tests/extensions/smtc/useSmtcExtension.test.ts tests/App.test.ts`：覆盖 SMTC 拓展启动器和 App 层接线。
+- `npx vitest run tests/electron/mainIndex.test.ts tests/composables/useExperimentalFeatures.test.ts tests/services/pluginService.test.ts tests/extensions/smtc/useSmtcExtension.test.ts tests/App.test.ts`：覆盖主进程 SMTC feature 默认禁用、渲染端开关同步、插件服务和启动器接线。
 - `npm run test:run`：当前环境中 `better-sqlite3` 原生模块被正在运行的 Electron 进程锁定，无法切换到 Node 测试运行时。
 - `npx vitest run`：180 个测试文件通过；`tests/electron/localLibrary.repository.test.ts` 和 `tests/electron/localLibrary.service.test.ts` 因 `better-sqlite3.node` 的 Node / Electron ABI 不匹配失败，需关闭 Electron 后重新执行 `npm run test:run` 让脚本恢复原生模块。

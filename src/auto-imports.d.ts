@@ -425,10 +425,7 @@ declare global {
   } from './composables/useDockedPlayerBarLayout'
   import('./composables/useDockedPlayerBarLayout')
   // @ts-ignore
-  export type {
-    ExperimentalFeaturesState,
-    ExperimentalFeaturesDeps
-  } from './composables/useExperimentalFeatures'
+  export type { ExperimentalFeaturesDeps } from './composables/useExperimentalFeatures'
   import('./composables/useExperimentalFeatures')
   // @ts-ignore
   export type { FavoriteAlbumItem, UseFavoriteAlbumsReturn } from './composables/useFavoriteAlbums'

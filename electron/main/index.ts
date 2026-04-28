@@ -6,7 +6,7 @@
  */
 
 import 'dotenv/config'
-import { app, BrowserWindow } from 'electron'
+import { BrowserWindow } from 'electron'
 import { desktopLyricManager } from '../DesktopLyricManager'
 import { downloadManager } from '../DownloadManager'
 import { windowManager } from '../WindowManager'
@@ -34,7 +34,8 @@ import {
   registerLyricHandlers,
   registerLogHandlers,
   registerLocalLibraryHandlers,
-  registerPluginHandlers
+  registerPluginHandlers,
+  registerSmtcHandlers
 } from '../ipc/index'
 
 import {
@@ -50,6 +51,7 @@ import {
   unregisterAllShortcuts,
   setWindowManager as setShortcutsWindowManager
 } from './shortcuts'
+import { configureSmtcCommandLine } from './smtc'
 import { DEFAULT_SHORTCUTS } from '../../src/config/shortcuts'
 import { NETEASE_API_PORT, QQ_API_PORT } from '@/platform/contracts/protocol/cache'
 
@@ -59,7 +61,7 @@ console.warn = logger.warn.bind(logger)
 console.info = logger.info.bind(logger)
 
 registerPrivilegedLocalMediaScheme()
-app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaSessionService')
+configureSmtcCommandLine()
 
 const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
   services: {
@@ -131,6 +133,7 @@ function initializeIpcService(currentPluginCatalog: PluginCatalog): void {
   registerLogHandlers()
   registerLocalLibraryHandlers(windowManager)
   registerPluginHandlers(currentPluginCatalog)
+  registerSmtcHandlers()
 
   ipcService.initialize()
 

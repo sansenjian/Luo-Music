@@ -8,10 +8,7 @@ const routeState = vi.hoisted(() => ({
   name: 'Home' as string | undefined
 }))
 
-const smtcEnabled = vi.hoisted(() => ({
-  value: true
-}))
-const useMediaSessionMock = vi.hoisted(() => vi.fn())
+const useSmtcExtensionMock = vi.hoisted(() => vi.fn())
 const storageGetJSONMock = vi.hoisted(() => vi.fn(() => null))
 const storageGetItemMock = vi.hoisted(() => vi.fn(() => null))
 const storageSetJSONMock = vi.hoisted(() => vi.fn())
@@ -24,14 +21,9 @@ vi.mock('@/composables/useCommandContext', () => ({
   useCommandContext: vi.fn()
 }))
 
-vi.mock('@/composables/useExperimentalFeatures', () => ({
-  useExperimentalFeatures: () => ({
-    smtcEnabled
-  })
-}))
-
-vi.mock('@/composables/useMediaSession', () => ({
-  useMediaSession: useMediaSessionMock
+vi.mock('@/extensions/smtc/useSmtcExtension', () => ({
+  DESKTOP_LYRIC_ROUTE_PATH: '/desktop-lyric',
+  useSmtcExtension: useSmtcExtensionMock
 }))
 
 vi.mock('@/composables/useRenderStyle', () => ({
@@ -62,38 +54,27 @@ function mountApp() {
   })
 }
 
-describe('App media session ownership', () => {
+describe('App extension wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.path = '/'
     routeState.name = 'Home'
-    smtcEnabled.value = true
     window.location.hash = '#/'
   })
 
-  it('enables media session in the main window', () => {
+  it('starts first-party SMTC extension wiring during app setup', () => {
     mountApp()
 
-    expect(useMediaSessionMock).toHaveBeenCalledTimes(1)
-
-    const options = useMediaSessionMock.mock.calls[0]?.[0] as {
-      enabled: () => boolean
-    }
-
-    expect(options.enabled()).toBe(true)
+    expect(useSmtcExtensionMock).toHaveBeenCalledTimes(1)
   })
 
-  it('disables media session in the desktop lyric window', () => {
+  it('does not render the resize frame in the desktop lyric window', () => {
     routeState.path = '/desktop-lyric'
     routeState.name = 'DesktopLyric'
     window.location.hash = '#/desktop-lyric'
 
-    mountApp()
+    const wrapper = mountApp()
 
-    const options = useMediaSessionMock.mock.calls[0]?.[0] as {
-      enabled: () => boolean
-    }
-
-    expect(options.enabled()).toBe(false)
+    expect(wrapper.find('.window-resize-frame').exists()).toBe(false)
   })
 })

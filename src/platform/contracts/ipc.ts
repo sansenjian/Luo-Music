@@ -367,6 +367,12 @@ type InvokeChannelsDefinition = MergeChannels<
       [platformId: string, method: PluginMethodName, payload: unknown],
       unknown
     > &
+    // 第一方拓展运行时
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.SMTC_SET_ENABLED,
+      [enabled: boolean],
+      { restartRequired: boolean }
+    > &
     // API 服务
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_SEARCH,

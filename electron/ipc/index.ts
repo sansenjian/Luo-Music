@@ -50,6 +50,7 @@ export { registerLyricHandlers } from './handlers/lyric.handler'
 export { registerLogHandlers } from './handlers/log.handler'
 export { registerLocalLibraryHandlers } from './handlers/localLibrary.handler'
 export { registerPluginHandlers } from './handlers/plugin.handler'
+export { registerSmtcHandlers } from './handlers/smtc.handler'
 
 // 工具
 export {

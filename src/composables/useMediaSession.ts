@@ -35,6 +35,9 @@ export type MediaSessionDeps = {
   playerStore?: PlayerStoreLike
   playerService?: Pick<PlayerService, 'play' | 'pause'>
   platformService?: Pick<PlatformService, 'getLocalLibraryCover' | 'isElectron'>
+  systemMediaSessionController?: {
+    setSystemMediaSessionEnabled(enabled: boolean): void
+  }
   getMediaSession?: () => MediaSessionLike | null
   createMetadata?: (init: MediaMetadataInit) => MediaMetadata | MediaMetadataInit
   resolveArtworkUrl?: (song: Song) => Promise<string>
@@ -110,6 +113,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   const playerStore = deps.playerStore ?? usePlayerStore()
   const playerService = deps.playerService ?? services.player()
   const platformService = deps.platformService ?? services.platform()
+  const systemMediaSessionController = deps.systemMediaSessionController
   const maybeMediaSession = (deps.getMediaSession ?? getDefaultMediaSession)()
   const createMetadata =
     deps.createMetadata ?? ((init: MediaMetadataInit) => new MediaMetadata(init))
@@ -131,7 +135,32 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
       return normalizeArtworkUrl(song.album.picUrl)
     })
 
-  if (!maybeMediaSession || !platformService.isElectron()) {
+  if (!platformService.isElectron()) {
+    return
+  }
+
+  function setSystemMediaSessionEnabled(enabled: boolean): void {
+    try {
+      systemMediaSessionController?.setSystemMediaSessionEnabled(enabled)
+    } catch (error) {
+      console.warn('[MediaSession] Failed to update system media exposure', error)
+    }
+  }
+
+  if (!maybeMediaSession) {
+    const stopEnabledWatcher = watch(
+      () => enabled(),
+      nextEnabled => {
+        setSystemMediaSessionEnabled(nextEnabled)
+      },
+      { immediate: true }
+    )
+
+    onUnmounted(() => {
+      stopEnabledWatcher()
+      setSystemMediaSessionEnabled(false)
+    })
+
     return
   }
 
@@ -373,11 +402,13 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     () => enabled(),
     nextEnabled => {
       if (nextEnabled) {
+        setSystemMediaSessionEnabled(true)
         activateSession()
         return
       }
 
       cleanupSession()
+      setSystemMediaSessionEnabled(false)
     },
     { immediate: true }
   )
@@ -455,5 +486,6 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     stopPlaybackLifecycleWatcher()
     stopProgressWatcher()
     cleanupSession()
+    setSystemMediaSessionEnabled(false)
   })
 }

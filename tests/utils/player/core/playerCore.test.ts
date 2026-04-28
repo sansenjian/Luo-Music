@@ -12,6 +12,8 @@ type MockAudioElement = Omit<
   ended: boolean
   duration: number
   buffered: TimeRanges
+  disableRemotePlayback: boolean
+  controlsList: Pick<DOMTokenList, 'contains'>
   trigger: (event: string, payload: Event) => void
 }
 
@@ -123,6 +125,14 @@ describe('PlayerCore', () => {
       const { audio } = getInternals(player)
       expect(audio.crossOrigin).toBeNull()
       expect(audio.getAttribute('crossorigin')).toBeNull()
+    })
+
+    it('should keep native system media exposure enabled by default', () => {
+      const { audio } = getInternals(player)
+
+      expect(audio.disableRemotePlayback).toBe(false)
+      expect(audio.getAttribute('disableremoteplayback')).toBeNull()
+      expect(audio.controlsList.contains('noremoteplayback')).toBe(false)
     })
 
     it('should not initialize audio context during plain playback', async () => {
@@ -382,6 +392,24 @@ describe('PlayerCore', () => {
       player.setPlaybackRate(2)
       // ratechange is emitted by the audio element mock
       expect(callback).toHaveBeenCalled()
+    })
+  })
+
+  describe('system media session exposure', () => {
+    it('disables and restores native media exposure on the audio element', () => {
+      const { audio } = getInternals(player)
+
+      player.setSystemMediaSessionEnabled(false)
+
+      expect(audio.disableRemotePlayback).toBe(true)
+      expect(audio.getAttribute('disableremoteplayback')).toBe('')
+      expect(audio.controlsList.contains('noremoteplayback')).toBe(true)
+
+      player.setSystemMediaSessionEnabled(true)
+
+      expect(audio.disableRemotePlayback).toBe(false)
+      expect(audio.getAttribute('disableremoteplayback')).toBeNull()
+      expect(audio.controlsList.contains('noremoteplayback')).toBe(false)
     })
   })
 

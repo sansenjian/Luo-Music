@@ -146,6 +146,9 @@ describe('useMediaSession', () => {
     playerStore.duration = 180
 
     const { mediaSession, handlers } = createMediaSessionMock()
+    const systemMediaSessionController = {
+      setSystemMediaSessionEnabled: vi.fn()
+    }
 
     const { wrapper } = mountComposable(() =>
       useMediaSession({
@@ -159,6 +162,7 @@ describe('useMediaSession', () => {
           isElectron: () => true,
           getLocalLibraryCover: vi.fn()
         },
+        systemMediaSessionController,
         getMediaSession: () => mediaSession,
         createMetadata: init => init
       })
@@ -166,10 +170,15 @@ describe('useMediaSession', () => {
 
     await flushPromises()
 
+    expect(systemMediaSessionController.setSystemMediaSessionEnabled).toHaveBeenCalledWith(true)
+
     enabled.value = false
     await nextTick()
     await flushPromises()
 
+    expect(systemMediaSessionController.setSystemMediaSessionEnabled).toHaveBeenLastCalledWith(
+      false
+    )
     expect(mediaSession.metadata).toBeNull()
     expect(mediaSession.playbackState).toBe('none')
     expect(mediaSession.setPositionState).toHaveBeenLastCalledWith()
@@ -191,6 +200,7 @@ describe('useMediaSession', () => {
     await nextTick()
     await flushPromises()
 
+    expect(systemMediaSessionController.setSystemMediaSessionEnabled).toHaveBeenLastCalledWith(true)
     expect(mediaSession.metadata).toMatchObject({
       title: 'Track 1',
       artwork: [
@@ -209,6 +219,9 @@ describe('useMediaSession', () => {
     expect(handlers.pause).toEqual(expect.any(Function))
 
     wrapper.unmount()
+    expect(systemMediaSessionController.setSystemMediaSessionEnabled).toHaveBeenLastCalledWith(
+      false
+    )
   })
 
   it('resolves local cover hashes through the cover cache as data urls', async () => {

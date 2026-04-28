@@ -4,9 +4,8 @@ import { useRoute } from 'vue-router'
 
 import WindowResizeFrame from './components/window/WindowResizeFrame.vue'
 import { useCommandContext } from './composables/useCommandContext'
-import { useExperimentalFeatures } from './composables/useExperimentalFeatures'
-import { useMediaSession } from './composables/useMediaSession'
 import { useRenderStyle } from './composables/useRenderStyle'
+import { DESKTOP_LYRIC_ROUTE_PATH, useSmtcExtension } from './extensions/smtc/useSmtcExtension'
 import { services } from './services'
 import { PLAYER_STORAGE_KEY, sanitizePersistedPlayerState } from './utils/storage/appStorage'
 
@@ -18,24 +17,10 @@ const route = useRoute()
 const Analytics = defineAsyncComponent(() =>
   import('@vercel/analytics/vue').then(module => module.Analytics)
 )
-const DESKTOP_LYRIC_ROUTE_PATH = '/desktop-lyric'
-const { smtcEnabled } = useExperimentalFeatures()
-const mediaSessionEnabled = computed(() => {
-  // The hidden desktop-lyric window preloads the full renderer app as well.
-  // Only the primary window should own the Windows media session.
-  const isDesktopLyricWindow =
-    route.path === DESKTOP_LYRIC_ROUTE_PATH ||
-    (typeof window !== 'undefined' &&
-      window.location.hash.startsWith(`#${DESKTOP_LYRIC_ROUTE_PATH}`))
-
-  return smtcEnabled.value && !isDesktopLyricWindow
-})
 const showWindowResizeFrame = computed(() => isElectron && route.path !== DESKTOP_LYRIC_ROUTE_PATH)
 
 useCommandContext()
-useMediaSession({
-  enabled: () => mediaSessionEnabled.value
-})
+useSmtcExtension()
 useRenderStyle()
 
 function scheduleIdle(task: () => void): void {

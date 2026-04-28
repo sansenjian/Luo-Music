@@ -10,14 +10,25 @@ export class MockAudio {
   src: string = ''
   readyState: number = 0
   crossOrigin: string | null = null
+  disableRemotePlayback: boolean = false
   muted: boolean = false
   loop: boolean = false
   private _playbackRate: number = 1
   private _events: EventMap = {}
   buffered: TimeRanges = { length: 0 } as TimeRanges
+  controlsList = {
+    add: (...tokens: string[]) => {
+      tokens.forEach(token => this._controlsListTokens.add(token))
+    },
+    remove: (...tokens: string[]) => {
+      tokens.forEach(token => this._controlsListTokens.delete(token))
+    },
+    contains: (token: string) => this._controlsListTokens.has(token)
+  }
 
   // Mock attributes
   private _attributes: Record<string, string> = {}
+  private _controlsListTokens = new Set<string>()
 
   get playbackRate(): number {
     return this._playbackRate
@@ -82,7 +93,7 @@ export class MockAudio {
   }
 
   getAttribute(name: string): string | null {
-    return this._attributes[name] || null
+    return this._attributes[name] ?? null
   }
 
   // Helper to trigger events (private for internal use)

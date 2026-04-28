@@ -43,9 +43,13 @@ describe('useExperimentalFeatures', () => {
     const { store, storageService } = createStorageServiceMock({
       experimentalFeatures: { smtcEnabled: true, waveformEnabled: false, coverSwipeEnabled: false }
     })
+    const smtcMainBridge = {
+      setEnabled: vi.fn()
+    }
 
     const { experimentalFeatures, smtcEnabled, setSMTCEnabled } = useExperimentalFeatures({
-      storageService
+      storageService,
+      smtcMainBridge
     })
 
     expect(experimentalFeatures.value).toEqual({
@@ -54,6 +58,7 @@ describe('useExperimentalFeatures', () => {
       coverSwipeEnabled: false
     })
     expect(smtcEnabled.value).toBe(true)
+    expect(smtcMainBridge.setEnabled).toHaveBeenCalledWith(true)
 
     setSMTCEnabled(false)
 
@@ -62,6 +67,7 @@ describe('useExperimentalFeatures', () => {
       waveformEnabled: false,
       coverSwipeEnabled: false
     })
+    expect(smtcMainBridge.setEnabled).toHaveBeenLastCalledWith(false)
     expect(JSON.parse(store.get('experimentalFeatures') ?? 'null')).toEqual({
       smtcEnabled: false,
       waveformEnabled: false,

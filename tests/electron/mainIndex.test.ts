@@ -46,6 +46,11 @@ const registerLyricHandlersMock = vi.hoisted(() => vi.fn())
 const registerLogHandlersMock = vi.hoisted(() => vi.fn())
 const registerLocalLibraryHandlersMock = vi.hoisted(() => vi.fn())
 const registerPluginHandlersMock = vi.hoisted(() => vi.fn())
+const registerSmtcHandlersMock = vi.hoisted(() => vi.fn())
+const electronStoreGetMock = vi.hoisted(() =>
+  vi.fn((key: string, defaultValue?: unknown) => defaultValue)
+)
+const electronStoreSetMock = vi.hoisted(() => vi.fn())
 
 let lifecycleCallbacks: AppLifecycleCallbacks | undefined
 let resolveInitializeServices: (() => void) | undefined
@@ -58,6 +63,20 @@ vi.mock('electron', () => ({
   app: {
     commandLine: {
       appendSwitch: vi.fn()
+    },
+    relaunch: vi.fn(),
+    exit: vi.fn()
+  }
+}))
+
+vi.mock('electron-store', () => ({
+  default: class {
+    get<T>(key: string, defaultValue?: T): T {
+      return electronStoreGetMock(key, defaultValue) as T
+    }
+
+    set(key: string, value: unknown): void {
+      electronStoreSetMock(key, value)
     }
   }
 }))
@@ -135,7 +154,8 @@ vi.mock('../../electron/ipc/index', () => ({
   registerLyricHandlers: registerLyricHandlersMock,
   registerLogHandlers: registerLogHandlersMock,
   registerLocalLibraryHandlers: registerLocalLibraryHandlersMock,
-  registerPluginHandlers: registerPluginHandlersMock
+  registerPluginHandlers: registerPluginHandlersMock,
+  registerSmtcHandlers: registerSmtcHandlersMock
 }))
 
 vi.mock('../../electron/main/app', () => ({
@@ -177,6 +197,8 @@ describe('electron/main/index', () => {
     lifecycleCallbacks = undefined
     serviceWarmupResolved = false
     resolveInitializeServices = undefined
+    electronStoreGetMock.mockImplementation((_key: string, defaultValue?: unknown) => defaultValue)
+    electronStoreSetMock.mockClear()
 
     getWindowMock.mockReturnValue({
       webContents: {
@@ -209,14 +231,14 @@ describe('electron/main/index', () => {
     expect(lifecycleCallbacks?.onReady).toBeTypeOf('function')
   })
 
-  it('enables HardwareMediaKeyHandling and MediaSessionService for SMTC support', async () => {
+  it('disables Chromium media session features when SMTC is off by default', async () => {
     const electron = await import('electron')
     const appendSwitchMock = vi.mocked(electron.app.commandLine.appendSwitch)
 
     await import('../../electron/main/index.ts')
 
     expect(appendSwitchMock).toHaveBeenCalledWith(
-      'enable-features',
+      'disable-features',
       'HardwareMediaKeyHandling,MediaSessionService'
     )
   })
@@ -237,6 +259,7 @@ describe('electron/main/index', () => {
     expect(createWindowMock).toHaveBeenCalledTimes(1)
     expect(createTrayMock).toHaveBeenCalledTimes(1)
     expect(registerShortcutsMock).toHaveBeenCalledTimes(1)
+    expect(registerSmtcHandlersMock).toHaveBeenCalledTimes(1)
     expect(initializeServicesMock.mock.invocationCallOrder[0]).toBeLessThan(
       createWindowMock.mock.invocationCallOrder[0]
     )
