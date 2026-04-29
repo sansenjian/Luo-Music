@@ -12,6 +12,47 @@ function parseArgs(argv) {
   }
 }
 
+function formatDuration(ms) {
+  if (ms < 1000) {
+    return `${ms}ms`
+  }
+
+  return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)}s`
+}
+
+function logTiming(label, startedAt, totalStartedAt) {
+  const elapsed = Date.now() - startedAt
+  const total = Date.now() - totalStartedAt
+  console.log(
+    `[rebuild-native-electron:timing] ${label}: ${formatDuration(elapsed)} (total ${formatDuration(total)})`
+  )
+  return elapsed
+}
+
+function measureSync(label, totalStartedAt, action) {
+  const startedAt = Date.now()
+  try {
+    const result = action()
+    logTiming(label, startedAt, totalStartedAt)
+    return result
+  } catch (error) {
+    logTiming(`${label} failed`, startedAt, totalStartedAt)
+    throw error
+  }
+}
+
+async function measure(label, totalStartedAt, action) {
+  const startedAt = Date.now()
+  try {
+    const result = await action()
+    logTiming(label, startedAt, totalStartedAt)
+    return result
+  } catch (error) {
+    logTiming(`${label} failed`, startedAt, totalStartedAt)
+    throw error
+  }
+}
+
 function ensureNoProjectElectronProcesses() {
   const processes = getProjectScopedWindowsProcesses()
   if (processes.length === 0) {
@@ -96,12 +137,14 @@ function shouldSkipRebuild({ expectedStamp, force, modulePath }) {
 }
 
 async function main() {
+  const startedAt = Date.now()
   const { force } = parseArgs(process.argv.slice(2))
   let rebuild
   try {
     ;({ rebuild } = require('@electron/rebuild'))
   } catch (error) {
     console.log('[rebuild-native-electron] @electron/rebuild not available, skipping')
+    console.log(`[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`)
     return
   }
 
@@ -110,6 +153,7 @@ async function main() {
     require.resolve(modulePath)
   } catch {
     console.log('[rebuild-native-electron] better-sqlite3 not installed, skipping')
+    console.log(`[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`)
     return
   }
 
@@ -130,31 +174,40 @@ async function main() {
 
   const expectedStamp = createRebuildStamp({ electronVersion, moduleVersion })
 
-  if (shouldSkipRebuild({ expectedStamp, force, modulePath })) {
+  const skipRebuild = measureSync('check native rebuild stamp', startedAt, () =>
+    shouldSkipRebuild({ expectedStamp, force, modulePath })
+  )
+  if (skipRebuild) {
     console.log(
       `[rebuild-native-electron] ${moduleName} already rebuilt for Electron ${electronVersion}; skipping`
     )
+    console.log(`[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`)
     return
   }
 
-  ensureNoProjectElectronProcesses()
+  measureSync('check running Electron processes', startedAt, ensureNoProjectElectronProcesses)
 
   console.log(`[rebuild-native-electron] rebuilding ${moduleName} for Electron`)
-  await rebuild({
-    buildPath: projectRoot,
-    electronVersion,
-    force: true,
-    onlyModules: [moduleName]
-  })
-  writeJsonFile(
-    stampFile,
-    createRebuildStamp({
+  await measure('electron rebuild better-sqlite3', startedAt, () =>
+    rebuild({
+      buildPath: projectRoot,
       electronVersion,
-      moduleVersion,
-      nativeBinaryFingerprint: getNativeBinaryFingerprint(modulePath)
+      force: true,
+      onlyModules: [moduleName]
     })
   )
+  measureSync('write native rebuild stamp', startedAt, () => {
+    writeJsonFile(
+      stampFile,
+      createRebuildStamp({
+        electronVersion,
+        moduleVersion,
+        nativeBinaryFingerprint: getNativeBinaryFingerprint(modulePath)
+      })
+    )
+  })
   console.log('[rebuild-native-electron] rebuild complete')
+  console.log(`[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`)
 }
 
 if (require.main === module) {

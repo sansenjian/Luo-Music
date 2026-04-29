@@ -483,6 +483,7 @@ declare global {
   // @ts-ignore
   export type {
     ThemeResourcePacksState,
+    ThemeResourcePackDescriptor,
     ThemeResourcePacksDeps
   } from './composables/useThemeResourcePacks'
   import('./composables/useThemeResourcePacks')

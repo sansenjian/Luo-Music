@@ -56,6 +56,11 @@ let lifecycleCallbacks: AppLifecycleCallbacks | undefined
 let resolveInitializeServices: (() => void) | undefined
 let serviceWarmupResolved = false
 
+async function flushBackgroundStartup(): Promise<void> {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
 vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: vi.fn(() => [])
@@ -243,26 +248,26 @@ describe('electron/main/index', () => {
     )
   })
 
-  it('waits for service warmup before creating the window', async () => {
+  it('starts service warmup without blocking window creation', async () => {
     await import('../../electron/main/index.ts')
 
-    const readyPromise = lifecycleCallbacks?.onReady?.()
+    const readyResult = lifecycleCallbacks?.onReady?.()
+    await readyResult
 
     expect(initializeServicesMock).toHaveBeenCalledTimes(1)
-    expect(createWindowMock).not.toHaveBeenCalled()
-    expect(serviceWarmupResolved).toBe(false)
-
-    resolveInitializeServices?.()
-    await readyPromise
-
-    expect(getAllServiceStatusMock).toHaveBeenCalledTimes(1)
     expect(createWindowMock).toHaveBeenCalledTimes(1)
+    expect(serviceWarmupResolved).toBe(false)
     expect(createTrayMock).toHaveBeenCalledTimes(1)
     expect(registerShortcutsMock).toHaveBeenCalledTimes(1)
     expect(registerSmtcHandlersMock).toHaveBeenCalledTimes(1)
     expect(initializeServicesMock.mock.invocationCallOrder[0]).toBeLessThan(
       createWindowMock.mock.invocationCallOrder[0]
     )
+
+    resolveInitializeServices?.()
+    await flushBackgroundStartup()
+
+    expect(getAllServiceStatusMock).toHaveBeenCalledTimes(1)
   })
 
   it('cleans up desktop lyric window and tray when the app quits', async () => {

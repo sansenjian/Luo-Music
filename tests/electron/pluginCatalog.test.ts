@@ -138,7 +138,19 @@ describe('electron/plugins/PluginCatalog', () => {
       const reg = makeRegistration('theme-pack', {
         manifest: {
           ...base.manifest,
-          category: 'theme'
+          category: 'theme',
+          contributions: {
+            themeResources: [
+              {
+                id: 'theme-pack.ocean',
+                label: 'Ocean',
+                renderStyle: 'theme-pack.ocean',
+                cssVariables: {
+                  '--accent': '#006d77'
+                }
+              }
+            ]
+          }
         }
       })
       mockListPlatforms.mockResolvedValue([reg])
@@ -147,7 +159,14 @@ describe('electron/plugins/PluginCatalog', () => {
       const platforms = await catalog.listPlatforms()
 
       expect(platforms.find(p => p.id === 'theme-pack')).toMatchObject({
-        category: 'theme'
+        category: 'theme',
+        themeResources: [
+          expect.objectContaining({
+            id: 'theme-pack.ocean',
+            label: 'Ocean',
+            renderStyle: 'theme-pack.ocean'
+          })
+        ]
       })
     })
   })

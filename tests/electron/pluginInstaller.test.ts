@@ -116,6 +116,51 @@ describe('PluginInstaller', () => {
       expect(installedEntry).toBe('export default {}')
     })
 
+    it('installs a valid theme plugin with theme resource contributions', async () => {
+      const sourceDir = path.join(tempRoot, 'theme-plugin')
+      await writePlugin(sourceDir, {
+        ...VALID_MANIFEST,
+        id: 'com.example.theme',
+        name: 'Theme',
+        category: 'theme',
+        platformId: 'theme',
+        capabilities: {
+          search: false,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false
+        },
+        contributions: {
+          themeResources: [
+            {
+              id: 'com.example.theme.ocean',
+              label: 'Ocean',
+              renderStyle: 'example.ocean',
+              cssVariables: {
+                '--accent': '#006d77'
+              }
+            }
+          ]
+        }
+      })
+
+      const installer = await createInstaller()
+      const result = await installer.installFromPath(sourceDir)
+
+      expect(result.manifest.category).toBe('theme')
+      expect(result.manifest.contributions?.themeResources).toEqual([
+        expect.objectContaining({
+          id: 'com.example.theme.ocean',
+          label: 'Ocean',
+          renderStyle: 'example.ocean'
+        })
+      ])
+    })
+
     it('installs when given a path directly to manifest.json', async () => {
       const sourceDir = path.join(tempRoot, 'manifest-plugin')
       await writePlugin(sourceDir)

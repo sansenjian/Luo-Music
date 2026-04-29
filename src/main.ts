@@ -15,6 +15,7 @@ const sentryRelease = import.meta.env.SENTRY_RELEASE
 const sentryTracingEnabled = import.meta.env.SENTRY_TRACING_ENABLED === '1'
 const sentryReplayEnabled = import.meta.env.SENTRY_REPLAY_ENABLED === '1'
 const canLoadRendererSentry = import.meta.env.APP_RUNTIME === 'electron'
+const rendererStartedAt = performance.now()
 const isLocalhost =
   typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -29,6 +30,24 @@ type SentryRendererModule = typeof import('./utils/monitoring/sentryRenderer')
 
 let sentryRendererModule: SentryRendererModule | null = null
 let sentryRendererModulePromise: Promise<SentryRendererModule> | null = null
+
+function formatStartupDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${Math.round(ms)}ms`
+  }
+
+  return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)}s`
+}
+
+function logRendererStartup(label: string): void {
+  if (!import.meta.env.DEV) {
+    return
+  }
+
+  console.info(
+    `[RendererStartup] ${label}: ${formatStartupDuration(performance.now() - rendererStartedAt)}`
+  )
+}
 
 async function loadRendererSentryModule(): Promise<SentryRendererModule> {
   if (sentryRendererModule) {
@@ -109,6 +128,8 @@ const app = createApp(App)
 let vueQueryPluginInstalled = false
 let vueQueryPluginPromise: Promise<void> | null = null
 
+logRendererStartup('entry loaded')
+
 function routeRequiresVueQuery(route: RouteLocationNormalized): boolean {
   return route.matched.some(record => record.meta.requiresVueQuery === true)
 }
@@ -150,6 +171,7 @@ router.beforeResolve(async to => {
 })
 
 setupServices()
+logRendererStartup('services setup')
 
 app.config.errorHandler = (err: unknown, _vm: unknown, info: string) => {
   getLogger().error('Main', 'Vue Error', { error: err, info })
@@ -172,8 +194,10 @@ app.use(pinia)
 app.use(router)
 
 app.mount('#app')
+logRendererStartup('app mounted')
 
 scheduleNonCriticalInit(async () => {
+  const nonCriticalStartedAt = performance.now()
   const tasks: Array<Promise<void>> = []
 
   if (canLoadRendererSentry) {
@@ -194,4 +218,11 @@ scheduleNonCriticalInit(async () => {
   }
 
   await Promise.all(tasks)
+  if (import.meta.env.DEV) {
+    console.info(
+      `[RendererStartup] non-critical init: ${formatStartupDuration(
+        performance.now() - nonCriticalStartedAt
+      )} (total ${formatStartupDuration(performance.now() - rendererStartedAt)})`
+    )
+  }
 })

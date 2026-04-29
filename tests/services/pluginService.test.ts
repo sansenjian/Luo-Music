@@ -46,13 +46,14 @@ const themeResourcePacksMock = vi.hoisted(() => {
   }
 })
 const renderStyleMock = vi.hoisted(() => {
-  const renderStyle = { value: 'classic' as 'classic' | 'brand' }
+  const renderStyle = { value: 'classic' as string }
 
   return {
     renderStyle,
-    setRenderStyle: vi.fn((next: 'classic' | 'brand') => {
+    setRenderStyle: vi.fn((next: string) => {
       renderStyle.value = next
-    })
+    }),
+    ensureAvailableRenderStyle: vi.fn()
   }
 })
 

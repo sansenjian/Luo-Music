@@ -1,18 +1,29 @@
 import { computed, readonly, ref } from 'vue'
 
+import type { PluginThemeResource } from '@plugin-sdk'
+import { getPlatformDescriptors, type PlatformDescriptor } from '@/platform/music/descriptors'
 import { services } from '@/services'
 import type { StorageService } from '@/services/storageService'
 import type { RenderStyle } from '@/composables/useRenderStyle'
 import {
   BUILTIN_BRAND_THEME_PLUGIN_ID,
-  PROJECT_RENDER_STYLE_OPTIONS,
+  DEFAULT_RENDER_STYLE,
+  PROJECT_DEFAULT_RENDER_STYLE_OPTION,
   PROJECT_THEME_RESOURCE_PACKS,
   THEME_RESOURCE_PACKS_STORAGE_KEY,
+  type ProjectRenderStyleOption,
   type ThemeResourcePackId
 } from '@/ui/projectUi'
 
 export type ThemeResourcePacksState = {
   enabledThemeResourcePackIds: ThemeResourcePackId[]
+}
+
+export interface ThemeResourcePackDescriptor extends PluginThemeResource {
+  pluginId: string
+  source: PlatformDescriptor['source']
+  enabled: boolean
+  status?: PlatformDescriptor['status']
 }
 
 const DEFAULT_THEME_RESOURCE_PACKS: ThemeResourcePacksState = {
@@ -22,6 +33,7 @@ const DEFAULT_THEME_RESOURCE_PACKS: ThemeResourcePacksState = {
 const themeResourcePacksState = ref<ThemeResourcePacksState>({
   ...DEFAULT_THEME_RESOURCE_PACKS
 })
+const activeThemeVariableKeys = new Set<string>()
 let isThemeResourcePacksInitialized = false
 
 type ThemeResourcePackStorage = Pick<StorageService, 'getJSON' | 'setJSON' | 'getItem'>
@@ -30,12 +42,8 @@ export type ThemeResourcePacksDeps = {
   storageService?: ThemeResourcePackStorage
 }
 
-const VALID_THEME_RESOURCE_PACK_IDS = new Set(PROJECT_THEME_RESOURCE_PACKS.map(pack => pack.id))
-
 function isThemeResourcePackId(value: unknown): value is ThemeResourcePackId {
-  return (
-    typeof value === 'string' && VALID_THEME_RESOURCE_PACK_IDS.has(value as ThemeResourcePackId)
-  )
+  return typeof value === 'string' && value.trim().length > 0
 }
 
 function createThemeResourcePacksState(
@@ -83,6 +91,102 @@ function getDefaultThemeResourcePacks(
   )
 }
 
+function getFirstPartyThemeResourcePacks(): ThemeResourcePackDescriptor[] {
+  return PROJECT_THEME_RESOURCE_PACKS.map(themeResourcePack => ({
+    ...themeResourcePack,
+    pluginId: themeResourcePack.id,
+    source: 'builtin',
+    enabled: themeResourcePacksState.value.enabledThemeResourcePackIds.includes(
+      themeResourcePack.id
+    ),
+    status: themeResourcePacksState.value.enabledThemeResourcePackIds.includes(themeResourcePack.id)
+      ? 'ready'
+      : 'disabled'
+  }))
+}
+
+function getDescriptorThemeResourcePacks(): ThemeResourcePackDescriptor[] {
+  return getPlatformDescriptors().flatMap(platform =>
+    (platform.themeResources ?? []).map(themeResourcePack => ({
+      ...themeResourcePack,
+      pluginId: platform.id,
+      source: platform.source,
+      enabled: platform.enabled,
+      status: platform.status
+    }))
+  )
+}
+
+function getThemeResourcePacks(): ThemeResourcePackDescriptor[] {
+  const resourcesById = new Map<string, ThemeResourcePackDescriptor>()
+
+  for (const resource of getFirstPartyThemeResourcePacks()) {
+    resourcesById.set(resource.id, resource)
+  }
+
+  for (const resource of getDescriptorThemeResourcePacks()) {
+    resourcesById.set(resource.id, resource)
+  }
+
+  return Array.from(resourcesById.values())
+}
+
+function getEnabledThemeResourcePackByRenderStyle(
+  style: RenderStyle
+): ThemeResourcePackDescriptor | undefined {
+  const resources = getThemeResourcePacks().filter(
+    resource => resource.enabled && resource.renderStyle === style
+  )
+
+  return resources.find(resource => resource.source === 'external') ?? resources[0]
+}
+
+function getRenderStyleOptions(): ProjectRenderStyleOption[] {
+  const optionsByStyle = new Map<RenderStyle, ProjectRenderStyleOption>([
+    [PROJECT_DEFAULT_RENDER_STYLE_OPTION.value, PROJECT_DEFAULT_RENDER_STYLE_OPTION]
+  ])
+
+  for (const resource of getThemeResourcePacks()) {
+    if (!resource.enabled) {
+      continue
+    }
+
+    optionsByStyle.set(resource.renderStyle, {
+      value: resource.renderStyle,
+      label: resource.label,
+      themeResourcePackId: resource.id
+    })
+  }
+
+  return Array.from(optionsByStyle.values())
+}
+
+function isCssVariableName(value: string): boolean {
+  return /^--[a-z0-9-_]+$/i.test(value)
+}
+
+function applyThemeResourceVariables(themeResourcePack?: PluginThemeResource): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  const rootStyle = document.documentElement.style
+
+  for (const key of activeThemeVariableKeys) {
+    rootStyle.removeProperty(key)
+  }
+  activeThemeVariableKeys.clear()
+
+  for (const [key, value] of Object.entries(themeResourcePack?.cssVariables ?? {})) {
+    if (!isCssVariableName(key)) {
+      continue
+    }
+
+    rootStyle.setProperty(key, value)
+    activeThemeVariableKeys.add(key)
+  }
+}
+
 export function useThemeResourcePacks(deps: ThemeResourcePacksDeps = {}) {
   const storageService = deps.storageService ?? services.storage()
 
@@ -102,7 +206,9 @@ export function useThemeResourcePacks(deps: ThemeResourcePacksDeps = {}) {
   }
 
   function isThemeResourcePackEnabled(themeResourcePackId: ThemeResourcePackId): boolean {
-    return themeResourcePacksState.value.enabledThemeResourcePackIds.includes(themeResourcePackId)
+    return Boolean(
+      getThemeResourcePacks().find(resource => resource.id === themeResourcePackId)?.enabled
+    )
   }
 
   function setThemeResourcePackEnabled(
@@ -121,21 +227,25 @@ export function useThemeResourcePacks(deps: ThemeResourcePacksDeps = {}) {
   }
 
   function isRenderStyleAvailable(style: RenderStyle): boolean {
-    const option = PROJECT_RENDER_STYLE_OPTIONS.find(renderStyle => renderStyle.value === style)
-
-    return Boolean(
-      option &&
-      (!option.themeResourcePackId || isThemeResourcePackEnabled(option.themeResourcePackId))
+    return (
+      style === DEFAULT_RENDER_STYLE || Boolean(getEnabledThemeResourcePackByRenderStyle(style))
     )
+  }
+
+  function applyThemeResourceForRenderStyle(style: RenderStyle): void {
+    applyThemeResourceVariables(getEnabledThemeResourcePackByRenderStyle(style))
   }
 
   return {
     themeResourcePacks: readonly(themeResourcePacksState),
+    availableThemeResourcePacks: computed(() => getThemeResourcePacks()),
+    availableRenderStyleOptions: computed(() => getRenderStyleOptions()),
     enabledThemeResourcePackIds: computed(() => [
       ...themeResourcePacksState.value.enabledThemeResourcePackIds
     ]),
     isThemeResourcePackEnabled,
     setThemeResourcePackEnabled,
-    isRenderStyleAvailable
+    isRenderStyleAvailable,
+    applyThemeResourceForRenderStyle
   }
 }

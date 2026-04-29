@@ -40,6 +40,14 @@ export interface PluginSettingDefinition {
   options?: PluginSettingOption[]
 }
 
+export interface PluginThemeResource {
+  id: string
+  label: string
+  renderStyle: string
+  description?: string
+  cssVariables?: Record<string, string>
+}
+
 export interface PluginPermissionDeclaration {
   network?: {
     domains: string[]
@@ -228,6 +236,7 @@ export interface PluginManifest {
   permissions?: PluginPermissionDeclaration
   contributions?: {
     settings?: PluginSettingDefinition[]
+    themeResources?: PluginThemeResource[]
   }
 }
 

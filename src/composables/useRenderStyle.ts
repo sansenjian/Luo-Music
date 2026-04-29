@@ -3,12 +3,11 @@ import { readonly, ref } from 'vue'
 import { services } from '@/services'
 import type { StorageService } from '@/services/storageService'
 
-export type RenderStyle = 'classic' | 'brand'
+export type RenderStyle = string
 type LegacyRenderStyle = 'red'
 
 const RENDER_STYLE_STORAGE_KEY = 'renderStyle'
 const DEFAULT_RENDER_STYLE: RenderStyle = 'classic'
-const VALID_RENDER_STYLES = new Set<RenderStyle>(['classic', 'brand'])
 const LEGACY_RENDER_STYLE_MAP: Record<LegacyRenderStyle, RenderStyle> = {
   red: 'brand'
 }
@@ -16,14 +15,16 @@ const LEGACY_RENDER_STYLE_MAP: Record<LegacyRenderStyle, RenderStyle> = {
 const renderStyleState = ref<RenderStyle>(DEFAULT_RENDER_STYLE)
 let isRenderStyleInitialized = false
 
+function isValidRenderStyle(value: string | null): value is RenderStyle {
+  return Boolean(value && /^[a-z0-9][a-z0-9._-]*$/i.test(value))
+}
+
 function resolveRenderStyle(value: string | null): RenderStyle {
   if (value && value in LEGACY_RENDER_STYLE_MAP) {
     return LEGACY_RENDER_STYLE_MAP[value as LegacyRenderStyle]
   }
 
-  return value && VALID_RENDER_STYLES.has(value as RenderStyle)
-    ? (value as RenderStyle)
-    : DEFAULT_RENDER_STYLE
+  return isValidRenderStyle(value) ? value : DEFAULT_RENDER_STYLE
 }
 
 function applyRenderStyleToDocument(style: RenderStyle): void {

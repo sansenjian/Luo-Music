@@ -32,9 +32,18 @@ const MIN_WIDTH = 400
 const MIN_HEIGHT = 80
 const LOAD_RETRY_DELAY_MS = 1000
 const WINDOWS_APP_ICON_FILE = 'tray.ico'
+const WINDOW_SHOW_FALLBACK_DELAY_MS = 3000
 
 process.env.DIST = RENDERER_DIST
 process.env.VITE_PUBLIC = VITE_PUBLIC
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${ms}ms`
+  }
+
+  return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)}s`
+}
 
 export class WindowManager {
   private win: BrowserWindowType | null = null
@@ -51,10 +60,17 @@ export class WindowManager {
   }
 
   createWindow(): void {
+    const startedAt = Date.now()
     const width = this.lastSize ? this.lastSize.width : 1200
     const height = this.lastSize ? this.lastSize.height : 800
     const devServerUrl = process.env.VITE_DEV_SERVER_URL
     const indexPath = path.join(RENDERER_DIST, 'index.html')
+    const loadTarget = devServerUrl ?? indexPath
+    logger.info('[WindowManager] Creating main window', {
+      width,
+      height,
+      loadTarget
+    })
     const win = new BrowserWindow({
       width,
       height,
@@ -90,6 +106,7 @@ export class WindowManager {
     this.applyWindowsAppDetails(win)
 
     let hasRecoveredRenderer = false
+    let hasShownWindow = false
 
     const recoverRenderer = (reason: string, details: Record<string, unknown>): void => {
       logger.error('[WindowManager] Renderer load issue', { reason, ...details })
@@ -118,16 +135,69 @@ export class WindowManager {
       }, LOAD_RETRY_DELAY_MS)
     }
 
-    win.once('ready-to-show', () => {
+    const showWindow = (reason: string): void => {
+      if (hasShownWindow || win.isDestroyed()) {
+        return
+      }
+
+      hasShownWindow = true
+      logger.info(`[WindowManager] Showing main window (${reason})`, {
+        elapsed: formatDuration(Date.now() - startedAt)
+      })
       win.show()
+    }
+
+    const showFallbackTimer = setTimeout(() => {
+      if (win.isDestroyed() || win.isVisible()) {
+        return
+      }
+
+      logger.warn('[WindowManager] ready-to-show did not fire before fallback', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        loadTarget
+      })
+      showWindow('fallback')
+    }, WINDOW_SHOW_FALLBACK_DELAY_MS)
+
+    win.once('ready-to-show', () => {
+      clearTimeout(showFallbackTimer)
+      logger.info('[WindowManager] ready-to-show', {
+        elapsed: formatDuration(Date.now() - startedAt)
+      })
+      showWindow('ready-to-show')
     })
 
     downloadManager.setWindow(win)
     downloadManager.init()
 
+    win.webContents.on('did-start-loading', () => {
+      logger.info('[WindowManager] renderer did-start-loading', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        loadTarget
+      })
+    })
+
+    win.webContents.on('dom-ready', () => {
+      logger.info('[WindowManager] renderer dom-ready', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        url: win.webContents.getURL()
+      })
+    })
+
     win.webContents.on('did-finish-load', () => {
       hasRecoveredRenderer = false
+      logger.info('[WindowManager] renderer did-finish-load', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        url: win.webContents.getURL()
+      })
       win.webContents.send('main-process-message', new Date().toLocaleString())
+    })
+
+    win.webContents.on('did-stop-loading', () => {
+      logger.info('[WindowManager] renderer did-stop-loading', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        url: win.webContents.getURL()
+      })
     })
 
     win.webContents.on(
@@ -137,6 +207,12 @@ export class WindowManager {
           return
         }
 
+        logger.error('[WindowManager] renderer did-fail-load', {
+          elapsed: formatDuration(Date.now() - startedAt),
+          errorCode,
+          errorDescription,
+          validatedURL
+        })
         recoverRenderer('did-fail-load', {
           errorCode,
           errorDescription,
@@ -150,6 +226,11 @@ export class WindowManager {
         return
       }
 
+      logger.error('[WindowManager] render-process-gone', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        processGoneReason: details.reason,
+        exitCode: details.exitCode
+      })
       recoverRenderer('render-process-gone', {
         processGoneReason: details.reason,
         exitCode: details.exitCode
@@ -157,9 +238,11 @@ export class WindowManager {
     })
 
     if (devServerUrl) {
+      logger.info('[WindowManager] Loading renderer URL', { loadTarget })
       void win.loadURL(devServerUrl)
       win.webContents.openDevTools()
     } else {
+      logger.info('[WindowManager] Loading renderer file', { loadTarget })
       void win.loadFile(indexPath)
     }
 

@@ -26,6 +26,7 @@ describe('useThemeResourcePacks', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    document.documentElement.style.removeProperty('--accent')
   })
 
   it('defaults the built-in brand theme resource to disabled', async () => {
@@ -87,5 +88,64 @@ describe('useThemeResourcePacks', () => {
 
     expect(enabledThemeResourcePackIds.value).toEqual(['builtin.brand-theme'])
     expect(isRenderStyleAvailable('brand')).toBe(true)
+  })
+
+  it('exposes enabled external theme resources as render styles', async () => {
+    const { replaceRuntimePlatformDescriptors } = await import('@/platform/music/descriptors')
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'community-theme',
+        displayName: 'Community Theme',
+        source: 'external',
+        runtime: 'external-host',
+        category: 'theme',
+        enabled: true,
+        status: 'ready',
+        capabilities: {
+          search: false,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false
+        },
+        themeResources: [
+          {
+            id: 'community-theme.ocean',
+            label: '海风主题',
+            renderStyle: 'community.ocean',
+            cssVariables: {
+              '--accent': '#006d77'
+            }
+          }
+        ]
+      }
+    ])
+
+    const { useThemeResourcePacks } = await import('@/composables/useThemeResourcePacks')
+    const {
+      availableRenderStyleOptions,
+      applyThemeResourceForRenderStyle,
+      isRenderStyleAvailable
+    } = useThemeResourcePacks({ storageService: createStorageServiceMock().storageService })
+
+    expect(isRenderStyleAvailable('community.ocean')).toBe(true)
+    expect(availableRenderStyleOptions.value).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          value: 'community.ocean',
+          label: '海风主题',
+          themeResourcePackId: 'community-theme.ocean'
+        })
+      ])
+    )
+
+    applyThemeResourceForRenderStyle('community.ocean')
+    expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#006d77')
+
+    applyThemeResourceForRenderStyle('classic')
+    expect(document.documentElement.style.getPropertyValue('--accent')).toBe('')
   })
 })

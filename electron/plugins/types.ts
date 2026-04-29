@@ -4,7 +4,8 @@ import type {
   PluginCategory,
   PluginMethodName,
   PluginPermissionDeclaration,
-  PluginSettingDefinition
+  PluginSettingDefinition,
+  PluginThemeResource
 } from '../../packages/plugin-sdk'
 import type { PlatformDescriptor } from '../../src/platform/music/descriptors'
 
@@ -30,6 +31,7 @@ export interface ExternalPluginManifest {
   permissions?: PluginPermissionDeclaration
   contributions?: {
     settings?: PluginSettingDefinition[]
+    themeResources?: PluginThemeResource[]
   }
 }
 
@@ -95,6 +97,14 @@ const pluginSettingDefinitionSchema = z.object({
   options: z.array(pluginSettingOptionSchema).optional()
 })
 
+const pluginThemeResourceSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  renderStyle: z.string().min(1),
+  description: z.string().optional(),
+  cssVariables: z.record(z.string().min(1), z.string()).optional()
+})
+
 const pluginCapabilitiesSchema = z.object({
   search: z.boolean(),
   songUrl: z.boolean(),
@@ -150,7 +160,8 @@ export const ExternalPluginManifestSchema = z.object({
   permissions: pluginPermissionsSchema,
   contributions: z
     .object({
-      settings: z.array(pluginSettingDefinitionSchema).optional()
+      settings: z.array(pluginSettingDefinitionSchema).optional(),
+      themeResources: z.array(pluginThemeResourceSchema).optional()
     })
     .optional()
 })
@@ -185,6 +196,7 @@ export function createPlatformDescriptorFromExternalPlugin(
       secrets: Boolean(manifest.permissions?.secrets)
     },
     settingsSchema: manifest.contributions?.settings,
+    themeResources: manifest.contributions?.themeResources,
     consecutiveFailures: state.consecutiveFailures,
     circuitTrippedAt: state.circuitTrippedAt,
     ...(manifest.requiresServices ? { requiresServices: [...manifest.requiresServices] } : {})

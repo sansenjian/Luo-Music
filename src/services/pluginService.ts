@@ -85,6 +85,7 @@ function createFirstPartyPluginDescriptor(input: {
   version: string
   category: FirstPartyPluginCategory
   enabled: boolean
+  themeResources?: PlatformDescriptor['themeResources']
 }): PlatformDescriptor {
   return {
     id: input.id,
@@ -96,7 +97,8 @@ function createFirstPartyPluginDescriptor(input: {
     category: input.category,
     enabled: input.enabled,
     status: input.enabled ? 'ready' : 'disabled',
-    capabilities: { ...firstPartyPluginCapabilities }
+    capabilities: { ...firstPartyPluginCapabilities },
+    ...(input.themeResources ? { themeResources: input.themeResources } : {})
   }
 }
 
@@ -142,11 +144,12 @@ function createFirstPartyThemeResourcePackDescriptor(
 ): PlatformDescriptor {
   return createFirstPartyPluginDescriptor({
     id: themeResourcePack.id,
-    displayName: themeResourcePack.displayName,
-    description: themeResourcePack.description,
-    version: themeResourcePack.version,
+    displayName: themeResourcePack.label,
+    description: themeResourcePack.description ?? '',
+    version: '1.0.0',
     category: 'theme',
-    enabled: isThemeResourcePackEnabled(themeResourcePack.id)
+    enabled: isThemeResourcePackEnabled(themeResourcePack.id),
+    themeResources: [themeResourcePack]
   })
 }
 
@@ -203,6 +206,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   function syncPlatformDescriptors(platforms: PlatformDescriptor[]): PlatformDescriptor[] {
     const nextPlatforms = mergeFirstPartyPluginDescriptors(platforms, isElectron())
     replaceRuntimePlatformDescriptors(nextPlatforms)
+    useProjectUi().ensureAvailableRenderStyle()
     return nextPlatforms
   }
 

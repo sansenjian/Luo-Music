@@ -1,35 +1,28 @@
-import { computed } from 'vue'
-
 import { useRenderStyle, type RenderStyle } from '@/composables/useRenderStyle'
 import { useThemeResourcePacks } from '@/composables/useThemeResourcePacks'
-import {
-  DEFAULT_RENDER_STYLE,
-  PROJECT_RENDER_STYLE_OPTIONS,
-  type ProjectRenderStyleOption
-} from '@/ui/projectUi'
+import { DEFAULT_RENDER_STYLE } from '@/ui/projectUi'
 
 export function useProjectUi() {
   const { renderStyle, setRenderStyle } = useRenderStyle()
   const themeResourcePacks = useThemeResourcePacks()
-
-  const availableRenderStyleOptions = computed<ProjectRenderStyleOption[]>(() =>
-    PROJECT_RENDER_STYLE_OPTIONS.filter(option =>
-      themeResourcePacks.isRenderStyleAvailable(option.value)
-    )
-  )
+  themeResourcePacks.applyThemeResourceForRenderStyle(renderStyle.value)
 
   function isRenderStyleAvailable(style: RenderStyle): boolean {
-    return availableRenderStyleOptions.value.some(option => option.value === style)
+    return themeResourcePacks.isRenderStyleAvailable(style)
   }
 
   function setAvailableRenderStyle(style: RenderStyle): void {
-    setRenderStyle(isRenderStyleAvailable(style) ? style : DEFAULT_RENDER_STYLE)
+    const nextStyle = isRenderStyleAvailable(style) ? style : DEFAULT_RENDER_STYLE
+    setRenderStyle(nextStyle)
+    themeResourcePacks.applyThemeResourceForRenderStyle(nextStyle)
   }
 
   function ensureAvailableRenderStyle(): void {
     if (!isRenderStyleAvailable(renderStyle.value)) {
       setRenderStyle(DEFAULT_RENDER_STYLE)
     }
+
+    themeResourcePacks.applyThemeResourceForRenderStyle(renderStyle.value)
   }
 
   function isRenderStyleActive(style: RenderStyle): boolean {
@@ -40,7 +33,7 @@ export function useProjectUi() {
     ...themeResourcePacks,
     renderStyle,
     setRenderStyle: setAvailableRenderStyle,
-    availableRenderStyleOptions,
+    availableRenderStyleOptions: themeResourcePacks.availableRenderStyleOptions,
     isRenderStyleAvailable,
     ensureAvailableRenderStyle,
     isRenderStyleActive

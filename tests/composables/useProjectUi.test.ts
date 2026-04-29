@@ -25,6 +25,7 @@ describe('useProjectUi', () => {
     storageServiceMock.getItem.mockReturnValue(null)
     storageServiceMock.getJSON.mockReturnValue(null)
     delete document.documentElement.dataset.renderStyle
+    document.documentElement.style.removeProperty('--accent')
   })
 
   it('only exposes render styles backed by enabled theme resources', async () => {
@@ -56,5 +57,53 @@ describe('useProjectUi', () => {
 
     expect(storageServiceMock.setItem).toHaveBeenCalledWith('renderStyle', 'brand')
     expect(document.documentElement.dataset.renderStyle).toBe('brand')
+  })
+
+  it('allows render styles contributed by enabled theme plugins', async () => {
+    const { replaceRuntimePlatformDescriptors } = await import('@/platform/music/descriptors')
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'community-theme',
+        displayName: 'Community Theme',
+        source: 'external',
+        runtime: 'external-host',
+        category: 'theme',
+        enabled: true,
+        status: 'ready',
+        capabilities: {
+          search: false,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false
+        },
+        themeResources: [
+          {
+            id: 'community-theme.ocean',
+            label: '海风主题',
+            renderStyle: 'community.ocean',
+            cssVariables: {
+              '--accent': '#006d77'
+            }
+          }
+        ]
+      }
+    ])
+
+    const { useProjectUi } = await import('@/composables/useProjectUi')
+    const { availableRenderStyleOptions, setRenderStyle } = useProjectUi()
+
+    expect(availableRenderStyleOptions.value.map(option => option.value)).toContain(
+      'community.ocean'
+    )
+
+    setRenderStyle('community.ocean')
+
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith('renderStyle', 'community.ocean')
+    expect(document.documentElement.dataset.renderStyle).toBe('community.ocean')
+    expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#006d77')
   })
 })

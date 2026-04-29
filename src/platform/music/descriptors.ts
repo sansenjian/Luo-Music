@@ -1,5 +1,5 @@
 import { shallowRef } from 'vue'
-import type { PluginManifest, PluginSettingDefinition } from '@plugin-sdk'
+import type { PluginManifest, PluginSettingDefinition, PluginThemeResource } from '@plugin-sdk'
 
 export type PlatformCapabilities = PluginManifest['capabilities']
 export type PlatformBooleanCapability = {
@@ -30,6 +30,7 @@ export interface PlatformDescriptor {
   lastError?: string
   permissions?: PlatformPermissions
   settingsSchema?: PluginSettingDefinition[]
+  themeResources?: PluginThemeResource[]
   consecutiveFailures?: number
   circuitTrippedAt?: number
 }
@@ -89,6 +90,13 @@ function cloneCapabilities(capabilities: PlatformCapabilities): PlatformCapabili
   }
 }
 
+function cloneThemeResource(resource: PluginThemeResource): PluginThemeResource {
+  return {
+    ...resource,
+    ...(resource.cssVariables ? { cssVariables: { ...resource.cssVariables } } : {})
+  }
+}
+
 function cloneDescriptor(descriptor: PlatformDescriptor): PlatformDescriptor {
   return {
     ...descriptor,
@@ -103,7 +111,10 @@ function cloneDescriptor(descriptor: PlatformDescriptor): PlatformDescriptor {
           }
         }
       : {}),
-    ...(descriptor.settingsSchema ? { settingsSchema: [...descriptor.settingsSchema] } : {})
+    ...(descriptor.settingsSchema ? { settingsSchema: [...descriptor.settingsSchema] } : {}),
+    ...(descriptor.themeResources
+      ? { themeResources: descriptor.themeResources.map(cloneThemeResource) }
+      : {})
   }
 }
 

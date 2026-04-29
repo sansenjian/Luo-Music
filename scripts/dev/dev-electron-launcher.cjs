@@ -96,6 +96,65 @@ function logDebug(message) {
   }
 }
 
+// ============ 启动耗时 ============
+const launcherStartedAt = Date.now()
+const phaseTimings = []
+
+function formatDuration(ms) {
+  if (ms < 1000) {
+    return `${ms}ms`
+  }
+
+  return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)}s`
+}
+
+function logPhaseTiming(label, startedAt) {
+  const elapsed = Date.now() - startedAt
+  phaseTimings.push({ label, elapsed })
+  log(
+    'dev-launcher:timing',
+    `${label}: ${formatDuration(elapsed)} (total ${formatDuration(Date.now() - launcherStartedAt)})`,
+    colors.cyan
+  )
+  return elapsed
+}
+
+async function measurePhase(label, action) {
+  const startedAt = Date.now()
+  try {
+    const result = await action()
+    logPhaseTiming(label, startedAt)
+    return result
+  } catch (error) {
+    logPhaseTiming(`${label} failed`, startedAt)
+    throw error
+  }
+}
+
+function measureSyncPhase(label, action) {
+  const startedAt = Date.now()
+  try {
+    const result = action()
+    logPhaseTiming(label, startedAt)
+    return result
+  } catch (error) {
+    logPhaseTiming(`${label} failed`, startedAt)
+    throw error
+  }
+}
+
+function logStartupTimingSummary() {
+  const total = Date.now() - launcherStartedAt
+  const detail = phaseTimings
+    .map(({ label, elapsed }) => `${label} ${formatDuration(elapsed)}`)
+    .join('; ')
+  log(
+    'dev-launcher:timing',
+    `ready to spawn Electron: ${formatDuration(total)}${detail ? ` (${detail})` : ''}`,
+    colors.cyan
+  )
+}
+
 // ============ 等待工具 ============
 async function waitForCondition(
   condition,
@@ -384,12 +443,14 @@ async function main() {
   logInfo('Starting Electron development launcher...')
 
   // 1. 清理旧实例
-  await killOldElectronInstances()
+  await measurePhase('kill old Electron instances', () => killOldElectronInstances())
 
   // 2. 等待 Vite 服务器启动
   logInfo(`Waiting for Vite dev server on ports ${CONFIG.vitePorts.join(', ')}...`)
   try {
-    await waitForPort(CONFIG.vitePorts[0])
+    await measurePhase(`wait for Vite socket ${CONFIG.vitePorts[0]}`, () =>
+      waitForPort(CONFIG.vitePorts[0])
+    )
     logSuccess(`Detected an open socket on base port ${CONFIG.vitePorts[0]}`)
   } catch (error) {
     logError(`Vite dev server not responding: ${error.message}`)
@@ -399,7 +460,7 @@ async function main() {
   // 3. 查找实际端口并预热
   let vitePort
   try {
-    vitePort = await waitForVitePort()
+    vitePort = await measurePhase('detect Vite HTML port', () => waitForVitePort())
   } catch (error) {
     logError(`Failed to detect a ready Vite server: ${error.message}`)
     process.exit(1)
@@ -409,9 +470,11 @@ async function main() {
 
   logInfo(`Warming Vite index response on port ${vitePort}...`)
   try {
-    await waitForHttpReady(`${viteDevServerUrl}/`, CONFIG.httpWarmupTimeoutMs, {
-      requireViteHtml: true
-    })
+    await measurePhase('warm Vite index response', () =>
+      waitForHttpReady(`${viteDevServerUrl}/`, CONFIG.httpWarmupTimeoutMs, {
+        requireViteHtml: true
+      })
+    )
     logSuccess('Vite server ready')
   } catch (error) {
     logError(`Failed to warm up Vite server: ${error.message}`)
@@ -419,10 +482,11 @@ async function main() {
   }
 
   // 4. 检查是否需要构建
-  if (needsRebuild()) {
+  const electronBuildNeeded = measureSyncPhase('check Electron build freshness', needsRebuild)
+  if (electronBuildNeeded) {
     logInfo('Electron files need rebuild...')
     try {
-      await buildElectron()
+      await measurePhase('electron-vite build', () => buildElectron())
     } catch (error) {
       logError(`Build failed: ${error.message}`)
       process.exit(1)
@@ -445,6 +509,8 @@ async function main() {
   if (electronInspectPort) {
     logInfo(`Electron main process inspector listening on 127.0.0.1:${electronInspectPort}`)
   }
+
+  logStartupTimingSummary()
 
   const child = spawn(electronBinary, electronArgs, {
     stdio: 'inherit',
