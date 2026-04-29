@@ -103,8 +103,8 @@ const emit = defineEmits<{
   width: 180px;
   height: 180px;
   overflow: hidden;
-  border: 3px solid var(--black);
-  border-radius: 20px;
+  border: var(--ui-border-strong);
+  border-radius: var(--ui-card-radius);
   --media-cover-bg: linear-gradient(135deg, #d3dae7, #eef2f8);
   --media-cover-fallback-bg:
     radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.38), transparent 28%),
@@ -114,7 +114,7 @@ const emit = defineEmits<{
   --media-cover-disc-shadow: rgba(27, 38, 55, 0.2);
   --media-cover-bar: rgba(255, 255, 255, 0.82);
   background: var(--media-cover-bg);
-  box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.12);
+  box-shadow: var(--ui-shadow);
 }
 
 .media-cover-image {
@@ -218,7 +218,7 @@ const emit = defineEmits<{
   margin: 0;
   font-size: clamp(30px, 4vw, 42px);
   line-height: 1.08;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .media-meta {
@@ -234,7 +234,7 @@ const emit = defineEmits<{
 .media-meta-avatar {
   width: 28px;
   height: 28px;
-  border: 2px solid var(--black);
+  border: var(--ui-border);
   border-radius: 999px;
   object-fit: cover;
 }
@@ -242,8 +242,8 @@ const emit = defineEmits<{
 .media-meta-avatar.fallback {
   display: grid;
   place-items: center;
-  background: var(--black);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
   font-weight: 700;
 }
 
@@ -263,9 +263,9 @@ const emit = defineEmits<{
 .hero-action {
   min-height: 42px;
   padding: 10px 18px;
-  border: 2px solid var(--black);
-  border-radius: 12px;
-  background: var(--white);
+  border: var(--ui-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--black);
   font-size: 13px;
   font-weight: 800;
@@ -286,12 +286,14 @@ const emit = defineEmits<{
 }
 
 .hero-action-primary {
-  background: var(--accent);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
+  box-shadow: var(--ui-primary-shadow);
 }
 
 .hero-action-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--ui-primary-hover-bg);
+  color: var(--ui-primary-hover-text);
 }
 
 .hero-action-icon {

@@ -62,7 +62,7 @@ function handleTabChange(tab: HomeTab): void {
 
 <style scoped>
 .right-panel {
-  background: var(--bg);
+  background: var(--ui-panel-bg);
   display: flex;
   flex-direction: column;
   min-height: 0;

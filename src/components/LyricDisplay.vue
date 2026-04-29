@@ -200,7 +200,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 .lyric {
   height: 100%;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--ui-panel-bg);
   position: relative;
 }
 
@@ -261,22 +261,23 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
     opacity 0.2s ease;
   padding: 8px 12px;
   border-left: 3px solid transparent;
+  border-radius: var(--ui-radius-md);
   position: relative;
 }
 
 .lyric-line:hover,
 .lyric-line:active {
   opacity: 0.8;
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--ui-hover-bg);
 }
 
 .lyric-line.active {
-  background: var(--black);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
   border-left-color: var(--accent);
   opacity: 1 !important;
   font-weight: 700;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: var(--ui-primary-shadow);
 }
 
 .lyric-line.active .lyric-main {

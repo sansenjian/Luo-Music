@@ -6,7 +6,7 @@ import {
 } from '@/composables/useDockedPlayerBarLayout'
 import { useExperimentalFeatures } from '@/composables/useExperimentalFeatures'
 import { useHomeBrandPlacement, type HomeBrandPlacement } from '@/composables/useHomeBrandPlacement'
-import { useRenderStyle, type RenderStyle } from '@/composables/useRenderStyle'
+import { useProjectUi } from '@/composables/useProjectUi'
 import { services } from '@/services'
 import { usePlayerStore } from '@/store/playerStore'
 import type { WebLyricAppearance } from '@/types/player'
@@ -25,16 +25,13 @@ export function useAppSettings() {
     coverSwipeEnabled,
     setCoverSwipeEnabled
   } = useExperimentalFeatures()
-  const { renderStyle, setRenderStyle } = useRenderStyle()
+  const { renderStyle, setRenderStyle, availableRenderStyleOptions, isRenderStyleActive } =
+    useProjectUi()
 
   const isElectron = computed(() => platformService.isElectron())
 
   function isBrandPlacementActive(placement: HomeBrandPlacement): boolean {
     return brandPlacement.value === placement
-  }
-
-  function isRenderStyleActive(style: RenderStyle): boolean {
-    return renderStyle.value === style
   }
 
   function isDockedPlayerBarLayoutActive(layout: DockedPlayerBarLayout): boolean {
@@ -68,6 +65,7 @@ export function useAppSettings() {
     resetWebLyricAppearance,
     renderStyle,
     setRenderStyle,
+    availableRenderStyleOptions,
     isBrandPlacementActive,
     isRenderStyleActive,
     isDockedPlayerBarLayoutActive

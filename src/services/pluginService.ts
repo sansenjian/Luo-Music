@@ -4,16 +4,24 @@ import {
   type PlatformDescriptor
 } from '@/platform/music/descriptors'
 import { useExperimentalFeatures } from '@/composables/useExperimentalFeatures'
+import { useProjectUi } from '@/composables/useProjectUi'
+import {
+  BUILTIN_BRAND_THEME_PLUGIN_ID,
+  PROJECT_THEME_RESOURCE_PACKS,
+  type ProjectThemeResourcePack
+} from '@/ui/projectUi'
+import { useThemeResourcePacks } from '@/composables/useThemeResourcePacks'
 
 const FIRST_PARTY_SMTC_PLUGIN_ID = 'builtin.smtc'
 const FIRST_PARTY_COVER_SWIPE_PLUGIN_ID = 'builtin.cover-swipe'
 
-const firstPartyExtensionPluginIds = new Set([
+const firstPartyPluginIds = new Set([
   FIRST_PARTY_SMTC_PLUGIN_ID,
-  FIRST_PARTY_COVER_SWIPE_PLUGIN_ID
+  FIRST_PARTY_COVER_SWIPE_PLUGIN_ID,
+  BUILTIN_BRAND_THEME_PLUGIN_ID
 ])
 
-const extensionCapabilities = {
+const firstPartyPluginCapabilities = {
   search: false,
   songUrl: false,
   songDetail: false,
@@ -60,6 +68,8 @@ export type PluginServiceDeps = {
   getPluginBridge?: () => PluginBridge | undefined
 }
 
+type FirstPartyPluginCategory = NonNullable<PlatformDescriptor['category']>
+
 function resolvePluginBridge(): PluginBridge | undefined {
   if (typeof window === 'undefined') {
     return undefined
@@ -68,11 +78,12 @@ function resolvePluginBridge(): PluginBridge | undefined {
   return (window as Window & { services?: { plugins?: PluginBridge } }).services?.plugins
 }
 
-function createFirstPartyExtensionDescriptor(input: {
+function createFirstPartyPluginDescriptor(input: {
   id: string
   displayName: string
   description: string
   version: string
+  category: FirstPartyPluginCategory
   enabled: boolean
 }): PlatformDescriptor {
   return {
@@ -82,32 +93,41 @@ function createFirstPartyExtensionDescriptor(input: {
     version: input.version,
     source: 'builtin',
     runtime: 'local',
-    category: 'extension',
+    category: input.category,
     enabled: input.enabled,
     status: input.enabled ? 'ready' : 'disabled',
-    capabilities: { ...extensionCapabilities }
+    capabilities: { ...firstPartyPluginCapabilities }
   }
 }
 
-function createFirstPartyExtensionDescriptors(isElectron: boolean): PlatformDescriptor[] {
+function createFirstPartyPluginDescriptors(isElectron: boolean): PlatformDescriptor[] {
   const { smtcEnabled, coverSwipeEnabled } = useExperimentalFeatures()
+  const { isThemeResourcePackEnabled } = useThemeResourcePacks()
   const descriptors: PlatformDescriptor[] = [
-    createFirstPartyExtensionDescriptor({
+    createFirstPartyPluginDescriptor({
       id: FIRST_PARTY_COVER_SWIPE_PLUGIN_ID,
       displayName: '滑动封面切歌',
       description: '在播放器封面区域左右滑动切换上一首或下一首。',
       version: '1.0.0',
+      category: 'extension',
       enabled: coverSwipeEnabled.value
     })
   ]
 
+  descriptors.push(
+    ...PROJECT_THEME_RESOURCE_PACKS.map(themeResourcePack =>
+      createFirstPartyThemeResourcePackDescriptor(themeResourcePack, isThemeResourcePackEnabled)
+    )
+  )
+
   if (isElectron) {
     descriptors.unshift(
-      createFirstPartyExtensionDescriptor({
+      createFirstPartyPluginDescriptor({
         id: FIRST_PARTY_SMTC_PLUGIN_ID,
         displayName: 'Windows SMTC',
         description: '将播放状态同步到 Windows 系统媒体控制面板。',
         version: '1.0.0',
+        category: 'extension',
         enabled: smtcEnabled.value
       })
     )
@@ -116,25 +136,40 @@ function createFirstPartyExtensionDescriptors(isElectron: boolean): PlatformDesc
   return descriptors
 }
 
-function mergeFirstPartyExtensionDescriptors(
+function createFirstPartyThemeResourcePackDescriptor(
+  themeResourcePack: ProjectThemeResourcePack,
+  isThemeResourcePackEnabled: (themeResourcePackId: ProjectThemeResourcePack['id']) => boolean
+): PlatformDescriptor {
+  return createFirstPartyPluginDescriptor({
+    id: themeResourcePack.id,
+    displayName: themeResourcePack.displayName,
+    description: themeResourcePack.description,
+    version: themeResourcePack.version,
+    category: 'theme',
+    enabled: isThemeResourcePackEnabled(themeResourcePack.id)
+  })
+}
+
+function mergeFirstPartyPluginDescriptors(
   platforms: PlatformDescriptor[],
   isElectron: boolean
 ): PlatformDescriptor[] {
   const merged = new Map(platforms.map(platform => [platform.id, platform]))
 
-  for (const descriptor of createFirstPartyExtensionDescriptors(isElectron)) {
+  for (const descriptor of createFirstPartyPluginDescriptors(isElectron)) {
     merged.set(descriptor.id, descriptor)
   }
 
   return Array.from(merged.values())
 }
 
-function isFirstPartyExtensionPlugin(platformId: string): boolean {
-  return firstPartyExtensionPluginIds.has(platformId)
+function isFirstPartyPlugin(platformId: string): boolean {
+  return firstPartyPluginIds.has(platformId)
 }
 
-function setFirstPartyExtensionEnabled(platformId: string, enabled: boolean): boolean {
+function setFirstPartyPluginEnabled(platformId: string, enabled: boolean): boolean {
   const { setSMTCEnabled, setCoverSwipeEnabled } = useExperimentalFeatures()
+  const { setThemeResourcePackEnabled } = useThemeResourcePacks()
 
   switch (platformId) {
     case FIRST_PARTY_SMTC_PLUGIN_ID:
@@ -142,6 +177,15 @@ function setFirstPartyExtensionEnabled(platformId: string, enabled: boolean): bo
       return true
     case FIRST_PARTY_COVER_SWIPE_PLUGIN_ID:
       setCoverSwipeEnabled(enabled)
+      return true
+    case BUILTIN_BRAND_THEME_PLUGIN_ID:
+      setThemeResourcePackEnabled(BUILTIN_BRAND_THEME_PLUGIN_ID, enabled)
+      if (!enabled) {
+        const { renderStyle, setRenderStyle } = useProjectUi()
+        if (renderStyle.value === 'brand') {
+          setRenderStyle('classic')
+        }
+      }
       return true
     default:
       return false
@@ -154,10 +198,10 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   const getPluginBridge = deps.getPluginBridge ?? resolvePluginBridge
 
   const listBuiltinPlatforms = () =>
-    mergeFirstPartyExtensionDescriptors(getPlatformDescriptors(), isElectron())
+    mergeFirstPartyPluginDescriptors(getPlatformDescriptors(), isElectron())
 
   function syncPlatformDescriptors(platforms: PlatformDescriptor[]): PlatformDescriptor[] {
-    const nextPlatforms = mergeFirstPartyExtensionDescriptors(platforms, isElectron())
+    const nextPlatforms = mergeFirstPartyPluginDescriptors(platforms, isElectron())
     replaceRuntimePlatformDescriptors(nextPlatforms)
     return nextPlatforms
   }
@@ -198,7 +242,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   }
 
   async function setEnabled(platformId: string, enabled: boolean): Promise<PlatformDescriptor[]> {
-    if (setFirstPartyExtensionEnabled(platformId, enabled)) {
+    if (setFirstPartyPluginEnabled(platformId, enabled)) {
       return refreshPlatformDescriptors()
     }
 
@@ -211,8 +255,8 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   }
 
   async function uninstall(platformId: string): Promise<PlatformDescriptor[]> {
-    if (isFirstPartyExtensionPlugin(platformId)) {
-      throw new Error('First-party extension plugins cannot be uninstalled')
+    if (isFirstPartyPlugin(platformId)) {
+      throw new Error('First-party plugins cannot be uninstalled')
     }
 
     const bridge = getPluginBridge()
@@ -224,7 +268,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   }
 
   async function getSettings(platformId: string): Promise<Record<string, unknown>> {
-    if (isFirstPartyExtensionPlugin(platformId)) {
+    if (isFirstPartyPlugin(platformId)) {
       return {}
     }
 
@@ -240,7 +284,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
     platformId: string,
     settings: Record<string, unknown>
   ): Promise<Record<string, unknown>> {
-    if (isFirstPartyExtensionPlugin(platformId)) {
+    if (isFirstPartyPlugin(platformId)) {
       return {}
     }
 
@@ -255,8 +299,8 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   }
 
   async function call(platformId: string, method: string, payload: unknown): Promise<unknown> {
-    if (isFirstPartyExtensionPlugin(platformId)) {
-      throw new Error('First-party extension plugins do not expose external calls')
+    if (isFirstPartyPlugin(platformId)) {
+      throw new Error('First-party plugins do not expose external calls')
     }
 
     const bridge = getPluginBridge()

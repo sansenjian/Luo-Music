@@ -123,7 +123,7 @@ async function mountHome(options: {
           name: 'HomeSidebarStub',
           props: {
             activeItemId: {
-              type: String,
+              type: [String, null] as any,
               required: false
             },
             collapsed: {
@@ -170,6 +170,18 @@ async function mountHome(options: {
             }
           },
           template: '<section class="home-workspace-stub" :data-tab="activeTab"></section>'
+        }),
+        HomeDiscover: defineComponent({
+          name: 'HomeDiscoverStub',
+          template: '<section class="home-discover-stub"></section>'
+        }),
+        HomeOverview: defineComponent({
+          name: 'HomeOverviewStub',
+          template: '<section class="home-overview-stub"></section>'
+        }),
+        HomeRoaming: defineComponent({
+          name: 'HomeRoamingStub',
+          template: '<section class="home-roaming-stub"></section>'
         }),
         HomeFooter: defineComponent({
           name: 'HomeFooterStub',
@@ -224,7 +236,7 @@ describe('Home view layout', () => {
     expect(wrapper.find('.home-sidebar-stub').attributes('data-collapsed')).toBe('false')
     expect(wrapper.find('.home-sidebar-stub').attributes('data-active-item')).toBe('home')
     expect(wrapper.find('.home-footer-stub').attributes('data-layout')).toBe('with-sidebar')
-    expect(wrapper.find('.home-workspace-stub').exists()).toBe(true)
+    expect(wrapper.find('.home-overview-stub').exists()).toBe(true)
     expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(false)
   })
 
@@ -238,7 +250,7 @@ describe('Home view layout', () => {
 
     expect(wrapper.find('.home-sidebar-stub').attributes('data-active-item')).toBe('local')
     expect(wrapper.find('.home-local-music-stub').exists()).toBe(true)
-    expect(wrapper.find('.home-workspace-stub').exists()).toBe(false)
+    expect(wrapper.find('.home-overview-stub').exists()).toBe(false)
     expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(false)
   })
 
@@ -252,7 +264,7 @@ describe('Home view layout', () => {
 
     expect(wrapper.find('.home-sidebar-stub').attributes('data-active-item')).toBe('settings')
     expect(wrapper.find('.home-settings-stub').exists()).toBe(true)
-    expect(wrapper.find('.home-workspace-stub').exists()).toBe(false)
+    expect(wrapper.find('.home-overview-stub').exists()).toBe(false)
     expect(wrapper.find('.home-local-music-stub').exists()).toBe(false)
   })
 
@@ -293,12 +305,12 @@ describe('Home view layout', () => {
 
     expect(wrapper.find('.home-sidebar-stub').attributes('data-active-item')).toBe('liked')
     expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(true)
-    expect(wrapper.find('.home-workspace-stub').exists()).toBe(false)
+    expect(wrapper.find('.home-discover-stub').exists()).toBe(false)
 
     await wrapper.get('.sidebar-home-trigger').trigger('click')
 
     expect(wrapper.find('.home-sidebar-stub').attributes('data-active-item')).toBe('home')
-    expect(wrapper.find('.home-workspace-stub').exists()).toBe(true)
+    expect(wrapper.find('.home-overview-stub').exists()).toBe(true)
     expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(false)
   })
 
@@ -315,7 +327,7 @@ describe('Home view layout', () => {
     expect(wrapper.find('.home-collection-detail-stub').attributes('data-collection-name')).toBe(
       '测试歌单'
     )
-    expect(wrapper.find('.home-workspace-stub').exists()).toBe(false)
+    expect(wrapper.find('.home-overview-stub').exists()).toBe(false)
     expect(wrapper.find('.home-local-music-stub').exists()).toBe(false)
   })
 })

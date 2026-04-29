@@ -45,8 +45,7 @@ const props = withDefaults(
 .media-panel-shell-root {
   height: 100%;
   overflow-y: auto;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.96)), var(--bg);
+  background: var(--ui-panel-bg);
 }
 
 .media-panel-shell {

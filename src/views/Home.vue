@@ -2,13 +2,16 @@
 import { computed } from 'vue'
 
 import ErrorToast from '@/components/ErrorToast.vue'
-import HomeFooter from '@/components/home/HomeFooter.vue'
 import HomeCollectionDetailPanel from '@/components/home/HomeCollectionDetailPanel.vue'
+import HomeDiscover from '@/components/home/HomeDiscover.vue'
+import HomeFooter from '@/components/home/HomeFooter.vue'
+import HomeOverview from '@/components/home/HomeOverview.vue'
 import HomeHeader from '@/components/home/HomeHeader.vue'
 import HomeLikedSongsPanel from '@/components/home/HomeLikedSongsPanel.vue'
 import HomeLocalMusicPanel from '@/components/home/HomeLocalMusicPanel.vue'
 import HomePluginsPanel from '@/components/home/HomePluginsPanel.vue'
 import HomeRecentPlayPanel from '@/components/home/HomeRecentPlayPanel.vue'
+import HomeRoaming from '@/components/home/HomeRoaming.vue'
 import HomeSettingsPanel from '@/components/home/HomeSettingsPanel.vue'
 import HomeSidebar from '@/components/home/HomeSidebar.vue'
 import HomeWorkspace from '@/components/home/HomeWorkspace.vue'
@@ -55,26 +58,22 @@ const {
   activeWorkspaceView,
   handleSidebarCollectionSelect,
   handleSidebarItemSelect,
-  resetToHome,
+  showNowPlaying,
   selectedCollection
 } = useHomeWorkspaceState()
 
-// When search results arrive, ensure the home workspace is visible so the
-// playlist tab can be shown. We must also react when activeTab is already
-// 'playlist' (e.g. a second search), where the tab watcher alone wouldn't fire.
 async function handleSearch(): Promise<void> {
   await onSearch()
-  if (activeTab.value === 'playlist' && activeWorkspaceView.value !== 'home') {
-    resetToHome()
-  }
+  showNowPlaying()
 }
 
 function handleNavigateToLyrics(): void {
   switchTab('lyric')
-  if (activeWorkspaceView.value !== 'home') {
-    resetToHome()
+  if (activeWorkspaceView.value !== 'now-playing') {
+    showNowPlaying()
   }
 }
+
 const sharedLocalLibrary = useLocalLibrary()
 const homeLikedSongsPanelModel = useHomeLikedSongsPanel({
   localLibrary: sharedLocalLibrary,
@@ -131,8 +130,11 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
         <div v-else class="panel-placeholder" aria-hidden="true"></div>
       </section>
 
+      <HomeOverview v-if="activeWorkspaceView === 'home'" class="workspace-panel" />
+      <HomeDiscover v-else-if="activeWorkspaceView === 'discover'" class="workspace-panel" />
+      <HomeRoaming v-else-if="activeWorkspaceView === 'roaming'" class="workspace-panel" />
       <HomeWorkspace
-        v-if="activeWorkspaceView === 'home'"
+        v-else-if="activeWorkspaceView === 'now-playing'"
         class="workspace-panel"
         :active-tab="activeTab"
         @change-tab="switchTab"
@@ -191,7 +193,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--bg);
+  background: var(--ui-app-bg);
   overflow: hidden;
 }
 
@@ -236,11 +238,11 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
 
 .left-panel {
   grid-area: player;
-  border-right: 3px solid var(--black);
+  border-right: var(--ui-divider);
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--white);
+  background: var(--ui-surface);
   z-index: 10;
 }
 
@@ -301,7 +303,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
   }
 
   .left-panel {
-    border-right: 2px solid var(--black);
+    border-right: var(--ui-divider);
     min-width: 0;
   }
 

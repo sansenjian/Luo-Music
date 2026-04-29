@@ -49,13 +49,13 @@ const props = withDefaults(
   text-transform: uppercase;
   color: var(--gray);
   flex-shrink: 0;
-  background: var(--bg);
+  background: var(--ui-app-bg);
 }
 
 .docked-player-bar {
   display: flex;
   flex-shrink: 0;
-  background: var(--bg);
+  background: var(--ui-app-bg);
   padding: 0;
   height: 80px;
   overflow: hidden;
@@ -64,8 +64,8 @@ const props = withDefaults(
 .docked-player-bar-body {
   flex: 1;
   min-width: 0;
-  background: var(--white);
-  border-top: 3px solid var(--black);
+  background: var(--ui-surface);
+  border-top: var(--ui-divider);
   overflow: hidden;
 }
 

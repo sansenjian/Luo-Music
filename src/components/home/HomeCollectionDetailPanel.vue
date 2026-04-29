@@ -249,10 +249,10 @@ onUnmounted(() => {
   min-width: 168px;
   max-width: min(280px, calc(100vw - 16px));
   padding: 6px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 44px rgba(17, 24, 39, 0.18);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-floating-shadow);
   backdrop-filter: blur(12px);
 }
 
@@ -263,7 +263,7 @@ onUnmounted(() => {
   min-height: 36px;
   padding: 8px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--black);
   font: inherit;
@@ -275,7 +275,7 @@ onUnmounted(() => {
 
 .collection-menu-item:hover,
 .collection-menu-item:focus-visible {
-  background: rgba(255, 66, 89, 0.1);
+  background: var(--ui-hover-bg);
   color: var(--accent);
   outline: none;
 }

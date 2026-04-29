@@ -119,7 +119,7 @@ function handleInput(event: Event): void {
   right: 0;
   bottom: -1px;
   height: 3px;
-  background: var(--accent);
+  background: var(--ui-track-fill);
   border-radius: 999px;
 }
 
@@ -159,9 +159,9 @@ function handleInput(event: Event): void {
   gap: 8px;
   padding: 0 12px;
   min-height: 38px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  border-radius: 999px;
-  background: var(--white);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--gray);
 }
 

@@ -26,8 +26,10 @@ vi.mock('@/extensions/smtc/useSmtcExtension', () => ({
   useSmtcExtension: useSmtcExtensionMock
 }))
 
-vi.mock('@/composables/useRenderStyle', () => ({
-  useRenderStyle: vi.fn()
+vi.mock('@/composables/useProjectUi', () => ({
+  useProjectUi: () => ({
+    ensureAvailableRenderStyle: vi.fn()
+  })
 }))
 
 vi.mock('@/services', () => ({

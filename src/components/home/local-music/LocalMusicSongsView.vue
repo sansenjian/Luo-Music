@@ -300,10 +300,10 @@ onUnmounted(() => {
   max-height: min(420px, calc(100vh - 16px));
   overflow-y: auto;
   padding: 6px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 44px rgba(17, 24, 39, 0.18);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-floating-shadow);
   backdrop-filter: blur(12px);
 }
 
@@ -314,7 +314,7 @@ onUnmounted(() => {
   min-height: 36px;
   padding: 8px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--black);
   font: inherit;
@@ -326,14 +326,14 @@ onUnmounted(() => {
 
 .local-menu-item:hover,
 .local-menu-item:focus-visible {
-  background: rgba(17, 24, 39, 0.08);
+  background: var(--ui-hover-bg);
   outline: none;
 }
 
 .local-menu-divider {
   height: 1px;
   margin: 6px 2px;
-  background: rgba(17, 24, 39, 0.1);
+  background: var(--ui-border-subtle);
 }
 
 .local-menu-section-title {
@@ -370,16 +370,16 @@ onUnmounted(() => {
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(17, 24, 39, 0.32);
+  background: var(--ui-overlay-bg);
 }
 
 .local-playlist-dialog {
   width: min(360px, 100%);
   padding: 18px;
-  border: 1px solid rgba(17, 24, 39, 0.14);
-  border-radius: 8px;
-  background: var(--white);
-  box-shadow: 0 22px 60px rgba(17, 24, 39, 0.22);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-floating-shadow);
 }
 
 .local-playlist-dialog h3 {
@@ -402,9 +402,9 @@ onUnmounted(() => {
   width: 100%;
   min-height: 40px;
   padding: 8px 10px;
-  border: 1px solid rgba(17, 24, 39, 0.16);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--black);
   font: inherit;
   font-size: 14px;
@@ -412,8 +412,8 @@ onUnmounted(() => {
 }
 
 .local-playlist-name-input:focus {
-  border-color: var(--accent);
-  outline: 2px solid rgba(255, 66, 89, 0.18);
+  border-color: var(--ui-focus-border);
+  outline: 2px solid var(--ui-border-subtle);
 }
 
 .local-playlist-dialog-actions {
@@ -427,8 +427,8 @@ onUnmounted(() => {
   min-height: 36px;
   padding: 8px 14px;
   border: 0;
-  border-radius: 6px;
-  background: rgba(17, 24, 39, 0.08);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-hover-bg);
   color: var(--black);
   font: inherit;
   font-size: 13px;
@@ -443,7 +443,8 @@ onUnmounted(() => {
 }
 
 .dialog-action-primary {
-  background: var(--accent);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
+  box-shadow: var(--ui-primary-shadow);
 }
 </style>

@@ -4,65 +4,54 @@ import type { HomeSidebarCollectionSelection } from '@/components/home/homeSideb
 
 export type HomeWorkspaceView =
   | 'home'
+  | 'discover'
+  | 'roaming'
   | 'liked'
   | 'collection'
   | 'local'
   | 'settings'
   | 'history'
   | 'plugins'
+  | 'now-playing'
+
+const SIDEBAR_ITEM_TO_VIEW: Record<string, HomeWorkspaceView> = {
+  home: 'home',
+  discover: 'discover',
+  roaming: 'roaming',
+  liked: 'liked',
+  local: 'local',
+  history: 'history',
+  settings: 'settings',
+  plugins: 'plugins'
+}
+
+const VIEW_TO_SIDEBAR_ITEM: Record<HomeWorkspaceView, string | null> = {
+  home: 'home',
+  discover: 'discover',
+  roaming: 'roaming',
+  liked: 'liked',
+  local: 'local',
+  history: 'history',
+  settings: 'settings',
+  plugins: 'plugins',
+  collection: null,
+  'now-playing': null
+}
 
 export function useHomeWorkspaceState() {
   const activeWorkspaceView = ref<HomeWorkspaceView>('home')
   const selectedCollection = ref<HomeSidebarCollectionSelection | null>(null)
 
-  const activeSidebarItemId = computed(() =>
-    activeWorkspaceView.value === 'liked'
-      ? 'liked'
-      : activeWorkspaceView.value === 'local'
-        ? 'local'
-        : activeWorkspaceView.value === 'history'
-          ? 'history'
-          : activeWorkspaceView.value === 'settings'
-            ? 'settings'
-            : activeWorkspaceView.value === 'plugins'
-              ? 'plugins'
-              : activeWorkspaceView.value === 'collection' && selectedCollection.value
-                ? selectedCollection.value.uiId
-                : 'home'
-  )
+  const activeSidebarItemId = computed<string | null>(() => {
+    if (activeWorkspaceView.value === 'collection' && selectedCollection.value) {
+      return selectedCollection.value.uiId
+    }
+    return VIEW_TO_SIDEBAR_ITEM[activeWorkspaceView.value]
+  })
 
   function handleSidebarItemSelect(itemId: string): void {
-    if (itemId === 'liked') {
-      activeWorkspaceView.value = 'liked'
-      selectedCollection.value = null
-      return
-    }
-
-    if (itemId === 'local') {
-      activeWorkspaceView.value = 'local'
-      selectedCollection.value = null
-      return
-    }
-
-    if (itemId === 'history') {
-      activeWorkspaceView.value = 'history'
-      selectedCollection.value = null
-      return
-    }
-
-    if (itemId === 'settings') {
-      activeWorkspaceView.value = 'settings'
-      selectedCollection.value = null
-      return
-    }
-
-    if (itemId === 'plugins') {
-      activeWorkspaceView.value = 'plugins'
-      selectedCollection.value = null
-      return
-    }
-
-    activeWorkspaceView.value = 'home'
+    const view = SIDEBAR_ITEM_TO_VIEW[itemId]
+    activeWorkspaceView.value = view ?? 'home'
     selectedCollection.value = null
   }
 
@@ -76,12 +65,17 @@ export function useHomeWorkspaceState() {
     selectedCollection.value = null
   }
 
+  function showNowPlaying(): void {
+    activeWorkspaceView.value = 'now-playing'
+  }
+
   return {
     activeSidebarItemId,
     activeWorkspaceView,
     handleSidebarCollectionSelect,
     handleSidebarItemSelect,
     resetToHome,
+    showNowPlaying,
     selectedCollection
   }
 }

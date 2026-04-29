@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRenderStyle } from '@/composables/useRenderStyle'
+import { useProjectUi } from '@/composables/useProjectUi'
 
 const props = withDefaults(
   defineProps<{
@@ -12,7 +12,7 @@ const props = withDefaults(
   }
 )
 
-const { renderStyle } = useRenderStyle()
+const { renderStyle } = useProjectUi()
 </script>
 
 <template>
@@ -55,7 +55,7 @@ const { renderStyle } = useRenderStyle()
 .brand-copy h2 {
   margin: 0;
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   color: var(--black);
 }
 
@@ -96,7 +96,7 @@ const { renderStyle } = useRenderStyle()
 .brand-badge.is-header .brand-copy h2 {
   font-size: 16px;
   text-transform: uppercase;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .brand-badge.is-classic .brand-mark {
@@ -110,7 +110,7 @@ const { renderStyle } = useRenderStyle()
 
 .brand-badge.is-classic.is-sidebar .brand-copy h2 {
   font-size: 18px;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .brand-badge.is-classic.is-sidebar {

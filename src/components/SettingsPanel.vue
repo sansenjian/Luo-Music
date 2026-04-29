@@ -84,8 +84,9 @@ function closeSettings(): void {
 .settings-btn {
   width: 28px;
   height: 28px;
-  border: 2px solid var(--black);
-  background: var(--white);
+  border: var(--ui-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -96,8 +97,9 @@ function closeSettings(): void {
 }
 
 .settings-btn:hover {
-  background: var(--black);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
+  box-shadow: var(--ui-primary-shadow);
 }
 
 .settings-overlay {
@@ -106,7 +108,7 @@ function closeSettings(): void {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--ui-overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -114,9 +116,10 @@ function closeSettings(): void {
 }
 
 .settings-panel {
-  background: var(--bg);
-  border: 3px solid var(--black);
-  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.2);
+  background: var(--ui-panel-bg);
+  border: var(--ui-border-strong);
+  border-radius: var(--ui-card-radius);
+  box-shadow: var(--ui-floating-shadow);
   width: 90%;
   max-width: 400px;
   max-height: 80vh;
@@ -128,9 +131,9 @@ function closeSettings(): void {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 3px solid var(--black);
-  background: var(--black);
-  color: var(--white);
+  border-bottom: var(--ui-divider);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
 }
 
 .settings-header h2 {

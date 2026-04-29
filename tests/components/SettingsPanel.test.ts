@@ -30,6 +30,7 @@ describe('SettingsPanel.vue', () => {
     vi.clearAllMocks()
     storageServiceMock.getItem.mockReturnValue(null)
     storageServiceMock.getJSON.mockReturnValue(null)
+    delete document.documentElement.dataset.renderStyle
   })
 
   it('shows cache manager section when running in Electron', async () => {
@@ -143,7 +144,7 @@ describe('SettingsPanel.vue', () => {
     wrapper.unmount()
   })
 
-  it('persists the selected render style', async () => {
+  it('shows only the classic render style until the brand theme is enabled', async () => {
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
     const wrapper = mount(SettingsPanel, {
@@ -159,9 +160,38 @@ describe('SettingsPanel.vue', () => {
 
     await wrapper.find('.settings-btn').trigger('click')
 
-    const options = Array.from(document.body.querySelectorAll('.placement-option'))
-    expect(options.map(option => option.textContent?.trim())).toContain('经典风格')
-    expect(options.map(option => option.textContent?.trim())).toContain('品牌风格')
+    const renderStyleGroup = document.body.querySelector('[aria-label="渲染风格"]')
+    const options = Array.from(renderStyleGroup?.querySelectorAll('.placement-option') ?? [])
+    expect(options.map(option => option.textContent?.trim())).toEqual(['经典风格'])
+    expect(document.body.textContent).not.toContain('品牌风格')
+    expect(storageServiceMock.setItem).not.toHaveBeenCalledWith('renderStyle', 'brand')
+
+    wrapper.unmount()
+  })
+
+  it('shows the brand render style after enabling the brand theme resource pack', async () => {
+    storageServiceMock.getJSON.mockImplementation((key: string) =>
+      key === 'themeResourcePacks' ? { enabledThemeResourcePackIds: ['builtin.brand-theme'] } : null
+    )
+    const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
+
+    const wrapper = mount(SettingsPanel, {
+      attachTo: document.body,
+      global: {
+        stubs: {
+          Teleport: false,
+          Transition: false,
+          CacheManager: true
+        }
+      }
+    })
+
+    await wrapper.find('.settings-btn').trigger('click')
+
+    const renderStyleGroup = document.body.querySelector('[aria-label="渲染风格"]')
+    const options = Array.from(renderStyleGroup?.querySelectorAll('.placement-option') ?? [])
+    expect(options.map(option => option.textContent?.trim())).toEqual(['经典风格', '品牌风格'])
+    expect(storageServiceMock.setItem).not.toHaveBeenCalledWith('renderStyle', 'brand')
 
     const brandOption = options.find(option => option.textContent?.includes('品牌风格')) as
       | HTMLButtonElement

@@ -92,7 +92,7 @@ const qqMusicLoginState = computed(() => (userStore.isQQMusicLoggedIn ? '已登�
   height: 100%;
   width: 100%;
   padding: 12px 14px calc(12px + var(--safe-bottom));
-  background: color-mix(in srgb, var(--sidebar-shell-bg) 88%, var(--white));
+  background: var(--ui-surface);
 }
 
 .sidebar-login {

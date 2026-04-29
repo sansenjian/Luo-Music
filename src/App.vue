@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 
 import WindowResizeFrame from './components/window/WindowResizeFrame.vue'
 import { useCommandContext } from './composables/useCommandContext'
-import { useRenderStyle } from './composables/useRenderStyle'
+import { useProjectUi } from './composables/useProjectUi'
 import { DESKTOP_LYRIC_ROUTE_PATH, useSmtcExtension } from './extensions/smtc/useSmtcExtension'
 import { services } from './services'
 import { PLAYER_STORAGE_KEY, sanitizePersistedPlayerState } from './utils/storage/appStorage'
@@ -21,7 +21,8 @@ const showWindowResizeFrame = computed(() => isElectron && route.path !== DESKTO
 
 useCommandContext()
 useSmtcExtension()
-useRenderStyle()
+const { ensureAvailableRenderStyle } = useProjectUi()
+ensureAvailableRenderStyle()
 
 function scheduleIdle(task: () => void): void {
   if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {

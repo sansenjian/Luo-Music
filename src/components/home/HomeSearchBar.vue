@@ -87,25 +87,26 @@ function onToggleSelect(): void {
 .cyber-input {
   flex: 1;
   padding: 8px 10px;
-  border: 2px solid var(--black);
-  background: var(--white);
+  border: var(--ui-border);
+  background: var(--ui-control-bg);
   font-family: inherit;
   font-size: 16px;
   outline: none;
-  border-radius: 0;
+  border-radius: var(--ui-control-radius);
   -webkit-appearance: none;
   appearance: none;
 }
 
 .cyber-input:focus {
-  background: var(--bg);
+  border-color: var(--ui-focus-border);
+  background: var(--ui-control-focus-bg);
 }
 
 .exec-btn {
   padding: 8px 16px;
-  border: 2px solid var(--black);
-  background: var(--black);
-  color: var(--white);
+  border: var(--ui-border);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
   font-family: inherit;
   font-size: 11px;
   font-weight: 700;
@@ -115,15 +116,16 @@ function onToggleSelect(): void {
   transition: all 0.1s;
   -webkit-appearance: none;
   appearance: none;
-  border-radius: 0;
+  border-radius: var(--ui-control-radius);
   display: flex;
   align-items: center;
 }
 
 .exec-btn:hover:not(:disabled),
 .exec-btn:active:not(:disabled) {
-  background: var(--white);
-  color: var(--black);
+  background: var(--ui-primary-hover-bg);
+  color: var(--ui-primary-hover-text);
+  box-shadow: var(--ui-primary-shadow);
 }
 
 .exec-btn:disabled {

@@ -197,8 +197,10 @@ function handleClearResult(result: {
 <style scoped>
 .cache-manager {
   padding: 16px;
-  background: var(--bg-secondary, #f5f5f5);
-  border: 2px solid var(--black);
+  background: var(--ui-surface);
+  border: var(--ui-border);
+  border-radius: var(--ui-card-radius);
+  box-shadow: var(--ui-shadow);
 }
 
 .cache-header {
@@ -225,8 +227,9 @@ function handleClearResult(result: {
   gap: 8px;
   margin-bottom: 12px;
   padding: 10px;
-  background: var(--bg, #fff);
-  border: 1px solid var(--gray-light, #ddd);
+  background: var(--ui-surface-muted);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
 }
 
 .cache-label {
@@ -243,8 +246,9 @@ function handleClearResult(result: {
 .cache-account {
   margin-bottom: 12px;
   padding: 10px;
-  background: var(--bg, #fff);
-  border: 1px solid var(--gray-light, #ddd);
+  background: var(--ui-surface-muted);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
 }
 
 .account-header {
@@ -299,8 +303,9 @@ function handleClearResult(result: {
 .cache-options {
   margin-bottom: 12px;
   padding: 10px;
-  background: var(--bg, #fff);
-  border: 1px solid var(--gray-light, #ddd);
+  background: var(--ui-surface-muted);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
 }
 
 .options-header {
@@ -323,15 +328,16 @@ function handleClearResult(result: {
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
-  border: 1px solid var(--gray-light, #ddd);
-  background: var(--white);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--gray, #666);
   cursor: pointer;
   transition: all 0.1s;
 }
 
 .toggle-all-btn:hover {
-  border-color: var(--black);
+  border-color: var(--ui-focus-border);
   color: var(--black);
 }
 
@@ -362,9 +368,10 @@ function handleClearResult(result: {
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 600;
-  border: 2px solid var(--black);
+  border: var(--ui-border);
+  border-radius: var(--ui-control-radius);
   cursor: pointer;
-  background: var(--white);
+  background: var(--ui-control-bg);
   color: var(--black);
   transition: all 0.1s;
   text-transform: uppercase;
@@ -372,8 +379,8 @@ function handleClearResult(result: {
 }
 
 .cache-btn:hover:not(:disabled) {
-  background: var(--black);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
 }
 
 .cache-btn:disabled {

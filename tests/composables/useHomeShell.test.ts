@@ -77,7 +77,7 @@ describe('useHomeShell', () => {
     expect(platformServiceMock.closeWindow).toHaveBeenCalledTimes(1)
   })
 
-  it('switches back to lyric tab after a successful play request', async () => {
+  it('keeps the current tab after a successful play request', async () => {
     const playerStore = usePlayerStore()
     const playSongWithDetails = vi
       .spyOn(playerStore, 'playSongWithDetails')
@@ -89,7 +89,7 @@ describe('useHomeShell', () => {
     await vm.playSong(2)
 
     expect(playSongWithDetails).toHaveBeenCalledWith(2)
-    expect(vm.activeTab).toBe('lyric')
+    expect(vm.activeTab).toBe('playlist')
   })
 
   it('reports playback failures through the toast store', async () => {

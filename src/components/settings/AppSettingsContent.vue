@@ -41,6 +41,7 @@ const {
   setDockedPlayerBarLayout,
   setWaveformEnabled,
   setRenderStyle,
+  availableRenderStyleOptions,
   isBrandPlacementActive,
   isRenderStyleActive,
   isDockedPlayerBarLayoutActive
@@ -418,20 +419,14 @@ const desktopLyricPreviewStyle = computed(() => {
             :aria-label="uiMessages.settings.fields.renderStyle"
           >
             <button
+              v-for="option in availableRenderStyleOptions"
+              :key="option.value"
               type="button"
               class="placement-option"
-              :class="{ active: isRenderStyleActive('classic') }"
-              @click="setRenderStyle('classic')"
+              :class="{ active: isRenderStyleActive(option.value) }"
+              @click="setRenderStyle(option.value)"
             >
-              {{ uiMessages.settings.options.renderStyle.classic }}
-            </button>
-            <button
-              type="button"
-              class="placement-option"
-              :class="{ active: isRenderStyleActive('brand') }"
-              @click="setRenderStyle('brand')"
-            >
-              {{ uiMessages.settings.options.renderStyle.brand }}
+              {{ option.label }}
             </button>
           </div>
         </div>
@@ -521,7 +516,9 @@ const desktopLyricPreviewStyle = computed(() => {
 .settings-section {
   padding: 14px;
   background: var(--bg-secondary, #f5f5f5);
-  border: 2px solid var(--black);
+  border: var(--ui-border);
+  border-radius: var(--ui-card-radius);
+  box-shadow: var(--ui-shadow);
 }
 
 .surface-dialog .settings-section {
@@ -551,8 +548,9 @@ const desktopLyricPreviewStyle = computed(() => {
   justify-content: space-between;
   gap: 12px;
   padding: 10px;
-  background: var(--bg, #fff);
-  border: 1px solid var(--gray-light, #ddd);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
 }
 
 .surface-dialog .setting-item label,
@@ -579,8 +577,9 @@ const desktopLyricPreviewStyle = computed(() => {
 
 .setting-stack-block {
   padding: 10px;
-  background: var(--bg, #fff);
-  border: 1px solid var(--gray-light, #ddd);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
 }
 
 .setting-stack-block > * + * {
@@ -599,8 +598,9 @@ const desktopLyricPreviewStyle = computed(() => {
   gap: 10px;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--gray-light, #ddd);
-  background: var(--bg, #fff);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--black);
   font-size: 13px;
   font-weight: 600;
@@ -622,8 +622,9 @@ const desktopLyricPreviewStyle = computed(() => {
   display: grid;
   gap: 12px;
   padding: 10px;
-  background: var(--bg, #fff);
-  border: 1px solid var(--gray-light, #ddd);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
 }
 
 .desktop-lyric-field {
@@ -637,10 +638,10 @@ const desktopLyricPreviewStyle = computed(() => {
 .desktop-lyric-select {
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid #d8dee8;
-  border-radius: 999px;
-  background: #f8fbff;
-  color: #243047;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--black);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -664,10 +665,10 @@ const desktopLyricPreviewStyle = computed(() => {
   gap: 10px;
   min-height: 44px;
   padding: 0 18px;
-  border: 1px solid #d8dee8;
-  border-radius: 999px;
-  background: #f8fbff;
-  color: #344054;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--black);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -691,9 +692,9 @@ const desktopLyricPreviewStyle = computed(() => {
 .desktop-lyric-preview {
   min-height: 180px;
   padding: 22px 24px;
-  border: 1px solid #d8dee8;
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.92)), #fff;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-surface);
   overflow: hidden;
 }
 
@@ -749,8 +750,9 @@ const desktopLyricPreviewStyle = computed(() => {
 
 .settings-note {
   padding: 12px;
-  background: var(--bg, #fff);
-  border: 1px solid var(--gray-light, #ddd);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
   color: var(--gray, #666);
   font-size: 13px;
 }
@@ -767,8 +769,9 @@ const desktopLyricPreviewStyle = computed(() => {
 .placement-option {
   min-width: 76px;
   padding: 7px 10px;
-  border: 1px solid var(--gray-light, #ddd);
-  background: var(--white);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--black);
   font-size: 11px;
   font-weight: 600;
@@ -782,19 +785,21 @@ const desktopLyricPreviewStyle = computed(() => {
 }
 
 .placement-option.active {
-  background: var(--black);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
+  box-shadow: var(--ui-primary-shadow);
 }
 
 .placement-option:hover {
-  border-color: var(--black);
+  border-color: var(--ui-focus-border);
 }
 
 .surface-dialog .setting-select,
 .surface-workspace .setting-select {
   padding: 6px 10px;
-  border: 1px solid var(--gray-light, #ddd);
-  background: var(--white);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;

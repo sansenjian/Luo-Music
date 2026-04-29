@@ -5,8 +5,8 @@ import {
   HOME_SIDEBAR_EXPLORE_ITEMS,
   HOME_SIDEBAR_LIBRARY_ITEMS
 } from '@/components/home/homeSidebar.constants'
+import { useProjectUi } from '@/composables/useProjectUi'
 import { useHomeSidebarCollections } from '@/composables/useHomeSidebarCollections'
-import { useRenderStyle } from '@/composables/useRenderStyle'
 import { useToastStore } from '@/store/toastStore'
 import { readLocalPlaylistCoverFile } from '@/utils/localPlaylistCoverImage'
 
@@ -24,7 +24,7 @@ type PlaylistContextMenuState = {
 
 const props = withDefaults(
   defineProps<{
-    activeItemId?: string
+    activeItemId?: string | null
     collapsed?: boolean
     showBrand?: boolean
   }>(),
@@ -41,7 +41,7 @@ const emit = defineEmits<{
 }>()
 
 const internalActiveItemId = ref<string>('home')
-const { renderStyle } = useRenderStyle()
+const { renderStyle } = useProjectUi()
 const toastStore = useToastStore()
 const {
   activePlaylistFilter,
@@ -54,7 +54,9 @@ const {
   setLocalPlaylistCustomCover,
   visibleCollections
 } = useHomeSidebarCollections()
-const resolvedActiveItemId = computed(() => props.activeItemId ?? internalActiveItemId.value)
+const resolvedActiveItemId = computed(() =>
+  props.activeItemId === null ? null : (props.activeItemId ?? internalActiveItemId.value)
+)
 const playlistCoverInputRef = ref<HTMLInputElement | null>(null)
 const playlistCoverTarget = ref<HomeSidebarCollectionSelection | null>(null)
 const playlistContextMenuRef = ref<HTMLElement | null>(null)
@@ -444,7 +446,7 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-right: 3px solid var(--black);
+  border-right: var(--ui-divider);
   background:
     radial-gradient(circle at top left, var(--sidebar-shell-glow), transparent 28%),
     var(--sidebar-shell-bg);
@@ -782,10 +784,10 @@ onUnmounted(() => {
   min-width: 148px;
   max-width: min(260px, calc(100vw - 16px));
   padding: 6px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 44px rgba(17, 24, 39, 0.18);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-floating-shadow);
   backdrop-filter: blur(12px);
 }
 
@@ -796,7 +798,7 @@ onUnmounted(() => {
   min-height: 36px;
   padding: 8px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--black);
   font: inherit;
@@ -808,14 +810,14 @@ onUnmounted(() => {
 
 .playlist-context-menu-item:hover,
 .playlist-context-menu-item:focus-visible {
-  background: rgba(17, 24, 39, 0.06);
+  background: var(--ui-hover-bg);
   color: var(--black);
   outline: none;
 }
 
 .playlist-context-menu-remove {
   margin-top: 4px;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  border-top: 1px solid var(--ui-border-subtle);
 }
 
 .playlist-context-menu-remove:hover,
@@ -834,7 +836,7 @@ onUnmounted(() => {
 }
 
 .sidebar-footer {
-  border-top: 1px solid var(--gray-lighter);
+  border-top: 1px solid var(--ui-border-subtle);
 }
 
 .sidebar-shell.is-collapsed .section-title,

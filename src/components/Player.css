@@ -48,7 +48,7 @@
   left: 0;
   right: 0;
   height: 100%;
-  background: var(--bg-dark);
+  background: var(--ui-track-bg);
   overflow: hidden;
   z-index: 1;
 }
@@ -65,7 +65,7 @@
 
 .top-progress-fill {
   height: 100%;
-  background: var(--accent);
+  background: var(--ui-track-fill);
   /* Width transition is controlled by JS updates */
   will-change: width;
 }
@@ -81,7 +81,7 @@
 
 .top-progress-wrapper:hover .top-progress-track {
   height: 20px;
-  background: #000;
+  background: var(--ui-border-color);
 }
 
 /* Compact layout adjustments */
@@ -147,8 +147,9 @@
 .swipe-peek-cover {
   position: absolute;
   inset: 0;
-  border: 3px solid var(--black);
-  background: var(--white);
+  border: var(--ui-border-strong);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-surface);
   pointer-events: none;
   overflow: hidden;
   z-index: 1;
@@ -243,8 +244,11 @@
 
 .cover-frame {
   position: relative;
-  border: 3px solid var(--black);
-  background: var(--white);
+  border: var(--ui-border-strong);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+  overflow: hidden;
   flex-shrink: 0;
   align-self: center;
   width: 85%;
@@ -255,9 +259,10 @@
 
 .corner {
   position: absolute;
+  display: var(--ui-corner-display);
   width: 10px;
   height: 10px;
-  background: var(--black);
+  background: var(--ui-border-color);
   z-index: 10;
 }
 
@@ -300,7 +305,7 @@
 }
 
 .player-section.has-song:hover {
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--ui-hover-bg);
 }
 
 .track-title {
@@ -337,8 +342,9 @@
 
 .progress-bar {
   height: 6px;
-  background: var(--white);
-  border: 2px solid var(--black);
+  background: var(--ui-track-bg);
+  border: var(--ui-border);
+  border-radius: var(--ui-control-radius);
   cursor: pointer;
   position: relative;
   touch-action: none; /* Prevent touch scrolling interference */
@@ -352,7 +358,7 @@
 
 .progress-fill {
   height: 100%;
-  background: var(--black);
+  background: var(--ui-track-fill);
   width: 0%;
   position: relative;
   will-change: width;
@@ -367,7 +373,7 @@
   width: 12px;
   height: 12px;
   background: var(--accent);
-  border: 2px solid var(--black);
+  border: var(--ui-border);
   border-radius: 50%;
   opacity: 0;
   transition: opacity 0.2s;
@@ -414,12 +420,14 @@
 .ctrl-main {
   width: 44px;
   height: 44px;
-  border: 2px solid var(--black);
+  border: var(--ui-border);
+  border-radius: var(--ui-control-radius);
 }
 
 .ctrl-main:hover {
-  background: var(--black);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
+  box-shadow: var(--ui-primary-shadow);
 }
 
 .loop-btn.active {
@@ -460,14 +468,15 @@
   left: 0;
   width: 100%;
   height: 2px;
-  background-color: var(--black);
+  background-color: var(--ui-border-color);
 }
 
 .volume-bar {
   flex: 1;
   height: 12px;
-  background: var(--white);
-  border: 2px solid var(--black);
+  background: var(--ui-track-bg);
+  border: var(--ui-border);
+  border-radius: var(--ui-control-radius);
   cursor: pointer;
   position: relative;
   touch-action: none;
@@ -476,7 +485,7 @@
 
 .volume-fill {
   height: 100%;
-  background: var(--black);
+  background: var(--ui-track-fill);
   width: 0%;
   will-change: width;
 }

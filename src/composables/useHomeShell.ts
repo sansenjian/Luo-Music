@@ -41,7 +41,6 @@ export function useHomeShell(deps: HomeShellDeps = {}) {
   async function playSong(index: number): Promise<void> {
     try {
       await playerStore.playSongWithDetails(index)
-      activeTab.value = 'lyric'
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Playback failed. Please try again.'
       toastStore.error(message)

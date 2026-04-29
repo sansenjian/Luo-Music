@@ -57,9 +57,9 @@ const emit = defineEmits<{
   place-items: center;
   gap: 14px;
   padding: 32px 24px;
-  border: 2px dashed rgba(17, 24, 39, 0.12);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px dashed var(--ui-border-subtle);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-surface-muted);
 }
 
 .tone-error {
@@ -72,8 +72,8 @@ const emit = defineEmits<{
   display: grid;
   place-items: center;
   margin: 0 auto 12px;
-  border-radius: 18px;
-  background: rgba(17, 24, 39, 0.08);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-hover-bg);
   color: var(--black);
 }
 
@@ -98,9 +98,9 @@ const emit = defineEmits<{
 .media-state-action {
   min-height: 42px;
   padding: 10px 18px;
-  border: 2px solid var(--black);
-  border-radius: 12px;
-  background: var(--white);
+  border: var(--ui-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: var(--black);
   font-size: 13px;
   font-weight: 800;

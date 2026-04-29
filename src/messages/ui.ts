@@ -53,10 +53,6 @@ export const uiMessages = {
         single: '单曲循环',
         shuffle: '随机播放'
       },
-      renderStyle: {
-        classic: '经典风格',
-        brand: '品牌风格'
-      },
       brandPlacement: {
         header: '顶栏',
         sidebar: '侧边栏'
@@ -117,6 +113,18 @@ export const uiMessages = {
     tabs: {
       lyric: 'Lyrics',
       playlist: 'Playlist'
+    },
+    overview: {
+      title: '主页',
+      description: '欢迎回来，从这里开始探索音乐。'
+    },
+    discover: {
+      title: '每日推荐',
+      description: '根据你的听歌偏好，为你精选推荐。'
+    },
+    roaming: {
+      title: '漫游',
+      description: '探索新音乐，发现更多可能。'
     },
     emptyState: {
       lyric: {

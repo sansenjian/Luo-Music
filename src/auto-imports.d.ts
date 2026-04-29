@@ -292,6 +292,7 @@ declare global {
   const usePreferredReducedMotion: typeof import('@vueuse/core').usePreferredReducedMotion
   const usePreferredReducedTransparency: typeof import('@vueuse/core').usePreferredReducedTransparency
   const usePrevious: typeof import('@vueuse/core').usePrevious
+  const useProjectUi: typeof import('./composables/useProjectUi').useProjectUi
   const useRafFn: typeof import('@vueuse/core').useRafFn
   const useRecentPlayStore: typeof import('./store/recentPlayStore').useRecentPlayStore
   const useRefHistory: typeof import('@vueuse/core').useRefHistory
@@ -325,6 +326,7 @@ declare global {
   const useTextDirection: typeof import('@vueuse/core').useTextDirection
   const useTextSelection: typeof import('@vueuse/core').useTextSelection
   const useTextareaAutosize: typeof import('@vueuse/core').useTextareaAutosize
+  const useThemeResourcePacks: typeof import('./composables/useThemeResourcePacks').useThemeResourcePacks
   const useThrottle: typeof import('@vueuse/core').useThrottle
   const useThrottleFn: typeof import('@vueuse/core').useThrottleFn
   const useThrottledRefHistory: typeof import('@vueuse/core').useThrottledRefHistory
@@ -478,6 +480,12 @@ declare global {
   // @ts-ignore
   export type { SliderOptions } from './composables/useSlider'
   import('./composables/useSlider')
+  // @ts-ignore
+  export type {
+    ThemeResourcePacksState,
+    ThemeResourcePacksDeps
+  } from './composables/useThemeResourcePacks'
+  import('./composables/useThemeResourcePacks')
   // @ts-ignore
   export type {
     UseUserCenterPageDeps,
@@ -950,6 +958,7 @@ declare module 'vue' {
       (typeof import('@vueuse/core'))['usePreferredReducedTransparency']
     >
     readonly usePrevious: UnwrapRef<(typeof import('@vueuse/core'))['usePrevious']>
+    readonly useProjectUi: UnwrapRef<(typeof import('./composables/useProjectUi'))['useProjectUi']>
     readonly useRafFn: UnwrapRef<(typeof import('@vueuse/core'))['useRafFn']>
     readonly useRecentPlayStore: UnwrapRef<
       (typeof import('./store/recentPlayStore'))['useRecentPlayStore']
@@ -991,6 +1000,9 @@ declare module 'vue' {
     readonly useTextDirection: UnwrapRef<(typeof import('@vueuse/core'))['useTextDirection']>
     readonly useTextSelection: UnwrapRef<(typeof import('@vueuse/core'))['useTextSelection']>
     readonly useTextareaAutosize: UnwrapRef<(typeof import('@vueuse/core'))['useTextareaAutosize']>
+    readonly useThemeResourcePacks: UnwrapRef<
+      (typeof import('./composables/useThemeResourcePacks'))['useThemeResourcePacks']
+    >
     readonly useThrottle: UnwrapRef<(typeof import('@vueuse/core'))['useThrottle']>
     readonly useThrottleFn: UnwrapRef<(typeof import('@vueuse/core'))['useThrottleFn']>
     readonly useThrottledRefHistory: UnwrapRef<

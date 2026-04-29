@@ -47,7 +47,7 @@ function changeTab(tab: HomeTab): void {
 <style scoped>
 .panel-tabs {
   display: flex;
-  border-bottom: var(--border);
+  border-bottom: var(--ui-divider);
   flex-shrink: 0;
 }
 
@@ -59,21 +59,24 @@ function changeTab(tab: HomeTab): void {
   text-transform: uppercase;
   cursor: pointer;
   border: none;
-  border-right: var(--border);
-  background: var(--bg);
+  border-right: var(--ui-divider);
+  background: var(--ui-panel-bg);
+  color: var(--black);
+  border-radius: 0;
   white-space: nowrap;
   flex-shrink: 0;
   transition: all 0.1s;
 }
 
 .tab.active {
-  background: var(--black);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
+  box-shadow: var(--ui-primary-shadow);
 }
 
 .tab:hover:not(.active),
 .tab:active:not(.active) {
-  background: var(--bg-dark);
+  background: var(--ui-hover-bg);
 }
 
 @media (max-width: 600px) {

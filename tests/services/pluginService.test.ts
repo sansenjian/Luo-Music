@@ -24,6 +24,37 @@ const experimentalFeaturesMock = vi.hoisted(() => {
     })
   }
 })
+const themeResourcePacksMock = vi.hoisted(() => {
+  const enabledThemeResourcePackIds = { value: [] as string[] }
+
+  return {
+    enabledThemeResourcePackIds,
+    isThemeResourcePackEnabled: vi.fn((themeResourcePackId: string) =>
+      enabledThemeResourcePackIds.value.includes(themeResourcePackId)
+    ),
+    setThemeResourcePackEnabled: vi.fn((themeResourcePackId: string, next: boolean) => {
+      const enabledIds = new Set(enabledThemeResourcePackIds.value)
+
+      if (next) {
+        enabledIds.add(themeResourcePackId)
+      } else {
+        enabledIds.delete(themeResourcePackId)
+      }
+
+      enabledThemeResourcePackIds.value = Array.from(enabledIds)
+    })
+  }
+})
+const renderStyleMock = vi.hoisted(() => {
+  const renderStyle = { value: 'classic' as 'classic' | 'brand' }
+
+  return {
+    renderStyle,
+    setRenderStyle: vi.fn((next: 'classic' | 'brand') => {
+      renderStyle.value = next
+    })
+  }
+})
 
 vi.mock('@/platform/music/descriptors', () => ({
   getPlatformDescriptors: mockGetPlatformDescriptors,
@@ -32,6 +63,14 @@ vi.mock('@/platform/music/descriptors', () => ({
 
 vi.mock('@/composables/useExperimentalFeatures', () => ({
   useExperimentalFeatures: () => experimentalFeaturesMock
+}))
+
+vi.mock('@/composables/useProjectUi', () => ({
+  useProjectUi: () => renderStyleMock
+}))
+
+vi.mock('@/composables/useThemeResourcePacks', () => ({
+  useThemeResourcePacks: () => themeResourcePacksMock
 }))
 
 // ---------------------------------------------------------------------------
@@ -95,7 +134,12 @@ const pluginDescriptor: PlatformDescriptor = {
 
 function expectFirstPartyExtensionDescriptors(
   platforms: PlatformDescriptor[],
-  options: { smtc?: boolean; coverSwipeEnabled?: boolean; smtcEnabled?: boolean } = {}
+  options: {
+    smtc?: boolean
+    coverSwipeEnabled?: boolean
+    smtcEnabled?: boolean
+    brandThemeResourceEnabled?: boolean
+  } = {}
 ): void {
   expect(platforms).toEqual(
     expect.arrayContaining([
@@ -107,6 +151,15 @@ function expectFirstPartyExtensionDescriptors(
         category: 'extension',
         enabled: options.coverSwipeEnabled ?? false,
         status: options.coverSwipeEnabled ? 'ready' : 'disabled'
+      }),
+      expect.objectContaining({
+        id: 'builtin.brand-theme',
+        displayName: '品牌风格',
+        source: 'builtin',
+        runtime: 'local',
+        category: 'theme',
+        enabled: options.brandThemeResourceEnabled ?? false,
+        status: options.brandThemeResourceEnabled ? 'ready' : 'disabled'
       })
     ])
   )
@@ -167,6 +220,8 @@ describe('createPluginService', () => {
     vi.clearAllMocks()
     experimentalFeaturesMock.smtcEnabled.value = false
     experimentalFeaturesMock.coverSwipeEnabled.value = false
+    themeResourcePacksMock.enabledThemeResourcePackIds.value = []
+    renderStyleMock.renderStyle.value = 'classic'
     mockGetPlatformDescriptors.mockReturnValue(builtinDescriptors)
     mockReplaceRuntimePlatformDescriptors.mockImplementation(() => {})
   })
@@ -376,6 +431,53 @@ describe('createPluginService', () => {
     expect(experimentalFeaturesMock.setCoverSwipeEnabled).toHaveBeenCalledWith(true)
     expect(result).toEqual(expect.arrayContaining(builtinDescriptors))
     expectFirstPartyExtensionDescriptors(result, { smtc: false, coverSwipeEnabled: true })
+  })
+
+  it('toggles the first-party brand theme outside Electron', async () => {
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => false
+    })
+
+    const enabledResult = await service.setEnabled('builtin.brand-theme', true)
+
+    expect(themeResourcePacksMock.setThemeResourcePackEnabled).toHaveBeenCalledWith(
+      'builtin.brand-theme',
+      true
+    )
+    expect(renderStyleMock.setRenderStyle).not.toHaveBeenCalled()
+    expect(enabledResult).toEqual(expect.arrayContaining(builtinDescriptors))
+    expectFirstPartyExtensionDescriptors(enabledResult, {
+      smtc: false,
+      brandThemeResourceEnabled: true
+    })
+
+    const disabledResult = await service.setEnabled('builtin.brand-theme', false)
+
+    expect(themeResourcePacksMock.setThemeResourcePackEnabled).toHaveBeenCalledWith(
+      'builtin.brand-theme',
+      false
+    )
+    expect(renderStyleMock.setRenderStyle).not.toHaveBeenCalled()
+    expectFirstPartyExtensionDescriptors(disabledResult, { smtc: false })
+  })
+
+  it('falls back to the classic render style when disabling the active brand theme', async () => {
+    themeResourcePacksMock.enabledThemeResourcePackIds.value = ['builtin.brand-theme']
+    renderStyleMock.renderStyle.value = 'brand'
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => false
+    })
+
+    const result = await service.setEnabled('builtin.brand-theme', false)
+
+    expect(themeResourcePacksMock.setThemeResourcePackEnabled).toHaveBeenCalledWith(
+      'builtin.brand-theme',
+      false
+    )
+    expect(renderStyleMock.setRenderStyle).toHaveBeenCalledWith('classic')
+    expectFirstPartyExtensionDescriptors(result, { smtc: false })
   })
 
   // -----------------------------------------------------------------------

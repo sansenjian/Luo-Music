@@ -55,10 +55,10 @@ const pluginCategoryTabs: PluginCategoryTab[] = [
   },
   {
     value: 'theme',
-    label: '主题',
-    description: 'UI 优化',
+    label: '主题插件',
+    description: '主题资源包',
     emptyTitle: '当前没有主题插件',
-    emptyDescription: '界面外观、视觉样式或布局优化插件会显示在这里。'
+    emptyDescription: '启用主题资源包后，对应渲染风格会出现在界面设置里。'
   }
 ]
 
@@ -502,9 +502,9 @@ function capabilityLabel(platform: {
   gap: 10px;
   padding: 0 14px;
   min-height: 42px;
-  border: 1px solid var(--sidebar-note-border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-soft) 90%, var(--white));
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
 }
 
 .plugin-install-icon {
@@ -540,7 +540,7 @@ function capabilityLabel(platform: {
   min-height: 38px;
   padding: 0 16px;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--ui-control-radius);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -558,9 +558,9 @@ function capabilityLabel(platform: {
 }
 
 .plugin-pill-primary {
-  background: var(--sidebar-active-bg);
-  color: var(--white);
-  box-shadow: var(--sidebar-active-shadow);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
+  box-shadow: var(--ui-primary-shadow);
 }
 
 .plugin-pill-primary:hover:not(:disabled) {
@@ -568,13 +568,13 @@ function capabilityLabel(platform: {
 }
 
 .plugin-pill-secondary {
-  background: var(--surface-muted);
+  background: var(--ui-surface-muted);
   color: var(--gray);
-  box-shadow: inset 0 0 0 1px var(--sidebar-note-border);
+  box-shadow: inset 0 0 0 1px var(--ui-border-subtle);
 }
 
 .plugin-pill-secondary:hover:not(:disabled) {
-  background: var(--sidebar-link-hover-bg);
+  background: var(--ui-hover-bg);
   color: var(--black);
   transform: translateY(-1px);
 }
@@ -582,11 +582,11 @@ function capabilityLabel(platform: {
 .plugin-pill-ghost {
   background: transparent;
   color: var(--gray);
-  box-shadow: inset 0 0 0 1px var(--sidebar-note-border);
+  box-shadow: inset 0 0 0 1px var(--ui-border-subtle);
 }
 
 .plugin-pill-ghost:hover:not(:disabled) {
-  background: var(--sidebar-link-hover-bg);
+  background: var(--ui-hover-bg);
   color: var(--black);
 }
 
@@ -617,7 +617,7 @@ function capabilityLabel(platform: {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-radius: calc(var(--sidebar-link-radius, 8px) + 4px);
+  border-radius: var(--ui-radius-md);
   font-size: 12px;
   font-weight: 500;
   line-height: 1.5;
@@ -655,8 +655,8 @@ function capabilityLabel(platform: {
 .plugin-loading-spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid var(--sidebar-note-border);
-  border-top-color: var(--sidebar-active-bg);
+  border: 2px solid var(--ui-border-subtle);
+  border-top-color: var(--ui-focus-border);
   border-radius: 50%;
   animation: plugin-spin 0.6s linear infinite;
 }
@@ -673,9 +673,9 @@ function capabilityLabel(platform: {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 4px;
-  border: 1px solid var(--sidebar-note-border);
-  border-radius: calc(var(--sidebar-link-radius, 8px) + 8px);
-  background: var(--surface-muted);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-surface-muted);
 }
 
 .plugin-category-tab {
@@ -688,7 +688,7 @@ function capabilityLabel(platform: {
   min-height: 54px;
   padding: 8px 12px;
   border: none;
-  border-radius: calc(var(--sidebar-link-radius, 8px) + 4px);
+  border-radius: var(--ui-radius-md);
   background: transparent;
   color: var(--gray);
   text-align: left;
@@ -700,14 +700,14 @@ function capabilityLabel(platform: {
 }
 
 .plugin-category-tab:hover {
-  background: var(--sidebar-link-hover-bg);
+  background: var(--ui-hover-bg);
   color: var(--black);
 }
 
 .plugin-category-tab-active {
-  background: var(--surface-soft);
+  background: var(--ui-surface-soft);
   color: var(--black);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--ui-shadow);
 }
 
 .plugin-category-label {
@@ -729,7 +729,7 @@ function capabilityLabel(platform: {
 }
 
 .plugin-category-tab-active .plugin-category-description {
-  color: var(--sidebar-note-text);
+  color: var(--accent);
 }
 
 .plugin-category-count {
@@ -741,16 +741,16 @@ function capabilityLabel(platform: {
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-soft) 75%, var(--white));
+  background: var(--ui-surface-soft);
   color: var(--gray);
   font-size: 11px;
   font-weight: 800;
-  box-shadow: inset 0 0 0 1px var(--sidebar-note-border);
+  box-shadow: inset 0 0 0 1px var(--ui-border-subtle);
 }
 
 .plugin-category-tab-active .plugin-category-count {
-  background: var(--sidebar-active-bg);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
   box-shadow: none;
 }
 
@@ -769,15 +769,15 @@ function capabilityLabel(platform: {
   margin-bottom: 16px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--sidebar-note-border);
-  border-radius: calc(var(--sidebar-link-radius, 8px) + 8px);
-  background: var(--surface-muted);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-surface-muted);
 }
 
 .plugin-empty-icon svg {
   width: 28px;
   height: 28px;
-  color: var(--sidebar-note-text);
+  color: var(--accent);
 }
 
 .plugin-empty h3 {
@@ -808,10 +808,10 @@ function capabilityLabel(platform: {
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  border: 1px solid var(--sidebar-note-border);
-  border-radius: calc(var(--sidebar-link-radius, 8px) + 8px);
-  background: color-mix(in srgb, var(--surface-soft) 92%, var(--white));
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
   transition:
     border-color 0.18s ease,
     box-shadow 0.18s ease,
@@ -819,9 +819,9 @@ function capabilityLabel(platform: {
 }
 
 .plugin-card:hover {
-  border-color: color-mix(in srgb, var(--sidebar-note-border) 60%, var(--black));
+  border-color: var(--ui-focus-border);
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--ui-floating-shadow);
 }
 
 .plugin-card-disabled {
@@ -852,7 +852,7 @@ function capabilityLabel(platform: {
   height: 40px;
   display: grid;
   place-items: center;
-  border-radius: calc(var(--sidebar-link-radius, 8px) + 4px);
+  border-radius: var(--ui-radius-md);
   font-size: 16px;
   font-weight: 800;
   flex-shrink: 0;
@@ -1000,8 +1000,8 @@ function capabilityLabel(platform: {
   font-size: 11px;
   font-weight: 600;
   color: var(--gray);
-  background: var(--surface-muted);
-  box-shadow: inset 0 0 0 1px var(--sidebar-note-border);
+  background: var(--ui-surface-muted);
+  box-shadow: inset 0 0 0 1px var(--ui-border-subtle);
 }
 
 .plugin-perm-chip svg {
@@ -1013,7 +1013,7 @@ function capabilityLabel(platform: {
 .plugin-card-error {
   margin: 0;
   padding: 8px 12px;
-  border-radius: calc(var(--sidebar-link-radius, 8px) + 2px);
+  border-radius: var(--ui-radius-md);
   background: #fff1f0;
   color: #d03050;
   font-size: 12px;
@@ -1026,14 +1026,14 @@ function capabilityLabel(platform: {
   gap: 8px;
   flex-wrap: wrap;
   padding-top: 4px;
-  border-top: 1px solid var(--sidebar-note-border);
+  border-top: 1px solid var(--ui-border-subtle);
 }
 
 /* ---- settings form ---- */
 .plugin-settings {
   padding: 14px;
-  border-radius: calc(var(--sidebar-link-radius, 8px) + 4px);
-  background: color-mix(in srgb, var(--surface-muted) 60%, transparent);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-muted);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1071,7 +1071,7 @@ function capabilityLabel(platform: {
   width: 40px;
   height: 22px;
   border-radius: 999px;
-  background: var(--gray-light);
+  background: var(--ui-border-subtle);
   position: relative;
   transition: background 0.2s ease;
 }
@@ -1084,13 +1084,13 @@ function capabilityLabel(platform: {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--white);
+  background: var(--ui-surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   transition: transform 0.2s ease;
 }
 
 .plugin-toggle input:checked + .plugin-toggle-track {
-  background: var(--sidebar-active-bg);
+  background: var(--ui-primary-bg);
 }
 
 .plugin-toggle input:checked + .plugin-toggle-track::after {
@@ -1101,9 +1101,9 @@ function capabilityLabel(platform: {
 .plugin-setting-select {
   min-height: 34px;
   padding: 0 12px;
-  border: 1px solid var(--sidebar-note-border);
-  border-radius: 999px;
-  background: var(--surface-soft);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   font-size: 13px;
   color: var(--black);
   outline: none;
@@ -1116,7 +1116,7 @@ function capabilityLabel(platform: {
 
 .plugin-setting-text:focus,
 .plugin-setting-select:focus {
-  border-color: var(--sidebar-active-bg);
+  border-color: var(--ui-focus-border);
 }
 
 .plugin-settings-footer {
@@ -1124,7 +1124,7 @@ function capabilityLabel(platform: {
   gap: 8px;
   margin-top: 4px;
   padding-top: 10px;
-  border-top: 1px solid var(--sidebar-note-border);
+  border-top: 1px solid var(--ui-border-subtle);
 }
 
 @media (max-width: 640px) {
