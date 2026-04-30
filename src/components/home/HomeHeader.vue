@@ -86,12 +86,16 @@ const { renderStyle } = useProjectUi()
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin: var(--titlebar-margin, 0);
   padding: 12px 20px;
   padding-top: calc(12px + var(--safe-top));
   padding-left: calc(20px + var(--safe-left));
   padding-right: calc(20px + var(--safe-right));
-  border-bottom: var(--ui-divider);
-  background: var(--ui-app-bg);
+  border: var(--titlebar-border, 0);
+  border-bottom: var(--titlebar-divider, var(--ui-divider));
+  border-radius: var(--titlebar-radius, 0);
+  background: var(--titlebar-bg, var(--ui-app-bg));
+  box-shadow: var(--titlebar-shadow, none);
   flex-shrink: 0;
   transition: all 0.3s ease;
   -webkit-app-region: drag;

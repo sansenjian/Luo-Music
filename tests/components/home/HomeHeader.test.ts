@@ -49,6 +49,13 @@ describe('HomeHeader', () => {
     expect(events).toHaveLength(2)
   })
 
+  it('renders themeable search affordances', () => {
+    const wrapper = createWrapper()
+
+    expect(wrapper.find('.search-leading-icon').exists()).toBe(true)
+    expect(wrapper.find('.search-shortcut').text()).toBe('Ctrl K')
+  })
+
   it('emits server selection and dropdown toggle events', async () => {
     const wrapper = createWrapper()
 

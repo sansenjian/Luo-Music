@@ -443,13 +443,17 @@ onUnmounted(() => {
 
 <style scoped>
 .sidebar-shell {
+  margin: var(--sidebar-shell-margin, 0);
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-right: var(--ui-divider);
+  border: var(--sidebar-shell-border, 0);
+  border-right: var(--sidebar-shell-divider, var(--ui-divider));
+  border-radius: var(--sidebar-shell-radius, 0);
   background:
     radial-gradient(circle at top left, var(--sidebar-shell-glow), transparent 28%),
     var(--sidebar-shell-bg);
+  box-shadow: var(--sidebar-shell-shadow, none);
   overflow: hidden;
 }
 
@@ -509,7 +513,7 @@ onUnmounted(() => {
 
 .sidebar-link.active {
   background: var(--sidebar-active-bg);
-  color: var(--white);
+  color: var(--sidebar-active-text, var(--white));
   box-shadow: var(--sidebar-active-shadow);
 }
 
@@ -518,7 +522,7 @@ onUnmounted(() => {
 }
 
 .sidebar-link-muted.active {
-  color: var(--white);
+  color: var(--sidebar-active-text, var(--white));
 }
 
 .sidebar-icon {

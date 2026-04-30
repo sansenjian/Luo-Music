@@ -238,12 +238,17 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
 
 .left-panel {
   grid-area: player;
-  border-right: var(--ui-divider);
+  margin: var(--left-panel-margin, 0);
+  border: var(--left-panel-border, 0);
+  border-right: var(--left-panel-divider, var(--ui-divider));
+  border-radius: var(--left-panel-radius, 0);
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--ui-surface);
+  background: var(--left-panel-bg, var(--ui-surface));
+  box-shadow: var(--left-panel-shadow, none);
   z-index: 10;
+  overflow: hidden;
 }
 
 .sidebar-panel {

@@ -202,7 +202,7 @@ const qqMusicLoginState = computed(() => (userStore.isQQMusicLoggedIn ? '已登�
 
 .settings-button.is-active {
   background: var(--sidebar-active-bg);
-  color: var(--white);
+  color: var(--sidebar-active-text, var(--white));
   box-shadow: var(--sidebar-active-shadow);
 }
 

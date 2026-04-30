@@ -253,15 +253,15 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 }
 
 .lyric-line {
-  margin-bottom: 16px;
+  margin-bottom: var(--lyric-line-gap, 16px);
   cursor: pointer;
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
     opacity 0.2s ease;
-  padding: 8px 12px;
-  border-left: 3px solid transparent;
-  border-radius: var(--ui-radius-md);
+  padding: var(--lyric-line-padding, 8px 12px);
+  border-left: var(--lyric-active-border-width, 3px) solid transparent;
+  border-radius: var(--lyric-line-radius, var(--ui-radius-md));
   position: relative;
 }
 
@@ -272,26 +272,26 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 }
 
 .lyric-line.active {
-  background: var(--ui-primary-bg);
-  color: var(--ui-primary-text);
-  border-left-color: var(--accent);
+  background: var(--lyric-active-bg, var(--ui-primary-bg));
+  color: var(--lyric-active-text, var(--ui-primary-text));
+  border-left-color: var(--lyric-active-border-color, var(--accent));
   opacity: 1 !important;
-  font-weight: 700;
-  box-shadow: var(--ui-primary-shadow);
+  font-weight: var(--lyric-active-weight, 700);
+  box-shadow: var(--lyric-active-shadow, var(--ui-primary-shadow));
 }
 
 .lyric-line.active .lyric-main {
-  color: var(--white);
+  color: var(--lyric-active-main-text, var(--white));
 }
 
 .lyric-line.active .lyric-roma,
 .lyric-line.active .lyric-trans {
-  color: var(--gray-light);
-  opacity: 0.9;
+  color: var(--lyric-active-sub-text, var(--gray-light));
+  opacity: var(--lyric-active-sub-opacity, 0.9);
 }
 
 .lyric-line.passed {
-  opacity: 0.15;
+  opacity: var(--lyric-passed-opacity, 0.15);
 }
 
 .lyric-line.passed:hover,
@@ -301,27 +301,27 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 
 /* 未播放的歌词行 - 不包括 active 和 passed */
 .lyric-line:not(.active):not(.passed) {
-  opacity: 0.5;
+  opacity: var(--lyric-idle-opacity, 0.5);
 }
 
 .lyric-roma {
-  font-size: 12px;
-  color: var(--gray);
+  font-size: var(--lyric-roma-size, 12px);
+  color: var(--lyric-roma-text, var(--gray));
   letter-spacing: 0.02em;
   margin-bottom: 4px;
 }
 
 .lyric-main {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--lyric-main-size, 18px);
+  font-weight: var(--lyric-main-weight, 600);
   line-height: 1.4;
   transition: color 0.2s ease;
   word-break: break-word;
 }
 
 .lyric-trans {
-  font-size: 13px;
-  color: var(--gray);
+  font-size: var(--lyric-trans-size, 13px);
+  color: var(--lyric-trans-text, var(--gray));
   line-height: 1.4;
   margin-top: 4px;
   transition:

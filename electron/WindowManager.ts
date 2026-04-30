@@ -107,6 +107,16 @@ export class WindowManager {
 
     let hasRecoveredRenderer = false
     let hasShownWindow = false
+    let showFallbackTimer: ReturnType<typeof setTimeout> | null = null
+
+    const clearShowFallbackTimer = (): void => {
+      if (!showFallbackTimer) {
+        return
+      }
+
+      clearTimeout(showFallbackTimer)
+      showFallbackTimer = null
+    }
 
     const recoverRenderer = (reason: string, details: Record<string, unknown>): void => {
       logger.error('[WindowManager] Renderer load issue', { reason, ...details })
@@ -141,26 +151,27 @@ export class WindowManager {
       }
 
       hasShownWindow = true
+      clearShowFallbackTimer()
       logger.info(`[WindowManager] Showing main window (${reason})`, {
         elapsed: formatDuration(Date.now() - startedAt)
       })
       win.show()
     }
 
-    const showFallbackTimer = setTimeout(() => {
+    showFallbackTimer = setTimeout(() => {
       if (win.isDestroyed() || win.isVisible()) {
         return
       }
 
-      logger.warn('[WindowManager] ready-to-show did not fire before fallback', {
+      logger.info('[WindowManager] Showing main window through startup fallback', {
         elapsed: formatDuration(Date.now() - startedAt),
-        loadTarget
+        loadTarget,
+        reason: 'ready-to-show timeout'
       })
       showWindow('fallback')
     }, WINDOW_SHOW_FALLBACK_DELAY_MS)
 
     win.once('ready-to-show', () => {
-      clearTimeout(showFallbackTimer)
       logger.info('[WindowManager] ready-to-show', {
         elapsed: formatDuration(Date.now() - startedAt)
       })
@@ -182,6 +193,10 @@ export class WindowManager {
         elapsed: formatDuration(Date.now() - startedAt),
         url: win.webContents.getURL()
       })
+
+      if (devServerUrl) {
+        showWindow('dom-ready')
+      }
     })
 
     win.webContents.on('did-finish-load', () => {

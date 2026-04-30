@@ -161,6 +161,32 @@ describe('PluginInstaller', () => {
       ])
     })
 
+    it('installs the bundled Re:Start theme plugin fixture', async () => {
+      const sourceDir = path.resolve(process.cwd(), 'plugins', 'third-party', 'restart-theme')
+
+      const installer = await createInstaller()
+      const result = await installer.installFromPath(sourceDir)
+
+      expect(result.manifest).toMatchObject({
+        id: 'com.luomusic.theme.restart',
+        category: 'theme',
+        platformId: 'restart-theme'
+      })
+      expect(result.manifest.contributions?.themeResources).toEqual([
+        expect.objectContaining({
+          id: 'com.luomusic.theme.restart.orange-white',
+          label: 'Re:Start Orange White',
+          renderStyle: 'third-party.restart',
+          cssVariables: expect.objectContaining({
+            '--accent': '#ff5a1f',
+            '--ui-card-radius': '18px',
+            '--home-search-server-display': 'none',
+            '--lyric-active-bg': 'transparent'
+          })
+        })
+      ])
+    })
+
     it('installs when given a path directly to manifest.json', async () => {
       const sourceDir = path.join(tempRoot, 'manifest-plugin')
       await writePlugin(sourceDir)

@@ -47,11 +47,12 @@ function changeTab(tab: HomeTab): void {
 <style scoped>
 .panel-tabs {
   display: flex;
-  border-bottom: var(--ui-divider);
+  border-bottom: var(--tabbar-divider, var(--ui-divider));
   flex-shrink: 0;
 }
 
 .tab {
+  position: relative;
   padding: 12px 20px;
   font-size: 11px;
   font-weight: 700;
@@ -59,9 +60,9 @@ function changeTab(tab: HomeTab): void {
   text-transform: uppercase;
   cursor: pointer;
   border: none;
-  border-right: var(--ui-divider);
-  background: var(--ui-panel-bg);
-  color: var(--black);
+  border-right: var(--tab-border, var(--ui-divider));
+  background: var(--tab-bg, var(--ui-panel-bg));
+  color: var(--tab-text, var(--black));
   border-radius: 0;
   white-space: nowrap;
   flex-shrink: 0;
@@ -69,9 +70,20 @@ function changeTab(tab: HomeTab): void {
 }
 
 .tab.active {
-  background: var(--ui-primary-bg);
-  color: var(--ui-primary-text);
-  box-shadow: var(--ui-primary-shadow);
+  background: var(--tab-active-bg, var(--ui-primary-bg));
+  color: var(--tab-active-text, var(--ui-primary-text));
+  box-shadow: var(--tab-active-shadow, var(--ui-primary-shadow));
+}
+
+.tab.active::after {
+  content: '';
+  display: var(--tab-active-indicator-display, none);
+  position: absolute;
+  left: var(--tab-active-indicator-inset, 20px);
+  right: var(--tab-active-indicator-inset, 20px);
+  bottom: 0;
+  height: var(--tab-active-indicator-height, 2px);
+  background: var(--tab-active-indicator-color, var(--accent));
 }
 
 .tab:hover:not(.active),

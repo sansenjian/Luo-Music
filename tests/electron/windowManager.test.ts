@@ -16,13 +16,17 @@ class BrowserWindowMock {
     on: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
       this.webContentsEvents[event] = callback
     }),
+    getURL: vi.fn(() => 'http://localhost:5173'),
     openDevTools: vi.fn(),
     send: vi.fn()
   }
 
+  public visible = false
   public loadFile = vi.fn(() => Promise.resolve())
   public loadURL = vi.fn(() => Promise.resolve())
-  public show = vi.fn()
+  public show = vi.fn(() => {
+    this.visible = true
+  })
   public focus = vi.fn()
   public minimize = vi.fn()
   public maximize = vi.fn()
@@ -31,6 +35,7 @@ class BrowserWindowMock {
   public restore = vi.fn()
   public getSize = vi.fn(() => [1200, 800] as const)
   public isDestroyed = vi.fn(() => false)
+  public isVisible = vi.fn(() => this.visible)
   public isMaximized = vi.fn(() => false)
   public isMinimized = vi.fn(() => false)
   public setAppDetails = vi.fn()
@@ -185,6 +190,40 @@ describe('electron/WindowManager', () => {
       validatedURL: 'http://localhost:5173'
     })
     expect(window?.loadURL).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows the dev window once the renderer DOM is ready', async () => {
+    process.env.VITE_DEV_SERVER_URL = 'http://localhost:5173'
+
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    expect(window?.show).not.toHaveBeenCalled()
+
+    window?.webContentsEvents['dom-ready']?.()
+
+    expect(window?.show).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(window?.show).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the window through fallback when renderer readiness stalls', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    expect(window?.show).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(window?.show).toHaveBeenCalledTimes(1)
   })
 
   it('retries the packaged renderer after an unexpected renderer crash', async () => {
