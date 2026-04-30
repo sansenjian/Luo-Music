@@ -27,6 +27,9 @@ describe('useThemeResourcePacks', () => {
     vi.resetModules()
     vi.clearAllMocks()
     document.documentElement.style.removeProperty('--accent')
+    delete document.documentElement.dataset.themeResourcePack
+    delete document.documentElement.dataset.themePlugin
+    document.getElementById('luo-theme-resource-css')?.remove()
   })
 
   it('defaults the built-in brand theme resource to disabled', async () => {
@@ -118,7 +121,9 @@ describe('useThemeResourcePacks', () => {
             renderStyle: 'community.ocean',
             cssVariables: {
               '--accent': '#006d77'
-            }
+            },
+            cssText:
+              ":root[data-render-style='community.ocean'] [data-ui='player'] { border-radius: 24px; }"
           }
         ]
       }
@@ -144,8 +149,59 @@ describe('useThemeResourcePacks', () => {
 
     applyThemeResourceForRenderStyle('community.ocean')
     expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#006d77')
+    expect(document.documentElement.dataset.themeResourcePack).toBe('community-theme.ocean')
+    expect(document.documentElement.dataset.themePlugin).toBe('community-theme')
+    expect(document.getElementById('luo-theme-resource-css')?.textContent).toContain(
+      "[data-ui='player']"
+    )
 
     applyThemeResourceForRenderStyle('classic')
     expect(document.documentElement.style.getPropertyValue('--accent')).toBe('')
+    expect(document.documentElement.dataset.themeResourcePack).toBeUndefined()
+    expect(document.documentElement.dataset.themePlugin).toBeUndefined()
+    expect(document.getElementById('luo-theme-resource-css')).toBeNull()
+  })
+
+  it('does not mount unsafe theme CSS with imports or remote URLs', async () => {
+    const { replaceRuntimePlatformDescriptors } = await import('@/platform/music/descriptors')
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'unsafe-theme',
+        displayName: 'Unsafe Theme',
+        source: 'external',
+        runtime: 'external-host',
+        category: 'theme',
+        enabled: true,
+        status: 'ready',
+        capabilities: {
+          search: false,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false
+        },
+        themeResources: [
+          {
+            id: 'unsafe-theme.remote',
+            label: 'Remote',
+            renderStyle: 'unsafe.remote',
+            cssText: "@import url('https://example.com/theme.css');"
+          }
+        ]
+      }
+    ])
+
+    const { useThemeResourcePacks } = await import('@/composables/useThemeResourcePacks')
+    const { applyThemeResourceForRenderStyle } = useThemeResourcePacks({
+      storageService: createStorageServiceMock().storageService
+    })
+
+    applyThemeResourceForRenderStyle('unsafe.remote')
+
+    expect(document.documentElement.dataset.themeResourcePack).toBe('unsafe-theme.remote')
+    expect(document.getElementById('luo-theme-resource-css')).toBeNull()
   })
 })

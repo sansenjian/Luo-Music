@@ -18,6 +18,7 @@ const props = withDefaults(
   <footer
     v-if="props.isPlayerDocked"
     class="docked-player-bar"
+    data-ui="docked-player-bar"
     :class="`layout-${props.dockedPlayerBarLayout}`"
   >
     <div class="docked-player-bar-body">
@@ -25,7 +26,7 @@ const props = withDefaults(
     </div>
   </footer>
 
-  <footer v-else class="statusbar">
+  <footer v-else class="statusbar" data-ui="statusbar">
     <div class="status-left">
       <span>{{ props.trackCount }} Tracks</span>
       <span v-if="props.isLoading" class="status-loading">Loading...</span>

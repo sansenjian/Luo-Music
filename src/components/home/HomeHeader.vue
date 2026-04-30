@@ -52,7 +52,7 @@ const { renderStyle } = useProjectUi()
 </script>
 
 <template>
-  <header class="titlebar">
+  <header class="titlebar" data-ui="titlebar">
     <div v-if="props.showBrand !== false" class="title-left">
       <h1 v-if="renderStyle === 'classic'" class="logo">LUO_MUSIC</h1>
       <HomeBrandBadge v-else placement="header" />

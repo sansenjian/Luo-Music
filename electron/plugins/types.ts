@@ -102,7 +102,8 @@ const pluginThemeResourceSchema = z.object({
   label: z.string().min(1),
   renderStyle: z.string().min(1),
   description: z.string().optional(),
-  cssVariables: z.record(z.string().min(1), z.string()).optional()
+  cssVariables: z.record(z.string().min(1), z.string()).optional(),
+  cssText: z.string().max(100_000).optional()
 })
 
 const pluginCapabilitiesSchema = z.object({

@@ -29,6 +29,9 @@ export interface ThemeResourcePackDescriptor extends PluginThemeResource {
 const DEFAULT_THEME_RESOURCE_PACKS: ThemeResourcePacksState = {
   enabledThemeResourcePackIds: []
 }
+const THEME_RESOURCE_STYLE_ELEMENT_ID = 'luo-theme-resource-css'
+const UNSAFE_CSS_IMPORT_PATTERN = /@import\b/i
+const UNSAFE_CSS_URL_PATTERN = /url\(\s*(['"]?)\s*(?:javascript:|https?:)/i
 
 const themeResourcePacksState = ref<ThemeResourcePacksState>({
   ...DEFAULT_THEME_RESOURCE_PACKS
@@ -165,6 +168,23 @@ function isCssVariableName(value: string): boolean {
   return /^--[a-z0-9-_]+$/i.test(value)
 }
 
+function applyThemeResourceAttributes(themeResourcePack?: ThemeResourcePackDescriptor): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  const rootDataset = document.documentElement.dataset
+
+  if (themeResourcePack) {
+    rootDataset.themeResourcePack = themeResourcePack.id
+    rootDataset.themePlugin = themeResourcePack.pluginId
+    return
+  }
+
+  delete rootDataset.themeResourcePack
+  delete rootDataset.themePlugin
+}
+
 function applyThemeResourceVariables(themeResourcePack?: PluginThemeResource): void {
   if (typeof document === 'undefined') {
     return
@@ -185,6 +205,42 @@ function applyThemeResourceVariables(themeResourcePack?: PluginThemeResource): v
     rootStyle.setProperty(key, value)
     activeThemeVariableKeys.add(key)
   }
+}
+
+function isThemeCssTextAllowed(cssText: string): boolean {
+  return !UNSAFE_CSS_IMPORT_PATTERN.test(cssText) && !UNSAFE_CSS_URL_PATTERN.test(cssText)
+}
+
+function applyThemeResourceCss(themeResourcePack?: PluginThemeResource): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  const existingStyle = document.getElementById(THEME_RESOURCE_STYLE_ELEMENT_ID)
+  const cssText = themeResourcePack?.cssText?.trim()
+  const themeResourceId = themeResourcePack?.id
+
+  if (!cssText || !themeResourceId || !isThemeCssTextAllowed(cssText)) {
+    existingStyle?.remove()
+    return
+  }
+
+  const styleElement =
+    existingStyle instanceof HTMLStyleElement ? existingStyle : document.createElement('style')
+
+  styleElement.id = THEME_RESOURCE_STYLE_ELEMENT_ID
+  styleElement.dataset.themeResourceId = themeResourceId
+  styleElement.textContent = cssText
+
+  if (!styleElement.parentElement) {
+    document.head.append(styleElement)
+  }
+}
+
+function applyThemeResource(themeResourcePack?: ThemeResourcePackDescriptor): void {
+  applyThemeResourceAttributes(themeResourcePack)
+  applyThemeResourceVariables(themeResourcePack)
+  applyThemeResourceCss(themeResourcePack)
 }
 
 export function useThemeResourcePacks(deps: ThemeResourcePacksDeps = {}) {
@@ -233,7 +289,7 @@ export function useThemeResourcePacks(deps: ThemeResourcePacksDeps = {}) {
   }
 
   function applyThemeResourceForRenderStyle(style: RenderStyle): void {
-    applyThemeResourceVariables(getEnabledThemeResourcePackByRenderStyle(style))
+    applyThemeResource(getEnabledThemeResourcePackByRenderStyle(style))
   }
 
   return {

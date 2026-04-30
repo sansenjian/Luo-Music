@@ -44,7 +44,7 @@ function onToggleSelect(): void {
 </script>
 
 <template>
-  <div class="search-bar">
+  <div class="search-bar" data-ui="search-bar">
     <HomeServerSelect
       class="search-server-select"
       :selected-server="props.selectedServer"

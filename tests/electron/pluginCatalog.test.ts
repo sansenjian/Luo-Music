@@ -147,7 +147,9 @@ describe('electron/plugins/PluginCatalog', () => {
                 renderStyle: 'theme-pack.ocean',
                 cssVariables: {
                   '--accent': '#006d77'
-                }
+                },
+                cssText:
+                  ":root[data-render-style='theme-pack.ocean'] [data-ui='workspace'] { padding: 4px; }"
               }
             ]
           }
@@ -164,7 +166,8 @@ describe('electron/plugins/PluginCatalog', () => {
           expect.objectContaining({
             id: 'theme-pack.ocean',
             label: 'Ocean',
-            renderStyle: 'theme-pack.ocean'
+            renderStyle: 'theme-pack.ocean',
+            cssText: expect.stringContaining("[data-ui='workspace']")
           })
         ]
       })

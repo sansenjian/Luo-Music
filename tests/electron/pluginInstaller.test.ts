@@ -142,7 +142,9 @@ describe('PluginInstaller', () => {
               renderStyle: 'example.ocean',
               cssVariables: {
                 '--accent': '#006d77'
-              }
+              },
+              cssText:
+                ":root[data-render-style='example.ocean'] [data-ui='player'] { border-radius: 24px; }"
             }
           ]
         }
@@ -156,7 +158,8 @@ describe('PluginInstaller', () => {
         expect.objectContaining({
           id: 'com.example.theme.ocean',
           label: 'Ocean',
-          renderStyle: 'example.ocean'
+          renderStyle: 'example.ocean',
+          cssText: expect.stringContaining("[data-ui='player']")
         })
       ])
     })
@@ -182,7 +185,8 @@ describe('PluginInstaller', () => {
             '--ui-card-radius': '18px',
             '--home-search-server-display': 'none',
             '--lyric-active-bg': 'transparent'
-          })
+          }),
+          cssText: expect.stringContaining('.cover-frame')
         })
       ])
     })

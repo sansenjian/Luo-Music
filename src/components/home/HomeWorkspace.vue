@@ -32,10 +32,10 @@ function handleTabChange(tab: HomeTab): void {
 </script>
 
 <template>
-  <section class="right-panel">
+  <section class="right-panel" data-ui="workspace-panel">
     <HomeTabBar :active-tab="props.activeTab" @change-tab="handleTabChange" />
 
-    <div class="content-area">
+    <div class="content-area" data-ui="workspace">
       <div
         v-if="mountedPanels.lyric"
         id="home-panel-lyric"

@@ -253,6 +253,7 @@ onUnmounted(() => {
 <template>
   <aside
     class="sidebar-shell"
+    data-ui="sidebar"
     :class="[`is-${renderStyle}`, { 'is-collapsed': props.collapsed }]"
     aria-label="主侧边栏"
   >

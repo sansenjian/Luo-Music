@@ -188,7 +188,8 @@
           "--lyric-trans-size": "15px",
           "--lyric-roma-text": "#707070",
           "--lyric-trans-text": "#707070"
-        }
+        },
+        "cssText": ":root[data-render-style='third-party.restart'] [data-ui='player']:not(.is-docked) {\n  justify-content: flex-start;\n  padding-top: 22px;\n}\n\n:root[data-render-style='third-party.restart'] .cover-frame {\n  transform: rotate(-1.5deg);\n}\n\n:root[data-render-style='third-party.restart'] .cover-swipe-area:hover .cover-frame {\n  transform: rotate(-1.5deg) scale(1.03);\n}\n\n:root[data-render-style='third-party.restart'] .track-title {\n  font-weight: 900;\n  letter-spacing: 0;\n}\n\n:root[data-render-style='third-party.restart'] .ctrl-main {\n  background: #1f1f1f;\n  color: #ffffff;\n}\n\n:root[data-render-style='third-party.restart'] [data-ui='workspace-panel']::before {\n  content: '';\n  flex: 0 0 auto;\n  height: 3px;\n  background: linear-gradient(90deg, transparent, #ff5a1f, transparent);\n  opacity: 0.75;\n}"
       }
     ]
   }

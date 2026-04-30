@@ -86,6 +86,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
 <template>
   <div
     class="window"
+    data-ui="home-window"
     :class="{
       'player-docked': playerStore.isPlayerDocked,
       'sidebar-collapsed': !playerStore.isPlayerDocked,
@@ -111,7 +112,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
       @toggle-select="toggleSelect"
     />
 
-    <main class="app-shell">
+    <main class="app-shell" data-ui="home-shell">
       <HomeSidebar
         :active-item-id="activeSidebarItemId"
         class="sidebar-panel"
@@ -121,7 +122,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
         @item-select="handleSidebarItemSelect"
       />
 
-      <section class="left-panel">
+      <section class="left-panel" data-ui="player-panel">
         <Player
           v-if="isCoreMounted"
           :loading="playerStore.loading"
@@ -130,9 +131,21 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
         <div v-else class="panel-placeholder" aria-hidden="true"></div>
       </section>
 
-      <HomeOverview v-if="activeWorkspaceView === 'home'" class="workspace-panel" />
-      <HomeDiscover v-else-if="activeWorkspaceView === 'discover'" class="workspace-panel" />
-      <HomeRoaming v-else-if="activeWorkspaceView === 'roaming'" class="workspace-panel" />
+      <HomeOverview
+        v-if="activeWorkspaceView === 'home'"
+        class="workspace-panel"
+        data-ui="workspace-panel"
+      />
+      <HomeDiscover
+        v-else-if="activeWorkspaceView === 'discover'"
+        class="workspace-panel"
+        data-ui="workspace-panel"
+      />
+      <HomeRoaming
+        v-else-if="activeWorkspaceView === 'roaming'"
+        class="workspace-panel"
+        data-ui="workspace-panel"
+      />
       <HomeWorkspace
         v-else-if="activeWorkspaceView === 'now-playing'"
         class="workspace-panel"
@@ -150,13 +163,35 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
       <HomeLikedSongsPanel
         v-else-if="activeWorkspaceView === 'liked'"
         class="workspace-panel"
+        data-ui="workspace-panel"
         :model="homeLikedSongsPanelModel"
       />
-      <HomeRecentPlayPanel v-else-if="activeWorkspaceView === 'history'" class="workspace-panel" />
-      <HomeLocalMusicPanel v-else-if="activeWorkspaceView === 'local'" class="workspace-panel" />
-      <HomePluginsPanel v-else-if="activeWorkspaceView === 'plugins'" class="workspace-panel" />
-      <HomeSettingsPanel v-else-if="activeWorkspaceView === 'settings'" class="workspace-panel" />
-      <HomeCollectionDetailPanel v-else class="workspace-panel" :collection="selectedCollection" />
+      <HomeRecentPlayPanel
+        v-else-if="activeWorkspaceView === 'history'"
+        class="workspace-panel"
+        data-ui="workspace-panel"
+      />
+      <HomeLocalMusicPanel
+        v-else-if="activeWorkspaceView === 'local'"
+        class="workspace-panel"
+        data-ui="workspace-panel"
+      />
+      <HomePluginsPanel
+        v-else-if="activeWorkspaceView === 'plugins'"
+        class="workspace-panel"
+        data-ui="workspace-panel"
+      />
+      <HomeSettingsPanel
+        v-else-if="activeWorkspaceView === 'settings'"
+        class="workspace-panel"
+        data-ui="workspace-panel"
+      />
+      <HomeCollectionDetailPanel
+        v-else
+        class="workspace-panel"
+        data-ui="workspace-panel"
+        :collection="selectedCollection"
+      />
 
       <HomeFooter
         class="footer-panel"

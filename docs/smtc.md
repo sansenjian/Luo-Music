@@ -66,9 +66,9 @@
 ## Public APIs / Interfaces
 
 - 新增实验设置接口：
-  - experimentalFeatures: Ref<{ smtcEnabled: boolean }>
-  - smtcEnabled: ComputedRef<boolean>
-  - setSMTCEnabled(next: boolean): void
+  - `experimentalFeatures: Ref<{ smtcEnabled: boolean }>`
+  - `smtcEnabled: ComputedRef<boolean>`
+  - `setSMTCEnabled(next: boolean): void`
 - 新增主进程 SMTC 运行时接口：
   - `configureSmtcCommandLine()`：应用启动早期读取主进程持久化状态并设置 Chromium features
   - `smtc:set-enabled` IPC：同步插件开关到主进程，并在 Windows 下按需 relaunch

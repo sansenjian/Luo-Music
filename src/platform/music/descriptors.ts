@@ -93,7 +93,8 @@ function cloneCapabilities(capabilities: PlatformCapabilities): PlatformCapabili
 function cloneThemeResource(resource: PluginThemeResource): PluginThemeResource {
   return {
     ...resource,
-    ...(resource.cssVariables ? { cssVariables: { ...resource.cssVariables } } : {})
+    ...(resource.cssVariables ? { cssVariables: { ...resource.cssVariables } } : {}),
+    ...(resource.cssText ? { cssText: resource.cssText } : {})
   }
 }
 

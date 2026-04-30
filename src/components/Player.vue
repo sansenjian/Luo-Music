@@ -96,6 +96,7 @@ const nextCoverUrl = computed(() =>
 <template>
   <div
     class="player-section"
+    data-ui="player"
     :class="{ 'is-docked': props.docked, 'has-song': !!currentSong }"
     @click="currentSong && emit('navigate-to-lyrics')"
   >
