@@ -112,7 +112,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 </script>
 
 <template>
-  <div class="lyric" :class="{ 'is-player-docked': playerStore.isPlayerDocked }">
+  <div class="lyric" data-ui="lyrics" :class="{ 'is-player-docked': playerStore.isPlayerDocked }">
     <HomeEmptyState
       v-if="lyrics.length === 0"
       :visual="uiMessages.home.emptyState.lyric.visual"
@@ -124,6 +124,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
       v-else
       ref="lyricScrollArea"
       class="lyrics-wrapper"
+      data-ui="lyrics-scroll"
       @scroll="handleScroll"
       @wheel.passive="handleUserScrollStart"
       @touchstart.passive="handleUserScrollStart"
@@ -133,6 +134,7 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
         v-if="shouldVirtualize"
         ref="lineContainer"
         class="lyrics-list lyrics-list-virtual"
+        data-ui="lyrics-list"
         :style="{
           paddingTop: virtualScroll.paddingTop.value + 'px',
           paddingBottom: virtualScroll.paddingBottom.value + 'px'
@@ -140,9 +142,10 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
       >
         <div
           v-for="{ item, index } in visibleLyrics"
-          :key="index"
+          :key="`${item.time}-${index}`"
           :data-li="index"
           class="lyric-line"
+          data-ui="lyric-line"
           role="button"
           tabindex="0"
           :aria-current="index === currentLyricIndex ? 'true' : undefined"
@@ -166,11 +169,12 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
       </div>
 
       <!-- Non-virtualized mode (short lyrics) -->
-      <div v-else class="lyrics-list">
+      <div v-else class="lyrics-list" data-ui="lyrics-list">
         <div
           v-for="(item, index) in resolvedLyrics"
           :key="`${item.time}-${index}`"
           class="lyric-line"
+          data-ui="lyric-line"
           role="button"
           tabindex="0"
           :aria-current="index === currentLyricIndex ? 'true' : undefined"

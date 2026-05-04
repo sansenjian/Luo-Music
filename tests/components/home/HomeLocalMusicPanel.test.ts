@@ -17,7 +17,11 @@ const useLocalLibraryMock = vi.hoisted(() => vi.fn())
 const playerStoreMock = vi.hoisted(() => ({
   currentSong: null as { id: string | number } | null,
   setSongList: vi.fn(),
-  playSongWithDetails: vi.fn()
+  playSongWithDetails: vi.fn(),
+  replaceQueueAndPlay: vi.fn((songs: Song[], index: number) => {
+    playerStoreMock.setSongList(songs)
+    return playerStoreMock.playSongWithDetails(index)
+  })
 }))
 const toastStoreMock = vi.hoisted(() => ({
   success: vi.fn(),

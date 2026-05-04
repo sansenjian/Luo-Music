@@ -164,6 +164,53 @@ describe('PluginInstaller', () => {
       ])
     })
 
+    it('inlines theme CSS files declared by theme resources', async () => {
+      const sourceDir = path.join(tempRoot, 'theme-css-file-plugin')
+      await writePlugin(sourceDir, {
+        ...VALID_MANIFEST,
+        id: 'com.example.themefile',
+        name: 'Theme File',
+        category: 'theme',
+        platformId: 'theme-file',
+        capabilities: {
+          search: false,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false
+        },
+        contributions: {
+          themeResources: [
+            {
+              id: 'com.example.themefile.paper',
+              label: 'Paper',
+              renderStyle: 'example.paper',
+              cssFile: 'theme.css'
+            }
+          ]
+        }
+      })
+      await fs.writeFile(
+        path.join(sourceDir, 'theme.css'),
+        ":root[data-render-style='example.paper'] [data-ui='player-play-button'] { border-radius: 999px; }",
+        'utf-8'
+      )
+
+      const installer = await createInstaller()
+      const result = await installer.installFromPath(sourceDir)
+
+      expect(result.manifest.contributions?.themeResources).toEqual([
+        expect.objectContaining({
+          id: 'com.example.themefile.paper',
+          cssFile: 'theme.css',
+          cssText: expect.stringContaining("[data-ui='player-play-button']")
+        })
+      ])
+    })
+
     it('installs the bundled Re:Start theme plugin fixture', async () => {
       const sourceDir = path.resolve(process.cwd(), 'plugins', 'third-party', 'restart-theme')
 
@@ -186,7 +233,8 @@ describe('PluginInstaller', () => {
             '--home-search-server-display': 'none',
             '--lyric-active-bg': 'transparent'
           }),
-          cssText: expect.stringContaining('.cover-frame')
+          cssFile: 'theme.css',
+          cssText: expect.stringContaining("[data-ui='player-play-button']")
         })
       ])
     })
@@ -289,6 +337,53 @@ describe('PluginInstaller', () => {
       const installer = await createInstaller()
       await expect(installer.installFromPath(sourceDir)).rejects.toThrow(
         'Plugin entry must stay inside the plugin directory'
+      )
+    })
+
+    it('rejects theme CSS files outside the plugin directory', async () => {
+      const sourceDir = path.join(tempRoot, 'outside-theme-css-plugin')
+      await fs.writeFile(path.join(tempRoot, 'outside-theme.css'), 'body {}', 'utf-8')
+      await writePlugin(sourceDir, {
+        ...VALID_MANIFEST,
+        category: 'theme',
+        contributions: {
+          themeResources: [
+            {
+              id: 'com.example.theme.outside',
+              label: 'Outside',
+              renderStyle: 'example.outside',
+              cssFile: '../outside-theme.css'
+            }
+          ]
+        }
+      })
+
+      const installer = await createInstaller()
+      await expect(installer.installFromPath(sourceDir)).rejects.toThrow(
+        'Theme CSS file must stay inside the plugin directory'
+      )
+    })
+
+    it('throws when a declared theme CSS file is missing', async () => {
+      const sourceDir = path.join(tempRoot, 'missing-theme-css-plugin')
+      await writePlugin(sourceDir, {
+        ...VALID_MANIFEST,
+        category: 'theme',
+        contributions: {
+          themeResources: [
+            {
+              id: 'com.example.theme.missing',
+              label: 'Missing',
+              renderStyle: 'example.missing',
+              cssFile: 'missing.css'
+            }
+          ]
+        }
+      })
+
+      const installer = await createInstaller()
+      await expect(installer.installFromPath(sourceDir)).rejects.toThrow(
+        'Theme CSS file not found: missing.css'
       )
     })
 

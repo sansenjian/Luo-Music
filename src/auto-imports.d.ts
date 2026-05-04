@@ -124,6 +124,7 @@ declare global {
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveCoverUrl: typeof import('./composables/usePlayerViewModel').resolveCoverUrl
   const resolveRef: typeof import('@vueuse/core').resolveRef
+  const restorePersistedPlayerState: typeof import('./store/playerStore').restorePersistedPlayerState
   const searchResultItemToSong: typeof import('./store/searchStore').searchResultItemToSong
   const setActivePinia: typeof import('pinia').setActivePinia
   const setLocalPlaylistCover: typeof import('./store/localPlaylistStore').setLocalPlaylistCover
@@ -715,6 +716,9 @@ declare module 'vue' {
       (typeof import('./composables/usePlayerViewModel'))['resolveCoverUrl']
     >
     readonly resolveRef: UnwrapRef<(typeof import('@vueuse/core'))['resolveRef']>
+    readonly restorePersistedPlayerState: UnwrapRef<
+      (typeof import('./store/playerStore'))['restorePersistedPlayerState']
+    >
     readonly searchResultItemToSong: UnwrapRef<
       (typeof import('./store/searchStore'))['searchResultItemToSong']
     >

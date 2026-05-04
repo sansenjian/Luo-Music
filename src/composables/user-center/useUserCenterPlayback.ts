@@ -62,10 +62,9 @@ export function useUserCenterPlayback(
     }
 
     playlistStore.setPlaylist(songs)
-    playerStore.setSongList(songs)
 
     try {
-      await playerStore.playSongWithDetails(index)
+      await playerStore.replaceQueueAndPlay(songs, index)
       void router.push('/')
     } catch (error) {
       console.error('播放失败:', error)

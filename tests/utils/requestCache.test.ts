@@ -8,6 +8,8 @@ import {
   getCacheStats,
   prefetch,
   setCache,
+  bindCleanupLifecycle,
+  unbindCleanupLifecycle,
   type CacheRequestConfig
 } from '@/utils/http/requestCache'
 
@@ -26,6 +28,7 @@ describe('requestCache', () => {
   })
 
   afterEach(() => {
+    unbindCleanupLifecycle()
     vi.useRealTimers()
     clearCache()
   })
@@ -112,5 +115,25 @@ describe('requestCache', () => {
     expect(getCache({ method: 'get', url: '/api/public', cacheNamespace: 'public' })).toEqual({
       ok: 2
     })
+  })
+
+  it('binds and unbinds the cleanup lifecycle listener without duplicating registrations', () => {
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
+    const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener')
+
+    unbindCleanupLifecycle()
+    addEventListenerSpy.mockClear()
+    removeEventListenerSpy.mockClear()
+
+    bindCleanupLifecycle()
+    bindCleanupLifecycle()
+
+    expect(addEventListenerSpy).toHaveBeenCalledTimes(1)
+    expect(addEventListenerSpy).toHaveBeenCalledWith('beforeunload', expect.any(Function))
+
+    unbindCleanupLifecycle()
+
+    expect(removeEventListenerSpy).toHaveBeenCalledTimes(1)
+    expect(removeEventListenerSpy).toHaveBeenCalledWith('beforeunload', expect.any(Function))
   })
 })

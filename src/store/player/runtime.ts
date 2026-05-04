@@ -85,6 +85,10 @@ export class PlayerStoreRuntime extends Disposable {
     return this.playbackActions
   }
 
+  resetPlaybackNavigation(): void {
+    this.playbackActions?.resetPendingNavigation()
+  }
+
   configureAudioEventHandler(
     state: PlayerState,
     callbacks: AudioEventCallbacks,
@@ -119,6 +123,8 @@ export class PlayerStoreRuntime extends Disposable {
     return this.ipcHandlers
   }
 
+  private syncDirty = false
+
   ensureStateSync(
     register: (notify: () => void) => () => void,
     notify: () => void,
@@ -131,6 +137,7 @@ export class PlayerStoreRuntime extends Disposable {
     this.stateSyncNotify = notify
 
     const scheduleSync = () => {
+      this.syncDirty = true
       const now = Date.now()
       const elapsed = now - this.lastStateSyncTime
 
@@ -166,6 +173,7 @@ export class PlayerStoreRuntime extends Disposable {
       Disposable.from(() => {
         this.stateSyncRegistered = false
         this.stateSyncNotify = null
+        this.syncDirty = false
         this.clearStateSyncTimer()
         unsubscribe()
       })
@@ -192,6 +200,7 @@ export class PlayerStoreRuntime extends Disposable {
     this.clearStateSyncTimer()
     this.lastStateSyncTime = 0
     this.stateSyncNotify = null
+    this.syncDirty = false
     this.audioEventHandler = null
     this.playbackActions = null
     this.ipcHandlers = null
@@ -217,7 +226,10 @@ export class PlayerStoreRuntime extends Disposable {
   private flushStateSync(): void {
     this.clearStateSyncTimer()
     this.lastStateSyncTime = Date.now()
-    this.stateSyncNotify?.()
+    if (this.syncDirty) {
+      this.syncDirty = false
+      this.stateSyncNotify?.()
+    }
   }
 }
 

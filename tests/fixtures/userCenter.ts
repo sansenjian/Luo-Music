@@ -228,6 +228,12 @@ export function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
   const setPlaylistMock = vi.fn<(songs: Song[]) => void>()
   const setSongListMock = vi.fn<(songs: Song[]) => void>()
   const playSongWithDetailsMock = vi.fn<(index: number) => Promise<void>>(() => Promise.resolve())
+  const replaceQueueAndPlayMock = vi.fn<(songs: Song[], index: number) => Promise<void>>(
+    async (songs, index) => {
+      setSongListMock(songs)
+      await playSongWithDetailsMock(index)
+    }
+  )
   const loadMoreLikedSongsMock = vi.fn<() => Promise<void>>(() => Promise.resolve())
   const retryLoadLikedSongsMock = vi.fn<() => Promise<void>>(() => Promise.resolve())
   const loadLikedSongsMock = vi.fn<(userId: string | number) => Promise<void>>(() =>
@@ -316,8 +322,7 @@ export function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
       setPlaylist: setPlaylistMock
     },
     playerStore: {
-      setSongList: setSongListMock,
-      playSongWithDetails: playSongWithDetailsMock
+      replaceQueueAndPlay: replaceQueueAndPlayMock
     },
     likedSongs: {
       likeSongs: likedSongsRef,
@@ -388,6 +393,7 @@ export function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
     replaceMock,
     setPlaylistMock,
     setSongListMock,
+    replaceQueueAndPlayMock,
     playSongWithDetailsMock,
     loadLikedSongsMock,
     loadMoreLikedSongsMock,

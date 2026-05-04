@@ -16,7 +16,8 @@ import type {
   PlayMode,
   PlayerPlaySongByIdPayload,
   PlayerPlaySongPayload,
-  PlayerStateSnapshot
+  PlayerStateSnapshot,
+  PlayerStateSyncPayload
 } from '@/platform/contracts/ipc'
 import { normalizeLyricResponse } from './api.normalizers'
 
@@ -167,19 +168,25 @@ export function flushStateBroadcasts(): void {
 }
 
 /**
- * Produce a complete PlayerStateSnapshot by merging an optional partial snapshot onto the default state.
+ * Produce a complete PlayerStateSnapshot by merging an optional sync payload onto the previous state.
  *
- * @param snapshot - Optional partial state to merge; specific normalizations applied: `playlist` becomes `[]` if not an array, `currentSong` and `lyricSong` default to `null` if absent, `lyrics` becomes `[]` if not an array, and `desktopLyricSequence` defaults to `0` if not a number.
+ * @param snapshot - Optional sync payload to merge; omitted `playlist` and `lyrics` preserve
+ * the previous arrays so lightweight playback ticks do not clear cached state.
+ * @param previousState - Previous full player state used for fields omitted from lightweight sync.
  * @returns The normalized PlayerStateSnapshot with all required fields populated.
  */
-function normalizePlayerState(snapshot: PlayerStateSnapshot | undefined): PlayerStateSnapshot {
+function normalizePlayerState(
+  snapshot: PlayerStateSyncPayload | undefined,
+  previousState: PlayerStateSnapshot = DEFAULT_PLAYER_STATE
+): PlayerStateSnapshot {
   return {
     ...DEFAULT_PLAYER_STATE,
+    ...previousState,
     ...(snapshot ?? {}),
-    playlist: Array.isArray(snapshot?.playlist) ? snapshot.playlist : [],
+    playlist: Array.isArray(snapshot?.playlist) ? snapshot.playlist : previousState.playlist,
     currentSong: snapshot?.currentSong ?? null,
     lyricSong: snapshot?.lyricSong ?? null,
-    lyrics: Array.isArray(snapshot?.lyrics) ? snapshot.lyrics : [],
+    lyrics: Array.isArray(snapshot?.lyrics) ? snapshot.lyrics : previousState.lyrics,
     lyricType: Array.isArray(snapshot?.lyricType) ? snapshot.lyricType : ['original', 'trans'],
     desktopLyricSequence:
       typeof snapshot?.desktopLyricSequence === 'number' ? snapshot.desktopLyricSequence : 0
@@ -426,9 +433,9 @@ export function registerPlayerHandlers(
     }
   )
 
-  ipcService.registerSend(SEND_CHANNELS.PLAYER_SYNC_STATE, (snapshot: PlayerStateSnapshot) => {
+  ipcService.registerSend(SEND_CHANNELS.PLAYER_SYNC_STATE, (snapshot: PlayerStateSyncPayload) => {
     const previousState = playerState
-    playerState = normalizePlayerState(snapshot)
+    playerState = normalizePlayerState(snapshot, previousState)
 
     const stateManager = getStateBroadcastManager()
 

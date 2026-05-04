@@ -94,6 +94,7 @@ function cloneThemeResource(resource: PluginThemeResource): PluginThemeResource 
   return {
     ...resource,
     ...(resource.cssVariables ? { cssVariables: { ...resource.cssVariables } } : {}),
+    ...(resource.cssFile ? { cssFile: resource.cssFile } : {}),
     ...(resource.cssText ? { cssText: resource.cssText } : {})
   }
 }

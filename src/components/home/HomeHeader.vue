@@ -1,27 +1,37 @@
 <script setup lang="ts">
 import type { MusicServerOption } from '@/composables/useHomePage'
-
 import { useProjectUi } from '@/composables/useProjectUi'
 import HomeBrandBadge from './HomeBrandBadge.vue'
 import HomeSearchBar from './HomeSearchBar.vue'
 import HomeWindowControls from './HomeWindowControls.vue'
 
-const props = defineProps<{
-  showBrand?: boolean
-  isElectron: boolean
-  isLoading: boolean
-  searchKeyword: string
-  selectedServer: string
-  selectedServerLabel: string
-  servers: MusicServerOption[]
-  showSelect: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    showBrand?: boolean
+    canNavigateBack?: boolean
+    canNavigateForward?: boolean
+    isElectron: boolean
+    isLoading: boolean
+    searchKeyword: string
+    selectedServer: string
+    selectedServerLabel: string
+    servers: MusicServerOption[]
+    showSelect: boolean
+  }>(),
+  {
+    showBrand: true,
+    canNavigateBack: false,
+    canNavigateForward: false
+  }
+)
 
 const emit = defineEmits<{
   'close-select': []
   'close-window': []
   'maximize-window': []
   'minimize-window': []
+  'navigate-back': []
+  'navigate-forward': []
   search: []
   'search-keyword-change': [value: string]
   'select-server': [value: string]
@@ -49,11 +59,62 @@ function onToggleSelect(): void {
 }
 
 const { renderStyle } = useProjectUi()
+
+function navigateBack(): void {
+  emit('navigate-back')
+}
+
+function navigateForward(): void {
+  emit('navigate-forward')
+}
 </script>
 
 <template>
   <header class="titlebar" data-ui="titlebar">
-    <div v-if="props.showBrand !== false" class="title-left">
+    <div class="title-nav" data-ui="title-nav" aria-label="窗口导航">
+      <button
+        type="button"
+        class="title-nav-button"
+        :disabled="!props.canNavigateBack"
+        aria-label="返回"
+        title="返回"
+        @click="navigateBack"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="title-nav-button"
+        :disabled="!props.canNavigateForward"
+        aria-label="前进"
+        title="前进"
+        @click="navigateForward"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </button>
+    </div>
+
+    <div v-if="props.showBrand !== false" class="title-left" data-ui="title-brand">
       <h1 v-if="renderStyle === 'classic'" class="logo">LUO_MUSIC</h1>
       <HomeBrandBadge v-else placement="header" />
     </div>
@@ -106,6 +167,51 @@ const { renderStyle } = useProjectUi()
   align-items: center;
   gap: 16px;
   flex-shrink: 0;
+}
+
+.title-nav {
+  display: var(--title-nav-display, none);
+  align-items: center;
+  gap: var(--title-nav-gap, 8px);
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+.title-nav-button {
+  width: var(--title-nav-button-size, 28px);
+  height: var(--title-nav-button-size, 28px);
+  border: var(--title-nav-button-border, 0);
+  border-radius: var(--title-nav-button-radius, var(--ui-control-radius));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--title-nav-button-bg, transparent);
+  color: var(--title-nav-button-text, var(--gray));
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.title-nav-button:hover {
+  background: var(--title-nav-button-hover-bg, var(--ui-hover-bg));
+  color: var(--title-nav-button-hover-text, var(--black));
+}
+
+.title-nav-button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.title-nav-button:disabled:hover {
+  background: var(--title-nav-button-bg, transparent);
+  color: var(--title-nav-button-text, var(--gray));
+}
+
+.title-nav-button svg {
+  width: var(--title-nav-icon-size, 18px);
+  height: var(--title-nav-icon-size, 18px);
 }
 
 .logo {

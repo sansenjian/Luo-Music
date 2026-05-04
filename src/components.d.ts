@@ -56,6 +56,7 @@ declare module 'vue' {
     LyricDisplay: typeof import('./components/LyricDisplay.vue')['default']
     LyricFloat: typeof import('./components/LyricFloat.vue')['default']
     PageTransition: typeof import('./components/PageTransition.vue')['default']
+    PlaybackQueueDrawer: typeof import('./components/PlaybackQueueDrawer.vue')['default']
     Player: typeof import('./components/Player.vue')['default']
     Playlist: typeof import('./components/Playlist.vue')['default']
     PlaylistDetailPanel: typeof import('./components/user/PlaylistDetailPanel.vue')['default']

@@ -164,6 +164,99 @@ describe('player.handler', () => {
     })
   })
 
+  it('preserves cached playlist and lyrics when sync payload omits heavy fields', async () => {
+    const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    const sendHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
+    registerSendMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        sendHandlers.set(channel, handler)
+      }
+    )
+
+    const { registerPlayerHandlers } = await import('../../electron/ipc/handlers/player.handler')
+
+    const song = {
+      id: 'song-1',
+      name: 'Song 1',
+      artists: [{ id: 'artist-1', name: 'Artist 1' }],
+      album: { id: 'album-1', name: 'Album 1', picUrl: '' },
+      duration: 180000,
+      mvid: 0,
+      platform: 'netease',
+      originalId: 'song-1'
+    } as const
+
+    registerPlayerHandlers(
+      {
+        send: vi.fn(),
+        syncPlaybackState: vi.fn(),
+        syncTrayPlayMode: vi.fn()
+      } as never,
+      {
+        handleRequest: vi.fn()
+      } as never
+    )
+
+    const syncState = sendHandlers.get('player:sync-state')
+    syncState?.({
+      isPlaying: true,
+      isLoading: false,
+      progress: 42,
+      duration: 180,
+      volume: 0.8,
+      isMuted: false,
+      playMode: 1,
+      playlist: [song],
+      currentIndex: 0,
+      currentSong: song,
+      lyricSong: song,
+      currentLyricIndex: 0,
+      showLyric: true,
+      showPlaylist: false,
+      isPlayerDocked: false,
+      lyricType: ['original', 'trans'],
+      lyrics: [{ time: 42, text: 'line', trans: '', roma: '' }],
+      desktopLyricSequence: 3
+    })
+
+    syncState?.({
+      isPlaying: true,
+      isLoading: false,
+      progress: 43,
+      duration: 180,
+      volume: 0.8,
+      isMuted: false,
+      playMode: 1,
+      currentIndex: 0,
+      currentSong: song,
+      lyricSong: song,
+      currentLyricIndex: 0,
+      showLyric: true,
+      showPlaylist: false,
+      isPlayerDocked: false,
+      lyricType: ['original', 'trans'],
+      desktopLyricSequence: 3
+    })
+
+    await expect(invokeHandlers.get('player:get-playlist')?.()).resolves.toEqual([song])
+    await expect(invokeHandlers.get('player:get-desktop-lyric-snapshot')?.()).resolves.toEqual({
+      currentSong: song,
+      currentLyricIndex: 0,
+      progress: 43,
+      isPlaying: true,
+      lyrics: [{ time: 42, text: 'line', trans: '', roma: '' }],
+      songId: 'song-1',
+      platform: 'netease',
+      sequence: 3,
+      lyricType: ['original', 'trans']
+    })
+  })
+
   it('fetches lyrics for a non-current song by payload instead of returning current cached lyrics', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
     const sendHandlers = new Map<string, (...args: unknown[]) => unknown>()

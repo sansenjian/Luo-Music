@@ -31,6 +31,7 @@ export interface PlaybackActionsDeps {
 export class PlaybackActions {
   private playbackRequestId = 0
   private lyricRequestId = 0
+  private pendingNavigationIndex: number | null = null
 
   constructor(private readonly deps: PlaybackActionsDeps) {}
 
@@ -138,11 +139,12 @@ export class PlaybackActions {
     if (state.songList.length === 0) return -1
     if (state.songList.length === 1) return 0
 
+    const currentIndex = this.resolveNavigationBaseIndex(state)
     let newIndex = Math.floor(Math.random() * state.songList.length)
     if (excludeCurrent) {
       let attempts = 0
       const maxAttempts = state.songList.length * 2
-      while (newIndex === state.currentIndex && attempts < maxAttempts) {
+      while (newIndex === currentIndex && attempts < maxAttempts) {
         newIndex = Math.floor(Math.random() * state.songList.length)
         attempts++
       }
@@ -150,20 +152,42 @@ export class PlaybackActions {
     return newIndex
   }
 
+  private resolveNavigationBaseIndex(state: PlayerState): number {
+    if (
+      this.pendingNavigationIndex !== null &&
+      this.pendingNavigationIndex >= 0 &&
+      this.pendingNavigationIndex < state.songList.length
+    ) {
+      return this.pendingNavigationIndex
+    }
+
+    return state.currentIndex
+  }
+
+  private setPendingNavigationIndex(index: number | null): void {
+    this.pendingNavigationIndex = index
+  }
+
+  resetPendingNavigation(): void {
+    this.pendingNavigationIndex = null
+  }
+
   playPrev(): void {
     const state = this.deps.getState()
     if (state.songList.length === 0) return
 
+    const currentIndex = this.resolveNavigationBaseIndex(state)
     let newIndex: number
     if (state.playMode === PLAY_MODE.SHUFFLE) {
       newIndex = this.getRandomIndex()
     } else {
-      newIndex = state.currentIndex - 1
+      newIndex = currentIndex - 1
       if (newIndex < 0) {
         newIndex = state.songList.length - 1
       }
     }
 
+    this.setPendingNavigationIndex(newIndex)
     this.playSongWithDetails(newIndex).catch((err: unknown) => {
       console.error('播放上一首失败:', err)
     })
@@ -173,11 +197,12 @@ export class PlaybackActions {
     const state = this.deps.getState()
     if (state.songList.length === 0) return
 
+    const currentIndex = this.resolveNavigationBaseIndex(state)
     let newIndex: number
     if (state.playMode === PLAY_MODE.SHUFFLE) {
       newIndex = this.getRandomIndex()
     } else {
-      newIndex = state.currentIndex + 1
+      newIndex = currentIndex + 1
       if (newIndex >= state.songList.length) {
         if (state.playMode === PLAY_MODE.SEQUENTIAL) {
           return
@@ -186,6 +211,7 @@ export class PlaybackActions {
       }
     }
 
+    this.setPendingNavigationIndex(newIndex)
     this.playSongWithDetails(newIndex).catch((err: unknown) => {
       console.error('播放下一首失败:', err)
     })
@@ -240,6 +266,7 @@ export class PlaybackActions {
       return
     }
 
+    this.setPendingNavigationIndex(index)
     const playbackRequestId = this.startPlaybackRequest()
     this.deps.onStateChange({
       loading: true,
@@ -425,6 +452,7 @@ export class PlaybackActions {
       }
 
       try {
+        this.setPendingNavigationIndex(null)
         await this.playNextSkipUnavailable(index)
         return
       } catch {
@@ -433,6 +461,9 @@ export class PlaybackActions {
     } finally {
       if (this.isCurrentPlaybackRequest(playbackRequestId)) {
         this.deps.onStateChange({ loading: false })
+        if (this.pendingNavigationIndex === index) {
+          this.setPendingNavigationIndex(null)
+        }
       }
     }
   }

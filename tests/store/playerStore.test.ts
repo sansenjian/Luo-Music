@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import type { LyricLine } from '@/utils/player/core/lyric'
-import { createPlayerStore, usePlayerStore } from '@/store/playerStore.ts'
+import {
+  createPlayerStore,
+  restorePersistedPlayerState,
+  usePlayerStore
+} from '@/store/playerStore.ts'
 import { createRemoteMediaProxyUrl } from '@/utils/player/mediaProxy'
 import { createMockSong } from '../utils/test-utils'
 
@@ -121,7 +125,7 @@ describe('playerStore', () => {
       expect(store.currentIndex).toBe(-1)
     })
 
-    it('preserves currentSong when the new playlist no longer contains it', () => {
+    it('clears currentSong when the new playlist no longer contains it', () => {
       const store = usePlayerStore()
       const staleSong = createMockSong({ id: 99, name: 'Stale Song' })
       store.currentSong = staleSong
@@ -132,7 +136,7 @@ describe('playerStore', () => {
       ])
 
       expect(store.currentIndex).toBe(-1)
-      expect(store.currentSong).toEqual(staleSong)
+      expect(store.currentSong).toBeNull()
     })
 
     it('matches current songs by id and platform when replacing the playlist', () => {
@@ -147,6 +151,76 @@ describe('playerStore', () => {
 
       expect(store.currentIndex).toBe(1)
       expect(store.currentSong?.platform).toBe('qq')
+      expect(store.currentSong).toStrictEqual(store.songList[1])
+    })
+
+    it('replaces the queue and plays the requested index as a single action', async () => {
+      const store = usePlayerStore()
+      const songs = [
+        createMockSong({ id: 1, name: 'Song 1' }),
+        createMockSong({ id: 2, name: 'Song 2' })
+      ]
+      const playSongWithDetailsSpy = vi.spyOn(store, 'playSongWithDetails').mockResolvedValueOnce()
+
+      await store.replaceQueueAndPlay(songs, 1)
+
+      expect(store.songList).toStrictEqual(songs)
+      expect(playSongWithDetailsSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('restores the current playlist index from persisted queue state', () => {
+      const store = usePlayerStore()
+      const currentSong = createMockSong({
+        id: 2,
+        name: 'Persisted Current Song',
+        url: 'https://song.test/current.mp3',
+        retryCount: 3,
+        unavailable: true,
+        errorMessage: 'stale error'
+      })
+      const nextSong = createMockSong({
+        id: 3,
+        name: 'Next Song',
+        url: 'https://song.test/next.mp3'
+      })
+
+      store.songList = [createMockSong({ id: 1, name: 'Song 1' }), currentSong, nextSong]
+      store.currentIndex = 1
+      store.currentSong = currentSong
+      store.playing = true
+      store.progress = 88
+      store.duration = 120
+      store.initialized = true
+      store.ipcInitialized = true
+
+      restorePersistedPlayerState(store.$state)
+
+      expect(store.songList).toHaveLength(3)
+      expect(store.currentIndex).toBe(1)
+      expect(store.currentSong).toStrictEqual(store.songList[1])
+      expect(store.currentSong?.url).toBeUndefined()
+      expect(store.currentSong?.retryCount).toBeUndefined()
+      expect(store.currentSong?.unavailable).toBeUndefined()
+      expect(store.currentSong?.errorMessage).toBeUndefined()
+      expect(store.playing).toBe(false)
+      expect(store.progress).toBe(0)
+      expect(store.duration).toBe(0)
+      expect(store.initialized).toBe(false)
+      expect(store.ipcInitialized).toBe(false)
+    })
+
+    it('falls back to the first queued song when the persisted index is invalid', () => {
+      const store = usePlayerStore()
+      store.songList = [
+        createMockSong({ id: 1, name: 'Song 1' }),
+        createMockSong({ id: 2, name: 'Song 2' })
+      ]
+      store.currentIndex = 9
+
+      restorePersistedPlayerState(store.$state)
+
+      expect(store.currentIndex).toBe(0)
+      expect(store.currentSong).toStrictEqual(store.songList[0])
     })
 
     it('addSong appends a song', () => {
@@ -247,6 +321,22 @@ describe('playerStore', () => {
 
       expect(store.playing).toBe(false)
       expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
+    })
+
+    it('starts playback from the restored current index when toggled before initialization', async () => {
+      const { store } = createInjectedPlayerStore()
+      const playSongWithDetailsSpy = vi.spyOn(store, 'playSongWithDetails').mockResolvedValueOnce()
+      store.songList = [
+        createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' }),
+        createMockSong({ id: 2, name: 'Song 2', url: 'http://test.com/2.mp3' })
+      ]
+      store.currentIndex = 1
+      store.currentSong = store.songList[1]
+
+      store.togglePlay()
+      await Promise.resolve()
+
+      expect(playSongWithDetailsSpy).toHaveBeenCalledWith(1)
     })
 
     it('falls back to the next track when single-loop replay fails at song end', async () => {
@@ -400,6 +490,41 @@ describe('playerStore', () => {
       expect(store.lyricsArray).toHaveLength(2)
       expect(store.lyricsArray[0].text).toBe('Line 1')
       expect(store.currentLyricIndex).toBe(-1)
+    })
+
+    it('syncs a full player snapshot after lyrics load in electron', () => {
+      const { store, platformAccessor } = createInjectedPlayerStore({ isElectron: true })
+      const song = createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' })
+      const lyrics: LyricLine[] = [
+        { time: 0, text: 'Line 1', trans: '', roma: '' },
+        { time: 5, text: 'Line 2', trans: 'Second', roma: '' }
+      ]
+
+      store.currentSong = song
+      store.progress = 5
+      store.initAudio()
+      platformAccessor.send.mockClear()
+
+      store.setLyricsArray(lyrics)
+
+      expect(platformAccessor.send).toHaveBeenCalledWith(
+        'player:sync-state',
+        expect.objectContaining({
+          currentSong: song,
+          lyricSong: song,
+          currentLyricIndex: 1,
+          lyrics
+        })
+      )
+      expect(platformAccessor.send).toHaveBeenCalledWith(
+        'lyric-time-update',
+        expect.objectContaining({
+          index: 1,
+          text: 'Line 2',
+          trans: 'Second',
+          cause: 'lyrics-load'
+        })
+      )
     })
 
     it('uses default lyricType', () => {

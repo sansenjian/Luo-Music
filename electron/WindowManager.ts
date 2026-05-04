@@ -266,7 +266,9 @@ export class WindowManager {
     })
 
     win.on('closed', () => {
+      clearShowFallbackTimer()
       this.win = null
+      downloadManager.setWindow(null)
     })
 
     win.on('resize', () => {

@@ -117,7 +117,18 @@ async function mountHome(options: {
       stubs: {
         HomeHeader: defineComponent({
           name: 'HomeHeaderStub',
-          template: '<header class="home-header-stub"></header>'
+          props: {
+            canNavigateBack: {
+              type: Boolean,
+              required: false
+            },
+            canNavigateForward: {
+              type: Boolean,
+              required: false
+            }
+          },
+          template:
+            '<header class="home-header-stub" :data-can-back="String(canNavigateBack)" :data-can-forward="String(canNavigateForward)"><button class="header-back-trigger" @click="$emit(\'navigate-back\')">back</button><button class="header-forward-trigger" @click="$emit(\'navigate-forward\')">forward</button></header>'
         }),
         HomeSidebar: defineComponent({
           name: 'HomeSidebarStub',
@@ -312,6 +323,32 @@ describe('Home view layout', () => {
     expect(wrapper.find('.home-sidebar-stub').attributes('data-active-item')).toBe('home')
     expect(wrapper.find('.home-overview-stub').exists()).toBe(true)
     expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(false)
+  })
+
+  it('navigates workspace history from the header nav controls', async () => {
+    const wrapper = await mountHome({
+      isPlayerDocked: true,
+      dockedPlayerBarLayout: 'full'
+    })
+
+    await wrapper.get('.sidebar-liked-trigger').trigger('click')
+
+    expect(wrapper.find('.home-header-stub').attributes('data-can-back')).toBe('true')
+    expect(wrapper.find('.home-header-stub').attributes('data-can-forward')).toBe('false')
+    expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(true)
+
+    await wrapper.get('.header-back-trigger').trigger('click')
+
+    expect(wrapper.find('.home-header-stub').attributes('data-can-back')).toBe('false')
+    expect(wrapper.find('.home-header-stub').attributes('data-can-forward')).toBe('true')
+    expect(wrapper.find('.home-overview-stub').exists()).toBe(true)
+    expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(false)
+
+    await wrapper.get('.header-forward-trigger').trigger('click')
+
+    expect(wrapper.find('.home-header-stub').attributes('data-can-back')).toBe('true')
+    expect(wrapper.find('.home-header-stub').attributes('data-can-forward')).toBe('false')
+    expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(true)
   })
 
   it('switches the workspace content to a collection detail page when the sidebar selects a collection card', async () => {

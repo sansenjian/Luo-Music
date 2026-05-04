@@ -39,10 +39,11 @@ import {
 } from '@/utils/player/webLyricAppearance'
 import { useRecentPlayStore } from '@/store/recentPlayStore'
 import type { SongPlatform } from '@/types/schemas'
+import { SongSchema } from '@/types/schemas'
 import type { LyricDisplayType, WebLyricAppearance } from '@/types/player'
 
 import { SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
-import type { PlayerStateSnapshot } from '@/platform/contracts/ipc'
+import type { PlayerStateSnapshot, PlayerStateSyncPayload } from '@/platform/contracts/ipc'
 
 export type PlayerStoreActions = {
   seek: (time: number) => void
@@ -57,6 +58,8 @@ export type PlayerStoreActions = {
   applyResolvedLyricIndex: (time?: number) => boolean
   updateLyricIndex: (time?: number) => boolean
   setSongList: (songs: Song[]) => void
+  replaceQueue: (songs: Song[]) => void
+  replaceQueueAndPlay: (songs: Song[], index: number) => Promise<void>
   addSong: (song: Song) => void
   playSongByIndex: (index: number, song?: Song) => Promise<void>
   playSongWithDetails: (index: number, autoSkip?: boolean) => Promise<void>
@@ -76,6 +79,7 @@ export type PlayerStoreActions = {
   resetWebLyricAppearance: () => void
   togglePlayerDocked: () => void
   setLyricsArray: (lyrics: LyricLine[]) => void
+  removeSongFromPlaylist: (index: number) => void
   clearPlaylist: () => void
 }
 
@@ -226,6 +230,77 @@ function normalizeLyricTypes(value: unknown): Array<'original' | 'trans' | 'roma
   return ['original', ...nextOptionalTypes] as Array<'original' | 'trans' | 'roma'>
 }
 
+function normalizePlaylistSong(song: Song): Song {
+  const normalizedSong = { ...song }
+
+  delete normalizedSong.url
+  delete normalizedSong.retryCount
+  delete normalizedSong.unavailable
+  delete normalizedSong.errorMessage
+
+  return normalizedSong
+}
+
+function normalizePersistedPlaylist(value: unknown): Song[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const songs: Song[] = []
+  let skipped = 0
+  for (const item of value) {
+    const parsed = SongSchema.safeParse(item)
+    if (parsed.success) {
+      songs.push(normalizePlaylistSong(parsed.data))
+    } else {
+      skipped++
+    }
+  }
+
+  if (skipped > 0) {
+    console.warn(`[playerStore] ${skipped} persisted song(s) failed validation and were discarded`)
+  }
+
+  return songs
+}
+
+function resolveCurrentIndexFromPlaylist(songs: Song[], currentIndex: unknown): number {
+  if (!Array.isArray(songs) || songs.length === 0) {
+    return -1
+  }
+
+  if (
+    typeof currentIndex === 'number' &&
+    Number.isInteger(currentIndex) &&
+    currentIndex >= 0 &&
+    currentIndex < songs.length
+  ) {
+    return currentIndex
+  }
+
+  return 0
+}
+
+export function restorePersistedPlayerState(store: PlayerState): void {
+  store.songList = normalizePersistedPlaylist(store.songList)
+  store.currentIndex = resolveCurrentIndexFromPlaylist(store.songList, store.currentIndex)
+  store.currentSong =
+    store.currentIndex >= 0 && store.currentIndex < store.songList.length
+      ? store.songList[store.currentIndex]
+      : null
+  store.lyricSong = null
+  store.lyric = null
+  store.lyricsArray = []
+  store.currentLyricIndex = -1
+  store.loading = false
+  store.playing = false
+  store.progress = 0
+  store.duration = 0
+  store.initialized = false
+  store.ipcInitialized = false
+  store.trackSwitching = false
+}
+
 function isCurrentAudioSourceSong(song: Song | null, currentAudioSrc: string): boolean {
   if (!song?.url || !currentAudioSrc) {
     return false
@@ -281,8 +356,16 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
     })
   }
 
-  function createPlayerStateSnapshot(store: PlayerStoreInstance): PlayerStateSnapshot {
-    return {
+  type PlayerStateSnapshotOptions = {
+    includeHeavy?: boolean
+  }
+
+  function createPlayerStateSnapshot(
+    store: PlayerStoreInstance,
+    options: PlayerStateSnapshotOptions = {}
+  ): PlayerStateSyncPayload {
+    const includeHeavy = options.includeHeavy ?? true
+    const snapshot: PlayerStateSyncPayload = {
       isPlaying: store.playing,
       isLoading: store.loading,
       progress: store.progress,
@@ -293,7 +376,6 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           ? audioManager.getMuted()
           : store.volume === 0,
       playMode: store.playMode,
-      playlist: toIpcSerializable(store.songList) as PlayerStateSnapshot['playlist'],
       currentIndex: store.currentIndex,
       currentSong: toIpcSerializable(store.currentSong) as PlayerStateSnapshot['currentSong'],
       lyricSong: toIpcSerializable(store.lyricSong) as PlayerStateSnapshot['lyricSong'],
@@ -302,18 +384,27 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       showPlaylist: store.showPlaylist,
       isPlayerDocked: store.isPlayerDocked,
       lyricType: [...store.lyricType] as LyricDisplayType[],
-      lyrics: toIpcSerializable(store.lyricsArray) as PlayerStateSnapshot['lyrics'],
       desktopLyricSequence: getDesktopLyricSequence(store)
     }
+
+    if (includeHeavy) {
+      snapshot.playlist = toIpcSerializable(store.songList) as PlayerStateSnapshot['playlist']
+      snapshot.lyrics = toIpcSerializable(store.lyricsArray) as PlayerStateSnapshot['lyrics']
+    }
+
+    return snapshot
   }
 
-  function notifyPlayerStateSnapshot(store: PlayerStoreInstance): void {
+  function notifyPlayerStateSnapshot(
+    store: PlayerStoreInstance,
+    options: PlayerStateSnapshotOptions = {}
+  ): void {
     const platform = getPlatformService()
     if (!platform.isElectron()) {
       return
     }
 
-    platform.send(SEND_CHANNELS.PLAYER_SYNC_STATE, createPlayerStateSnapshot(store))
+    platform.send(SEND_CHANNELS.PLAYER_SYNC_STATE, createPlayerStateSnapshot(store, options))
   }
 
   function handlePlaybackActionFailure(
@@ -710,7 +801,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
 
         runtime.ensureStateSync(
           scheduleNotify => store.$subscribe(() => scheduleNotify()),
-          () => notifyPlayerStateSnapshot(store),
+          () => notifyPlayerStateSnapshot(store, { includeHeavy: false }),
           PLAYER_STATE_SYNC_INTERVAL_MS
         )
 
@@ -815,15 +906,32 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         if (this.currentSong) {
           const newIndex = songs.findIndex(song => isSameSong(song, this.currentSong!))
           this.currentIndex = newIndex
+          this.currentSong = newIndex >= 0 ? songs[newIndex] : null
         } else {
           this.currentIndex = -1
         }
 
         this.resetErrorHandler()
+        getPlayerStoreRuntime(this as unknown as PlayerStoreOwner)?.resetPlaybackNavigation()
+        notifyPlayerStateSnapshot(this as unknown as PlayerStoreInstance)
+      },
+
+      replaceQueue(songs: Song[]): void {
+        this.setSongList(songs)
+      },
+
+      async replaceQueueAndPlay(songs: Song[], index: number): Promise<void> {
+        if (songs.length === 0 || index < 0 || index >= songs.length) {
+          return
+        }
+
+        this.setSongList(songs)
+        await this.playSongWithDetails(index)
       },
 
       addSong(song: Song): void {
         this.songList.push(song)
+        notifyPlayerStateSnapshot(this as unknown as PlayerStoreInstance)
       },
 
       async playSongByIndex(index: number, song?: Song): Promise<void> {
@@ -884,7 +992,8 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
 
         if (!this.initialized) {
           if (this.songList.length > 0) {
-            void this.playSongWithDetails(0).catch(error => {
+            const targetIndex = this.currentIndex >= 0 ? this.currentIndex : 0
+            void this.playSongWithDetails(targetIndex).catch(error => {
               handlePlaybackActionFailure(
                 store,
                 error,
@@ -1007,7 +1116,12 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
 
         getPlayerStoreRuntime(store)?.getLyricEngine()?.setLyrics(lyrics)
         this.updateLyricIndex(this.progress)
+        notifyPlayerStateSnapshot(store)
         notifyLyricTimeUpdate(store, getPlatformService(), this.progress, 'lyrics-load')
+      },
+
+      removeSongFromPlaylist(index: number): void {
+        removeFromPlaylistFromIpc(this as unknown as PlayerStoreInstance, index)
       },
 
       clearPlaylist(): void {
@@ -1037,7 +1151,15 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
 
     persist: {
       storage: storageAdapter,
-      pick: ['volume', 'playMode', 'lyricType', 'webLyricAppearance', 'isPlayerDocked'],
+      pick: [
+        'volume',
+        'playMode',
+        'lyricType',
+        'webLyricAppearance',
+        'isPlayerDocked',
+        'songList',
+        'currentIndex'
+      ],
       beforeHydrate: (_context: unknown) => {
         const rawPlayerState = storageAdapter.getItem(storeId)
 
@@ -1064,6 +1186,8 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       },
       afterHydrate: (context: unknown) => {
         const store = (context as { store: PlayerState }).store
+
+        restorePersistedPlayerState(store)
 
         if (typeof store.volume !== 'number' || !Number.isFinite(store.volume)) {
           store.volume = 0.7

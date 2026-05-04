@@ -2,7 +2,11 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
 import { app } from 'electron'
-import { ExternalPluginManifestSchema, type InstalledPluginLocation } from './types'
+import {
+  ExternalPluginManifestSchema,
+  type ExternalPluginManifest,
+  type InstalledPluginLocation
+} from './types'
 
 function getDefaultUserDataPath(): string {
   try {
@@ -17,6 +21,7 @@ export interface PluginInstallerDeps {
 }
 
 const SAFE_PATH_SEGMENT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/
+const MAX_THEME_CSS_TEXT_LENGTH = 100_000
 
 function assertSafePathSegment(value: string, label: string): void {
   if (!SAFE_PATH_SEGMENT_PATTERN.test(value)) {
@@ -155,7 +160,7 @@ export class PluginInstaller {
     throw new Error('Only plugin directories or manifest.json paths are supported for installation')
   }
 
-  private async readManifest(pluginDirectory: string) {
+  private async readManifest(pluginDirectory: string): Promise<ExternalPluginManifest> {
     const manifestPath = path.join(pluginDirectory, 'manifest.json')
     const manifestContent = await fs.readFile(manifestPath, 'utf-8')
     const parsedManifest = JSON.parse(manifestContent) as unknown
@@ -168,7 +173,39 @@ export class PluginInstaller {
     assertSafePathSegment(result.data.id, 'Plugin id')
     assertSafePathSegment(result.data.version, 'Plugin version')
 
-    return result.data
+    const manifest = structuredClone(result.data)
+    await this.inlineThemeCssFiles(pluginDirectory, manifest)
+
+    return manifest
+  }
+
+  private async inlineThemeCssFiles(
+    pluginDirectory: string,
+    manifest: ExternalPluginManifest
+  ): Promise<void> {
+    const themeResources = manifest.contributions?.themeResources
+    if (!themeResources) {
+      return
+    }
+
+    for (const themeResource of themeResources) {
+      if (!themeResource.cssFile) {
+        continue
+      }
+
+      const cssFilePath = resolveContainedPath(
+        pluginDirectory,
+        themeResource.cssFile,
+        'Theme CSS file'
+      )
+      await this.assertFileExists(cssFilePath, `Theme CSS file not found: ${themeResource.cssFile}`)
+      const cssText = await fs.readFile(cssFilePath, 'utf-8')
+      if (cssText.length > MAX_THEME_CSS_TEXT_LENGTH) {
+        throw new Error(`Theme CSS file is too large: ${themeResource.cssFile}`)
+      }
+
+      themeResource.cssText = cssText
+    }
   }
 
   private async assertFileExists(filePath: string, errorMessage: string): Promise<void> {

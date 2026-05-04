@@ -304,10 +304,6 @@
   cursor: pointer;
 }
 
-.player-section.has-song:hover {
-  background: var(--ui-hover-bg);
-}
-
 .track-title {
   font-size: 18px;
   font-weight: 800;
@@ -504,6 +500,35 @@
   flex-shrink: 0;
 }
 
+.queue-btn {
+  width: 28px;
+  height: 28px;
+  border: var(--ui-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--black);
+  transition:
+    background 0.1s,
+    color 0.1s,
+    box-shadow 0.1s,
+    transform 0.1s;
+  flex-shrink: 0;
+}
+
+.queue-btn:hover {
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
+  box-shadow: var(--ui-primary-shadow);
+}
+
+.queue-btn:active {
+  transform: scale(0.96);
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .player-section:not(.is-docked) {
@@ -607,12 +632,12 @@
     min-width: 16px;
   }
 
-  .player-section.is-docked .volume-row :deep(.settings-btn) {
+  .player-section.is-docked .queue-btn {
     width: 24px;
     height: 24px;
   }
 
-  .player-section.is-docked .volume-row :deep(.settings-btn svg) {
+  .player-section.is-docked .queue-btn svg {
     width: 14px;
     height: 14px;
   }

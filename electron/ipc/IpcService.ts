@@ -146,14 +146,20 @@ export class IpcService {
    * 创建带超时的 Promise
    */
   private withTimeout<T>(promise: Promise<T>, timeoutMs: number, channel: string): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => {
-          reject(new Error(`Request timeout: ${channel} exceeded ${timeoutMs}ms`))
-        }, timeoutMs)
-      )
-    ])
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        timeoutHandle = null
+        reject(new Error(`Request timeout: ${channel} exceeded ${timeoutMs}ms`))
+      }, timeoutMs)
+    })
+
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+        timeoutHandle = null
+      }
+    })
   }
 
   // ========== Invoke 处理器注册 ==========

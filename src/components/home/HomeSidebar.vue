@@ -273,6 +273,7 @@ onUnmounted(() => {
           :key="item.id"
           type="button"
           class="sidebar-link"
+          data-ui="sidebar-link"
           :class="{ active: isActive(item.id) }"
           :aria-current="isActive(item.id) ? 'page' : undefined"
           :aria-label="item.label"
@@ -294,6 +295,7 @@ onUnmounted(() => {
           :key="item.id"
           type="button"
           class="sidebar-link sidebar-link-muted"
+          data-ui="sidebar-link"
           :class="{ active: isActive(item.id) }"
           :aria-current="isActive(item.id) ? 'page' : undefined"
           :aria-label="item.label"
@@ -346,6 +348,7 @@ onUnmounted(() => {
             :key="item.uiId"
             type="button"
             class="playlist-card"
+            data-ui="playlist-card"
             :class="{ active: isActive(item.uiId) }"
             :aria-label="item.name"
             @click="activateCollection(item)"
@@ -858,6 +861,38 @@ onUnmounted(() => {
 .sidebar-shell.is-collapsed .sidebar-link,
 .sidebar-shell.is-collapsed .playlist-card {
   justify-content: center;
+}
+
+.sidebar-shell:not(.is-collapsed) .sidebar-link,
+.sidebar-shell:not(.is-collapsed) .playlist-card {
+  width: 100% !important;
+  height: auto !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+.sidebar-shell:not(.is-collapsed) .sidebar-link {
+  padding: 10px 12px !important;
+}
+
+.sidebar-shell:not(.is-collapsed) .playlist-card {
+  padding: 6px 4px !important;
+}
+
+.sidebar-shell:not(.is-collapsed) .sidebar-label,
+.sidebar-shell:not(.is-collapsed) .playlist-copy {
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  writing-mode: horizontal-tb !important;
+  word-break: keep-all !important;
+}
+
+.sidebar-shell:not(.is-collapsed) .sidebar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 960px) {

@@ -16,10 +16,11 @@ function changeTab(tab: HomeTab): void {
 </script>
 
 <template>
-  <div class="panel-tabs" role="tablist" aria-label="Home panels">
+  <div class="panel-tabs" data-ui="tabbar" role="tablist" aria-label="Home panels">
     <button
       id="home-tab-lyric"
       class="tab"
+      data-ui="tab"
       :class="{ active: props.activeTab === 'lyric' }"
       type="button"
       role="tab"
@@ -32,6 +33,7 @@ function changeTab(tab: HomeTab): void {
     <button
       id="home-tab-playlist"
       class="tab"
+      data-ui="tab"
       :class="{ active: props.activeTab === 'playlist' }"
       type="button"
       role="tab"

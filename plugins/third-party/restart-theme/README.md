@@ -2,16 +2,18 @@
 
 Re:Start Theme is a Luo Music third-party theme plugin. It provides one theme resource pack through `contributions.themeResources`.
 
+Current version: `1.0.1`.
+
 ## Style
 
-- Soft white glass panels and warm gray surfaces
+- Flat warm-white app shell with a narrow icon-only sidebar
 - Orange playback, active navigation, tab underline, and lyric focus accents
-- Rounded floating titlebar/sidebar/workspace shells
-- Subtle panel shadows and low-contrast dividers
+- Compact top navigation with centered search and small window controls
+- White player and lyric columns separated by low-contrast dividers
 - Dark graphite primary controls and line icons
 - Unified search capsule with search icon and `Ctrl K` hint
 - Lyrics with muted inactive lines, bold black active lines, and an orange left marker
-- Extra theme CSS for player spacing, cover tilt, the main play button, and workspace accent rail
+- `theme.css` overrides layout details such as the player column, cover frame, progress bar, tabbar, and lyric spacing
 
 ## Installation
 

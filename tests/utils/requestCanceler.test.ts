@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   cancelPendingRequest,
   registerRequest,
@@ -8,7 +8,9 @@ import {
   getActiveRequestCount,
   getActiveRequestKeys,
   isRequestActive,
-  generateRequestKey
+  generateRequestKey,
+  bindRequestCancelerLifecycle,
+  unbindRequestCancelerLifecycle
 } from '@/utils/http/requestCanceler'
 
 interface MockConfig {
@@ -20,6 +22,10 @@ interface MockConfig {
 describe('requestCanceler', () => {
   beforeEach(() => {
     cancelAllRequests()
+  })
+
+  afterEach(() => {
+    unbindRequestCancelerLifecycle()
   })
 
   const mockConfig: MockConfig = {
@@ -198,6 +204,28 @@ describe('requestCanceler', () => {
 
       // 确保 Map 中不再有该请求
       expect(getActiveRequestCount()).toBe(0)
+    })
+
+    it('生命周期监听应该可解绑并避免重复注册', () => {
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener')
+
+      unbindRequestCancelerLifecycle()
+      addEventListenerSpy.mockClear()
+      removeEventListenerSpy.mockClear()
+
+      bindRequestCancelerLifecycle()
+      bindRequestCancelerLifecycle()
+
+      expect(addEventListenerSpy).toHaveBeenCalledTimes(2)
+      expect(addEventListenerSpy).toHaveBeenCalledWith('beforeunload', expect.any(Function))
+      expect(addEventListenerSpy).toHaveBeenCalledWith('pagehide', expect.any(Function))
+
+      unbindRequestCancelerLifecycle()
+
+      expect(removeEventListenerSpy).toHaveBeenCalledTimes(2)
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('beforeunload', expect.any(Function))
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('pagehide', expect.any(Function))
     })
   })
 })

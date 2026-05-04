@@ -176,6 +176,7 @@ export function prefetch<T = unknown>(config: CacheRequestConfig, data: T): void
 
 let cleanupInterval: ReturnType<typeof setInterval> | null = null
 let isCleanupStarted = false
+let isPageLifecycleBound = false
 
 export function startCleanupTimer(): void {
   if (isCleanupStarted || cleanupInterval) {
@@ -194,10 +195,34 @@ export function stopCleanupTimer(): void {
   }
 }
 
-startCleanupTimer()
+export function bindCleanupLifecycle(): void {
+  if (typeof window === 'undefined' || isPageLifecycleBound) {
+    return
+  }
 
-if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', stopCleanupTimer)
+  isPageLifecycleBound = true
+}
+
+export function unbindCleanupLifecycle(): void {
+  if (typeof window === 'undefined' || !isPageLifecycleBound) {
+    return
+  }
+
+  window.removeEventListener('beforeunload', stopCleanupTimer)
+  isPageLifecycleBound = false
+}
+
+export function disposeRequestCache(): void {
+  stopCleanupTimer()
+  unbindCleanupLifecycle()
+}
+
+startCleanupTimer()
+bindCleanupLifecycle()
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(disposeRequestCache)
 }
 
 export default {
@@ -210,6 +235,9 @@ export default {
   getCacheStats,
   deleteCacheByUrl,
   prefetch,
+  bindCleanupLifecycle,
+  unbindCleanupLifecycle,
+  disposeRequestCache,
   startCleanupTimer,
   stopCleanupTimer
 }

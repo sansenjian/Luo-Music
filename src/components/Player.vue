@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { defineAsyncComponent, computed } from 'vue'
+import { defineAsyncComponent, computed, ref } from 'vue'
 
 import { uiMessages } from '@/messages/ui'
 import { useAppSettings } from '@/composables/useAppSettings'
 import { useCoverSwipe } from '@/composables/useCoverSwipe'
 import { usePlayerViewModel, resolveCoverUrl } from '@/composables/usePlayerViewModel'
 
-const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'))
+const PlaybackQueueDrawer = defineAsyncComponent(() => import('./PlaybackQueueDrawer.vue'))
 const ProgressWaveform = defineAsyncComponent(() => import('./ProgressWaveform.vue'))
 
 interface PlayerProps {
@@ -24,6 +24,7 @@ const emit = defineEmits<{
 }>()
 
 const { waveformEnabled, coverSwipeEnabled } = useAppSettings()
+const showPlaybackQueue = ref(false)
 const showWaveform = computed(() => waveformEnabled.value)
 const showCoverSwipe = computed(() => coverSwipeEnabled.value && !props.docked)
 
@@ -91,6 +92,14 @@ const prevCoverUrl = computed(() =>
 const nextCoverUrl = computed(() =>
   nextSong.value?.album?.picUrl ? resolveCoverUrl(nextSong.value.album.picUrl) : ''
 )
+
+function openPlaybackQueue(): void {
+  showPlaybackQueue.value = true
+}
+
+function closePlaybackQueue(): void {
+  showPlaybackQueue.value = false
+}
 </script>
 
 <template>
@@ -116,10 +125,11 @@ const nextCoverUrl = computed(() =>
       </div>
     </div>
 
-    <div class="player-left">
+    <div class="player-left" data-ui="player-left">
       <div
         class="cover-swipe-area"
         v-if="showCoverSwipe"
+        data-ui="player-cover-swipe"
         @pointerdown="onCoverSwipePointerDown($event)"
         @pointermove="onCoverSwipePointerMove($event)"
         @pointerup="onCoverSwipePointerUp()"
@@ -155,7 +165,12 @@ const nextCoverUrl = computed(() =>
             loading="lazy"
           />
         </div>
-        <div class="cover-frame" :class="{ 'is-swiping': coverIsSwiping }" :style="coverFrameStyle">
+        <div
+          class="cover-frame"
+          data-ui="player-cover"
+          :class="{ 'is-swiping': coverIsSwiping }"
+          :style="coverFrameStyle"
+        >
           <div class="corner corner-tl"></div>
           <div class="corner corner-tr"></div>
           <div class="corner corner-bl"></div>
@@ -170,7 +185,7 @@ const nextCoverUrl = computed(() =>
           />
         </div>
       </div>
-      <div class="cover-frame" v-else>
+      <div v-else class="cover-frame" data-ui="player-cover">
         <div class="corner corner-tl"></div>
         <div class="corner corner-tr"></div>
         <div class="corner corner-bl"></div>
@@ -184,7 +199,7 @@ const nextCoverUrl = computed(() =>
         />
       </div>
 
-      <div class="track-info">
+      <div class="track-info" data-ui="player-track">
         <h2 class="track-title">
           {{ currentSong?.name || uiMessages.home.player.emptyTitle }}
         </h2>
@@ -198,7 +213,7 @@ const nextCoverUrl = computed(() =>
     </div>
 
     <!-- Normal: Bottom progress -->
-    <div v-if="!props.docked" class="progress-section">
+    <div v-if="!props.docked" class="progress-section" data-ui="player-progress">
       <ProgressWaveform v-if="showWaveform" />
       <div class="time-row">
         <span>{{ playerStore.formattedProgress }}</span>
@@ -218,6 +233,7 @@ const nextCoverUrl = computed(() =>
 
     <div
       class="controls"
+      data-ui="player-controls"
       v-memo="[
         playerStore.playing,
         playerStore.playMode,
@@ -230,6 +246,7 @@ const nextCoverUrl = computed(() =>
       <button
         ref="loopButtonRef"
         class="ctrl-btn loop-btn"
+        data-ui="player-mode-button"
         :disabled="!canTogglePlayMode"
         :aria-label="playModeText"
         @click.stop="onLoopButtonClick"
@@ -246,6 +263,7 @@ const nextCoverUrl = computed(() =>
       <button
         ref="prevButtonRef"
         class="ctrl-btn"
+        data-ui="player-prev-button"
         :disabled="!canNavigatePlaylist"
         aria-label="上一首"
         @click.stop="onPrevButtonClick"
@@ -258,6 +276,7 @@ const nextCoverUrl = computed(() =>
       <button
         ref="playButtonRef"
         class="ctrl-btn ctrl-main"
+        data-ui="player-play-button"
         :disabled="!canTogglePlay"
         :aria-label="playerStore.playing ? '暂停播放' : '开始播放'"
         @click.stop="onPlayButtonClick"
@@ -279,6 +298,7 @@ const nextCoverUrl = computed(() =>
       <button
         ref="nextButtonRef"
         class="ctrl-btn"
+        data-ui="player-next-button"
         :disabled="!canNavigatePlaylist"
         aria-label="下一首"
         @click.stop="onNextButtonClick"
@@ -291,6 +311,7 @@ const nextCoverUrl = computed(() =>
       <!-- Desktop Lyric Button -->
       <button
         class="ctrl-btn lyric-btn"
+        data-ui="player-lyric-button"
         :disabled="!canToggleDesktopLyric"
         aria-label="切换桌面歌词"
         @click.stop="toggleDesktopLyric"
@@ -313,7 +334,7 @@ const nextCoverUrl = computed(() =>
       </button>
     </div>
 
-    <div class="volume-row" v-memo="[volumeDisplay]" @click.stop>
+    <div class="volume-row" data-ui="player-volume" v-memo="[volumeDisplay]" @click.stop>
       <span class="volume-label">VOL</span>
       <div
         class="volume-bar"
@@ -326,8 +347,38 @@ const nextCoverUrl = computed(() =>
         <div ref="volumeFillRef" class="volume-fill"></div>
       </div>
       <span class="volume-value">{{ volumeDisplay }}</span>
-      <SettingsPanel />
+      <button
+        class="queue-btn"
+        type="button"
+        aria-label="打开播放队列"
+        title="打开播放队列"
+        @click.stop="openPlaybackQueue"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <path d="M3 6h.01"></path>
+          <path d="M3 12h.01"></path>
+          <path d="M3 18h.01"></path>
+        </svg>
+      </button>
     </div>
+
+    <PlaybackQueueDrawer
+      v-if="showPlaybackQueue"
+      :open="showPlaybackQueue"
+      @close="closePlaybackQueue"
+    />
   </div>
 </template>
 

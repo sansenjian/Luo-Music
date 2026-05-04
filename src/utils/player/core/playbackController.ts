@@ -59,6 +59,10 @@ export class PlaybackController {
       return currentIndex
     }
 
+    if (playMode === PLAY_MODE.SEQUENTIAL && currentIndex >= songListLength - 1) {
+      return -1
+    }
+
     return (currentIndex + 1) % songListLength
   }
 

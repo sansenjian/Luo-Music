@@ -46,6 +46,7 @@ export interface PluginThemeResource {
   renderStyle: string
   description?: string
   cssVariables?: Record<string, string>
+  cssFile?: string
   cssText?: string
 }
 

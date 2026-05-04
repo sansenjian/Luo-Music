@@ -80,7 +80,7 @@ export function usePlayerViewModel(deps: PlayerViewModelDeps = {}) {
   const coverImgRef = ref<HTMLImageElement | null>(null)
   const volumeFillRef = ref<HTMLDivElement | null>(null)
 
-  const currentSong = computed<Song | null>(() => playerStore.currentSong)
+  const currentSong = computed<Song | null>(() => playerStore.currentSongInfo)
   const progressPercent = computed(() =>
     playerStore.duration ? (playerStore.progress / playerStore.duration) * 100 : 0
   )
@@ -155,7 +155,7 @@ export function usePlayerViewModel(deps: PlayerViewModelDeps = {}) {
   }
 
   watch(
-    () => playerStore.currentSong,
+    () => playerStore.currentSongInfo,
     () => {
       void nextTick(() => coverImgRef.value && animateAlbumCover(coverImgRef.value))
     },

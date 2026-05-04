@@ -11,8 +11,7 @@ export type HomeMediaSongItem = {
 }
 
 export type HomeMediaPlayerStore = {
-  setSongList: (songs: Song[]) => void
-  playSongWithDetails: (index: number) => Promise<void>
+  replaceQueueAndPlay: (songs: Song[], index: number) => Promise<void>
 }
 
 export type HomeMediaToastStore = {
@@ -117,13 +116,11 @@ export async function playMediaSongSelection(
   }
 
   try {
-    playerStore.setSongList(songs)
-
     // Prefetch the target song and its neighbors so playback doesn't
     // stall on a network round-trip for the song URL.
     songPrefetcher.schedulePrefetch(songs, playbackIndex)
 
-    await playerStore.playSongWithDetails(playbackIndex)
+    await playerStore.replaceQueueAndPlay(songs, playbackIndex)
   } catch (error) {
     toastStore.error(resolvePanelErrorMessage(error, fallbackMessage))
   }

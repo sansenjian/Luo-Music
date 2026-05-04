@@ -189,12 +189,12 @@ describe('player/core/playlistManager', () => {
       expect(manager.getNextIndex(playlist)).toBe(1)
     })
 
-    it('should handle wrap around with modulo', () => {
+    it('should return -1 at the end in sequential mode', () => {
       playlist.currentIndex = 2
       playlist.playMode = PLAY_MODE.SEQUENTIAL
 
-      // Sequential mode also uses modulo for next
-      expect(manager.getNextIndex(playlist)).toBe(0)
+      expect(manager.getNextIndex(playlist)).toBe(-1)
+      expect(manager.getNextSong(playlist)).toBeNull()
     })
   })
 

@@ -29,6 +29,7 @@ const qqMusicLoginState = computed(() => (userStore.isQQMusicLoggedIn ? '已登�
 <template>
   <div
     class="sidebar-login-panel"
+    data-ui="sidebar-footer"
     :class="{ 'is-collapsed': props.collapsed }"
     aria-label="登录信息"
   >
@@ -241,6 +242,22 @@ const qqMusicLoginState = computed(() => (userStore.isQQMusicLoggedIn ? '已登�
 .sidebar-login-panel.is-collapsed .settings-button {
   width: 42px;
   height: 42px;
+}
+
+.sidebar-login-panel:not(.is-collapsed) {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+}
+
+.sidebar-login-panel:not(.is-collapsed) .sidebar-login {
+  display: flex !important;
+  justify-content: flex-start !important;
+}
+
+.sidebar-login-panel:not(.is-collapsed) .settings-button {
+  width: 40px !important;
+  height: 40px !important;
 }
 
 @media (max-width: 960px) {

@@ -97,7 +97,7 @@ export class DownloadManager {
     })
   }
 
-  setWindow(win: BrowserWindowType): void {
+  setWindow(win: BrowserWindowType | null): void {
     this.window = win
   }
 
@@ -112,13 +112,12 @@ export class DownloadManager {
   }
 
   dispose(): void {
-    if (!this.listenersRegistered) {
-      return
+    if (this.listenersRegistered) {
+      session.defaultSession.removeListener('will-download', this.willDownloadListener)
+      ipcMain.removeListener('internal-download', this.internalDownloadListener)
+      this.listenersRegistered = false
     }
 
-    session.defaultSession.removeListener('will-download', this.willDownloadListener)
-    ipcMain.removeListener('internal-download', this.internalDownloadListener)
-    this.listenersRegistered = false
     this.window = null
   }
 

@@ -316,10 +316,11 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 </script>
 
 <template>
-  <div v-if="isElectron" ref="wrapperRef" class="user-avatar-wrapper">
+  <div v-if="isElectron" ref="wrapperRef" class="user-avatar-wrapper" data-ui="user-avatar">
     <button
       ref="triggerButtonRef"
       class="user-trigger"
+      data-ui="user-avatar-trigger"
       type="button"
       aria-haspopup="menu"
       :aria-expanded="showDropdown"
@@ -333,8 +334,9 @@ watch(showDropdown, async (isOpen, wasOpen) => {
         :src="userStore.avatarUrl"
         :alt="userStore.nickname"
         class="avatar"
+        data-ui="user-avatar-image"
       />
-      <div v-else class="avatar-placeholder">
+      <div v-else class="avatar-placeholder" data-ui="user-avatar-placeholder">
         <svg
           width="16"
           height="16"

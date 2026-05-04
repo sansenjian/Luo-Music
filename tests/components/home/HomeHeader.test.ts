@@ -69,9 +69,9 @@ describe('HomeHeader', () => {
   it('emits window control events only in electron mode', async () => {
     const wrapper = createWrapper(true)
 
-    await wrapper.get('button[title="Minimize"]').trigger('click')
-    await wrapper.get('button[title="Maximize"]').trigger('click')
-    await wrapper.get('button[title="Close"]').trigger('click')
+    await wrapper.get('button[title="最小化"]').trigger('click')
+    await wrapper.get('button[title="最大化"]').trigger('click')
+    await wrapper.get('button[title="关闭"]').trigger('click')
 
     expect(wrapper.emitted('minimize-window')).toHaveLength(1)
     expect(wrapper.emitted('maximize-window')).toHaveLength(1)
@@ -79,6 +79,44 @@ describe('HomeHeader', () => {
 
     const webWrapper = createWrapper(false)
     expect(webWrapper.findAll('.win-btn')).toHaveLength(0)
+  })
+
+  it('emits workspace navigation events from title nav buttons', async () => {
+    const wrapper = mount(HomeHeader, {
+      props: {
+        canNavigateBack: true,
+        canNavigateForward: true,
+        isElectron: false,
+        isLoading: false,
+        searchKeyword: '',
+        selectedServer: 'netease',
+        selectedServerLabel: 'Netease',
+        servers,
+        showSelect: false
+      }
+    })
+
+    await wrapper.get('button[aria-label="返回"]').trigger('click')
+    await wrapper.get('button[aria-label="前进"]').trigger('click')
+
+    expect(wrapper.emitted('navigate-back')).toHaveLength(1)
+    expect(wrapper.emitted('navigate-forward')).toHaveLength(1)
+  })
+
+  it('disables title nav buttons when no workspace history is available', async () => {
+    const wrapper = createWrapper(false)
+
+    const backButton = wrapper.get('button[aria-label="返回"]')
+    const forwardButton = wrapper.get('button[aria-label="前进"]')
+
+    expect(backButton.attributes('disabled')).toBeDefined()
+    expect(forwardButton.attributes('disabled')).toBeDefined()
+
+    await backButton.trigger('click')
+    await forwardButton.trigger('click')
+
+    expect(wrapper.emitted('navigate-back')).toBeUndefined()
+    expect(wrapper.emitted('navigate-forward')).toBeUndefined()
   })
 
   it('hides the brand badge when showBrand is false', () => {

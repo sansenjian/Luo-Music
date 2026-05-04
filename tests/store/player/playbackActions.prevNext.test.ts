@@ -36,4 +36,25 @@ describe('playbackActions prev/next', () => {
     actions.playNext()
     expect(playSongWithDetails).toHaveBeenCalledWith(0)
   })
+
+  it('uses the pending navigation target when next is triggered repeatedly', () => {
+    const { actions, state } = createSubject()
+    state.songList = [
+      createMockSong({ id: 1 }),
+      createMockSong({ id: 2 }),
+      createMockSong({ id: 3 }),
+      createMockSong({ id: 4 })
+    ]
+    state.currentIndex = 0
+
+    const playSongWithDetails = vi
+      .spyOn(actions, 'playSongWithDetails')
+      .mockResolvedValue(undefined)
+
+    actions.playNext()
+    actions.playNext()
+
+    expect(playSongWithDetails).toHaveBeenNthCalledWith(1, 1)
+    expect(playSongWithDetails).toHaveBeenNthCalledWith(2, 2)
+  })
 })

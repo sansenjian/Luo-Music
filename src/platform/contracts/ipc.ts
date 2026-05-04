@@ -148,6 +148,9 @@ export interface PlayerStateSnapshot extends PlayerStateResponse {
   desktopLyricSequence: number
 }
 
+export type PlayerStateSyncPayload = Omit<PlayerStateSnapshot, 'playlist' | 'lyrics'> &
+  Partial<Pick<PlayerStateSnapshot, 'playlist' | 'lyrics'>>
+
 export interface DesktopLyricSnapshot {
   currentSong: Song | null
   currentLyricIndex: number
@@ -490,7 +493,7 @@ type SendChannelsDefinition = MergeChannels<
     // 播放器状态
     DefineSendChannel<typeof SEND_CHANNELS.MUSIC_PLAYING_CHECK, [playing: boolean]> &
     DefineSendChannel<typeof SEND_CHANNELS.MUSIC_PLAYMODE_TRAY_CHANGE, [mode: number]> &
-    DefineSendChannel<typeof SEND_CHANNELS.PLAYER_SYNC_STATE, [state: PlayerStateSnapshot]> &
+    DefineSendChannel<typeof SEND_CHANNELS.PLAYER_SYNC_STATE, [state: PlayerStateSyncPayload]> &
     // 桌面歌词
     DefineSendChannel<typeof SEND_CHANNELS.DESKTOP_LYRIC_TOGGLE, []> &
     DefineSendChannel<typeof SEND_CHANNELS.DESKTOP_LYRIC_CONTROL, [action: string]> &

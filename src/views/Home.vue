@@ -56,8 +56,12 @@ const usesAdaptiveSidebarFooterLayout = computed(
 const {
   activeSidebarItemId,
   activeWorkspaceView,
+  canNavigateBack,
+  canNavigateForward,
   handleSidebarCollectionSelect,
   handleSidebarItemSelect,
+  navigateBack,
+  navigateForward,
   showNowPlaying,
   selectedCollection
 } = useHomeWorkspaceState()
@@ -95,6 +99,8 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
   >
     <HomeHeader
       :show-brand="brandPlacement === 'header'"
+      :can-navigate-back="canNavigateBack"
+      :can-navigate-forward="canNavigateForward"
       :is-electron="isElectron"
       :is-loading="isLoading"
       :search-keyword="searchKeyword"
@@ -106,6 +112,8 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
       @close-window="closeWindow"
       @maximize-window="maximizeWindow"
       @minimize-window="minimizeWindow"
+      @navigate-back="navigateBack"
+      @navigate-forward="navigateForward"
       @search="handleSearch"
       @search-keyword-change="setSearchKeyword"
       @select-server="selectServer"

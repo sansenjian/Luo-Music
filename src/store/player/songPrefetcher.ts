@@ -20,8 +20,8 @@ interface PrefetchEntry {
   timestamp: number
 }
 
-const PREFETCH_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-const MAX_PREFETCH_ENTRIES = 5
+const PREFETCH_CACHE_TTL = 15 * 60 * 1000 // 15 minutes
+const MAX_PREFETCH_ENTRIES = 8
 
 type MusicServiceLike = Pick<MusicService, 'getSongUrl' | 'getSongDetail' | 'getLyric'>
 
@@ -282,7 +282,7 @@ class SongPrefetcher {
 
     const processNext = async (): Promise<void> => {
       while (this.prefetchQueue.length > 0) {
-        const batch = this.prefetchQueue.splice(0, 2)
+        const batch = this.prefetchQueue.splice(0, 4)
         await Promise.all(batch.map(song => this.prefetchSong(song).catch(() => {})))
       }
       this.isPrefetching = false

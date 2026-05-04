@@ -287,4 +287,32 @@ describe('electron/WindowManager', () => {
 
     expect(appQuitMock).not.toHaveBeenCalled()
   })
+
+  it('releases the download manager window reference when the main window closes', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    expect(setWindowMock).toHaveBeenCalledWith(window)
+
+    window?.events.closed?.()
+
+    expect(setWindowMock).toHaveBeenLastCalledWith(null)
+  })
+
+  it('clears the startup fallback timer when the main window closes before it fires', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+
+    window?.events.closed?.()
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(window?.show).not.toHaveBeenCalled()
+  })
 })

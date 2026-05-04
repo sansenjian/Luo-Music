@@ -55,6 +55,7 @@ function getResizeCursor(direction: ResizeHandleDirection): string {
 
 export function useWindowResizeFrame() {
   let resizeSession: ResizeSession | null = null
+  let isDisposed = false
   let previousCursor = ''
   let pendingBounds: WindowBounds | null = null
   let resizeRafId: number | null = null
@@ -162,11 +163,18 @@ export function useWindowResizeFrame() {
     event.preventDefault()
 
     const windowState = await bridge.window.getState()
+    if (isDisposed) {
+      return
+    }
+
     if (windowState.isMaximized || windowState.isMinimized || windowState.isFullScreen) {
       return
     }
 
     const initialBounds = await bridge.invoke<WindowBounds>(INVOKE_CHANNELS.WINDOW_GET_BOUNDS)
+    if (isDisposed) {
+      return
+    }
 
     resizeSession = {
       direction,
@@ -180,6 +188,7 @@ export function useWindowResizeFrame() {
   }
 
   onBeforeUnmount(() => {
+    isDisposed = true
     stopResize()
   })
 
