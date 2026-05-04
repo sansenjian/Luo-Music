@@ -2,6 +2,7 @@
 
 ## 模块边界
 
+- 根目录 `api/`：仅用于 Vercel Serverless Function 部署路由，例如 `/api/*` 与 `/qq-api` 重写；不要从 `src/`、`electron/` 或通用包导入。
 - `src/api/`：仅负责 HTTP 请求、响应适配、接口类型定义；不要放视图逻辑。
 - `src/platform/`：统一封装 Web / Electron 差异；不要直接耦合 UI。
 - `src/store/`：全局共享状态唯一数据源；播放器、登录、下载等状态不要多处维护。
@@ -19,6 +20,7 @@
 
 ## 网络与错误处理
 
+- 区分根 `api/` 与 `src/api/`：根 `api/` 是部署 handler，`src/api/` 才是渲染侧业务请求入口。
 - 请求逻辑优先收敛到 `src/api/` 与 `src/utils/http/`。
 - 错误处理优先复用 `src/utils/error/`，不要在页面或组件里散落重复分支。
 - 平台接口异常要区分网络问题、鉴权问题、空数据和平台差异。

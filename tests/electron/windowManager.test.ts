@@ -147,6 +147,18 @@ describe('electron/WindowManager', () => {
     })
   })
 
+  it('creates the main window with a transparent background for rounded render styles', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window?.options).toMatchObject({
+      transparent: true,
+      backgroundColor: '#00000000'
+    })
+  })
+
   it('sets Windows app details on the main window for shell and SMTC identity', async () => {
     const { WindowManager } = await import('../../electron/WindowManager')
     const manager = new WindowManager()

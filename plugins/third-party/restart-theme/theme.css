@@ -3,7 +3,21 @@
 }
 
 :root[data-render-style='third-party.restart'] body {
+  background: transparent;
+}
+
+:root[data-render-style='third-party.restart'] [data-ui='app-window'] {
   background: #f8f8f6;
+}
+
+:root[data-render-style='third-party.restart'] [data-ui='app-window'].window-rounded {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+:root[data-render-style='third-party.restart'] [data-ui='app-window'].window-maximized,
+:root[data-render-style='third-party.restart'] [data-ui='app-window'].window-fullscreen {
+  border-radius: 0;
 }
 
 :root[data-render-style='third-party.restart'] [data-ui='home-window'] {

@@ -94,13 +94,15 @@ export class AudioEventHandler implements IDisposable {
     this.lastBroadcastPlaying = null
   }
 
-  private broadcastLyricUpdate(cause: DesktopLyricUpdateCause = 'interval'): void {
+  private broadcastLyricUpdate(
+    cause: DesktopLyricUpdateCause = 'interval',
+    currentTime = this.getCurrentTimeOrFallback(this.state.progress)
+  ): void {
     if (!this.platform) {
       return
     }
 
     const currentLyricLine = this.config.getCurrentLyricLine?.() ?? null
-    const currentTime = this.getCurrentTimeOrFallback(this.state.progress)
 
     // 差量检查：只有当歌词索引或内容真正变化时才发送
     const hasIndexChanged = this.state.currentLyricIndex !== this.lastBroadcastLyricIndex
@@ -142,17 +144,9 @@ export class AudioEventHandler implements IDisposable {
   private handleProgressUpdate(force = false, forcedCause?: DesktopLyricUpdateCause): void {
     const now = Date.now()
     const currentTime = this.getCurrentTimeOrFallback(0)
-    const currentDuration = Number(playerCore.duration) || 0
     const lyricIndexChanged = this.config.syncLyricIndex?.(currentTime) ?? false
 
-    if (
-      Number.isFinite(currentDuration) &&
-      currentDuration > 0 &&
-      currentDuration !== this.lastKnownDuration
-    ) {
-      this.lastKnownDuration = currentDuration
-      this.callbacks.onLoadedMetadata?.(currentDuration)
-    }
+    this.syncDurationFromProgress()
 
     if (force || now - this.lastUiUpdateTime >= this.config.uiUpdateInterval) {
       this.lastUiUpdateTime = now
@@ -167,7 +161,8 @@ export class AudioEventHandler implements IDisposable {
     ) {
       this.lastBroadcastTime = now
       this.broadcastLyricUpdate(
-        forcedCause ?? (lyricIndexChanged ? 'lyric-change' : force ? 'play-state' : 'interval')
+        forcedCause ?? (lyricIndexChanged ? 'lyric-change' : force ? 'play-state' : 'interval'),
+        currentTime
       )
     }
   }
@@ -275,11 +270,28 @@ export class AudioEventHandler implements IDisposable {
   }
 
   private handleDurationUpdate(): void {
-    const currentDuration = Number(playerCore.duration) || 0
+    const currentDuration = this.getKnownDuration()
     if (currentDuration > 0) {
       this.lastKnownDuration = currentDuration
     }
     this.callbacks.onLoadedMetadata?.(currentDuration)
+  }
+
+  private syncDurationFromProgress(): void {
+    if (this.lastKnownDuration > 0) {
+      return
+    }
+
+    const currentDuration = this.getKnownDuration()
+    if (currentDuration > 0) {
+      this.lastKnownDuration = currentDuration
+      this.callbacks.onLoadedMetadata?.(currentDuration)
+    }
+  }
+
+  private getKnownDuration(): number {
+    const currentDuration = Number(playerCore.duration)
+    return Number.isFinite(currentDuration) && currentDuration > 0 ? currentDuration : 0
   }
 
   private getCurrentTimeOrFallback(fallback: number): number {

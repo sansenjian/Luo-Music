@@ -12,6 +12,11 @@ const useSmtcExtensionMock = vi.hoisted(() => vi.fn())
 const storageGetJSONMock = vi.hoisted(() => vi.fn(() => null))
 const storageGetItemMock = vi.hoisted(() => vi.fn(() => null))
 const storageSetJSONMock = vi.hoisted(() => vi.fn())
+const windowChromeStateMock = vi.hoisted(() => ({
+  isWindowFullScreen: false,
+  isWindowMaximized: false,
+  isWindowRounded: false
+}))
 
 vi.mock('vue-router', () => ({
   useRoute: () => routeState
@@ -30,6 +35,10 @@ vi.mock('@/composables/useProjectUi', () => ({
   useProjectUi: () => ({
     ensureAvailableRenderStyle: vi.fn()
   })
+}))
+
+vi.mock('@/composables/useWindowChromeState', () => ({
+  useWindowChromeState: () => windowChromeStateMock
 }))
 
 vi.mock('@/services', () => ({
@@ -62,6 +71,9 @@ describe('App extension wiring', () => {
     routeState.path = '/'
     routeState.name = 'Home'
     window.location.hash = '#/'
+    windowChromeStateMock.isWindowFullScreen = false
+    windowChromeStateMock.isWindowMaximized = false
+    windowChromeStateMock.isWindowRounded = false
   })
 
   it('starts first-party SMTC extension wiring during app setup', () => {
@@ -78,5 +90,24 @@ describe('App extension wiring', () => {
     const wrapper = mountApp()
 
     expect(wrapper.find('.window-resize-frame').exists()).toBe(false)
+  })
+
+  it('marks the client app window as rounded while the Electron window is normal', () => {
+    windowChromeStateMock.isWindowRounded = true
+
+    const wrapper = mountApp()
+
+    expect(wrapper.find('[data-ui="app-window"]').classes()).toContain('window-rounded')
+    expect(wrapper.find('[data-ui="app-window"]').classes()).not.toContain('window-maximized')
+    expect(wrapper.find('[data-ui="app-window"]').classes()).not.toContain('window-fullscreen')
+  })
+
+  it('keeps the desktop lyric route outside the client window chrome shell', () => {
+    routeState.path = '/desktop-lyric'
+    routeState.name = 'DesktopLyric'
+
+    const wrapper = mountApp()
+
+    expect(wrapper.find('[data-ui="app-window"]').exists()).toBe(false)
   })
 })

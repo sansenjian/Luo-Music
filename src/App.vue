@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import WindowResizeFrame from './components/window/WindowResizeFrame.vue'
 import { useCommandContext } from './composables/useCommandContext'
 import { useProjectUi } from './composables/useProjectUi'
+import { useWindowChromeState } from './composables/useWindowChromeState'
 import { DESKTOP_LYRIC_ROUTE_PATH, useSmtcExtension } from './extensions/smtc/useSmtcExtension'
 import { services } from './services'
 import { PLAYER_STORAGE_KEY, sanitizePersistedPlayerState } from './utils/storage/appStorage'
@@ -17,7 +18,12 @@ const route = useRoute()
 const Analytics = defineAsyncComponent(() =>
   import('@vercel/analytics/vue').then(module => module.Analytics)
 )
-const showWindowResizeFrame = computed(() => isElectron && route.path !== DESKTOP_LYRIC_ROUTE_PATH)
+const isDesktopLyricRoute = computed(() => route.path === DESKTOP_LYRIC_ROUTE_PATH)
+const showClientWindowChrome = computed(() => !isDesktopLyricRoute.value)
+const shouldTrackWindowChrome = computed(() => isElectron && showClientWindowChrome.value)
+const showWindowResizeFrame = computed(() => isElectron && showClientWindowChrome.value)
+const { isWindowFullScreen, isWindowMaximized, isWindowRounded } =
+  useWindowChromeState(shouldTrackWindowChrome)
 
 useCommandContext()
 useSmtcExtension()
@@ -57,6 +63,32 @@ onMounted(() => {
 
 <template>
   <Analytics v-if="!isElectron && showAnalytics" />
-  <router-view />
+  <div
+    v-if="showClientWindowChrome"
+    class="app-window"
+    data-ui="app-window"
+    :class="{
+      'window-rounded': isWindowRounded,
+      'window-maximized': isWindowMaximized,
+      'window-fullscreen': isWindowFullScreen
+    }"
+  >
+    <router-view />
+  </div>
+  <router-view v-else />
   <WindowResizeFrame v-if="showWindowResizeFrame" />
 </template>
+
+<style scoped>
+.app-window {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ui-app-bg);
+  overflow: hidden;
+}
+</style>

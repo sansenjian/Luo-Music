@@ -83,6 +83,7 @@ export default defineConfig({
           items: [
             { text: '总览', link: '/plans/' },
             { text: '架构重构计划', link: '/plans/architecture-refactoring-plan' },
+            { text: '项目结构优化规划', link: '/plans/project-structure-optimization-plan' },
             { text: 'DI 优化计划', link: '/plans/di-optimization-plan' },
             { text: 'DI 后续路线图', link: '/plans/di-followup-roadmap' },
             { text: '首页重构计划', link: '/plans/home-refactor-plan' },

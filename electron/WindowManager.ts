@@ -90,7 +90,8 @@ export class WindowManager {
       titleBarStyle: 'hidden',
       icon: path.join(VITE_PUBLIC, 'electron-vite.svg'),
       show: false,
-      backgroundColor: '#e8ecef',
+      transparent: true,
+      backgroundColor: '#00000000',
       webPreferences: {
         preload: path.join(MAIN_DIST, 'preload.cjs'),
         nodeIntegration: false,

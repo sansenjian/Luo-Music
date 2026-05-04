@@ -361,6 +361,7 @@ declare global {
   const useWebSocket: typeof import('@vueuse/core').useWebSocket
   const useWebWorker: typeof import('@vueuse/core').useWebWorker
   const useWebWorkerFn: typeof import('@vueuse/core').useWebWorkerFn
+  const useWindowChromeState: typeof import('./composables/useWindowChromeState').useWindowChromeState
   const useWindowFocus: typeof import('@vueuse/core').useWindowFocus
   const useWindowResizeFrame: typeof import('./composables/useWindowResizeFrame').useWindowResizeFrame
   const useWindowScroll: typeof import('@vueuse/core').useWindowScroll
@@ -1053,6 +1054,9 @@ declare module 'vue' {
     readonly useWebSocket: UnwrapRef<(typeof import('@vueuse/core'))['useWebSocket']>
     readonly useWebWorker: UnwrapRef<(typeof import('@vueuse/core'))['useWebWorker']>
     readonly useWebWorkerFn: UnwrapRef<(typeof import('@vueuse/core'))['useWebWorkerFn']>
+    readonly useWindowChromeState: UnwrapRef<
+      (typeof import('./composables/useWindowChromeState'))['useWindowChromeState']
+    >
     readonly useWindowFocus: UnwrapRef<(typeof import('@vueuse/core'))['useWindowFocus']>
     readonly useWindowResizeFrame: UnwrapRef<
       (typeof import('./composables/useWindowResizeFrame'))['useWindowResizeFrame']
