@@ -54,6 +54,7 @@ jobs:
           name: vitest-blob-${{ matrix.shard }}
           path: .vitest-reports/*.json
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 1
 
   coverage:

@@ -37,6 +37,6 @@ include:
 
 bootstrap: |
   export CI=true
-  npm ci
+  npm ci --omit=optional
 
 linter: qodana-js
