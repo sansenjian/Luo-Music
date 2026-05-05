@@ -118,7 +118,7 @@ function resolveWindowsAppUserModelId(): string {
  * name instead of showing "Unknown application".
  */
 function registerAppUserModelIdDisplayName(appUserModelId: string): void {
-  const escapedId = appUserModelId.replace(/"/g, '\\"')
+  const escapedId = appUserModelId.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
   const regKey = `HKCU\\Software\\Classes\\AppUserModelId\\${escapedId}`
 
   execFile(

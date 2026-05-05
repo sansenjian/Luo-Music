@@ -165,7 +165,7 @@ function getPluginCatalog(): PluginCatalog {
   return pluginCatalog
 }
 
-function initializeApp(): void {
+async function initializeApp(): Promise<void> {
   const currentPluginCatalog = getPluginCatalog()
 
   measureStartupSyncPhase('initialize IPC service', () =>
@@ -173,15 +173,14 @@ function initializeApp(): void {
   )
   measureStartupSyncPhase('register local media protocol', registerLocalMediaProtocol)
 
-  logger.info('Starting services and plugin catalog warmup in background...')
-  void startBackgroundStartupPhase(
-    'initialize ServiceManager',
-    () => serviceManager.initialize(DEFAULT_SERVICE_CONFIG),
-    () => {
-      const allStatus = serviceManager.getAllServiceStatus()
-      logger.info('Service status:', JSON.stringify(allStatus, null, 2))
-    }
+  logger.info('Starting services before creating renderer window...')
+  await measureStartupPhase('initialize ServiceManager', () =>
+    serviceManager.initialize(DEFAULT_SERVICE_CONFIG)
   )
+  const allStatus = serviceManager.getAllServiceStatus()
+  logger.info('Service status:', JSON.stringify(allStatus, null, 2))
+
+  logger.info('Starting plugin catalog warmup in background...')
   void startBackgroundStartupPhase('initialize PluginCatalog', () =>
     currentPluginCatalog.initialize()
   )
