@@ -14,9 +14,16 @@ const packageJson = JSON.parse(
 describe('package scripts for forge workflows', () => {
   it('cleans only web outputs before build:web', () => {
     expect(packageJson.scripts?.['build:web']).toBe(
-      'node scripts/build/clean-targets.cjs dist build/service && npm run guard:configs && npm run build:server && node scripts/run-with-env.cjs --env-file .config/.env APP_RUNTIME=web -- vite build --config .config/vite.config.ts --mode web'
+      'node scripts/build/clean-targets.cjs dist build/service && npm run guard:configs && npm run build:server && node scripts/run-with-env.cjs APP_RUNTIME=web -- vite build --config .config/vite.config.ts --mode web'
     )
   })
+
+  it.each(['dev:server', 'dev:electron', 'build:web', 'preview'])(
+    'does not require an untracked .config/.env file before running %s',
+    scriptName => {
+      expect(packageJson.scripts?.[scriptName]).not.toContain('--env-file .config/.env')
+    }
+  )
 
   it('cleans electron bundle outputs inside build:electron:bundle', () => {
     expect(packageJson.scripts?.['build:electron:bundle']).toBe(
