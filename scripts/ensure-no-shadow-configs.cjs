@@ -3,11 +3,11 @@ const path = require('node:path')
 
 const projectRoot = process.cwd()
 const guardedPairs = [
-  ['vite.config.ts', 'vite.config.js'],
-  ['electron.vite.config.ts', 'electron.vite.config.js'],
-  ['vitest.config.ts', 'vitest.config.js'],
-  ['forge.config.ts', 'forge.config.js'],
-  ['playwright.config.ts', 'playwright.config.js']
+  ['.config/vite.config.ts', 'vite.config.js'],
+  ['electron/vite.config.ts', 'electron.vite.config.js'],
+  ['.config/vitest.config.ts', 'vitest.config.js'],
+  ['electron/forge.config.ts', 'forge.config.js'],
+  ['.config/playwright.config.ts', 'playwright.config.js']
 ]
 
 const conflictingFiles = guardedPairs.filter(([tsFile, jsFile]) => {

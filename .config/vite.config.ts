@@ -1,14 +1,18 @@
 import { defineConfig, loadEnv } from 'vite'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   createSharedDevProxy,
   createSrcAlias,
   createVueRendererPlugins,
   resolveViteDevServerPort,
   webManualChunks
-} from './config/vite.shared.ts'
+} from '../config/vite.shared.ts'
 
 export default defineConfig(({ command, mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  const rootDir = process.cwd()
+  const envDir = existsSync(resolve(rootDir, '.config/.env')) ? '.config' : rootDir
+  const env = loadEnv(mode, envDir, '')
   const appRuntime = env.APP_RUNTIME === 'electron' ? 'electron' : 'web'
   const sentryDsn = env.SENTRY_DSN ?? ''
   const sentryRelease = env.SENTRY_RELEASE ?? ''

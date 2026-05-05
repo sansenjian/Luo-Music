@@ -48,7 +48,7 @@ npm run build:electron
 npm run build:electron:portable
 ```
 
-在 Electron bundle 基础上，调用 `electron-builder.portable.cjs` 生成单文件便携版。
+在 Electron bundle 基础上，调用 `electron/builder.portable.cjs` 生成单文件便携版。
 
 ### 文档站
 
@@ -104,8 +104,8 @@ npm run docs:build
 
 优先检查：
 
-- `electron.vite.config.ts`
-- `forge.config.ts`
+- `electron/vite.config.ts`
+- `electron/forge.config.ts`
 - `electron/utils/paths.ts`
 - `scripts/build/`
 

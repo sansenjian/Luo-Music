@@ -27,7 +27,7 @@ type PortableConfig = {
 }
 
 const require = createRequire(import.meta.url)
-const portableConfig = require('../../electron-builder.portable.cjs') as PortableConfig
+const portableConfig = require('../../electron/builder.portable.cjs') as PortableConfig
 
 describe('electron-builder portable config', () => {
   it('emits a single x64 portable exe into a dedicated output directory', () => {
@@ -50,6 +50,9 @@ describe('electron-builder portable config', () => {
         'build/**/*',
         'public/**/*',
         'plugins/third-party/**/*',
+        '!**/.config/**/*',
+        '!config/**/*',
+        '!docs/**/*',
         '!build/runtime{,/**}',
         '!build/service{,/**}',
         '!**/*.map'

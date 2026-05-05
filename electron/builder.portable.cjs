@@ -3,7 +3,7 @@ const {
   asarUnpackPattern,
   electronBuilderExtraResources,
   productName
-} = require('./config/packaging.shared.cjs')
+} = require('../config/packaging.shared.cjs')
 
 module.exports = {
   appId,
@@ -18,6 +18,9 @@ module.exports = {
     'build/**/*',
     'public/**/*',
     'plugins/third-party/**/*',
+    '!**/.config/**/*',
+    '!config/**/*',
+    '!docs/**/*',
     '!build/runtime{,/**}',
     '!build/service{,/**}',
     '!**/*.map'

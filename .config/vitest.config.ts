@@ -2,13 +2,17 @@ import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath } from 'node:url'
 
+const rootDir = fileURLToPath(new URL('..', import.meta.url))
+
 export default defineConfig({
   plugins: [vue()],
+  root: rootDir,
   resolve: {
+    extensions: ['.ts', '.tsx', '.mts', '.js', '.mjs', '.jsx', '.json'],
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@plugin-sdk': fileURLToPath(new URL('./packages/plugin-sdk', import.meta.url)),
-      '~': fileURLToPath(new URL('./tests', import.meta.url))
+      '@': fileURLToPath(new URL('../src', import.meta.url)),
+      '@plugin-sdk': fileURLToPath(new URL('../packages/plugin-sdk', import.meta.url)),
+      '~': fileURLToPath(new URL('../tests', import.meta.url))
     }
   },
   test: {

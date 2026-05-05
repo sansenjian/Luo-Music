@@ -7,7 +7,7 @@ const dotenv = require('dotenv')
 
 const ROOT = path.resolve(__dirname, '../..')
 
-dotenv.config({ path: path.resolve(ROOT, '.env') })
+dotenv.config({ path: path.resolve(ROOT, '.config/.env') })
 
 function resolveVitePort(value, fallback = 5173) {
   const parsed = Number.parseInt(value ?? '', 10)
@@ -55,7 +55,7 @@ const CONFIG = {
     externalPluginWorker: 'build/electron/externalPluginWorker.mjs'
   },
   electronSourcePatterns: ['.ts', '.js', '.mjs'],
-  electronConfig: 'electron.vite.config.ts',
+  electronConfig: 'electron/vite.config.ts',
   appProcessNames: ['electron.exe', 'LUO Music.exe']
 }
 

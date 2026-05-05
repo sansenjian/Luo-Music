@@ -19,7 +19,7 @@ type PackagingSharedConfig = {
 }
 
 const require = createRequire(import.meta.url)
-const packagingShared = require('./config/packaging.shared.cjs') as PackagingSharedConfig
+const packagingShared = require('../config/packaging.shared.cjs') as PackagingSharedConfig
 
 const FAST_MAKE_MODE = process.env.LUO_FAST_MAKE === '1'
 const packagingLocalesToKeep = new Set(['en-US.pak', 'zh-CN.pak'] as const)
@@ -41,11 +41,13 @@ function createIgnorePatterns(paths: readonly string[]): RegExp[] {
 
 const packagingIgnorePatterns = [
   ...createIgnorePatterns(packagingWorkspaceArtifactsToRemove),
-  /^\/(?:api|config|coverage|dist|docs|electron|playwright-report|server|src|test|test-results|tests)(?:$|\/)/,
+  /^\/(?:api|coverage|dist|docs|electron|playwright-report|server|src|test|test-results|tests)(?:$|\/)/,
   /^\/build\/runtime(?:$|\/)/,
   /^\/\.env(?:\.[^/]+)?$/,
-  /^\/(?:AGENTS\.md|CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|LICENSE|README\.md|electron\.vite\.config\.ts|eslint\.config\.js|forge\.config\.ts|index\.html|playwright\.config\.ts|qodana\.ya?ml|vite\.config\.ts|vitest\.config\.ts)$/,
-  /^\/(?:\.editorconfig|\.gitignore|\.gitmessage|\.lintstagedrc\.json|\.npmignore|\.npmrc|\.prettierrc|\.projectstructure)$/,
+  /^\/(?:AGENTS\.md|CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|LICENSE|README\.md|eslint\.config\.js|index\.html)$/,
+  /^\/(?:\.editorconfig|\.gitignore|\.gitmessage|\.npmignore|\.npmrc|\.projectstructure)$/,
+  /^\/\.config(?:$|\/)/,
+  /^\/config(?:$|\/)/,
   /^\/scripts(?:$|\/)/,
   /^\/.*\.map$/,
   ...createIgnorePatterns(packagingIgnoredNodeModulePaths),

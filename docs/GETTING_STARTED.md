@@ -93,7 +93,7 @@ npm run docs:build
 ### 改 Electron / 路径 / 打包
 
 1. `npm run dev:electron`
-2. 修改 `electron/`、`forge.config.ts`、`electron.vite.config.ts`、`scripts/build/`
+2. 修改 `electron/`、`electron/forge.config.ts`、`electron/vite.config.ts`、`scripts/build/`
 3. 提交前运行：
 
 ```bash
@@ -120,7 +120,7 @@ npm install
 - `electron/main/index.ts`
 - `electron/WindowManager.ts`
 - `electron/utils/paths.ts`
-- `electron.vite.config.ts`
+- `electron/vite.config.ts`
 
 ### 请求失败或登录态异常
 

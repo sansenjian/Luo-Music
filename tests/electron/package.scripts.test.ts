@@ -14,7 +14,7 @@ const packageJson = JSON.parse(
 describe('package scripts for forge workflows', () => {
   it('cleans only web outputs before build:web', () => {
     expect(packageJson.scripts?.['build:web']).toBe(
-      'node scripts/build/clean-targets.cjs dist build/service && npm run guard:configs && npm run build:server && node scripts/run-with-env.cjs APP_RUNTIME=web -- vite build --mode web'
+      'node scripts/build/clean-targets.cjs dist build/service && npm run guard:configs && npm run build:server && node scripts/run-with-env.cjs --env-file .config/.env APP_RUNTIME=web -- vite build --config .config/vite.config.ts --mode web'
     )
   })
 
@@ -23,7 +23,7 @@ describe('package scripts for forge workflows', () => {
       'node scripts/build/clean-targets.cjs --force build && npm run build:electron:bundle:no-clean'
     )
     expect(packageJson.scripts?.['build:electron:bundle:no-clean']).toBe(
-      'npm run rebuild:native && npm run guard:configs && npm run build:qq-runtime && concurrently --success all "npm run build:server" "electron-vite build --config electron.vite.config.ts"'
+      'npm run rebuild:native && npm run guard:configs && npm run build:qq-runtime && concurrently --success all "npm run build:server" "electron-vite build --config electron/vite.config.ts"'
     )
   })
 
@@ -44,7 +44,7 @@ describe('package scripts for forge workflows', () => {
 
   it('runs build:electron:bundle before the portable single-exe workflow', () => {
     expect(packageJson.scripts?.['build:electron:portable']).toBe(
-      'node scripts/build/clean-targets.cjs --force out/portable && npm run build:electron:bundle && electron-builder --config electron-builder.portable.cjs --publish never && node scripts/build/finalize-portable-output.cjs out/portable'
+      'node scripts/build/clean-targets.cjs --force out/portable && npm run build:electron:bundle && electron-builder --config electron/builder.portable.cjs --publish never && node scripts/build/finalize-portable-output.cjs out/portable'
     )
   })
 

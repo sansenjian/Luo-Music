@@ -51,7 +51,7 @@ async function loadElectronViteConfig(env: ElectronViteConfigEnv = {}) {
   }))
 
   try {
-    return (await import('../../electron.vite.config')).default
+    return (await import('../../electron/vite.config')).default
   } finally {
     for (const [key, value] of Object.entries(previousEnv)) {
       if (value === undefined) {
@@ -63,7 +63,7 @@ async function loadElectronViteConfig(env: ElectronViteConfigEnv = {}) {
   }
 }
 
-describe('electron.vite.config sourcemap policy', () => {
+describe('electron/vite.config sourcemap policy', () => {
   beforeEach(() => {
     vi.resetModules()
   })
