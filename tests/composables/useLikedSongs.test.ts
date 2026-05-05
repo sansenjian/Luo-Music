@@ -1,5 +1,5 @@
 import { flushPromises } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { useLikedSongs, type UseLikedSongsReturn } from '@/composables/useLikedSongs'
 import { createDeferred } from '../helpers/deferred'

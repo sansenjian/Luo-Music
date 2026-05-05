@@ -28,15 +28,15 @@
 
 ### Electron 白屏或 404
 
-- `electron.vite.config.ts`
-- `forge.config.ts`
+- `electron/vite.config.ts`
+- `electron/forge.config.ts`
 - `electron/utils/paths.ts`
 - `electron/WindowManager.ts`
 
 ### preload / 路径 / 打包异常
 
 - `package.json`
-- `electron.vite.config.ts`
+- `electron/vite.config.ts`
 - `electron/utils/paths.ts`
 - `electron/main/index.ts`
 - `electron/WindowManager.ts`

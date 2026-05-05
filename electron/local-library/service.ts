@@ -279,7 +279,7 @@ export class LocalLibraryService {
     this.disposed = true
     await this.mutationQueue.catch(() => {})
     await this.scanPromise?.catch(() => {})
-    await Promise.allSettled([...this.durationRepairPromises.values()])
+    await Promise.allSettled(this.durationRepairPromises.values())
     this.durationRepairPromises.clear()
     await this.watchCoordinator.dispose()
     this.repository.close()

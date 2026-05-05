@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { createMockSong, createQQSong } from '../../utils/test-utils'
 import {
@@ -21,7 +21,7 @@ describe('playbackActions recovery and skip flow', () => {
     state.songList = [createQQSong({ id: 'vip-song' })]
     adapterMock.getSongUrl.mockResolvedValue(null)
 
-    await expect(actions.playSongWithDetails(0, false)).rejects.toThrow()
+    await expect(actions.playSongWithDetails(0, false)).rejects.toThrow('no copyright: vip-song')
 
     expect(noCopyrightMock).toHaveBeenCalledWith('vip-song')
     expect(errorEmitMock).toHaveBeenCalled()

@@ -1,7 +1,8 @@
 import { defineConfig } from 'electron-vite'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
-import { copyFileSync, mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'path'
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { config as loadDotEnv } from 'dotenv'
 import type { PluginOption } from 'vite'
 import {
@@ -10,7 +11,7 @@ import {
   createVueRendererPlugins,
   electronRendererManualChunks,
   resolveViteDevServerPort
-} from './config/vite.shared.ts'
+} from '../config/vite.shared.ts'
 
 export const ANALYZE_EXCLUDE_PLUGIN_MARKER = '__luoAnalyzeExclude'
 
@@ -38,9 +39,17 @@ function copyExternalPluginWorkerPlugin(): PluginOption {
   }
 }
 
-const rootDir = __dirname
-loadDotEnv({ path: resolve(rootDir, '.env') })
-loadDotEnv({ path: resolve(rootDir, '.env.sentry-build-plugin') })
+const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const runtimeEnvPath = resolve(rootDir, '.config/.env')
+const sentryEnvPath = resolve(rootDir, 'config/.env.sentry')
+
+if (existsSync(runtimeEnvPath)) {
+  loadDotEnv({ path: runtimeEnvPath })
+}
+
+if (existsSync(sentryEnvPath)) {
+  loadDotEnv({ path: sentryEnvPath })
+}
 const devServerPort = resolveViteDevServerPort(process.env.VITE_DEV_SERVER_PORT)
 const sentryUploadRequested = process.env.LUO_SENTRY_UPLOAD === '1'
 const buildSourceMaps = process.env.LUO_BUILD_SOURCEMAP === '1' || sentryUploadRequested
@@ -80,15 +89,16 @@ if (sentryUploadEnabled) {
 
 export default defineConfig({
   main: {
+    root: rootDir,
     plugins: [copyExternalPluginWorkerPlugin()],
     resolve: {
       extensions: ['.ts', '.tsx', '.mjs', '.js', '.mts', '.jsx', '.json'],
-      alias: createSrcAlias(__dirname)
+      alias: createSrcAlias(rootDir)
     },
     build: {
       outDir: 'build/electron',
       lib: {
-        entry: resolve(__dirname, 'electron/main/index.ts'),
+        entry: resolve(rootDir, 'electron/main/index.ts'),
         formats: ['cjs'],
         fileName: () => 'main.cjs'
       },
@@ -119,14 +129,15 @@ export default defineConfig({
     }
   },
   preload: {
+    root: rootDir,
     resolve: {
       extensions: ['.ts', '.tsx', '.mjs', '.js', '.mts', '.jsx', '.json'],
-      alias: createSrcAlias(__dirname)
+      alias: createSrcAlias(rootDir)
     },
     build: {
       outDir: 'build/electron',
       lib: {
-        entry: resolve(__dirname, 'electron/sandbox/index.ts'),
+        entry: resolve(rootDir, 'electron/sandbox/index.ts'),
         formats: ['cjs'],
         fileName: () => 'preload.cjs'
       },
@@ -148,7 +159,7 @@ export default defineConfig({
     }
   },
   renderer: {
-    root: '.',
+    root: rootDir,
     plugins: rendererPlugins,
     define: {
       'import.meta.env.APP_RUNTIME': JSON.stringify('electron'),
@@ -158,7 +169,7 @@ export default defineConfig({
       'import.meta.env.SENTRY_REPLAY_ENABLED': JSON.stringify(sentryReplayEnabled)
     },
     resolve: {
-      alias: createSrcAlias(__dirname)
+      alias: createSrcAlias(rootDir)
     },
     server: {
       port: devServerPort,
@@ -177,7 +188,7 @@ export default defineConfig({
       chunkSizeWarningLimit: 700,
       rollupOptions: {
         input: {
-          main: resolve(__dirname, 'index.html')
+          main: resolve(rootDir, 'index.html')
         },
         output: {
           manualChunks: electronRendererManualChunks

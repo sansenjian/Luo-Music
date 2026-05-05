@@ -33,7 +33,7 @@ export function readConfig(): AppConfig {
 
   return {
     ...DEFAULT_CONFIG,
-    ...(storedConfig ?? {})
+    ...storedConfig
   }
 }
 

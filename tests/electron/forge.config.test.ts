@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { mkdtemp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -15,7 +15,7 @@ async function loadForgeModule(fastMakeMode?: string) {
   vi.resetModules()
 
   try {
-    return await import('../../forge.config')
+    return await import('../../electron/forge.config')
   } finally {
     if (previousFastMakeMode === undefined) {
       delete process.env.LUO_FAST_MAKE
@@ -113,6 +113,8 @@ describe('forge.config packagerConfig.ignore', () => {
     expect(matchesIgnore('/.claude/settings.json')).toBe(true)
     expect(matchesIgnore('/.codex/logs/run.json')).toBe(true)
     expect(matchesIgnore('/.playwright-mcp/config.json')).toBe(true)
+    expect(matchesIgnore('/.config/vite.config.ts')).toBe(true)
+    expect(matchesIgnore('/config/vite.shared.ts')).toBe(true)
     expect(matchesIgnore('/.env')).toBe(true)
     expect(matchesIgnore('/.env.sentry-build-plugin')).toBe(true)
     expect(matchesIgnore('/docs/build.md')).toBe(true)

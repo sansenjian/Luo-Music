@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { getQQMusicApiServerURL, isRecoverableQQLoginError } from '@/api/qqmusic'
 import { AppError, ErrorCode } from '@/utils/error/types'

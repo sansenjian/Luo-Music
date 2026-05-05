@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 function createStorageServiceMock(initialEntries: Record<string, unknown> = {}) {
   const store = new Map(
@@ -79,7 +79,11 @@ describe('useExperimentalFeatures', () => {
     const { useExperimentalFeatures } = await import('@/composables/useExperimentalFeatures')
     const { store, storageService } = createStorageServiceMock({
       player: { volume: 0.5 },
-      experimentalFeatures: { smtcEnabled: false, waveformEnabled: false, coverSwipeEnabled: false }
+      experimentalFeatures: {
+        smtcEnabled: false,
+        waveformEnabled: false,
+        coverSwipeEnabled: false
+      }
     })
 
     const { setSMTCEnabled } = useExperimentalFeatures({ storageService })
@@ -97,7 +101,11 @@ describe('useExperimentalFeatures', () => {
   it('persists coverSwipeEnabled independently', async () => {
     const { useExperimentalFeatures } = await import('@/composables/useExperimentalFeatures')
     const { store, storageService } = createStorageServiceMock({
-      experimentalFeatures: { smtcEnabled: false, waveformEnabled: false, coverSwipeEnabled: false }
+      experimentalFeatures: {
+        smtcEnabled: false,
+        waveformEnabled: false,
+        coverSwipeEnabled: false
+      }
     })
 
     const { coverSwipeEnabled, setCoverSwipeEnabled } = useExperimentalFeatures({ storageService })

@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const spawnMock = vi.hoisted(() => vi.fn())
 const requestJsonMock = vi.hoisted(() => vi.fn())

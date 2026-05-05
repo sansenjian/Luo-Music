@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { useHomeRecentPlayPanel } from '@/composables/home/useHomeRecentPlayPanel'
 import { usePlayerStore } from '@/store/playerStore'

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 import { usePlaylistStore } from '@/store/playlistStore'
 
 // Mock PLAY_MODE constants for clarity

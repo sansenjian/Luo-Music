@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { LyricEngine, type LyricLine } from '@/utils/player/core/lyric'
 import { ensurePlayerStoreRuntime, resetPlayerStoreRuntime } from '@/store/player/runtime'

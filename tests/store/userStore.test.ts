@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('@/utils/http', () => ({
   AUTH_REQUEST_CACHE_NAMESPACE: 'auth',

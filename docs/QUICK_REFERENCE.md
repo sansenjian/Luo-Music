@@ -63,7 +63,7 @@ npm run typecheck
 
 | 问题                | 优先检查                                                                          |
 | ------------------- | --------------------------------------------------------------------------------- |
-| Electron 白屏 / 404 | `electron/utils/paths.ts`、`electron/WindowManager.ts`、`electron.vite.config.ts` |
+| Electron 白屏 / 404 | `electron/utils/paths.ts`、`electron/WindowManager.ts`、`electron/vite.config.ts` |
 | 请求失败            | `src/utils/http/`、`src/api/`、`src/utils/error/`                                 |
 | 播放器行为异常      | `src/store/playerStore.ts`、`src/utils/player/`、`src/components/Player.vue`      |
 | 登录态异常          | `src/store/userStore.ts`、`src/composables/useNeteaseLoginProfile.ts`             |

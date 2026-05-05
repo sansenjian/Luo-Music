@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { PlayerCore, PlayerState } from '@/utils/player/core/playerCore'
 import { VOLUME } from '@/utils/player/constants/volume'
@@ -214,9 +214,7 @@ describe('PlayerCore', () => {
       audio.readyState = 4
       audio.play = vi.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError'))
 
-      // Should not throw
-      await player.play('test.mp3')
-      // Test passes if no error is thrown
+      await expect(player.play('test.mp3')).resolves.toBeUndefined()
     })
 
     it('should wait for canplay if not ready', async () => {

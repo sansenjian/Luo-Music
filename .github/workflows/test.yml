@@ -2,40 +2,105 @@ name: Test
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
+    name: Coverage shard ${{ matrix.shard }}/2
     runs-on: windows-latest
-    
+    timeout-minutes: 30
     strategy:
       matrix:
-        node-version: [24.x]
-    
+        shard: [1, 2]
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: "npm"
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run tests
-      run: npm run test:coverage
-    
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        files: ./coverage/lcov.info
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-        verbose: true
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Run coverage tests
+        env:
+          LUO_TEST_SKIP_NATIVE_REBUILD: "1"
+          LUO_TEST_SKIP_NATIVE_RESTORE: "1"
+        run: >
+          npm run test:coverage -- --shard=${{ matrix.shard }}/2
+          --reporter=default
+          --reporter=blob
+          --coverage.reporter=json
+          --coverage.thresholds.lines=0
+          --coverage.thresholds.functions=0
+          --coverage.thresholds.branches=0
+          --coverage.thresholds.statements=0
+
+      - name: Upload Vitest blob report
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-blob-${{ matrix.shard }}
+          path: .vitest-reports/*.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 1
+
+  coverage:
+    name: Merge coverage
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Download Vitest blob reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: vitest-blob-*
+          path: .vitest-reports
+          merge-multiple: true
+
+      - name: Merge coverage reports
+        env:
+          LUO_TEST_SKIP_NATIVE_REBUILD: "1"
+          LUO_TEST_SKIP_NATIVE_RESTORE: "1"
+        run: >
+          node scripts/run-vitest-with-native-restore.cjs
+          --merge-reports .vitest-reports
+          -c .config/vitest.config.ts
+          --coverage
+          --coverage.reporter=lcov
+          --coverage.reporter=json
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

@@ -1,150 +1,158 @@
-const SEARCH_ENDPOINT = 'https://u.y.qq.com/cgi-bin/musicu.fcg'
+const SEARCH_ENDPOINT = "https://u.y.qq.com/cgi-bin/musicu.fcg";
 
 const SEARCH_HEADERS = {
-  'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
-  Accept: 'application/json, text/plain, */*',
-  'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
-  'Content-Type': 'application/json;charset=utf-8',
-  'Sec-Fetch-Dest': 'empty',
-  'Sec-Fetch-Mode': 'cors',
-  'Sec-Fetch-Site': 'same-origin'
-}
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
+  Accept: "application/json, text/plain, */*",
+  "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
+  "Content-Type": "application/json;charset=utf-8",
+  "Sec-Fetch-Dest": "empty",
+  "Sec-Fetch-Mode": "cors",
+  "Sec-Fetch-Site": "same-origin",
+};
 
 function isSearchPath(pathname) {
-  return pathname === '/getSearchByKey' || pathname.startsWith('/getSearchByKey/')
+  return pathname === "/getSearchByKey" || pathname.startsWith("/getSearchByKey/");
 }
 
 function toPositiveInteger(value, fallbackValue) {
-  const parsed = Number.parseInt(String(value ?? ''), 10)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackValue;
 }
 
 function extractQQSearchParams(requestUrl) {
-  const url = new URL(requestUrl, 'http://127.0.0.1')
-  let pathKeyword = ''
+  const url = new URL(requestUrl, "http://127.0.0.1");
+  let pathKeyword = "";
   try {
-    pathKeyword = decodeURIComponent(url.pathname.replace(/^\/getSearchByKey\/?/, '')).trim()
+    pathKeyword = decodeURIComponent(url.pathname.replace(/^\/getSearchByKey\/?/, "")).trim();
   } catch {
-    pathKeyword = ''
+    pathKeyword = "";
   }
-  const queryKeyword = url.searchParams.get('key')?.trim()
-  const keyword = (queryKeyword || pathKeyword || '').trim()
+  const queryKeyword = url.searchParams.get("key")?.trim();
+  const keyword = (queryKeyword || pathKeyword || "").trim();
 
   return {
     keyword,
-    limit: toPositiveInteger(url.searchParams.get('limit'), 10),
-    page: toPositiveInteger(url.searchParams.get('page'), 1)
-  }
+    limit: toPositiveInteger(url.searchParams.get("limit"), 10),
+    page: toPositiveInteger(url.searchParams.get("page"), 1),
+  };
 }
 
 function buildQQMusicuSearchBody(keyword, limit, page) {
   return {
     comm: {
-      ct: '19',
-      cv: '1859',
-      uin: '0'
+      ct: "19",
+      cv: "1859",
+      uin: "0",
     },
     req: {
-      method: 'DoSearchForQQMusicDesktop',
-      module: 'music.search.SearchCgiService',
+      method: "DoSearchForQQMusicDesktop",
+      module: "music.search.SearchCgiService",
       param: {
         grp: 1,
         num_per_page: limit,
         page_num: page,
         query: keyword,
-        search_type: 0
-      }
-    }
-  }
+        search_type: 0,
+      },
+    },
+  };
 }
 
 function normalizeQQMusicuSearchResponse(payload) {
-  const requestPayload = payload?.req?.data
-  const list = Array.isArray(requestPayload?.body?.song?.list) ? requestPayload.body.song.list : []
-  const totalnum = toPositiveInteger(requestPayload?.meta?.sum, list.length)
-  const code = toPositiveInteger(requestPayload?.code ?? payload?.req?.code ?? payload?.code, 0)
+  const requestPayload = payload?.req?.data;
+  const list = Array.isArray(requestPayload?.body?.song?.list) ? requestPayload.body.song.list : [];
+  const totalnum = toPositiveInteger(requestPayload?.meta?.sum, list.length);
+  const code = toPositiveInteger(requestPayload?.code ?? payload?.req?.code ?? payload?.code, 0);
 
   return {
     response: {
       code,
       song: {
         list,
-        totalnum
-      }
-    }
-  }
+        totalnum,
+      },
+    },
+  };
 }
 
 async function requestQQMusicuSearch(keyword, limit, page, timeoutMs = 10000) {
-  const controller = new AbortController()
+  const controller = new AbortController();
   const timeout = setTimeout(() => {
-    controller.abort(new Error(`QQ fallback search timed out after ${timeoutMs}ms: ${SEARCH_ENDPOINT} keyword="${keyword}"`))
-  }, timeoutMs)
+    controller.abort(
+      new Error(
+        `QQ fallback search timed out after ${timeoutMs}ms: ${SEARCH_ENDPOINT} keyword="${keyword}"`,
+      ),
+    );
+  }, timeoutMs);
 
   try {
     const response = await fetch(SEARCH_ENDPOINT, {
-      method: 'POST',
+      method: "POST",
       headers: SEARCH_HEADERS,
       body: JSON.stringify(buildQQMusicuSearchBody(keyword, limit, page)),
-      signal: controller.signal
-    })
+      signal: controller.signal,
+    });
 
     if (!response.ok) {
-      const raw = await response.text()
+      const raw = await response.text();
       const error = new Error(
-        `QQ fallback search failed with status ${response.status}${raw ? `: ${raw}` : ''}`
-      )
-      error.status = response.status
-      error.raw = raw
-      throw error
+        `QQ fallback search failed with status ${response.status}${raw ? `: ${raw}` : ""}`,
+      );
+      error.status = response.status;
+      error.raw = raw;
+      throw error;
     }
 
-    const payload = await response.json()
-    return normalizeQQMusicuSearchResponse(payload)
+    const payload = await response.json();
+    return normalizeQQMusicuSearchResponse(payload);
   } catch (err) {
-    if (err.name === 'AbortError' || err.message.startsWith('QQ fallback search timed out')) {
-      throw new Error(`QQ fallback search timed out after ${timeoutMs}ms: ${SEARCH_ENDPOINT} keyword="${keyword}"`)
+    if (err.name === "AbortError" || err.message.startsWith("QQ fallback search timed out")) {
+      throw new Error(
+        `QQ fallback search timed out after ${timeoutMs}ms: ${SEARCH_ENDPOINT} keyword="${keyword}"`,
+      );
     }
-    throw err
+    throw err;
   } finally {
-    clearTimeout(timeout)
+    clearTimeout(timeout);
   }
 }
 
 function writeJson(response, status, body) {
-  response.statusCode = status
-  response.setHeader('Content-Type', 'application/json; charset=utf-8')
-  response.end(JSON.stringify(body))
+  response.statusCode = status;
+  response.setHeader("Content-Type", "application/json; charset=utf-8");
+  response.end(JSON.stringify(body));
 }
 
 async function handleQQSearchRequest(request, response) {
-  const url = request.url || '/'
-  const pathname = new URL(url, 'http://127.0.0.1').pathname
-  if (request.method !== 'GET' || !isSearchPath(pathname)) {
-    return false
+  const url = request.url || "/";
+  const pathname = new URL(url, "http://127.0.0.1").pathname;
+  if (request.method !== "GET" || !isSearchPath(pathname)) {
+    return false;
   }
 
-  const { keyword, limit, page } = extractQQSearchParams(url)
+  const { keyword, limit, page } = extractQQSearchParams(url);
 
   if (!keyword) {
-    writeJson(response, 400, { response: 'search key is null' })
-    return true
+    writeJson(response, 400, { response: "search key is null" });
+    return true;
   }
 
   try {
-    const result = await requestQQMusicuSearch(keyword, limit, page)
-    writeJson(response, 200, result)
+    const result = await requestQQMusicuSearch(keyword, limit, page);
+    writeJson(response, 200, result);
   } catch (error) {
-    console.error('[qq-search-fallback] request failed', error instanceof Error ? error.stack || error : error)
+    console.error(
+      "[qq-search-fallback] request failed",
+      error instanceof Error ? error.stack || error : error,
+    );
     writeJson(response, 500, {
       error: {
-        message: 'Internal server error while searching'
-      }
-    })
+        message: "Internal server error while searching",
+      },
+    });
   }
 
-  return true
+  return true;
 }
 
 module.exports = {
@@ -153,5 +161,5 @@ module.exports = {
   handleQQSearchRequest,
   isSearchPath,
   normalizeQQMusicuSearchResponse,
-  requestQQMusicuSearch
-}
+  requestQQMusicuSearch,
+};

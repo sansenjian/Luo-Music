@@ -33,11 +33,11 @@ electron/ipc/
 
 遵循 VSCode 的 Protocol 模式，将 IPC 通道分为三类：
 
-| 类型 | 方向 | 用途 | 示例 |
-|------|------|------|------|
-| Invoke | 双向 | 渲染进程调用并等待结果 | `cache:get-size` |
-| Send | 单向（渲染→主） | 渲染进程发送消息 | `minimize-window` |
-| Receive | 单向（主→渲染） | 主进程推送消息 | `music-playing-control` |
+| 类型    | 方向            | 用途                   | 示例                    |
+| ------- | --------------- | ---------------------- | ----------------------- |
+| Invoke  | 双向            | 渲染进程调用并等待结果 | `cache:get-size`        |
+| Send    | 单向（渲染→主） | 渲染进程发送消息       | `minimize-window`       |
+| Receive | 单向（主→渲染） | 主进程推送消息         | `music-playing-control` |
 
 ## 核心特性
 
@@ -47,9 +47,14 @@ electron/ipc/
 
 ```typescript
 export interface InvokeChannelMap {
-  [INVOKE_CHANNELS.CACHE_GET_SIZE]: { params: []; result: { httpCache: number; httpCacheFormatted: string } }
+  [INVOKE_CHANNELS.CACHE_GET_SIZE]: {
+    params: []
+    result: { httpCache: number; httpCacheFormatted: string }
+  }
   [INVOKE_CHANNELS.API_REQUEST]: {
-    params: [{ service: string; endpoint: string; params: Record<string, unknown>; noCache?: boolean }]
+    params: [
+      { service: string; endpoint: string; params: Record<string, unknown>; noCache?: boolean }
+    ]
     result: ApiRequestResult
   }
 }
@@ -91,11 +96,17 @@ ipcService.use(loggerMiddleware)
 export class IpcService {
   private invokeHandlers = new Map<keyof InvokeChannelMap, InvokeFunction<keyof InvokeChannelMap>>()
   private sendHandlers = new Map<keyof SendChannelMap, SendFunction<keyof SendChannelMap>>()
-  private receiveHandlers = new Map<keyof ReceiveChannelMap, Set<ReceiveCallback<keyof ReceiveChannelMap>>>()
+  private receiveHandlers = new Map<
+    keyof ReceiveChannelMap,
+    Set<ReceiveCallback<keyof ReceiveChannelMap>>
+  >()
 
   registerInvoke<T extends keyof InvokeChannelMap>(channel: T, handler: InvokeFunction<T>): void
   registerSend<T extends keyof SendChannelMap>(channel: T, handler: SendFunction<T>): void
-  registerReceive<T extends keyof ReceiveChannelMap>(channel: T, callback: ReceiveCallback<T>): () => void
+  registerReceive<T extends keyof ReceiveChannelMap>(
+    channel: T,
+    callback: ReceiveCallback<T>
+  ): () => void
 }
 ```
 
@@ -105,15 +116,15 @@ export class IpcService {
 
 ```typescript
 const CACHE_CONFIG = {
-  TTL: 5 * 60 * 1000,     // 5 分钟缓存时间
-  MAX_SIZE: 100,          // 最多 100 条记录
+  TTL: 5 * 60 * 1000, // 5 分钟缓存时间
+  MAX_SIZE: 100 // 最多 100 条记录
 }
 
 const RETRY_CONFIG = {
-  MAX_RETRIES: 3,              // 最大重试次数
-  INITIAL_DELAY: 1000,         // 初始延迟 (1 秒)
-  MAX_DELAY: 10000,            // 最大延迟 (10 秒)
-  BACKOFF_MULTIPLIER: 2,       // 退避倍数
+  MAX_RETRIES: 3, // 最大重试次数
+  INITIAL_DELAY: 1000, // 初始延迟 (1 秒)
+  MAX_DELAY: 10000, // 最大延迟 (10 秒)
+  BACKOFF_MULTIPLIER: 2 // 退避倍数
 }
 ```
 
@@ -189,6 +200,7 @@ ipcService.initialize()
 ### 从旧的 IPC 模式迁移
 
 **旧代码：**
+
 ```typescript
 // electron/ipc.ts
 ipcMain.handle('cache:get-size', async () => {
@@ -197,6 +209,7 @@ ipcMain.handle('cache:get-size', async () => {
 ```
 
 **新代码：**
+
 ```typescript
 // electron/ipc/handlers/cache.handler.ts
 export function registerCacheHandlers(): void {
@@ -216,20 +229,21 @@ export function registerCacheHandlers(): void {
 ## 测试验证
 
 所有 307 个测试用例通过：
+
 - 28 个测试文件
 - 涵盖 IPC、播放器、用户数据存储、工具函数等
 - 构建 Electron 应用成功
 
 ## 性能优势
 
-| 指标 | 旧方案 | 新方案 | 改进 |
-|------|--------|--------|------|
-| IPC 注册分散度 | 6+ 文件 | 集中管理 | ✅ |
-| 类型安全 | 部分 | 完整 | ✅ |
-| 错误处理 | 分散 | 中间件统一 | ✅ |
-| 缓存支持 | 无 | 内置 LRU | ✅ |
-| 重试机制 | 无 | 指数退避 | ✅ |
-| 可测试性 | 低 | 高 | ✅ |
+| 指标           | 旧方案  | 新方案     | 改进 |
+| -------------- | ------- | ---------- | ---- |
+| IPC 注册分散度 | 6+ 文件 | 集中管理   | ✅   |
+| 类型安全       | 部分    | 完整       | ✅   |
+| 错误处理       | 分散    | 中间件统一 | ✅   |
+| 缓存支持       | 无      | 内置 LRU   | ✅   |
+| 重试机制       | 无      | 指数退避   | ✅   |
+| 可测试性       | 低      | 高         | ✅   |
 
 ## 未来扩展
 

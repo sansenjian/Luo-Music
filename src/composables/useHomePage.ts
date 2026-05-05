@@ -55,7 +55,7 @@ export function useHomePage(deps: HomePageDeps = {}) {
   }
 
   const homeShell: HomeShellReturn = {
-    ...(actualHomeShell ?? {}),
+    ...actualHomeShell,
     activeTab: deps.homeShell?.activeTab ?? actualHomeShell?.activeTab ?? ref('lyric'),
     closeWindow: deps.homeShell?.closeWindow ?? actualHomeShell?.closeWindow ?? (() => {}),
     isElectron: deps.homeShell?.isElectron ?? actualHomeShell?.isElectron ?? computed(() => false),

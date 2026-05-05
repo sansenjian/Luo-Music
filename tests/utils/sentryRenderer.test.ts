@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const initMock = vi.hoisted(() => vi.fn())
 const captureExceptionMock = vi.hoisted(() => vi.fn())

@@ -1,6 +1,6 @@
-import { defineConfig, mergeConfig } from 'vite'
+import { defineConfig, mergeConfig } from 'vite-plus'
 
-import baseConfig from '../vite.config.ts'
+import baseConfig from '../.config/vite.config.ts'
 
 async function resolveBaseConfig(env) {
   if (typeof baseConfig === 'function') {

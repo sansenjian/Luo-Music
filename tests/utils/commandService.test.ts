@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { CONTEXT_KEYS } from '@/core/context/contextKeys'
 import { COMMANDS } from '@/core/commands/commands'

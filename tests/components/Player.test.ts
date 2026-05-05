@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const playerVmState = vi.hoisted(() => ({
   playerStore: {

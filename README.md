@@ -329,7 +329,7 @@ luo_music/
 │   ├── plans/        # 方案与计划
 │   ├── reports/      # 审查与归档报告
 │   └── index.md      # 文档首页
-├── electron/         # Electron 主进程代码
+├── electron/         # Electron 主进程代码与 Electron 专属配置
 │   ├── main/         # 主进程模块
 │   │   ├── index.ts  # 主进程入口
 │   │   ├── app.ts    # 应用生命周期
@@ -341,7 +341,10 @@ luo_music/
 │   ├── utils/        # 工具函数
 │   ├── WindowManager.ts
 │   ├── ServiceManager.ts  # 服务管理 (子进程)
-│   └── utils/paths.ts
+│   ├── utils/paths.ts
+│   ├── vite.config.ts
+│   ├── forge.config.ts
+│   └── builder.portable.cjs
 ├── scripts/          # 构建脚本
 │   ├── dev/          # 开发脚本
 │   └── utils/        # 工具脚本
@@ -382,17 +385,27 @@ luo_music/
 │   ├── tasks.json    # 任务配置
 │   ├── settings.json # 编辑器设置
 │   └── extensions.json # 扩展推荐
+├── .config/          # 开发工具配置
+│   ├── vite.config.ts
+│   ├── vitest.config.ts
+│   ├── playwright.config.ts
+│   ├── prettier.mjs
+│   ├── lintstaged.mjs
+│   ├── qodana.yaml
+│   └── .env
+├── config/           # 构建共享逻辑
+│   ├── vite.shared.ts
+│   ├── packaging.shared.cjs
+│   └── .env.sentry
 ├── .husky/           # Git 钩子
 ├── .github/          # GitHub 配置
 │   ├── ISSUE_TEMPLATE/
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── package.json
-├── vite.config.ts
-├── electron.vite.config.ts
-├── forge.config.ts
+├── vercel.json
 ├── tsconfig.json
 ├── eslint.config.js
-├── .prettierrc
+├── .npmrc
 └── index.html
 ```
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { DEV_API_SERVER, NETEASE_API_PORT, QQ_API_PORT, QQ_API_SERVER } from '@/constants/http'
 

@@ -23,13 +23,16 @@ export default [
       'electron/**/*.js',
       'scripts/**',
       'playwright.config.js',
+      '.config/playwright.config.ts',
       'vitest.config.js',
-      'vitest.config.ts',
+      '.config/vitest.config.js',
+      '.config/vitest.config.ts',
       'forge.config.js',
-      'forge.config.ts',
+      'electron/forge.config.ts',
       'vite.config.js',
-      'vite.config.ts',
+      '.config/vite.config.ts',
       'electron.vite.config.ts',
+      'electron/vite.config.ts',
       '**/*.cjs',
       '**/*.mjs',
       '**/vendor-*.js',
@@ -193,7 +196,7 @@ export default [
     }
   },
   {
-    files: ['playwright.config.ts'],
+    files: ['.config/playwright.config.ts'],
     languageOptions: {
       parserOptions: {
         projectService: false,

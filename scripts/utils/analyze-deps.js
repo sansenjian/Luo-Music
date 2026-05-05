@@ -38,11 +38,11 @@ function analyzeDependencies() {
   log('='.repeat(60), 'cyan')
 
   const packageJson = getPackageJson()
-  
+
   // 1. 检查依赖版本
   log('\n📋 1. 主要依赖版本检查', 'blue')
   log('-'.repeat(60), 'blue')
-  
+
   const mainDeps = ['vue', 'vue-router', 'pinia', 'naive-ui', 'axios', 'animejs']
   mainDeps.forEach(dep => {
     const version = packageJson.dependencies[dep] || packageJson.devDependencies[dep]
@@ -60,7 +60,7 @@ function analyzeDependencies() {
     if (audit.metadata && audit.metadata.vulnerabilities) {
       const { critical, high, moderate, low } = audit.metadata.vulnerabilities
       const total = critical + high + moderate + low
-      
+
       if (total === 0) {
         log('✓ 未发现安全漏洞', 'green')
       } else {
@@ -87,7 +87,9 @@ function analyzeDependencies() {
   // 4. 检查未使用依赖
   log('\n🔍 4. 未使用依赖检查', 'blue')
   log('-'.repeat(60), 'blue')
-  const depcheckResult = runCommand('npx depcheck --ignores=electron,electron-builder,vite-plugin-electron,vite-plugin-electron-renderer')
+  const depcheckResult = runCommand(
+    'npx depcheck --ignores=electron,electron-builder,vite-plugin-electron,vite-plugin-electron-renderer'
+  )
   if (depcheckResult.includes('No depcheck issue')) {
     log('✓ 未发现未使用的依赖', 'green')
   } else {
@@ -128,7 +130,7 @@ function analyzeDependencies() {
   log('3. 使用 "npm run check:unused" 检查未使用依赖', 'cyan')
   log('4. 使用 "npm run analyze:bundle" 分析打包体积', 'cyan')
   log('5. 考虑使用 vite-plugin-compression 压缩打包文件', 'cyan')
-  
+
   log('\n' + '='.repeat(60), 'cyan')
   log('分析完成!\n', 'green')
 }

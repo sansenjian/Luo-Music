@@ -64,6 +64,10 @@ function normalizeApiBase(value: unknown): string | null {
   return value.replace(/\/+$/, '')
 }
 
+function isPluginStateRecordMap(value: unknown): value is Record<string, PluginStateRecord> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value))
+}
+
 export class PluginStateStore {
   private readonly store: StoreLike
 
@@ -72,7 +76,8 @@ export class PluginStateStore {
   }
 
   list(): Record<string, PluginStateRecord> {
-    return { ...(this.store.get('pluginState', {}) ?? {}) }
+    const records = this.store.get('pluginState', {})
+    return isPluginStateRecordMap(records) ? { ...records } : {}
   }
 
   get(platformId: string): PluginStateRecord | undefined {
@@ -91,7 +96,7 @@ export class PluginStateStore {
       ...record,
       settings: { ...record.settings },
       storage: { ...record.storage },
-      secrets: { ...(record.secrets ?? {}) }
+      secrets: { ...record.secrets }
     }
     this.store.set('pluginState', records)
     return records[record.pluginId]
@@ -109,8 +114,8 @@ export class PluginStateStore {
       installPath,
       enabled: existing?.enabled ?? false,
       settings: settingsMigration.settings,
-      storage: { ...(existing?.storage ?? {}) },
-      secrets: { ...(existing?.secrets ?? {}) },
+      storage: { ...existing?.storage },
+      secrets: { ...existing?.secrets },
       lastError: settingsMigration.migrated ? undefined : existing?.lastError,
       consecutiveFailures: settingsMigration.migrated ? 0 : (existing?.consecutiveFailures ?? 0),
       circuitTrippedAt: settingsMigration.migrated ? undefined : existing?.circuitTrippedAt,
@@ -280,7 +285,7 @@ export class PluginStateStore {
     return this.upsert({
       ...existing,
       secrets: {
-        ...(existing.secrets ?? {}),
+        ...existing.secrets,
         [key]: value
       },
       updatedAt: Date.now()
@@ -289,7 +294,7 @@ export class PluginStateStore {
 
   removeSecretValue(pluginId: string, key: string): PluginStateRecord {
     const existing = this.requireState(pluginId)
-    const nextSecrets = { ...(existing.secrets ?? {}) }
+    const nextSecrets = { ...existing.secrets }
     delete nextSecrets[key]
 
     return this.upsert({
@@ -325,7 +330,7 @@ export class PluginStateStore {
         ...direct,
         settings: { ...direct.settings },
         storage: { ...direct.storage },
-        secrets: { ...(direct.secrets ?? {}) }
+        secrets: { ...direct.secrets }
       }
     }
 
@@ -338,7 +343,7 @@ export class PluginStateStore {
           ...byPlatform,
           settings: { ...byPlatform.settings },
           storage: { ...byPlatform.storage },
-          secrets: { ...(byPlatform.secrets ?? {}) }
+          secrets: { ...byPlatform.secrets }
         }
       : undefined
   }
@@ -353,7 +358,7 @@ export class PluginStateStore {
         ...direct,
         settings: { ...direct.settings },
         storage: { ...direct.storage },
-        secrets: { ...(direct.secrets ?? {}) }
+        secrets: { ...direct.secrets }
       }
     }
 
@@ -369,7 +374,7 @@ export class PluginStateStore {
         pluginId: manifest.id,
         settings: { ...legacy.settings },
         storage: { ...legacy.storage },
-        secrets: { ...(legacy.secrets ?? {}) }
+        secrets: { ...legacy.secrets }
       }
     }
 
@@ -393,7 +398,7 @@ export class PluginStateStore {
     const defaults = this.getDefaultSettings(manifest)
     const settings = {
       ...defaults,
-      ...(existingSettings ?? {})
+      ...existingSettings
     }
     const migration = BUNDLED_PLUGIN_API_BASE_MIGRATIONS[manifest.platformId]
 

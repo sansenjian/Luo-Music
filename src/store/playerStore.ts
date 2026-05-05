@@ -670,14 +670,14 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
                 const resolvedDurationMs = Math.round(resolvedDuration * 1000)
                 this.currentSong.duration = resolvedDurationMs
                 this.currentSong.extra = {
-                  ...(this.currentSong.extra ?? {}),
+                  ...this.currentSong.extra,
                   localDurationKnown: true
                 }
 
                 if (this.currentIndex >= 0 && this.currentIndex < this.songList.length) {
                   this.songList[this.currentIndex].duration = resolvedDurationMs
                   this.songList[this.currentIndex].extra = {
-                    ...(this.songList[this.currentIndex].extra ?? {}),
+                    ...this.songList[this.currentIndex].extra,
                     localDurationKnown: true
                   }
                 }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { createMusicService } from '@/services/musicService'
 import type { Song, LyricResult, PlaylistDetail, SearchResult } from '@/types/schemas'

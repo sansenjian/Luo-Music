@@ -51,7 +51,7 @@ export function extractErrorMessage(error: unknown, fallbackMessage: string): st
 }
 
 function buildErrorData(error: unknown, context?: ErrorContext): ErrorContext | undefined {
-  const base: ErrorContext = { ...(context ?? {}) }
+  const base: ErrorContext = { ...context }
 
   if (error instanceof Error) {
     base.name = error.name

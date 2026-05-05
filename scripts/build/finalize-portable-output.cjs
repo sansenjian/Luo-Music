@@ -1,55 +1,55 @@
-const fs = require('node:fs/promises')
-const path = require('node:path')
+const fs = require("node:fs/promises");
+const path = require("node:path");
 
 function resolvePortableOutputDir(customDir) {
-  return path.resolve(process.cwd(), customDir || path.join('out', 'portable'))
+  return path.resolve(process.cwd(), customDir || path.join("out", "portable"));
 }
 
 async function finalizePortableOutput(customDir) {
-  const outputDir = resolvePortableOutputDir(customDir)
-  const entries = await fs.readdir(outputDir, { withFileTypes: true })
+  const outputDir = resolvePortableOutputDir(customDir);
+  const entries = await fs.readdir(outputDir, { withFileTypes: true });
   const portableExeEntries = entries.filter(
-    entry => entry.isFile() && entry.name.toLowerCase().endsWith('.exe')
-  )
+    (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".exe"),
+  );
 
   if (portableExeEntries.length !== 1) {
     throw new Error(
-      `[portable] Expected exactly one portable exe in ${outputDir}, found ${portableExeEntries.length}`
-    )
+      `[portable] Expected exactly one portable exe in ${outputDir}, found ${portableExeEntries.length}`,
+    );
   }
 
-  const portableExeName = portableExeEntries[0].name
+  const portableExeName = portableExeEntries[0].name;
 
   await Promise.all(
     entries
-      .filter(entry => entry.name !== portableExeName)
-      .map(entry =>
+      .filter((entry) => entry.name !== portableExeName)
+      .map((entry) =>
         fs.rm(path.join(outputDir, entry.name), {
           recursive: true,
-          force: true
-        })
-      )
-  )
+          force: true,
+        }),
+      ),
+  );
 
-  return path.join(outputDir, portableExeName)
+  return path.join(outputDir, portableExeName);
 }
 
 async function main() {
-  const portableExePath = await finalizePortableOutput(process.argv[2])
-  console.log(`[portable] Ready: ${portableExePath}`)
+  const portableExePath = await finalizePortableOutput(process.argv[2]);
+  console.log(`[portable] Ready: ${portableExePath}`);
 }
 
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     console.error(
-      '[portable] Failed to finalize portable output:',
-      error instanceof Error ? error.stack || error.message : error
-    )
-    process.exitCode = 1
-  })
+      "[portable] Failed to finalize portable output:",
+      error instanceof Error ? error.stack || error.message : error,
+    );
+    process.exitCode = 1;
+  });
 }
 
 module.exports = {
   finalizePortableOutput,
-  resolvePortableOutputDir
-}
+  resolvePortableOutputDir,
+};

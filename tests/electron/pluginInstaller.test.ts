@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('electron', () => ({
   app: {
@@ -222,21 +222,21 @@ describe('PluginInstaller', () => {
         category: 'theme',
         platformId: 'restart-theme'
       })
-      expect(result.manifest.contributions?.themeResources).toEqual([
-        expect.objectContaining({
-          id: 'com.luomusic.theme.restart.orange-white',
-          label: 'Re:Start Orange White',
-          renderStyle: 'third-party.restart',
-          cssVariables: expect.objectContaining({
-            '--accent': '#ff5a1f',
-            '--ui-card-radius': '18px',
-            '--home-search-server-display': 'none',
-            '--lyric-active-bg': 'transparent'
-          }),
-          cssFile: 'theme.css',
-          cssText: expect.stringContaining("[data-ui='player-play-button']")
-        })
-      ])
+      const themeResources = result.manifest.contributions?.themeResources
+      expect(themeResources).toHaveLength(1)
+      expect(themeResources![0]).toMatchObject({
+        id: 'com.luomusic.theme.restart.orange-white',
+        label: 'Re:Start Orange White',
+        renderStyle: 'third-party.restart',
+        cssVariables: expect.objectContaining({
+          '--accent': '#ff5a1f',
+          '--ui-card-radius': '18px',
+          '--home-search-server-display': 'none',
+          '--lyric-active-bg': 'transparent'
+        }),
+        cssFile: 'theme.css'
+      })
+      expect(themeResources![0].cssText).toContain('[data-ui="player-play-button"]')
     })
 
     it('installs when given a path directly to manifest.json', async () => {

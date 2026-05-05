@@ -18,6 +18,7 @@ LUO Music 是一个同时支持 Web 与 Electron 桌面端的 Vue 3 音乐播放
   - 新增逻辑优先使用 TypeScript，避免扩散 `any`
   - `src/*` 导入优先使用 `@/`
   - 渲染进程禁止直接调用 Node / Electron，统一走 preload / IPC / `src/platform`
+  - 开发工具配置优先放 `.config/`，共享构建逻辑放 `config/`
 
 ## 始终遵守
 
@@ -27,7 +28,11 @@ LUO Music 是一个同时支持 Web 与 Electron 桌面端的 Vue 3 音乐播放
   - `src/store/` 负责共享状态
   - `src/components/` 以展示和交互为主
   - `electron/` 只放主进程与 preload 逻辑
+  - `.config/` 只放开发工具配置和本地运行环境文件
+  - `config/` 只放构建共享逻辑和 Sentry 构建环境文件
 - 服务访问默认走 `services.xxx()`；构造注入和 `deps` 注入的例外规则见服务层文档
+- Vite / Vitest / Playwright / Prettier / lint-staged / Qodana 入口如需显式配置，优先使用 `.config/` 下对应文件
+- 本地开发和构建脚本如需加载环境变量，优先使用 `--env-file .config/.env`
 
 ## 详细指南
 

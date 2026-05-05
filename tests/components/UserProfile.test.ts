@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import UserProfile from '@/components/UserProfile.vue'
 import { useUserStore } from '@/store/userStore'
