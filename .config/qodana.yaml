@@ -39,4 +39,4 @@ bootstrap: |
   export CI=true
   npm ci
 
-linter: jetbrains/qodana-js:2025.3
+linter: qodana-js
