@@ -6,8 +6,10 @@
  */
 
 import type { LyricLine } from '@/utils/player/core/lyric'
+import type { WebLyricAppearance } from '@/types/player'
 import type { Song } from '@/types/schemas'
 import { PLAY_MODE, type PlayMode } from '@/utils/player/constants/playMode'
+import { DEFAULT_WEB_LYRIC_APPEARANCE } from '@/utils/player/webLyricAppearance'
 
 /**
  * 播放器状态接口
@@ -45,6 +47,8 @@ export interface PlayerState {
   rlyricSize: number
   /** 歌词类型 */
   lyricType: string[]
+  /** Web 歌词展示样式 */
+  webLyricAppearance: WebLyricAppearance
   /** 是否显示歌词 */
   showLyric: boolean
   /** 是否显示播放列表 */
@@ -53,10 +57,12 @@ export interface PlayerState {
   initialized: boolean
   /** 是否加载中 */
   loading: boolean
-  /** 是否紧凑模式 */
-  isCompact: boolean
+  /** 播放器是否停靠到底栏 */
+  isPlayerDocked: boolean
   /** IPC 是否已初始化 */
   ipcInitialized: boolean
+  /** 当前歌曲切换过渡中，抑制 pause 事件并驱动 MediaSession 重同步 */
+  trackSwitching: boolean
 }
 
 /**
@@ -97,12 +103,14 @@ export function createInitialState(): PlayerState {
     tlyricSize: 14,
     rlyricSize: 12,
     lyricType: ['original', 'trans'],
+    webLyricAppearance: { ...DEFAULT_WEB_LYRIC_APPEARANCE },
     showLyric: true,
     showPlaylist: false,
     initialized: false,
     loading: false,
-    isCompact: false,
-    ipcInitialized: false
+    isPlayerDocked: true,
+    ipcInitialized: false,
+    trackSwitching: false
   }
 }
 

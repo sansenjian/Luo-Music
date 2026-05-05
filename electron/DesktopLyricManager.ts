@@ -1,6 +1,9 @@
 import path from 'node:path'
 import type { BrowserWindow } from 'electron'
-import type { DesktopLyricUpdateCause } from './ipc/types'
+import type { SongPlatform } from '@/types/schemas'
+import type { DesktopLyricUpdateCause } from '@/platform/contracts/ipc'
+import { DEFAULT_APP_CONFIG, type AppConfig } from '@/platform/contracts/config'
+import { RECEIVE_CHANNELS, type ReceiveChannel } from '@/platform/contracts/protocol/channels'
 
 import { MAIN_DIST, RENDERER_DIST } from './utils/paths'
 
@@ -13,6 +16,10 @@ type ElectronStoreInstance = {
 }
 
 let store: ElectronStoreInstance | null = null
+const DESKTOP_LYRIC_RENDERER_CHANNELS = new Set<ReceiveChannel>([
+  RECEIVE_CHANNELS.DESKTOP_LYRIC_LOCK_STATE,
+  RECEIVE_CHANNELS.LYRIC_TIME_UPDATE
+])
 
 function getStore(): ElectronStoreInstance {
   if (!store) {
@@ -29,6 +36,15 @@ function getStore(): ElectronStoreInstance {
   return store
 }
 
+function readStoredAppConfig(): Partial<AppConfig> {
+  const storedConfig = getStore().get('appConfig')
+  if (typeof storedConfig !== 'object' || storedConfig === null) {
+    return {}
+  }
+
+  return storedConfig as Partial<AppConfig>
+}
+
 interface LyricUpdateData {
   time: number
   index: number
@@ -37,13 +53,25 @@ interface LyricUpdateData {
   roma: string
   playing?: boolean
   songId?: string | number | null
-  platform?: 'netease' | 'qq' | null
+  platform?: SongPlatform | null
   sequence?: number
   cause?: DesktopLyricUpdateCause
 }
 
 interface CreateWindowOptions {
   showOnReady?: boolean
+}
+
+function resolveDesktopLyricAlwaysOnTop(): boolean {
+  const { alwaysOnTop } = readStoredAppConfig()
+  return typeof alwaysOnTop === 'boolean' ? alwaysOnTop : DEFAULT_APP_CONFIG.alwaysOnTop
+}
+
+function resolveDesktopLyricEnabled(): boolean {
+  const { enableDesktopLyric } = readStoredAppConfig()
+  return typeof enableDesktopLyric === 'boolean'
+    ? enableDesktopLyric
+    : DEFAULT_APP_CONFIG.enableDesktopLyric
 }
 
 export const DESKTOP_LYRIC_HASH_ROUTE = '/desktop-lyric'
@@ -128,6 +156,10 @@ export class DesktopLyricManager {
   private isRendererReady = false
 
   private sendToRenderer(channel: string, payload: unknown): boolean {
+    if (!DESKTOP_LYRIC_RENDERER_CHANNELS.has(channel as ReceiveChannel)) {
+      return false
+    }
+
     if (!this.win || this.win.isDestroyed()) {
       return false
     }
@@ -192,6 +224,7 @@ export class DesktopLyricManager {
     const { width, height } = primaryDisplay.workAreaSize
     const x = this.lastPosition ? this.lastPosition.x : Math.floor((width - 800) / 2)
     const y = this.lastPosition ? this.lastPosition.y : Math.floor(height - 180)
+    const alwaysOnTop = resolveDesktopLyricAlwaysOnTop()
 
     const win = new BrowserWindow({
       width: 800,
@@ -202,7 +235,7 @@ export class DesktopLyricManager {
       minHeight: 120,
       frame: false,
       transparent: true,
-      alwaysOnTop: true,
+      alwaysOnTop,
       show: false,
       skipTaskbar: true,
       hasShadow: false,
@@ -217,7 +250,7 @@ export class DesktopLyricManager {
     })
     this.win = win
 
-    win.setAlwaysOnTop(true, 'screen-saver')
+    win.setAlwaysOnTop(alwaysOnTop, alwaysOnTop ? 'screen-saver' : 'normal')
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
     win.once('ready-to-show', () => {
       this.isWindowReady = true
@@ -238,6 +271,7 @@ export class DesktopLyricManager {
     win.on('closed', () => {
       this.isWindowReady = false
       this.isRendererReady = false
+      this.shouldShowOnReady = false
       this.win = null
     })
 
@@ -255,7 +289,7 @@ export class DesktopLyricManager {
       return
     }
 
-    this.createWindow({ showOnReady: false })
+    this.createWindow({ showOnReady: resolveDesktopLyricEnabled() })
   }
 
   closeWindow(): void {
@@ -293,7 +327,7 @@ export class DesktopLyricManager {
     }
 
     this.win.setIgnoreMouseEvents(locked, { forward: true })
-    this.sendToRenderer('desktop-lyric-lock-state', { locked })
+    this.sendToRenderer(RECEIVE_CHANNELS.DESKTOP_LYRIC_LOCK_STATE, { locked })
   }
 
   setAlwaysOnTop(alwaysOnTop: boolean): void {
@@ -318,7 +352,7 @@ export class DesktopLyricManager {
       currentTime: this.lastLyric.time,
       currentLyricIndex: this.lastLyric.index
     })
-    this.sendToRenderer('lyric-time-update', this.lastLyric)
+    this.sendToRenderer(RECEIVE_CHANNELS.LYRIC_TIME_UPDATE, this.lastLyric)
   }
 
   sendLyric(data: LyricUpdateData): void {
@@ -345,16 +379,29 @@ export class DesktopLyricManager {
       currentTime: data.time,
       currentLyricIndex: data.index
     })
-    this.sendToRenderer('lyric-time-update', data)
+    this.sendToRenderer(RECEIVE_CHANNELS.LYRIC_TIME_UPDATE, data)
   }
 
-  toggle(): void {
-    if (this.win && !this.win.isDestroyed() && this.win.isVisible()) {
+  isEnabled(): boolean {
+    if (this.shouldShowOnReady) {
+      return true
+    }
+
+    if (!this.win || this.win.isDestroyed()) {
+      return false
+    }
+
+    return typeof this.win.isVisible === 'function' ? this.win.isVisible() : false
+  }
+
+  toggle(): boolean {
+    if (this.isEnabled()) {
       this.closeWindow()
-      return
+      return false
     }
 
     this.show()
+    return true
   }
 
   toggleLock(): void {

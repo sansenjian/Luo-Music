@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 
-import Home from '../views/Home.vue'
+import Home from '@/views/Home.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -14,12 +14,12 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresVueQuery: true
     },
-    component: () => import('../views/UserCenter.vue')
+    component: () => import('@/views/UserCenter.vue')
   },
   {
     path: '/desktop-lyric',
     name: 'DesktopLyric',
-    component: () => import('../components/LyricFloat.vue')
+    component: () => import('@/components/LyricFloat.vue')
   }
 ]
 

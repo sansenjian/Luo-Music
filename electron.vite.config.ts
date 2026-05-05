@@ -1,12 +1,13 @@
 import { defineConfig } from 'electron-vite'
-import vue from '@vitejs/plugin-vue'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
-import { resolve } from 'path'
+import { copyFileSync, mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'path'
 import { config as loadDotEnv } from 'dotenv'
 import type { PluginOption } from 'vite'
 import {
   createSharedDevProxy,
   createSrcAlias,
+  createVueRendererPlugins,
   electronRendererManualChunks,
   resolveViteDevServerPort
 } from './config/vite.shared.ts'
@@ -23,21 +24,39 @@ function markAnalyzeExcludedPlugins(plugins: PluginOption[]): PluginOption[] {
   })
 }
 
+function copyExternalPluginWorkerPlugin(): PluginOption {
+  const sourcePath = resolve(rootDir, 'electron/plugins/externalPluginWorker.mjs')
+  const outputPath = resolve(rootDir, 'build/electron/externalPluginWorker.mjs')
+
+  return {
+    name: 'luo-copy-external-plugin-worker',
+    apply: 'build',
+    closeBundle() {
+      mkdirSync(dirname(outputPath), { recursive: true })
+      copyFileSync(sourcePath, outputPath)
+    }
+  }
+}
+
 const rootDir = __dirname
 loadDotEnv({ path: resolve(rootDir, '.env') })
 loadDotEnv({ path: resolve(rootDir, '.env.sentry-build-plugin') })
 const devServerPort = resolveViteDevServerPort(process.env.VITE_DEV_SERVER_PORT)
-const buildSourceMaps = process.env.LUO_BUILD_SOURCEMAP === '1'
+const sentryUploadRequested = process.env.LUO_SENTRY_UPLOAD === '1'
+const buildSourceMaps = process.env.LUO_BUILD_SOURCEMAP === '1' || sentryUploadRequested
 const sentryTracingEnabled = process.env.SENTRY_TRACING_ENABLED === '1' ? '1' : '0'
 const sentryReplayEnabled = process.env.SENTRY_REPLAY_ENABLED === '1' ? '1' : '0'
 
 const sentryRelease =
   process.env.SENTRY_RELEASE || `luo-music@${process.env.npm_package_version ?? '0.0.0'}`
 const sentryUploadEnabled = Boolean(
-  process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
+  sentryUploadRequested &&
+  process.env.SENTRY_AUTH_TOKEN &&
+  process.env.SENTRY_ORG &&
+  process.env.SENTRY_PROJECT
 )
 
-const rendererPlugins: PluginOption[] = [vue()]
+const rendererPlugins: PluginOption[] = createVueRendererPlugins({ dts: false })
 if (sentryUploadEnabled) {
   const sentryPlugins = sentryVitePlugin({
     org: process.env.SENTRY_ORG,
@@ -61,6 +80,7 @@ if (sentryUploadEnabled) {
 
 export default defineConfig({
   main: {
+    plugins: [copyExternalPluginWorkerPlugin()],
     resolve: {
       extensions: ['.ts', '.tsx', '.mjs', '.js', '.mts', '.jsx', '.json'],
       alias: createSrcAlias(__dirname)
@@ -77,6 +97,7 @@ export default defineConfig({
           'electron',
           'electron-log',
           '@sentry/electron',
+          'better-sqlite3',
           'electron-store',
           'conf',
           '@neteasecloudmusicapienhanced/api',

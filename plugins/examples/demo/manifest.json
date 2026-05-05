@@ -1,0 +1,56 @@
+{
+  "manifestVersion": 1,
+  "id": "com.luomusic.demo-plugin",
+  "name": "Demo Plugin",
+  "version": "1.0.0",
+  "description": "完整第三方插件示例，演示搜索、播放、歌词、设置、存储等全部接口。不可用于实际播放。",
+  "author": "Luo-Music",
+  "category": "api",
+  "platformId": "demo",
+  "source": "external",
+  "runtime": "external-host",
+  "entry": {
+    "main": "index.mjs",
+    "module": "esm"
+  },
+  "engines": {
+    "pluginApi": "^1.0.0",
+    "app": ">=2.3.0"
+  },
+  "capabilities": {
+    "search": true,
+    "songUrl": true,
+    "songDetail": true,
+    "lyric": true,
+    "playlistDetail": false,
+    "needsHydration": false,
+    "supportsLyricFetch": false,
+    "supportsUrlRefreshOnFailure": false
+  },
+  "permissions": {
+    "network": {
+      "domains": ["soundhelix.com"]
+    },
+    "storage": true
+  },
+  "contributions": {
+    "settings": [
+      {
+        "key": "maxResults",
+        "type": "select",
+        "label": "最大搜索结果数",
+        "default": "10",
+        "options": [
+          { "value": "5", "label": "5 条" },
+          { "value": "10", "label": "10 条" },
+          { "value": "20", "label": "20 条" }
+        ]
+      },
+      {
+        "key": "verbose",
+        "type": "boolean",
+        "label": "详细日志"
+      }
+    ]
+  }
+}

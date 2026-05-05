@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, type CSSProperties } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { logout } from '../api/user'
-import { qqMusicApi } from '../api/qqmusic'
-import { services } from '../services'
-import { useUserStore } from '../store/userStore'
+import { logout } from '@/api/user'
+import { qqMusicApi } from '@/api/qqmusic'
+import {
+  getLoginCapablePlatformDescriptors,
+  type PlatformDescriptor
+} from '@/platform/music/descriptors'
+import { services } from '@/services'
+import { useUserStore } from '@/store/userStore'
 import LoginModal from './LoginModal.vue'
+import PluginLoginModal from './PluginLoginModal.vue'
 import QQLoginModal from './QQLoginModal.vue'
 
 type QQLoginStatusResponse = {
@@ -23,6 +28,7 @@ type QQLoginStatusResponse = {
 const router = useRouter()
 const logger = services.logger().createLogger('userAvatar')
 const platformService = services.platform()
+const pluginService = services.plugins()
 const userStore = useUserStore()
 const isElectron = computed(() => platformService.isElectron())
 
@@ -32,9 +38,29 @@ const dropdownRef = ref<HTMLElement | null>(null)
 const showLoginModal = ref(false)
 const showQQLoginModal = ref(false)
 const showDropdown = ref(false)
+const dropdownStyle = ref<CSSProperties>({})
+const activePluginLoginPlatform = ref<PlatformDescriptor | null>(null)
 let shouldRestoreTriggerFocus = true
+let unsubscribePluginPlatforms: (() => void) | null = null
 
 const isQQMusicLoggedIn = computed(() => userStore.isQQMusicLoggedIn)
+const loginPlatforms = computed(() => getLoginCapablePlatformDescriptors())
+const visibleLoginPlatforms = computed(() =>
+  loginPlatforms.value.filter(platform => !isPlatformRepresentedByHeader(platform.id))
+)
+const showLoginPlatformList = computed(
+  () =>
+    visibleLoginPlatforms.value.length > 0 ||
+    (!userStore.isLoggedIn && loginPlatforms.value.length === 0)
+)
+const showPluginLoginModal = computed({
+  get: () => activePluginLoginPlatform.value !== null,
+  set: value => {
+    if (!value) {
+      activePluginLoginPlatform.value = null
+    }
+  }
+})
 
 async function checkQQMusicLoginStatus(): Promise<void> {
   if (!userStore.qqCookie) {
@@ -85,9 +111,64 @@ function openQQLogin(): void {
   closeDropdown({ restoreFocus: false })
 }
 
-function openUserCenter(): void {
-  void router.push('/user')
+function openPluginLogin(platform: PlatformDescriptor): void {
+  if (!isElectron.value) {
+    return
+  }
+
+  activePluginLoginPlatform.value = platform
   closeDropdown({ restoreFocus: false })
+}
+
+function openPlatformLogin(platform: PlatformDescriptor): void {
+  if (isPlatformLoggedIn(platform.id)) {
+    openPlatformCenter(platform.id)
+    return
+  }
+
+  if (platform.id === 'netease') {
+    openLogin()
+    return
+  }
+
+  if (platform.id === 'qq') {
+    openQQLogin()
+    return
+  }
+
+  openPluginLogin(platform)
+}
+
+function openPlatformCenter(platformId: string): void {
+  void router.push({
+    path: '/user',
+    query: { platform: platformId }
+  })
+  closeDropdown({ restoreFocus: false })
+}
+
+function isPlatformLoggedIn(platformId: string): boolean {
+  if (platformId === 'netease') {
+    return userStore.isLoggedIn
+  }
+
+  if (platformId === 'qq') {
+    return isQQMusicLoggedIn.value
+  }
+
+  return false
+}
+
+function isPlatformRepresentedByHeader(platformId: string): boolean {
+  return platformId === 'netease' && userStore.isLoggedIn
+}
+
+function getPlatformLoginTitle(platform: PlatformDescriptor): string {
+  return `${platform.displayName} ${isPlatformLoggedIn(platform.id) ? '已登录' : '未登录'}`
+}
+
+function getPlatformLoginHint(platformId: string): string {
+  return isPlatformLoggedIn(platformId) ? '打开个人中心 >' : '点击登录 >'
 }
 
 function closeDropdown(options: { restoreFocus?: boolean } = {}): void {
@@ -111,6 +192,45 @@ function toggleDropdown(): void {
 
 function handleTriggerClick(): void {
   toggleDropdown()
+}
+
+function updateDropdownPlacement(): void {
+  const trigger = triggerButtonRef.value
+  const dropdown = dropdownRef.value
+
+  if (!trigger || !dropdown) {
+    dropdownStyle.value = {}
+    return
+  }
+
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const margin = 12
+  const gap = 6
+  const triggerRect = trigger.getBoundingClientRect()
+  const maxDropdownWidth = Math.max(220, viewportWidth - margin * 2)
+  const dropdownWidth = Math.min(dropdown.offsetWidth || 300, maxDropdownWidth)
+  const preferredLeft = triggerRect.right - dropdownWidth
+  const left = Math.min(
+    Math.max(preferredLeft, margin),
+    Math.max(margin, viewportWidth - margin - dropdownWidth)
+  )
+  const top = Math.min(triggerRect.bottom + gap, Math.max(margin, viewportHeight - margin - 120))
+  const maxHeight = Math.max(160, viewportHeight - top - margin)
+
+  dropdownStyle.value = {
+    top: `${Math.round(top)}px`,
+    left: `${Math.round(left)}px`,
+    maxHeight: `${Math.round(maxHeight)}px`
+  }
+}
+
+function handleWindowResize(): void {
+  if (!showDropdown.value) {
+    return
+  }
+
+  void nextTick(updateDropdownPlacement)
 }
 
 function handleDocumentPointerDown(event: PointerEvent): void {
@@ -139,24 +259,49 @@ function handleQQLoginSuccess(): void {
   openDropdown()
 }
 
+function handlePluginLoginSuccess(): void {
+  openDropdown()
+}
+
+async function refreshPluginPlatforms(): Promise<void> {
+  if (!platformService.isElectron()) {
+    return
+  }
+
+  try {
+    await pluginService.refreshPlatformDescriptors()
+  } catch (error) {
+    logger.warn('Failed to refresh plugin login platforms', error)
+  }
+}
+
 onMounted(() => {
   if (platformService.isElectron()) {
     void checkQQMusicLoginStatus()
+    void refreshPluginPlatforms()
+    unsubscribePluginPlatforms = pluginService.onPlatformsChanged(() => {})
   }
 
   document.addEventListener('pointerdown', handleDocumentPointerDown)
   document.addEventListener('keydown', handleDocumentKeydown)
+  window.addEventListener('resize', handleWindowResize)
 })
 
 onUnmounted(() => {
+  unsubscribePluginPlatforms?.()
+  unsubscribePluginPlatforms = null
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
   document.removeEventListener('keydown', handleDocumentKeydown)
+  window.removeEventListener('resize', handleWindowResize)
 })
 
 watch(showDropdown, async (isOpen, wasOpen) => {
   if (isOpen) {
     await nextTick()
-    dropdownRef.value?.querySelector<HTMLButtonElement>('.menu-btn')?.focus()
+    updateDropdownPlacement()
+    dropdownRef.value
+      ?.querySelector<HTMLElement>('.platform-profile-card, button.platform-login-card')
+      ?.focus()
     return
   }
 
@@ -166,14 +311,16 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   }
 
   shouldRestoreTriggerFocus = true
+  dropdownStyle.value = {}
 })
 </script>
 
 <template>
-  <div v-if="isElectron" ref="wrapperRef" class="user-avatar-wrapper">
+  <div v-if="isElectron" ref="wrapperRef" class="user-avatar-wrapper" data-ui="user-avatar">
     <button
       ref="triggerButtonRef"
       class="user-trigger"
+      data-ui="user-avatar-trigger"
       type="button"
       aria-haspopup="menu"
       :aria-expanded="showDropdown"
@@ -187,8 +334,9 @@ watch(showDropdown, async (isOpen, wasOpen) => {
         :src="userStore.avatarUrl"
         :alt="userStore.nickname"
         class="avatar"
+        data-ui="user-avatar-image"
       />
-      <div v-else class="avatar-placeholder">
+      <div v-else class="avatar-placeholder" data-ui="user-avatar-placeholder">
         <svg
           width="16"
           height="16"
@@ -204,36 +352,51 @@ watch(showDropdown, async (isOpen, wasOpen) => {
     </button>
 
     <Transition name="dropdown">
-      <div v-if="showDropdown" ref="dropdownRef" class="dropdown">
-        <div class="dropdown-header">
-          <template v-if="userStore.isLoggedIn">
-            <img
-              v-if="userStore.avatarUrl"
-              :src="userStore.avatarUrl"
-              :alt="userStore.nickname"
-              class="dropdown-avatar"
-            />
-            <div v-else class="dropdown-avatar-placeholder"></div>
-            <div class="dropdown-info">
-              <span class="dropdown-nickname">{{ userStore.nickname }}</span>
-              <span class="dropdown-id">ID: {{ userStore.userId }}</span>
-            </div>
-            <button class="logout-btn-small" @click="handleLogout" title="退出登录">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-            </button>
-          </template>
-          <template v-else>
+      <div v-if="showDropdown" ref="dropdownRef" class="dropdown" :style="dropdownStyle">
+        <div
+          v-if="userStore.isLoggedIn"
+          class="dropdown-header platform-profile-card"
+          role="button"
+          tabindex="0"
+          @click="openPlatformCenter('netease')"
+          @keydown.enter.prevent="openPlatformCenter('netease')"
+          @keydown.space.prevent="openPlatformCenter('netease')"
+        >
+          <img
+            v-if="userStore.avatarUrl"
+            :src="userStore.avatarUrl"
+            :alt="userStore.nickname"
+            class="dropdown-avatar"
+          />
+          <div v-else class="dropdown-avatar-placeholder"></div>
+          <div class="dropdown-info">
+            <span class="dropdown-nickname">{{ userStore.nickname }}</span>
+            <span class="dropdown-id">ID: {{ userStore.userId }}</span>
+          </div>
+          <button class="logout-btn-small" @click.stop="handleLogout" title="退出登录">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div v-if="showLoginPlatformList" class="platform-login-list">
+          <button
+            v-for="platform in visibleLoginPlatforms"
+            :key="platform.id"
+            class="platform-login-card login-platform-btn"
+            type="button"
+            @click="openPlatformLogin(platform)"
+          >
             <div class="dropdown-avatar-placeholder">
               <svg
                 width="24"
@@ -242,63 +405,61 @@ watch(showDropdown, async (isOpen, wasOpen) => {
                 fill="none"
                 stroke="currentColor"
                 stroke-width="2"
+                aria-hidden="true"
               >
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
-            <div class="dropdown-info" @click="openLogin" style="cursor: pointer">
-              <span class="dropdown-nickname">未登录</span>
-              <span class="dropdown-id login-link">点击登录 &gt;</span>
+            <div class="dropdown-info">
+              <span class="dropdown-nickname platform-login-title">
+                {{ getPlatformLoginTitle(platform) }}
+              </span>
+              <span class="dropdown-id login-link">{{ getPlatformLoginHint(platform.id) }}</span>
             </div>
-          </template>
-        </div>
-
-        <div class="dropdown-menu">
-          <button v-if="userStore.isLoggedIn" class="menu-btn" @click="openUserCenter">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            个人中心
           </button>
 
-          <button class="menu-btn" @click="openQQLogin">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-              <path d="M9 9h6"></path>
-              <path d="M9 13h6"></path>
-              <path d="M9 17h6"></path>
-            </svg>
-            QQ 音乐登录
-            <span v-if="isQQMusicLoggedIn" class="login-status-badge">已登录</span>
-          </button>
+          <div v-if="loginPlatforms.length === 0" class="platform-login-card platform-login-empty">
+            <div class="dropdown-avatar-placeholder">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div class="dropdown-info">
+              <span class="dropdown-nickname">未登录</span>
+              <span class="dropdown-id login-link">暂无可登录平台</span>
+            </div>
+          </div>
         </div>
       </div>
     </Transition>
 
     <LoginModal v-if="showLoginModal" @close="showLoginModal = false" />
     <QQLoginModal v-model="showQQLoginModal" @login-success="handleQQLoginSuccess" />
+    <PluginLoginModal
+      v-if="activePluginLoginPlatform"
+      v-model="showPluginLoginModal"
+      :platform-id="activePluginLoginPlatform.id"
+      :platform-name="activePluginLoginPlatform.displayName"
+      :preferred-mode="activePluginLoginPlatform.capabilities.auth?.preferredMode"
+      @login-success="handlePluginLoginSuccess"
+    />
   </div>
 </template>
 
 <style scoped>
 .user-avatar-wrapper {
   position: relative;
+  width: max-content;
   -webkit-app-region: no-drag;
 }
 
@@ -344,13 +505,15 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 }
 
 .dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
+  position: fixed;
+  display: flex;
+  flex-direction: column;
   background: var(--white);
   border: 2px solid var(--black);
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15);
-  min-width: 220px;
+  width: max-content;
+  min-width: min(260px, calc(100vw - 24px));
+  max-width: min(420px, calc(100vw - 24px));
   z-index: 100;
   overflow: hidden;
   animation: slideIn 0.2s ease;
@@ -372,10 +535,22 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   padding: 16px;
   background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
   border-bottom: 2px solid var(--black);
   position: relative;
+  color: var(--black);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.dropdown-header:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
 }
 
 .logout-btn-small {
@@ -426,6 +601,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -447,6 +623,96 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 .dropdown-menu {
   display: flex;
   flex-direction: column;
+}
+
+.platform-login-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.platform-login-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 9px 12px;
+  background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
+  border: none;
+  border-bottom: 2px solid var(--black);
+  color: var(--black);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.platform-login-card .dropdown-avatar-placeholder {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.platform-login-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.platform-login-card:hover,
+.platform-login-card:focus-visible {
+  background: var(--black);
+  color: var(--white);
+  outline: none;
+}
+
+.platform-login-card:hover .dropdown-nickname,
+.platform-login-card:hover .dropdown-id,
+.platform-login-card:hover .login-link,
+.platform-login-card:focus-visible .dropdown-nickname,
+.platform-login-card:focus-visible .dropdown-id,
+.platform-login-card:focus-visible .login-link {
+  color: var(--white);
+}
+
+.platform-login-card:hover .dropdown-avatar-placeholder,
+.platform-login-card:focus-visible .dropdown-avatar-placeholder {
+  background: var(--white);
+  color: var(--black);
+  border-color: var(--white);
+}
+
+.platform-login-empty {
+  cursor: default;
+}
+
+.platform-login-empty:hover,
+.platform-login-empty:focus-visible {
+  background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
+  color: var(--black);
+}
+
+.platform-login-empty:hover .dropdown-nickname,
+.platform-login-empty:hover .dropdown-id,
+.platform-login-empty:hover .login-link,
+.platform-login-empty:focus-visible .dropdown-nickname,
+.platform-login-empty:focus-visible .dropdown-id,
+.platform-login-empty:focus-visible .login-link {
+  color: inherit;
+}
+
+.platform-login-empty:hover .dropdown-avatar-placeholder,
+.platform-login-empty:focus-visible .dropdown-avatar-placeholder {
+  background: var(--white);
+  color: var(--gray);
+  border-color: var(--black);
 }
 
 .menu-btn,
@@ -478,17 +744,6 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   background: var(--black);
   color: var(--white);
   padding-left: 20px;
-}
-
-.login-status-badge {
-  margin-left: auto;
-  padding: 2px 8px;
-  background: #28a745;
-  color: white;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 10px;
-  flex-shrink: 0;
 }
 
 .menu-btn svg,

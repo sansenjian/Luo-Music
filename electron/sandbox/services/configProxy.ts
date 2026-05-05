@@ -9,10 +9,10 @@
 
 // 导入服务代理
 import { getIpcProxy } from './ipcProxy'
-import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channels'
-import type { AppConfig, ConfigChangeEvent, ConfigKey } from '../../shared/config'
+import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import type { AppConfig, ConfigChangeEvent, ConfigKey } from '@/platform/contracts/config'
 
-export type { AppConfig, ConfigChangeEvent, ConfigKey } from '../../shared/config'
+export type { AppConfig, ConfigChangeEvent, ConfigKey } from '@/platform/contracts/config'
 
 /**
  * 配置服务代理类

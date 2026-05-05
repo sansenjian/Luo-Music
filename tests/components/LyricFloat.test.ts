@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
-import LyricFloat from '@/components/LyricFloat.vue'
+import { DEFAULT_APP_CONFIG } from '@/platform/contracts/config'
 import { TIME_OFFSETS } from '../utils/testConstants'
 
 const platformState = vi.hoisted(() => {
@@ -30,10 +30,14 @@ const platformState = vi.hoisted(() => {
 const playerState = vi.hoisted(() => {
   const playStateListeners = new Set<(data: { isPlaying: boolean; currentTime: number }) => void>()
   const songChangeListeners = new Set<(data: { song: unknown; index: number }) => void>()
+  const lyricUpdateListeners = new Set<(data: { index: number; line: unknown }) => void>()
+  const desktopLyricStateListeners = new Set<(data: unknown) => void>()
 
   return {
     playStateListeners,
     songChangeListeners,
+    lyricUpdateListeners,
+    desktopLyricStateListeners,
     playerServiceMock: {
       play: vi.fn(),
       pause: vi.fn(),
@@ -89,7 +93,14 @@ const playerState = vi.hoisted(() => {
         songChangeListeners.add(listener)
         return () => songChangeListeners.delete(listener)
       }),
-      onLyricUpdate: vi.fn(),
+      onLyricUpdate: vi.fn((listener: (data: { index: number; line: unknown }) => void) => {
+        lyricUpdateListeners.add(listener)
+        return () => lyricUpdateListeners.delete(listener)
+      }),
+      onDesktopLyricState: vi.fn((listener: (data: unknown) => void) => {
+        desktopLyricStateListeners.add(listener)
+        return () => desktopLyricStateListeners.delete(listener)
+      }),
       onPlayError: vi.fn()
     }
   }
@@ -107,10 +118,49 @@ vi.mock('@/services', async importOriginal => {
   }
 })
 
+const desktopLyricConfigState = { ...DEFAULT_APP_CONFIG }
+const desktopLyricConfigListeners = new Set<
+  (event: {
+    key: keyof typeof desktopLyricConfigState
+    oldValue: unknown
+    newValue: unknown
+  }) => void
+>()
+const desktopLyricConfigBridgeMock = {
+  getAll: vi.fn(async () => ({ ...desktopLyricConfigState })),
+  onConfigChange: vi.fn(
+    (
+      listener: (event: {
+        key: keyof typeof desktopLyricConfigState
+        oldValue: unknown
+        newValue: unknown
+      }) => void
+    ) => {
+      desktopLyricConfigListeners.add(listener)
+      return () => desktopLyricConfigListeners.delete(listener)
+    }
+  )
+}
+
+function resetDesktopLyricConfigState(): void {
+  Object.assign(desktopLyricConfigState, DEFAULT_APP_CONFIG)
+}
+
+function setDesktopLyricConfig<K extends keyof typeof desktopLyricConfigState>(
+  key: K,
+  value: (typeof desktopLyricConfigState)[K]
+): void {
+  const oldValue = desktopLyricConfigState[key]
+  desktopLyricConfigState[key] = value
+  desktopLyricConfigListeners.forEach(listener => listener({ key, oldValue, newValue: value }))
+}
+
 describe('LyricFloat', () => {
   const rafQueue: FrameRequestCallback[] = []
+  let LyricFloat: (typeof import('@/components/LyricFloat.vue'))['default']
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules()
     vi.useFakeTimers()
     window.localStorage.removeItem('luo.desktopLyricDebug')
     platformState.listeners.clear()
@@ -133,6 +183,8 @@ describe('LyricFloat', () => {
     ).getDesktopLyricSnapshot = undefined
     playerState.playStateListeners.clear()
     playerState.songChangeListeners.clear()
+    playerState.lyricUpdateListeners.clear()
+    playerState.desktopLyricStateListeners.clear()
     playerState.playerBridgeMock.getState.mockResolvedValue({
       isPlaying: false,
       currentIndex: -1,
@@ -141,10 +193,16 @@ describe('LyricFloat', () => {
     })
     playerState.playerBridgeMock.getCurrentSong.mockResolvedValue(null)
     playerState.playerBridgeMock.getLyric.mockResolvedValue([])
+    resetDesktopLyricConfigState()
+    desktopLyricConfigListeners.clear()
+    desktopLyricConfigBridgeMock.getAll.mockClear()
+    desktopLyricConfigBridgeMock.onConfigChange.mockClear()
     ;(window as unknown as Record<string, unknown>).services = {
-      player: playerState.playerBridgeMock
+      player: playerState.playerBridgeMock,
+      config: desktopLyricConfigBridgeMock
     }
     rafQueue.length = 0
+    LyricFloat = (await import('@/components/LyricFloat.vue')).default
 
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
       rafQueue.push(callback)
@@ -179,6 +237,136 @@ describe('LyricFloat', () => {
 
     expect(wrapper.find('.lrc-main').text()).toBe('Main Line')
     expect(wrapper.find('.lrc-sub').text()).toBe('Translated Line')
+  })
+
+  it('renders romanized lyrics on desktop when lyric settings enable them', async () => {
+    setDesktopLyricConfig('showRomanizedLyrics', true)
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.desktopLyricStateListeners.forEach(listener => {
+      listener({
+        currentSong: {
+          id: 1,
+          name: 'Song',
+          artists: [{ id: 1, name: 'Artist' }],
+          album: { id: 1, name: 'Album', picUrl: '' },
+          duration: 180000,
+          mvid: 0,
+          platform: 'netease',
+          originalId: 1
+        },
+        currentLyricIndex: 0,
+        progress: 1,
+        isPlaying: true,
+        songId: 1,
+        platform: 'netease',
+        sequence: 4,
+        lyricType: ['original', 'trans', 'roma'],
+        lyrics: [
+          {
+            time: 0,
+            text: 'Main Line',
+            trans: 'Translated Line',
+            roma: 'Roma Line'
+          }
+        ]
+      })
+    })
+    await nextTick()
+
+    expect(wrapper.find('.lrc-main').text()).toBe('Main Line')
+    expect(wrapper.find('.lrc-roma').text()).toBe('Roma Line')
+    expect(wrapper.find('.lrc-trans').text()).toBe('Translated Line')
+  })
+
+  it('prefers the unified desktop lyric state stream when it is available', async () => {
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.desktopLyricStateListeners.forEach(listener => {
+      listener({
+        currentSong: {
+          id: 1,
+          name: 'Song',
+          artists: [{ id: 1, name: 'Artist' }],
+          album: { id: 1, name: 'Album', picUrl: '' },
+          duration: 180000,
+          mvid: 0,
+          platform: 'netease',
+          originalId: 1
+        },
+        currentLyricIndex: 1,
+        progress: 6,
+        isPlaying: true,
+        songId: 1,
+        platform: 'netease',
+        sequence: 4,
+        lyrics: [
+          { time: 0, text: 'Line 1', trans: '', roma: '' },
+          { time: 5, text: 'Line 2', trans: 'Second', roma: '' }
+        ]
+      })
+    })
+    await nextTick()
+
+    expect(wrapper.find('.lrc-main').text()).toBe('Line 2')
+    expect(wrapper.find('.lrc-sub').text()).toBe('Second')
+  })
+
+  it('keeps the desktop lyric text aligned with player lyric-update events', async () => {
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.lyricUpdateListeners.forEach(listener => {
+      listener({
+        index: 2,
+        line: {
+          time: 12,
+          text: 'Bridge Main',
+          trans: 'Bridge Trans',
+          roma: ''
+        }
+      })
+    })
+    await nextTick()
+
+    expect(wrapper.find('.lrc-main').text()).toBe('Bridge Main')
+    expect(wrapper.find('.lrc-sub').text()).toBe('Bridge Trans')
+  })
+
+  it('does not let a following play-state refresh overwrite a fresh player lyric update', async () => {
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.lyricUpdateListeners.forEach(listener => {
+      listener({
+        index: 2,
+        line: {
+          time: 12,
+          text: 'Realtime Main',
+          trans: 'Realtime Trans',
+          roma: ''
+        }
+      })
+    })
+    await nextTick()
+
+    playerState.playStateListeners.forEach(listener => {
+      listener({ isPlaying: true, currentTime: 12 })
+    })
+    await nextTick()
+
+    expect(wrapper.find('.lrc-main').text()).toBe('Realtime Main')
+    expect(wrapper.find('.lrc-sub').text()).toBe('Realtime Trans')
   })
 
   it('hydrates the current lyric line from player snapshot before push updates arrive', async () => {
@@ -254,6 +442,45 @@ describe('LyricFloat', () => {
         }
       ).getDesktopLyricSnapshot
     ).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('.lrc-main').text()).toBe('Line 2')
+    expect(wrapper.find('.lrc-sub').text()).toBe('Second')
+  })
+
+  it('falls back to getLyric when the desktop lyric snapshot has no lyric cache', async () => {
+    ;(
+      playerState.playerBridgeMock as {
+        getDesktopLyricSnapshot?: ReturnType<typeof vi.fn>
+      }
+    ).getDesktopLyricSnapshot = vi.fn().mockResolvedValue({
+      currentSong: {
+        id: 1,
+        name: 'Song',
+        artists: [{ id: 1, name: 'Artist' }],
+        album: { id: 1, name: 'Album', picUrl: '' },
+        duration: 180000,
+        mvid: 0,
+        platform: 'netease',
+        originalId: 1
+      },
+      currentLyricIndex: 1,
+      progress: 6,
+      isPlaying: true,
+      songId: 1,
+      platform: 'netease',
+      sequence: 4,
+      lyrics: []
+    })
+    playerState.playerBridgeMock.getLyric.mockResolvedValue([
+      { time: 0, text: 'Line 1', trans: '', roma: '' },
+      { time: 5, text: 'Line 2', trans: 'Second', roma: '' }
+    ])
+
+    const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    expect(playerState.playerBridgeMock.getLyric).toHaveBeenCalledWith(1, 'netease')
     expect(wrapper.find('.lrc-main').text()).toBe('Line 2')
     expect(wrapper.find('.lrc-sub').text()).toBe('Second')
   })
@@ -736,7 +963,25 @@ describe('LyricFloat', () => {
   })
 
   it('falls back to roma lyric when translated lyric is empty', async () => {
+    setDesktopLyricConfig('showRomanizedLyrics', true)
     const wrapper = mount(LyricFloat)
+    await nextTick()
+    await Promise.resolve()
+    await nextTick()
+
+    playerState.desktopLyricStateListeners.forEach(listener => {
+      listener({
+        currentSong: null,
+        currentLyricIndex: -1,
+        progress: 0,
+        isPlaying: false,
+        songId: null,
+        platform: null,
+        sequence: 1,
+        lyricType: ['original', 'roma'],
+        lyrics: []
+      })
+    })
     await nextTick()
 
     const lyricListeners = platformState.listeners.get('lyric-time-update')
@@ -749,7 +994,8 @@ describe('LyricFloat', () => {
     })
     await nextTick()
 
-    expect(wrapper.find('.lrc-sub').text()).toBe('Roma Line')
+    expect(wrapper.find('.lrc-roma').text()).toBe('Roma Line')
+    expect(wrapper.find('.lrc-trans').exists()).toBe(false)
   })
 
   it('requires a deliberate click after unlock activation instead of unlocking on hover', async () => {

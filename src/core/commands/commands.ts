@@ -7,7 +7,7 @@ export const COMMANDS = {
   PLAYER_VOLUME_DOWN: 'player.volumeDown',
   PLAYER_SEEK_FORWARD: 'player.seekForward',
   PLAYER_SEEK_BACK: 'player.seekBack',
-  PLAYER_TOGGLE_COMPACT_MODE: 'player.toggleCompactMode',
+  PLAYER_TOGGLE_PLAYER_DOCKED: 'player.togglePlayerDocked',
   DESKTOP_LYRIC_TOGGLE: 'desktopLyric.toggle'
 } as const
 

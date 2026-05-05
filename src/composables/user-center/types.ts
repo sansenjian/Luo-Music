@@ -14,10 +14,7 @@ export type UserStoreLike = Pick<
   'avatarUrl' | 'isLoggedIn' | 'nickname' | 'userId'
 >
 export type PlaylistStoreLike = Pick<ReturnType<typeof usePlaylistStore>, 'setPlaylist'>
-export type PlayerStoreLike = Pick<
-  ReturnType<typeof usePlayerStore>,
-  'playSongWithDetails' | 'setSongList'
->
+export type PlayerStoreLike = Pick<ReturnType<typeof usePlayerStore>, 'replaceQueueAndPlay'>
 export type UserCenterRouterLike = Pick<Router, 'push' | 'replace'>
 export type UserCenterRouteLike = Pick<RouteLocationNormalizedLoaded, 'query'>
 export type UserCenterLikedSongsLike = Pick<
@@ -39,10 +36,12 @@ export type UserCenterPlaylistsLike = Pick<
   | 'createdPlaylists'
   | 'error'
   | 'favoritePlaylists'
+  | 'loadInitialPlaylistSongs'
   | 'loadPlaylistSongs'
   | 'loadPlaylists'
   | 'playlists'
   | 'resetPlaylists'
+  | 'usePlaylistTracks'
 >
 export type UserCenterFavoriteAlbumsLike = Pick<
   UseFavoriteAlbumsReturn,

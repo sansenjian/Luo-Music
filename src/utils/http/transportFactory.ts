@@ -6,7 +6,7 @@ import axios, {
   type InternalAxiosRequestConfig
 } from 'axios'
 
-import { normalizeApiError } from '../error/normalize'
+import { normalizeApiError } from '@/utils/error/normalize'
 import { createElectronIpcAdapter } from './electronIpcRequest'
 import { normalizeRequestParams, type ApiServiceId } from './transportShared'
 import { isCanceledRequestError } from './cancelError'

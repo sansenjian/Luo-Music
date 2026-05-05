@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const http = require('http')
-const { handleQQSearchRequest } = require('./qq-search-fallback.cjs')
+const { handleQQSearchRequest } = require('../runtime/qq-search-fallback.cjs')
 
 const port = process.env.PORT || 3200
 const host = process.env.HOST || '127.0.0.1'
@@ -150,7 +150,7 @@ function waitForServer(port, host, timeout) {
         if (Date.now() - startTime > timeout) {
           reject(new Error(`Server did not start in ${timeout}ms`))
         } else {
-          setTimeout(check, 500)
+          setTimeout(check, 150)
         }
       })
 
@@ -161,14 +161,14 @@ function waitForServer(port, host, timeout) {
         if (Date.now() - startTime > timeout) {
           reject(new Error(`Server did not start in ${timeout}ms`))
         } else {
-          setTimeout(check, 500)
+          setTimeout(check, 150)
         }
       })
 
       req.end()
     }
 
-    setTimeout(check, 1000)
+    setTimeout(check, 200)
   })
 }
 

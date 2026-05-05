@@ -4,34 +4,17 @@ const getServiceMock = vi.hoisted(() => vi.fn())
 const emitMock = vi.hoisted(() => vi.fn())
 const onMock = vi.hoisted(() => vi.fn())
 const onAnyMock = vi.hoisted(() => vi.fn())
-const handleErrorMock = vi.hoisted(() => vi.fn())
-const handleApiErrorMock = vi.hoisted(() => vi.fn())
-const handlePlayerErrorMock = vi.hoisted(() => vi.fn())
-const handleNetworkErrorMock = vi.hoisted(() => vi.fn())
-const withErrorHandlingMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/services/registry', () => ({
   getService: getServiceMock
 }))
 
-vi.mock('@/utils/error', () => ({
-  AppError: class MockAppError extends Error {},
-  ErrorCode: {
-    UNKNOWN_ERROR: 'UNKNOWN_ERROR'
-  },
-  Errors: {
-    fatal: vi.fn()
-  },
+vi.mock('@/utils/error/center', () => ({
   errorCenter: {
     emit: emitMock,
     on: onMock,
     onAny: onAnyMock
-  },
-  handleApiError: handleApiErrorMock,
-  handleError: handleErrorMock,
-  handleNetworkError: handleNetworkErrorMock,
-  handlePlayerError: handlePlayerErrorMock,
-  withErrorHandling: withErrorHandlingMock
+  }
 }))
 
 describe('configService / errorService / decorators', () => {
@@ -55,7 +38,7 @@ describe('configService / errorService / decorators', () => {
     expect(service.getPort('netease')).toBe(14532)
   })
 
-  it('proxies error helpers through createErrorService', async () => {
+  it('proxies errorCenter through createErrorService', async () => {
     const { createErrorService } = await import('@/services/errorService')
     const service = createErrorService()
     const error = new Error('boom')
@@ -67,18 +50,14 @@ describe('configService / errorService / decorators', () => {
     expect(emitMock).toHaveBeenCalledWith(error)
     expect(onMock).toHaveBeenCalled()
     expect(onAnyMock).toHaveBeenCalled()
-    expect(service.handleError).toBe(handleErrorMock)
-    expect(service.handleApiError).toBe(handleApiErrorMock)
-    expect(service.handlePlayerError).toBe(handlePlayerErrorMock)
-    expect(service.handleNetworkError).toBe(handleNetworkErrorMock)
-    expect(service.withErrorHandling).toBe(withErrorHandlingMock)
   })
 
   it('injects and resolves services through decorators helpers', async () => {
     const injectedService = { name: 'api-service' }
     getServiceMock.mockReturnValue(injectedService)
 
-    const { inject, useService, createService, createDecorator } = await import('@/services/decorators')
+    const { inject, useService, createService, createDecorator } =
+      await import('@/services/decorators')
     const token = createDecorator<typeof injectedService>('ITestService')
 
     class Example {

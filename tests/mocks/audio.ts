@@ -9,15 +9,26 @@ export class MockAudio {
   ended: boolean = false
   src: string = ''
   readyState: number = 0
-  crossOrigin: string = ''
+  crossOrigin: string | null = null
+  disableRemotePlayback: boolean = false
   muted: boolean = false
   loop: boolean = false
   private _playbackRate: number = 1
   private _events: EventMap = {}
   buffered: TimeRanges = { length: 0 } as TimeRanges
+  controlsList = {
+    add: (...tokens: string[]) => {
+      tokens.forEach(token => this._controlsListTokens.add(token))
+    },
+    remove: (...tokens: string[]) => {
+      tokens.forEach(token => this._controlsListTokens.delete(token))
+    },
+    contains: (token: string) => this._controlsListTokens.has(token)
+  }
 
   // Mock attributes
   private _attributes: Record<string, string> = {}
+  private _controlsListTokens = new Set<string>()
 
   get playbackRate(): number {
     return this._playbackRate
@@ -49,6 +60,10 @@ export class MockAudio {
     }, 0)
   }
 
+  captureStream(): MediaStream {
+    return {} as MediaStream
+  }
+
   addEventListener(event: string, handler: EventHandler): void {
     if (!this._events[event]) this._events[event] = []
     this._events[event].push(handler)
@@ -62,7 +77,7 @@ export class MockAudio {
 
   setAttribute(name: string, value: string): void {
     this._attributes[name] = value
-    if (name === 'crossOrigin') {
+    if (name === 'crossOrigin' || name === 'crossorigin') {
       this.crossOrigin = value
     }
   }
@@ -72,10 +87,13 @@ export class MockAudio {
     if (name === 'src') {
       this.src = ''
     }
+    if (name === 'crossOrigin' || name === 'crossorigin') {
+      this.crossOrigin = null
+    }
   }
 
   getAttribute(name: string): string | null {
-    return this._attributes[name] || null
+    return this._attributes[name] ?? null
   }
 
   // Helper to trigger events (private for internal use)

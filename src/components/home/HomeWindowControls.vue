@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import UserAvatar from '../UserAvatar.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 const props = defineProps<{
   isElectron: boolean
@@ -13,10 +13,15 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="window-controls">
+  <div class="window-controls" data-ui="window-controls">
     <UserAvatar v-if="props.isElectron" />
     <template v-if="props.isElectron">
-      <button class="win-btn" @click="emit('minimize-window')" title="Minimize">
+      <button
+        class="win-btn"
+        data-ui="window-control-button"
+        @click="emit('minimize-window')"
+        title="最小化"
+      >
         <svg
           width="14"
           height="14"
@@ -31,7 +36,12 @@ const emit = defineEmits<{
         </svg>
       </button>
 
-      <button class="win-btn" @click="emit('maximize-window')" title="Maximize">
+      <button
+        class="win-btn"
+        data-ui="window-control-button"
+        @click="emit('maximize-window')"
+        title="最大化"
+      >
         <svg
           width="14"
           height="14"
@@ -46,7 +56,12 @@ const emit = defineEmits<{
         </svg>
       </button>
 
-      <button class="win-btn win-close" @click="emit('close-window')" title="Close">
+      <button
+        class="win-btn win-close"
+        data-ui="window-control-button"
+        @click="emit('close-window')"
+        title="关闭"
+      >
         <svg
           width="14"
           height="14"

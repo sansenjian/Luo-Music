@@ -9,19 +9,24 @@ const initDownloadManagerMock = vi.fn()
 const appQuitMock = vi.fn()
 
 class BrowserWindowMock {
+  public options: unknown
   public events: Record<string, (...args: unknown[]) => void> = {}
   public webContentsEvents: Record<string, (...args: unknown[]) => void> = {}
   public webContents = {
     on: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
       this.webContentsEvents[event] = callback
     }),
+    getURL: vi.fn(() => 'http://localhost:5173'),
     openDevTools: vi.fn(),
     send: vi.fn()
   }
 
+  public visible = false
   public loadFile = vi.fn(() => Promise.resolve())
   public loadURL = vi.fn(() => Promise.resolve())
-  public show = vi.fn()
+  public show = vi.fn(() => {
+    this.visible = true
+  })
   public focus = vi.fn()
   public minimize = vi.fn()
   public maximize = vi.fn()
@@ -30,12 +35,15 @@ class BrowserWindowMock {
   public restore = vi.fn()
   public getSize = vi.fn(() => [1200, 800] as const)
   public isDestroyed = vi.fn(() => false)
+  public isVisible = vi.fn(() => this.visible)
   public isMaximized = vi.fn(() => false)
   public isMinimized = vi.fn(() => false)
+  public setAppDetails = vi.fn()
   public setSize = vi.fn()
   public setThumbarButtons = vi.fn()
 
-  constructor(_options: unknown) {
+  constructor(options: unknown) {
+    this.options = options
     browserWindowInstances.push(this)
   }
 
@@ -104,17 +112,66 @@ vi.mock('../../electron/utils/paths', () => ({
 }))
 
 describe('electron/WindowManager', () => {
+  const platformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform')
+
   beforeEach(() => {
     vi.useFakeTimers()
     vi.resetModules()
     vi.clearAllMocks()
     browserWindowInstances.length = 0
     delete process.env.VITE_DEV_SERVER_URL
+    Object.defineProperty(process, 'platform', {
+      configurable: true,
+      value: 'win32'
+    })
   })
 
   afterEach(() => {
     vi.useRealTimers()
     delete process.env.VITE_DEV_SERVER_URL
+    if (platformDescriptor) {
+      Object.defineProperty(process, 'platform', platformDescriptor)
+    }
+  })
+
+  it('keeps the frameless main window flush on Windows', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    expect(window?.options).toMatchObject({
+      roundedCorners: false,
+      thickFrame: false
+    })
+  })
+
+  it('creates the main window with a transparent background for rounded render styles', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window?.options).toMatchObject({
+      transparent: true,
+      backgroundColor: '#00000000'
+    })
+  })
+
+  it('sets Windows app details on the main window for shell and SMTC identity', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window?.setAppDetails).toHaveBeenCalledWith({
+      appId: 'com.sansenjian.luo-music',
+      appIconPath: '/public/tray.ico',
+      appIconIndex: 0,
+      relaunchCommand: process.execPath,
+      relaunchDisplayName: 'LUO Music'
+    })
   })
 
   it('retries the dev renderer after a main-frame load failure', async () => {
@@ -145,6 +202,40 @@ describe('electron/WindowManager', () => {
       validatedURL: 'http://localhost:5173'
     })
     expect(window?.loadURL).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows the dev window once the renderer DOM is ready', async () => {
+    process.env.VITE_DEV_SERVER_URL = 'http://localhost:5173'
+
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    expect(window?.show).not.toHaveBeenCalled()
+
+    window?.webContentsEvents['dom-ready']?.()
+
+    expect(window?.show).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(window?.show).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the window through fallback when renderer readiness stalls', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    expect(window?.show).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(window?.show).toHaveBeenCalledTimes(1)
   })
 
   it('retries the packaged renderer after an unexpected renderer crash', async () => {
@@ -207,5 +298,33 @@ describe('electron/WindowManager', () => {
     window?.events.closed?.()
 
     expect(appQuitMock).not.toHaveBeenCalled()
+  })
+
+  it('releases the download manager window reference when the main window closes', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    expect(setWindowMock).toHaveBeenCalledWith(window)
+
+    window?.events.closed?.()
+
+    expect(setWindowMock).toHaveBeenLastCalledWith(null)
+  })
+
+  it('clears the startup fallback timer when the main window closes before it fires', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+
+    window?.events.closed?.()
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(window?.show).not.toHaveBeenCalled()
   })
 })

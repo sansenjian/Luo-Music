@@ -5,15 +5,29 @@
  * 统一导出播放器状态、歌曲、播放模式等核心类型
  */
 
-import type { PlayMode as PlayModeType } from '../utils/player/constants/playMode'
+import type { PlayMode as PlayModeType } from '@/utils/player/constants/playMode'
 import type { Song } from './schemas'
 
 // 重新导出歌曲相关类型
 export type { Song, Artist, Album } from './schemas'
 
 // 导出播放模式常量和类型
-export { PLAY_MODE, PLAY_MODE_LABELS, PLAY_MODE_ICONS } from '../utils/player/constants/playMode'
-export type { PlayMode } from '../utils/player/constants/playMode'
+export { PLAY_MODE, PLAY_MODE_LABELS, PLAY_MODE_ICONS } from '@/utils/player/constants/playMode'
+export type { PlayMode } from '@/utils/player/constants/playMode'
+export type LyricDisplayType = 'original' | 'trans' | 'roma'
+export type WebLyricTextAlign = 'left' | 'center' | 'right'
+
+export interface WebLyricAppearance {
+  fontFamily: string
+  mainFontSize: number
+  subFontSize: number
+  textAlign: WebLyricTextAlign
+  inactiveOpacity: number
+  activeTextColor: string
+  inactiveTextColor: string
+  translationColor: string
+  romaColor: string
+}
 
 /**
  * IPC 播放器状态响应（简化版，用于跨进程通信）
@@ -33,7 +47,8 @@ export interface PlayerStateResponse {
   currentLyricIndex: number
   showLyric: boolean
   showPlaylist: boolean
-  isCompact: boolean
+  isPlayerDocked: boolean
+  lyricType: LyricDisplayType[]
 }
 
 /**

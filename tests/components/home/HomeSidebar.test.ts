@@ -1,0 +1,391 @@
+import { flushPromises, mount } from '@vue/test-utils'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
+
+const getUserPlaylistMock = vi.hoisted(() => vi.fn())
+const getPlaylistDetailMock = vi.hoisted(() => vi.fn())
+const getPlaylistTracksMock = vi.hoisted(() => vi.fn())
+const getAlbumSublistMock = vi.hoisted(() => vi.fn())
+const getAlbumDetailMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/api/playlist', () => ({
+  getUserPlaylist: getUserPlaylistMock,
+  getPlaylistDetail: getPlaylistDetailMock,
+  getPlaylistTracks: getPlaylistTracksMock
+}))
+
+vi.mock('@/api/album', () => ({
+  getAlbumSublist: getAlbumSublistMock,
+  getAlbumDetail: getAlbumDetailMock
+}))
+
+import HomeSidebar from '@/components/home/HomeSidebar.vue'
+import { useLocalPlaylistStore } from '@/store/localPlaylistStore'
+import { useUserStore } from '@/store/userStore'
+import { createMockSong } from '../../utils/test-utils'
+
+describe('HomeSidebar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getUserPlaylistMock.mockResolvedValue({
+      playlist: [
+        {
+          id: 'created-1',
+          name: '我的测试歌单',
+          trackCount: 29,
+          coverImgUrl: 'https://example.com/created-cover.png',
+          subscribed: false
+        },
+        {
+          id: 'favorite-1',
+          name: '收藏歌单A',
+          trackCount: 18,
+          coverImgUrl: 'https://example.com/favorite-cover.png',
+          subscribed: true
+        }
+      ]
+    })
+    getAlbumSublistMock.mockResolvedValue({
+      data: [
+        {
+          id: 'album-1',
+          name: '收藏专辑A',
+          picUrl: 'https://example.com/album-cover.png',
+          size: 12,
+          artist: {
+            name: 'Album Artist'
+          }
+        }
+      ],
+      count: 1,
+      hasMore: false
+    })
+  })
+
+  it('renders the new sidebar sections, playlist tabs, and login info footer', () => {
+    const wrapper = mount(HomeSidebar)
+    const sidebarLabels = wrapper.findAll('.sidebar-link .sidebar-label').map(link => link.text())
+
+    expect(wrapper.text()).toContain('LUO Music')
+    expect(wrapper.text()).toContain('探索')
+    expect(wrapper.text()).toContain('资料库')
+    expect(wrapper.text()).toContain('歌单')
+    expect(wrapper.text()).toContain('我的歌单')
+    expect(wrapper.text()).toContain('收藏歌单')
+    expect(wrapper.text()).toContain('登录信息')
+    expect(wrapper.text()).toContain('网易云')
+    expect(wrapper.text()).toContain('QQ音乐')
+    expect(wrapper.text()).toContain('未登录')
+    expect(wrapper.text()).toContain('登录后查看歌单')
+    expect(sidebarLabels).not.toContain('歌曲')
+    expect(sidebarLabels).not.toContain('收藏')
+    expect(wrapper.find('.sidebar-user-avatar-image').exists()).toBe(false)
+    expect(wrapper.find('.sidebar-footer').exists()).toBe(true)
+  })
+
+  it('emits settings selection when the footer gear is clicked', async () => {
+    const wrapper = mount(HomeSidebar)
+
+    const settingsButton = wrapper.get('.settings-button')
+    expect(settingsButton.attributes('disabled')).toBeUndefined()
+
+    await settingsButton.trigger('click')
+
+    expect(wrapper.emitted('item-select')?.at(-1)).toEqual(['settings'])
+  })
+
+  it('switches the active item when a sidebar link is clicked', async () => {
+    const wrapper = mount(HomeSidebar)
+    const links = wrapper.findAll('.sidebar-link')
+
+    expect(links[0].classes()).toContain('active')
+
+    const localMusicLink = links.find(link => link.text().includes('本地音乐'))
+    expect(localMusicLink).toBeDefined()
+
+    await localMusicLink?.trigger('click')
+
+    expect(localMusicLink?.classes()).toContain('active')
+    expect(links[0].classes()).not.toContain('active')
+    expect(wrapper.emitted('item-select')?.[0]).toEqual(['local'])
+  })
+
+  it('respects a controlled active item from the parent workspace state', () => {
+    const wrapper = mount(HomeSidebar, {
+      props: {
+        activeItemId: 'liked'
+      }
+    })
+
+    const likedLink = wrapper
+      .findAll('.sidebar-link')
+      .find(link => link.text().includes('我的喜欢'))
+    const homeLink = wrapper.findAll('.sidebar-link').find(link => link.text().includes('主页'))
+
+    expect(likedLink?.classes()).toContain('active')
+    expect(homeLink?.classes()).not.toContain('active')
+  })
+
+  it('hides the sidebar brand block when showBrand is false', () => {
+    const wrapper = mount(HomeSidebar, {
+      props: {
+        showBrand: false
+      }
+    })
+
+    expect(wrapper.text()).not.toContain('LUO Music')
+    expect(wrapper.find('.sidebar-brand').exists()).toBe(false)
+  })
+
+  it('shows only icons when collapsed is true', () => {
+    const wrapper = mount(HomeSidebar, {
+      props: {
+        collapsed: true
+      }
+    })
+
+    expect(wrapper.classes()).toContain('is-collapsed')
+    expect(wrapper.text()).not.toContain('主页')
+    expect(wrapper.text()).not.toContain('LUO Music')
+    expect(wrapper.find('.sidebar-icon').exists()).toBe(true)
+    expect(wrapper.find('.playlist-cover').exists()).toBe(false)
+  })
+
+  it('loads and displays my playlists from the same source as user center', async () => {
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'Tester',
+        userId: 1001
+      },
+      'netease-cookie'
+    )
+
+    const wrapper = mount(HomeSidebar)
+    await flushPromises()
+
+    expect(getUserPlaylistMock).toHaveBeenCalledWith(1001)
+    expect(wrapper.text()).toContain('我的测试歌单')
+    expect(wrapper.text()).toContain('29 首歌')
+    expect(wrapper.text()).not.toContain('收藏歌单A')
+
+    const playlistImage = wrapper.get('.playlist-cover-image')
+    expect(playlistImage.attributes('src')).toBe('https://example.com/created-cover.png')
+    expect(playlistImage.attributes('loading')).toBe('eager')
+    expect(playlistImage.attributes('fetchpriority')).toBe('high')
+    expect(playlistImage.attributes('decoding')).toBe('sync')
+    expect(playlistImage.attributes('width')).toBe('54')
+    expect(playlistImage.attributes('height')).toBe('54')
+  })
+
+  it('shows local playlists in my playlists without requiring login', () => {
+    const localPlaylistStore = useLocalPlaylistStore()
+    localPlaylistStore.createPlaylist('本地夜航', [
+      createMockSong({
+        id: 'local:track-1',
+        name: '夜航',
+        originalId: 'local:track-1',
+        platform: 'local',
+        extra: {
+          localSource: true
+        }
+      })
+    ])
+
+    const wrapper = mount(HomeSidebar)
+
+    expect(wrapper.text()).toContain('本地夜航')
+    expect(wrapper.text()).toContain('1 首本地歌曲')
+    expect(wrapper.text()).not.toContain('登录后查看歌单')
+  })
+
+  it('deletes a local playlist from the sidebar context menu', async () => {
+    const localPlaylistStore = useLocalPlaylistStore()
+    const playlist = localPlaylistStore.createPlaylist('本地夜航', [
+      createMockSong({
+        id: 'local:track-1',
+        name: '夜航',
+        originalId: 'local:track-1',
+        platform: 'local',
+        extra: {
+          localSource: true
+        }
+      })
+    ])
+
+    const wrapper = mount(HomeSidebar, {
+      props: {
+        activeItemId: playlist.id
+      }
+    })
+
+    await wrapper.get('.playlist-card').trigger('contextmenu', {
+      clientX: 24,
+      clientY: 40
+    })
+
+    expect(wrapper.find('.playlist-context-menu').exists()).toBe(true)
+    expect(wrapper.text()).toContain('删除本地歌单')
+
+    await wrapper.get('.playlist-context-menu-remove').trigger('click')
+    await flushPromises()
+
+    expect(localPlaylistStore.getPlaylistById(playlist.id)).toBeNull()
+    expect(wrapper.find('.playlist-context-menu').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('本地夜航')
+    expect(wrapper.emitted('item-select')?.at(-1)).toEqual(['local'])
+  })
+
+  it('renders and clears a custom local playlist cover from the sidebar context menu', async () => {
+    const localPlaylistStore = useLocalPlaylistStore()
+    const playlist = localPlaylistStore.createPlaylist('本地夜航', [
+      createMockSong({
+        id: 'local:track-1',
+        name: '夜航',
+        originalId: 'local:track-1',
+        platform: 'local',
+        extra: {
+          localSource: true
+        }
+      })
+    ])
+    localPlaylistStore.setPlaylistCover(playlist.id, 'data:image/jpeg;base64,cover')
+
+    const wrapper = mount(HomeSidebar)
+
+    expect(wrapper.get('.playlist-cover-image').attributes('src')).toBe(
+      'data:image/jpeg;base64,cover'
+    )
+
+    await wrapper.get('.playlist-card').trigger('contextmenu', {
+      clientX: 24,
+      clientY: 40
+    })
+
+    expect(wrapper.text()).toContain('自定义封面')
+    expect(wrapper.text()).toContain('恢复默认封面')
+
+    await wrapper.get('.playlist-context-menu-reset-cover').trigger('click')
+    await flushPromises()
+
+    expect(localPlaylistStore.getPlaylistById(playlist.id)?.coverUrl).toBeUndefined()
+    expect(wrapper.find('.playlist-context-menu').exists()).toBe(false)
+    expect(wrapper.find('.playlist-cover-image').exists()).toBe(false)
+  })
+
+  it('switches playlist group labels using synced favorite collections', async () => {
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'Tester',
+        userId: 1001
+      },
+      'netease-cookie'
+    )
+
+    const wrapper = mount(HomeSidebar)
+    await flushPromises()
+
+    const filterButtons = wrapper.findAll('.playlist-filter')
+    await filterButtons[1].trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('收藏歌单A')
+    expect(wrapper.text()).toContain('收藏专辑A')
+    expect(wrapper.text()).toContain('18 首歌')
+    expect(wrapper.text()).toContain('Album Artist')
+    expect(wrapper.text()).toContain('12 首歌')
+    expect(wrapper.text()).not.toContain('我的测试歌单')
+  })
+
+  it('keeps non-leading collection covers lazy loaded', async () => {
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'Tester',
+        userId: 1001
+      },
+      'netease-cookie'
+    )
+
+    getUserPlaylistMock.mockResolvedValue({
+      playlist: [
+        {
+          id: 'created-1',
+          name: '我的测试歌单',
+          trackCount: 29,
+          coverImgUrl: 'https://example.com/created-cover.png',
+          subscribed: false
+        },
+        {
+          id: 'created-2',
+          name: '第二个歌单',
+          trackCount: 10,
+          coverImgUrl: 'https://example.com/created-cover-2.png',
+          subscribed: false
+        }
+      ]
+    })
+
+    const wrapper = mount(HomeSidebar)
+    await flushPromises()
+
+    const playlistImages = wrapper.findAll('.playlist-cover-image')
+
+    expect(playlistImages).toHaveLength(2)
+    expect(playlistImages[1].attributes('loading')).toBe('lazy')
+    expect(playlistImages[1].attributes('fetchpriority')).toBe('auto')
+    expect(playlistImages[1].attributes('decoding')).toBe('async')
+  })
+
+  it('emits collection-select when a sidebar collection card is clicked', async () => {
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'Tester',
+        userId: 1001
+      },
+      'netease-cookie'
+    )
+
+    const wrapper = mount(HomeSidebar)
+    await flushPromises()
+
+    const collectionCard = wrapper.find('.playlist-card')
+    await collectionCard.trigger('click')
+
+    expect(wrapper.emitted('item-select')?.at(-1)).toEqual(['playlist:created-1'])
+    expect(wrapper.emitted('collection-select')?.[0]).toEqual([
+      {
+        uiId: 'playlist:created-1',
+        sourceId: 'created-1',
+        kind: 'playlist',
+        name: '我的测试歌单',
+        coverUrl: 'https://example.com/created-cover.png',
+        summary: '29 首歌',
+        trackCount: 29
+      }
+    ])
+  })
+
+  it('reflects netease and qq login state from userStore as display-only text', () => {
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'Tester',
+        avatarUrl: 'https://example.com/avatar.png'
+      },
+      'netease-cookie'
+    )
+    userStore.setQQCookie('qq-cookie')
+
+    const wrapper = mount(HomeSidebar)
+    const avatarImage = wrapper.get('.sidebar-user-avatar-image')
+
+    expect(wrapper.text()).toContain('Tester')
+    expect(wrapper.text()).toContain('网易云')
+    expect(wrapper.text()).toContain('QQ音乐')
+    expect(wrapper.text()).toContain('已登录')
+    expect(wrapper.text()).not.toContain('未登录')
+    expect(avatarImage.attributes('src')).toBe('https://example.com/avatar.png')
+  })
+})

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 
-import { qqMusicApi } from '../api/qqmusic'
-import { services } from '../services'
-import { useToastStore } from '../store/toastStore'
-import { useUserStore } from '../store/userStore'
+import { qqMusicApi } from '@/api/qqmusic'
+import { services } from '@/services'
+import { useToastStore } from '@/store/toastStore'
+import { useUserStore } from '@/store/userStore'
 
 type LoginStatus = 'loading' | 'waiting' | 'expired' | 'success' | 'error'
 

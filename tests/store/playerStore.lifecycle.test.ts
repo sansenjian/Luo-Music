@@ -1,4 +1,3 @@
-import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createPlayerStore } from '@/store/playerStore'
@@ -99,7 +98,6 @@ describe('playerStore lifecycle', () => {
     audioEventHandlerMocks.instances.length = 0
     ipcHandlerMocks.instances.length = 0
     localStorage.clear()
-    setActivePinia(createPinia())
   })
 
   afterEach(() => {
@@ -252,10 +250,16 @@ describe('playerStore lifecycle', () => {
     }).not.toThrow()
   })
 
-  it('throttles full player snapshot sync for rapid progress updates', async () => {
+  it('throttles lightweight player snapshot sync for rapid progress updates', async () => {
     vi.useFakeTimers()
     const { store, platformAccessor } = createTestStore()
     store.initAudio()
+    const initialSyncPayload = platformAccessor.send.mock.calls.at(-1)?.[1] as Record<
+      string,
+      unknown
+    >
+    expect(initialSyncPayload).toHaveProperty('playlist')
+    expect(initialSyncPayload).toHaveProperty('lyrics')
     platformAccessor.send.mockClear()
 
     store.progress = 1
@@ -271,5 +275,16 @@ describe('playerStore lifecycle', () => {
     await Promise.resolve()
 
     expect(platformAccessor.send).toHaveBeenCalledTimes(2)
+    const throttledPayload = platformAccessor.send.mock.calls.at(-1)?.[1] as Record<string, unknown>
+    expect(throttledPayload).not.toHaveProperty('playlist')
+    expect(throttledPayload).not.toHaveProperty('lyrics')
+
+    store.setLyricsArray([{ time: 1, text: 'Line', trans: '', roma: '' }])
+
+    const lyricPayload = [...platformAccessor.send.mock.calls]
+      .reverse()
+      .find(([channel]) => channel === 'player:sync-state')?.[1] as Record<string, unknown>
+    expect(lyricPayload).toHaveProperty('playlist')
+    expect(lyricPayload).toHaveProperty('lyrics')
   })
 })

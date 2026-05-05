@@ -1,4 +1,5 @@
-import { VOLUME, AUDIO_CONFIG } from '../constants'
+import { VOLUME } from '@/utils/player/constants'
+import { isRemoteMediaProxyUrl } from '@/utils/player/mediaProxy'
 
 export enum PlayerState {
   IDLE = 'idle',
@@ -11,6 +12,7 @@ export enum PlayerState {
 type AudioEventMap = {
   timeupdate: Event
   loadedmetadata: Event
+  durationchange: Event
   ended: Event
   play: Event
   pause: Event
@@ -34,10 +36,15 @@ type EventCallback<K extends keyof AudioEventMap> = (data: AudioEventMap[K]) => 
 // 允许 unknown 数据传入回调，但在 emit 时保持类型安全
 type SafeCallback = (data: unknown) => void
 
+type SystemMediaSessionAudioElement = HTMLAudioElement & {
+  disableRemotePlayback?: boolean
+  controlsList?: Pick<DOMTokenList, 'add' | 'remove'>
+}
+
 export class PlayerCore {
   private audio: HTMLAudioElement
   private audioContext: AudioContext | null = null
-  private source: MediaElementAudioSourceNode | null = null
+  private source: MediaElementAudioSourceNode | MediaStreamAudioSourceNode | null = null
   private analyser: AnalyserNode | null = null
   private gainNode: GainNode | null = null
 
@@ -47,11 +54,13 @@ export class PlayerCore {
   private _isDestroyed = false
   private _playRequestId = 0
   private _cancelPendingPlay: (() => void) | null = null
+  private _systemMediaSessionEnabled = true
 
   constructor() {
     this.audio = new Audio()
+    this._syncSystemMediaSessionExposure()
     this._initEvents()
-    this._setupCrossOrigin()
+    this._configureCrossOrigin()
     this._initVolume()
   }
 
@@ -67,15 +76,62 @@ export class PlayerCore {
     return false
   }
 
-  private _setupCrossOrigin() {
-    // 始终设置 crossOrigin，这对网易云音乐等需要跨域的音频源是必需的
-    // Electron 环境下也需要设置，因为音频可能来自不同域名
-    this.audio.crossOrigin = AUDIO_CONFIG.CROSS_ORIGIN
-    console.log('[PlayerCore] CrossOrigin set to:', AUDIO_CONFIG.CROSS_ORIGIN)
+  private _configureCrossOrigin(url?: string) {
+    if (url && isRemoteMediaProxyUrl(url)) {
+      this.audio.crossOrigin = 'anonymous'
+      this.audio.setAttribute('crossorigin', 'anonymous')
+      console.log('[PlayerCore] CrossOrigin enabled for proxied media', { url })
+      return
+    }
+
+    this.audio.crossOrigin = null
+    this.audio.removeAttribute('crossorigin')
+    console.log('[PlayerCore] CrossOrigin cleared', { url })
+  }
+
+  private _canUseMediaElementSourceFallback(): boolean {
+    const src = this.audio.currentSrc || this.audio.src
+    if (!src) {
+      return false
+    }
+
+    try {
+      const baseUrl = window.location?.href || 'http://localhost/'
+      const sourceUrl = new URL(src, baseUrl)
+      if (sourceUrl.protocol === 'http:' || sourceUrl.protocol === 'https:') {
+        return sourceUrl.origin === window.location.origin
+      }
+    } catch {
+      return false
+    }
+
+    return true
+  }
+
+  private _resetVisualizationGraph() {
+    this.source = null
+    this.analyser = null
+    this.gainNode = null
   }
 
   private _initVolume() {
     this.audio.volume = VOLUME.DEFAULT
+  }
+
+  private _syncSystemMediaSessionExposure(): void {
+    const audio = this.audio as SystemMediaSessionAudioElement
+    const shouldDisableSystemExposure = !this._systemMediaSessionEnabled
+
+    audio.disableRemotePlayback = shouldDisableSystemExposure
+
+    if (shouldDisableSystemExposure) {
+      audio.setAttribute('disableremoteplayback', '')
+      audio.controlsList?.add('noremoteplayback')
+      return
+    }
+
+    audio.removeAttribute('disableremoteplayback')
+    audio.controlsList?.remove('noremoteplayback')
   }
 
   private _initAudioContext() {
@@ -84,23 +140,67 @@ export class PlayerCore {
         window.AudioContext ||
         (window as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
       this.audioContext = new AudioContext()
+    }
 
+    if (!this.analyser) {
       this.analyser = this.audioContext.createAnalyser()
       this.analyser.fftSize = 2048 // Higher resolution for visualization
+      this.analyser.smoothingTimeConstant = 0.82
 
       this.gainNode = this.audioContext.createGain()
-      this.gainNode.connect(this.audioContext.destination)
 
-      // Connect audio element to source
+      // Use captureStream() so the audio element still outputs directly to speakers.
+      // This keeps Chromium's MediaSession / Windows SMTC detection working.
+      // The Web Audio graph (source -> analyser -> gainNode(0) -> destination) only captures
+      // a copy for visualization; the gain=0 prevents double audio output.
       try {
-        this.source = this.audioContext.createMediaElementSource(this.audio)
+        const stream = (
+          this.audio as HTMLMediaElement & { captureStream(): MediaStream }
+        ).captureStream()
+        this.gainNode.gain.value = 0
+        this.gainNode.connect(this.audioContext.destination)
+        this.source = this.audioContext.createMediaStreamSource(stream)
         this.source.connect(this.analyser)
         this.analyser.connect(this.gainNode)
       } catch (e) {
-        console.warn('Failed to create MediaElementSource, visualization may not work:', e)
-        // Fallback: connect directly if possible, or just let audio play (it plays by default if not connected?)
-        // Actually if we create source, we redirect it. If it fails, audio element plays normally.
+        this._resetVisualizationGraph()
+
+        if (!this._canUseMediaElementSourceFallback()) {
+          console.warn(
+            '[PlayerCore] Visualization disabled for this media source because captureStream() ' +
+              'is unavailable and MediaElementSource can mute cross-origin audio.',
+            e
+          )
+          return
+        }
+
+        console.warn(
+          '[PlayerCore] captureStream() failed, falling back to createMediaElementSource.',
+          'Note: This breaks Windows SMTC / MediaSession integration.',
+          e
+        )
+        try {
+          this.analyser = this.audioContext.createAnalyser()
+          this.analyser.fftSize = 2048
+          this.analyser.smoothingTimeConstant = 0.82
+          this.gainNode = this.audioContext.createGain()
+          this.gainNode.gain.value = 1 // MediaElementSource redirects output through Web Audio.
+          this.gainNode.connect(this.audioContext.destination)
+          this.source = this.audioContext.createMediaElementSource(this.audio)
+          this.source.connect(this.analyser)
+          this.analyser.connect(this.gainNode)
+        } catch (e2) {
+          this._resetVisualizationGraph()
+          console.warn(
+            '[PlayerCore] Failed to create MediaElementSource, visualization may not work:',
+            e2
+          )
+        }
       }
+    }
+
+    if (this.audioContext.state === 'suspended') {
+      void this.audioContext.resume()
     }
   }
 
@@ -108,6 +208,7 @@ export class PlayerCore {
     const events = [
       'timeupdate',
       'loadedmetadata',
+      'durationchange',
       'ended',
       'play',
       'pause',
@@ -199,25 +300,15 @@ export class PlayerCore {
     this._cancelPendingPlay?.()
     this._cancelPendingPlay = null
 
-    // Initialize AudioContext on first user interaction (play)
-    this._initAudioContext()
-
-    // Resume AudioContext if suspended
-    if (this.audioContext && this.audioContext.state === 'suspended') {
-      await this.audioContext.resume()
-    }
-
-    if (requestId !== this._playRequestId) {
-      return
-    }
-
     try {
       const sourceChanged = Boolean(url && this.audio.src !== url)
 
       // If url provided and different, load it
       if (url && sourceChanged) {
-        // [Leak Fix] Break connection with previous source to help GC
-        // When switching songs, explicit load() is crucial.
+        // Do not force CORS mode for third-party media CDNs. Most audio CDNs allow
+        // element playback but do not send Access-Control-Allow-Origin, and setting
+        // crossOrigin would make Chromium reject otherwise playable streams.
+        this._configureCrossOrigin(url)
         this.audio.src = url
         this.audio.load()
       } else if (url && this.audio.src === url && this.audio.ended) {
@@ -373,9 +464,20 @@ export class PlayerCore {
     return this._isDestroyed ? 1 : this.audio.playbackRate
   }
 
+  public setSystemMediaSessionEnabled(enabled: boolean): void {
+    if (this._checkDestroyed()) {
+      return
+    }
+
+    this._systemMediaSessionEnabled = enabled
+    this._syncSystemMediaSessionExposure()
+  }
+
   // Visualization Data
   public getAnalyserData(array?: Uint8Array): Uint8Array | null {
-    if (this._isDestroyed || !this.analyser) return null
+    if (this._isDestroyed) return null
+    this._initAudioContext()
+    if (!this.analyser) return null
     // User should provide Uint8Array of size analyser.frequencyBinCount
     if (!array) {
       array = new Uint8Array(this.analyser.frequencyBinCount)
@@ -385,7 +487,9 @@ export class PlayerCore {
   }
 
   public getWaveformData(array?: Uint8Array): Uint8Array | null {
-    if (this._isDestroyed || !this.analyser) return null
+    if (this._isDestroyed) return null
+    this._initAudioContext()
+    if (!this.analyser) return null
     if (!array) {
       array = new Uint8Array(this.analyser.frequencyBinCount)
     }
@@ -394,12 +498,19 @@ export class PlayerCore {
   }
 
   public get frequencyBinCount() {
+    if (!this._isDestroyed && !this.analyser) {
+      this._initAudioContext()
+    }
     return this.analyser ? this.analyser.frequencyBinCount : 0
   }
 
   // Getters
   public get duration() {
-    return this._isDestroyed ? 0 : this.audio.duration || 0
+    if (this._isDestroyed) {
+      return 0
+    }
+
+    return Number.isFinite(this.audio.duration) && this.audio.duration > 0 ? this.audio.duration : 0
   }
 
   public get currentTime() {
@@ -463,3 +574,7 @@ export class PlayerCore {
 }
 
 export const playerCore = new PlayerCore()
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => playerCore.destroy())
+}

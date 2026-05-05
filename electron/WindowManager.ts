@@ -1,13 +1,16 @@
 import type {
   BrowserWindow as BrowserWindowType,
   Menu as MenuType,
-  Tray as TrayType
+  Tray as TrayType,
+  Rectangle
 } from 'electron'
 import { BrowserWindow, nativeImage } from 'electron'
 import path from 'node:path'
 
 import { downloadManager } from './DownloadManager'
 import logger from './logger'
+import { getWindowsShellIdentity } from './main/app'
+import { RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
 import { MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
 const StoreModule = require('electron-store') as {
   default?: new (options?: { projectName: string }) => {
@@ -28,9 +31,19 @@ const store = new Store({
 const MIN_WIDTH = 400
 const MIN_HEIGHT = 80
 const LOAD_RETRY_DELAY_MS = 1000
+const WINDOWS_APP_ICON_FILE = 'tray.ico'
+const WINDOW_SHOW_FALLBACK_DELAY_MS = 3000
 
 process.env.DIST = RENDERER_DIST
 process.env.VITE_PUBLIC = VITE_PUBLIC
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${ms}ms`
+  }
+
+  return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)}s`
+}
 
 export class WindowManager {
   private win: BrowserWindowType | null = null
@@ -47,20 +60,38 @@ export class WindowManager {
   }
 
   createWindow(): void {
+    const startedAt = Date.now()
     const width = this.lastSize ? this.lastSize.width : 1200
     const height = this.lastSize ? this.lastSize.height : 800
     const devServerUrl = process.env.VITE_DEV_SERVER_URL
     const indexPath = path.join(RENDERER_DIST, 'index.html')
+    const loadTarget = devServerUrl ?? indexPath
+    logger.info('[WindowManager] Creating main window', {
+      width,
+      height,
+      loadTarget
+    })
     const win = new BrowserWindow({
       width,
       height,
       minWidth: MIN_WIDTH,
       minHeight: MIN_HEIGHT,
       frame: false,
+      // Keep the frameless shell flush to the window bounds on Windows.
+      // `roundedCorners: false` removes the rounded cut-outs, while
+      // `thickFrame: false` removes the native resize frame that shows up as
+      // empty space around the four corners.
+      ...(process.platform === 'win32'
+        ? {
+            roundedCorners: false,
+            thickFrame: false
+          }
+        : {}),
       titleBarStyle: 'hidden',
       icon: path.join(VITE_PUBLIC, 'electron-vite.svg'),
       show: false,
-      backgroundColor: '#e8ecef',
+      transparent: true,
+      backgroundColor: '#00000000',
       webPreferences: {
         preload: path.join(MAIN_DIST, 'preload.cjs'),
         nodeIntegration: false,
@@ -73,8 +104,20 @@ export class WindowManager {
       }
     })
     this.win = win
+    this.applyWindowsAppDetails(win)
 
     let hasRecoveredRenderer = false
+    let hasShownWindow = false
+    let showFallbackTimer: ReturnType<typeof setTimeout> | null = null
+
+    const clearShowFallbackTimer = (): void => {
+      if (!showFallbackTimer) {
+        return
+      }
+
+      clearTimeout(showFallbackTimer)
+      showFallbackTimer = null
+    }
 
     const recoverRenderer = (reason: string, details: Record<string, unknown>): void => {
       logger.error('[WindowManager] Renderer load issue', { reason, ...details })
@@ -103,16 +146,74 @@ export class WindowManager {
       }, LOAD_RETRY_DELAY_MS)
     }
 
-    win.once('ready-to-show', () => {
+    const showWindow = (reason: string): void => {
+      if (hasShownWindow || win.isDestroyed()) {
+        return
+      }
+
+      hasShownWindow = true
+      clearShowFallbackTimer()
+      logger.info(`[WindowManager] Showing main window (${reason})`, {
+        elapsed: formatDuration(Date.now() - startedAt)
+      })
       win.show()
+    }
+
+    showFallbackTimer = setTimeout(() => {
+      if (win.isDestroyed() || win.isVisible()) {
+        return
+      }
+
+      logger.info('[WindowManager] Showing main window through startup fallback', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        loadTarget,
+        reason: 'ready-to-show timeout'
+      })
+      showWindow('fallback')
+    }, WINDOW_SHOW_FALLBACK_DELAY_MS)
+
+    win.once('ready-to-show', () => {
+      logger.info('[WindowManager] ready-to-show', {
+        elapsed: formatDuration(Date.now() - startedAt)
+      })
+      showWindow('ready-to-show')
     })
 
     downloadManager.setWindow(win)
     downloadManager.init()
 
+    win.webContents.on('did-start-loading', () => {
+      logger.info('[WindowManager] renderer did-start-loading', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        loadTarget
+      })
+    })
+
+    win.webContents.on('dom-ready', () => {
+      logger.info('[WindowManager] renderer dom-ready', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        url: win.webContents.getURL()
+      })
+
+      if (devServerUrl) {
+        showWindow('dom-ready')
+      }
+    })
+
     win.webContents.on('did-finish-load', () => {
       hasRecoveredRenderer = false
+      logger.info('[WindowManager] renderer did-finish-load', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        url: win.webContents.getURL()
+      })
       win.webContents.send('main-process-message', new Date().toLocaleString())
+    })
+
+    win.webContents.on('did-stop-loading', () => {
+      logger.info('[WindowManager] renderer did-stop-loading', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        url: win.webContents.getURL()
+      })
     })
 
     win.webContents.on(
@@ -122,6 +223,12 @@ export class WindowManager {
           return
         }
 
+        logger.error('[WindowManager] renderer did-fail-load', {
+          elapsed: formatDuration(Date.now() - startedAt),
+          errorCode,
+          errorDescription,
+          validatedURL
+        })
         recoverRenderer('did-fail-load', {
           errorCode,
           errorDescription,
@@ -135,6 +242,11 @@ export class WindowManager {
         return
       }
 
+      logger.error('[WindowManager] render-process-gone', {
+        elapsed: formatDuration(Date.now() - startedAt),
+        processGoneReason: details.reason,
+        exitCode: details.exitCode
+      })
       recoverRenderer('render-process-gone', {
         processGoneReason: details.reason,
         exitCode: details.exitCode
@@ -142,9 +254,11 @@ export class WindowManager {
     })
 
     if (devServerUrl) {
+      logger.info('[WindowManager] Loading renderer URL', { loadTarget })
       void win.loadURL(devServerUrl)
       win.webContents.openDevTools()
     } else {
+      logger.info('[WindowManager] Loading renderer file', { loadTarget })
       void win.loadFile(indexPath)
     }
 
@@ -153,7 +267,9 @@ export class WindowManager {
     })
 
     win.on('closed', () => {
+      clearShowFallbackTimer()
       this.win = null
+      downloadManager.setWindow(null)
     })
 
     win.on('resize', () => {
@@ -165,8 +281,53 @@ export class WindowManager {
     })
   }
 
+  private applyWindowsAppDetails(win: BrowserWindowType): void {
+    const shellIdentity = getWindowsShellIdentity()
+    if (!shellIdentity) {
+      return
+    }
+
+    try {
+      win.setAppDetails({
+        appId: shellIdentity.appUserModelId,
+        appIconPath: path.join(VITE_PUBLIC, WINDOWS_APP_ICON_FILE),
+        appIconIndex: 0,
+        relaunchCommand: process.execPath,
+        relaunchDisplayName: shellIdentity.displayName
+      })
+    } catch (error) {
+      logger.warn('[WindowManager] Failed to set Windows app details', error)
+    }
+  }
+
   getWindow(): BrowserWindowType | null {
     return this.win
+  }
+
+  getBounds(): Rectangle | null {
+    return this.win?.getBounds() ?? null
+  }
+
+  setBounds(bounds: Rectangle): void {
+    if (!this.win || this.win.isDestroyed()) {
+      return
+    }
+
+    if (this.win.isMaximized() || this.win.isMinimized() || this.win.isFullScreen()) {
+      return
+    }
+
+    const currentBounds = this.win.getBounds()
+    const nextBounds: Rectangle = {
+      x: Math.round(bounds.x ?? currentBounds.x),
+      y: Math.round(bounds.y ?? currentBounds.y),
+      width: Math.max(MIN_WIDTH, Math.round(bounds.width ?? currentBounds.width)),
+      height: Math.max(MIN_HEIGHT, Math.round(bounds.height ?? currentBounds.height))
+    }
+
+    this.win.setBounds(nextBounds)
+    this.lastSize = { width: nextBounds.width, height: nextBounds.height }
+    store.set('windowSize', this.lastSize)
   }
 
   show(): void {
@@ -252,19 +413,19 @@ export class WindowManager {
       {
         tooltip: 'Previous',
         icon: nativeImage.createFromPath(path.join(iconsPath, 'icons/prev.png')),
-        click: () => this.send('music-song-control', 'prev')
+        click: () => this.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'prev')
       },
       {
         tooltip: playing ? 'Pause' : 'Play',
         icon: playing
           ? nativeImage.createFromPath(path.join(iconsPath, 'icons/pause.png'))
           : nativeImage.createFromPath(path.join(iconsPath, 'icons/play.png')),
-        click: () => this.send('music-playing-control')
+        click: () => this.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL)
       },
       {
         tooltip: 'Next',
         icon: nativeImage.createFromPath(path.join(iconsPath, 'icons/next.png')),
-        click: () => this.send('music-song-control', 'next')
+        click: () => this.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'next')
       }
     ]
 

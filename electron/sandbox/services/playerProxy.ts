@@ -1,19 +1,19 @@
 import { getIpcProxy } from './ipcProxy'
-import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '../../shared/protocol/channels'
+import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
 
-import type { Song } from '../../../src/types/schemas'
+import type { Song, SongPlatform } from '../../../src/types/schemas'
 import type { PlayMode, PlayerStateResponse } from '../../../src/types/player'
 import type { LyricLine } from '../../../src/utils/player/core/lyric'
 import type {
   DesktopLyricSnapshot,
   PlayerPlaySongByIdPayload,
   PlayerPlaySongPayload
-} from '../../ipc/types'
+} from '@/platform/contracts/ipc'
 
 export type PlayerState = PlayerStateResponse
 
 // Re-export types for convenience
-export type { Song, PlayMode, LyricLine }
+export type { Song, PlayMode, LyricLine, DesktopLyricSnapshot }
 
 export class PlayerProxy {
   private readonly ipcProxy: ReturnType<typeof getIpcProxy>
@@ -39,7 +39,7 @@ export class PlayerProxy {
     await this.ipcProxy.invoke(INVOKE_CHANNELS.PLAYER_PLAY_SONG, payload)
   }
 
-  async playSongById(id: string | number, platform: 'netease' | 'qq' = 'netease'): Promise<void> {
+  async playSongById(id: string | number, platform: SongPlatform = 'netease'): Promise<void> {
     const payload: PlayerPlaySongByIdPayload = { id, platform }
     await this.ipcProxy.invoke(INVOKE_CHANNELS.PLAYER_PLAY_SONG_BY_ID, payload)
   }
@@ -104,7 +104,7 @@ export class PlayerProxy {
 
   async getLyric(
     songId: string | number,
-    platform: 'netease' | 'qq' = 'netease'
+    platform: SongPlatform = 'netease'
   ): Promise<LyricLine[]> {
     return this.ipcProxy.invoke<LyricLine[]>(INVOKE_CHANNELS.PLAYER_GET_LYRIC, {
       id: songId,
@@ -124,6 +124,10 @@ export class PlayerProxy {
 
   onLyricUpdate(listener: (data: { index: number; line: LyricLine | null }) => void): () => void {
     return this.ipcProxy.on(RECEIVE_CHANNELS.PLAYER_LYRIC_UPDATE, listener)
+  }
+
+  onDesktopLyricState(listener: (data: DesktopLyricSnapshot) => void): () => void {
+    return this.ipcProxy.on(RECEIVE_CHANNELS.PLAYER_DESKTOP_LYRIC_STATE, listener)
   }
 
   onPlayError(listener: (data: { error: string; song: Song | null }) => void): () => void {

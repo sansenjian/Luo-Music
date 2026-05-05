@@ -19,6 +19,7 @@ const createCommandServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'command'
 const createPlayerServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'player' })))
 const createMusicServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'music' })))
 const createStorageServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'storage' })))
+const createPluginServiceMock = vi.hoisted(() => vi.fn(() => ({ kind: 'plugin' })))
 
 const ids = vi.hoisted(() => ({
   IPlatformService: Symbol('platform'),
@@ -31,6 +32,7 @@ const ids = vi.hoisted(() => ({
   IPlayerService: Symbol('player'),
   IMusicService: Symbol('music'),
   IStorageService: Symbol('storage'),
+  IPluginService: Symbol('plugin'),
   createDecorator: vi.fn()
 }))
 
@@ -85,6 +87,10 @@ vi.mock('@/services/storageService', () => ({
   createStorageService: createStorageServiceMock
 }))
 
+vi.mock('@/services/pluginService', () => ({
+  createPluginService: createPluginServiceMock
+}))
+
 vi.mock('@/services/types', () => ids)
 
 describe('services index', () => {
@@ -99,7 +105,7 @@ describe('services index', () => {
     module.setupServices()
     module.setupServices()
 
-    expect(registerServiceMock).toHaveBeenCalledTimes(10)
+    expect(registerServiceMock).toHaveBeenCalledTimes(11)
     expect(registerServiceMock).toHaveBeenCalledWith(
       ids.IPlatformService,
       createPlatformServiceMock
@@ -109,6 +115,7 @@ describe('services index', () => {
     expect(registerServiceMock).toHaveBeenCalledWith(ids.IPlayerService, createPlayerServiceMock)
     expect(registerServiceMock).toHaveBeenCalledWith(ids.IMusicService, createMusicServiceMock)
     expect(registerServiceMock).toHaveBeenCalledWith(ids.IStorageService, createStorageServiceMock)
+    expect(registerServiceMock).toHaveBeenCalledWith(ids.IPluginService, createPluginServiceMock)
   })
 
   it('supports overrides with typed identifiers', async () => {

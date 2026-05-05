@@ -22,14 +22,75 @@ const platformServiceMock = vi.hoisted(() => ({
   sendPlayModeChange: vi.fn(),
   on: vi.fn(() => () => {}),
   getCacheSize: vi.fn().mockResolvedValue({}),
-  clearCache: vi.fn().mockResolvedValue({})
+  clearCache: vi.fn().mockResolvedValue({}),
+  getLocalLibraryState: vi.fn().mockResolvedValue({
+    supported: false,
+    folders: [],
+    tracks: [],
+    status: {
+      phase: 'idle',
+      scannedFolders: 0,
+      scannedFiles: 0,
+      discoveredTracks: 0,
+      currentFolder: null,
+      startedAt: null,
+      finishedAt: null,
+      message: 'unsupported'
+    }
+  }),
+  pickLocalLibraryFolder: vi.fn().mockResolvedValue(null),
+  addLocalLibraryFolder: vi.fn().mockResolvedValue({
+    supported: false,
+    folders: [],
+    tracks: [],
+    status: {
+      phase: 'idle',
+      scannedFolders: 0,
+      scannedFiles: 0,
+      discoveredTracks: 0,
+      currentFolder: null,
+      startedAt: null,
+      finishedAt: null,
+      message: 'unsupported'
+    }
+  }),
+  removeLocalLibraryFolder: vi.fn().mockResolvedValue({
+    supported: false,
+    folders: [],
+    tracks: [],
+    status: {
+      phase: 'idle',
+      scannedFolders: 0,
+      scannedFiles: 0,
+      discoveredTracks: 0,
+      currentFolder: null,
+      startedAt: null,
+      finishedAt: null,
+      message: 'unsupported'
+    }
+  }),
+  scanLocalLibrary: vi.fn().mockResolvedValue({
+    supported: false,
+    folders: [],
+    tracks: [],
+    status: {
+      phase: 'idle',
+      scannedFolders: 0,
+      scannedFiles: 0,
+      discoveredTracks: 0,
+      currentFolder: null,
+      startedAt: null,
+      finishedAt: null,
+      message: 'unsupported'
+    }
+  })
 }))
 
 describe('commandService', () => {
   beforeEach(() => {
     resetServices()
     registerService(IContextKeyService, createContextKeyService)
-    registerService(IPlatformService, () => platformServiceMock as PlatformService)
+    registerService(IPlatformService, () => platformServiceMock as unknown as PlatformService)
     platformServiceMock.isElectron.mockReturnValue(true)
     platformServiceMock.toggleDesktopLyric.mockClear()
     platformServiceMock.send.mockClear()
@@ -56,9 +117,9 @@ describe('commandService', () => {
     await commandService.execute(COMMANDS.PLAYER_VOLUME_DOWN, { step: 0.2 })
     expect(playerStore.volume).toBeCloseTo(0.4)
 
-    expect(playerStore.isCompact).toBe(false)
-    await commandService.execute(COMMANDS.PLAYER_TOGGLE_COMPACT_MODE)
-    expect(playerStore.isCompact).toBe(true)
+    expect(playerStore.isPlayerDocked).toBe(true)
+    await commandService.execute(COMMANDS.PLAYER_TOGGLE_PLAYER_DOCKED)
+    expect(playerStore.isPlayerDocked).toBe(false)
   })
 
   it('supports explicit dependency injection without registry lookups', async () => {

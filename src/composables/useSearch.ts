@@ -4,8 +4,8 @@
  * 遵循单一数据源原则，避免状态重复
  */
 import { computed } from 'vue'
-import { useSearchStore } from '../store/searchStore'
-import type { Song } from '../platform/music/interface'
+import { useSearchStore } from '@/store/searchStore'
+import type { Song } from '@/platform/music/interface'
 
 export interface SearchOptions {
   limit?: number

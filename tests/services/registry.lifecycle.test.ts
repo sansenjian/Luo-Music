@@ -8,6 +8,7 @@ import {
   resetServices
 } from '@/services/registry'
 import { createDecorator } from '@/services/types'
+import { createDeferred } from '../helpers/deferred'
 
 const IServiceA = createDecorator<unknown>('IServiceA')
 const IServiceB = createDecorator<unknown>('IServiceB')
@@ -19,16 +20,6 @@ type LifecycleService = {
 }
 
 const ILifecycleService = createDecorator<LifecycleService>('ITestLifecycleService')
-
-function createDeferred() {
-  let resolve!: () => void
-
-  const promise = new Promise<void>(nextResolve => {
-    resolve = nextResolve
-  })
-
-  return { promise, resolve }
-}
 
 async function flushLifecycleTasks(): Promise<void> {
   await Promise.resolve()
@@ -106,9 +97,9 @@ describe('service registry lifecycle', () => {
   })
 
   it('does not let an old activation mark a re-registered instance as already activated', async () => {
-    const firstActivation = createDeferred()
+    const firstActivation = createDeferred<void>()
     const firstService: LifecycleService = {
-      onActivate: vi.fn(() => firstActivation.promise),
+      onActivate: vi.fn(() => firstActivation.promise) as () => Promise<void>,
       onDeactivate: vi.fn()
     }
     const secondService: LifecycleService = {
@@ -131,7 +122,7 @@ describe('service registry lifecycle', () => {
 
   it('waits for async onDeactivate before disposing a replaced instance', async () => {
     const calls: string[] = []
-    const deactivation = createDeferred()
+    const deactivation = createDeferred<void>()
     const firstService: LifecycleService = {
       onActivate: vi.fn(),
       onDeactivate: vi.fn(async () => {

@@ -1,17 +1,23 @@
 import type { Song } from '@/types/schemas'
+import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@/types/localLibrary'
+import { getPlatformCapabilities } from '@/platform/music'
 import type { MusicService } from '@/services/musicService'
-import { errorCenter, Errors } from '@/utils/error'
+import { getSongPlatformKey, isSameSongIdentity, resolveMediaId } from '@/utils/songIdentity'
+import { errorCenter } from '@/utils/error/center'
+import { Errors } from '@/utils/error/types'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import { LyricParser } from '@/utils/player/core/lyric'
 
 import type { PlayerState } from './playerState'
+import { songPrefetcher } from './songPrefetcher'
 
 export interface PlaybackActionsDeps {
   getState: () => PlayerState
   onStateChange: (changes: Partial<PlayerState>) => void
-  playSongByIndex: (index: number) => Promise<void>
+  playSongByIndex: (index: number, song?: Song) => Promise<void>
   setLyricsArray: (lyrics: import('@/utils/player/core/lyric').LyricLine[]) => void
+  onPlaybackCommitted?: (song: Song) => void
   musicService: Pick<MusicService, 'getSongUrl' | 'getSongDetail' | 'getLyric'>
   createErrorHandler: () => import('@/utils/player/modules/playbackErrorHandler').PlaybackErrorHandler
   getErrorHandler: () =>
@@ -25,19 +31,16 @@ export interface PlaybackActionsDeps {
 export class PlaybackActions {
   private playbackRequestId = 0
   private lyricRequestId = 0
+  private pendingNavigationIndex: number | null = null
 
   constructor(private readonly deps: PlaybackActionsDeps) {}
 
   private isSameSong(left: Song | null | undefined, right: Song | null | undefined): boolean {
-    if (!left || !right) {
-      return false
-    }
-
-    return this.createSongRequestKey(left) === this.createSongRequestKey(right)
+    return isSameSongIdentity(left, right)
   }
 
   private createSongRequestKey(song: Song): string {
-    return `${song.platform || (song as { server?: string }).server || 'netease'}:${song.id}`
+    return `${getSongPlatformKey(song)}:${song.id}`
   }
 
   private startLyricRequest(song: Song): { requestId: number; songKey: string } {
@@ -75,8 +78,16 @@ export class PlaybackActions {
     return !song.url
   }
 
-  private shouldHydrateSongForPlayback(song: Song, platformKey: string): boolean {
-    return platformKey === 'netease' && !song.url
+  private shouldHydrateSongForPlayback(_song: Song, platformKey: string): boolean {
+    return getPlatformCapabilities(platformKey).needsHydration
+  }
+
+  private shouldFetchLyrics(song: Song, platformKey: string): boolean {
+    if (isLocalLibrarySong(song)) {
+      return false
+    }
+
+    return getPlatformCapabilities(platformKey).supportsLyricFetch
   }
 
   private clearPlaybackFailureState(song: Song): void {
@@ -85,27 +96,16 @@ export class PlaybackActions {
     song.errorMessage = null
   }
 
-  private cloneSong(song: Song): Song {
-    const artists = Array.isArray(song.artists) ? song.artists.map(artist => ({ ...artist })) : []
-    const album =
-      song.album && typeof song.album === 'object'
-        ? {
-            id: song.album.id ?? 0,
-            name: song.album.name ?? '',
-            picUrl: song.album.picUrl ?? ''
-          }
-        : {
-            id: 0,
-            name: '',
-            picUrl: ''
-          }
-
-    return {
-      ...song,
-      artists,
-      album,
-      ...(song.extra ? { extra: { ...song.extra } } : {})
+  private resolveInitialDurationSeconds(song: Song): number {
+    if (!Number.isFinite(song.duration) || song.duration <= 0) {
+      return 0
     }
+
+    if (isLocalLibrarySong(song) && !hasKnownLocalSongDuration(song)) {
+      return 0
+    }
+
+    return song.duration / 1000
   }
 
   private mergeSongDetail(song: Song, detail: Song): void {
@@ -125,62 +125,13 @@ export class PlaybackActions {
     }
   }
 
-  private syncPlaybackRuntimeFields(sourceSong: Song, playbackSong: Song): void {
-    this.mergeSongDetail(sourceSong, playbackSong)
-
-    if (playbackSong.url) {
-      sourceSong.url = playbackSong.url
-    }
-
-    if (playbackSong.mediaId !== undefined) {
-      sourceSong.mediaId = playbackSong.mediaId
-    }
-
-    this.clearPlaybackFailureState(sourceSong)
-    this.clearPlaybackFailureState(playbackSong)
-  }
-
-  private async refreshSongUrl(song: Song, platformKey: string): Promise<boolean> {
+  private async refreshSongUrl(song: Song, platformKey: string): Promise<string | null> {
     console.log('[Player] Refreshing URL for song:', song.id)
-    const mediaId = (song as Song & { mediaId?: string }).mediaId
+    const mediaId = resolveMediaId(song)
     const url = await this.deps.musicService.getSongUrl(platformKey, song.id, { mediaId })
     console.log('[Player] Refreshed URL:', url ? 'Success' : 'Failed')
 
-    if (!url) {
-      return false
-    }
-
-    song.url = url
-    this.clearPlaybackFailureState(song)
-    return true
-  }
-
-  private async hydrateSongForPlayback(
-    song: Song,
-    platformKey: string,
-    requestId: number
-  ): Promise<Song | null> {
-    const playbackSong = this.cloneSong(song)
-
-    if (!this.shouldHydrateSongForPlayback(song, platformKey)) {
-      return playbackSong
-    }
-
-    try {
-      const detail = await this.deps.musicService.getSongDetail(platformKey, song.id)
-
-      if (!this.isCurrentPlaybackRequest(requestId)) {
-        return null
-      }
-
-      if (detail) {
-        this.mergeSongDetail(playbackSong, detail)
-      }
-    } catch (detailError) {
-      console.warn('Failed to hydrate song detail before playback:', detailError)
-    }
-
-    return playbackSong
+    return url
   }
 
   getRandomIndex(excludeCurrent = true): number {
@@ -188,27 +139,55 @@ export class PlaybackActions {
     if (state.songList.length === 0) return -1
     if (state.songList.length === 1) return 0
 
+    const currentIndex = this.resolveNavigationBaseIndex(state)
     let newIndex = Math.floor(Math.random() * state.songList.length)
-    if (excludeCurrent && newIndex === state.currentIndex) {
-      newIndex = (newIndex + 1) % state.songList.length
+    if (excludeCurrent) {
+      let attempts = 0
+      const maxAttempts = state.songList.length * 2
+      while (newIndex === currentIndex && attempts < maxAttempts) {
+        newIndex = Math.floor(Math.random() * state.songList.length)
+        attempts++
+      }
     }
     return newIndex
+  }
+
+  private resolveNavigationBaseIndex(state: PlayerState): number {
+    if (
+      this.pendingNavigationIndex !== null &&
+      this.pendingNavigationIndex >= 0 &&
+      this.pendingNavigationIndex < state.songList.length
+    ) {
+      return this.pendingNavigationIndex
+    }
+
+    return state.currentIndex
+  }
+
+  private setPendingNavigationIndex(index: number | null): void {
+    this.pendingNavigationIndex = index
+  }
+
+  resetPendingNavigation(): void {
+    this.pendingNavigationIndex = null
   }
 
   playPrev(): void {
     const state = this.deps.getState()
     if (state.songList.length === 0) return
 
+    const currentIndex = this.resolveNavigationBaseIndex(state)
     let newIndex: number
     if (state.playMode === PLAY_MODE.SHUFFLE) {
       newIndex = this.getRandomIndex()
     } else {
-      newIndex = state.currentIndex - 1
+      newIndex = currentIndex - 1
       if (newIndex < 0) {
         newIndex = state.songList.length - 1
       }
     }
 
+    this.setPendingNavigationIndex(newIndex)
     this.playSongWithDetails(newIndex).catch((err: unknown) => {
       console.error('播放上一首失败:', err)
     })
@@ -218,11 +197,12 @@ export class PlaybackActions {
     const state = this.deps.getState()
     if (state.songList.length === 0) return
 
+    const currentIndex = this.resolveNavigationBaseIndex(state)
     let newIndex: number
     if (state.playMode === PLAY_MODE.SHUFFLE) {
       newIndex = this.getRandomIndex()
     } else {
-      newIndex = state.currentIndex + 1
+      newIndex = currentIndex + 1
       if (newIndex >= state.songList.length) {
         if (state.playMode === PLAY_MODE.SEQUENTIAL) {
           return
@@ -231,6 +211,7 @@ export class PlaybackActions {
       }
     }
 
+    this.setPendingNavigationIndex(newIndex)
     this.playSongWithDetails(newIndex).catch((err: unknown) => {
       console.error('播放下一首失败:', err)
     })
@@ -248,12 +229,16 @@ export class PlaybackActions {
     const nextSong = playbackSong ?? sourceSong
     const isSwitchingSong = !this.isSameSong(state.currentSong, nextSong)
 
-    if (!sourceSong.url) {
+    if (!nextSong.url) {
       console.error('No URL for song')
       throw new Error('No URL for song')
     }
 
-    await this.deps.playSongByIndex(index)
+    // Pass the hydrated playbackSong so the store can set currentSong
+    // BEFORE changing audio.src.  This lets MediaSession watchers
+    // populate metadata synchronously and avoid a gap where Windows
+    // SMTC sees an empty session.
+    await this.deps.playSongByIndex(index, nextSong)
 
     if (playbackRequestId !== undefined && !this.isCurrentPlaybackRequest(playbackRequestId)) {
       return
@@ -262,7 +247,9 @@ export class PlaybackActions {
     this.deps.onStateChange({
       currentIndex: index,
       currentSong: nextSong,
-      currentLyricIndex: isSwitchingSong ? -1 : state.currentLyricIndex
+      currentLyricIndex: isSwitchingSong ? -1 : state.currentLyricIndex,
+      progress: isSwitchingSong ? 0 : state.progress,
+      duration: isSwitchingSong ? this.resolveInitialDurationSeconds(nextSong) : state.duration
     })
 
     if (isSwitchingSong) {
@@ -279,101 +266,153 @@ export class PlaybackActions {
       return
     }
 
+    this.setPendingNavigationIndex(index)
     const playbackRequestId = this.startPlaybackRequest()
-    this.deps.onStateChange({ loading: true })
+    this.deps.onStateChange({
+      loading: true,
+      ...(!this.isSameSong(state.currentSong, song)
+        ? {
+            progress: 0,
+            duration: 0
+          }
+        : {})
+    })
 
-    const platformKey = song.platform || (song as { server?: string }).server || 'netease'
+    const platformKey = getSongPlatformKey(song)
     const musicService = this.deps.musicService
 
     console.log(`[Player] Playing song: ${song.name} (ID: ${song.id}, Platform: ${platformKey})`)
 
     try {
-      const playbackSong = await this.hydrateSongForPlayback(song, platformKey, playbackRequestId)
-      if (!playbackSong) {
-        return
-      }
+      // Try to get prefetched data first — if URL is cached, skip fetch entirely
+      const prefetchedData = songPrefetcher.getPrefetchedData(song)
+      const cachedUrl = song.url || prefetchedData?.url || null
+      const shouldFetchUrl = !cachedUrl
+      const shouldHydrate = this.shouldHydrateSongForPlayback(song, platformKey)
 
-      const shouldFetchUrl = this.shouldFetchFreshSongUrl(playbackSong, platformKey)
+      // Parallel fetch: URL, detail, and lyrics
+      const mediaId = resolveMediaId(song)
+
+      // If a prefetch is already in-flight, await it instead of launching
+      // a duplicate request.  Otherwise start a fresh URL fetch.
+      const fetchUrlPromise = shouldFetchUrl
+        ? songPrefetcher.awaitPrefetchedUrl(song).then(async url => {
+            if (url) return url
+            return musicService.getSongUrl(platformKey, song.id, { mediaId })
+          })
+        : Promise.resolve(cachedUrl)
+
+      const fetchDetailPromise =
+        shouldHydrate && !prefetchedData?.detail
+          ? songPrefetcher.awaitPrefetchedDetail(song).then(detail => {
+              if (detail) return detail
+              return musicService.getSongDetail(platformKey, song.id)
+            })
+          : Promise.resolve(prefetchedData?.detail ?? null)
+
+      const fetchLyricPromise = this.shouldFetchLyrics(song, platformKey)
+        ? musicService.getLyric(platformKey, song.id)
+        : Promise.resolve({ lrc: '', tlyric: '', romalrc: '' })
+
+      // Wait for URL first (blocking for playback)
+      let resolvedUrl: string | null = cachedUrl
       if (shouldFetchUrl) {
-        try {
-          const refreshed = await this.refreshSongUrl(playbackSong, platformKey)
+        resolvedUrl = await fetchUrlPromise
+        if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
+          return
+        }
 
-          if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
-            return
-          }
-
-          if (!refreshed) {
-            console.warn('Song URL unavailable:', playbackSong.id)
-            const err = Errors.noCopyright(playbackSong.id)
-            errorCenter.emit(err)
-            throw err
-          }
-        } catch (urlError: unknown) {
-          console.error('Failed to get song URL:', urlError)
-          if (urlError instanceof Error && urlError.name === 'AppError') throw urlError
-
-          const err = Errors.noCopyright(playbackSong.id)
+        if (!resolvedUrl) {
+          console.warn('Song URL unavailable:', song.id)
+          const err = Errors.noCopyright(song.id)
           errorCenter.emit(err)
           throw err
         }
-      } else {
-        this.clearPlaybackFailureState(playbackSong)
       }
 
-      if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
-        return
+      if (resolvedUrl) {
+        song.url = resolvedUrl
       }
 
-      this.syncPlaybackRuntimeFields(song, playbackSong)
+      // Merge prefetched detail if available
+      if (prefetchedData?.detail) {
+        this.mergeSongDetail(song, prefetchedData.detail)
+      }
 
+      this.clearPlaybackFailureState(song)
+
+      // Start playback immediately after URL is resolved — use source song directly
       try {
-        await this.playSongByIndex(index, playbackSong, playbackRequestId)
+        await this.playSongByIndex(index, song, playbackRequestId)
 
         if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
           return
         }
+
+        this.deps.onPlaybackCommitted?.(song)
+
+        // Schedule prefetch for next songs after playback starts
+        songPrefetcher.schedulePrefetch(state.songList, index)
       } catch (playbackError) {
         const canRetryWithFreshUrl =
-          platformKey === 'netease' && !shouldFetchUrl && Boolean(playbackSong.url)
+          getPlatformCapabilities(platformKey).supportsUrlRefreshOnFailure && Boolean(song.url)
 
         if (!canRetryWithFreshUrl) {
           throw playbackError
         }
 
         try {
-          const refreshed = await this.refreshSongUrl(playbackSong, platformKey)
+          const refreshedUrl = await this.refreshSongUrl(song, platformKey)
           if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
             return
           }
 
-          if (!refreshed) {
+          if (!refreshedUrl) {
             throw playbackError
           }
 
-          this.syncPlaybackRuntimeFields(song, playbackSong)
-          await this.playSongByIndex(index, playbackSong, playbackRequestId)
+          song.url = refreshedUrl
+          this.clearPlaybackFailureState(song)
+          await this.playSongByIndex(index, song, playbackRequestId)
           if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
             return
           }
+
+          this.deps.onPlaybackCommitted?.(song)
         } catch {
           throw playbackError
         }
       }
 
-      const lyricRequest = this.startLyricRequest(playbackSong)
+      // Hydrate detail after playback starts (fetched in parallel with URL)
+      if (shouldHydrate && !prefetchedData?.detail) {
+        try {
+          const detail = await fetchDetailPromise
+          if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
+            return
+          }
+          if (detail) {
+            this.mergeSongDetail(song, detail)
+          }
+        } catch (detailError) {
+          console.warn('Failed to hydrate song detail:', detailError)
+        }
+      }
+
+      // Process lyrics (non-blocking after playback starts)
+      const lyricRequest = this.startLyricRequest(song)
 
       try {
-        const lyricData = await musicService.getLyric(platformKey, playbackSong.id)
+        const lyricData = await fetchLyricPromise
+        if (!this.isCurrentLyricRequest(lyricRequest.requestId, lyricRequest.songKey)) {
+          return
+        }
+
         const lyrics = LyricParser.parse(
           lyricData.lrc || '',
           lyricData.tlyric || '',
           lyricData.romalrc || ''
         )
-
-        if (!this.isCurrentLyricRequest(lyricRequest.requestId, lyricRequest.songKey)) {
-          return
-        }
-
         this.deps.setLyricsArray(lyrics)
       } catch (lyricError) {
         if (!this.isCurrentLyricRequest(lyricRequest.requestId, lyricRequest.songKey)) {
@@ -413,7 +452,8 @@ export class PlaybackActions {
       }
 
       try {
-        await this.playNextSkipUnavailable()
+        this.setPendingNavigationIndex(null)
+        await this.playNextSkipUnavailable(index)
         return
       } catch {
         errorCenter.emit(Errors.fatal('无法播放任何歌曲，请检查网络或切换歌单'))
@@ -421,11 +461,14 @@ export class PlaybackActions {
     } finally {
       if (this.isCurrentPlaybackRequest(playbackRequestId)) {
         this.deps.onStateChange({ loading: false })
+        if (this.pendingNavigationIndex === index) {
+          this.setPendingNavigationIndex(null)
+        }
       }
     }
   }
 
-  async playNextSkipUnavailable(): Promise<void> {
+  async playNextSkipUnavailable(startIndex?: number): Promise<void> {
     let errorHandler = this.deps.getErrorHandler()
     if (!errorHandler) {
       errorHandler = this.deps.createErrorHandler()
@@ -433,7 +476,7 @@ export class PlaybackActions {
 
     await errorHandler.playNextSkipUnavailable(async (index: number) => {
       await this.playSongWithDetails(index, false)
-    })
+    }, startIndex)
   }
 }
 

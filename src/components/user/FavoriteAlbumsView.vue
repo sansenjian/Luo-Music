@@ -4,13 +4,13 @@ import type { FavoriteAlbumItem } from '@/composables/useFavoriteAlbums'
 interface FavoriteAlbumsViewProps {
   albums: FavoriteAlbumItem[]
   loading?: boolean
-  activeAlbumId?: FavoriteAlbumItem['id'] | null
-  playingAlbumId?: FavoriteAlbumItem['id'] | null
+  interactive?: boolean
+  playingAlbumId?: string | null
 }
 
 const props = withDefaults(defineProps<FavoriteAlbumsViewProps>(), {
   loading: false,
-  activeAlbumId: null,
+  interactive: true,
   playingAlbumId: null
 })
 
@@ -19,7 +19,16 @@ const emit = defineEmits<{
   'album-play': [albumId: string | number]
 }>()
 
+function formatArtistName(album: FavoriteAlbumItem): string {
+  const artistName = typeof album.artistName === 'string' ? album.artistName.trim() : ''
+  return artistName || '未知艺术家'
+}
+
 function handleAlbumOpen(albumId: string | number): void {
+  if (!props.interactive) {
+    return
+  }
+
   emit('album-open', albumId)
 }
 
@@ -28,16 +37,7 @@ function handleAlbumPlay(albumId: string | number): void {
 }
 
 function isPlayingAlbum(albumId: string | number): boolean {
-  return props.playingAlbumId !== null && String(albumId) === String(props.playingAlbumId)
-}
-
-function isActiveAlbum(albumId: FavoriteAlbumItem['id']): boolean {
-  return props.activeAlbumId !== null && String(albumId) === String(props.activeAlbumId)
-}
-
-function formatArtistName(album: FavoriteAlbumItem): string {
-  const artistName = typeof album.artistName === 'string' ? album.artistName.trim() : ''
-  return artistName || '未知艺术家'
+  return props.playingAlbumId !== null && String(props.playingAlbumId) === String(albumId)
 }
 </script>
 
@@ -52,38 +52,46 @@ function formatArtistName(album: FavoriteAlbumItem): string {
     </div>
 
     <div v-else class="albums-grid">
-      <article
-        v-for="album in props.albums"
-        :key="album.id"
-        class="album-card"
-        :class="{ active: isActiveAlbum(album.id) }"
-      >
-        <button type="button" class="album-card-hit" @click="handleAlbumOpen(album.id)">
-          <div class="album-cover">
-            <img :src="album.picUrl" :alt="album.name" loading="lazy" decoding="async" />
-            <div class="album-overlay">
-              <div class="album-overlay-copy">
-                <strong>查看曲目</strong>
-                <span>浏览专辑并选择播放</span>
+      <article v-for="album in props.albums" :key="album.id" class="album-card">
+        <div v-if="props.interactive" class="album-card-shell">
+          <button
+            type="button"
+            class="album-card-hit album-card-shell-button"
+            @click="handleAlbumOpen(album.id)"
+          >
+            <div class="album-cover">
+              <img :src="album.picUrl" :alt="album.name" loading="lazy" decoding="async" />
+              <div class="album-overlay">
+                <span>查看详情</span>
               </div>
             </div>
+            <div class="album-info">
+              <h3 class="album-name">{{ album.name }}</h3>
+              <p class="album-artist">{{ formatArtistName(album) }}</p>
+              <p class="album-meta">{{ album.size }} 首歌曲</p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            class="album-play-button"
+            :disabled="isPlayingAlbum(album.id)"
+            @click.stop="handleAlbumPlay(album.id)"
+          >
+            {{ isPlayingAlbum(album.id) ? '播放中...' : '播放专辑' }}
+          </button>
+        </div>
+
+        <div v-else class="album-card-shell">
+          <div class="album-cover">
+            <img :src="album.picUrl" :alt="album.name" loading="lazy" decoding="async" />
           </div>
           <div class="album-info">
             <h3 class="album-name">{{ album.name }}</h3>
             <p class="album-artist">{{ formatArtistName(album) }}</p>
             <p class="album-meta">{{ album.size }} 首歌曲</p>
           </div>
-        </button>
-
-        <button
-          type="button"
-          class="album-play-button"
-          :class="{ loading: isPlayingAlbum(album.id) }"
-          :disabled="isPlayingAlbum(album.id)"
-          @click="handleAlbumPlay(album.id)"
-        >
-          {{ isPlayingAlbum(album.id) ? '播放中...' : '播放专辑' }}
-        </button>
+        </div>
       </article>
     </div>
   </div>
@@ -124,27 +132,33 @@ function formatArtistName(album: FavoriteAlbumItem): string {
 .album-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   contain: layout paint style;
   contain-intrinsic-size: 320px 360px;
   content-visibility: auto;
 }
 
-.album-card.active .album-card-hit {
-  transform: translate(-2px, -2px);
-  box-shadow: 8px 8px 0 var(--black);
+.album-card-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.2s ease;
 }
 
-.album-card-hit {
+.album-card-shell-button {
+  display: flex;
+  flex-direction: column;
   padding: 0;
   border: none;
   background: transparent;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.2s ease;
 }
 
-.album-card-hit:hover {
+.album-card-hit {
+  width: 100%;
+}
+
+.album-card:hover .album-card-shell {
   transform: translateY(-6px);
 }
 
@@ -160,7 +174,7 @@ function formatArtistName(album: FavoriteAlbumItem): string {
   transition: box-shadow 0.2s ease;
 }
 
-.album-card-hit:hover .album-cover {
+.album-card:hover .album-cover {
   box-shadow: 8px 8px 0 var(--black);
 }
 
@@ -176,29 +190,49 @@ function formatArtistName(album: FavoriteAlbumItem): string {
   display: flex;
   align-items: flex-end;
   padding: 16px;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.74));
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.68));
+  color: var(--white);
   opacity: 0;
   transition: opacity 0.2s ease;
-  color: var(--white);
 }
 
-.album-card-hit:hover .album-overlay,
-.album-card.active .album-overlay {
+.album-card-shell-button:hover .album-overlay,
+.album-card-shell-button:focus-visible .album-overlay {
   opacity: 1;
 }
 
-.album-overlay-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.album-card-shell-button:focus-visible {
+  outline: none;
 }
 
-.album-overlay-copy strong {
-  font-size: 16px;
+.album-card-shell-button:focus-visible .album-cover {
+  box-shadow: 8px 8px 0 var(--accent);
 }
 
-.album-overlay-copy span {
+.album-play-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 2px solid var(--black);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--black);
   font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.album-play-button:hover:not(:disabled) {
+  background: var(--black);
+  color: var(--white);
+}
+
+.album-play-button:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .album-info {
@@ -226,34 +260,6 @@ function formatArtistName(album: FavoriteAlbumItem): string {
 
 .album-meta {
   margin-top: 4px;
-}
-
-.album-play-button {
-  padding: 10px 14px;
-  border: 2px solid var(--black);
-  border-radius: 10px;
-  background: var(--white);
-  color: var(--black);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.album-play-button.loading,
-.album-play-button:disabled {
-  cursor: wait;
-  opacity: 0.75;
-}
-
-.album-play-button:hover {
-  background: var(--black);
-  color: var(--white);
-}
-
-.album-play-button:hover:disabled {
-  background: var(--white);
-  color: var(--black);
 }
 
 @media (max-width: 768px) {

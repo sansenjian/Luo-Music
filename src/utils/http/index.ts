@@ -28,7 +28,7 @@ import {
   createTransport,
   type TransportRequestConfig
 } from './transportFactory'
-import { normalizeApiError } from '../error/normalize'
+import { normalizeApiError } from '@/utils/error/normalize'
 import { isElectronRenderer } from './transportShared'
 export { createLatestRequestController } from './requestScope'
 import {
@@ -52,13 +52,8 @@ type UserStoreLike = {
   logout?: () => void
 }
 
-type SongUrlItem = {
-  url?: string | null
-}
-
-type SongUrlResponse = {
+type HttpResponseData = {
   code?: number
-  data?: SongUrlItem[]
 }
 
 type HttpRequestDeps = {
@@ -127,16 +122,6 @@ const logoutIfNeeded = () => {
   } catch {
     // Ignore store access failures here.
   }
-}
-
-const normalizeSongUrlResponse = (payload: unknown) => {
-  if (!payload || typeof payload !== 'object') {
-    return [] as SongUrlItem[]
-  }
-
-  const maybeSongUrlResponse = payload as SongUrlResponse
-  const data = maybeSongUrlResponse.data ?? payload
-  return Array.isArray(data) ? data : []
 }
 
 export const clearCookieCache = () => {
@@ -211,19 +196,10 @@ const request = createTransport({
           setCache(config, response.data)
         }
 
-        const responseData = response.data as SongUrlResponse | Record<string, unknown> | undefined
+        const responseData = response.data as HttpResponseData | undefined
         if (responseData?.code === 301) {
           getLogger().warn('Login status expired, clearing local user session')
           logoutIfNeeded()
-        }
-
-        if (responseData && config.url?.includes('/song/url')) {
-          const songs = normalizeSongUrlResponse(responseData)
-          songs.forEach((song: SongUrlItem) => {
-            if (song.url?.startsWith('http://')) {
-              song.url = song.url.replace('http://', 'https://')
-            }
-          })
         }
 
         return response.data

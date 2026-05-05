@@ -275,6 +275,8 @@ export class ServiceManager {
         }
       })
     )
+    this.services.clear()
+    this.startTasks.clear()
     logger.info('[ServiceManager] All services stopped')
   }
 

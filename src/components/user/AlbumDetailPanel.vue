@@ -41,7 +41,12 @@ const emit = defineEmits<{
           <h3 class="detail-title">{{ props.album?.name ?? '已选择专辑' }}</h3>
           <p class="detail-meta">
             {{ props.album?.artistName || '未知艺术家' }}
-            <span>· {{ props.songs.length }} 首歌曲</span>
+            <template v-if="props.album?.size && props.album.size > props.songs.length">
+              <span>· {{ props.songs.length }} / {{ props.album.size }} 首歌曲</span>
+            </template>
+            <template v-else>
+              <span>· {{ props.songs.length }} 首歌曲</span>
+            </template>
           </p>
         </div>
       </div>

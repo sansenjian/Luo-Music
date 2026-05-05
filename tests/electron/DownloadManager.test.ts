@@ -63,4 +63,20 @@ describe('electron/DownloadManager', () => {
     expect(sessionRemoveListener).toHaveBeenCalledTimes(1)
     expect(ipcMainRemoveListener).toHaveBeenCalledTimes(1)
   })
+
+  it('clears the window reference even when listeners were not initialized', async () => {
+    const { DownloadManager } = await import('../../electron/DownloadManager')
+    const manager = new DownloadManager()
+    const window = {
+      webContents: {
+        downloadURL: vi.fn()
+      }
+    }
+
+    manager.setWindow(window as never)
+    manager.dispose()
+    manager.download('https://example.test/song.mp3')
+
+    expect(window.webContents.downloadURL).not.toHaveBeenCalled()
+  })
 })

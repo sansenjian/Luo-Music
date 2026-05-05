@@ -1,20 +1,30 @@
+import type { WebLyricAppearance } from '@/types/player'
+
+import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import {
+  DEFAULT_WEB_LYRIC_APPEARANCE,
+  sanitizeWebLyricAppearance
+} from '@/utils/player/webLyricAppearance'
+
 export const PLAYER_STORAGE_KEY = 'player'
-export const COMPACT_MODE_PREFERENCE_KEY = 'compactModeUserToggled'
+export const PLAYER_DOCKED_PREFERENCE_KEY = 'playerDockedUserToggled'
+export const LEGACY_COMPACT_MODE_PREFERENCE_KEY = 'compactModeUserToggled'
 
 export type PersistedPlayerState = {
   volume: number
   playMode: number
   lyricType: string[]
-  isCompact: boolean
+  webLyricAppearance: WebLyricAppearance
+  isPlayerDocked: boolean
+  isCompact?: boolean
 }
-
-import { PLAY_MODE } from '../player/constants/playMode'
 
 const DEFAULT_PLAYER_STATE: PersistedPlayerState = {
   volume: 0.7,
   playMode: PLAY_MODE.SEQUENTIAL,
   lyricType: ['original', 'trans'],
-  isCompact: false
+  webLyricAppearance: { ...DEFAULT_WEB_LYRIC_APPEARANCE },
+  isPlayerDocked: true
 }
 
 const VALID_LYRIC_TYPES = new Set(['original', 'trans', 'roma'])
@@ -80,8 +90,8 @@ function sanitizeLyricType(value: unknown): string[] {
   return sanitized.length > 0 ? [...new Set(sanitized)] : [...DEFAULT_PLAYER_STATE.lyricType]
 }
 
-function sanitizeIsCompact(value: unknown): boolean {
-  return typeof value === 'boolean' ? value : DEFAULT_PLAYER_STATE.isCompact
+function sanitizeIsPlayerDocked(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : DEFAULT_PLAYER_STATE.isPlayerDocked
 }
 
 export function sanitizePersistedPlayerState(value: unknown): PersistedPlayerState {
@@ -95,7 +105,10 @@ export function sanitizePersistedPlayerState(value: unknown): PersistedPlayerSta
     volume: sanitizeVolume(record.volume as unknown),
     playMode: sanitizePlayMode(record.playMode as unknown),
     lyricType: sanitizeLyricType(record.lyricType as unknown),
-    isCompact: sanitizeIsCompact(record.isCompact as unknown)
+    webLyricAppearance: sanitizeWebLyricAppearance(record.webLyricAppearance),
+    isPlayerDocked: sanitizeIsPlayerDocked(
+      record.isPlayerDocked ?? (record as { isCompact?: unknown }).isCompact
+    )
   }
 }
 
@@ -115,10 +128,13 @@ export function normalizePersistedPlayerState(): void {
   }
 }
 
-export function markCompactModeUserToggled(): void {
-  persistentStorage.setItem(COMPACT_MODE_PREFERENCE_KEY, 'true')
+export function markPlayerDockedUserToggled(): void {
+  persistentStorage.setItem(PLAYER_DOCKED_PREFERENCE_KEY, 'true')
 }
 
-export function hasCompactModeUserToggled(): boolean {
-  return persistentStorage.getItem(COMPACT_MODE_PREFERENCE_KEY) !== null
+export function hasPlayerDockedUserToggled(): boolean {
+  return (
+    persistentStorage.getItem(PLAYER_DOCKED_PREFERENCE_KEY) !== null ||
+    persistentStorage.getItem(LEGACY_COMPACT_MODE_PREFERENCE_KEY) !== null
+  )
 }

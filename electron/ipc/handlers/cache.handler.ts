@@ -2,10 +2,10 @@
  * 缓存管理 IPC 处理器
  */
 
-import { INVOKE_CHANNELS } from '../../shared/protocol/channels.ts'
+import { INVOKE_CHANNELS } from '@/platform/contracts/protocol/channels'
 import { ipcService } from '../IpcService'
 import { cacheManager } from '../../cacheManager.ts'
-import type { CacheClearOptions, CacheClearResult } from '../types'
+import type { CacheClearOptions, CacheClearResult } from '@/platform/contracts/ipc'
 
 // 将内部 CacheClearResult 转换为 IPC CacheClearResult
 function convertCacheClearResult(result: {

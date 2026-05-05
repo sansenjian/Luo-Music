@@ -61,10 +61,10 @@ export const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
     action: 'seekBack'
   },
   {
-    id: 'compactMode',
-    name: '切换紧凑模式',
-    keys: ['Escape'],
-    globalKeys: [], // ESC 不注册为全局
-    action: 'toggleCompact'
+    id: 'playerDocked',
+    name: '切换底栏播放器',
+    keys: ['Tab'],
+    globalKeys: [], // Tab 不注册为全局
+    action: 'togglePlayerDocked'
   }
 ]

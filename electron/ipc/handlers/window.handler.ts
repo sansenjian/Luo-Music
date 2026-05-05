@@ -3,7 +3,7 @@
  */
 
 import { screen } from 'electron'
-import { INVOKE_CHANNELS, SEND_CHANNELS } from '../../shared/protocol/channels.ts'
+import { INVOKE_CHANNELS, SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
 import { ipcService } from '../IpcService'
 import type { WindowManager } from '../../WindowManager'
 
@@ -15,6 +15,15 @@ export function registerWindowHandlers(windowManager: WindowManager): void {
     }
     const [width, height] = win.getSize()
     return Promise.resolve({ width, height })
+  })
+
+  ipcService.registerInvoke(INVOKE_CHANNELS.WINDOW_GET_BOUNDS, async () => {
+    const bounds = windowManager.getBounds()
+    if (!bounds) {
+      throw new Error('No window available')
+    }
+
+    return Promise.resolve(bounds)
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.WINDOW_IS_MAXIMIZED, async () => {
@@ -79,6 +88,17 @@ export function registerWindowHandlers(windowManager: WindowManager): void {
       const validHeight = Math.max(80, Math.min(height, maxHeight))
 
       win.setSize(validWidth, validHeight)
+    }
+  )
+
+  ipcService.registerSend(
+    SEND_CHANNELS.WINDOW_SET_BOUNDS,
+    ({ x, y, width, height }: { x: number; y: number; width: number; height: number }) => {
+      if (![x, y, width, height].every(value => Number.isFinite(value))) {
+        return
+      }
+
+      windowManager.setBounds({ x, y, width, height })
     }
   )
 }

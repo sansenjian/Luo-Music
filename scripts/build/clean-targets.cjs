@@ -4,6 +4,7 @@ const { execFileSync } = require('node:child_process')
 
 const projectRoot = path.resolve(__dirname, '..', '..')
 const WINDOWS_LOCKING_PROCESS_NAMES = new Set(['electron.exe', 'luo music.exe'])
+const WINDOWS_PROCESS_QUERY_SHELLS = ['pwsh.exe', 'powershell.exe']
 
 function setTimeoutSync(ms) {
   const start = Date.now()
@@ -57,6 +58,46 @@ function parseWindowsProcessList(rawOutput) {
   return Array.isArray(parsed) ? parsed : [parsed]
 }
 
+function buildWindowsProcessQueryScripts() {
+  return [
+    [
+      "$targetNames = @('electron', 'LUO Music')",
+      'Get-Process -ErrorAction SilentlyContinue',
+      '  | Where-Object { $targetNames -contains $_.ProcessName }',
+      "  | Select-Object @{Name='ProcessId';Expression={$_.Id}}, @{Name='Name';Expression={\"$($_.ProcessName).exe\"}}, @{Name='CommandLine';Expression={$null}}, @{Name='ExecutablePath';Expression={$_.Path}}",
+      '  | ConvertTo-Json -Compress'
+    ].join('\n'),
+    [
+      "$targetNames = @('electron.exe', 'LUO Music.exe')",
+      'Get-CimInstance Win32_Process',
+      '  | Where-Object { $targetNames -contains $_.Name }',
+      '  | Select-Object ProcessId, Name, CommandLine, ExecutablePath',
+      '  | ConvertTo-Json -Compress'
+    ].join('\n')
+  ]
+}
+
+function runWindowsProcessQuery(script) {
+  let lastError = null
+
+  for (const shellExecutable of WINDOWS_PROCESS_QUERY_SHELLS) {
+    try {
+      return execFileSync(shellExecutable, ['-NoProfile', '-Command', script], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      })
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  if (lastError) {
+    throw lastError
+  }
+
+  return ''
+}
+
 function isProjectScopedWindowsProcess(processInfo, projectRootPath = projectRoot) {
   if (!processInfo || typeof processInfo !== 'object') {
     return false
@@ -75,29 +116,29 @@ function isProjectScopedWindowsProcess(processInfo, projectRootPath = projectRoo
 }
 
 function getProjectScopedWindowsProcesses() {
-  const powershellScript = [
-    "$targetNames = @('electron.exe', 'LUO Music.exe')",
-    'Get-CimInstance Win32_Process',
-    '  | Where-Object { $targetNames -contains $_.Name }',
-    '  | Select-Object ProcessId, Name, CommandLine, ExecutablePath',
-    '  | ConvertTo-Json -Compress'
-  ].join('\n')
+  const errors = []
 
-  try {
-    const output = execFileSync('powershell.exe', ['-NoProfile', '-Command', powershellScript], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore']
-    })
+  for (const script of buildWindowsProcessQueryScripts()) {
+    try {
+      const output = runWindowsProcessQuery(script)
+      const processes = parseWindowsProcessList(output).filter(processInfo =>
+        isProjectScopedWindowsProcess(processInfo)
+      )
 
-    return parseWindowsProcessList(output).filter(processInfo =>
-      isProjectScopedWindowsProcess(processInfo)
-    )
-  } catch (error) {
-    console.warn(
-      `  ⚠ 无法枚举占用进程: ${error instanceof Error ? error.message : String(error)}`
-    )
-    return []
+      return processes
+    } catch (error) {
+      errors.push(error)
+    }
   }
+
+  if (errors.length > 0) {
+    const lastError = errors[errors.length - 1]
+    console.warn(
+      `  ⚠ 无法枚举占用进程: ${lastError instanceof Error ? lastError.message : String(lastError)}`
+    )
+  }
+
+  return []
 }
 
 function isPathInsideProject(absolutePath) {

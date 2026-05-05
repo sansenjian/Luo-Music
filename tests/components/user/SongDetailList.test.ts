@@ -70,6 +70,26 @@ describe('SongDetailList', () => {
     expect(cover.attributes('src')).toBe('album-cover.jpg')
   })
 
+  it('renders incomplete song objects without requiring album metadata', () => {
+    expect(() =>
+      mount(SongDetailList, {
+        props: {
+          songs: [
+            {
+              id: 'song-1',
+              name: 'Song 1',
+              artists: [{ id: 'artist-1', name: 'Artist 1' }],
+              duration: 180000,
+              mvid: 0,
+              platform: 'netease',
+              originalId: 'song-1'
+            } as any
+          ]
+        }
+      })
+    ).not.toThrow()
+  })
+
   it('virtualizes large song lists instead of rendering every detail row at once', async () => {
     const resizeObserverMock = installResizeObserverMock()
     const wrapper = mount(SongDetailList, {
@@ -100,5 +120,131 @@ describe('SongDetailList', () => {
     expect(items.length).toBeLessThan(200)
 
     wrapper.unmount()
+  })
+
+  it('renders a static list when virtualization is explicitly disabled', () => {
+    const wrapper = mount(SongDetailList, {
+      props: {
+        disableVirtualization: true,
+        songs: Array.from({ length: 200 }, (_, index) =>
+          createMockSong({
+            id: `song-${index + 1}`,
+            name: `Song ${index + 1}`
+          })
+        )
+      }
+    })
+
+    expect(wrapper.find('.detail-list-virtualized').exists()).toBe(false)
+    expect(wrapper.find('.detail-list-static').exists()).toBe(true)
+    expect(wrapper.findAll('.detail-song')).toHaveLength(200)
+  })
+
+  it('emits context menu details for the selected row', async () => {
+    const song = createMockSong({
+      id: 'local:track-1',
+      name: 'Local Song',
+      originalId: 'local:track-1',
+      platform: 'local',
+      extra: {
+        localSource: true
+      }
+    })
+    const wrapper = mount(SongDetailList, {
+      props: {
+        disableVirtualization: true,
+        songs: [song]
+      }
+    })
+
+    await wrapper.get('.detail-song').trigger('contextmenu', {
+      clientX: 42,
+      clientY: 64
+    })
+
+    expect(wrapper.emitted('song-context-menu')?.[0]).toEqual([
+      {
+        clientX: 42,
+        clientY: 64,
+        index: 0,
+        song
+      }
+    ])
+  })
+
+  it('progressively renders more songs when the outer scroll container advances', async () => {
+    const resizeObserverMock = installResizeObserverMock()
+    const scrollContainer = document.createElement('div')
+    scrollContainer.style.overflowY = 'auto'
+    document.body.appendChild(scrollContainer)
+
+    Object.defineProperty(scrollContainer, 'clientHeight', {
+      configurable: true,
+      value: 400
+    })
+    Object.defineProperty(scrollContainer, 'scrollTop', {
+      configurable: true,
+      writable: true,
+      value: 0
+    })
+
+    const wrapper = mount(SongDetailList, {
+      attachTo: scrollContainer,
+      props: {
+        progressiveRender: true,
+        songs: Array.from({ length: 120 }, (_, index) =>
+          createMockSong({
+            id: `song-${index + 1}`,
+            name: `Song ${index + 1}`
+          })
+        )
+      }
+    })
+
+    const rootElement = wrapper.get('.song-detail-list').element as HTMLElement
+    Object.defineProperty(rootElement, 'clientHeight', {
+      configurable: true,
+      value: 400
+    })
+
+    vi.spyOn(scrollContainer, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 400,
+      bottom: 400,
+      width: 400,
+      height: 400,
+      toJSON: () => ({})
+    } as DOMRect)
+    vi.spyOn(rootElement, 'getBoundingClientRect').mockImplementation(
+      () =>
+        ({
+          x: 0,
+          y: -scrollContainer.scrollTop,
+          top: -scrollContainer.scrollTop,
+          left: 0,
+          right: 400,
+          bottom: 400 - scrollContainer.scrollTop,
+          width: 400,
+          height: 400,
+          toJSON: () => ({})
+        }) as DOMRect
+    )
+
+    resizeObserverMock.trigger(scrollContainer)
+    await nextTick()
+    await nextTick()
+
+    expect(wrapper.find('.detail-list-virtualized').exists()).toBe(false)
+    expect(wrapper.findAll('.detail-song')).toHaveLength(50)
+
+    scrollContainer.scrollTop = 2500
+    scrollContainer.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    await nextTick()
+
+    expect(wrapper.findAll('.detail-song')).toHaveLength(100)
   })
 })

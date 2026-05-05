@@ -1,14 +1,17 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
-import type { Song } from '../platform/music/interface'
-import { services } from '../services'
-import type { ErrorService } from '../services/errorService'
-import type { LoggerService } from '../services/loggerService'
-import type { MusicService } from '../services/musicService'
-import { storageAdapter } from '../services/storageService'
-import { isCanceledRequestError } from '../utils/http/cancelError'
-import { createLatestRequestController } from '../utils/http/requestScope'
+import { getDefaultSearchPlatformId, getSearchPlatformOptions } from '@/platform/music'
+import type { Song } from '@/platform/music/interface'
+import { services } from '@/services'
+import type { LoggerService } from '@/services/loggerService'
+import type { MusicService } from '@/services/musicService'
+import type { PlatformService } from '@/services/platformService'
+import { storageAdapter } from '@/services/storageService'
+import type { LocalLibraryTrack } from '@/types/localLibrary'
+import { handleApiError } from '@/utils/error/legacy'
+import { isCanceledRequestError } from '@/utils/http/cancelError'
+import { createLatestRequestController } from '@/utils/http/requestScope'
 import { usePlayerStore } from './playerStore'
 import { usePlaylistStore } from './playlistStore'
 
@@ -22,13 +25,18 @@ export interface SearchResultItem {
   url: null
   platform: string
   duration: number
+  /** Preserved original Song to avoid double-conversion when playing */
+  _song?: Song
   [key: string]: unknown
 }
 
 const SEARCH_PAGE_SIZE = 50
 const MAX_SEARCH_PAGES = 100
+const PARALLEL_PAGE_BATCH = 3
 
 export function searchResultItemToSong(item: SearchResultItem): Song {
+  if (item._song) return item._song
+
   const { id, name, artist, album, pic, cover, url, platform, duration, ...extraFields } = item
 
   return {
@@ -59,7 +67,8 @@ function normalizeSearchResults(songs: Song[]): SearchResultItem[] {
       cover: song.album.picUrl || '',
       url: null,
       platform: song.platform,
-      duration: Math.floor(song.duration / 1000)
+      duration: Math.floor(song.duration / 1000),
+      _song: song
     }
 
     if (song.extra) {
@@ -72,8 +81,8 @@ function normalizeSearchResults(songs: Song[]): SearchResultItem[] {
 
 export type SearchStoreDeps = {
   logger?: Pick<LoggerService, 'info' | 'debug' | 'warn' | 'error'>
-  errorService?: Pick<ErrorService, 'handleApiError'>
   musicService?: Pick<MusicService, 'search'>
+  platformService?: PlatformService
   getPlayerStore?: typeof usePlayerStore
   getPlaylistStore?: typeof usePlaylistStore
   createRequestController?: typeof createLatestRequestController
@@ -86,12 +95,43 @@ export type SearchStoreOptions = {
 function getDefaultSearchStoreDeps(): Required<SearchStoreDeps> {
   return {
     logger: services.logger(),
-    errorService: services.error(),
     musicService: services.music(),
+    platformService: services.platform(),
     getPlayerStore: usePlayerStore,
     getPlaylistStore: usePlaylistStore,
     createRequestController: createLatestRequestController
   }
+}
+
+function resolveSearchPlatformId(serverId?: string): string {
+  const searchPlatformOptions = getSearchPlatformOptions()
+
+  if (serverId && searchPlatformOptions.some(option => option.value === serverId)) {
+    return serverId
+  }
+
+  return searchPlatformOptions[0]?.value ?? getDefaultSearchPlatformId()
+}
+
+function localTrackToSearchResult(track: LocalLibraryTrack): SearchResultItem {
+  const item: SearchResultItem = {
+    id: track.song.id,
+    name: track.song.name,
+    artist: track.song.artists.map(a => a.name).join(' / '),
+    album: track.song.album.name || '',
+    pic: track.song.album.picUrl || '',
+    cover: track.song.album.picUrl || '',
+    url: null,
+    platform: 'local',
+    duration: Math.floor(track.duration / 1000),
+    _song: track.song
+  }
+
+  if (track.song.extra) {
+    Object.assign(item, track.song.extra)
+  }
+
+  return item
 }
 
 export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchStoreOptions = {}) {
@@ -101,8 +141,8 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
     () => {
       const {
         logger,
-        errorService,
         musicService,
+        platformService,
         getPlayerStore,
         getPlaylistStore,
         createRequestController
@@ -112,20 +152,48 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
       }
       const keyword = ref('')
       const results = ref<SearchResultItem[]>([])
-      const server = ref('netease')
+      const server = ref(resolveSearchPlatformId())
       const isLoading = ref(false)
       const error = ref<string | null>(null)
       const totalResults = ref(0)
       const hasResults = computed(() => results.value.length > 0)
       const activeSearch = createRequestController()
 
+      watch(
+        server,
+        serverId => {
+          const resolvedServerId = resolveSearchPlatformId(serverId)
+
+          if (resolvedServerId !== serverId) {
+            logger.warn('searchStore', 'Reset invalid search platform', {
+              requestedServerId: serverId,
+              resolvedServerId
+            })
+            server.value = resolvedServerId
+          }
+        },
+        { immediate: true }
+      )
+
       function setServer(serverId: string) {
-        server.value = serverId
-        logger.info('searchStore', 'Server changed', { serverId })
+        const resolvedServerId = resolveSearchPlatformId(serverId)
+
+        if (resolvedServerId !== serverId) {
+          logger.warn('searchStore', 'Requested unsupported search platform', {
+            requestedServerId: serverId,
+            resolvedServerId
+          })
+        }
+
+        server.value = resolvedServerId
+        logger.info('searchStore', 'Server changed', {
+          serverId: resolvedServerId,
+          requestedServerId: serverId
+        })
       }
 
       function formatError(err: unknown): string {
-        const appError = errorService.handleApiError(err)
+        const appError = handleApiError(err)
         return appError.message
       }
 
@@ -142,16 +210,56 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
         isLoading.value = true
         error.value = null
 
+        const activeServer = resolveSearchPlatformId(server.value)
+        if (activeServer !== server.value) {
+          server.value = activeServer
+        }
+
         logger.info('searchStore', 'Starting search', {
           keyword: trimmedKeyword,
-          server: server.value
+          server: activeServer
         })
+
+        if (activeServer === 'local') {
+          try {
+            const page = await task.guard(
+              platformService.getLocalLibraryTracks({ search: trimmedKeyword })
+            )
+
+            const items = page.items.map(localTrackToSearchResult)
+
+            task.commit(() => {
+              results.value = items
+              totalResults.value = page.total
+              isLoading.value = false
+            })
+
+            if (items.length === 0) {
+              error.value = '没有找到匹配的本地音乐'
+            }
+          } catch (err: unknown) {
+            if (isCanceledRequestError(err)) return
+
+            const errorMessage = formatError(err)
+            logger.error('searchStore', 'Local search error', { errorMessage, err })
+
+            task.commit(() => {
+              error.value = errorMessage
+              results.value = []
+              totalResults.value = 0
+              isLoading.value = false
+            })
+
+            throw new Error(errorMessage, { cause: err })
+          }
+          return
+        }
 
         let hasCommittedCurrentSearchResults = false
 
         try {
           const firstPage = await task.guard(
-            musicService.search(server.value, trimmedKeyword, SEARCH_PAGE_SIZE, 1)
+            musicService.search(activeServer, trimmedKeyword, SEARCH_PAGE_SIZE, 1)
           )
 
           logger.debug('searchStore', 'Search result page', {
@@ -186,73 +294,78 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
             })
           })
 
+          // Load remaining pages in parallel batches
           let loadedCount = firstPage.list.length
           let nextPage = 2
           let total = initialTotal
-          let unknownTotal = total === undefined
+          let shouldContinue = total === undefined || loadedCount < (total ?? 0)
 
-          while (unknownTotal || (total !== undefined && loadedCount < total)) {
+          while (shouldContinue && nextPage <= MAX_SEARCH_PAGES) {
+            const remaining = total !== undefined ? total - loadedCount : SEARCH_PAGE_SIZE
+            const pagesNeeded = Math.ceil(remaining / SEARCH_PAGE_SIZE)
+            const batchSize = Math.min(pagesNeeded, PARALLEL_PAGE_BATCH)
+
+            const batchPromises = Array.from({ length: batchSize }, (_, i) =>
+              task
+                .guard(
+                  musicService.search(activeServer, trimmedKeyword, SEARCH_PAGE_SIZE, nextPage + i)
+                )
+                .then(result => ({ result, page: nextPage + i }))
+            )
+
+            const batchResults = await Promise.all(batchPromises)
+
+            let hasEmptyPage = false
+            for (const entry of batchResults) {
+              if (!entry?.result) continue
+              const { result: pageResult } = entry
+
+              if (!pageResult?.list || !Array.isArray(pageResult.list)) continue
+
+              if (typeof pageResult.total === 'number' && pageResult.total > 0) {
+                total = Math.max(total ?? 0, pageResult.total)
+              }
+
+              if (pageResult.list.length === 0) {
+                hasEmptyPage = true
+                continue
+              }
+
+              const nextItems = normalizeSearchResults(pageResult.list)
+              loadedCount += pageResult.list.length
+
+              task.commit(() => {
+                totalResults.value = total ?? loadedCount
+                results.value = [...results.value, ...nextItems]
+                hasCommittedCurrentSearchResults = true
+              })
+
+              if (pageResult.list.length < SEARCH_PAGE_SIZE) {
+                hasEmptyPage = true
+              }
+            }
+
+            if (hasEmptyPage) break
+
+            nextPage += batchSize
+
             if (nextPage > MAX_SEARCH_PAGES) {
-              unknownTotal = false
               logger.warn('searchStore', 'Search paging stopped at safety limit', {
                 keyword: trimmedKeyword,
-                server: server.value,
+                server: activeServer,
                 loadedCount,
                 total,
                 pageLimit: MAX_SEARCH_PAGES
               })
-              break
             }
 
-            const pageResult = await task.guard(
-              musicService.search(server.value, trimmedKeyword, SEARCH_PAGE_SIZE, nextPage)
-            )
-
-            logger.debug('searchStore', 'Search result page', {
-              page: nextPage,
-              response: pageResult
-            })
-
-            if (!pageResult?.list || !Array.isArray(pageResult.list)) {
-              throw new Error('Invalid search result payload')
-            }
-
-            if (typeof pageResult.total === 'number' && pageResult.total > 0) {
-              total = Math.max(total ?? 0, pageResult.total)
-              unknownTotal = false
-            }
-
-            if (pageResult.list.length === 0) {
-              unknownTotal = false
-              break
-            }
-
-            const nextItems = normalizeSearchResults(pageResult.list)
-            loadedCount += pageResult.list.length
-
-            if (pageResult.list.length < SEARCH_PAGE_SIZE) {
-              unknownTotal = false
-            }
-
-            task.commit(() => {
-              totalResults.value = total ?? loadedCount
-              results.value = [...results.value, ...nextItems]
-              hasCommittedCurrentSearchResults = true
-
-              logger.info('searchStore', 'Search page appended', {
-                page: nextPage,
-                count: results.value.length,
-                total: totalResults.value
-              })
-            })
-
-            nextPage += 1
+            shouldContinue = total === undefined || loadedCount < (total ?? 0)
           }
         } catch (err: unknown) {
           if (isCanceledRequestError(err)) {
             logger.debug('searchStore', 'Search canceled', {
               keyword: trimmedKeyword,
-              server: server.value
+              server: activeServer
             })
             return
           }

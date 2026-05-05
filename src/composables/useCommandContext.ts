@@ -1,9 +1,9 @@
 import { watchEffect } from 'vue'
-import { CONTEXT_KEYS } from '../core/context/contextKeys'
-import { services } from '../services'
-import type { ContextKeyService } from '../services/contextKeyService'
-import type { PlatformService } from '../services/platformService'
-import { usePlayerStore } from '../store/playerStore'
+import { CONTEXT_KEYS } from '@/core/context/contextKeys'
+import { services } from '@/services'
+import type { ContextKeyService } from '@/services/contextKeyService'
+import type { PlatformService } from '@/services/platformService'
+import { usePlayerStore } from '@/store/playerStore'
 
 export type CommandContextDeps = {
   contextService?: Pick<ContextKeyService, 'setContext'>

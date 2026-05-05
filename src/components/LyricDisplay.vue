@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 
-import { useActiveLyricState } from '../composables/useActiveLyricState'
-import { useLyricAutoScroll } from '../composables/useLyricAutoScroll'
-import { usePlayerStore } from '../store/playerStore'
-import type { LyricLine } from '../utils/player/core/lyric'
+import HomeEmptyState from './home/HomeEmptyState.vue'
+import { uiMessages } from '@/messages/ui'
+import { useActiveLyricState } from '@/composables/useActiveLyricState'
+import { useLyricAutoScroll } from '@/composables/useLyricAutoScroll'
+import { useLyricVirtualScroll } from '@/composables/useLyricVirtualScroll'
+import { usePlayerStore } from '@/store/playerStore'
+import { resolveLyricDisplayLine } from '@/utils/player/lyric-display'
+
+const VIRTUALIZE_THRESHOLD = 50
 
 const props = defineProps({
   active: {
@@ -14,22 +19,86 @@ const props = defineProps({
 })
 
 const playerStore = usePlayerStore()
-const lyricScrollArea = ref(null)
+const lyricScrollArea = ref<HTMLElement | null>(null)
+const lineContainer = ref<HTMLElement | null>(null)
 const { lyrics, currentLyricIndex, showOriginal, showTrans, showRoma } = useActiveLyricState()
+
+const resolvedLyrics = computed(() =>
+  lyrics.value.map(item =>
+    resolveLyricDisplayLine(item, {
+      showOriginal: showOriginal.value,
+      showTrans: showTrans.value,
+      showRoma: showRoma.value
+    })
+  )
+)
+
+const shouldVirtualize = computed(() => resolvedLyrics.value.length > VIRTUALIZE_THRESHOLD)
+const lyricCount = computed(() => resolvedLyrics.value.length)
+
+const virtualScroll = useLyricVirtualScroll({
+  scrollArea: lyricScrollArea,
+  itemCount: lyricCount
+})
+
+const visibleLyrics = computed(() => {
+  if (!shouldVirtualize.value) {
+    return resolvedLyrics.value.map((item, index) => ({ item, index }))
+  }
+  const start = virtualScroll.startIndex.value
+  const end = virtualScroll.endIndex.value
+  return resolvedLyrics.value.slice(start, end).map((item, offset) => ({
+    item,
+    index: start + offset
+  }))
+})
+
+// Re-measure lines when visibility toggles change (line heights change)
+watch([showOriginal, showTrans, showRoma], () => {
+  virtualScroll.clearCache()
+  virtualScroll.updateScrollState()
+  void nextTick(() => measureVisibleLines())
+})
+
+// Pin the active line so it's always rendered (needed for auto-scroll
+// to find it via querySelector).
+watch(
+  currentLyricIndex,
+  idx => {
+    if (shouldVirtualize.value) {
+      virtualScroll.pinActiveIndex(idx)
+    }
+  },
+  { immediate: true }
+)
+
+// Re-measure when the visible range changes
+watch([virtualScroll.startIndex, virtualScroll.endIndex], () => {
+  void nextTick(() => measureVisibleLines())
+})
+
+function measureVisibleLines() {
+  if (!lineContainer.value || !shouldVirtualize.value) return
+  const children = lineContainer.value.children
+  for (let i = 0; i < children.length; i++) {
+    const el = children[i]
+    if (el instanceof HTMLElement) {
+      virtualScroll.measureLineEl(el)
+    }
+  }
+}
 
 function handleLyricClick(time: number) {
   playerStore.seek(time)
 }
 
-function shouldShowOriginalLine(item: LyricLine) {
-  if (showOriginal.value) {
-    return true
+function handleLyricKeydown(event: KeyboardEvent, time: number) {
+  if (event.key !== 'Enter' && event.key !== ' ') {
+    return
   }
 
-  const hasVisibleTrans = showTrans.value && Boolean(item.trans)
-  const hasVisibleRoma = showRoma.value && Boolean(item.roma)
-
-  return !hasVisibleTrans && !hasVisibleRoma
+  event.preventDefault()
+  handleLyricClick(time)
 }
 
 const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
@@ -43,39 +112,86 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 </script>
 
 <template>
-  <div class="lyric">
-    <div v-if="lyrics.length === 0" class="empty-state">
-      <div class="empty-icon">LRC</div>
-      <div>Search and play a track to view lyrics</div>
-    </div>
+  <div class="lyric" data-ui="lyrics" :class="{ 'is-player-docked': playerStore.isPlayerDocked }">
+    <HomeEmptyState
+      v-if="lyrics.length === 0"
+      :visual="uiMessages.home.emptyState.lyric.visual"
+      :title="uiMessages.home.emptyState.lyric.title"
+      :description="uiMessages.home.emptyState.lyric.description"
+    />
 
     <div
       v-else
       ref="lyricScrollArea"
       class="lyrics-wrapper"
+      data-ui="lyrics-scroll"
       @scroll="handleScroll"
       @wheel.passive="handleUserScrollStart"
       @touchstart.passive="handleUserScrollStart"
     >
-      <div class="lyrics-list">
+      <!-- Virtualized mode -->
+      <div
+        v-if="shouldVirtualize"
+        ref="lineContainer"
+        class="lyrics-list lyrics-list-virtual"
+        data-ui="lyrics-list"
+        :style="{
+          paddingTop: virtualScroll.paddingTop.value + 'px',
+          paddingBottom: virtualScroll.paddingBottom.value + 'px'
+        }"
+      >
         <div
-          v-for="(item, index) in lyrics"
+          v-for="{ item, index } in visibleLyrics"
           :key="`${item.time}-${index}`"
+          :data-li="index"
           class="lyric-line"
+          data-ui="lyric-line"
+          role="button"
+          tabindex="0"
           :aria-current="index === currentLyricIndex ? 'true' : undefined"
           :class="{
             active: index === currentLyricIndex,
             passed: index < currentLyricIndex
           }"
           @click="handleLyricClick(item.time)"
+          @keydown="handleLyricKeydown($event, item.time)"
         >
-          <div v-if="item.roma && showRoma" class="lyric-roma">
+          <div v-if="item.showRoma" class="lyric-roma">
             {{ item.roma }}
           </div>
-          <div v-if="shouldShowOriginalLine(item)" class="lyric-main">
-            {{ item.text }}
+          <div v-if="item.showOriginal" class="lyric-main">
+            {{ item.original }}
           </div>
-          <div v-if="item.trans && showTrans" class="lyric-trans">
+          <div v-if="item.showTrans" class="lyric-trans">
+            {{ item.trans }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Non-virtualized mode (short lyrics) -->
+      <div v-else class="lyrics-list" data-ui="lyrics-list">
+        <div
+          v-for="(item, index) in resolvedLyrics"
+          :key="`${item.time}-${index}`"
+          class="lyric-line"
+          data-ui="lyric-line"
+          role="button"
+          tabindex="0"
+          :aria-current="index === currentLyricIndex ? 'true' : undefined"
+          :class="{
+            active: index === currentLyricIndex,
+            passed: index < currentLyricIndex
+          }"
+          @click="handleLyricClick(item.time)"
+          @keydown="handleLyricKeydown($event, item.time)"
+        >
+          <div v-if="item.showRoma" class="lyric-roma">
+            {{ item.roma }}
+          </div>
+          <div v-if="item.showOriginal" class="lyric-main">
+            {{ item.original }}
+          </div>
+          <div v-if="item.showTrans" class="lyric-trans">
             {{ item.trans }}
           </div>
         </div>
@@ -88,25 +204,8 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 .lyric {
   height: 100%;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--ui-panel-bg);
   position: relative;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 80px 40px;
-  color: var(--gray);
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.empty-icon {
-  font-size: 32px;
-  margin-bottom: 12px;
-  letter-spacing: 0.12em;
-  opacity: 0.3;
 }
 
 .lyrics-wrapper {
@@ -134,56 +233,69 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
   padding: 50vh 40px;
 }
 
-:global(.player-compact) .lyric-line {
+.lyrics-list-virtual {
+  /* Virtual mode uses dynamic padding instead of fixed top padding.
+     The bottom half of the viewport is the initial scroll anchor. */
+  padding-left: 40px;
+  padding-right: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.lyric.is-player-docked .lyric-line {
   margin-bottom: 12px;
   padding: 6px 10px;
 }
 
-:global(.player-compact) .lyric-main {
+.lyric.is-player-docked .lyric-main {
   font-size: 16px;
 }
 
-:global(.player-compact) .lyric-trans,
-:global(.player-compact) .lyric-roma {
+.lyric.is-player-docked .lyric-trans,
+.lyric.is-player-docked .lyric-roma {
   font-size: 11px;
 }
 
 .lyric-line {
-  margin-bottom: 16px;
+  margin-bottom: var(--lyric-line-gap, 16px);
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-  padding: 8px 12px;
-  border-left: 3px solid transparent;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+  padding: var(--lyric-line-padding, 8px 12px);
+  border-left: var(--lyric-active-border-width, 3px) solid transparent;
+  border-radius: var(--lyric-line-radius, var(--ui-radius-md));
   position: relative;
 }
 
 .lyric-line:hover,
 .lyric-line:active {
   opacity: 0.8;
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--ui-hover-bg);
 }
 
 .lyric-line.active {
-  background: var(--black);
-  color: var(--white);
-  border-left-color: var(--accent);
+  background: var(--lyric-active-bg, var(--ui-primary-bg));
+  color: var(--lyric-active-text, var(--ui-primary-text));
+  border-left-color: var(--lyric-active-border-color, var(--accent));
   opacity: 1 !important;
-  font-weight: 700;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+  font-weight: var(--lyric-active-weight, 700);
+  box-shadow: var(--lyric-active-shadow, var(--ui-primary-shadow));
 }
 
 .lyric-line.active .lyric-main {
-  color: var(--white);
+  color: var(--lyric-active-main-text, var(--white));
 }
 
 .lyric-line.active .lyric-roma,
 .lyric-line.active .lyric-trans {
-  color: var(--gray-light);
-  opacity: 0.9;
+  color: var(--lyric-active-sub-text, var(--gray-light));
+  opacity: var(--lyric-active-sub-opacity, 0.9);
 }
 
 .lyric-line.passed {
-  opacity: 0.15;
+  opacity: var(--lyric-passed-opacity, 0.15);
 }
 
 .lyric-line.passed:hover,
@@ -193,36 +305,40 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 
 /* 未播放的歌词行 - 不包括 active 和 passed */
 .lyric-line:not(.active):not(.passed) {
-  opacity: 0.5;
+  opacity: var(--lyric-idle-opacity, 0.5);
 }
 
 .lyric-roma {
-  font-size: 12px;
-  color: var(--gray);
+  font-size: var(--lyric-roma-size, 12px);
+  color: var(--lyric-roma-text, var(--gray));
   letter-spacing: 0.02em;
   margin-bottom: 4px;
 }
 
 .lyric-main {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--lyric-main-size, 18px);
+  font-weight: var(--lyric-main-weight, 600);
   line-height: 1.4;
   transition: color 0.2s ease;
   word-break: break-word;
 }
 
 .lyric-trans {
-  font-size: 13px;
-  color: var(--gray);
+  font-size: var(--lyric-trans-size, 13px);
+  color: var(--lyric-trans-text, var(--gray));
   line-height: 1.4;
   margin-top: 4px;
-  transition: all 0.3s;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease;
   word-break: break-word;
 }
 
 @media (max-width: 900px) {
-  .lyrics-list {
-    padding: 50vh 24px;
+  .lyrics-list,
+  .lyrics-list-virtual {
+    padding-left: 24px;
+    padding-right: 24px;
   }
 
   .lyric-main {
@@ -231,8 +347,10 @@ const { handleScroll, handleUserScrollStart } = useLyricAutoScroll({
 }
 
 @media (max-width: 600px) {
-  .lyrics-list {
-    padding: 50vh 16px;
+  .lyrics-list,
+  .lyrics-list-virtual {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   .lyric-main {

@@ -1,6 +1,6 @@
 # 服务管理架构设计
 
-> **状态**：设计草案（未实现）｜**最后更新**：2026-03-10
+> **状态**：部分已实现｜**最后更新**：2026-04-24
 
 ## 📋 概述
 
@@ -48,9 +48,8 @@
 // settings.json 配置示例
 {
   "services": {
-    "qq": { "enabled": true, "port": 3300 },
-    "netease": { "enabled": false, "port": 3000 },
-    "pythonAI": { "enabled": true, "port": 5000 }
+    "qq": { "enabled": true, "port": 3200 },
+    "netease": { "enabled": true, "port": 14532 }
   },
   "preferences": {
     "theme": "dark",
@@ -59,21 +58,20 @@
 }
 ```
 
-| 配置项              | 说明               | 默认值                       |
-| ------------------- | ------------------ | ---------------------------- |
-| `services.qq`       | QQ 音乐服务配置    | `enabled: true, port: 3300`  |
-| `services.netease`  | 网易云音乐服务配置 | `enabled: false, port: 3000` |
-| `services.pythonAI` | Python AI 服务配置 | `enabled: true, port: 5000`  |
+| 配置项             | 说明               | 默认值                       |
+| ------------------ | ------------------ | ---------------------------- |
+| `services.qq`      | QQ 音乐服务配置    | `enabled: true, port: 3200`  |
+| `services.netease` | 网易云音乐服务配置 | `enabled: true, port: 14532` |
 
 ### 2. ServiceManager 初始化
 
 ServiceManager 负责服务生命周期管理与 IPC 协调：
 
 ```typescript
-// electron/ServiceManager.ts
+// electron/ServiceManager.ts（已实现）
 class ServiceManager {
+  private registry: DefaultServiceRegistry // 服务注册表
   private configMap: Map<string, ServiceConfig> // 配置表
-  private spawnQueue: Array<() => Promise<void>> // 启动队列
   private activeProcs: Map<string, ChildProcess> // 运行中进程
 
   async initialize(config: ServiceConfig): Promise<void>
@@ -158,9 +156,10 @@ ipcMain.handle('api:services', () => serviceManager.getAvailableServices())
 渲染进程通过 Pinia Store 管理服务状态：
 
 ```typescript
-// src/store/serviceStore.ts
+// 注意：当前未使用独立的 serviceStore，服务状态通过 playerStore 和 platformService 获取
+// 以下是设计草案中的 serviceStore 定义
 import { defineStore } from 'pinia'
-import { ipcRenderer } from 'electron'
+import platform from '@/platform'
 
 export interface ServiceStatus {
   enabled: boolean
@@ -176,22 +175,19 @@ export const useServiceStore = defineStore('service', {
 
   actions: {
     async init() {
-      // 应用启动时获取可用服务列表
-      const services = await ipcRenderer.invoke('api:services')
+      // 通过 platformService 获取可用服务列表
+      const services = await platform.invoke('api:services')
       this.availableServices = services
     },
 
     async fetchServiceStatus(serviceId: string) {
-      return await ipcRenderer.invoke('service:status', serviceId)
+      return await platform.invoke('service:status', serviceId)
     },
 
     subscribeServiceUpdates() {
-      ipcRenderer.on(
-        'service:update',
-        (_, update: { serviceId: string; status: ServiceStatus }) => {
-          this.availableServices[update.serviceId] = update.status
-        }
-      )
+      platform.on('service:update', (update: { serviceId: string; status: ServiceStatus }) => {
+        this.availableServices[update.serviceId] = update.status
+      })
     }
   }
 })
@@ -236,7 +232,7 @@ export const useServiceStore = defineStore('service', {
 </template>
 
 <script setup lang="ts">
-import { useServiceStore } from '@/store/serviceStore'
+import { useServiceStore } from '@/store/serviceStore' // 设计草案，尚未落地
 
 const serviceStore = useServiceStore()
 </script>
@@ -283,9 +279,8 @@ const serviceStore = useServiceStore()
 
 ```typescript
 // electron/ServiceManager.ts 伪代码
-import { BaseService } from './services/BaseService'
-import { QQService } from './services/QQService'
-import { NeteaseService } from './services/NeteaseService'
+import { BaseService } from './service/baseService'
+import { MusicServices } from './service/musicServices'
 
 export class ServiceManager {
   private services: Map<string, BaseService>
@@ -298,8 +293,8 @@ export class ServiceManager {
 
   async initialize(): Promise<void> {
     // 1. 注册内置服务
-    this.registerService('qq', new QQService())
-    this.registerService('netease', new NeteaseService())
+    this.registerService('qq', new MusicServices.QQService())
+    this.registerService('netease', new MusicServices.NeteaseService())
 
     // 2. 根据配置启动服务
     for (const [serviceId, service] of this.services) {
@@ -500,9 +495,8 @@ interface ServiceConfig {
 const store = new Store<ServiceConfig>({
   defaults: {
     services: {
-      qq: { enabled: true, port: 3300 },
-      netease: { enabled: false, port: 3000 },
-      pythonAI: { enabled: true, port: 5000 }
+      qq: { enabled: true, port: 3200 },
+      netease: { enabled: true, port: 14532 }
     }
   }
 })
@@ -580,5 +574,5 @@ export class ServiceManager {
 
 ---
 
-> **文档状态**：设计草案（未实现）
-> **最后更新**：2026-03-10
+> **文档状态**：部分已实现（ServiceManager 核心类已落地于 `electron/ServiceManager.ts`，服务类位于 `electron/service/`；serviceStore 尚未落地）
+> **最后更新**：2026-04-24

@@ -11,9 +11,11 @@ export interface UseUserCenterPlaybackOptions {
   playlistStore: PlaylistStoreLike
   playerStore: PlayerStoreLike
   likeSongs: Ref<Song[]>
+  selectedPlaylistId: Ref<string | null>
   selectedPlaylistSongs: Ref<Song[]>
   selectedAlbumSongs: Ref<Song[]>
   loadPlaylistDetail: LoadDetailSongs
+  loadInitialPlaylistSongs: LoadDetailSongs
   loadAlbumDetail: LoadDetailSongs
   getCachedPlaylistSongs: (playlistId: string | number) => Song[] | undefined
   getCachedAlbumSongs: (albumId: string | number) => Song[] | undefined
@@ -39,11 +41,13 @@ export function useUserCenterPlayback(
     getCachedPlaylistSongs,
     likeSongs,
     loadAlbumDetail,
+    loadInitialPlaylistSongs,
     loadPlaylistDetail,
     playerStore,
     playlistStore,
     router,
     selectedAlbumSongs,
+    selectedPlaylistId,
     selectedPlaylistSongs
   } = options
 
@@ -58,10 +62,9 @@ export function useUserCenterPlayback(
     }
 
     playlistStore.setPlaylist(songs)
-    playerStore.setSongList(songs)
 
     try {
-      await playerStore.playSongWithDetails(index)
+      await playerStore.replaceQueueAndPlay(songs, index)
       void router.push('/')
     } catch (error) {
       console.error('播放失败:', error)
@@ -75,7 +78,10 @@ export function useUserCenterPlayback(
 
     try {
       const songs =
-        getCachedPlaylistSongs(playlistId) ?? (await loadPlaylistDetail(playlistId, true))
+        getCachedPlaylistSongs(playlistId) ??
+        (selectedPlaylistId.value === normalizedPlaylistId
+          ? await loadPlaylistDetail(playlistId, true)
+          : await loadInitialPlaylistSongs(playlistId))
       if (playId !== activePlaylistPlayId || playingPlaylistId.value !== normalizedPlaylistId) {
         return
       }

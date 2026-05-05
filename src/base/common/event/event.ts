@@ -3,7 +3,7 @@
  * 提供类型安全的事件订阅和发布机制
  */
 
-import type { IDisposable } from '../lifecycle/disposable'
+import type { IDisposable } from '@/base/common/lifecycle/disposable'
 
 /**
  * 事件类型定义

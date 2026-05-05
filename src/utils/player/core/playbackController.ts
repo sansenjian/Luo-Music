@@ -1,6 +1,6 @@
 import { playerCore as audioManager } from './playerCore'
-import { PLAY_MODE } from '../constants/playMode'
-import { shuffleHelper } from '../helpers/shuffleHelper'
+import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import { shuffleHelper } from '@/utils/player/helpers/shuffleHelper'
 
 export class PlaybackController {
   private progressTimer: ReturnType<typeof setInterval> | null = null
@@ -18,7 +18,7 @@ export class PlaybackController {
     } catch (error) {
       console.error('Playback failed:', error)
       audioManager.emit('playbackError', error)
-      throw error
+      return false
     }
   }
 
@@ -57,6 +57,10 @@ export class PlaybackController {
 
     if (playMode === PLAY_MODE.SINGLE_LOOP) {
       return currentIndex
+    }
+
+    if (playMode === PLAY_MODE.SEQUENTIAL && currentIndex >= songListLength - 1) {
+      return -1
     }
 
     return (currentIndex + 1) % songListLength

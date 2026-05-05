@@ -127,21 +127,21 @@ describe('platform/music/interface', () => {
       ])
     })
 
-    it('should support both netease and qq platforms', () => {
+    it('should support both built-in and custom platform ids', () => {
       const neteaseSong = createSong({
         id: 1,
         name: 'Netease Song',
         platform: 'netease'
       })
 
-      const qqSong = createSong({
+      const customSong = createSong({
         id: 2,
-        name: 'QQ Song',
-        platform: 'qq'
+        name: 'Custom Song',
+        platform: 'kugou'
       })
 
       expect(neteaseSong.platform).toBe('netease')
-      expect(qqSong.platform).toBe('qq')
+      expect(customSong.platform).toBe('kugou')
     })
   })
 })

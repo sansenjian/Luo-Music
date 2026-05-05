@@ -1,18 +1,14 @@
 import { computed, ref } from 'vue'
 
+import { getSearchPlatformOptions } from '@/platform/music'
 import { useHomeShell } from './useHomeShell'
-import { searchResultItemToSong, useSearchStore } from '../store/searchStore'
-import { useToastStore } from '../store/toastStore'
+import { searchResultItemToSong, useSearchStore } from '@/store/searchStore'
+import { useToastStore } from '@/store/toastStore'
 
 export interface MusicServerOption {
   value: string
   label: string
 }
-
-const SERVERS: MusicServerOption[] = [
-  { value: 'netease', label: 'Netease' },
-  { value: 'qq', label: 'QQ Music' }
-]
 
 type ToastStoreLike = Pick<ReturnType<typeof useToastStore>, 'error' | 'success'>
 type SearchStoreLike = Pick<
@@ -28,7 +24,7 @@ type SearchStoreLike = Pick<
 >
 type HomePagePlayerStoreLike = Pick<ReturnType<typeof useHomeShell>['playerStore'], 'setSongList'> &
   Partial<
-    Pick<ReturnType<typeof useHomeShell>['playerStore'], 'isCompact' | 'loading' | 'songList'>
+    Pick<ReturnType<typeof useHomeShell>['playerStore'], 'isPlayerDocked' | 'loading' | 'songList'>
   >
 type HomeShellReturn = ReturnType<typeof useHomeShell>
 
@@ -52,26 +48,32 @@ export interface HomePageDeps {
 export function useHomePage(deps: HomePageDeps = {}) {
   const toastStore = deps.toastStore ?? useToastStore()
   const searchStore = deps.searchStore ?? useSearchStore()
-  const actualHomeShell = useHomeShell()
+  const actualHomeShell = deps.homeShell ? null : useHomeShell()
+  const resolvedPlayerStore = deps.homeShell?.playerStore ?? actualHomeShell?.playerStore
+  if (!resolvedPlayerStore) {
+    throw new Error('useHomePage requires a playerStore when homeShell deps are provided')
+  }
+
   const homeShell: HomeShellReturn = {
-    ...actualHomeShell,
-    activeTab: deps.homeShell?.activeTab ?? actualHomeShell.activeTab,
-    closeWindow: deps.homeShell?.closeWindow ?? actualHomeShell.closeWindow,
-    isElectron: deps.homeShell?.isElectron ?? actualHomeShell.isElectron,
-    maximizeWindow: deps.homeShell?.maximizeWindow ?? actualHomeShell.maximizeWindow,
-    minimizeWindow: deps.homeShell?.minimizeWindow ?? actualHomeShell.minimizeWindow,
-    playSong: deps.homeShell?.playSong ?? actualHomeShell.playSong,
-    playerStore: actualHomeShell.playerStore,
-    switchTab: deps.homeShell?.switchTab ?? actualHomeShell.switchTab
+    ...(actualHomeShell ?? {}),
+    activeTab: deps.homeShell?.activeTab ?? actualHomeShell?.activeTab ?? ref('lyric'),
+    closeWindow: deps.homeShell?.closeWindow ?? actualHomeShell?.closeWindow ?? (() => {}),
+    isElectron: deps.homeShell?.isElectron ?? actualHomeShell?.isElectron ?? computed(() => false),
+    maximizeWindow: deps.homeShell?.maximizeWindow ?? actualHomeShell?.maximizeWindow ?? (() => {}),
+    minimizeWindow: deps.homeShell?.minimizeWindow ?? actualHomeShell?.minimizeWindow ?? (() => {}),
+    playSong: deps.homeShell?.playSong ?? actualHomeShell?.playSong ?? (async () => {}),
+    playerStore: resolvedPlayerStore as HomeShellReturn['playerStore'],
+    switchTab: deps.homeShell?.switchTab ?? actualHomeShell?.switchTab ?? (() => {})
   }
   const effectivePlayerStore = homeShell.playerStore
 
   const searchKeyword = ref('')
   const showSelect = ref(false)
+  const servers = computed<MusicServerOption[]>(() => getSearchPlatformOptions())
 
   const selectedServerLabel = computed(() => {
-    const server = SERVERS.find(item => item.value === searchStore.server)
-    return server?.label ?? SERVERS[0].label
+    const server = servers.value.find(item => item.value === searchStore.server)
+    return server?.label ?? servers.value[0]?.label ?? searchStore.server
   })
 
   const selectedServer = computed({
@@ -135,7 +137,7 @@ export function useHomePage(deps: HomePageDeps = {}) {
     selectedServer,
     selectedServerLabel,
     setSearchKeyword,
-    servers: SERVERS,
+    servers,
     showSelect,
     onSearch,
     selectServer,

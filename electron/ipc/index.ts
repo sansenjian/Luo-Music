@@ -8,7 +8,7 @@
 export { ipcService, IpcService } from './IpcService'
 export type { IpcMiddleware, IpcMiddlewareContext, IpcServiceConfig } from './IpcService'
 
-// 通道定义（与 shared/protocol/channels 保持一致）
+// 通道定义（与 src/platform/contracts 保持一致）
 export {
   INVOKE_CHANNELS,
   SEND_CHANNELS,
@@ -19,10 +19,10 @@ export {
   isValidSendChannel,
   isValidReceiveChannel,
   isValidInvokeChannel
-} from '../shared/protocol/channels.ts'
+} from '@/platform/contracts/protocol/channels'
 
 // 类型定义
-export * from './types'
+export * from '@/platform/contracts/ipc'
 
 // 中间件
 export { errorMiddleware } from './middleware/error'
@@ -48,6 +48,9 @@ export { registerServiceHandlers } from './handlers/service.handler'
 export { registerApiHandlers } from './handlers/api.handler'
 export { registerLyricHandlers } from './handlers/lyric.handler'
 export { registerLogHandlers } from './handlers/log.handler'
+export { registerLocalLibraryHandlers } from './handlers/localLibrary.handler'
+export { registerPluginHandlers } from './handlers/plugin.handler'
+export { registerSmtcHandlers } from './handlers/smtc.handler'
 
 // 工具
 export {

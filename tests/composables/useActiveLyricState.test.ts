@@ -1,6 +1,7 @@
-import { defineComponent, nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createDeferred } from '../helpers/deferred'
+import { mountComposable } from '../helpers/mountComposable'
 
 const lyricListeners = new Map<string, (payload: unknown) => void>()
 
@@ -37,16 +38,6 @@ vi.mock('@/store/playerStore', () => ({
   usePlayerStore: () => playerStoreState
 }))
 
-function createDeferred<T>() {
-  let resolve!: (value: T) => void
-
-  const promise = new Promise<T>(nextResolve => {
-    resolve = nextResolve
-  })
-
-  return { promise, resolve }
-}
-
 async function flushAsyncState(): Promise<void> {
   await Promise.resolve()
   await nextTick()
@@ -58,16 +49,9 @@ type HarnessOptions = Parameters<typeof useActiveLyricState>[0]
 
 let harnessOptions: HarnessOptions = { source: 'ipc' }
 
-const Harness = defineComponent({
-  setup() {
-    return useActiveLyricState(harnessOptions)
-  },
-  template: '<div />'
-})
-
 function mountHarness(options: HarnessOptions = { source: 'ipc' }) {
   harnessOptions = options
-  return mount(Harness)
+  return mountComposable(() => useActiveLyricState(harnessOptions)).wrapper
 }
 
 describe('useActiveLyricState', () => {

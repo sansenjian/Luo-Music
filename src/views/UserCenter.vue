@@ -4,27 +4,27 @@ import { computed, defineAsyncComponent } from 'vue'
 import { useUserCenterPage } from '@/composables/useUserCenterPage'
 
 const UserProfileHeader = defineAsyncComponent(
-  () => import('../components/user/UserProfileHeader.vue')
+  () => import('@/components/user/UserProfileHeader.vue')
 )
-const LikedSongsView = defineAsyncComponent(() => import('../components/user/LikedSongsView.vue'))
-const PlaylistsView = defineAsyncComponent(() => import('../components/user/PlaylistsView.vue'))
+const LikedSongsView = defineAsyncComponent(() => import('@/components/user/LikedSongsView.vue'))
+const PlaylistsView = defineAsyncComponent(() => import('@/components/user/PlaylistsView.vue'))
 const FavoriteAlbumsView = defineAsyncComponent(
-  () => import('../components/user/FavoriteAlbumsView.vue')
-)
-const EventsView = defineAsyncComponent(() => import('../components/user/EventsView.vue'))
-const PlaylistDetailPanel = defineAsyncComponent(
-  () => import('../components/user/PlaylistDetailPanel.vue')
+  () => import('@/components/user/FavoriteAlbumsView.vue')
 )
 const AlbumDetailPanel = defineAsyncComponent(
-  () => import('../components/user/AlbumDetailPanel.vue')
+  () => import('@/components/user/AlbumDetailPanel.vue')
+)
+const EventsView = defineAsyncComponent(() => import('@/components/user/EventsView.vue'))
+const PlaylistDetailPanel = defineAsyncComponent(
+  () => import('@/components/user/PlaylistDetailPanel.vue')
 )
 
 const {
   activeTab,
   activeTabError,
+  albums,
   albumDetailError,
   albumDetailLoading,
-  albums,
   avatarUrl,
   closeAlbumDetail,
   closePlaylistDetail,
@@ -43,6 +43,7 @@ const {
   loadingMap,
   loadMoreLikedSongs,
   loadMoreEvents,
+  loadMorePlaylistSongs,
   mountedTabs,
   nickname,
   openAlbumDetail,
@@ -54,6 +55,8 @@ const {
   playEventSong,
   playlistDetailError,
   playlistDetailLoading,
+  playlistHasMore,
+  playlistLoadingMore,
   playlists,
   playPlaylistTrackAt,
   playAllLikedSongs,
@@ -134,10 +137,10 @@ const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'liked' }"
-              :aria-label="getTabAriaLabel('我喜欢的音乐', tabCounts.liked)"
+              :aria-label="getTabAriaLabel('我的喜欢', tabCounts.liked)"
               @click="switchTab('liked')"
             >
-              <span class="tab-btn-label">我喜欢的音乐</span>
+              <span class="tab-btn-label">我的喜欢</span>
               <span
                 class="count"
                 :class="{ empty: tabCounts.liked <= 0 }"
@@ -237,10 +240,13 @@ const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events
           :songs="selectedPlaylistSongs"
           :loading="playlistDetailLoading"
           :error="playlistDetailError"
+          :has-more="playlistHasMore"
+          :loading-more="playlistLoadingMore"
           @close="closePlaylistDetail"
           @retry="retryPlaylistDetail"
           @play-all="playPlaylist(selectedPlaylistId)"
           @play-song="playPlaylistTrackAt"
+          @load-more="loadMorePlaylistSongs"
         />
 
         <div v-if="mountedTabs.album" v-show="activeTab === 'album'">
@@ -262,15 +268,6 @@ const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events
               <div class="collection-section-header">
                 <h3 class="collection-section-title">收藏专辑</h3>
               </div>
-              <FavoriteAlbumsView
-                :albums="albums"
-                :loading="loadingMap.album"
-                :active-album-id="selectedAlbumId"
-                :playing-album-id="playingAlbumId"
-                @album-open="openAlbumDetail"
-                @album-play="playAlbum"
-              />
-
               <AlbumDetailPanel
                 v-if="selectedAlbumId"
                 :album="selectedAlbum"
@@ -281,6 +278,14 @@ const eventsTabBadge = computed(() => formatTabCountBadge(tabCounts.value.events
                 @retry="retryAlbumDetail"
                 @play-all="playAlbum(selectedAlbumId)"
                 @play-song="playAlbumTrackAt"
+              />
+              <FavoriteAlbumsView
+                :albums="albums"
+                :loading="loadingMap.album"
+                :playing-album-id="playingAlbumId"
+                interactive
+                @album-open="openAlbumDetail"
+                @album-play="playAlbum"
               />
             </section>
           </div>

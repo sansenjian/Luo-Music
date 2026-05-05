@@ -24,6 +24,7 @@ const loggerErrorMock = vi.hoisted(() => vi.fn())
 const initSentryMock = vi.hoisted(() => vi.fn(async () => {}))
 const requestSingleInstanceLockMock = vi.hoisted(() => vi.fn())
 const setupDevUserDataMock = vi.hoisted(() => vi.fn())
+const setupWindowsShellIntegrationMock = vi.hoisted(() => vi.fn())
 const setupErrorHandlersMock = vi.hoisted(() => vi.fn())
 const setTrayWindowManagerMock = vi.hoisted(() => vi.fn())
 const destroyTrayMock = vi.hoisted(() => vi.fn())
@@ -43,14 +44,45 @@ const registerServiceHandlersMock = vi.hoisted(() => vi.fn())
 const registerApiHandlersMock = vi.hoisted(() => vi.fn())
 const registerLyricHandlersMock = vi.hoisted(() => vi.fn())
 const registerLogHandlersMock = vi.hoisted(() => vi.fn())
+const registerLocalLibraryHandlersMock = vi.hoisted(() => vi.fn())
+const registerPluginHandlersMock = vi.hoisted(() => vi.fn())
+const registerSmtcHandlersMock = vi.hoisted(() => vi.fn())
+const electronStoreGetMock = vi.hoisted(() =>
+  vi.fn((key: string, defaultValue?: unknown) => defaultValue)
+)
+const electronStoreSetMock = vi.hoisted(() => vi.fn())
 
 let lifecycleCallbacks: AppLifecycleCallbacks | undefined
 let resolveInitializeServices: (() => void) | undefined
 let serviceWarmupResolved = false
 
+async function flushBackgroundStartup(): Promise<void> {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
 vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: vi.fn(() => [])
+  },
+  app: {
+    commandLine: {
+      appendSwitch: vi.fn()
+    },
+    relaunch: vi.fn(),
+    exit: vi.fn()
+  }
+}))
+
+vi.mock('electron-store', () => ({
+  default: class {
+    get<T>(key: string, defaultValue?: T): T {
+      return electronStoreGetMock(key, defaultValue) as T
+    }
+
+    set(key: string, value: unknown): void {
+      electronStoreSetMock(key, value)
+    }
   }
 }))
 
@@ -58,6 +90,15 @@ vi.mock('../../electron/DesktopLyricManager', () => ({
   desktopLyricManager: {
     prewarmWindow: prewarmWindowMock,
     closeWindow: closeDesktopLyricWindowMock
+  }
+}))
+
+vi.mock('../../electron/plugins/PluginCatalog', () => ({
+  PluginCatalog: class {
+    initialize = vi.fn(async () => {})
+    dispose = vi.fn(async () => {})
+    listPlatforms = vi.fn(async () => [])
+    onDidChange = vi.fn(() => () => {})
   }
 }))
 
@@ -116,12 +157,16 @@ vi.mock('../../electron/ipc/index', () => ({
   registerServiceHandlers: registerServiceHandlersMock,
   registerApiHandlers: registerApiHandlersMock,
   registerLyricHandlers: registerLyricHandlersMock,
-  registerLogHandlers: registerLogHandlersMock
+  registerLogHandlers: registerLogHandlersMock,
+  registerLocalLibraryHandlers: registerLocalLibraryHandlersMock,
+  registerPluginHandlers: registerPluginHandlersMock,
+  registerSmtcHandlers: registerSmtcHandlersMock
 }))
 
 vi.mock('../../electron/main/app', () => ({
   requestSingleInstanceLock: requestSingleInstanceLockMock,
   setupDevUserData: setupDevUserDataMock,
+  setupWindowsShellIntegration: setupWindowsShellIntegrationMock,
   setupErrorHandlers: setupErrorHandlersMock,
   registerAppLifecycle: registerAppLifecycleMock.mockImplementation(callbacks => {
     lifecycleCallbacks = callbacks
@@ -144,7 +189,7 @@ vi.mock('@/config/shortcuts', () => ({
   DEFAULT_SHORTCUTS: [{ key: 'Ctrl+Shift+L' }]
 }))
 
-vi.mock('../../electron/shared/protocol/cache', () => ({
+vi.mock('@/platform/contracts/protocol/cache', () => ({
   NETEASE_API_PORT: 14532,
   QQ_API_PORT: 3200
 }))
@@ -157,6 +202,8 @@ describe('electron/main/index', () => {
     lifecycleCallbacks = undefined
     serviceWarmupResolved = false
     resolveInitializeServices = undefined
+    electronStoreGetMock.mockImplementation((_key: string, defaultValue?: unknown) => defaultValue)
+    electronStoreSetMock.mockClear()
 
     getWindowMock.mockReturnValue({
       webContents: {
@@ -180,6 +227,7 @@ describe('electron/main/index', () => {
 
     expect(requestSingleInstanceLockMock).toHaveBeenCalledTimes(1)
     expect(setupDevUserDataMock).toHaveBeenCalledTimes(1)
+    expect(setupWindowsShellIntegrationMock).toHaveBeenCalledTimes(1)
     expect(setupErrorHandlersMock).toHaveBeenCalledTimes(1)
     expect(initSentryMock).toHaveBeenCalledTimes(1)
     expect(setTrayWindowManagerMock).toHaveBeenCalledTimes(1)
@@ -188,25 +236,38 @@ describe('electron/main/index', () => {
     expect(lifecycleCallbacks?.onReady).toBeTypeOf('function')
   })
 
-  it('waits for service warmup before creating the window', async () => {
+  it('disables Chromium media session features when SMTC is off by default', async () => {
+    const electron = await import('electron')
+    const appendSwitchMock = vi.mocked(electron.app.commandLine.appendSwitch)
+
     await import('../../electron/main/index.ts')
 
-    const readyPromise = lifecycleCallbacks?.onReady?.()
+    expect(appendSwitchMock).toHaveBeenCalledWith(
+      'disable-features',
+      'HardwareMediaKeyHandling,MediaSessionService'
+    )
+  })
+
+  it('starts service warmup without blocking window creation', async () => {
+    await import('../../electron/main/index.ts')
+
+    const readyResult = lifecycleCallbacks?.onReady?.()
+    await readyResult
 
     expect(initializeServicesMock).toHaveBeenCalledTimes(1)
-    expect(createWindowMock).not.toHaveBeenCalled()
-    expect(serviceWarmupResolved).toBe(false)
-
-    resolveInitializeServices?.()
-    await readyPromise
-
-    expect(getAllServiceStatusMock).toHaveBeenCalledTimes(1)
     expect(createWindowMock).toHaveBeenCalledTimes(1)
+    expect(serviceWarmupResolved).toBe(false)
     expect(createTrayMock).toHaveBeenCalledTimes(1)
     expect(registerShortcutsMock).toHaveBeenCalledTimes(1)
+    expect(registerSmtcHandlersMock).toHaveBeenCalledTimes(1)
     expect(initializeServicesMock.mock.invocationCallOrder[0]).toBeLessThan(
       createWindowMock.mock.invocationCallOrder[0]
     )
+
+    resolveInitializeServices?.()
+    await flushBackgroundStartup()
+
+    expect(getAllServiceStatusMock).toHaveBeenCalledTimes(1)
   })
 
   it('cleans up desktop lyric window and tray when the app quits', async () => {

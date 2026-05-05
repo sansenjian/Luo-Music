@@ -10,6 +10,7 @@ import { getAlbumDetail, getAlbumSublist } from '@/api/album'
 import { createSong, type Song } from '@/platform/music/interface'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
 import { createLatestRequestController } from '@/utils/http/requestScope'
+import { songPrefetcher } from '@/store/player/songPrefetcher'
 
 export interface FavoriteAlbumItem {
   id: string | number
@@ -196,6 +197,12 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
       })
     } catch (requestError) {
       if (isCanceledRequestError(requestError)) {
+        // Ensure loading is cleared even when superseded — the new task
+        // sets loading=true at start, but if there is no new task we must
+        // reset it here to avoid a stuck loading state.
+        if (task.isCurrent()) {
+          loading.value = false
+        }
         return
       }
 
@@ -204,9 +211,9 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
         error.value = requestError
       })
     } finally {
-      task.commit(() => {
+      if (task.isCurrent()) {
         loading.value = false
-      })
+      }
     }
   }
 
@@ -221,6 +228,12 @@ export function useFavoriteAlbums(): UseFavoriteAlbumsReturn {
         .filter((track): track is Song => Boolean(track))
 
       task.throwIfCanceled()
+
+      // Prefetch URLs for the first few tracks so playback is instant
+      if (songs.length > 0) {
+        songPrefetcher.prefetchPlaylist(songs)
+      }
+
       return songs
     } catch (requestError) {
       if (isCanceledRequestError(requestError)) {

@@ -11,6 +11,13 @@ export const AlbumSchema = z.object({
   picUrl: z.string()
 })
 
+export const BuiltInPlatforms = ['netease', 'qq', 'local'] as const
+
+export type BuiltInPlatform = (typeof BuiltInPlatforms)[number]
+export type PlatformId = BuiltInPlatform | (string & {})
+
+export const SongPlatformSchema = z.string().min(1)
+
 export const SongSchema = z.object({
   id: z.union([z.string(), z.number()]),
   name: z.string(),
@@ -18,10 +25,9 @@ export const SongSchema = z.object({
   album: AlbumSchema,
   duration: z.number(),
   mvid: z.union([z.string(), z.number()]),
-  platform: z.enum(['netease', 'qq']),
+  platform: SongPlatformSchema,
   originalId: z.union([z.string(), z.number()]),
   extra: z.record(z.string(), z.unknown()).optional(),
-  // 运行时属性（非 API 返回）
   url: z.string().optional(),
   mediaId: z.union([z.string(), z.number()]).optional(),
   retryCount: z.number().optional(),
@@ -79,81 +85,8 @@ export const SearchValidationResultSchema = z.object({
   error: z.string().optional()
 })
 
-export const QQMusicSearchItemSchema = z.object({
-  id: z.union([z.string(), z.number()]),
-  mid: z.string().optional(),
-  name: z.string(),
-  singer: z
-    .array(
-      z.object({
-        id: z.union([z.string(), z.number()]).optional(),
-        name: z.string()
-      })
-    )
-    .optional(),
-  album: z
-    .object({
-      id: z.union([z.string(), z.number()]).optional(),
-      name: z.string(),
-      mid: z.string().optional()
-    })
-    .optional(),
-  interval: z.number().optional(),
-  mv: z
-    .object({
-      id: z.union([z.number(), z.string()]).optional()
-    })
-    .optional()
-})
-
-export const QQMusicSearchResponseSchema = z.object({
-  code: z.number(),
-  data: z
-    .object({
-      song: z
-        .object({
-          list: z.array(QQMusicSearchItemSchema),
-          totalnum: z.number()
-        })
-        .optional()
-    })
-    .optional()
-})
-
-export const NeteaseSongItemSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  ar: z
-    .array(
-      z.object({
-        id: z.number(),
-        name: z.string()
-      })
-    )
-    .optional(),
-  al: z
-    .object({
-      id: z.number(),
-      name: z.string(),
-      picUrl: z.string().optional()
-    })
-    .optional(),
-  dt: z.number().optional(),
-  mv: z.number().optional()
-})
-
-export const NeteaseSearchResponseSchema = z.object({
-  code: z.number(),
-  result: z
-    .object({
-      songs: z.array(NeteaseSongItemSchema).optional(),
-      songCount: z.number().optional()
-    })
-    .optional()
-})
-
 export const IPCRequestSchema = z.object({
-  service: z.enum(['netease', 'qq']),
+  service: z.string().min(1),
   endpoint: z.string(),
   params: z.record(z.string(), z.unknown()).optional()
 })
@@ -165,18 +98,14 @@ export const IPCResponseSchema = z.object({
   code: z.number().optional()
 })
 
-export const ServiceStatusSchema = z.object({
-  netease: z.object({
-    running: z.boolean(),
-    port: z.number(),
-    url: z.string()
-  }),
-  qq: z.object({
+export const ServiceStatusSchema = z.record(
+  z.string(),
+  z.object({
     running: z.boolean(),
     port: z.number(),
     url: z.string()
   })
-})
+)
 
 export const ServiceConfigSchema = z.object({
   name: z.string(),
@@ -191,93 +120,14 @@ export const ServiceConfigSchema = z.object({
 export type Artist = z.infer<typeof ArtistSchema>
 export type Song = z.infer<typeof SongSchema>
 export type Album = z.infer<typeof AlbumSchema>
+export type SongPlatform = z.infer<typeof SongPlatformSchema>
 export type PlaylistDetail = z.infer<typeof PlaylistDetailSchema>
 export type SearchResult = z.infer<typeof SearchResultSchema>
 export type LyricResult = z.infer<typeof LyricResultSchema>
 export type MusicUrlData = z.infer<typeof MusicUrlDataSchema>
 export type MusicUrlResponse = z.infer<typeof MusicUrlResponseSchema>
 export type SearchValidationResult = z.infer<typeof SearchValidationResultSchema>
-export type QQMusicSearchItem = z.infer<typeof QQMusicSearchItemSchema>
-export type QQMusicSearchResponse = z.infer<typeof QQMusicSearchResponseSchema>
-export type NeteaseSongItem = z.infer<typeof NeteaseSongItemSchema>
-export type NeteaseSearchResponse = z.infer<typeof NeteaseSearchResponseSchema>
 export type IPCRequest = z.infer<typeof IPCRequestSchema>
 export type IPCResponse = z.infer<typeof IPCResponseSchema>
 export type ServiceStatus = z.infer<typeof ServiceStatusSchema>
 export type ServiceConfig = z.infer<typeof ServiceConfigSchema>
-
-export function validateSearchResponse(data: unknown): SearchValidationResult {
-  const qqResult = z
-    .object({
-      song: z.object({
-        list: z.array(z.unknown()),
-        totalnum: z.number()
-      })
-    })
-    .safeParse(data)
-
-  if (qqResult.success) {
-    return {
-      valid: true,
-      list: qqResult.data.song.list,
-      total: qqResult.data.song.totalnum
-    }
-  }
-
-  const neteaseResult = z
-    .object({
-      songs: z.array(z.unknown()),
-      songCount: z.number()
-    })
-    .safeParse(data)
-
-  if (neteaseResult.success) {
-    return {
-      valid: true,
-      list: neteaseResult.data.songs,
-      total: neteaseResult.data.songCount
-    }
-  }
-
-  const genericResult = z
-    .object({
-      list: z.array(z.unknown()),
-      total: z.number()
-    })
-    .safeParse(data)
-
-  if (genericResult.success) {
-    return {
-      valid: true,
-      list: genericResult.data.list,
-      total: genericResult.data.total
-    }
-  }
-
-  return {
-    valid: false,
-    list: [],
-    total: 0,
-    error: '未知的数据格式'
-  }
-}
-
-export function safeParseResponse<T>(schema: z.ZodType<T>, data: unknown): T | null {
-  const result = schema.safeParse(data)
-  if (result.success) {
-    return result.data
-  }
-
-  console.warn('[Schema Validation] 解析失败:', result.error.issues)
-  return null
-}
-
-export function parseOrThrow<T>(schema: z.ZodType<T>, data: unknown, context?: string): T {
-  const result = schema.safeParse(data)
-  if (!result.success) {
-    const message = result.error.issues.map(issue => issue.message).join(', ')
-    throw new Error(context ? `${context}: ${message}` : message)
-  }
-
-  return result.data
-}

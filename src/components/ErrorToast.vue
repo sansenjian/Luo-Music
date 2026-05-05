@@ -17,9 +17,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { services } from '../services'
-import type { AppError } from '../utils/error'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { services } from '@/services'
+import type { AppError } from '@/utils/error'
 
 interface ToastError {
   id: number
@@ -31,10 +31,12 @@ interface ToastError {
 const visibleErrors = ref<ToastError[]>([])
 let idCounter = 0
 const errorService = services.error()
+const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>()
+
+let unsubscribe: (() => void) | null = null
 
 onMounted(() => {
-  // 监听所有错误
-  errorService.onAny((err: AppError) => {
+  unsubscribe = errorService.onAny((err: AppError) => {
     const toast: ToastError = {
       id: ++idCounter,
       message: err.getUserMessage(),
@@ -44,11 +46,23 @@ onMounted(() => {
 
     visibleErrors.value.push(toast)
 
-    // 可恢复错误3秒自动消失，致命错误需手动关闭
     if (err.recoverable) {
-      setTimeout(() => dismiss(toast.id), 3000)
+      const timer = setTimeout(() => {
+        pendingTimeouts.delete(timer)
+        dismiss(toast.id)
+      }, 3000)
+      pendingTimeouts.add(timer)
     }
   })
+})
+
+onUnmounted(() => {
+  unsubscribe?.()
+  unsubscribe = null
+  for (const timer of pendingTimeouts) {
+    clearTimeout(timer)
+  }
+  pendingTimeouts.clear()
 })
 
 const dismiss = (id: number) => {

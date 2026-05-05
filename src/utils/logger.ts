@@ -1,5 +1,5 @@
-import { services } from '../services'
-import type { LoggerService } from '../services/loggerService'
+import { services } from '@/services'
+import type { LoggerService } from '@/services/loggerService'
 
 type LoggerResolver = () => LoggerService
 

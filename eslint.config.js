@@ -27,6 +27,7 @@ export default [
       'vitest.config.ts',
       'forge.config.js',
       'forge.config.ts',
+      'vite.config.js',
       'vite.config.ts',
       'electron.vite.config.ts',
       '**/*.cjs',
@@ -204,10 +205,38 @@ export default [
     }
   },
   {
+    files: ['src/**/*.{ts,tsx,vue}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../*', '../../*', '../../../*', '../../../../*'],
+              message: 'Imports inside src should use the @/ alias instead of parent paths.'
+            },
+            {
+              group: [
+                '../electron/*',
+                '../../electron/*',
+                '../../../electron/*',
+                '../../../../electron/*'
+              ],
+              message:
+                'Renderer code must not import from electron/. Use src/platform/contracts or src/platform instead.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
     files: ['tests/**/*.ts', 'tests/**/*.js'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
+      'vue/one-component-per-file': 'off',
+      'vue/require-default-prop': 'off',
       'no-console': 'off',
       'no-restricted-imports': [
         'error',

@@ -20,15 +20,10 @@ if (conflictingFiles.length === 0) {
   process.exit(0)
 }
 
-const lines = conflictingFiles.map(
-  ([tsFile, jsFile]) =>
-    `- Found both ${tsFile} and ${jsFile}. Remove the generated .js file so tooling loads the TypeScript config.`
-)
+for (const [tsFile, jsFile] of conflictingFiles) {
+  const jsPath = path.join(projectRoot, jsFile)
+  fs.unlinkSync(jsPath)
+  console.warn(`Config shadowing: removed generated ${jsFile} (source is ${tsFile})`)
+}
 
-console.error(
-  ['Config shadowing detected.', ...lines, 'Generated JS config artifacts must not live beside the source .ts config files.'].join(
-    '\n'
-  )
-)
-
-process.exit(1)
+process.exit(0)

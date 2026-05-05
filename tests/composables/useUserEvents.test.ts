@@ -1,5 +1,4 @@
-import { defineComponent } from 'vue'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -10,6 +9,8 @@ import {
   type EventViewModelCacheEntry,
   type UseUserEventsReturn
 } from '@/composables/useUserEvents'
+import { createDeferred } from '../helpers/deferred'
+import { mountComposable } from '../helpers/mountComposable'
 import { createMockSong } from '../utils/test-utils'
 
 const getUserEventMock = vi.hoisted(() => vi.fn())
@@ -28,29 +29,9 @@ vi.mock('@/utils/http/cancelError', async importOriginal => {
   }
 })
 
-function createDeferred<T>() {
-  let resolve!: (value: T | PromiseLike<T>) => void
-
-  const promise = new Promise<T>(nextResolve => {
-    resolve = nextResolve
-  })
-
-  return { promise, resolve }
-}
-
 function mountUseUserEvents() {
-  let viewModel!: UseUserEventsReturn
-
-  const Harness = defineComponent({
-    setup() {
-      viewModel = useUserEvents()
-      return () => null
-    }
-  })
-
-  mount(Harness)
-
-  return viewModel
+  const { result } = mountComposable<UseUserEventsReturn>(() => useUserEvents())
+  return result
 }
 
 describe('useUserEvents', () => {

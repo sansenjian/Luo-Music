@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HomeTab } from '@/composables/useHomeShell'
+import { uiMessages } from '@/messages/ui'
 
 const props = defineProps<{
   activeTab: HomeTab
@@ -15,20 +16,32 @@ function changeTab(tab: HomeTab): void {
 </script>
 
 <template>
-  <div class="panel-tabs">
+  <div class="panel-tabs" data-ui="tabbar" role="tablist" aria-label="Home panels">
     <button
+      id="home-tab-lyric"
       class="tab"
+      data-ui="tab"
       :class="{ active: props.activeTab === 'lyric' }"
+      type="button"
+      role="tab"
+      :aria-selected="props.activeTab === 'lyric'"
+      aria-controls="home-panel-lyric"
       @click="changeTab('lyric')"
     >
-      Lyrics
+      {{ uiMessages.home.tabs.lyric }}
     </button>
     <button
+      id="home-tab-playlist"
       class="tab"
+      data-ui="tab"
       :class="{ active: props.activeTab === 'playlist' }"
+      type="button"
+      role="tab"
+      :aria-selected="props.activeTab === 'playlist'"
+      aria-controls="home-panel-playlist"
       @click="changeTab('playlist')"
     >
-      Playlist
+      {{ uiMessages.home.tabs.playlist }}
     </button>
   </div>
 </template>
@@ -36,11 +49,12 @@ function changeTab(tab: HomeTab): void {
 <style scoped>
 .panel-tabs {
   display: flex;
-  border-bottom: var(--border);
+  border-bottom: var(--tabbar-divider, var(--ui-divider));
   flex-shrink: 0;
 }
 
 .tab {
+  position: relative;
   padding: 12px 20px;
   font-size: 11px;
   font-weight: 700;
@@ -48,21 +62,35 @@ function changeTab(tab: HomeTab): void {
   text-transform: uppercase;
   cursor: pointer;
   border: none;
-  border-right: var(--border);
-  background: var(--bg);
+  border-right: var(--tab-border, var(--ui-divider));
+  background: var(--tab-bg, var(--ui-panel-bg));
+  color: var(--tab-text, var(--black));
+  border-radius: 0;
   white-space: nowrap;
   flex-shrink: 0;
   transition: all 0.1s;
 }
 
 .tab.active {
-  background: var(--black);
-  color: var(--white);
+  background: var(--tab-active-bg, var(--ui-primary-bg));
+  color: var(--tab-active-text, var(--ui-primary-text));
+  box-shadow: var(--tab-active-shadow, var(--ui-primary-shadow));
+}
+
+.tab.active::after {
+  content: '';
+  display: var(--tab-active-indicator-display, none);
+  position: absolute;
+  left: var(--tab-active-indicator-inset, 20px);
+  right: var(--tab-active-indicator-inset, 20px);
+  bottom: 0;
+  height: var(--tab-active-indicator-height, 2px);
+  background: var(--tab-active-indicator-color, var(--accent));
 }
 
 .tab:hover:not(.active),
 .tab:active:not(.active) {
-  background: var(--bg-dark);
+  background: var(--ui-hover-bg);
 }
 
 @media (max-width: 600px) {

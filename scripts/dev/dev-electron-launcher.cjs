@@ -18,7 +18,28 @@ function createVitePortCandidates(basePort, count = 5) {
   return Array.from({ length: count }, (_, index) => basePort + index)
 }
 
+function resolveElectronInspectArg(value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '9223'
+  if (!trimmed) {
+    return null
+  }
+
+  const parsedPort = Number.parseInt(trimmed, 10)
+  if (!Number.isInteger(parsedPort) || parsedPort <= 0) {
+    throw new Error(`Invalid ELECTRON_INSPECTOR port: ${value}`)
+  }
+
+  return `--inspect=${parsedPort}`
+}
+
+function resolveElectronInspectPort(value) {
+  const arg = resolveElectronInspectArg(value)
+  return arg ? arg.replace('--inspect=', '') : null
+}
+
 const configuredVitePort = resolveVitePort(process.env.VITE_DEV_SERVER_PORT)
+const electronInspectArg = resolveElectronInspectArg(process.env.ELECTRON_INSPECTOR)
+const electronInspectPort = resolveElectronInspectPort(process.env.ELECTRON_INSPECTOR)
 
 // ============ 配置常量 ============
 const CONFIG = {
@@ -30,9 +51,10 @@ const CONFIG = {
   viteStartupTimeoutMs: 90000,
   buildOutput: {
     main: 'build/electron/main.cjs',
-    preload: 'build/electron/preload.cjs'
+    preload: 'build/electron/preload.cjs',
+    externalPluginWorker: 'build/electron/externalPluginWorker.mjs'
   },
-  electronSourcePatterns: ['.ts', '.js'],
+  electronSourcePatterns: ['.ts', '.js', '.mjs'],
   electronConfig: 'electron.vite.config.ts',
   appProcessNames: ['electron.exe', 'LUO Music.exe']
 }
@@ -74,8 +96,70 @@ function logDebug(message) {
   }
 }
 
+// ============ 启动耗时 ============
+const launcherStartedAt = Date.now()
+const phaseTimings = []
+
+function formatDuration(ms) {
+  if (ms < 1000) {
+    return `${ms}ms`
+  }
+
+  return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)}s`
+}
+
+function logPhaseTiming(label, startedAt) {
+  const elapsed = Date.now() - startedAt
+  phaseTimings.push({ label, elapsed })
+  log(
+    'dev-launcher:timing',
+    `${label}: ${formatDuration(elapsed)} (total ${formatDuration(Date.now() - launcherStartedAt)})`,
+    colors.cyan
+  )
+  return elapsed
+}
+
+async function measurePhase(label, action) {
+  const startedAt = Date.now()
+  try {
+    const result = await action()
+    logPhaseTiming(label, startedAt)
+    return result
+  } catch (error) {
+    logPhaseTiming(`${label} failed`, startedAt)
+    throw error
+  }
+}
+
+function measureSyncPhase(label, action) {
+  const startedAt = Date.now()
+  try {
+    const result = action()
+    logPhaseTiming(label, startedAt)
+    return result
+  } catch (error) {
+    logPhaseTiming(`${label} failed`, startedAt)
+    throw error
+  }
+}
+
+function logStartupTimingSummary() {
+  const total = Date.now() - launcherStartedAt
+  const detail = phaseTimings
+    .map(({ label, elapsed }) => `${label} ${formatDuration(elapsed)}`)
+    .join('; ')
+  log(
+    'dev-launcher:timing',
+    `ready to spawn Electron: ${formatDuration(total)}${detail ? ` (${detail})` : ''}`,
+    colors.cyan
+  )
+}
+
 // ============ 等待工具 ============
-async function waitForCondition(condition, { interval = CONFIG.pollIntervalMs, timeout = 0, description = 'condition' } = {}) {
+async function waitForCondition(
+  condition,
+  { interval = CONFIG.pollIntervalMs, timeout = 0, description = 'condition' } = {}
+) {
   return new Promise((resolve, reject) => {
     const deadline = timeout > 0 ? Date.now() + timeout : Infinity
 
@@ -87,15 +171,17 @@ async function waitForCondition(condition, { interval = CONFIG.pollIntervalMs, t
 
       const result = condition()
       if (result instanceof Promise) {
-        result.then(testResolve => {
-          if (testResolve) {
-            resolve()
-          } else {
+        result
+          .then(testResolve => {
+            if (testResolve) {
+              resolve()
+            } else {
+              setTimeout(check, interval)
+            }
+          })
+          .catch(() => {
             setTimeout(check, interval)
-          }
-        }).catch(() => {
-          setTimeout(check, interval)
-        })
+          })
       } else if (result) {
         resolve()
       } else {
@@ -111,7 +197,7 @@ async function waitForPort(port, timeoutMs = CONFIG.viteStartupTimeoutMs) {
   logDebug(`Waiting for port ${port}...`)
   return waitForCondition(
     () => {
-      return new Promise((testResolve) => {
+      return new Promise(testResolve => {
         const socket = connect(port, '127.0.0.1')
         socket.on('connect', () => {
           socket.end()
@@ -136,8 +222,8 @@ async function waitForHttpReady(
   logDebug(`Waiting for HTTP ready: ${url}`)
   return waitForCondition(
     () => {
-      return new Promise((testResolve) => {
-        const req = http.get(url, (res) => {
+      return new Promise(testResolve => {
+        const req = http.get(url, res => {
           const statusCode = res.statusCode ?? 0
           if (statusCode < 200 || statusCode >= 500) {
             res.resume()
@@ -206,29 +292,28 @@ function getLatestMTime(targetPath, predicate = () => true) {
 }
 
 function needsRebuild() {
-  const { main, preload } = CONFIG.buildOutput
-  const mainPath = path.resolve(ROOT, main)
-  const preloadPath = path.resolve(ROOT, preload)
+  const outputPaths = Object.values(CONFIG.buildOutput).map(outputPath =>
+    path.resolve(ROOT, outputPath)
+  )
 
-  if (!existsSync(mainPath) || !existsSync(preloadPath)) {
+  if (outputPaths.some(outputPath => !existsSync(outputPath))) {
     logDebug('Build output files not found')
     return true
   }
 
   try {
-    const mainStat = statSync(mainPath)
-    const preloadStat = statSync(preloadPath)
-    const latestBuiltTime = Math.min(mainStat.mtimeMs, preloadStat.mtimeMs)
+    const latestBuiltTime = Math.min(...outputPaths.map(outputPath => statSync(outputPath).mtimeMs))
 
-    const latestElectronSourceTime = getLatestMTime(
-      path.resolve(ROOT, 'electron'),
-      filePath => CONFIG.electronSourcePatterns.some(ext => filePath.endsWith(ext))
+    const latestElectronSourceTime = getLatestMTime(path.resolve(ROOT, 'electron'), filePath =>
+      CONFIG.electronSourcePatterns.some(ext => filePath.endsWith(ext))
     )
     const latestConfigTime = getLatestMTime(path.resolve(ROOT, CONFIG.electronConfig))
     const latestSourceTime = Math.max(latestElectronSourceTime, latestConfigTime)
 
     const needs = latestSourceTime > latestBuiltTime
-    logDebug(`Source time: ${latestSourceTime}, Built time: ${latestBuiltTime}, Needs rebuild: ${needs}`)
+    logDebug(
+      `Source time: ${latestSourceTime}, Built time: ${latestBuiltTime}, Needs rebuild: ${needs}`
+    )
     return needs
   } catch (error) {
     logDebug(`Error checking rebuild necessity: ${error.message}`)
@@ -238,7 +323,7 @@ function needsRebuild() {
 
 // ============ 进程管理 ============
 function killOldElectronInstances() {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     logInfo('Checking for old Electron instances...')
 
     if (process.platform === 'win32') {
@@ -305,7 +390,7 @@ function buildElectron() {
       }
     )
 
-    child.on('exit', (code) => {
+    child.on('exit', code => {
       if (code === 0) {
         logSuccess('Electron build completed')
         resolve()
@@ -358,12 +443,14 @@ async function main() {
   logInfo('Starting Electron development launcher...')
 
   // 1. 清理旧实例
-  await killOldElectronInstances()
+  await measurePhase('kill old Electron instances', () => killOldElectronInstances())
 
   // 2. 等待 Vite 服务器启动
   logInfo(`Waiting for Vite dev server on ports ${CONFIG.vitePorts.join(', ')}...`)
   try {
-    await waitForPort(CONFIG.vitePorts[0])
+    await measurePhase(`wait for Vite socket ${CONFIG.vitePorts[0]}`, () =>
+      waitForPort(CONFIG.vitePorts[0])
+    )
     logSuccess(`Detected an open socket on base port ${CONFIG.vitePorts[0]}`)
   } catch (error) {
     logError(`Vite dev server not responding: ${error.message}`)
@@ -373,7 +460,7 @@ async function main() {
   // 3. 查找实际端口并预热
   let vitePort
   try {
-    vitePort = await waitForVitePort()
+    vitePort = await measurePhase('detect Vite HTML port', () => waitForVitePort())
   } catch (error) {
     logError(`Failed to detect a ready Vite server: ${error.message}`)
     process.exit(1)
@@ -383,9 +470,11 @@ async function main() {
 
   logInfo(`Warming Vite index response on port ${vitePort}...`)
   try {
-    await waitForHttpReady(`${viteDevServerUrl}/`, CONFIG.httpWarmupTimeoutMs, {
-      requireViteHtml: true
-    })
+    await measurePhase('warm Vite index response', () =>
+      waitForHttpReady(`${viteDevServerUrl}/`, CONFIG.httpWarmupTimeoutMs, {
+        requireViteHtml: true
+      })
+    )
     logSuccess('Vite server ready')
   } catch (error) {
     logError(`Failed to warm up Vite server: ${error.message}`)
@@ -393,10 +482,11 @@ async function main() {
   }
 
   // 4. 检查是否需要构建
-  if (needsRebuild()) {
+  const electronBuildNeeded = measureSyncPhase('check Electron build freshness', needsRebuild)
+  if (electronBuildNeeded) {
     logInfo('Electron files need rebuild...')
     try {
-      await buildElectron()
+      await measurePhase('electron-vite build', () => buildElectron())
     } catch (error) {
       logError(`Build failed: ${error.message}`)
       process.exit(1)
@@ -410,7 +500,19 @@ async function main() {
   logDebug(`Vite URL: ${viteDevServerUrl}`)
 
   const electronBinary = require('electron')
-  const child = spawn(electronBinary, ['.'], {
+  const electronArgs = []
+  if (electronInspectArg) {
+    electronArgs.push(electronInspectArg)
+  }
+  electronArgs.push('.')
+
+  if (electronInspectPort) {
+    logInfo(`Electron main process inspector listening on 127.0.0.1:${electronInspectPort}`)
+  }
+
+  logStartupTimingSummary()
+
+  const child = spawn(electronBinary, electronArgs, {
     stdio: 'inherit',
     shell: false,
     cwd: ROOT,
@@ -422,12 +524,12 @@ async function main() {
   })
 
   // 6. 处理进程事件
-  child.on('error', (error) => {
+  child.on('error', error => {
     logError(`Failed to start Electron: ${error.message}`)
     process.exit(1)
   })
 
-  child.on('exit', (code) => {
+  child.on('exit', code => {
     logInfo(`Electron exited with code ${code}`)
     process.exit(code ?? 0)
   })
@@ -446,7 +548,7 @@ async function main() {
 }
 
 // 启动
-main().catch((error) => {
+main().catch(error => {
   logError(error.message)
   console.error(error.stack)
   process.exit(1)

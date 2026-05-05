@@ -94,6 +94,9 @@ export const IMusicService = createDecorator<import('./musicService').MusicServi
 export const IStorageService =
   createDecorator<import('./storageService').StorageService>('IStorageService')
 
+export const IPluginService =
+  createDecorator<import('./pluginService').PluginService>('IPluginService')
+
 /**
  * 所有核心服务的联合类型
  */
@@ -108,6 +111,7 @@ export type CoreServices = {
   player: typeof IPlayerService
   music: typeof IMusicService
   storage: typeof IStorageService
+  plugin: typeof IPluginService
 }
 
 /**
@@ -128,7 +132,8 @@ export const SERVICE_ID_MAP: Record<ServiceId, ServiceIdentifier<unknown>> = {
   command: ICommandService,
   player: IPlayerService,
   music: IMusicService,
-  storage: IStorageService
+  storage: IStorageService,
+  plugin: IPluginService
 }
 
 /**
@@ -145,7 +150,8 @@ const REVERSE_SERVICE_ID_MAP = new Map<ServiceIdentifier<unknown>, ServiceId>([
   [ICommandService, 'command'],
   [IPlayerService, 'player'],
   [IMusicService, 'music'],
-  [IStorageService, 'storage']
+  [IStorageService, 'storage'],
+  [IPluginService, 'plugin']
 ])
 
 /**

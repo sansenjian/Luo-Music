@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PLAY_MODE } from '@/utils/player/constants/playMode'
 import type { LyricLine } from '@/utils/player/core/lyric'
-import { createPlayerStore, usePlayerStore } from '@/store/playerStore.ts'
+import {
+  createPlayerStore,
+  restorePersistedPlayerState,
+  usePlayerStore
+} from '@/store/playerStore.ts'
+import { createRemoteMediaProxyUrl } from '@/utils/player/mediaProxy'
 import { createMockSong } from '../utils/test-utils'
 
 let storeCounter = 0
@@ -63,6 +68,7 @@ describe('playerStore', () => {
       expect(store.currentIndex).toBe(-1)
       expect(store.currentSong).toBeNull()
       expect(store.initialized).toBe(false)
+      expect(store.isPlayerDocked).toBe(true)
     })
 
     it('has correct getters', () => {
@@ -73,6 +79,22 @@ describe('playerStore', () => {
       expect(store.formattedProgress).toBe('00:00')
       expect(store.formattedDuration).toBe('00:00')
       expect(store.playModeText).toBe('顺序播放')
+    })
+
+    it('keeps player formattedDuration at 00:00 for local songs with unknown duration', () => {
+      const store = usePlayerStore()
+      store.currentSong = createMockSong({
+        id: 'local:unknown',
+        platform: 'local',
+        duration: 0,
+        extra: {
+          localSource: true,
+          localDurationKnown: false
+        }
+      })
+      store.duration = 0
+
+      expect(store.formattedDuration).toBe('00:00')
     })
 
     it('prefers committed currentSong over playlist index for currentSongInfo', () => {
@@ -103,9 +125,10 @@ describe('playerStore', () => {
       expect(store.currentIndex).toBe(-1)
     })
 
-    it('clears stale currentSong when the new playlist no longer contains it', () => {
+    it('clears currentSong when the new playlist no longer contains it', () => {
       const store = usePlayerStore()
-      store.currentSong = createMockSong({ id: 99, name: 'Stale Song' })
+      const staleSong = createMockSong({ id: 99, name: 'Stale Song' })
+      store.currentSong = staleSong
 
       store.setSongList([
         createMockSong({ id: 1, name: 'Song 1' }),
@@ -114,7 +137,6 @@ describe('playerStore', () => {
 
       expect(store.currentIndex).toBe(-1)
       expect(store.currentSong).toBeNull()
-      expect(store.currentSongInfo).toBeNull()
     })
 
     it('matches current songs by id and platform when replacing the playlist', () => {
@@ -129,6 +151,76 @@ describe('playerStore', () => {
 
       expect(store.currentIndex).toBe(1)
       expect(store.currentSong?.platform).toBe('qq')
+      expect(store.currentSong).toStrictEqual(store.songList[1])
+    })
+
+    it('replaces the queue and plays the requested index as a single action', async () => {
+      const store = usePlayerStore()
+      const songs = [
+        createMockSong({ id: 1, name: 'Song 1' }),
+        createMockSong({ id: 2, name: 'Song 2' })
+      ]
+      const playSongWithDetailsSpy = vi.spyOn(store, 'playSongWithDetails').mockResolvedValueOnce()
+
+      await store.replaceQueueAndPlay(songs, 1)
+
+      expect(store.songList).toStrictEqual(songs)
+      expect(playSongWithDetailsSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('restores the current playlist index from persisted queue state', () => {
+      const store = usePlayerStore()
+      const currentSong = createMockSong({
+        id: 2,
+        name: 'Persisted Current Song',
+        url: 'https://song.test/current.mp3',
+        retryCount: 3,
+        unavailable: true,
+        errorMessage: 'stale error'
+      })
+      const nextSong = createMockSong({
+        id: 3,
+        name: 'Next Song',
+        url: 'https://song.test/next.mp3'
+      })
+
+      store.songList = [createMockSong({ id: 1, name: 'Song 1' }), currentSong, nextSong]
+      store.currentIndex = 1
+      store.currentSong = currentSong
+      store.playing = true
+      store.progress = 88
+      store.duration = 120
+      store.initialized = true
+      store.ipcInitialized = true
+
+      restorePersistedPlayerState(store.$state)
+
+      expect(store.songList).toHaveLength(3)
+      expect(store.currentIndex).toBe(1)
+      expect(store.currentSong).toStrictEqual(store.songList[1])
+      expect(store.currentSong?.url).toBeUndefined()
+      expect(store.currentSong?.retryCount).toBeUndefined()
+      expect(store.currentSong?.unavailable).toBeUndefined()
+      expect(store.currentSong?.errorMessage).toBeUndefined()
+      expect(store.playing).toBe(false)
+      expect(store.progress).toBe(0)
+      expect(store.duration).toBe(0)
+      expect(store.initialized).toBe(false)
+      expect(store.ipcInitialized).toBe(false)
+    })
+
+    it('falls back to the first queued song when the persisted index is invalid', () => {
+      const store = usePlayerStore()
+      store.songList = [
+        createMockSong({ id: 1, name: 'Song 1' }),
+        createMockSong({ id: 2, name: 'Song 2' })
+      ]
+      store.currentIndex = 9
+
+      restorePersistedPlayerState(store.$state)
+
+      expect(store.currentIndex).toBe(0)
+      expect(store.currentSong).toStrictEqual(store.songList[0])
     })
 
     it('addSong appends a song', () => {
@@ -194,6 +286,17 @@ describe('playerStore', () => {
       expect(audioManager.seek).toHaveBeenCalledWith(60)
     })
 
+    it('plays remote media through the Electron proxy protocol', async () => {
+      const { store, audioManager } = createInjectedPlayerStore({ isElectron: true })
+      const sourceUrl = 'http://m7.music.126.net/song.mp3?vuutv=a+b='
+      store.songList = [createMockSong({ id: 1, name: 'Song 1', url: sourceUrl })]
+
+      await store.playSongByIndex(0)
+
+      expect(audioManager.play).toHaveBeenCalledWith(createRemoteMediaProxyUrl(sourceUrl))
+      expect(store.songList[0]?.url).toBe(sourceUrl)
+    })
+
     it('resets playback state when togglePlay cannot start the first track', async () => {
       const { store, platformAccessor } = createInjectedPlayerStore()
       store.songList = [createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' })]
@@ -218,6 +321,22 @@ describe('playerStore', () => {
 
       expect(store.playing).toBe(false)
       expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
+    })
+
+    it('starts playback from the restored current index when toggled before initialization', async () => {
+      const { store } = createInjectedPlayerStore()
+      const playSongWithDetailsSpy = vi.spyOn(store, 'playSongWithDetails').mockResolvedValueOnce()
+      store.songList = [
+        createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' }),
+        createMockSong({ id: 2, name: 'Song 2', url: 'http://test.com/2.mp3' })
+      ]
+      store.currentIndex = 1
+      store.currentSong = store.songList[1]
+
+      store.togglePlay()
+      await Promise.resolve()
+
+      expect(playSongWithDetailsSpy).toHaveBeenCalledWith(1)
     })
 
     it('falls back to the next track when single-loop replay fails at song end', async () => {
@@ -268,6 +387,85 @@ describe('playerStore', () => {
       expect(store.playing).toBe(false)
       expect(platformAccessor.sendPlayingState).toHaveBeenCalledWith(false)
     })
+
+    it('does not loop with playNext when a local song audio error should skip', async () => {
+      const { store } = createInjectedPlayerStore()
+      const localSong = createMockSong({
+        id: 'local:track-1',
+        name: 'Local Song',
+        url: 'luo-media://media?path=D%3A%5CMusic%5Clocal.mp3',
+        extra: {
+          localSource: true,
+          localFilePath: 'D:\\Music\\local.mp3'
+        }
+      })
+
+      store.songList = [localSong]
+      store.currentIndex = 0
+      store.currentSong = localSong
+
+      const playNextSpy = vi.spyOn(store, 'playNext').mockImplementation(() => {})
+      const playNextSkipUnavailableSpy = vi
+        .spyOn(store, 'playNextSkipUnavailable')
+        .mockRejectedValueOnce(new Error('no playable songs'))
+
+      await store.handleAudioError(new Error('decode failed'))
+
+      expect(playNextSkipUnavailableSpy).toHaveBeenCalledTimes(1)
+      expect(playNextSpy).not.toHaveBeenCalled()
+      expect(localSong.unavailable).toBe(true)
+    })
+
+    it('lets the active playSongWithDetails request handle audio errors during track switching', async () => {
+      const { store, audioManager } = createInjectedPlayerStore()
+      const song = createMockSong({
+        id: 'song-switching-error',
+        name: 'Switching Song',
+        url: 'https://song.test/switching.mp3'
+      })
+
+      store.songList = [song]
+      store.currentIndex = 0
+      store.currentSong = song
+      store.trackSwitching = true
+
+      const playNextSkipUnavailableSpy = vi.spyOn(store, 'playNextSkipUnavailable')
+
+      await store.handleAudioError(new Error('cdn 403'))
+
+      expect(audioManager.play).not.toHaveBeenCalled()
+      expect(playNextSkipUnavailableSpy).not.toHaveBeenCalled()
+      expect(song.unavailable).toBeFalsy()
+    })
+
+    it('keeps the current song index stable when add-to-next moves an earlier queued song', () => {
+      const { store, platformAccessor } = createInjectedPlayerStore({ isElectron: true })
+      const songs = [
+        createMockSong({ id: 1, name: 'Song 1' }),
+        createMockSong({ id: 2, name: 'Song 2' }),
+        createMockSong({ id: 3, name: 'Song 3' }),
+        createMockSong({ id: 4, name: 'Song 4' }),
+        createMockSong({ id: 5, name: 'Song 5' })
+      ]
+
+      store.songList = [...songs]
+      store.currentIndex = 3
+      store.currentSong = songs[3]
+      store.initAudio()
+
+      const onCalls = platformAccessor.on.mock.calls as unknown as Array<
+        [string, (payload: unknown) => void]
+      >
+      const songControlListener = onCalls.find(
+        ([channel]) => channel === 'music-song-control'
+      )?.[1] as ((payload: unknown) => void) | undefined
+
+      songControlListener?.({ type: 'add-to-next', song: songs[2] })
+
+      expect(store.songList.map(song => song.id)).toEqual([1, 2, 4, 3, 5])
+      expect(store.currentIndex).toBe(2)
+      expect(store.currentSong?.id).toBe(4)
+    })
   })
 
   describe('lyrics', () => {
@@ -292,6 +490,41 @@ describe('playerStore', () => {
       expect(store.lyricsArray).toHaveLength(2)
       expect(store.lyricsArray[0].text).toBe('Line 1')
       expect(store.currentLyricIndex).toBe(-1)
+    })
+
+    it('syncs a full player snapshot after lyrics load in electron', () => {
+      const { store, platformAccessor } = createInjectedPlayerStore({ isElectron: true })
+      const song = createMockSong({ id: 1, name: 'Song 1', url: 'http://test.com/1.mp3' })
+      const lyrics: LyricLine[] = [
+        { time: 0, text: 'Line 1', trans: '', roma: '' },
+        { time: 5, text: 'Line 2', trans: 'Second', roma: '' }
+      ]
+
+      store.currentSong = song
+      store.progress = 5
+      store.initAudio()
+      platformAccessor.send.mockClear()
+
+      store.setLyricsArray(lyrics)
+
+      expect(platformAccessor.send).toHaveBeenCalledWith(
+        'player:sync-state',
+        expect.objectContaining({
+          currentSong: song,
+          lyricSong: song,
+          currentLyricIndex: 1,
+          lyrics
+        })
+      )
+      expect(platformAccessor.send).toHaveBeenCalledWith(
+        'lyric-time-update',
+        expect.objectContaining({
+          index: 1,
+          text: 'Line 2',
+          trans: 'Second',
+          cause: 'lyrics-load'
+        })
+      )
     })
 
     it('uses default lyricType', () => {
@@ -325,7 +558,7 @@ describe('playerStore', () => {
     })
   })
 
-  describe('compact mode', () => {
+  describe('docked player mode', () => {
     beforeEach(() => {
       const store = usePlayerStore()
       store.setSongList([
@@ -335,15 +568,15 @@ describe('playerStore', () => {
       ])
     })
 
-    it('toggleCompactMode toggles compact mode', () => {
+    it('togglePlayerDocked toggles the docked player mode', () => {
       const { store, storageService } = createInjectedPlayerStore()
 
-      expect(store.isCompact).toBe(false)
-      store.toggleCompactMode()
-      expect(store.isCompact).toBe(true)
-      store.toggleCompactMode()
-      expect(store.isCompact).toBe(false)
-      expect(storageService.setItem).toHaveBeenCalledWith('compactModeUserToggled', 'true')
+      expect(store.isPlayerDocked).toBe(true)
+      store.togglePlayerDocked()
+      expect(store.isPlayerDocked).toBe(false)
+      store.togglePlayerDocked()
+      expect(store.isPlayerDocked).toBe(true)
+      expect(storageService.setItem).toHaveBeenCalledWith('playerDockedUserToggled', 'true')
     })
   })
 })

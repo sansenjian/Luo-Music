@@ -26,20 +26,27 @@ describe('window.handler', () => {
   it('registers and handles the expanded window IPC surface', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
     const sendHandlers = new Map<string, (...args: unknown[]) => unknown>()
-    registerInvokeMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      invokeHandlers.set(channel, handler)
-    })
-    registerSendMock.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-      sendHandlers.set(channel, handler)
-    })
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
+    registerSendMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        sendHandlers.set(channel, handler)
+      }
+    )
 
     const manager = {
       getWindow: vi.fn(() => ({
+        getBounds: vi.fn(() => ({ x: 20, y: 30, width: 1280, height: 720 })),
         getSize: vi.fn(() => [1280, 720]),
         isMaximized: vi.fn(() => true),
         isMinimized: vi.fn(() => false),
         setSize: vi.fn()
       })),
+      getBounds: vi.fn(() => ({ x: 20, y: 30, width: 1280, height: 720 })),
+      setBounds: vi.fn(),
       getWindowState: vi.fn(() => ({
         isMaximized: true,
         isMinimized: false,
@@ -60,6 +67,12 @@ describe('window.handler', () => {
     const { registerWindowHandlers } = await import('../../electron/ipc/handlers/window.handler')
     registerWindowHandlers(manager as never)
 
+    await expect(invokeHandlers.get('window:get-bounds')?.()).resolves.toEqual({
+      x: 20,
+      y: 30,
+      width: 1280,
+      height: 720
+    })
     await expect(invokeHandlers.get('window:get-state')?.()).resolves.toEqual({
       isMaximized: true,
       isMinimized: false,
@@ -67,6 +80,7 @@ describe('window.handler', () => {
       isAlwaysOnTop: true
     })
 
+    sendHandlers.get('window:set-bounds')?.({ x: 10, y: 20, width: 1100, height: 700 })
     sendHandlers.get('minimize-to-tray')?.()
     sendHandlers.get('set-always-on-top')?.(true)
     sendHandlers.get('toggle-fullscreen')?.()
@@ -74,6 +88,12 @@ describe('window.handler', () => {
     sendHandlers.get('show-window')?.()
     sendHandlers.get('hide-window')?.()
 
+    expect(manager.setBounds).toHaveBeenCalledWith({
+      x: 10,
+      y: 20,
+      width: 1100,
+      height: 700
+    })
     expect(manager.minimizeToTray).toHaveBeenCalledTimes(1)
     expect(manager.setAlwaysOnTop).toHaveBeenCalledWith(true)
     expect(manager.toggleFullScreen).toHaveBeenCalledTimes(1)

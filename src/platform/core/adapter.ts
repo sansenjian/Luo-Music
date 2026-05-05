@@ -1,4 +1,4 @@
-import type { CacheClearOptions, CacheClearResult } from '../../../electron/shared/protocol/cache'
+import type { CacheClearOptions, CacheClearResult } from '@/platform/contracts/protocol/cache'
 
 export class PlatformAdapter {
   name = 'base'

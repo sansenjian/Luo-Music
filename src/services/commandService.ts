@@ -1,7 +1,7 @@
-import { COMMANDS, COMMAND_ENABLEMENT } from '../core/commands/commands'
-import { EventEmitter, type Event } from '../base/common/event/event'
-import { DisposableStore } from '../base/common/lifecycle/disposable'
-import { usePlayerStore } from '../store/playerStore'
+import { COMMANDS, COMMAND_ENABLEMENT } from '@/core/commands/commands'
+import { EventEmitter, type Event } from '@/base/common/event/event'
+import { DisposableStore } from '@/base/common/lifecycle/disposable'
+import { usePlayerStore } from '@/store/playerStore'
 import { getService } from './registry'
 import type { ContextKeyService } from './contextKeyService'
 import type { PlatformService } from './platformService'
@@ -197,8 +197,8 @@ export function createCommandService(
     }
   )
 
-  register(COMMANDS.PLAYER_TOGGLE_COMPACT_MODE, () => {
-    getPlayerStore().toggleCompactMode()
+  register(COMMANDS.PLAYER_TOGGLE_PLAYER_DOCKED, () => {
+    getPlayerStore().togglePlayerDocked()
   })
 
   register(

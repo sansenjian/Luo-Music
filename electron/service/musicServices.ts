@@ -228,7 +228,7 @@ export class QQService extends NodeApiService {
       requestServiceName: 'QQ',
       unavailableMessage: 'QQ Service is not available',
       methodResolver: endpoint => (QQService.POST_ENDPOINTS.has(endpoint) ? 'POST' : 'GET'),
-      startupTimeoutMs: 8000
+      startupTimeoutMs: 6000
     })
   }
 }
@@ -243,10 +243,8 @@ export class NeteaseService extends NodeApiService {
       loggerScope: 'NeteaseService',
       requestServiceName: 'Netease',
       unavailableMessage: 'Netease Service is not available',
-      // The local Netease API used by Electron matches the web adapter and
-      // expects query-string GET requests for endpoints like song/detail.
       methodResolver: () => 'GET',
-      startupTimeoutMs: 12000
+      startupTimeoutMs: 8000
     })
   }
 }

@@ -18,6 +18,7 @@ export {
   IPlayerService,
   IMusicService,
   IStorageService,
+  IPluginService,
   createDecorator,
   type ServiceIdentifier
 } from './types'

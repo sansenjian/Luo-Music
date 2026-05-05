@@ -2,11 +2,11 @@
  * 服务管理 IPC 处理器
  */
 
-import { INVOKE_CHANNELS } from '../../shared/protocol/channels.ts'
+import { INVOKE_CHANNELS } from '@/platform/contracts/protocol/channels'
 import { ipcService } from '../IpcService'
 import type { ServiceManager } from '../../ServiceManager'
 import type { ServiceStatusType } from '../../types/service'
-import type { ServiceStatus, ServiceStatusResponse } from '../types'
+import type { ServiceStatus, ServiceStatusResponse } from '@/platform/contracts/ipc'
 
 function convertServiceStatusType(type: ServiceStatusType | null): ServiceStatus {
   if (type === null || type === undefined) {

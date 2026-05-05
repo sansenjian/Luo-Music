@@ -76,8 +76,9 @@ function onToggleSelect(): void {
   justify-content: space-between;
   gap: 8px;
   padding: 8px 12px;
-  border: 2px solid var(--black);
-  background: var(--white);
+  border: var(--ui-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   cursor: pointer;
   min-width: 100px;
   font-size: 14px;
@@ -88,7 +89,7 @@ function onToggleSelect(): void {
 }
 
 .server-select-custom:hover {
-  background: var(--bg);
+  background: var(--ui-hover-bg);
 }
 
 .server-select-custom:active {
@@ -109,9 +110,10 @@ function onToggleSelect(): void {
   top: calc(100% + 4px);
   left: 0;
   width: 100%;
-  background: var(--white);
-  border: 2px solid var(--black);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.1);
+  background: var(--ui-surface);
+  border: var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  box-shadow: var(--ui-floating-shadow);
   z-index: 1000;
   overflow: hidden;
 }
@@ -122,7 +124,7 @@ function onToggleSelect(): void {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  border-bottom: 1px solid var(--bg-dark);
+  border-bottom: 1px solid var(--ui-border-subtle);
 }
 
 .dropdown-option:last-child {
@@ -130,16 +132,16 @@ function onToggleSelect(): void {
 }
 
 .dropdown-option:hover {
-  background: var(--bg);
+  background: var(--ui-hover-bg);
 }
 
 .dropdown-option.active {
-  background: var(--black);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
 }
 
 .dropdown-option.active:hover {
-  background: var(--black);
+  background: var(--ui-primary-hover-bg);
 }
 
 .select-dropdown-enter-active,

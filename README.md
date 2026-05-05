@@ -317,6 +317,10 @@ npm install -D electron-vite
 
 ```
 luo_music/
+├── api/              # Vercel Serverless Function 入口（部署路由，不是渲染层 API）
+│   ├── [...netease].ts
+│   └── qq/
+│       └── [...qq].ts
 ├── docs/             # 项目文档 (VitePress)
 │   ├── .vitepress/   # 站点配置
 │   ├── guide/        # 开发指南
@@ -344,7 +348,7 @@ luo_music/
 ├── server/           # API 服务端
 │   └── index.ts
 ├── src/
-│   ├── api/          # API 接口层 (Axios + TypeScript)
+│   ├── api/          # 渲染侧 API 适配层（请求封装、参数与响应适配）
 │   ├── assets/       # 静态资源（CSS/字体）
 │   ├── base/         # 基础架构 (事件/生命周期)
 │   ├── components/   # Vue 组件
@@ -391,6 +395,8 @@ luo_music/
 ├── .prettierrc
 └── index.html
 ```
+
+> 目录边界：根目录 `api/` 只服务 Vercel 部署的 Serverless Function 路由，例如 `/api/*` 与 `/qq-api` 重写；业务代码中的请求封装、响应适配和类型约束放在 `src/api/`。不要从渲染层、Electron 主进程或通用模块直接导入根 `api/` 下的部署 handler。
 
 ## 环境支持
 

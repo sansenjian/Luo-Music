@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { handleApiError } from '@/api/responseHandler'
+import { errorCenter } from '@/utils/error/center'
 import { AppError, ErrorCode } from '@/utils/error/types'
 
 describe('responseHandler handleApiError', () => {
@@ -8,8 +9,8 @@ describe('responseHandler handleApiError', () => {
     vi.restoreAllMocks()
   })
 
-  it('returns a silent AppError for canceled requests without logging', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('returns a silent AppError for canceled requests without emitting to errorCenter', () => {
+    const emitSpy = vi.spyOn(errorCenter, 'emit').mockImplementation(() => {})
 
     const error = handleApiError(
       {
@@ -30,7 +31,7 @@ describe('responseHandler handleApiError', () => {
         code: 'ERR_CANCELED'
       })
     )
-    expect(consoleSpy).not.toHaveBeenCalled()
+    expect(emitSpy).not.toHaveBeenCalled()
   })
 
   it('preserves superseded cancellation reason when normalizing errors', () => {
@@ -54,14 +55,14 @@ describe('responseHandler handleApiError', () => {
     )
   })
 
-  it('normalizes non-canceled API errors into AppError instances and keeps logging', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('normalizes non-canceled API errors into AppError instances and emits to errorCenter', () => {
+    const emitSpy = vi.spyOn(errorCenter, 'emit').mockImplementation(() => {})
 
     const error = handleApiError(new Error('boom'), 'Netease')
 
     expect(error).toBeInstanceOf(AppError)
     expect(error.code).toBe(ErrorCode.API_REQUEST_FAILED)
     expect(error.message).toBe('Netease: boom')
-    expect(consoleSpy).toHaveBeenCalledTimes(1)
+    expect(emitSpy).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,22 +1,37 @@
 <script setup lang="ts">
-const props = defineProps<{
-  isCompact: boolean
-  isLoading: boolean
-  trackCount: number
-}>()
+import type { DockedPlayerBarLayout } from '@/composables/useDockedPlayerBarLayout'
+
+const props = withDefaults(
+  defineProps<{
+    isPlayerDocked: boolean
+    isLoading: boolean
+    trackCount: number
+    dockedPlayerBarLayout?: DockedPlayerBarLayout
+  }>(),
+  {
+    dockedPlayerBarLayout: 'full'
+  }
+)
 </script>
 
 <template>
-  <footer v-if="props.isCompact" class="compact-player">
-    <slot name="compact-player" />
+  <footer
+    v-if="props.isPlayerDocked"
+    class="docked-player-bar"
+    data-ui="docked-player-bar"
+    :class="`layout-${props.dockedPlayerBarLayout}`"
+  >
+    <div class="docked-player-bar-body">
+      <slot name="docked-player" />
+    </div>
   </footer>
 
-  <footer v-else class="statusbar">
+  <footer v-else class="statusbar" data-ui="statusbar">
     <div class="status-left">
       <span>{{ props.trackCount }} Tracks</span>
       <span v-if="props.isLoading" class="status-loading">Loading...</span>
     </div>
-    <div>44.1kHz / 320kbps</div>
+    <div>播放品质取决于当前音源</div>
   </footer>
 </template>
 
@@ -35,16 +50,28 @@ const props = defineProps<{
   text-transform: uppercase;
   color: var(--gray);
   flex-shrink: 0;
-  background: var(--bg);
+  background: var(--ui-app-bg);
 }
 
-.compact-player {
+.docked-player-bar {
+  display: flex;
   flex-shrink: 0;
-  background: var(--white);
-  border-top: 3px solid var(--black);
+  background: var(--ui-app-bg);
   padding: 0;
   height: 80px;
   overflow: hidden;
+}
+
+.docked-player-bar-body {
+  flex: 1;
+  min-width: 0;
+  background: var(--ui-surface);
+  border-top: var(--ui-divider);
+  overflow: hidden;
+}
+
+.docked-player-bar.layout-full .docked-player-bar-body {
+  width: 100%;
 }
 
 .status-left {

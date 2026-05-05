@@ -7,6 +7,7 @@
 
 import { globalShortcut } from 'electron'
 import logger from '../logger'
+import { RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
 
 /**
  * 快捷键动作映射类型
@@ -19,7 +20,7 @@ export type ShortcutAction =
   | 'volumeDown'
   | 'seekBack'
   | 'seekForward'
-  | 'toggleCompact'
+  | 'togglePlayerDocked'
 
 /**
  * 快捷键配置类型
@@ -48,23 +49,34 @@ export function setWindowManager(manager: typeof windowManager): void {
  */
 function getActionHandler(action: ShortcutAction): (() => void) | null {
   const actions: Record<ShortcutAction, () => void> = {
-    togglePlay: () => windowManager?.send('music-playing-control'),
-    playPrev: () => windowManager?.send('music-song-control', 'prev'),
-    playNext: () => windowManager?.send('music-song-control', 'next'),
-    volumeUp: () => windowManager?.send('music-volume-up'),
-    volumeDown: () => windowManager?.send('music-volume-down'),
-    seekBack: () => windowManager?.send('music-process-control', 'back'),
-    seekForward: () => windowManager?.send('music-process-control', 'forward'),
-    toggleCompact: () => windowManager?.send('hide-player')
+    togglePlay: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL),
+    playPrev: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'prev'),
+    playNext: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'next'),
+    volumeUp: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_VOLUME_UP),
+    volumeDown: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_VOLUME_DOWN),
+    seekBack: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_PROCESS_CONTROL, 'back'),
+    seekForward: () => windowManager?.send(RECEIVE_CHANNELS.MUSIC_PROCESS_CONTROL, 'forward'),
+    togglePlayerDocked: () => windowManager?.send(RECEIVE_CHANNELS.HIDE_PLAYER)
   }
 
   return actions[action] || null
 }
 
+const MEDIA_KEY_ACCELERATORS = new Set(['MediaPlayPause', 'MediaPreviousTrack', 'MediaNextTrack'])
+
 /**
  * 注册全局快捷键
+ *
+ * On Windows, media key accelerators (MediaPlayPause, MediaPreviousTrack,
+ * MediaNextTrack) are skipped because globalShortcut.register() installs
+ * an OS-level keyboard hook that intercepts these keys before the
+ * Chromium MediaSession / Windows SMTC pipeline can process them.
+ * When SMTC is active, media keys are handled by the renderer's
+ * navigator.mediaSession action handlers instead.
  */
 export function registerShortcuts(shortcuts: ShortcutConfig[]): void {
+  const shouldSkipMediaKeys = process.platform === 'win32'
+
   for (const shortcut of shortcuts) {
     if (!shortcut.globalKeys || shortcut.globalKeys.length === 0) continue
 
@@ -72,6 +84,11 @@ export function registerShortcuts(shortcuts: ShortcutConfig[]): void {
     if (!handler) continue
 
     for (const key of shortcut.globalKeys) {
+      if (shouldSkipMediaKeys && MEDIA_KEY_ACCELERATORS.has(key)) {
+        logger.info(`[Shortcuts] Skipped on Windows (SMTC): ${key} -> ${shortcut.action}`)
+        continue
+      }
+
       try {
         globalShortcut.register(key, handler)
         logger.info(`[Shortcuts] Registered: ${key} -> ${shortcut.action}`)

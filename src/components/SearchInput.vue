@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useSearchStore } from '../store/searchStore'
+import { computed, ref } from 'vue'
+import { getSearchPlatformOptions } from '@/platform/music'
+import { useSearchStore } from '@/store/searchStore'
 
 const searchStore = useSearchStore()
 
 const keyword = ref('')
 
-const servers = [
-  { value: 'netease', label: '网易云' },
-  { value: 'qq', label: 'QQ音乐' }
-]
+const servers = computed(() => getSearchPlatformOptions())
 
 const isLoading = computed(() => searchStore.isLoading)
 

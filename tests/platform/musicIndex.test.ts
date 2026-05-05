@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { MusicPlatformAdapter } from '@/platform/music/interface'
 import { LogLevel, type ILogger } from '@/services/loggerService'
 
 const warnMock = vi.hoisted(() => vi.fn())
@@ -27,84 +28,261 @@ vi.mock('@/services', () => ({
   }
 }))
 
-type QQAdapterModuleFactory = () => {
-  QQMusicAdapter: new () => {
-    kind: 'qq'
-  }
+type TestAdapter = MusicPlatformAdapter & { kind: string }
+
+function createTestAdapter(kind: string): TestAdapter {
+  return {
+    platformId: kind,
+    kind,
+    search: vi.fn(),
+    getSongUrl: vi.fn(),
+    getSongDetail: vi.fn(),
+    getLyric: vi.fn(),
+    getPlaylistDetail: vi.fn()
+  } as unknown as TestAdapter
 }
 
-function mockAdapterModules(options: { qqFactory?: QQAdapterModuleFactory } = {}) {
-  vi.doMock('@/platform/music/netease', () => ({
-    NeteaseAdapter: class {
-      readonly kind = 'netease'
-    }
-  }))
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
 
-  vi.doMock(
-    '@/platform/music/qq',
-    options.qqFactory
-      ? options.qqFactory
-      : () => ({
-          QQMusicAdapter: class {
-            readonly kind = 'qq'
-          }
-        })
-  )
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+
+  return { promise, resolve, reject }
 }
 
 describe('platform music index', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
-    mockAdapterModules()
   })
 
   it('returns the requested adapter when known', async () => {
-    const { getMusicAdapter } = await import('@/platform/music')
+    const {
+      configureMusicPlatformDeps,
+      getMusicAdapter,
+      resetMusicPlatformDeps,
+      replaceRuntimePlatformDescriptors
+    } = await import('@/platform/music')
+
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'builtin',
+        runtime: 'local',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false
+        }
+      }
+    ])
+
+    configureMusicPlatformDeps({
+      resolveAdapter: async platformId => createTestAdapter(platformId)
+    })
 
     await expect(getMusicAdapter('qq')).resolves.toMatchObject({ kind: 'qq' })
+
+    resetMusicPlatformDeps()
   })
 
-  it('falls back to netease and warns on unknown platforms', async () => {
+  it('rejects unknown platforms instead of falling back silently', async () => {
     const { getMusicAdapter } = await import('@/platform/music')
 
-    await expect(getMusicAdapter('unknown')).resolves.toMatchObject({ kind: 'netease' })
-    expect(warnMock).toHaveBeenCalled()
+    await expect(getMusicAdapter('unknown')).rejects.toThrow(
+      'Music platform "unknown" is not registered'
+    )
+    expect(warnMock).toHaveBeenCalledTimes(1)
   })
 
-  it('treats prototype keys as unknown platforms and falls back safely', async () => {
+  it('rejects descriptor-only platforms that do not expose a runtime adapter', async () => {
     const { getMusicAdapter } = await import('@/platform/music')
 
-    await expect(getMusicAdapter('__proto__')).resolves.toMatchObject({ kind: 'netease' })
-    await expect(getMusicAdapter('toString')).resolves.toMatchObject({ kind: 'netease' })
-    await expect(getMusicAdapter('constructor')).resolves.toMatchObject({ kind: 'netease' })
-    expect(warnMock).toHaveBeenCalled()
+    await expect(getMusicAdapter('local')).rejects.toThrow('local')
   })
 
-  it('lists the available platform metadata', async () => {
-    const { getAvailablePlatforms } = await import('@/platform/music')
+  it('treats prototype keys as unknown platforms and rejects safely', async () => {
+    const { getMusicAdapter } = await import('@/platform/music')
 
+    await expect(getMusicAdapter('__proto__')).rejects.toThrow(
+      'Music platform "__proto__" is not registered'
+    )
+    await expect(getMusicAdapter('toString')).rejects.toThrow(
+      'Music platform "toString" is not registered'
+    )
+    await expect(getMusicAdapter('constructor')).rejects.toThrow(
+      'Music platform "constructor" is not registered'
+    )
+    expect(warnMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('exposes platform descriptors and available platform metadata', async () => {
+    const {
+      getAvailablePlatforms,
+      getPlatformDescriptor,
+      getLoginPlatformOptions,
+      getSearchPlatformOptions,
+      getPlatformCapabilities,
+      replaceRuntimePlatformDescriptors
+    } = await import('@/platform/music')
+
+    // Simulate runtime registration of external plugins
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        category: 'api',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      },
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      }
+    ])
+
+    expect(getPlatformDescriptor('netease')).toMatchObject({
+      id: 'netease',
+      displayName: 'Netease Music',
+      category: 'api',
+      capabilities: {
+        search: true,
+        needsHydration: true,
+        supportsLyricFetch: true,
+        supportsUrlRefreshOnFailure: true
+      }
+    })
+    expect(getPlatformDescriptor('qq')).toMatchObject({
+      id: 'qq',
+      capabilities: {
+        playlistDetail: false,
+        supportsLyricFetch: true
+      }
+    })
+    expect(getPlatformCapabilities('local')).toMatchObject({
+      search: true,
+      supportsLyricFetch: false
+    })
+    expect(getSearchPlatformOptions()).toEqual([
+      { value: 'netease', label: 'Netease Music' },
+      { value: 'qq', label: 'QQ Music' },
+      { value: 'local', label: '本地音乐' }
+    ])
+    expect(getLoginPlatformOptions()).toEqual([
+      { value: 'netease', label: 'Netease Music' },
+      { value: 'qq', label: 'QQ Music' }
+    ])
     expect(getAvailablePlatforms()).toEqual([
+      { id: 'local', name: '本地音乐' },
       { id: 'netease', name: 'Netease Music' },
       { id: 'qq', name: 'QQ Music' }
     ])
   })
 
-  it('reuses the lazily created logger across repeated fallback lookups', async () => {
-    vi.resetModules()
-    mockAdapterModules()
+  it('keeps legacy first-party login platforms discoverable before manifest auth refresh', async () => {
+    const { getLoginPlatformOptions, replaceRuntimePlatformDescriptors } =
+      await import('@/platform/music')
+
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true
+        }
+      },
+      {
+        id: 'search-only',
+        displayName: 'Search Only',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false
+        }
+      }
+    ])
+
+    expect(getLoginPlatformOptions()).toEqual([{ value: 'netease', label: 'Netease Music' }])
+  })
+
+  it('reuses the lazily created logger across repeated invalid lookups', async () => {
     const { getMusicAdapter } = await import('@/platform/music')
 
-    await expect(getMusicAdapter('unknown-a')).resolves.toMatchObject({ kind: 'netease' })
-    await expect(getMusicAdapter('unknown-b')).resolves.toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('unknown-a')).rejects.toThrow(
+      'Music platform "unknown-a" is not registered'
+    )
+    await expect(getMusicAdapter('unknown-b')).rejects.toThrow(
+      'Music platform "unknown-b" is not registered'
+    )
 
     expect(createLoggerMock).toHaveBeenCalledTimes(1)
     expect(warnMock).toHaveBeenCalledTimes(2)
   })
 
-  it('supports an injected logger factory for fallback warnings', async () => {
-    vi.resetModules()
-    mockAdapterModules()
+  it('supports an injected logger factory for invalid platform requests', async () => {
     const injectedWarn = vi.fn()
     const { configureMusicPlatformDeps, getMusicAdapter, resetMusicPlatformDeps } =
       await import('@/platform/music')
@@ -124,62 +302,98 @@ describe('platform music index', () => {
       })
     })
 
-    await expect(getMusicAdapter('missing-platform')).resolves.toMatchObject({ kind: 'netease' })
+    await expect(getMusicAdapter('missing-platform')).rejects.toThrow(
+      'Music platform "missing-platform" is not registered'
+    )
     expect(injectedWarn).toHaveBeenCalledTimes(1)
 
     resetMusicPlatformDeps()
   })
 
-  it('loads each adapter module at most once, even for concurrent requests', async () => {
-    vi.resetModules()
+  it('loads each adapter at most once, even for concurrent requests', async () => {
+    const deferred = createDeferred<MusicPlatformAdapter>()
+    const resolveAdapter = vi.fn(() => deferred.promise)
+    const {
+      configureMusicPlatformDeps,
+      getMusicAdapter,
+      resetMusicPlatformDeps,
+      replaceRuntimePlatformDescriptors
+    } = await import('@/platform/music')
 
-    const loaderCallCount = { qq: 0 }
-    mockAdapterModules({
-      qqFactory: () => {
-        loaderCallCount.qq += 1
-        return {
-          QQMusicAdapter: class {
-            readonly kind = 'qq'
-          }
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'builtin',
+        runtime: 'local',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false
         }
       }
-    })
+    ])
 
-    const { getMusicAdapter } = await import('@/platform/music')
+    configureMusicPlatformDeps({ resolveAdapter })
+
     const firstPromise = getMusicAdapter('qq')
     const secondPromise = getMusicAdapter('qq')
 
     expect(firstPromise).toBe(secondPromise)
+    expect(resolveAdapter).toHaveBeenCalledTimes(1)
+
+    deferred.resolve(createTestAdapter('qq'))
     await expect(firstPromise).resolves.toMatchObject({ kind: 'qq' })
-    expect(loaderCallCount.qq).toBe(1)
+
+    resetMusicPlatformDeps()
   })
 
-  it('retries loading an adapter after a failed import and does not cache the failure', async () => {
-    vi.resetModules()
+  it('retries loading an adapter after a failed resolve and does not cache the failure', async () => {
+    const resolveAdapter = vi.fn(
+      async (platformId: string): Promise<MusicPlatformAdapter> => createTestAdapter(platformId)
+    )
+    resolveAdapter.mockRejectedValueOnce(new Error('qq adapter load failed'))
+    resolveAdapter.mockResolvedValueOnce(createTestAdapter('qq'))
 
-    let qqConstructionCount = 0
-    mockAdapterModules({
-      qqFactory: () => {
-        return {
-          QQMusicAdapter: class {
-            constructor() {
-              qqConstructionCount += 1
+    const {
+      configureMusicPlatformDeps,
+      getMusicAdapter,
+      resetMusicPlatformDeps,
+      replaceRuntimePlatformDescriptors
+    } = await import('@/platform/music')
 
-              if (qqConstructionCount === 1) {
-                throw new Error('qq adapter load failed')
-              }
-            }
-
-            readonly kind = 'qq'
-          }
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'builtin',
+        runtime: 'local',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false
         }
       }
-    })
+    ])
 
-    const { getMusicAdapter } = await import('@/platform/music')
+    configureMusicPlatformDeps({ resolveAdapter })
 
     await expect(getMusicAdapter('qq')).rejects.toThrow('qq adapter load failed')
     await expect(getMusicAdapter('qq')).resolves.toMatchObject({ kind: 'qq' })
-    expect(qqConstructionCount).toBe(2)
+    expect(resolveAdapter).toHaveBeenCalledTimes(2)
+
+    resetMusicPlatformDeps()
   })
 })

@@ -11,7 +11,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import type { IpcMainEvent } from 'electron'
 import logger from '../logger'
 
-import { INVOKE_CHANNELS, SEND_CHANNELS } from '../shared/protocol/channels.ts'
+import { INVOKE_CHANNELS, SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
 import type {
   InvokeChannelMap,
   SendChannelMap,
@@ -19,7 +19,7 @@ import type {
   InvokeFunction,
   SendFunction,
   ReceiveCallback
-} from './types'
+} from '@/platform/contracts/ipc'
 
 // ========== 配置类型 ==========
 
@@ -146,14 +146,20 @@ export class IpcService {
    * 创建带超时的 Promise
    */
   private withTimeout<T>(promise: Promise<T>, timeoutMs: number, channel: string): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => {
-          reject(new Error(`Request timeout: ${channel} exceeded ${timeoutMs}ms`))
-        }, timeoutMs)
-      )
-    ])
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        timeoutHandle = null
+        reject(new Error(`Request timeout: ${channel} exceeded ${timeoutMs}ms`))
+      }, timeoutMs)
+    })
+
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+        timeoutHandle = null
+      }
+    })
   }
 
   // ========== Invoke 处理器注册 ==========

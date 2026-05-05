@@ -1,9 +1,9 @@
-import { computed, defineComponent, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
 
 import { useHomePage } from '@/composables/useHomePage'
 import type { SearchResultItem } from '@/store/searchStore'
+import { mountComposable } from '../helpers/mountComposable'
 
 const mockSwitchTab = vi.fn()
 const mockSetSongList = vi.fn()
@@ -43,17 +43,10 @@ function createHomePageDeps() {
 }
 
 function mountHomePage(deps = createHomePageDeps()) {
-  const Harness = defineComponent({
-    setup() {
-      return useHomePage(deps)
-    },
-    template: '<div />'
-  })
-
-  const wrapper = mount(Harness)
+  const mounted = mountComposable(() => useHomePage(deps))
   return {
     deps,
-    viewModel: wrapper.vm as unknown as ReturnType<typeof useHomePage>
+    viewModel: mounted.wrapper.vm as unknown as ReturnType<typeof useHomePage>
   }
 }
 

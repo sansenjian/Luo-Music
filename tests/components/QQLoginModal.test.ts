@@ -1,19 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-type Deferred<T> = {
-  promise: Promise<T>
-  resolve: (value: T) => void
-}
-
-function createDeferred<T>(): Deferred<T> {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>(nextResolve => {
-    resolve = nextResolve
-  })
-
-  return { promise, resolve }
-}
+import { createDeferred } from '../helpers/deferred'
 
 const qqApiMocks = vi.hoisted(() => ({
   getQQLoginQr: vi.fn(),

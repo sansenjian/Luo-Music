@@ -1,9 +1,9 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { COMMANDS } from '../core/commands/commands'
-import type { Song } from '../types/schemas'
-import { services } from '../services'
-import type { CommandService } from '../services/commandService'
-import { usePlayerStore } from '../store/playerStore'
+import { COMMANDS } from '@/core/commands/commands'
+import type { Song } from '@/types/schemas'
+import { services } from '@/services'
+import type { CommandService } from '@/services/commandService'
+import { usePlayerStore } from '@/store/playerStore'
 import {
   animateAlbumCover,
   animateButtonClick,
@@ -41,7 +41,7 @@ const PLAY_MODE_TEXT = [
   '\u968f\u673a\u64ad\u653e'
 ] as const
 
-function resolveCoverUrl(url?: string): string {
+export function resolveCoverUrl(url?: string): string {
   if (!url) return DEFAULT_COVER
   if (url.startsWith('data:')) return url
   try {
@@ -80,7 +80,7 @@ export function usePlayerViewModel(deps: PlayerViewModelDeps = {}) {
   const coverImgRef = ref<HTMLImageElement | null>(null)
   const volumeFillRef = ref<HTMLDivElement | null>(null)
 
-  const currentSong = computed<Song | null>(() => playerStore.currentSong)
+  const currentSong = computed<Song | null>(() => playerStore.currentSongInfo)
   const progressPercent = computed(() =>
     playerStore.duration ? (playerStore.progress / playerStore.duration) * 100 : 0
   )
@@ -155,7 +155,7 @@ export function usePlayerViewModel(deps: PlayerViewModelDeps = {}) {
   }
 
   watch(
-    () => playerStore.currentSong,
+    () => playerStore.currentSongInfo,
     () => {
       void nextTick(() => coverImgRef.value && animateAlbumCover(coverImgRef.value))
     },

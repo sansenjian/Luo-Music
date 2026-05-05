@@ -41,7 +41,7 @@ describe('playbackErrorHandler', () => {
       shouldRetry: true,
       url: 'https://song.test/retry.mp3'
     })
-    expect(state.songList[0].url).toBe('https://song.test/retry.mp3')
+    expect(state.songList[0].url).toBeUndefined()
   })
 
   it('marks songs unavailable when retrying audio playback fails', async () => {
@@ -70,6 +70,35 @@ describe('playbackErrorHandler', () => {
     expect(song.unavailable).toBe(true)
     expect(song.errorMessage).toBeTruthy()
     expect(handler.getUnavailableSongs()).toEqual(['song-2'])
+  })
+
+  it('does not retry remote url resolution for local songs', async () => {
+    const localSong = createMockSong({
+      id: 'local:track-1',
+      extra: {
+        localSource: true,
+        localFilePath: 'D:\\Music\\track.mp3'
+      }
+    })
+    const state = {
+      songList: [localSong],
+      currentIndex: 0,
+      playMode: PLAY_MODE.LIST_LOOP
+    }
+
+    const handler = new PlaybackErrorHandler({
+      musicService: musicServiceMock,
+      getState: () => state
+    })
+
+    const result = await handler.handleAudioError(new Error('decode failed'), localSong)
+
+    expect(musicServiceMock.getSongUrl).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      shouldRetry: false,
+      shouldSkip: true
+    })
+    expect(localSong.errorMessage).toContain('本地文件无法播放')
   })
 
   it('stops skipping after too many rapid attempts or when most songs are unavailable', () => {
@@ -141,8 +170,32 @@ describe('playbackErrorHandler', () => {
     expect(songs[2].unavailable).toBe(true)
   })
 
+  it('continues from the failed song index even when currentIndex is stale', async () => {
+    const songs = [
+      createMockSong({ id: 1 }),
+      createMockSong({ id: 2 }),
+      createMockSong({ id: 3 }),
+      createMockSong({ id: 4 })
+    ]
+
+    const handler = new PlaybackErrorHandler({
+      musicService: musicServiceMock,
+      getState: () => ({
+        songList: songs,
+        currentIndex: 0,
+        playMode: PLAY_MODE.SEQUENTIAL
+      })
+    })
+
+    const playNext = vi.fn().mockResolvedValueOnce(undefined)
+
+    await handler.playNextSkipUnavailable(playNext, 2)
+
+    expect(playNext).toHaveBeenCalledWith(3)
+  })
+
   it('supports shuffle index selection and reset', () => {
-    const songs = [createMockSong({ id: 1 }), createMockSong({ id: 2, unavailable: true })]
+    const songs = [createMockSong({ id: 1 }), createMockSong({ id: 2 })]
     const handler = new PlaybackErrorHandler({
       musicService: musicServiceMock,
       getState: () => ({

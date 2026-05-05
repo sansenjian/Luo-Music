@@ -59,6 +59,9 @@ export interface UseUserCenterPageReturn {
   selectedPlaylistSongs: Ref<Song[]>
   playlistDetailLoading: Ref<boolean>
   playlistDetailError: Ref<unknown>
+  playlistHasMore: Ref<boolean>
+  playlistLoadingMore: Ref<boolean>
+  loadMorePlaylistSongs: () => Promise<void>
   selectedAlbumId: Ref<string | null>
   selectedAlbum: ComputedRef<UserCenterFavoriteAlbumsLike['albums']['value'][number] | null>
   selectedAlbumSongs: Ref<Song[]>
@@ -82,6 +85,7 @@ export interface UseUserCenterPageReturn {
   playlists: UserCenterPlaylistsLike['createdPlaylists']
   favoritePlaylists: UserCenterPlaylistsLike['favoritePlaylists']
   loadPlaylists: UserCenterPlaylistsLike['loadPlaylists']
+  loadInitialPlaylistSongs: UserCenterPlaylistsLike['loadInitialPlaylistSongs']
   loadPlaylistSongs: UserCenterPlaylistsLike['loadPlaylistSongs']
   resetPlaylists: UserCenterPlaylistsLike['resetPlaylists']
   albums: UserCenterFavoriteAlbumsLike['albums']
@@ -157,6 +161,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     createdPlaylists,
     error: playlistsError,
     favoritePlaylists,
+    loadInitialPlaylistSongs,
     loadPlaylistSongs,
     loadPlaylists,
     playlists,
@@ -200,6 +205,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     getCurrentUserId: () => userStore.userId,
     loadTabData: (tab, userId, force) => loadTabDataBridge(tab, userId, force),
     loadPlaylistSongs,
+    usePlaylistTracks: userPlaylists.usePlaylistTracks,
     loadAlbumSongs,
     syncRouteQuery: () => syncRouteQueryBridge()
   })
@@ -271,7 +277,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     }
 
     if (activeTab.value === 'album') {
-      return playlistsError.value ?? albumsError.value
+      return albumsError.value
     }
 
     if (activeTab.value === 'events') {
@@ -286,9 +292,11 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     playlistStore,
     playerStore,
     likeSongs,
+    selectedPlaylistId: details.selectedPlaylistId,
     selectedPlaylistSongs: details.selectedPlaylistSongs,
     selectedAlbumSongs: details.selectedAlbumSongs,
     loadPlaylistDetail: details.loadPlaylistDetail,
+    loadInitialPlaylistSongs,
     loadAlbumDetail: details.loadAlbumDetail,
     getCachedPlaylistSongs: details.getCachedPlaylistSongs,
     getCachedAlbumSongs: details.getCachedAlbumSongs
@@ -309,6 +317,9 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     selectedPlaylistSongs: details.selectedPlaylistSongs,
     playlistDetailLoading: details.playlistDetailLoading,
     playlistDetailError: details.playlistDetailError,
+    playlistHasMore: details.playlistHasMore,
+    playlistLoadingMore: details.playlistLoadingMore,
+    loadMorePlaylistSongs: details.loadMorePlaylistSongs,
     selectedAlbumId: details.selectedAlbumId,
     selectedAlbum,
     selectedAlbumSongs: details.selectedAlbumSongs,
@@ -332,6 +343,7 @@ export function useUserCenterPage(deps: UseUserCenterPageDeps = {}): UseUserCent
     playlists: createdPlaylists,
     favoritePlaylists,
     loadPlaylists,
+    loadInitialPlaylistSongs,
     loadPlaylistSongs,
     resetPlaylists,
     albums,

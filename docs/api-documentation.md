@@ -569,7 +569,7 @@ interface Song {
   duration: number
   url?: string
   cover?: string
-  server?: 'netease' | 'qq' // 平台标识
+  server?: string // 平台标识：'netease' | 'qq' | 'local' 或插件扩展的平台 ID
   mediaId?: string // QQ 音乐媒体 ID
 }
 
@@ -627,5 +627,5 @@ interface QQMusicSong {
 
 ---
 
-**文档版本**: v2.0  
-**最后更新**: 2026-03-01
+**文档版本**: v2.1
+**最后更新**: 2026-04-24

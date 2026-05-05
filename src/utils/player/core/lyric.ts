@@ -48,6 +48,7 @@ export function parseLyricTimestamp(timeStr: string): number {
 
 export class LyricParser {
   private static readonly MERGE_TOLERANCE_MS = 80
+  private static readonly FALLBACK_MERGE_TOLERANCE_MS = 500
 
   private static parseTime(timeStr: string): number {
     return parseLyricTimestamp(timeStr)
@@ -68,6 +69,69 @@ export class LyricParser {
     return nextLines.length > 0 ? `${current}\n${nextLines.join('\n')}` : current
   }
 
+  private static getAuxiliaryField(line: LyricLine, type: 'trans' | 'roma'): string {
+    return type === 'trans' ? line.trans : line.roma
+  }
+
+  private static findNearestTextKey(
+    linesMap: Map<number, LyricLine>,
+    key: number,
+    type: 'trans' | 'roma',
+    toleranceMs: number
+  ): number | null {
+    let matchedKey: number | null = null
+    let smallestDiff = Number.POSITIVE_INFINITY
+    let matchedHasTargetField = true
+
+    for (const [candidateKey, candidateLine] of linesMap.entries()) {
+      if (!candidateLine.text) {
+        continue
+      }
+
+      const diff = Math.abs(candidateKey - key)
+      if (diff > toleranceMs) {
+        continue
+      }
+
+      const candidateHasTargetField = Boolean(LyricParser.getAuxiliaryField(candidateLine, type))
+
+      if (
+        matchedKey === null ||
+        (matchedHasTargetField && !candidateHasTargetField) ||
+        (matchedHasTargetField === candidateHasTargetField &&
+          (diff < smallestDiff || (diff === smallestDiff && candidateKey < matchedKey)))
+      ) {
+        matchedKey = candidateKey
+        smallestDiff = diff
+        matchedHasTargetField = candidateHasTargetField
+      }
+    }
+
+    return matchedKey
+  }
+
+  private static findSequentialTextKey(
+    linesMap: Map<number, LyricLine>,
+    type: 'trans' | 'roma',
+    lastMatchedKey: number | null
+  ): number | null {
+    const textKeys = Array.from(linesMap.entries())
+      .filter(([, line]) => Boolean(line.text))
+      .map(([key]) => key)
+      .sort((left, right) => left - right)
+
+    const nextKey = textKeys.find(candidateKey => {
+      if (lastMatchedKey !== null && candidateKey <= lastMatchedKey) {
+        return false
+      }
+
+      const candidateLine = linesMap.get(candidateKey)
+      return candidateLine ? !LyricParser.getAuxiliaryField(candidateLine, type) : false
+    })
+
+    return nextKey ?? null
+  }
+
   private static findMatchingKey(
     linesMap: Map<number, LyricLine>,
     key: number,
@@ -81,26 +145,22 @@ export class LyricParser {
       return null
     }
 
-    let matchedKey: number | null = null
-    let smallestDiff = Number.POSITIVE_INFINITY
-
-    for (const [candidateKey, candidateLine] of linesMap.entries()) {
-      if (!candidateLine.text) {
-        continue
-      }
-
-      const diff = Math.abs(candidateKey - key)
-      if (
-        diff <= LyricParser.MERGE_TOLERANCE_MS &&
-        (diff < smallestDiff ||
-          (diff === smallestDiff && matchedKey !== null && candidateKey < matchedKey))
-      ) {
-        matchedKey = candidateKey
-        smallestDiff = diff
-      }
+    const nearbyMatch = LyricParser.findNearestTextKey(
+      linesMap,
+      key,
+      type,
+      LyricParser.MERGE_TOLERANCE_MS
+    )
+    if (nearbyMatch !== null) {
+      return nearbyMatch
     }
 
-    return matchedKey
+    return LyricParser.findNearestTextKey(
+      linesMap,
+      key,
+      type,
+      LyricParser.FALLBACK_MERGE_TOLERANCE_MS
+    )
   }
 
   static parse(lrc: string, tlyric?: string, rlyric?: string): LyricLine[] {
@@ -110,6 +170,8 @@ export class LyricParser {
 
     const parseContent = (text: string, type: 'text' | 'trans' | 'roma') => {
       if (!text || typeof text !== 'string') return
+
+      let lastMatchedTextKey: number | null = null
 
       const lines = text.split('\n')
       lines.forEach(line => {
@@ -127,7 +189,11 @@ export class LyricParser {
             const time = LyricParser.parseTime(timeStr) || 0
             const rawKey = Math.round(time * 1000)
             const matchedKey = LyricParser.findMatchingKey(linesMap, rawKey, type)
-            const key = matchedKey ?? rawKey
+            const sequentialKey =
+              matchedKey === null && type !== 'text'
+                ? LyricParser.findSequentialTextKey(linesMap, type, lastMatchedTextKey)
+                : null
+            const key = matchedKey ?? sequentialKey ?? rawKey
 
             if (!linesMap.has(key)) {
               linesMap.set(key, {
@@ -145,6 +211,10 @@ export class LyricParser {
               entry.trans = LyricParser.mergeField(entry.trans, content)
             } else if (type === 'roma') {
               entry.roma = LyricParser.mergeField(entry.roma, content)
+            }
+
+            if (entry.text) {
+              lastMatchedTextKey = key
             }
           })
         }

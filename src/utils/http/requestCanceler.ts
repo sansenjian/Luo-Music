@@ -61,12 +61,11 @@ export function cancelAllRequests(): void {
 
 /**
  * 取消指定 URL 的请求
- * @param urlPattern - URL 模式 (支持正则)
+ * @param urlPattern - URL 子串匹配
  */
 export function cancelRequestsByUrl(urlPattern: string): void {
-  const regex = new RegExp(urlPattern)
   for (const [key, controller] of activeRequests.entries()) {
-    if (regex.test(key)) {
+    if (key.includes(urlPattern)) {
       controller.abort()
       activeRequests.delete(key)
     }
@@ -161,15 +160,37 @@ export function cleanupOnUnmount(): () => void {
   return cancelAllRequests
 }
 
-// 监听页面卸载事件（使用单次初始化标志防止 HMR 重复注册）
-if (typeof window !== 'undefined') {
-  const CANCELER_INIT_SYMBOL = Symbol.for('http-request-canceler-initialized')
+let isPageLifecycleBound = false
 
-  if (!(window as unknown as Record<symbol, boolean>)[CANCELER_INIT_SYMBOL]) {
-    window.addEventListener('beforeunload', cancelAllRequests)
-    window.addEventListener('pagehide', cancelAllRequests)
-    ;(window as unknown as Record<symbol, boolean>)[CANCELER_INIT_SYMBOL] = true
+export function bindRequestCancelerLifecycle(): void {
+  if (typeof window === 'undefined' || isPageLifecycleBound) {
+    return
   }
+
+  window.addEventListener('beforeunload', cancelAllRequests)
+  window.addEventListener('pagehide', cancelAllRequests)
+  isPageLifecycleBound = true
+}
+
+export function unbindRequestCancelerLifecycle(): void {
+  if (typeof window === 'undefined' || !isPageLifecycleBound) {
+    return
+  }
+
+  window.removeEventListener('beforeunload', cancelAllRequests)
+  window.removeEventListener('pagehide', cancelAllRequests)
+  isPageLifecycleBound = false
+}
+
+export function disposeRequestCanceler(): void {
+  cancelAllRequests()
+  unbindRequestCancelerLifecycle()
+}
+
+bindRequestCancelerLifecycle()
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(disposeRequestCanceler)
 }
 
 export default {
@@ -183,5 +204,8 @@ export default {
   isRequestActive,
   createCancellableRequest,
   dedupeRequest,
-  cleanupOnUnmount
+  cleanupOnUnmount,
+  bindRequestCancelerLifecycle,
+  unbindRequestCancelerLifecycle,
+  disposeRequestCanceler
 }

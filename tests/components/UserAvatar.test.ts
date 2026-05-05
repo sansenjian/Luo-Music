@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 
 import UserAvatar from '@/components/UserAvatar.vue'
+import {
+  replaceRuntimePlatformDescriptors,
+  resetRuntimePlatformDescriptors
+} from '@/platform/music/descriptors'
 import { useUserStore } from '@/store/userStore'
 
 const pushMock = vi.hoisted(() => vi.fn())
@@ -12,6 +15,10 @@ const checkQQMusicLoginMock = vi.hoisted(() => vi.fn().mockResolvedValue({ data:
 const warnMock = vi.hoisted(() => vi.fn())
 const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => false)
+}))
+const pluginServiceMock = vi.hoisted(() => ({
+  refreshPlatformDescriptors: vi.fn(() => Promise.resolve([])),
+  onPlatformsChanged: vi.fn(() => () => {})
 }))
 
 vi.mock('vue-router', () => ({
@@ -46,25 +53,25 @@ vi.mock('@/services', async importOriginal => {
           warn: warnMock
         })
       }),
-      platform: () => platformServiceMock
+      platform: () => platformServiceMock,
+      plugins: () => pluginServiceMock
     }
   }
 })
 
 function createWrapper() {
-  const pinia = createPinia()
-  setActivePinia(pinia)
-
   return mount(UserAvatar, {
     attachTo: document.body,
     global: {
-      plugins: [pinia],
       stubs: {
         LoginModal: {
           template: '<div class="login-modal-stub">login</div>'
         },
         QQLoginModal: {
           template: '<div class="qq-login-modal-stub">qq</div>'
+        },
+        PluginLoginModal: {
+          template: '<div class="plugin-login-modal-stub">plugin</div>'
         }
       }
     }
@@ -75,6 +82,7 @@ describe('UserAvatar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     platformServiceMock.isElectron.mockReturnValue(true)
+    resetRuntimePlatformDescriptors()
     document.body.innerHTML = ''
   })
 
@@ -101,7 +109,7 @@ describe('UserAvatar', () => {
     expect(wrapper.find('.dropdown').exists()).toBe(false)
   })
 
-  it('navigates to user center from the dropdown menu item', async () => {
+  it('navigates to Netease user center from the profile header', async () => {
     const wrapper = createWrapper()
     const userStore = useUserStore()
     userStore.login(
@@ -115,9 +123,12 @@ describe('UserAvatar', () => {
     await nextTick()
 
     await wrapper.find('.user-trigger').trigger('click')
-    await wrapper.find('.menu-btn').trigger('click')
+    await wrapper.find('.platform-profile-card').trigger('click')
 
-    expect(pushMock).toHaveBeenCalledWith('/user')
+    expect(pushMock).toHaveBeenCalledWith({
+      path: '/user',
+      query: { platform: 'netease' }
+    })
     expect(wrapper.find('.dropdown').exists()).toBe(false)
   })
 
@@ -140,8 +151,8 @@ describe('UserAvatar', () => {
     await triggerButton.trigger('click')
     await nextTick()
 
-    const firstMenuButton = wrapper.get('.menu-btn')
-    expect(document.activeElement).toBe(firstMenuButton.element)
+    const profileCard = wrapper.get('.platform-profile-card')
+    expect(document.activeElement).toBe(profileCard.element)
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
@@ -149,5 +160,291 @@ describe('UserAvatar', () => {
 
     expect(wrapper.find('.dropdown').exists()).toBe(false)
     expect(document.activeElement).toBe(triggerButton.element)
+  })
+
+  it('renders login entries from enabled auth-capable platform descriptors', async () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      },
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      },
+      {
+        id: 'kugou',
+        displayName: 'Kugou Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'browser',
+            modes: ['browser']
+          }
+        }
+      },
+      {
+        id: 'disabled-auth',
+        displayName: 'Disabled Auth',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: false,
+        capabilities: {
+          search: true,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true
+          }
+        }
+      },
+      {
+        id: 'search-only',
+        displayName: 'Search Only',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false
+        }
+      }
+    ])
+
+    const wrapper = createWrapper()
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+
+    const loginButtons = wrapper.findAll('.login-platform-btn')
+    expect(loginButtons).toHaveLength(3)
+    expect(wrapper.findAll('.platform-login-title').map(title => title.text())).toEqual([
+      'Netease Music 未登录',
+      'QQ Music 未登录',
+      'Kugou Music 未登录'
+    ])
+    expect(wrapper.text()).not.toContain('Disabled Auth')
+    expect(wrapper.text()).not.toContain('Search Only')
+  })
+
+  it('hides the Netease login row when the profile header already represents it', async () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      },
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      }
+    ])
+
+    const wrapper = createWrapper()
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'sansenjian',
+        avatarUrl: 'https://example.com/avatar.png',
+        userId: 7924157898
+      },
+      'cookie'
+    )
+    await nextTick()
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('.dropdown-header').text()).toContain('sansenjian')
+    expect(wrapper.findAll('.platform-login-title').map(title => title.text())).toEqual([
+      'QQ Music 未登录'
+    ])
+    expect(wrapper.text()).not.toContain('Netease Music 已登录')
+  })
+
+  it('opens QQ Music user center from the logged-in QQ row', async () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      }
+    ])
+
+    const wrapper = createWrapper()
+    const userStore = useUserStore()
+    userStore.setQQCookie('qq-cookie')
+    await nextTick()
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('.platform-login-title').text()).toBe('QQ Music 已登录')
+    await wrapper.find('.login-platform-btn').trigger('click')
+
+    expect(pushMock).toHaveBeenCalledWith({
+      path: '/user',
+      query: { platform: 'qq' }
+    })
+    expect(wrapper.find('.dropdown').exists()).toBe(false)
+  })
+
+  it('keeps legacy Netease and QQ login entries visible before installed manifests refresh', async () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true
+        }
+      },
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false
+        }
+      }
+    ])
+
+    const wrapper = createWrapper()
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+
+    expect(wrapper.findAll('.platform-login-title').map(title => title.text())).toEqual([
+      'Netease Music 未登录',
+      'QQ Music 未登录'
+    ])
   })
 })

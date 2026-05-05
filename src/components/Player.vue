@@ -1,19 +1,32 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, computed, ref } from 'vue'
 
-import { usePlayerViewModel } from '../composables/usePlayerViewModel'
+import { uiMessages } from '@/messages/ui'
+import { useAppSettings } from '@/composables/useAppSettings'
+import { useCoverSwipe } from '@/composables/useCoverSwipe'
+import { usePlayerViewModel, resolveCoverUrl } from '@/composables/usePlayerViewModel'
 
-const SettingsPanel = defineAsyncComponent(() => import('./SettingsPanel.vue'))
+const PlaybackQueueDrawer = defineAsyncComponent(() => import('./PlaybackQueueDrawer.vue'))
+const ProgressWaveform = defineAsyncComponent(() => import('./ProgressWaveform.vue'))
 
 interface PlayerProps {
-  compact?: boolean
+  docked?: boolean
   loading?: boolean
 }
 
 const props = withDefaults(defineProps<PlayerProps>(), {
-  compact: false,
+  docked: false,
   loading: false
 })
+
+const emit = defineEmits<{
+  'navigate-to-lyrics': []
+}>()
+
+const { waveformEnabled, coverSwipeEnabled } = useAppSettings()
+const showPlaybackQueue = ref(false)
+const showWaveform = computed(() => waveformEnabled.value)
+const showCoverSwipe = computed(() => coverSwipeEnabled.value && !props.docked)
 
 const {
   playerStore,
@@ -42,32 +55,137 @@ const {
   toggleDesktopLyric,
   onLoopButtonClick
 } = usePlayerViewModel()
+
+const {
+  offsetX: coverSwipeOffsetX,
+  isSwiping: coverIsSwiping,
+  swipeDirection: coverSwipeDirection,
+  onPointerDown: onCoverSwipePointerDown,
+  onPointerMove: onCoverSwipePointerMove,
+  onPointerUp: onCoverSwipePointerUp,
+  onPointerCancel: onCoverSwipePointerCancel
+} = useCoverSwipe()
+
+const coverFrameStyle = computed(() => {
+  if (!showCoverSwipe.value || coverSwipeOffsetX.value === 0) return {}
+  return { transform: `translateX(${coverSwipeOffsetX.value}px)` }
+})
+
+const prevSong = computed(() => {
+  const list = playerStore.songList
+  const idx = playerStore.currentIndex
+  if (list.length === 0 || idx <= 0) return null
+  return list[idx - 1]
+})
+
+const nextSong = computed(() => {
+  const list = playerStore.songList
+  const idx = playerStore.currentIndex
+  if (list.length === 0 || idx >= list.length - 1) return null
+  return list[idx + 1]
+})
+
+const prevCoverUrl = computed(() =>
+  prevSong.value?.album?.picUrl ? resolveCoverUrl(prevSong.value.album.picUrl) : ''
+)
+
+const nextCoverUrl = computed(() =>
+  nextSong.value?.album?.picUrl ? resolveCoverUrl(nextSong.value.album.picUrl) : ''
+)
+
+function openPlaybackQueue(): void {
+  showPlaybackQueue.value = true
+}
+
+function closePlaybackQueue(): void {
+  showPlaybackQueue.value = false
+}
 </script>
 
 <template>
-  <div class="player-section" :class="{ 'is-compact': props.compact }">
-    <!-- Compact: Top progress bar -->
+  <div
+    class="player-section"
+    data-ui="player"
+    :class="{ 'is-docked': props.docked, 'has-song': !!currentSong }"
+    @click="currentSong && emit('navigate-to-lyrics')"
+  >
+    <!-- Docked: Top progress bar -->
     <div
-      v-if="props.compact"
+      v-if="props.docked"
       class="top-progress-wrapper"
       @pointerdown="progressSlider.handlePointerDown"
       @pointermove="progressSlider.handlePointerMove"
       @pointerup="progressSlider.handlePointerUp"
       @pointercancel="progressSlider.handlePointerUp"
-      @click="progressSlider.handleClick"
+      @click.stop="progressSlider.handleClick"
     >
+      <ProgressWaveform v-if="showWaveform" class="top-waveform" />
       <div class="top-progress-track">
         <div class="top-progress-fill" :style="{ width: `${progressPercent}%` }"></div>
       </div>
-      <div class="top-progress-hover-info">
-        <span>{{ playerStore.formattedProgress }}</span>
-        <span class="separator">/</span>
-        <span>{{ playerStore.formattedDuration }}</span>
-      </div>
     </div>
 
-    <div class="player-left" v-memo="[currentSong?.id, coverUrl, artistText]">
-      <div class="cover-frame">
+    <div class="player-left" data-ui="player-left">
+      <div
+        class="cover-swipe-area"
+        v-if="showCoverSwipe"
+        data-ui="player-cover-swipe"
+        @pointerdown="onCoverSwipePointerDown($event)"
+        @pointermove="onCoverSwipePointerMove($event)"
+        @pointerup="onCoverSwipePointerUp()"
+        @pointercancel="onCoverSwipePointerCancel()"
+        @dragstart.prevent
+        @click.stop
+      >
+        <!-- Previous song cover (revealed when swiping right) -->
+        <div
+          v-if="prevCoverUrl"
+          class="swipe-peek-cover swipe-peek-prev"
+          :class="{ 'is-visible': coverSwipeDirection === 'prev' }"
+        >
+          <img
+            :src="prevCoverUrl"
+            :alt="prevSong?.name"
+            class="cover-img"
+            draggable="false"
+            loading="lazy"
+          />
+        </div>
+        <!-- Next song cover (revealed when swiping left) -->
+        <div
+          v-if="nextCoverUrl"
+          class="swipe-peek-cover swipe-peek-next"
+          :class="{ 'is-visible': coverSwipeDirection === 'next' }"
+        >
+          <img
+            :src="nextCoverUrl"
+            :alt="nextSong?.name"
+            class="cover-img"
+            draggable="false"
+            loading="lazy"
+          />
+        </div>
+        <div
+          class="cover-frame"
+          data-ui="player-cover"
+          :class="{ 'is-swiping': coverIsSwiping }"
+          :style="coverFrameStyle"
+        >
+          <div class="corner corner-tl"></div>
+          <div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div>
+          <div class="corner corner-br"></div>
+          <img
+            ref="coverImgRef"
+            :src="coverUrl"
+            :alt="currentSong?.name"
+            class="cover-img"
+            draggable="false"
+            loading="lazy"
+          />
+        </div>
+      </div>
+      <div v-else class="cover-frame" data-ui="player-cover">
         <div class="corner corner-tl"></div>
         <div class="corner corner-tr"></div>
         <div class="corner corner-bl"></div>
@@ -81,14 +199,22 @@ const {
         />
       </div>
 
-      <div class="track-info">
-        <h2 class="track-title">{{ currentSong?.name || 'Unknown Track' }}</h2>
-        <p class="track-artist">{{ artistText }}</p>
+      <div class="track-info" data-ui="player-track">
+        <h2 class="track-title">
+          {{ currentSong?.name || uiMessages.home.player.emptyTitle }}
+        </h2>
+        <p class="track-artist">
+          {{ currentSong ? artistText : uiMessages.home.player.emptySubtitle }}
+        </p>
+        <span v-if="props.docked" class="docked-time">
+          {{ playerStore.formattedProgress }} / {{ playerStore.formattedDuration }}
+        </span>
       </div>
     </div>
 
     <!-- Normal: Bottom progress -->
-    <div v-if="!props.compact" class="progress-section">
+    <div v-if="!props.docked" class="progress-section" data-ui="player-progress">
+      <ProgressWaveform v-if="showWaveform" />
       <div class="time-row">
         <span>{{ playerStore.formattedProgress }}</span>
         <span>{{ playerStore.formattedDuration }}</span>
@@ -99,7 +225,7 @@ const {
         @pointermove="progressSlider.handlePointerMove"
         @pointerup="progressSlider.handlePointerUp"
         @pointercancel="progressSlider.handlePointerUp"
-        @click="progressSlider.handleClick"
+        @click.stop="progressSlider.handleClick"
       >
         <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
       </div>
@@ -107,6 +233,7 @@ const {
 
     <div
       class="controls"
+      data-ui="player-controls"
       v-memo="[
         playerStore.playing,
         playerStore.playMode,
@@ -119,8 +246,10 @@ const {
       <button
         ref="loopButtonRef"
         class="ctrl-btn loop-btn"
+        data-ui="player-mode-button"
         :disabled="!canTogglePlayMode"
-        @click="onLoopButtonClick"
+        :aria-label="playModeText"
+        @click.stop="onLoopButtonClick"
         :title="playModeText"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -134,8 +263,10 @@ const {
       <button
         ref="prevButtonRef"
         class="ctrl-btn"
+        data-ui="player-prev-button"
         :disabled="!canNavigatePlaylist"
-        @click="onPrevButtonClick"
+        aria-label="上一首"
+        @click.stop="onPrevButtonClick"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
@@ -145,8 +276,10 @@ const {
       <button
         ref="playButtonRef"
         class="ctrl-btn ctrl-main"
+        data-ui="player-play-button"
         :disabled="!canTogglePlay"
-        @click="onPlayButtonClick"
+        :aria-label="playerStore.playing ? '暂停播放' : '开始播放'"
+        @click.stop="onPlayButtonClick"
       >
         <svg
           v-if="!playerStore.playing"
@@ -165,8 +298,10 @@ const {
       <button
         ref="nextButtonRef"
         class="ctrl-btn"
+        data-ui="player-next-button"
         :disabled="!canNavigatePlaylist"
-        @click="onNextButtonClick"
+        aria-label="下一首"
+        @click.stop="onNextButtonClick"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
@@ -176,8 +311,10 @@ const {
       <!-- Desktop Lyric Button -->
       <button
         class="ctrl-btn lyric-btn"
+        data-ui="player-lyric-button"
         :disabled="!canToggleDesktopLyric"
-        @click="toggleDesktopLyric"
+        aria-label="切换桌面歌词"
+        @click.stop="toggleDesktopLyric"
         title="Desktop Lyric"
       >
         <svg
@@ -197,7 +334,7 @@ const {
       </button>
     </div>
 
-    <div class="volume-row" v-memo="[volumeDisplay]">
+    <div class="volume-row" data-ui="player-volume" v-memo="[volumeDisplay]" @click.stop>
       <span class="volume-label">VOL</span>
       <div
         class="volume-bar"
@@ -205,13 +342,43 @@ const {
         @pointermove="volumeSlider.handlePointerMove"
         @pointerup="volumeSlider.handlePointerUp"
         @pointercancel="volumeSlider.handlePointerUp"
-        @click="volumeSlider.handleClick"
+        @click.stop="volumeSlider.handleClick"
       >
         <div ref="volumeFillRef" class="volume-fill"></div>
       </div>
       <span class="volume-value">{{ volumeDisplay }}</span>
-      <SettingsPanel />
+      <button
+        class="queue-btn"
+        type="button"
+        aria-label="打开播放队列"
+        title="打开播放队列"
+        @click.stop="openPlaybackQueue"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <path d="M3 6h.01"></path>
+          <path d="M3 12h.01"></path>
+          <path d="M3 18h.01"></path>
+        </svg>
+      </button>
     </div>
+
+    <PlaybackQueueDrawer
+      v-if="showPlaybackQueue"
+      :open="showPlaybackQueue"
+      @close="closePlaybackQueue"
+    />
   </div>
 </template>
 

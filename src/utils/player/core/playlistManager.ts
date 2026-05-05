@@ -1,5 +1,5 @@
-import { PLAY_MODE } from '../constants'
-import { shuffleHelper } from '../helpers/shuffleHelper'
+import { PLAY_MODE } from '@/utils/player/constants'
+import { shuffleHelper } from '@/utils/player/helpers/shuffleHelper'
 import type { Song } from '@/types/schemas'
 
 export interface Playlist {
@@ -73,7 +73,7 @@ export class PlaylistManager {
     if (playlist.list.length === 0) return null
 
     const nextIndex = this.getNextIndex(playlist)
-    return playlist.list[nextIndex]
+    return nextIndex >= 0 ? playlist.list[nextIndex] : null
   }
 
   getPrevSong(playlist: Playlist): Song | null {
@@ -98,6 +98,10 @@ export class PlaylistManager {
 
     if (playMode === PLAY_MODE.SINGLE_LOOP) {
       return currentIndex
+    }
+
+    if (playMode === PLAY_MODE.SEQUENTIAL && currentIndex >= list.length - 1) {
+      return -1
     }
 
     return (currentIndex + 1) % list.length

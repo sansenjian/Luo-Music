@@ -18,9 +18,18 @@ describe('package scripts for forge workflows', () => {
     )
   })
 
+  it('cleans electron bundle outputs inside build:electron:bundle', () => {
+    expect(packageJson.scripts?.['build:electron:bundle']).toBe(
+      'node scripts/build/clean-targets.cjs --force build && npm run build:electron:bundle:no-clean'
+    )
+    expect(packageJson.scripts?.['build:electron:bundle:no-clean']).toBe(
+      'npm run rebuild:native && npm run guard:configs && npm run build:qq-runtime && concurrently --success all "npm run build:server" "electron-vite build --config electron.vite.config.ts"'
+    )
+  })
+
   it('cleans only the packaged app directory before package', () => {
     expect(packageJson.scripts?.package).toBe(
-      'node scripts/build/clean-targets.cjs --force build "out/LUO Music-win32-x64" && npm run build:electron:bundle && electron-forge package'
+      'node scripts/build/clean-targets.cjs --force "out/LUO Music-win32-x64" && npm run build:electron:bundle && electron-forge package'
     )
   })
 
@@ -28,14 +37,14 @@ describe('package scripts for forge workflows', () => {
     'cleans only forge make outputs before %s',
     scriptName => {
       expect(packageJson.scripts?.[scriptName]).toMatch(
-        /^node scripts\/build\/clean-targets\.cjs --force build "out\/LUO Music-win32-x64" out\/make && npm run build:electron:bundle && /
+        /^node scripts\/build\/clean-targets\.cjs --force "out\/LUO Music-win32-x64" out\/make && npm run build:electron:bundle && /
       )
     }
   )
 
   it('runs build:electron:bundle before the portable single-exe workflow', () => {
     expect(packageJson.scripts?.['build:electron:portable']).toBe(
-      'node scripts/build/clean-targets.cjs --force build out/portable && npm run build:electron:bundle && electron-builder --config electron-builder.portable.json --publish never && node scripts/build/finalize-portable-output.cjs out/portable'
+      'node scripts/build/clean-targets.cjs --force out/portable && npm run build:electron:bundle && electron-builder --config electron-builder.portable.cjs --publish never && node scripts/build/finalize-portable-output.cjs out/portable'
     )
   })
 

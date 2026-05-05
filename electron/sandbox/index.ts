@@ -1,10 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { SEND_CHANNELS, RECEIVE_CHANNELS, INVOKE_CHANNELS } from '../shared/protocol/channels.ts'
-import { createLegacyElectronAPI, type ElectronAPI } from './legacyElectronApi'
+import {
+  SEND_CHANNELS,
+  RECEIVE_CHANNELS,
+  INVOKE_CHANNELS
+} from '@/platform/contracts/protocol/channels'
+import type { ElectronAPI, ServiceAPI as ExposedServiceAPI } from '@/platform/contracts/sandbox'
+import { createLegacyElectronAPI } from './legacyElectronApi'
 
 // 导入服务代理
-import { LogProxy, ConfigProxy, ApiProxy, WindowProxy, PlayerProxy } from './services'
-import type { Song, LyricLine } from './services/playerProxy'
+import { LogProxy, ConfigProxy, ApiProxy, WindowProxy, PlayerProxy, PluginProxy } from './services'
+import type { Song, LyricLine, DesktopLyricSnapshot } from './services/playerProxy'
 
 console.log('--- Preload script loaded (TypeScript) ---')
 
@@ -22,11 +27,6 @@ type IpcCoreAPI = {
   removeAllListeners: (channel?: Channel) => void
   supportsSendChannel: (channel: string) => channel is SendChannel
 }
-
-type LoggerServiceAPI = Pick<
-  LogProxy,
-  'trace' | 'debug' | 'info' | 'warn' | 'error' | 'errorWithStack'
->
 
 type ConfigServiceAPI = Pick<
   ConfigProxy,
@@ -91,16 +91,11 @@ type PlayerServiceAPI = Pick<
   | 'onPlayStateChange'
   | 'onSongChange'
   | 'onLyricUpdate'
+  | 'onDesktopLyricState'
   | 'onPlayError'
 >
 
-type ServiceAPIShape = IpcCoreAPI & {
-  createLogger: (module: string) => LoggerServiceAPI
-  config: ConfigServiceAPI
-  api: ApiServiceAPI
-  window: WindowServiceAPI
-  player: PlayerServiceAPI
-}
+type ServiceAPIShape = ExposedServiceAPI
 interface ValidatedIpcBridge {
   send: (channel: string, ...args: unknown[]) => void
   on: (channel: string, callback: (...args: unknown[]) => void) => () => void
@@ -153,11 +148,17 @@ function createValidatedIpcBridge(renderer: Electron.IpcRenderer): ValidatedIpcB
     },
 
     removeListener(channel: string, callback: (...args: unknown[]) => void): void {
+      if (!validReceiveChannels.has(channel as ReceiveChannel)) {
+        throw new Error(`Invalid receive channel: ${channel}`)
+      }
       renderer.removeListener(channel as ReceiveChannel, callback)
     },
 
     removeAllListeners(channel?: string): void {
-      renderer.removeAllListeners(channel)
+      if (!channel || !validReceiveChannels.has(channel as ReceiveChannel)) {
+        throw new Error(`Invalid receive channel: ${String(channel)}`)
+      }
+      renderer.removeAllListeners(channel as ReceiveChannel)
     },
 
     invoke<T = unknown>(channel: string, ...args: unknown[]): Promise<T> {
@@ -220,6 +221,8 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
     getChart: (platform, id) => apiProxy.getChart(platform, id)
   }
 
+  const pluginProxy = new PluginProxy()
+
   const windowApi: WindowServiceAPI = {
     minimize: () => windowProxy.minimize(),
     toggleMaximize: () => windowProxy.toggleMaximize(),
@@ -266,6 +269,8 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
       playerProxy.onSongChange(listener),
     onLyricUpdate: (listener: (data: { index: number; line: LyricLine | null }) => void) =>
       playerProxy.onLyricUpdate(listener),
+    onDesktopLyricState: (listener: (data: DesktopLyricSnapshot) => void) =>
+      playerProxy.onDesktopLyricState(listener),
     onPlayError: (listener: (data: { error: string; song: Song | null }) => void) =>
       playerProxy.onPlayError(listener)
   }
@@ -276,11 +281,22 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
     config,
     api,
     window: windowApi,
-    player
+    player,
+    plugins: {
+      list: () => pluginProxy.list(),
+      installFromPath: pluginPath => pluginProxy.installFromPath(pluginPath),
+      pickInstallPath: () => pluginProxy.pickInstallPath(),
+      setEnabled: (platformId, enabled) => pluginProxy.setEnabled(platformId, enabled),
+      uninstall: platformId => pluginProxy.uninstall(platformId),
+      getSettings: platformId => pluginProxy.getSettings(platformId),
+      updateSettings: (platformId, settings) => pluginProxy.updateSettings(platformId, settings),
+      call: (platformId, method, payload) => pluginProxy.call(platformId, method, payload),
+      onChanged: listener => pluginProxy.onChanged(listener)
+    }
   }
 }
 
-export type ServiceAPI = ReturnType<typeof createServiceAPI>
+export type ServiceAPI = ExposedServiceAPI
 
 function exposeAPI(): void {
   const ipc = createValidatedIpcBridge(ipcRenderer)
@@ -297,6 +313,6 @@ exposeAPI()
 declare global {
   interface Window {
     electronAPI: ElectronAPI
-    services: ServiceAPI
+    services: ExposedServiceAPI
   }
 }

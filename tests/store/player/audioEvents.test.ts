@@ -88,7 +88,7 @@ describe('audioEvents', () => {
       getCurrentLyricLine: () => ({ text: 'hello', trans: '你好', roma: 'ni hao' })
     })
 
-    expect(playerCoreMock.on).toHaveBeenCalledTimes(6)
+    expect(playerCoreMock.on).toHaveBeenCalledTimes(7)
 
     playerCoreMock.setCurrentTime(12)
     vi.setSystemTime(getTestDate(TIME_OFFSETS.MS_300))
@@ -441,5 +441,40 @@ describe('audioEvents', () => {
 
     handler.init()
     expect(warn).toHaveBeenCalled()
+  })
+
+  it('re-emits metadata when duration becomes available during progress updates', () => {
+    const state = createInitialState()
+    const callbacks = {
+      onTimeUpdate: vi.fn(),
+      onLoadedMetadata: vi.fn()
+    }
+    const handler = createAudioEventHandler(state, callbacks)
+
+    handler.init({
+      uiUpdateInterval: 250,
+      ipcBroadcastInterval: 500
+    })
+
+    playerCoreMock.setCurrentTime(3)
+    playerCoreMock.setDuration(245)
+    playerCoreMock.emit('timeupdate')
+
+    expect(callbacks.onLoadedMetadata).toHaveBeenCalledWith(245)
+  })
+
+  it('forwards durationchange updates when metadata is discovered after playback starts', () => {
+    const state = createInitialState()
+    const callbacks = {
+      onLoadedMetadata: vi.fn()
+    }
+    const handler = createAudioEventHandler(state, callbacks)
+
+    handler.init()
+
+    playerCoreMock.setDuration(187)
+    playerCoreMock.emit('durationchange')
+
+    expect(callbacks.onLoadedMetadata).toHaveBeenCalledWith(187)
   })
 })

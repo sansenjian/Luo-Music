@@ -253,7 +253,7 @@ class DownloadJob {
 const usePlayerStore = createPlayerStore(
   {
     audioManager: mockAudioManager,
-    getPlatformAccessor: () => mockPlatformService
+    platform: () => mockPlatformService
   },
   'player-test'
 )

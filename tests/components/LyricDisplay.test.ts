@@ -38,6 +38,15 @@ describe('LyricDisplay', () => {
     resizeObserverCallback = null
   })
 
+  it('shows a guided empty state when no lyrics are available', async () => {
+    const wrapper = mount(LyricDisplay)
+    await nextTick()
+
+    expect(wrapper.text()).toContain('No lyrics yet')
+    expect(wrapper.text()).toContain('Search for a track and start playback')
+    expect(wrapper.find('.empty-primary-action').exists()).toBe(false)
+  })
+
   it('scrolls the active lyric into view when the lyric index changes', async () => {
     const store = usePlayerStore()
     store.initAudio() // Initialize the LyricEngine
@@ -224,6 +233,40 @@ describe('LyricDisplay', () => {
     expect(lyricLines[1].classes()).toContain('active')
     expect(lyricLines[1].find('.lyric-main').text()).toBe('Line 2')
     expect(lyricLines[1].find('.lyric-trans').exists()).toBe(false)
+  })
+
+  it('does not render romanized lyrics when roma display is disabled', async () => {
+    const store = usePlayerStore()
+    store.initAudio()
+    store.lyricType = ['original', 'trans']
+    store.setLyricsArray([{ time: 0, text: '星降る海', trans: '', roma: 'Hoshifuru Umi' }])
+    store.progress = 0
+    store.updateLyricIndex(0)
+
+    const wrapper = mount(LyricDisplay)
+    await nextTick()
+
+    const lyricLine = wrapper.find('.lyric-line')
+    expect(lyricLine.find('.lyric-main').text()).toBe('星降る海')
+    expect(lyricLine.find('.lyric-trans').exists()).toBe(false)
+    expect(lyricLine.find('.lyric-roma').exists()).toBe(false)
+  })
+
+  it('renders romanized lyrics only in the dedicated roma line when enabled', async () => {
+    const store = usePlayerStore()
+    store.initAudio()
+    store.lyricType = ['original', 'trans', 'roma']
+    store.setLyricsArray([{ time: 0, text: '星降る海', trans: '', roma: 'Hoshifuru Umi' }])
+    store.progress = 0
+    store.updateLyricIndex(0)
+
+    const wrapper = mount(LyricDisplay)
+    await nextTick()
+
+    const lyricLine = wrapper.find('.lyric-line')
+    expect(lyricLine.find('.lyric-main').text()).toBe('星降る海')
+    expect(lyricLine.find('.lyric-roma').text()).toBe('Hoshifuru Umi')
+    expect(lyricLine.find('.lyric-trans').exists()).toBe(false)
   })
 
   it('re-centers the active lyric when lyrics are replaced but the active index resolves to the same value', async () => {

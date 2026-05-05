@@ -1,6 +1,10 @@
-import { INVOKE_CHANNELS, SEND_CHANNELS, isValidSendChannel } from '../shared/protocol/channels.ts'
-import type { CacheClearOptions, CacheClearResult } from '../shared/protocol/cache.ts'
-import type { ServiceStatusResponse } from '../ipc/types'
+import {
+  INVOKE_CHANNELS,
+  SEND_CHANNELS,
+  isValidSendChannel
+} from '@/platform/contracts/protocol/channels'
+import type { CacheClearOptions, CacheClearResult } from '@/platform/contracts/protocol/cache'
+import type { ServiceStatusResponse } from '@/platform/contracts/ipc'
 
 type ChannelBridge = {
   send(channel: string, ...args: unknown[]): void
@@ -132,7 +136,8 @@ export function createLegacyElectronAPI(
     resizeWindow: (dims: { width: number; height: number }) =>
       ipc.send(SEND_CHANNELS.WINDOW_RESIZE, dims),
     getCacheSize: () => ipc.invoke(INVOKE_CHANNELS.CACHE_GET_SIZE),
-    clearCache: (options: CacheClearOptions = {}) => ipc.invoke(INVOKE_CHANNELS.CACHE_CLEAR, options),
+    clearCache: (options: CacheClearOptions = {}) =>
+      ipc.invoke(INVOKE_CHANNELS.CACHE_CLEAR, options),
     clearAllCache: (keepUserData?: boolean) =>
       ipc.invoke(INVOKE_CHANNELS.CACHE_CLEAR_ALL, keepUserData),
     getCachePaths: () => ipc.invoke(INVOKE_CHANNELS.CACHE_GET_PATHS),

@@ -20,6 +20,7 @@ const isPackaged = electronApp?.isPackaged ?? (!process.env.VITE_DEV_SERVER_URL 
 const appRoot =
   process.env.APP_ROOT ||
   (isPackaged ? path.join(process.resourcesPath, 'app.asar') : process.cwd())
+const developmentRuntimeScripts = new Set(['netease-api-server.cjs', 'qq-search-fallback.cjs'])
 
 export const PROJECT_ROOT = appRoot
 export const BUILD_DIR = path.join(PROJECT_ROOT, 'build')
@@ -29,10 +30,15 @@ export const VITE_PUBLIC = process.env.VITE_PUBLIC || path.join(PROJECT_ROOT, 'p
 
 export function getScriptPath(scriptName: string): string {
   // 打包后脚本位于 resources/ 根目录（extraResource 直接复制文件名）
-  // 开发模式位于 scripts/dev/
+  // 开发模式下，运行时服务脚本位于 scripts/runtime/，开发启动器位于 scripts/dev/
   const scriptPath = isPackaged
     ? path.join(process.resourcesPath, scriptName)
-    : path.join(PROJECT_ROOT, 'scripts', 'dev', scriptName)
+    : path.join(
+        PROJECT_ROOT,
+        'scripts',
+        developmentRuntimeScripts.has(scriptName) ? 'runtime' : 'dev',
+        scriptName
+      )
 
   return scriptPath
 }

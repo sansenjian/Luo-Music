@@ -16,8 +16,14 @@ class ErrorCenter {
   }
 
   // 注册全局处理器（兜底）
-  onAny(handler: ErrorHandler) {
+  onAny(handler: ErrorHandler): () => void {
     this.globalHandlers.push(handler)
+    return () => {
+      const index = this.globalHandlers.indexOf(handler)
+      if (index !== -1) {
+        this.globalHandlers.splice(index, 1)
+      }
+    }
   }
 
   // 抛出错误（业务代码调用）

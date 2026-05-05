@@ -14,6 +14,7 @@
 - **Debug Full Electron**: 同时调试主进程和渲染进程
 
 **使用方法**：
+
 1. 按 `F5` 或选择调试配置
 2. 设置断点
 3. 开始调试
@@ -22,16 +23,16 @@
 
 推荐安装以下扩展：
 
-| 扩展 | 用途 |
-|------|------|
-| Vue.volar | Vue 3 语言支持 |
-| vscode-typescript-vue-plugin | Vue 中的 TypeScript 支持 |
-| vs code-eslint | ESLint 集成 |
-| prettier-vscode | Prettier 格式化 |
-| vscode-tailwindcss | Tailwind CSS 支持 |
+| 扩展                           | 用途                      |
+| ------------------------------ | ------------------------- |
+| Vue.volar                      | Vue 3 语言支持            |
+| vscode-typescript-vue-plugin   | Vue 中的 TypeScript 支持  |
+| vs code-eslint                 | ESLint 集成               |
+| prettier-vscode                | Prettier 格式化           |
+| vscode-tailwindcss             | Tailwind CSS 支持         |
 | markdown-preview-github-styles | GitHub 风格 Markdown 预览 |
-| vscode-typescript-next | 最新版 TypeScript 支持 |
-| es6-string-html | ES6 字符串 HTML 高亮 |
+| vscode-typescript-next         | 最新版 TypeScript 支持    |
+| es6-string-html                | ES6 字符串 HTML 高亮      |
 
 ### 3. VSCode 任务配置 (`.vscode/tasks.json`)
 
@@ -50,28 +51,33 @@
 新增设置包括：
 
 **文件管理**：
+
 - 排除构建产物和缓存目录
 - 配置文件编码为 UTF-8
 - 统一行尾为 LF
 
 **编辑器设置**：
+
 - 保存时自动格式化
 - 100 字符标尺
 - 括号对高亮
 - 移除行尾空白
 
 **TypeScript/Vue 设置**：
+
 - 使用工作区 TypeScript
 - 相对路径导入
 - 单引号偏好
 - Vue 组件命名规范
 
 **ESLint/Prettier**：
+
 - 保存时运行 ESLint
 - 启用缓存
 - 针对每种文件类型的格式化器
 
 **Git 设置**：
+
 - 自动 fetch
 - 智能提交
 
@@ -99,7 +105,7 @@
 配置了预提交钩子：
 
 ```bash
-npx lint-staged
+npm run lint:staged
 ```
 
 在提交前自动运行 lint-staged，检查提交的文件。
@@ -110,10 +116,8 @@ npx lint-staged
 
 ```json
 {
-  "*.ts": ["eslint --fix", "prettier --write"],
-  "*.vue": ["eslint --fix", "prettier --write"],
-  "*.json": ["prettier --write"],
-  "*.md": ["prettier --write"]
+  "*.{ts,vue,js}": ["eslint --fix", "prettier --write"],
+  "*.{json,md}": ["prettier --write"]
 }
 ```
 
@@ -130,17 +134,20 @@ npx lint-staged
 ### 9. GitHub 模板
 
 **PULL_REQUEST_TEMPLATE.md**：
+
 - 变更说明
 - 问题关联
 - 检查清单
 - 测试步骤
 
 **ISSUE_TEMPLATE/bug_report.md**：
+
 - 问题描述
 - 复现步骤
 - 环境信息
 
 **ISSUE_TEMPLATE/feature_request.md**：
+
 - 需求描述
 - 期望解决方案
 - 使用场景
@@ -162,10 +169,9 @@ npx lint-staged
 ```bash
 # 安装依赖
 npm install
-
-# 初始化 Husky（如果需要）
-npx husky install
 ```
+
+`npm install` 会通过 `prepare` 脚本自动安装 Husky，无需再额外执行安装命令。
 
 ### 调试配置
 
@@ -213,6 +219,7 @@ git commit
 ### 建议优化（长期）
 
 1. **功能模块化**：考虑按功能领域组织代码
+
    ```
    src/features/
    ├── player/
@@ -229,16 +236,16 @@ git commit
 
 ## 📊 配置对比
 
-| 配置项 | 优化前 | 优化后 |
-|--------|--------|--------|
-| 调试支持 | ❌ | ✅ 完整 |
-| 扩展推荐 | ❌ | ✅ 8 个 |
-| 任务配置 | ❌ | ✅ 8 个 |
-| 预提交钩子 | ❌ | ✅ Husky |
-| 提交模板 | ❌ | ✅ .gitmessage |
-| PR 模板 | ❌ | ✅ |
-| Issue 模板 | ❌ | ✅ 2 个 |
-| 贡献指南 | ❌ | ✅ |
+| 配置项     | 优化前 | 优化后         |
+| ---------- | ------ | -------------- |
+| 调试支持   | ❌     | ✅ 完整        |
+| 扩展推荐   | ❌     | ✅ 8 个        |
+| 任务配置   | ❌     | ✅ 8 个        |
+| 预提交钩子 | ❌     | ✅ Husky       |
+| 提交模板   | ❌     | ✅ .gitmessage |
+| PR 模板    | ❌     | ✅             |
+| Issue 模板 | ❌     | ✅ 2 个        |
+| 贡献指南   | ❌     | ✅             |
 
 ## 🎯 下一步
 

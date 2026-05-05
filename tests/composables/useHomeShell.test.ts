@@ -1,10 +1,10 @@
-import { defineComponent, nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useHomeShell } from '@/composables/useHomeShell'
 import { usePlayerStore } from '@/store/playerStore'
 import { useToastStore } from '@/store/toastStore'
+import { mountComposable } from '../helpers/mountComposable'
 
 const platformServiceMock = vi.hoisted(() => ({
   closeWindow: vi.fn(),
@@ -42,14 +42,12 @@ vi.mock('@/composables/useKeyboardShortcuts', () => ({
 }))
 
 function mountShell() {
-  const Harness = defineComponent({
-    setup() {
-      return useHomeShell()
-    },
-    template: '<div />'
-  })
+  const mounted = mountComposable(() => useHomeShell())
 
-  return mount(Harness)
+  return {
+    ...mounted,
+    vm: mounted.wrapper.vm as unknown as ReturnType<typeof useHomeShell>
+  }
 }
 
 describe('useHomeShell', () => {
@@ -62,8 +60,7 @@ describe('useHomeShell', () => {
   })
 
   it('initializes keyboard shortcuts and exposes shell actions', () => {
-    const wrapper = mountShell()
-    const vm = wrapper.vm as unknown as ReturnType<typeof useHomeShell>
+    const { vm } = mountShell()
 
     expect(useKeyboardShortcutsMock).toHaveBeenCalledTimes(1)
     expect(vm.activeTab).toBe('lyric')
@@ -80,20 +77,19 @@ describe('useHomeShell', () => {
     expect(platformServiceMock.closeWindow).toHaveBeenCalledTimes(1)
   })
 
-  it('switches back to lyric tab after a successful play request', async () => {
+  it('keeps the current tab after a successful play request', async () => {
     const playerStore = usePlayerStore()
     const playSongWithDetails = vi
       .spyOn(playerStore, 'playSongWithDetails')
       .mockResolvedValue(undefined as never)
 
-    const wrapper = mountShell()
-    const vm = wrapper.vm as unknown as ReturnType<typeof useHomeShell>
+    const { vm } = mountShell()
 
     vm.switchTab('playlist')
     await vm.playSong(2)
 
     expect(playSongWithDetails).toHaveBeenCalledWith(2)
-    expect(vm.activeTab).toBe('lyric')
+    expect(vm.activeTab).toBe('playlist')
   })
 
   it('reports playback failures through the toast store', async () => {
@@ -103,8 +99,7 @@ describe('useHomeShell', () => {
     const toastStore = useToastStore()
     const error = vi.spyOn(toastStore, 'error').mockImplementation(() => {})
 
-    const wrapper = mountShell()
-    const vm = wrapper.vm as unknown as ReturnType<typeof useHomeShell>
+    const { vm } = mountShell()
 
     await vm.playSong(1)
 
@@ -126,28 +121,28 @@ describe('useHomeShell', () => {
     expect(setupIpcListeners).toHaveBeenCalledTimes(1)
   })
 
-  it('enables compact mode before first paint on mobile without user preference', () => {
+  it('enables the docked player mode before first paint on mobile without user preference', () => {
     platformServiceMock.isMobile.mockReturnValue(true)
 
     const playerStore = usePlayerStore()
-    playerStore.isCompact = false
+    playerStore.isPlayerDocked = false
 
     mountShell()
 
-    expect(playerStore.isCompact).toBe(true)
-    expect(storageServiceMock.setItem).toHaveBeenCalledWith('compactModeUserToggled', 'true')
+    expect(playerStore.isPlayerDocked).toBe(true)
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith('playerDockedUserToggled', 'true')
   })
 
-  it('does not force compact mode after the user has already chosen a preference', () => {
+  it('does not force the docked player mode after the user has already chosen a preference', () => {
     platformServiceMock.isMobile.mockReturnValue(true)
     storageServiceMock.getItem.mockReturnValue('1')
 
     const playerStore = usePlayerStore()
-    playerStore.isCompact = false
+    playerStore.isPlayerDocked = false
 
     mountShell()
 
-    expect(playerStore.isCompact).toBe(false)
+    expect(playerStore.isPlayerDocked).toBe(false)
     expect(storageServiceMock.setItem).not.toHaveBeenCalled()
   })
 })

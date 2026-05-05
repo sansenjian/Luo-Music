@@ -21,7 +21,7 @@ export interface IpcHandlersDeps {
   setPlayMode: (mode: PlayMode) => void
   seek: (time: number) => void
   setVolume: (vol: number) => void
-  toggleCompactMode: () => void
+  togglePlayerDocked: () => void
   platform: {
     isElectron: () => boolean
     on: (channel: string, callback: (...args: unknown[]) => void) => () => void
@@ -57,7 +57,7 @@ export class IpcEventHandler implements IDisposable {
     this.registerPlayModeControl()
     this.registerVolumeControl()
     this.registerProcessControl()
-    this.registerCompactModeControl()
+    this.registerPlayerDockControl()
     this.registerHidePlayer()
   }
 
@@ -199,15 +199,15 @@ export class IpcEventHandler implements IDisposable {
     })
   }
 
-  private registerCompactModeControl(): void {
-    this.registerListener('music-compact-mode-control', () => {
-      this.deps.toggleCompactMode()
+  private registerPlayerDockControl(): void {
+    this.registerListener('music-player-dock-control', () => {
+      this.deps.togglePlayerDocked()
     })
   }
 
   private registerHidePlayer(): void {
     this.registerListener('hide-player', () => {
-      this.deps.toggleCompactMode()
+      this.deps.togglePlayerDocked()
     })
   }
 }

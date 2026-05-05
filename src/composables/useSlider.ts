@@ -15,6 +15,7 @@ export function useSlider(options: SliderOptions) {
   const isDragging = ref(false)
   let rect: DOMRect | null = null
   let rafId: number | null = null
+  let didMoveTimer: ReturnType<typeof setTimeout> | null = null
   let didMove = false
 
   function handlePointerDown(e: PointerEvent) {
@@ -69,8 +70,10 @@ export function useSlider(options: SliderOptions) {
     }
 
     // Delay resetting move flag to ensure click handler can detect drag state
-    setTimeout(() => {
+    if (didMoveTimer) clearTimeout(didMoveTimer)
+    didMoveTimer = setTimeout(() => {
       didMove = false
+      didMoveTimer = null
     }, 50)
   }
 
@@ -97,6 +100,7 @@ export function useSlider(options: SliderOptions) {
 
   onBeforeUnmount(() => {
     if (rafId) cancelAnimationFrame(rafId)
+    if (didMoveTimer) clearTimeout(didMoveTimer)
   })
 
   return {

@@ -52,6 +52,7 @@ typings/
 *.tsbuildinfo
 outDir/
 
+
 # Optional npm cache directory
 .npm
 
@@ -161,11 +162,13 @@ docs/.vitepress/dist/
 # Playwright
 playwright-report/
 test-results/
+tests/Test Material/
 
 # IDE
 .idea/
 .claude/
 .codex/
+.codex_tmp/
 .ai/
 .playwright-mcp/
 

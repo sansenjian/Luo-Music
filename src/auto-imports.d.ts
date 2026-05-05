@@ -8,6 +8,7 @@ export {}
 declare global {
   const EffectScope: typeof import('vue').EffectScope
   const acceptHMRUpdate: typeof import('pinia').acceptHMRUpdate
+  const addUniqueSongsToLocalPlaylist: typeof import('./store/localPlaylistStore').addUniqueSongsToLocalPlaylist
   const animate: typeof import('./composables/useAnimations').animate
   const animateAlbumCover: typeof import('./composables/useAnimations').animateAlbumCover
   const animateButtonClick: typeof import('./composables/useAnimations').animateButtonClick
@@ -21,7 +22,7 @@ declare global {
   const asyncComputed: typeof import('@vueuse/core').asyncComputed
   const autoResetRef: typeof import('@vueuse/core').autoResetRef
   const buildCachedEventViewModels: typeof import('./composables/useUserEvents').buildCachedEventViewModels
-  const clearSearch: typeof import('./composables/useSearch').clearSearch
+  const clearLocalPlaylistCover: typeof import('./store/localPlaylistStore').clearLocalPlaylistCover
   const computed: typeof import('vue').computed
   const computedAsync: typeof import('@vueuse/core').computedAsync
   const computedEager: typeof import('@vueuse/core').computedEager
@@ -43,7 +44,6 @@ declare global {
   const createSharedComposable: typeof import('@vueuse/core').createSharedComposable
   const createTemplatePromise: typeof import('@vueuse/core').createTemplatePromise
   const createUnrefFn: typeof import('@vueuse/core').createUnrefFn
-  const currentSongInfo: typeof import('./store/playerStore').currentSongInfo
   const customRef: typeof import('vue').customRef
   const debouncedRef: typeof import('@vueuse/core').debouncedRef
   const debouncedWatch: typeof import('@vueuse/core').debouncedWatch
@@ -61,15 +61,11 @@ declare global {
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
   const getEventDisplaySong: typeof import('./composables/useUserEvents').getEventDisplaySong
   const getEventKey: typeof import('./composables/useUserEvents').getEventKey
-  const getResultsForPlaylist: typeof import('./composables/useSearch').getResultsForPlaylist
-  const getSongAt: typeof import('./composables/useSearch').getSongAt
   const h: typeof import('vue').h
-  const hasResults: typeof import('./composables/useSearch').hasResults
   const ignorableWatch: typeof import('@vueuse/core').ignorableWatch
   const inject: typeof import('vue').inject
   const injectLocal: typeof import('@vueuse/core').injectLocal
   const isDefined: typeof import('@vueuse/core').isDefined
-  const isLoading: typeof import('./composables/useSearch').isLoading
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive
   const isReadonly: typeof import('vue').isReadonly
@@ -83,6 +79,7 @@ declare global {
   const mapWritableState: typeof import('pinia').mapWritableState
   const markRaw: typeof import('vue').markRaw
   const nextTick: typeof import('vue').nextTick
+  const normalizeRecentPlayItems: typeof import('./store/recentPlayStore').normalizeRecentPlayItems
   const onActivated: typeof import('vue').onActivated
   const onBeforeMount: typeof import('vue').onBeforeMount
   const onBeforeRouteLeave: typeof import('vue-router').onBeforeRouteLeave
@@ -105,9 +102,7 @@ declare global {
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
   const pausableWatch: typeof import('@vueuse/core').pausableWatch
-  const performSearch: typeof import('./composables/useSearch').performSearch
   const pinia: typeof import('./store/pinia').default
-  const platform: typeof import('./composables/useSearch').platform
   const provide: typeof import('vue').provide
   const provideLocal: typeof import('@vueuse/core').provideLocal
   const reactify: typeof import('@vueuse/core').reactify
@@ -124,16 +119,16 @@ declare global {
   const refManualReset: typeof import('@vueuse/core').refManualReset
   const refThrottled: typeof import('@vueuse/core').refThrottled
   const refWithControl: typeof import('@vueuse/core').refWithControl
+  const removeLocalPlaylistById: typeof import('./store/localPlaylistStore').removeLocalPlaylistById
+  const removeSongFromLocalPlaylist: typeof import('./store/localPlaylistStore').removeSongFromLocalPlaylist
   const resolveComponent: typeof import('vue').resolveComponent
+  const resolveCoverUrl: typeof import('./composables/usePlayerViewModel').resolveCoverUrl
   const resolveRef: typeof import('@vueuse/core').resolveRef
-  const searchError: typeof import('./composables/useSearch').searchError
-  const searchKeyword: typeof import('./composables/useSearch').searchKeyword
+  const restorePersistedPlayerState: typeof import('./store/playerStore').restorePersistedPlayerState
   const searchResultItemToSong: typeof import('./store/searchStore').searchResultItemToSong
-  const searchResults: typeof import('./composables/useSearch').searchResults
-  const searchTotal: typeof import('./composables/useSearch').searchTotal
   const setActivePinia: typeof import('pinia').setActivePinia
+  const setLocalPlaylistCover: typeof import('./store/localPlaylistStore').setLocalPlaylistCover
   const setMapStoreSuffix: typeof import('pinia').setMapStoreSuffix
-  const setSearchPlatform: typeof import('./composables/useSearch').setSearchPlatform
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
@@ -161,6 +156,7 @@ declare global {
   const useActiveLyricState: typeof import('./composables/useActiveLyricState').useActiveLyricState
   const useAnimate: typeof import('@vueuse/core').useAnimate
   const useAnimations: typeof import('./composables/useAnimations').default
+  const useAppSettings: typeof import('./composables/useAppSettings').useAppSettings
   const useArrayDifference: typeof import('@vueuse/core').useArrayDifference
   const useArrayEvery: typeof import('@vueuse/core').useArrayEvery
   const useArrayFilter: typeof import('@vueuse/core').useArrayFilter
@@ -191,6 +187,7 @@ declare global {
   const useConfirmDialog: typeof import('@vueuse/core').useConfirmDialog
   const useCountdown: typeof import('@vueuse/core').useCountdown
   const useCounter: typeof import('@vueuse/core').useCounter
+  const useCoverSwipe: typeof import('./composables/useCoverSwipe').useCoverSwipe
   const useCssModule: typeof import('vue').useCssModule
   const useCssSupports: typeof import('@vueuse/core').useCssSupports
   const useCssVar: typeof import('@vueuse/core').useCssVar
@@ -202,11 +199,14 @@ declare global {
   const useDebounce: typeof import('@vueuse/core').useDebounce
   const useDebounceFn: typeof import('@vueuse/core').useDebounceFn
   const useDebouncedRefHistory: typeof import('@vueuse/core').useDebouncedRefHistory
+  const useDeferredMount: typeof import('./composables/useDeferredMount').useDeferredMount
+  const useDesktopLyricSettings: typeof import('./composables/useDesktopLyricSettings').useDesktopLyricSettings
   const useDeviceMotion: typeof import('@vueuse/core').useDeviceMotion
   const useDeviceOrientation: typeof import('@vueuse/core').useDeviceOrientation
   const useDevicePixelRatio: typeof import('@vueuse/core').useDevicePixelRatio
   const useDevicesList: typeof import('@vueuse/core').useDevicesList
   const useDisplayMedia: typeof import('@vueuse/core').useDisplayMedia
+  const useDockedPlayerBarLayout: typeof import('./composables/useDockedPlayerBarLayout').default
   const useDocumentVisibility: typeof import('@vueuse/core').useDocumentVisibility
   const useDraggable: typeof import('@vueuse/core').useDraggable
   const useDropZone: typeof import('@vueuse/core').useDropZone
@@ -218,6 +218,7 @@ declare global {
   const useEventBus: typeof import('@vueuse/core').useEventBus
   const useEventListener: typeof import('@vueuse/core').useEventListener
   const useEventSource: typeof import('@vueuse/core').useEventSource
+  const useExperimentalFeatures: typeof import('./composables/useExperimentalFeatures').useExperimentalFeatures
   const useEyeDropper: typeof import('@vueuse/core').useEyeDropper
   const useFavicon: typeof import('@vueuse/core').useFavicon
   const useFavoriteAlbums: typeof import('./composables/useFavoriteAlbums').default
@@ -230,8 +231,11 @@ declare global {
   const useFullscreen: typeof import('@vueuse/core').useFullscreen
   const useGamepad: typeof import('@vueuse/core').useGamepad
   const useGeolocation: typeof import('@vueuse/core').useGeolocation
+  const useHomeBrandPlacement: typeof import('./composables/useHomeBrandPlacement').useHomeBrandPlacement
   const useHomePage: typeof import('./composables/useHomePage').default
   const useHomeShell: typeof import('./composables/useHomeShell').useHomeShell
+  const useHomeSidebarCollections: typeof import('./composables/useHomeSidebarCollections').useHomeSidebarCollections
+  const useHomeWorkspaceState: typeof import('./composables/useHomeWorkspaceState').useHomeWorkspaceState
   const useId: typeof import('vue').useId
   const useIdle: typeof import('@vueuse/core').useIdle
   const useImage: typeof import('@vueuse/core').useImage
@@ -245,12 +249,16 @@ declare global {
   const useLastChanged: typeof import('@vueuse/core').useLastChanged
   const useLikedSongs: typeof import('./composables/useLikedSongs').useLikedSongs
   const useLink: typeof import('vue-router').useLink
+  const useLocalLibrary: typeof import('./composables/useLocalLibrary').useLocalLibrary
+  const useLocalPlaylistStore: typeof import('./store/localPlaylistStore').useLocalPlaylistStore
   const useLocalStorage: typeof import('@vueuse/core').useLocalStorage
   const useLyricAutoScroll: typeof import('./composables/useLyricAutoScroll').useLyricAutoScroll
+  const useLyricVirtualScroll: typeof import('./composables/useLyricVirtualScroll').useLyricVirtualScroll
   const useMagicKeys: typeof import('@vueuse/core').useMagicKeys
   const useManualRefHistory: typeof import('@vueuse/core').useManualRefHistory
   const useMediaControls: typeof import('@vueuse/core').useMediaControls
   const useMediaQuery: typeof import('@vueuse/core').useMediaQuery
+  const useMediaSession: typeof import('./composables/useMediaSession').useMediaSession
   const useMemoize: typeof import('@vueuse/core').useMemoize
   const useMemory: typeof import('@vueuse/core').useMemory
   const useModel: typeof import('vue').useModel
@@ -274,6 +282,7 @@ declare global {
   const usePlayerStore: typeof import('./store/playerStore').usePlayerStore
   const usePlayerViewModel: typeof import('./composables/usePlayerViewModel').usePlayerViewModel
   const usePlaylistStore: typeof import('./store/playlistStore').usePlaylistStore
+  const usePluginManager: typeof import('./composables/usePluginManager').usePluginManager
   const usePointer: typeof import('@vueuse/core').usePointer
   const usePointerLock: typeof import('@vueuse/core').usePointerLock
   const usePointerSwipe: typeof import('@vueuse/core').usePointerSwipe
@@ -284,8 +293,11 @@ declare global {
   const usePreferredReducedMotion: typeof import('@vueuse/core').usePreferredReducedMotion
   const usePreferredReducedTransparency: typeof import('@vueuse/core').usePreferredReducedTransparency
   const usePrevious: typeof import('@vueuse/core').usePrevious
+  const useProjectUi: typeof import('./composables/useProjectUi').useProjectUi
   const useRafFn: typeof import('@vueuse/core').useRafFn
+  const useRecentPlayStore: typeof import('./store/recentPlayStore').useRecentPlayStore
   const useRefHistory: typeof import('@vueuse/core').useRefHistory
+  const useRenderStyle: typeof import('./composables/useRenderStyle').useRenderStyle
   const useResizeObserver: typeof import('@vueuse/core').useResizeObserver
   const useRoute: typeof import('vue-router').useRoute
   const useRouter: typeof import('vue-router').useRouter
@@ -315,6 +327,7 @@ declare global {
   const useTextDirection: typeof import('@vueuse/core').useTextDirection
   const useTextSelection: typeof import('@vueuse/core').useTextSelection
   const useTextareaAutosize: typeof import('@vueuse/core').useTextareaAutosize
+  const useThemeResourcePacks: typeof import('./composables/useThemeResourcePacks').useThemeResourcePacks
   const useThrottle: typeof import('@vueuse/core').useThrottle
   const useThrottleFn: typeof import('@vueuse/core').useThrottleFn
   const useThrottledRefHistory: typeof import('@vueuse/core').useThrottledRefHistory
@@ -348,7 +361,9 @@ declare global {
   const useWebSocket: typeof import('@vueuse/core').useWebSocket
   const useWebWorker: typeof import('@vueuse/core').useWebWorker
   const useWebWorkerFn: typeof import('@vueuse/core').useWebWorkerFn
+  const useWindowChromeState: typeof import('./composables/useWindowChromeState').useWindowChromeState
   const useWindowFocus: typeof import('@vueuse/core').useWindowFocus
+  const useWindowResizeFrame: typeof import('./composables/useWindowResizeFrame').useWindowResizeFrame
   const useWindowScroll: typeof import('@vueuse/core').useWindowScroll
   const useWindowSize: typeof import('@vueuse/core').useWindowSize
   const watch: typeof import('vue').watch
@@ -404,14 +419,42 @@ declare global {
   export type { CommandContextDeps } from './composables/useCommandContext'
   import('./composables/useCommandContext')
   // @ts-ignore
+  export type {
+    CoverSwipeDeps,
+    SwipeDirection,
+    CoverSwipeReturn
+  } from './composables/useCoverSwipe'
+  import('./composables/useCoverSwipe')
+  // @ts-ignore
+  export type { MountTier } from './composables/useDeferredMount'
+  import('./composables/useDeferredMount')
+  // @ts-ignore
+  export type {
+    DockedPlayerBarLayout,
+    DockedPlayerBarLayoutDeps
+  } from './composables/useDockedPlayerBarLayout'
+  import('./composables/useDockedPlayerBarLayout')
+  // @ts-ignore
+  export type { ExperimentalFeaturesDeps } from './composables/useExperimentalFeatures'
+  import('./composables/useExperimentalFeatures')
+  // @ts-ignore
   export type { FavoriteAlbumItem, UseFavoriteAlbumsReturn } from './composables/useFavoriteAlbums'
   import('./composables/useFavoriteAlbums')
+  // @ts-ignore
+  export type {
+    HomeBrandPlacement,
+    HomeBrandPlacementDeps
+  } from './composables/useHomeBrandPlacement'
+  import('./composables/useHomeBrandPlacement')
   // @ts-ignore
   export type { MusicServerOption, HomePageDeps } from './composables/useHomePage'
   import('./composables/useHomePage')
   // @ts-ignore
   export type { HomeTab, HomeShellDeps } from './composables/useHomeShell'
   import('./composables/useHomeShell')
+  // @ts-ignore
+  export type { HomeWorkspaceView } from './composables/useHomeWorkspaceState'
+  import('./composables/useHomeWorkspaceState')
   // @ts-ignore
   export type { KeyboardShortcutDeps } from './composables/useKeyboardShortcuts'
   import('./composables/useKeyboardShortcuts')
@@ -422,14 +465,30 @@ declare global {
   export type { UseLyricAutoScrollOptions } from './composables/useLyricAutoScroll'
   import('./composables/useLyricAutoScroll')
   // @ts-ignore
+  export type { MediaSessionDeps } from './composables/useMediaSession'
+  import('./composables/useMediaSession')
+  // @ts-ignore
   export type { PlayerViewModelDeps } from './composables/usePlayerViewModel'
   import('./composables/usePlayerViewModel')
+  // @ts-ignore
+  export type { PluginManagerDeps } from './composables/usePluginManager'
+  import('./composables/usePluginManager')
+  // @ts-ignore
+  export type { RenderStyle, RenderStyleDeps } from './composables/useRenderStyle'
+  import('./composables/useRenderStyle')
   // @ts-ignore
   export type { SearchOptions, SearchComposableDeps, Song } from './composables/useSearch'
   import('./composables/useSearch')
   // @ts-ignore
   export type { SliderOptions } from './composables/useSlider'
   import('./composables/useSlider')
+  // @ts-ignore
+  export type {
+    ThemeResourcePacksState,
+    ThemeResourcePackDescriptor,
+    ThemeResourcePacksDeps
+  } from './composables/useThemeResourcePacks'
+  import('./composables/useThemeResourcePacks')
   // @ts-ignore
   export type {
     UseUserCenterPageDeps,
@@ -456,11 +515,25 @@ declare global {
   } from './composables/useUserEvents'
   import('./composables/useUserEvents')
   // @ts-ignore
-  export type { PlaylistItem, UseUserPlaylistsReturn } from './composables/useUserPlaylists'
+  export type {
+    PlaylistItem,
+    PlaylistTracksState,
+    UseUserPlaylistsReturn
+  } from './composables/useUserPlaylists'
   import('./composables/useUserPlaylists')
+  // @ts-ignore
+  export type {
+    LocalPlaylist,
+    AddSongsToLocalPlaylistResult,
+    RemoveSongFromLocalPlaylistResult
+  } from './store/localPlaylistStore'
+  import('./store/localPlaylistStore')
   // @ts-ignore
   export type { PlayerStoreActions, PlayerStoreDeps } from './store/playerStore'
   import('./store/playerStore')
+  // @ts-ignore
+  export type { RecentPlayItem } from './store/recentPlayStore'
+  import('./store/recentPlayStore')
   // @ts-ignore
   export type { SearchResultItem, SearchStoreDeps, SearchStoreOptions } from './store/searchStore'
   import('./store/searchStore')
@@ -476,6 +549,9 @@ declare module 'vue' {
   interface ComponentCustomProperties {
     readonly EffectScope: UnwrapRef<(typeof import('vue'))['EffectScope']>
     readonly acceptHMRUpdate: UnwrapRef<(typeof import('pinia'))['acceptHMRUpdate']>
+    readonly addUniqueSongsToLocalPlaylist: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['addUniqueSongsToLocalPlaylist']
+    >
     readonly animate: UnwrapRef<(typeof import('./composables/useAnimations'))['animate']>
     readonly animateAlbumCover: UnwrapRef<
       (typeof import('./composables/useAnimations'))['animateAlbumCover']
@@ -508,6 +584,9 @@ declare module 'vue' {
     readonly autoResetRef: UnwrapRef<(typeof import('@vueuse/core'))['autoResetRef']>
     readonly buildCachedEventViewModels: UnwrapRef<
       (typeof import('./composables/useUserEvents'))['buildCachedEventViewModels']
+    >
+    readonly clearLocalPlaylistCover: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['clearLocalPlaylistCover']
     >
     readonly computed: UnwrapRef<(typeof import('vue'))['computed']>
     readonly computedAsync: UnwrapRef<(typeof import('@vueuse/core'))['computedAsync']>
@@ -585,6 +664,9 @@ declare module 'vue' {
     readonly mapWritableState: UnwrapRef<(typeof import('pinia'))['mapWritableState']>
     readonly markRaw: UnwrapRef<(typeof import('vue'))['markRaw']>
     readonly nextTick: UnwrapRef<(typeof import('vue'))['nextTick']>
+    readonly normalizeRecentPlayItems: UnwrapRef<
+      (typeof import('./store/recentPlayStore'))['normalizeRecentPlayItems']
+    >
     readonly onActivated: UnwrapRef<(typeof import('vue'))['onActivated']>
     readonly onBeforeMount: UnwrapRef<(typeof import('vue'))['onBeforeMount']>
     readonly onBeforeRouteLeave: UnwrapRef<(typeof import('vue-router'))['onBeforeRouteLeave']>
@@ -624,12 +706,27 @@ declare module 'vue' {
     readonly refManualReset: UnwrapRef<(typeof import('@vueuse/core'))['refManualReset']>
     readonly refThrottled: UnwrapRef<(typeof import('@vueuse/core'))['refThrottled']>
     readonly refWithControl: UnwrapRef<(typeof import('@vueuse/core'))['refWithControl']>
+    readonly removeLocalPlaylistById: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['removeLocalPlaylistById']
+    >
+    readonly removeSongFromLocalPlaylist: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['removeSongFromLocalPlaylist']
+    >
     readonly resolveComponent: UnwrapRef<(typeof import('vue'))['resolveComponent']>
+    readonly resolveCoverUrl: UnwrapRef<
+      (typeof import('./composables/usePlayerViewModel'))['resolveCoverUrl']
+    >
     readonly resolveRef: UnwrapRef<(typeof import('@vueuse/core'))['resolveRef']>
+    readonly restorePersistedPlayerState: UnwrapRef<
+      (typeof import('./store/playerStore'))['restorePersistedPlayerState']
+    >
     readonly searchResultItemToSong: UnwrapRef<
       (typeof import('./store/searchStore'))['searchResultItemToSong']
     >
     readonly setActivePinia: UnwrapRef<(typeof import('pinia'))['setActivePinia']>
+    readonly setLocalPlaylistCover: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['setLocalPlaylistCover']
+    >
     readonly setMapStoreSuffix: UnwrapRef<(typeof import('pinia'))['setMapStoreSuffix']>
     readonly shallowReactive: UnwrapRef<(typeof import('vue'))['shallowReactive']>
     readonly shallowReadonly: UnwrapRef<(typeof import('vue'))['shallowReadonly']>
@@ -660,6 +757,9 @@ declare module 'vue' {
     >
     readonly useAnimate: UnwrapRef<(typeof import('@vueuse/core'))['useAnimate']>
     readonly useAnimations: UnwrapRef<(typeof import('./composables/useAnimations'))['default']>
+    readonly useAppSettings: UnwrapRef<
+      (typeof import('./composables/useAppSettings'))['useAppSettings']
+    >
     readonly useArrayDifference: UnwrapRef<(typeof import('@vueuse/core'))['useArrayDifference']>
     readonly useArrayEvery: UnwrapRef<(typeof import('@vueuse/core'))['useArrayEvery']>
     readonly useArrayFilter: UnwrapRef<(typeof import('@vueuse/core'))['useArrayFilter']>
@@ -692,6 +792,9 @@ declare module 'vue' {
     readonly useConfirmDialog: UnwrapRef<(typeof import('@vueuse/core'))['useConfirmDialog']>
     readonly useCountdown: UnwrapRef<(typeof import('@vueuse/core'))['useCountdown']>
     readonly useCounter: UnwrapRef<(typeof import('@vueuse/core'))['useCounter']>
+    readonly useCoverSwipe: UnwrapRef<
+      (typeof import('./composables/useCoverSwipe'))['useCoverSwipe']
+    >
     readonly useCssModule: UnwrapRef<(typeof import('vue'))['useCssModule']>
     readonly useCssSupports: UnwrapRef<(typeof import('@vueuse/core'))['useCssSupports']>
     readonly useCssVar: UnwrapRef<(typeof import('@vueuse/core'))['useCssVar']>
@@ -705,6 +808,12 @@ declare module 'vue' {
     readonly useDebouncedRefHistory: UnwrapRef<
       (typeof import('@vueuse/core'))['useDebouncedRefHistory']
     >
+    readonly useDeferredMount: UnwrapRef<
+      (typeof import('./composables/useDeferredMount'))['useDeferredMount']
+    >
+    readonly useDesktopLyricSettings: UnwrapRef<
+      (typeof import('./composables/useDesktopLyricSettings'))['useDesktopLyricSettings']
+    >
     readonly useDeviceMotion: UnwrapRef<(typeof import('@vueuse/core'))['useDeviceMotion']>
     readonly useDeviceOrientation: UnwrapRef<
       (typeof import('@vueuse/core'))['useDeviceOrientation']
@@ -712,6 +821,9 @@ declare module 'vue' {
     readonly useDevicePixelRatio: UnwrapRef<(typeof import('@vueuse/core'))['useDevicePixelRatio']>
     readonly useDevicesList: UnwrapRef<(typeof import('@vueuse/core'))['useDevicesList']>
     readonly useDisplayMedia: UnwrapRef<(typeof import('@vueuse/core'))['useDisplayMedia']>
+    readonly useDockedPlayerBarLayout: UnwrapRef<
+      (typeof import('./composables/useDockedPlayerBarLayout'))['default']
+    >
     readonly useDocumentVisibility: UnwrapRef<
       (typeof import('@vueuse/core'))['useDocumentVisibility']
     >
@@ -727,6 +839,9 @@ declare module 'vue' {
     readonly useEventBus: UnwrapRef<(typeof import('@vueuse/core'))['useEventBus']>
     readonly useEventListener: UnwrapRef<(typeof import('@vueuse/core'))['useEventListener']>
     readonly useEventSource: UnwrapRef<(typeof import('@vueuse/core'))['useEventSource']>
+    readonly useExperimentalFeatures: UnwrapRef<
+      (typeof import('./composables/useExperimentalFeatures'))['useExperimentalFeatures']
+    >
     readonly useEyeDropper: UnwrapRef<(typeof import('@vueuse/core'))['useEyeDropper']>
     readonly useFavicon: UnwrapRef<(typeof import('@vueuse/core'))['useFavicon']>
     readonly useFavoriteAlbums: UnwrapRef<
@@ -741,8 +856,17 @@ declare module 'vue' {
     readonly useFullscreen: UnwrapRef<(typeof import('@vueuse/core'))['useFullscreen']>
     readonly useGamepad: UnwrapRef<(typeof import('@vueuse/core'))['useGamepad']>
     readonly useGeolocation: UnwrapRef<(typeof import('@vueuse/core'))['useGeolocation']>
+    readonly useHomeBrandPlacement: UnwrapRef<
+      (typeof import('./composables/useHomeBrandPlacement'))['useHomeBrandPlacement']
+    >
     readonly useHomePage: UnwrapRef<(typeof import('./composables/useHomePage'))['default']>
     readonly useHomeShell: UnwrapRef<(typeof import('./composables/useHomeShell'))['useHomeShell']>
+    readonly useHomeSidebarCollections: UnwrapRef<
+      (typeof import('./composables/useHomeSidebarCollections'))['useHomeSidebarCollections']
+    >
+    readonly useHomeWorkspaceState: UnwrapRef<
+      (typeof import('./composables/useHomeWorkspaceState'))['useHomeWorkspaceState']
+    >
     readonly useId: UnwrapRef<(typeof import('vue'))['useId']>
     readonly useIdle: UnwrapRef<(typeof import('@vueuse/core'))['useIdle']>
     readonly useImage: UnwrapRef<(typeof import('@vueuse/core'))['useImage']>
@@ -764,14 +888,26 @@ declare module 'vue' {
       (typeof import('./composables/useLikedSongs'))['useLikedSongs']
     >
     readonly useLink: UnwrapRef<(typeof import('vue-router'))['useLink']>
+    readonly useLocalLibrary: UnwrapRef<
+      (typeof import('./composables/useLocalLibrary'))['useLocalLibrary']
+    >
+    readonly useLocalPlaylistStore: UnwrapRef<
+      (typeof import('./store/localPlaylistStore'))['useLocalPlaylistStore']
+    >
     readonly useLocalStorage: UnwrapRef<(typeof import('@vueuse/core'))['useLocalStorage']>
     readonly useLyricAutoScroll: UnwrapRef<
       (typeof import('./composables/useLyricAutoScroll'))['useLyricAutoScroll']
+    >
+    readonly useLyricVirtualScroll: UnwrapRef<
+      (typeof import('./composables/useLyricVirtualScroll'))['useLyricVirtualScroll']
     >
     readonly useMagicKeys: UnwrapRef<(typeof import('@vueuse/core'))['useMagicKeys']>
     readonly useManualRefHistory: UnwrapRef<(typeof import('@vueuse/core'))['useManualRefHistory']>
     readonly useMediaControls: UnwrapRef<(typeof import('@vueuse/core'))['useMediaControls']>
     readonly useMediaQuery: UnwrapRef<(typeof import('@vueuse/core'))['useMediaQuery']>
+    readonly useMediaSession: UnwrapRef<
+      (typeof import('./composables/useMediaSession'))['useMediaSession']
+    >
     readonly useMemoize: UnwrapRef<(typeof import('@vueuse/core'))['useMemoize']>
     readonly useMemory: UnwrapRef<(typeof import('@vueuse/core'))['useMemory']>
     readonly useModel: UnwrapRef<(typeof import('vue'))['useModel']>
@@ -805,6 +941,9 @@ declare module 'vue' {
     readonly usePlaylistStore: UnwrapRef<
       (typeof import('./store/playlistStore'))['usePlaylistStore']
     >
+    readonly usePluginManager: UnwrapRef<
+      (typeof import('./composables/usePluginManager'))['usePluginManager']
+    >
     readonly usePointer: UnwrapRef<(typeof import('@vueuse/core'))['usePointer']>
     readonly usePointerLock: UnwrapRef<(typeof import('@vueuse/core'))['usePointerLock']>
     readonly usePointerSwipe: UnwrapRef<(typeof import('@vueuse/core'))['usePointerSwipe']>
@@ -825,8 +964,15 @@ declare module 'vue' {
       (typeof import('@vueuse/core'))['usePreferredReducedTransparency']
     >
     readonly usePrevious: UnwrapRef<(typeof import('@vueuse/core'))['usePrevious']>
+    readonly useProjectUi: UnwrapRef<(typeof import('./composables/useProjectUi'))['useProjectUi']>
     readonly useRafFn: UnwrapRef<(typeof import('@vueuse/core'))['useRafFn']>
+    readonly useRecentPlayStore: UnwrapRef<
+      (typeof import('./store/recentPlayStore'))['useRecentPlayStore']
+    >
     readonly useRefHistory: UnwrapRef<(typeof import('@vueuse/core'))['useRefHistory']>
+    readonly useRenderStyle: UnwrapRef<
+      (typeof import('./composables/useRenderStyle'))['useRenderStyle']
+    >
     readonly useResizeObserver: UnwrapRef<(typeof import('@vueuse/core'))['useResizeObserver']>
     readonly useRoute: UnwrapRef<(typeof import('vue-router'))['useRoute']>
     readonly useRouter: UnwrapRef<(typeof import('vue-router'))['useRouter']>
@@ -860,6 +1006,9 @@ declare module 'vue' {
     readonly useTextDirection: UnwrapRef<(typeof import('@vueuse/core'))['useTextDirection']>
     readonly useTextSelection: UnwrapRef<(typeof import('@vueuse/core'))['useTextSelection']>
     readonly useTextareaAutosize: UnwrapRef<(typeof import('@vueuse/core'))['useTextareaAutosize']>
+    readonly useThemeResourcePacks: UnwrapRef<
+      (typeof import('./composables/useThemeResourcePacks'))['useThemeResourcePacks']
+    >
     readonly useThrottle: UnwrapRef<(typeof import('@vueuse/core'))['useThrottle']>
     readonly useThrottleFn: UnwrapRef<(typeof import('@vueuse/core'))['useThrottleFn']>
     readonly useThrottledRefHistory: UnwrapRef<
@@ -905,7 +1054,13 @@ declare module 'vue' {
     readonly useWebSocket: UnwrapRef<(typeof import('@vueuse/core'))['useWebSocket']>
     readonly useWebWorker: UnwrapRef<(typeof import('@vueuse/core'))['useWebWorker']>
     readonly useWebWorkerFn: UnwrapRef<(typeof import('@vueuse/core'))['useWebWorkerFn']>
+    readonly useWindowChromeState: UnwrapRef<
+      (typeof import('./composables/useWindowChromeState'))['useWindowChromeState']
+    >
     readonly useWindowFocus: UnwrapRef<(typeof import('@vueuse/core'))['useWindowFocus']>
+    readonly useWindowResizeFrame: UnwrapRef<
+      (typeof import('./composables/useWindowResizeFrame'))['useWindowResizeFrame']
+    >
     readonly useWindowScroll: UnwrapRef<(typeof import('@vueuse/core'))['useWindowScroll']>
     readonly useWindowSize: UnwrapRef<(typeof import('@vueuse/core'))['useWindowSize']>
     readonly watch: UnwrapRef<(typeof import('vue'))['watch']>

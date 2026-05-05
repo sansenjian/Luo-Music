@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 
-import { usePlayerStore } from '../store/playerStore.ts'
-import { formatTime } from '../utils/player/helpers/timeFormatter'
-import type { Song } from '../platform/music/interface'
+import HomeEmptyState from './home/HomeEmptyState.vue'
+import { uiMessages } from '@/messages/ui'
+import { usePlayerStore } from '@/store/playerStore.ts'
+import { formatTime } from '@/utils/player/helpers/timeFormatter'
+import type { Song } from '@/platform/music/interface'
 
 const playerStore = usePlayerStore()
 const listRef = ref<HTMLElement | null>(null)
 const scrollTop = ref(0)
 const containerHeight = ref(560)
 
-const emit = defineEmits(['play-song'])
+const emit = defineEmits<{
+  'play-song': [index: number]
+}>()
 
 const ITEM_HEIGHT = 74
 const OVERSCAN = 6
@@ -234,10 +238,12 @@ onUnmounted(() => {
 
 <template>
   <div ref="listRef" class="playlist" @scroll="handleScroll">
-    <div v-if="totalSongCount === 0" class="empty-state">
-      <div class="empty-icon">[]</div>
-      <div>NO TRACKS LOADED</div>
-    </div>
+    <HomeEmptyState
+      v-if="totalSongCount === 0"
+      :visual="uiMessages.home.emptyState.playlist.visual"
+      :title="uiMessages.home.emptyState.playlist.title"
+      :description="uiMessages.home.emptyState.playlist.description"
+    />
 
     <div v-else class="track-list" :style="{ height: `${totalHeight}px` }">
       <div class="track-list-window" :style="{ transform: `translateY(${offsetY}px)` }">
@@ -284,21 +290,9 @@ onUnmounted(() => {
 .playlist {
   padding: 6px;
   height: 100%;
-  background: var(--bg);
+  background: var(--ui-panel-bg);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 40px;
-  color: var(--gray);
-}
-
-.empty-icon {
-  font-size: 40px;
-  margin-bottom: 12px;
-  opacity: 0.3;
 }
 
 .track-list {
@@ -321,20 +315,23 @@ onUnmounted(() => {
   padding: 10px 12px;
   height: 74px;
   cursor: pointer;
-  border: 2px solid transparent;
+  border: var(--ui-border);
+  border-color: transparent;
+  border-radius: var(--ui-radius-md);
   transition: all 0.1s;
   user-select: none;
 }
 
 .list-item:hover,
 .list-item:active {
-  border-color: var(--black);
-  background: var(--white);
+  border-color: var(--ui-focus-border);
+  background: var(--ui-hover-bg);
 }
 
 .list-item.active {
-  background: var(--black);
-  color: var(--white);
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
+  box-shadow: var(--ui-primary-shadow);
 }
 
 .list-item.dragging {
@@ -346,7 +343,7 @@ onUnmounted(() => {
 .list-cover {
   width: 50px;
   height: 50px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   overflow: hidden;
   flex-shrink: 0;
 }

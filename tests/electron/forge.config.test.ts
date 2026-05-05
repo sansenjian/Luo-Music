@@ -120,7 +120,7 @@ describe('forge.config packagerConfig.ignore', () => {
     expect(matchesIgnore('/build/runtime/qq-api-server.cjs')).toBe(true)
     expect(matchesIgnore('/build/assets/index.js.map')).toBe(true)
     expect(matchesIgnore('/scripts/dev/qq-api-server.cjs')).toBe(true)
-    expect(matchesIgnore('/scripts/dev/qq-search-fallback.cjs')).toBe(true)
+    expect(matchesIgnore('/scripts/runtime/qq-search-fallback.cjs')).toBe(true)
     expect(matchesIgnore('/node_modules/@fontsource/inter/index.css')).toBe(true)
     expect(matchesIgnore('/node_modules/@electron-forge/core/index.js')).toBe(true)
     expect(matchesIgnore('/node_modules/@playwright/test/index.js')).toBe(true)
@@ -152,8 +152,8 @@ describe('forge.config packagerConfig.ignore', () => {
     expect(getExtraResources()).toEqual([
       'build/service',
       'build/runtime/qq-api-server.cjs',
-      'scripts/dev/qq-search-fallback.cjs',
-      'scripts/dev/netease-api-server.cjs'
+      'scripts/runtime/qq-search-fallback.cjs',
+      'scripts/runtime/netease-api-server.cjs'
     ])
   })
 })
