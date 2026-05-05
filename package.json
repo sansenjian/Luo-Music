@@ -172,6 +172,9 @@
   },
   "overrides": {
     "axios": "^1.15.0",
+    "@rolldown/binding-wasm32-wasi": {
+      "@emnapi/runtime": "1.8.1"
+    },
     "rollup-plugin-visualizer": {
       "rolldown": "npm:rolldown@1.0.0-rc.2"
     }
