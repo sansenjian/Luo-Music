@@ -212,7 +212,7 @@ export function useLocalLibraryQueries(
             ...track.song,
             duration: durationMs,
             extra: {
-              ...(track.song.extra ?? {}),
+              ...track.song.extra,
               localDurationKnown: true
             }
           }

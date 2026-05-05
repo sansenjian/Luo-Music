@@ -178,7 +178,7 @@ export class IpcService {
 
   private setupInvokeHandler<T extends keyof InvokeChannelMap>(channel: T): void {
     ipcMain.removeHandler(channel)
-    ipcMain.handle(channel, async (event, ...args: unknown[]) => {
+    ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
       const requestId = generateRequestId()
       const startTime = Date.now()
       const context: IpcMiddlewareContext = { requestId, startTime, channel: channel as string }
@@ -240,7 +240,7 @@ export class IpcService {
       ipcMain.removeListener(channel, previousWrapper)
     }
 
-    const wrapper = async (event: IpcMainEvent, ...args: unknown[]) => {
+    const wrapper = async (_event: IpcMainEvent, ...args: unknown[]) => {
       const requestId = generateRequestId()
       const startTime = Date.now()
       const context: IpcMiddlewareContext = { requestId, startTime, channel: channel as string }

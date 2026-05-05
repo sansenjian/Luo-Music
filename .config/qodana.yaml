@@ -1,4 +1,4 @@
-version: '1.0'
+version: "1.0"
 profile:
   name: qodana.recommended
 
@@ -20,7 +20,7 @@ exclude:
       # 明确排除自动生成的类型定义
       - src/auto-imports.d.ts
       - src/components.d.ts
-      - '**/*.d.ts'
+      - "**/*.d.ts"
       - scripts
       - docs/.vitepress
 

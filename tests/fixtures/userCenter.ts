@@ -1,6 +1,6 @@
 import { computed, reactive, ref, shallowRef } from 'vue'
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 
 import type { FavoriteAlbumItem } from '@/composables/useFavoriteAlbums'
 import type { EventItem } from '@/composables/useUserEvents'
@@ -223,7 +223,7 @@ export function createUserCenterPageDeps(initialQuery: LocationQuery = {}) {
   const replaceMock = vi.fn<
     (location: { path?: string; query?: LocationQueryRaw }) => Promise<void>
   >(async location => {
-    route.query = { ...(location.query ?? {}) } as LocationQuery
+    route.query = { ...location.query } as LocationQuery
   })
   const setPlaylistMock = vi.fn<(songs: Song[]) => void>()
   const setSongListMock = vi.fn<(songs: Song[]) => void>()

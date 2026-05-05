@@ -7,12 +7,12 @@
 
 export default {
   async create(ctx) {
-    ctx.logger.info('Re:Start theme plugin initialized')
+    ctx.logger.info("Re:Start theme plugin initialized");
 
     return {
       async dispose() {
-        ctx.logger.info('Re:Start theme plugin disposed')
-      }
-    }
-  }
-}
+        ctx.logger.info("Re:Start theme plugin disposed");
+      },
+    };
+  },
+};

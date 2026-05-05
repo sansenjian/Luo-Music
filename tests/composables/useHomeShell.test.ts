@@ -1,5 +1,5 @@
 import { nextTick } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { useHomeShell } from '@/composables/useHomeShell'
 import { usePlayerStore } from '@/store/playerStore'

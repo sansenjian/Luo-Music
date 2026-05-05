@@ -1,5 +1,5 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 
 import type {
   LocalLibraryAlbumSummary,

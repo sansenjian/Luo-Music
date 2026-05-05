@@ -2,7 +2,6 @@ import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
-import type { ManualChunksOption } from 'rollup'
 import type { PluginOption } from 'vite'
 
 type RewritePath = (path: string) => string
@@ -19,6 +18,8 @@ type ProxyEntry = {
 type VueRendererPluginOptions = {
   dts?: boolean
 }
+
+type ManualChunksFunction = (id: string) => string | undefined
 
 export const DEFAULT_VITE_DEV_SERVER_PORT = 5173
 
@@ -46,19 +47,19 @@ export function createVueRendererPlugins(options: VueRendererPluginOptions = {})
   const dtsEnabled = options.dts ?? true
 
   return [
-    vue(),
+    vue() as PluginOption,
     AutoImport({
       imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
       dts: dtsEnabled ? 'src/auto-imports.d.ts' : false,
       dirs: ['src/composables', 'src/store'],
       vueTemplate: true
-    }),
+    }) as PluginOption,
     Components({
       dirs: ['src/components'],
       extensions: ['vue'],
       dts: dtsEnabled ? 'src/components.d.ts' : false,
       deep: true
-    })
+    }) as PluginOption
   ]
 }
 
@@ -87,7 +88,7 @@ export function createSharedDevProxy(
   }
 }
 
-export const webManualChunks: ManualChunksOption = (id: string) => {
+export const webManualChunks: ManualChunksFunction = (id: string) => {
   if (!id.includes('node_modules')) {
     return undefined
   }
@@ -115,7 +116,7 @@ export const webManualChunks: ManualChunksOption = (id: string) => {
   return 'vendor-libs'
 }
 
-export const electronRendererManualChunks: ManualChunksOption = (id: string) => {
+export const electronRendererManualChunks: ManualChunksFunction = (id: string) => {
   if (!id.includes('node_modules')) {
     return undefined
   }

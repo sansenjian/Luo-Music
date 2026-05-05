@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const joinMock = vi.fn((...segments: string[]) => segments.join('/'))
 const existsSyncMock = vi.fn<(path: string) => boolean>(() => false)

@@ -1,97 +1,97 @@
-const path = require('node:path')
-const fs = require('node:fs')
-const { getProjectScopedWindowsProcesses } = require('./build/clean-targets.cjs')
+const path = require("node:path");
+const fs = require("node:fs");
+const { getProjectScopedWindowsProcesses } = require("./build/clean-targets.cjs");
 
-const projectRoot = path.join(__dirname, '..')
-const moduleName = 'better-sqlite3'
-const stampFile = path.join(projectRoot, '.vite_cache', 'native', `${moduleName}-electron.json`)
+const projectRoot = path.join(__dirname, "..");
+const moduleName = "better-sqlite3";
+const stampFile = path.join(projectRoot, ".vite_cache", "native", `${moduleName}-electron.json`);
 
 function parseArgs(argv) {
   return {
-    force: argv.includes('--force')
-  }
+    force: argv.includes("--force"),
+  };
 }
 
 function formatDuration(ms) {
   if (ms < 1000) {
-    return `${ms}ms`
+    return `${ms}ms`;
   }
 
-  return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)}s`
+  return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)}s`;
 }
 
 function logTiming(label, startedAt, totalStartedAt) {
-  const elapsed = Date.now() - startedAt
-  const total = Date.now() - totalStartedAt
+  const elapsed = Date.now() - startedAt;
+  const total = Date.now() - totalStartedAt;
   console.log(
-    `[rebuild-native-electron:timing] ${label}: ${formatDuration(elapsed)} (total ${formatDuration(total)})`
-  )
-  return elapsed
+    `[rebuild-native-electron:timing] ${label}: ${formatDuration(elapsed)} (total ${formatDuration(total)})`,
+  );
+  return elapsed;
 }
 
 function measureSync(label, totalStartedAt, action) {
-  const startedAt = Date.now()
+  const startedAt = Date.now();
   try {
-    const result = action()
-    logTiming(label, startedAt, totalStartedAt)
-    return result
+    const result = action();
+    logTiming(label, startedAt, totalStartedAt);
+    return result;
   } catch (error) {
-    logTiming(`${label} failed`, startedAt, totalStartedAt)
-    throw error
+    logTiming(`${label} failed`, startedAt, totalStartedAt);
+    throw error;
   }
 }
 
 async function measure(label, totalStartedAt, action) {
-  const startedAt = Date.now()
+  const startedAt = Date.now();
   try {
-    const result = await action()
-    logTiming(label, startedAt, totalStartedAt)
-    return result
+    const result = await action();
+    logTiming(label, startedAt, totalStartedAt);
+    return result;
   } catch (error) {
-    logTiming(`${label} failed`, startedAt, totalStartedAt)
-    throw error
+    logTiming(`${label} failed`, startedAt, totalStartedAt);
+    throw error;
   }
 }
 
 function ensureNoProjectElectronProcesses() {
-  const processes = getProjectScopedWindowsProcesses()
+  const processes = getProjectScopedWindowsProcesses();
   if (processes.length === 0) {
-    return
+    return;
   }
 
-  console.error('[rebuild-native-electron] detected running Electron processes from this project:')
+  console.error("[rebuild-native-electron] detected running Electron processes from this project:");
   for (const processInfo of processes) {
-    console.error(`  - ${processInfo.Name} (PID ${processInfo.ProcessId})`)
+    console.error(`  - ${processInfo.Name} (PID ${processInfo.ProcessId})`);
   }
-  throw new Error('Please close LUO Music / Electron processes before rebuilding native modules')
+  throw new Error("Please close LUO Music / Electron processes before rebuilding native modules");
 }
 
 function readJsonFile(filePath) {
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
   } catch {
-    return null
+    return null;
   }
 }
 
 function writeJsonFile(filePath, payload) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true })
-  fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`)
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }
 
 function getNativeBinaryPath(modulePath) {
-  return path.join(modulePath, 'build', 'Release', 'better_sqlite3.node')
+  return path.join(modulePath, "build", "Release", "better_sqlite3.node");
 }
 
 function getNativeBinaryFingerprint(modulePath) {
   try {
-    const stats = fs.statSync(getNativeBinaryPath(modulePath))
+    const stats = fs.statSync(getNativeBinaryPath(modulePath));
     return {
       nativeBinaryMtimeMs: Math.round(stats.mtimeMs),
-      nativeBinarySize: stats.size
-    }
+      nativeBinarySize: stats.size,
+    };
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -101,10 +101,10 @@ function createRebuildStamp({ electronVersion, moduleVersion, nativeBinaryFinger
     electronVersion,
     moduleName,
     moduleVersion,
-    platform: process.platform
-  }
+    platform: process.platform,
+  };
 
-  return nativeBinaryFingerprint ? { ...stamp, ...nativeBinaryFingerprint } : stamp
+  return nativeBinaryFingerprint ? { ...stamp, ...nativeBinaryFingerprint } : stamp;
 }
 
 function isSameStamp(left, right) {
@@ -115,107 +115,113 @@ function isSameStamp(left, right) {
     left.moduleName === right.moduleName &&
     left.moduleVersion === right.moduleVersion &&
     left.platform === right.platform
-  )
+  );
 }
 
 function shouldSkipRebuild({ expectedStamp, force, modulePath }) {
   if (force) {
-    return false
+    return false;
   }
 
-  const nativeBinaryFingerprint = getNativeBinaryFingerprint(modulePath)
+  const nativeBinaryFingerprint = getNativeBinaryFingerprint(modulePath);
   if (!nativeBinaryFingerprint) {
-    return false
+    return false;
   }
 
-  const storedStamp = readJsonFile(stampFile)
+  const storedStamp = readJsonFile(stampFile);
   return (
     isSameStamp(storedStamp, expectedStamp) &&
     storedStamp.nativeBinaryMtimeMs === nativeBinaryFingerprint.nativeBinaryMtimeMs &&
     storedStamp.nativeBinarySize === nativeBinaryFingerprint.nativeBinarySize
-  )
+  );
 }
 
 async function main() {
-  const startedAt = Date.now()
-  const { force } = parseArgs(process.argv.slice(2))
-  let rebuild
+  const startedAt = Date.now();
+  const { force } = parseArgs(process.argv.slice(2));
+  let rebuild;
   try {
-    ;({ rebuild } = require('@electron/rebuild'))
+    ({ rebuild } = require("@electron/rebuild"));
   } catch (error) {
-    console.log('[rebuild-native-electron] @electron/rebuild not available, skipping')
-    console.log(`[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`)
-    return
+    console.log("[rebuild-native-electron] @electron/rebuild not available, skipping");
+    console.log(
+      `[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`,
+    );
+    return;
   }
 
-  const modulePath = path.join(projectRoot, 'node_modules', moduleName)
+  const modulePath = path.join(projectRoot, "node_modules", moduleName);
   try {
-    require.resolve(modulePath)
+    require.resolve(modulePath);
   } catch {
-    console.log('[rebuild-native-electron] better-sqlite3 not installed, skipping')
-    console.log(`[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`)
-    return
+    console.log("[rebuild-native-electron] better-sqlite3 not installed, skipping");
+    console.log(
+      `[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`,
+    );
+    return;
   }
 
-  let electronVersion
+  let electronVersion;
   try {
-    ;({ version: electronVersion } = require('electron/package.json'))
+    ({ version: electronVersion } = require("electron/package.json"));
   } catch (error) {
-    console.error('[rebuild-native-electron] failed to resolve installed electron version')
-    throw error
+    console.error("[rebuild-native-electron] failed to resolve installed electron version");
+    throw error;
   }
 
-  const modulePackagePath = path.join(modulePath, 'package.json')
-  const modulePackageJson = readJsonFile(modulePackagePath)
-  const moduleVersion = modulePackageJson?.version
-  if (typeof moduleVersion !== 'string') {
-    throw new Error(`[rebuild-native-electron] failed to resolve ${moduleName} version`)
+  const modulePackagePath = path.join(modulePath, "package.json");
+  const modulePackageJson = readJsonFile(modulePackagePath);
+  const moduleVersion = modulePackageJson?.version;
+  if (typeof moduleVersion !== "string") {
+    throw new Error(`[rebuild-native-electron] failed to resolve ${moduleName} version`);
   }
 
-  const expectedStamp = createRebuildStamp({ electronVersion, moduleVersion })
+  const expectedStamp = createRebuildStamp({ electronVersion, moduleVersion });
 
-  const skipRebuild = measureSync('check native rebuild stamp', startedAt, () =>
-    shouldSkipRebuild({ expectedStamp, force, modulePath })
-  )
+  const skipRebuild = measureSync("check native rebuild stamp", startedAt, () =>
+    shouldSkipRebuild({ expectedStamp, force, modulePath }),
+  );
   if (skipRebuild) {
     console.log(
-      `[rebuild-native-electron] ${moduleName} already rebuilt for Electron ${electronVersion}; skipping`
-    )
-    console.log(`[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`)
-    return
+      `[rebuild-native-electron] ${moduleName} already rebuilt for Electron ${electronVersion}; skipping`,
+    );
+    console.log(
+      `[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`,
+    );
+    return;
   }
 
-  measureSync('check running Electron processes', startedAt, ensureNoProjectElectronProcesses)
+  measureSync("check running Electron processes", startedAt, ensureNoProjectElectronProcesses);
 
-  console.log(`[rebuild-native-electron] rebuilding ${moduleName} for Electron`)
-  await measure('electron rebuild better-sqlite3', startedAt, () =>
+  console.log(`[rebuild-native-electron] rebuilding ${moduleName} for Electron`);
+  await measure("electron rebuild better-sqlite3", startedAt, () =>
     rebuild({
       buildPath: projectRoot,
       electronVersion,
       force: true,
-      onlyModules: [moduleName]
-    })
-  )
-  measureSync('write native rebuild stamp', startedAt, () => {
+      onlyModules: [moduleName],
+    }),
+  );
+  measureSync("write native rebuild stamp", startedAt, () => {
     writeJsonFile(
       stampFile,
       createRebuildStamp({
         electronVersion,
         moduleVersion,
-        nativeBinaryFingerprint: getNativeBinaryFingerprint(modulePath)
-      })
-    )
-  })
-  console.log('[rebuild-native-electron] rebuild complete')
-  console.log(`[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`)
+        nativeBinaryFingerprint: getNativeBinaryFingerprint(modulePath),
+      }),
+    );
+  });
+  console.log("[rebuild-native-electron] rebuild complete");
+  console.log(`[rebuild-native-electron:timing] total: ${formatDuration(Date.now() - startedAt)}`);
 }
 
 if (require.main === module) {
-  main().catch(error => {
-    console.error('[rebuild-native-electron] rebuild failed')
-    console.error(error)
-    process.exit(1)
-  })
+  main().catch((error) => {
+    console.error("[rebuild-native-electron] rebuild failed");
+    console.error(error);
+    process.exit(1);
+  });
 }
 
 module.exports = {
@@ -225,5 +231,5 @@ module.exports = {
   isSameStamp,
   main,
   parseArgs,
-  shouldSkipRebuild
-}
+  shouldSkipRebuild,
+};

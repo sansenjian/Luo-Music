@@ -1,45 +1,45 @@
-const http = require('node:http')
-const { existsSync, readdirSync, statSync } = require('node:fs')
-const { connect } = require('node:net')
-const path = require('node:path')
-const { spawn, execSync } = require('node:child_process')
-const dotenv = require('dotenv')
+const http = require("node:http");
+const { existsSync, readdirSync, statSync } = require("node:fs");
+const { connect } = require("node:net");
+const path = require("node:path");
+const { spawn, execSync } = require("node:child_process");
+const dotenv = require("dotenv");
 
-const ROOT = path.resolve(__dirname, '../..')
+const ROOT = path.resolve(__dirname, "../..");
 
-dotenv.config({ path: path.resolve(ROOT, '.config/.env') })
+dotenv.config({ path: path.resolve(ROOT, ".config/.env") });
 
 function resolveVitePort(value, fallback = 5173) {
-  const parsed = Number.parseInt(value ?? '', 10)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function createVitePortCandidates(basePort, count = 5) {
-  return Array.from({ length: count }, (_, index) => basePort + index)
+  return Array.from({ length: count }, (_, index) => basePort + index);
 }
 
 function resolveElectronInspectArg(value) {
-  const trimmed = typeof value === 'string' ? value.trim() : '9223'
+  const trimmed = typeof value === "string" ? value.trim() : "9223";
   if (!trimmed) {
-    return null
+    return null;
   }
 
-  const parsedPort = Number.parseInt(trimmed, 10)
+  const parsedPort = Number.parseInt(trimmed, 10);
   if (!Number.isInteger(parsedPort) || parsedPort <= 0) {
-    throw new Error(`Invalid ELECTRON_INSPECTOR port: ${value}`)
+    throw new Error(`Invalid ELECTRON_INSPECTOR port: ${value}`);
   }
 
-  return `--inspect=${parsedPort}`
+  return `--inspect=${parsedPort}`;
 }
 
 function resolveElectronInspectPort(value) {
-  const arg = resolveElectronInspectArg(value)
-  return arg ? arg.replace('--inspect=', '') : null
+  const arg = resolveElectronInspectArg(value);
+  return arg ? arg.replace("--inspect=", "") : null;
 }
 
-const configuredVitePort = resolveVitePort(process.env.VITE_DEV_SERVER_PORT)
-const electronInspectArg = resolveElectronInspectArg(process.env.ELECTRON_INSPECTOR)
-const electronInspectPort = resolveElectronInspectPort(process.env.ELECTRON_INSPECTOR)
+const configuredVitePort = resolveVitePort(process.env.VITE_DEV_SERVER_PORT);
+const electronInspectArg = resolveElectronInspectArg(process.env.ELECTRON_INSPECTOR);
+const electronInspectPort = resolveElectronInspectPort(process.env.ELECTRON_INSPECTOR);
 
 // ============ 配置常量 ============
 const CONFIG = {
@@ -50,357 +50,359 @@ const CONFIG = {
   httpWarmupTimeoutMs: 90000,
   viteStartupTimeoutMs: 90000,
   buildOutput: {
-    main: 'build/electron/main.cjs',
-    preload: 'build/electron/preload.cjs',
-    externalPluginWorker: 'build/electron/externalPluginWorker.mjs'
+    main: "build/electron/main.cjs",
+    preload: "build/electron/preload.cjs",
+    externalPluginWorker: "build/electron/externalPluginWorker.mjs",
   },
-  electronSourcePatterns: ['.ts', '.js', '.mjs'],
-  electronConfig: 'electron/vite.config.ts',
-  appProcessNames: ['electron.exe', 'LUO Music.exe']
-}
+  electronSourcePatterns: [".ts", ".js", ".mjs"],
+  electronConfig: "electron/vite.config.ts",
+  appProcessNames: ["electron.exe", "LUO Music.exe"],
+};
 
 // ============ 日志工具 ============
 const colors = {
-  reset: '\x1b[0m',
-  gray: '\x1b[90m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-  red: '\x1b[31m'
-}
+  reset: "\x1b[0m",
+  gray: "\x1b[90m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  cyan: "\x1b[36m",
+  red: "\x1b[31m",
+};
 
 function log(tag, message, color = colors.reset) {
-  console.log(`${color}[${tag}]${colors.reset} ${message}`)
+  console.log(`${color}[${tag}]${colors.reset} ${message}`);
 }
 
 function logInfo(message) {
-  log('dev-launcher', message, colors.blue)
+  log("dev-launcher", message, colors.blue);
 }
 
 function logSuccess(message) {
-  log('dev-launcher', message, colors.green)
+  log("dev-launcher", message, colors.green);
 }
 
 function logWarn(message) {
-  log('dev-launcher', message, colors.yellow)
+  log("dev-launcher", message, colors.yellow);
 }
 
 function logError(message) {
-  log('dev-launcher', message, colors.red)
+  log("dev-launcher", message, colors.red);
 }
 
 function logDebug(message) {
-  if (process.env.DEBUG === 'dev-launcher') {
-    log('dev-launcher:debug', message, colors.gray)
+  if (process.env.DEBUG === "dev-launcher") {
+    log("dev-launcher:debug", message, colors.gray);
   }
 }
 
 // ============ 启动耗时 ============
-const launcherStartedAt = Date.now()
-const phaseTimings = []
+const launcherStartedAt = Date.now();
+const phaseTimings = [];
 
 function formatDuration(ms) {
   if (ms < 1000) {
-    return `${ms}ms`
+    return `${ms}ms`;
   }
 
-  return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)}s`
+  return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)}s`;
 }
 
 function logPhaseTiming(label, startedAt) {
-  const elapsed = Date.now() - startedAt
-  phaseTimings.push({ label, elapsed })
+  const elapsed = Date.now() - startedAt;
+  phaseTimings.push({ label, elapsed });
   log(
-    'dev-launcher:timing',
+    "dev-launcher:timing",
     `${label}: ${formatDuration(elapsed)} (total ${formatDuration(Date.now() - launcherStartedAt)})`,
-    colors.cyan
-  )
-  return elapsed
+    colors.cyan,
+  );
+  return elapsed;
 }
 
 async function measurePhase(label, action) {
-  const startedAt = Date.now()
+  const startedAt = Date.now();
   try {
-    const result = await action()
-    logPhaseTiming(label, startedAt)
-    return result
+    const result = await action();
+    logPhaseTiming(label, startedAt);
+    return result;
   } catch (error) {
-    logPhaseTiming(`${label} failed`, startedAt)
-    throw error
+    logPhaseTiming(`${label} failed`, startedAt);
+    throw error;
   }
 }
 
 function measureSyncPhase(label, action) {
-  const startedAt = Date.now()
+  const startedAt = Date.now();
   try {
-    const result = action()
-    logPhaseTiming(label, startedAt)
-    return result
+    const result = action();
+    logPhaseTiming(label, startedAt);
+    return result;
   } catch (error) {
-    logPhaseTiming(`${label} failed`, startedAt)
-    throw error
+    logPhaseTiming(`${label} failed`, startedAt);
+    throw error;
   }
 }
 
 function logStartupTimingSummary() {
-  const total = Date.now() - launcherStartedAt
+  const total = Date.now() - launcherStartedAt;
   const detail = phaseTimings
     .map(({ label, elapsed }) => `${label} ${formatDuration(elapsed)}`)
-    .join('; ')
+    .join("; ");
   log(
-    'dev-launcher:timing',
-    `ready to spawn Electron: ${formatDuration(total)}${detail ? ` (${detail})` : ''}`,
-    colors.cyan
-  )
+    "dev-launcher:timing",
+    `ready to spawn Electron: ${formatDuration(total)}${detail ? ` (${detail})` : ""}`,
+    colors.cyan,
+  );
 }
 
 // ============ 等待工具 ============
 async function waitForCondition(
   condition,
-  { interval = CONFIG.pollIntervalMs, timeout = 0, description = 'condition' } = {}
+  { interval = CONFIG.pollIntervalMs, timeout = 0, description = "condition" } = {},
 ) {
   return new Promise((resolve, reject) => {
-    const deadline = timeout > 0 ? Date.now() + timeout : Infinity
+    const deadline = timeout > 0 ? Date.now() + timeout : Infinity;
 
     const check = () => {
       if (Date.now() >= deadline) {
-        reject(new Error(`Timeout waiting for ${description}`))
-        return
+        reject(new Error(`Timeout waiting for ${description}`));
+        return;
       }
 
-      const result = condition()
+      const result = condition();
       if (result instanceof Promise) {
         result
-          .then(testResolve => {
+          .then((testResolve) => {
             if (testResolve) {
-              resolve()
+              resolve();
             } else {
-              setTimeout(check, interval)
+              setTimeout(check, interval);
             }
           })
           .catch(() => {
-            setTimeout(check, interval)
-          })
+            setTimeout(check, interval);
+          });
       } else if (result) {
-        resolve()
+        resolve();
       } else {
-        setTimeout(check, interval)
+        setTimeout(check, interval);
       }
-    }
+    };
 
-    check()
-  })
+    check();
+  });
 }
 
 async function waitForPort(port, timeoutMs = CONFIG.viteStartupTimeoutMs) {
-  logDebug(`Waiting for port ${port}...`)
+  logDebug(`Waiting for port ${port}...`);
   return waitForCondition(
     () => {
-      return new Promise(testResolve => {
-        const socket = connect(port, '127.0.0.1')
-        socket.on('connect', () => {
-          socket.end()
-          testResolve(true)
-        })
-        socket.on('error', () => testResolve(false))
-      })
+      return new Promise((testResolve) => {
+        const socket = connect(port, "127.0.0.1");
+        socket.on("connect", () => {
+          socket.end();
+          testResolve(true);
+        });
+        socket.on("error", () => testResolve(false));
+      });
     },
-    { timeout: timeoutMs, description: `port ${port} to be available` }
-  )
+    { timeout: timeoutMs, description: `port ${port} to be available` },
+  );
 }
 
 function isLikelyViteHtmlResponse(body) {
-  return body.includes('/@vite/client') || body.includes('__vite') || body.includes('id="app"')
+  return body.includes("/@vite/client") || body.includes("__vite") || body.includes('id="app"');
 }
 
 async function waitForHttpReady(
   url,
   timeoutMs = CONFIG.httpWarmupTimeoutMs,
-  { requireViteHtml = false } = {}
+  { requireViteHtml = false } = {},
 ) {
-  logDebug(`Waiting for HTTP ready: ${url}`)
+  logDebug(`Waiting for HTTP ready: ${url}`);
   return waitForCondition(
     () => {
-      return new Promise(testResolve => {
-        const req = http.get(url, res => {
-          const statusCode = res.statusCode ?? 0
+      return new Promise((testResolve) => {
+        const req = http.get(url, (res) => {
+          const statusCode = res.statusCode ?? 0;
           if (statusCode < 200 || statusCode >= 500) {
-            res.resume()
-            testResolve(false)
-            return
+            res.resume();
+            testResolve(false);
+            return;
           }
 
           if (!requireViteHtml) {
-            res.resume()
-            testResolve(true)
-            return
+            res.resume();
+            testResolve(true);
+            return;
           }
 
-          let body = ''
-          res.setEncoding('utf8')
-          res.on('data', chunk => {
+          let body = "";
+          res.setEncoding("utf8");
+          res.on("data", (chunk) => {
             if (body.length < 8192) {
-              body += chunk
+              body += chunk;
             }
-          })
-          res.on('end', () => {
-            testResolve(isLikelyViteHtmlResponse(body))
-          })
-        })
-        req.on('error', () => testResolve(false))
+          });
+          res.on("end", () => {
+            testResolve(isLikelyViteHtmlResponse(body));
+          });
+        });
+        req.on("error", () => testResolve(false));
         req.setTimeout(CONFIG.httpTimeoutMs, () => {
-          req.destroy()
-          testResolve(false)
-        })
-      })
+          req.destroy();
+          testResolve(false);
+        });
+      });
     },
-    { timeout: timeoutMs, description: `HTTP server at ${url} to be ready` }
-  )
+    { timeout: timeoutMs, description: `HTTP server at ${url} to be ready` },
+  );
 }
 
 // ============ 文件工具 ============
 function getLatestMTime(targetPath, predicate = () => true) {
   if (!existsSync(targetPath)) {
-    return 0
+    return 0;
   }
 
   try {
-    const stat = statSync(targetPath)
+    const stat = statSync(targetPath);
     if (stat.isFile()) {
-      return predicate(targetPath) ? stat.mtimeMs : 0
+      return predicate(targetPath) ? stat.mtimeMs : 0;
     }
 
     if (!stat.isDirectory()) {
-      return 0
+      return 0;
     }
 
-    let latest = 0
-    const entries = readdirSync(targetPath, { withFileTypes: true })
+    let latest = 0;
+    const entries = readdirSync(targetPath, { withFileTypes: true });
     for (const entry of entries) {
-      const fullPath = path.join(targetPath, entry.name)
-      const childLatest = getLatestMTime(fullPath, predicate)
+      const fullPath = path.join(targetPath, entry.name);
+      const childLatest = getLatestMTime(fullPath, predicate);
       if (childLatest > latest) {
-        latest = childLatest
+        latest = childLatest;
       }
     }
 
-    return latest
+    return latest;
   } catch {
-    return 0
+    return 0;
   }
 }
 
 function needsRebuild() {
-  const outputPaths = Object.values(CONFIG.buildOutput).map(outputPath =>
-    path.resolve(ROOT, outputPath)
-  )
+  const outputPaths = Object.values(CONFIG.buildOutput).map((outputPath) =>
+    path.resolve(ROOT, outputPath),
+  );
 
-  if (outputPaths.some(outputPath => !existsSync(outputPath))) {
-    logDebug('Build output files not found')
-    return true
+  if (outputPaths.some((outputPath) => !existsSync(outputPath))) {
+    logDebug("Build output files not found");
+    return true;
   }
 
   try {
-    const latestBuiltTime = Math.min(...outputPaths.map(outputPath => statSync(outputPath).mtimeMs))
+    const latestBuiltTime = Math.min(
+      ...outputPaths.map((outputPath) => statSync(outputPath).mtimeMs),
+    );
 
-    const latestElectronSourceTime = getLatestMTime(path.resolve(ROOT, 'electron'), filePath =>
-      CONFIG.electronSourcePatterns.some(ext => filePath.endsWith(ext))
-    )
-    const latestConfigTime = getLatestMTime(path.resolve(ROOT, CONFIG.electronConfig))
-    const latestSourceTime = Math.max(latestElectronSourceTime, latestConfigTime)
+    const latestElectronSourceTime = getLatestMTime(path.resolve(ROOT, "electron"), (filePath) =>
+      CONFIG.electronSourcePatterns.some((ext) => filePath.endsWith(ext)),
+    );
+    const latestConfigTime = getLatestMTime(path.resolve(ROOT, CONFIG.electronConfig));
+    const latestSourceTime = Math.max(latestElectronSourceTime, latestConfigTime);
 
-    const needs = latestSourceTime > latestBuiltTime
+    const needs = latestSourceTime > latestBuiltTime;
     logDebug(
-      `Source time: ${latestSourceTime}, Built time: ${latestBuiltTime}, Needs rebuild: ${needs}`
-    )
-    return needs
+      `Source time: ${latestSourceTime}, Built time: ${latestBuiltTime}, Needs rebuild: ${needs}`,
+    );
+    return needs;
   } catch (error) {
-    logDebug(`Error checking rebuild necessity: ${error.message}`)
-    return true
+    logDebug(`Error checking rebuild necessity: ${error.message}`);
+    return true;
   }
 }
 
 // ============ 进程管理 ============
 function killOldElectronInstances() {
-  return new Promise(resolve => {
-    logInfo('Checking for old Electron instances...')
+  return new Promise((resolve) => {
+    logInfo("Checking for old Electron instances...");
 
-    if (process.platform === 'win32') {
-      const killedProcesses = []
+    if (process.platform === "win32") {
+      const killedProcesses = [];
 
       for (const processName of CONFIG.appProcessNames) {
         try {
-          execSync(`taskkill /F /IM "${processName}"`, { stdio: 'ignore' })
-          killedProcesses.push(processName)
+          execSync(`taskkill /F /IM "${processName}"`, { stdio: "ignore" });
+          killedProcesses.push(processName);
         } catch {
-          logDebug(`No running process matched ${processName}`)
+          logDebug(`No running process matched ${processName}`);
         }
       }
 
       if (killedProcesses.length > 0) {
-        logSuccess(`Killed old instances: ${killedProcesses.join(', ')}`)
+        logSuccess(`Killed old instances: ${killedProcesses.join(", ")}`);
       } else {
-        logInfo('No old Electron instances found')
+        logInfo("No old Electron instances found");
       }
 
-      resolve()
-      return
+      resolve();
+      return;
     }
 
     try {
-      execSync('pkill -f electron', { stdio: 'ignore' })
-      logSuccess('Killed old Electron instances')
+      execSync("pkill -f electron", { stdio: "ignore" });
+      logSuccess("Killed old Electron instances");
     } catch {
-      logInfo('No old Electron instances found')
+      logInfo("No old Electron instances found");
     }
 
-    resolve()
-  })
+    resolve();
+  });
 }
 
 function resolveElectronViteCli() {
   try {
-    const packageJsonPath = require.resolve('electron-vite/package.json')
-    const cliPath = path.join(path.dirname(packageJsonPath), 'bin', 'electron-vite.js')
+    const packageJsonPath = require.resolve("electron-vite/package.json");
+    const cliPath = path.join(path.dirname(packageJsonPath), "bin", "electron-vite.js");
 
     if (!existsSync(cliPath)) {
-      throw new Error(`electron-vite CLI not found at ${cliPath}`)
+      throw new Error(`electron-vite CLI not found at ${cliPath}`);
     }
 
-    return cliPath
+    return cliPath;
   } catch (error) {
-    logError(`Failed to resolve electron-vite CLI: ${error.message}`)
-    process.exit(1)
+    logError(`Failed to resolve electron-vite CLI: ${error.message}`);
+    process.exit(1);
   }
 }
 
 function buildElectron() {
   return new Promise((resolve, reject) => {
-    logInfo('Building electron files with electron-vite...')
+    logInfo("Building electron files with electron-vite...");
 
-    const electronViteCli = resolveElectronViteCli()
+    const electronViteCli = resolveElectronViteCli();
     const child = spawn(
       process.execPath,
-      [electronViteCli, 'build', '--config', CONFIG.electronConfig],
+      [electronViteCli, "build", "--config", CONFIG.electronConfig],
       {
-        stdio: 'inherit',
+        stdio: "inherit",
         shell: false,
-        cwd: ROOT
-      }
-    )
+        cwd: ROOT,
+      },
+    );
 
-    child.on('exit', code => {
+    child.on("exit", (code) => {
       if (code === 0) {
-        logSuccess('Electron build completed')
-        resolve()
+        logSuccess("Electron build completed");
+        resolve();
       } else {
-        reject(new Error(`Build failed with code ${code}`))
+        reject(new Error(`Build failed with code ${code}`));
       }
-    })
+    });
 
-    child.on('error', reject)
-  })
+    child.on("error", reject);
+  });
 }
 
 // ============ 端口检测 ============
@@ -408,148 +410,148 @@ async function findVitePort() {
   for (const port of CONFIG.vitePorts) {
     try {
       await waitForHttpReady(`http://127.0.0.1:${port}/`, CONFIG.socketTimeoutMs, {
-        requireViteHtml: true
-      })
-      logSuccess(`Found Vite dev server on port ${port}`)
-      return port
+        requireViteHtml: true,
+      });
+      logSuccess(`Found Vite dev server on port ${port}`);
+      return port;
     } catch {
-      logDebug(`Port ${port} not available`)
+      logDebug(`Port ${port} not available`);
     }
   }
 
-  return null
+  return null;
 }
 
 async function waitForVitePort() {
-  let detectedPort = null
+  let detectedPort = null;
 
   await waitForCondition(
     async () => {
-      detectedPort = await findVitePort()
-      return detectedPort !== null
+      detectedPort = await findVitePort();
+      return detectedPort !== null;
     },
     {
       interval: CONFIG.pollIntervalMs,
       timeout: CONFIG.viteStartupTimeoutMs,
-      description: `Vite dev server on ports ${CONFIG.vitePorts.join(', ')}`
-    }
-  )
+      description: `Vite dev server on ports ${CONFIG.vitePorts.join(", ")}`,
+    },
+  );
 
-  return detectedPort
+  return detectedPort;
 }
 
 // ============ 主函数 ============
 async function main() {
-  logInfo('Starting Electron development launcher...')
+  logInfo("Starting Electron development launcher...");
 
   // 1. 清理旧实例
-  await measurePhase('kill old Electron instances', () => killOldElectronInstances())
+  await measurePhase("kill old Electron instances", () => killOldElectronInstances());
 
   // 2. 等待 Vite 服务器启动
-  logInfo(`Waiting for Vite dev server on ports ${CONFIG.vitePorts.join(', ')}...`)
+  logInfo(`Waiting for Vite dev server on ports ${CONFIG.vitePorts.join(", ")}...`);
   try {
     await measurePhase(`wait for Vite socket ${CONFIG.vitePorts[0]}`, () =>
-      waitForPort(CONFIG.vitePorts[0])
-    )
-    logSuccess(`Detected an open socket on base port ${CONFIG.vitePorts[0]}`)
+      waitForPort(CONFIG.vitePorts[0]),
+    );
+    logSuccess(`Detected an open socket on base port ${CONFIG.vitePorts[0]}`);
   } catch (error) {
-    logError(`Vite dev server not responding: ${error.message}`)
-    process.exit(1)
+    logError(`Vite dev server not responding: ${error.message}`);
+    process.exit(1);
   }
 
   // 3. 查找实际端口并预热
-  let vitePort
+  let vitePort;
   try {
-    vitePort = await measurePhase('detect Vite HTML port', () => waitForVitePort())
+    vitePort = await measurePhase("detect Vite HTML port", () => waitForVitePort());
   } catch (error) {
-    logError(`Failed to detect a ready Vite server: ${error.message}`)
-    process.exit(1)
+    logError(`Failed to detect a ready Vite server: ${error.message}`);
+    process.exit(1);
   }
 
-  const viteDevServerUrl = `http://127.0.0.1:${vitePort}`
+  const viteDevServerUrl = `http://127.0.0.1:${vitePort}`;
 
-  logInfo(`Warming Vite index response on port ${vitePort}...`)
+  logInfo(`Warming Vite index response on port ${vitePort}...`);
   try {
-    await measurePhase('warm Vite index response', () =>
+    await measurePhase("warm Vite index response", () =>
       waitForHttpReady(`${viteDevServerUrl}/`, CONFIG.httpWarmupTimeoutMs, {
-        requireViteHtml: true
-      })
-    )
-    logSuccess('Vite server ready')
+        requireViteHtml: true,
+      }),
+    );
+    logSuccess("Vite server ready");
   } catch (error) {
-    logError(`Failed to warm up Vite server: ${error.message}`)
-    process.exit(1)
+    logError(`Failed to warm up Vite server: ${error.message}`);
+    process.exit(1);
   }
 
   // 4. 检查是否需要构建
-  const electronBuildNeeded = measureSyncPhase('check Electron build freshness', needsRebuild)
+  const electronBuildNeeded = measureSyncPhase("check Electron build freshness", needsRebuild);
   if (electronBuildNeeded) {
-    logInfo('Electron files need rebuild...')
+    logInfo("Electron files need rebuild...");
     try {
-      await measurePhase('electron-vite build', () => buildElectron())
+      await measurePhase("electron-vite build", () => buildElectron());
     } catch (error) {
-      logError(`Build failed: ${error.message}`)
-      process.exit(1)
+      logError(`Build failed: ${error.message}`);
+      process.exit(1);
     }
   } else {
-    logSuccess('Electron files are up to date')
+    logSuccess("Electron files are up to date");
   }
 
   // 5. 启动 Electron
-  logInfo(`Launching Electron app...`)
-  logDebug(`Vite URL: ${viteDevServerUrl}`)
+  logInfo(`Launching Electron app...`);
+  logDebug(`Vite URL: ${viteDevServerUrl}`);
 
-  const electronBinary = require('electron')
-  const electronArgs = []
+  const electronBinary = require("electron");
+  const electronArgs = [];
   if (electronInspectArg) {
-    electronArgs.push(electronInspectArg)
+    electronArgs.push(electronInspectArg);
   }
-  electronArgs.push('.')
+  electronArgs.push(".");
 
   if (electronInspectPort) {
-    logInfo(`Electron main process inspector listening on 127.0.0.1:${electronInspectPort}`)
+    logInfo(`Electron main process inspector listening on 127.0.0.1:${electronInspectPort}`);
   }
 
-  logStartupTimingSummary()
+  logStartupTimingSummary();
 
   const child = spawn(electronBinary, electronArgs, {
-    stdio: 'inherit',
+    stdio: "inherit",
     shell: false,
     cwd: ROOT,
     env: {
       ...process.env,
-      NODE_ENV: 'development',
-      VITE_DEV_SERVER_URL: viteDevServerUrl
-    }
-  })
+      NODE_ENV: "development",
+      VITE_DEV_SERVER_URL: viteDevServerUrl,
+    },
+  });
 
   // 6. 处理进程事件
-  child.on('error', error => {
-    logError(`Failed to start Electron: ${error.message}`)
-    process.exit(1)
-  })
+  child.on("error", (error) => {
+    logError(`Failed to start Electron: ${error.message}`);
+    process.exit(1);
+  });
 
-  child.on('exit', code => {
-    logInfo(`Electron exited with code ${code}`)
-    process.exit(code ?? 0)
-  })
+  child.on("exit", (code) => {
+    logInfo(`Electron exited with code ${code}`);
+    process.exit(code ?? 0);
+  });
 
   // 7. 优雅退出处理
   const cleanup = () => {
-    logInfo('Shutting down...')
+    logInfo("Shutting down...");
     if (!child.killed) {
-      child.kill()
+      child.kill();
     }
-  }
+  };
 
-  process.on('SIGINT', cleanup)
-  process.on('SIGTERM', cleanup)
-  process.on('exit', cleanup)
+  process.on("SIGINT", cleanup);
+  process.on("SIGTERM", cleanup);
+  process.on("exit", cleanup);
 }
 
 // 启动
-main().catch(error => {
-  logError(error.message)
-  console.error(error.stack)
-  process.exit(1)
-})
+main().catch((error) => {
+  logError(error.message);
+  console.error(error.stack);
+  process.exit(1);
+});

@@ -42,14 +42,19 @@ export function validateService(service: unknown): { valid: boolean; error?: str
     return { valid: false, error: 'Service must be a string' }
   }
   if (!ALLOWED_SERVICES.includes(service)) {
-    return { valid: false, error: `Invalid service: ${service}. Allowed: ${ALLOWED_SERVICES.join(', ')}` }
+    return {
+      valid: false,
+      error: `Invalid service: ${service}. Allowed: ${ALLOWED_SERVICES.join(', ')}`
+    }
   }
   return { valid: true }
 }
 
-export function validateEndpoint(
-  endpoint: unknown
-): { valid: boolean; error?: string; normalized?: string } {
+export function validateEndpoint(endpoint: unknown): {
+  valid: boolean
+  error?: string
+  normalized?: string
+} {
   if (typeof endpoint !== 'string') {
     return { valid: false, error: 'Endpoint must be a string' }
   }

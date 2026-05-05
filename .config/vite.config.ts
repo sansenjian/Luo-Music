@@ -1,6 +1,7 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv } from 'vite-plus'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import type { PluginOption } from 'vite-plus'
 import {
   createSharedDevProxy,
   createSrcAlias,
@@ -24,7 +25,7 @@ export default defineConfig(({ command, mode }) => {
   const outputDir = appRuntime === 'electron' ? 'build' : 'dist'
 
   return {
-    plugins: createVueRendererPlugins({ dts: !isBuild }),
+    plugins: createVueRendererPlugins({ dts: !isBuild }) as PluginOption[],
     base: './',
     define: {
       'import.meta.env.APP_RUNTIME': JSON.stringify(appRuntime),

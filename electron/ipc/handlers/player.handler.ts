@@ -182,7 +182,7 @@ function normalizePlayerState(
   return {
     ...DEFAULT_PLAYER_STATE,
     ...previousState,
-    ...(snapshot ?? {}),
+    ...snapshot,
     playlist: Array.isArray(snapshot?.playlist) ? snapshot.playlist : previousState.playlist,
     currentSong: snapshot?.currentSong ?? null,
     lyricSong: snapshot?.lyricSong ?? null,
@@ -391,7 +391,10 @@ export function registerPlayerHandlers(
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_REMOVE_FROM_PLAYLIST, async (index: number) => {
-    windowManager.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, { type: 'remove-from-playlist', index })
+    windowManager.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, {
+      type: 'remove-from-playlist',
+      index
+    })
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_CLEAR_PLAYLIST, async () => {

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { PlatformDescriptor } from '@/platform/music/descriptors'
 
 // ---------------------------------------------------------------------------
@@ -165,10 +165,22 @@ function expectFirstPartyExtensionDescriptors(
     ])
   )
 
-  if (options.smtc !== false) {
-    expect(platforms).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
+  const smtcDescriptor = platforms.find(platform => platform.id === 'builtin.smtc')
+  const smtcDescriptorSummary = smtcDescriptor
+    ? {
+        id: smtcDescriptor.id,
+        displayName: smtcDescriptor.displayName,
+        source: smtcDescriptor.source,
+        runtime: smtcDescriptor.runtime,
+        category: smtcDescriptor.category,
+        enabled: smtcDescriptor.enabled,
+        status: smtcDescriptor.status
+      }
+    : undefined
+  const expectedSmtcDescriptor =
+    options.smtc === false
+      ? undefined
+      : {
           id: 'builtin.smtc',
           displayName: 'Windows SMTC',
           source: 'builtin',
@@ -176,12 +188,9 @@ function expectFirstPartyExtensionDescriptors(
           category: 'extension',
           enabled: options.smtcEnabled ?? false,
           status: options.smtcEnabled ? 'ready' : 'disabled'
-        })
-      ])
-    )
-  } else {
-    expect(platforms.some(platform => platform.id === 'builtin.smtc')).toBe(false)
-  }
+        }
+
+  expect(smtcDescriptorSummary).toEqual(expectedSmtcDescriptor)
 }
 
 function expectExternalPluginDescriptor(platforms: PlatformDescriptor[]): void {

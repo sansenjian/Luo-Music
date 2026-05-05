@@ -153,9 +153,12 @@ export function useLyricAutoScroll(options: UseLyricAutoScrollOptions) {
       clearProgrammaticGuard()
     }, safeDelay)
 
-    runtime.programmaticFallbackTimer = setTimeout(() => {
-      clearProgrammaticGuard()
-    }, Math.max(PROGRAMMATIC_SCROLL_GUARD, safeDelay))
+    runtime.programmaticFallbackTimer = setTimeout(
+      () => {
+        clearProgrammaticGuard()
+      },
+      Math.max(PROGRAMMATIC_SCROLL_GUARD, safeDelay)
+    )
   }
 
   function resolveActiveLineScrollGeometry(): ScrollGeometry | null {
@@ -196,9 +199,7 @@ export function useLyricAutoScroll(options: UseLyricAutoScrollOptions) {
       return
     }
 
-    if (
-      Math.abs(geometry.container.scrollTop - geometry.targetTop) < SCROLL_ALIGNMENT_TOLERANCE
-    ) {
+    if (Math.abs(geometry.container.scrollTop - geometry.targetTop) < SCROLL_ALIGNMENT_TOLERANCE) {
       return
     }
 

@@ -110,7 +110,12 @@ export const Errors = {
   network: () => new AppError(ErrorCode.NETWORK_OFFLINE, 'Network error', true),
 
   timeout: (endpoint?: string) =>
-    new AppError(ErrorCode.API_TIMEOUT, 'Request timeout', true, endpoint ? { endpoint } : undefined),
+    new AppError(
+      ErrorCode.API_TIMEOUT,
+      'Request timeout',
+      true,
+      endpoint ? { endpoint } : undefined
+    ),
 
   rateLimit: () => new AppError(ErrorCode.API_RATE_LIMIT, 'Rate limited', true),
 
@@ -122,7 +127,12 @@ export const Errors = {
 
   // 播放相关
   audioDecode: (songId?: string | number) =>
-    new AppError(ErrorCode.AUDIO_DECODE_FAILED, 'Audio decode failed', true, songId ? { songId } : undefined),
+    new AppError(
+      ErrorCode.AUDIO_DECODE_FAILED,
+      'Audio decode failed',
+      true,
+      songId ? { songId } : undefined
+    ),
 
   audioContextSuspended: () =>
     new AppError(ErrorCode.AUDIO_CONTEXT_SUSPENDED, 'Audio context suspended', true),
@@ -154,17 +164,33 @@ export const Errors = {
 
   sessionExpired: () => new AppError(ErrorCode.SESSION_EXPIRED, 'Session expired', true),
 
-  tokenRefreshFailed: () => new AppError(ErrorCode.TOKEN_REFRESH_FAILED, 'Token refresh failed', true),
+  tokenRefreshFailed: () =>
+    new AppError(ErrorCode.TOKEN_REFRESH_FAILED, 'Token refresh failed', true),
 
   permissionDenied: (resource?: string) =>
-    new AppError(ErrorCode.PERMISSION_DENIED, 'Permission denied', true, resource ? { resource } : undefined),
+    new AppError(
+      ErrorCode.PERMISSION_DENIED,
+      'Permission denied',
+      true,
+      resource ? { resource } : undefined
+    ),
 
   // 下载相关
   downloadFailed: (songId?: string | number, reason?: string) =>
-    new AppError(ErrorCode.DOWNLOAD_FAILED, reason || 'Download failed', true, songId ? { songId } : undefined),
+    new AppError(
+      ErrorCode.DOWNLOAD_FAILED,
+      reason || 'Download failed',
+      true,
+      songId ? { songId } : undefined
+    ),
 
   downloadInterrupted: (songId?: string | number) =>
-    new AppError(ErrorCode.DOWNLOAD_INTERRUPTED, 'Download interrupted', true, songId ? { songId } : undefined),
+    new AppError(
+      ErrorCode.DOWNLOAD_INTERRUPTED,
+      'Download interrupted',
+      true,
+      songId ? { songId } : undefined
+    ),
 
   // 其他
   fatal: (message: string, data?: unknown) =>

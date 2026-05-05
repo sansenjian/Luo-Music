@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 import HomeMediaSongsSection from '@/components/home/media/HomeMediaSongsSection.vue'
 import { createMockSong } from '../../../utils/test-utils'

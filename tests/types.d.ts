@@ -1,4 +1,4 @@
-/// <reference types="vitest/globals" />
+/// <reference types="vite-plus/test/globals" />
 
 // Vue component type declarations for tests
 declare module '*.vue' {

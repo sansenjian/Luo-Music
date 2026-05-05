@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import type { IDisposable } from '@/base/common/lifecycle/disposable'
 import { Platform } from '@/platform/common/types'
@@ -28,9 +28,11 @@ function createMockPlatformService(withClearAll = true): MockPlatformService {
     minimizeWindow: vi.fn(),
     maximizeWindow: vi.fn(),
     closeWindow: vi.fn(),
-    on: vi.fn((_channel: string, _callback: (data: unknown) => void): IDisposable => ({
-      dispose: vi.fn()
-    })),
+    on: vi.fn(
+      (_channel: string, _callback: (data: unknown) => void): IDisposable => ({
+        dispose: vi.fn()
+      })
+    ),
     send: vi.fn(),
     supportsSendChannel: vi.fn(() => true),
     sendPlayingState: vi.fn(),

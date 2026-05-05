@@ -71,7 +71,13 @@ const CROSS_LAYER_RULES = [
   {
     name: 'UI -> Platform',
     from: new Set(['src/views', 'src/components']),
-    to: new Set(['src/platform', 'electron/main', 'electron/ipc', 'electron/core', 'electron/shared'])
+    to: new Set([
+      'src/platform',
+      'electron/main',
+      'electron/ipc',
+      'electron/core',
+      'electron/shared'
+    ])
   },
   {
     name: 'Store -> UI',

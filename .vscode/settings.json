@@ -34,6 +34,9 @@
   "vite.vitepressAutoRouting": true,
   "vite.vitepressBase": "docs",
   "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "always"
+  },
   "editor.formatOnPaste": false,
   "editor.tabSize": 2,
   "editor.insertSpaces": true,
@@ -68,9 +71,7 @@
     "typescript",
     "typescriptreact"
   ],
-  "eslint.workingDirectories": [
-    { "mode": "auto" }
-  ],
+  "eslint.workingDirectories": [{ "mode": "auto" }],
   "eslint.options": {
     "cache": true
   },

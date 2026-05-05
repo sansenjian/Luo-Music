@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const registerInvokeMock = vi.hoisted(() => vi.fn())
 const executeWithRetryMock = vi.hoisted(() => vi.fn())
@@ -43,7 +43,10 @@ describe('api.handler', () => {
 
     const serviceManager = {
       handleRequest: vi.fn().mockResolvedValue({ song: { list: [] } }),
-      getAvailableServices: vi.fn(() => ({ qq: { status: 'ready' }, netease: { status: 'ready' } }))
+      getAvailableServices: vi.fn(() => ({
+        qq: { status: 'ready' },
+        netease: { status: 'ready' }
+      }))
     }
 
     const { registerApiHandlers } = await import('../../electron/ipc/handlers/api.handler.ts')

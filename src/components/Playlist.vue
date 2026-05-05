@@ -86,7 +86,7 @@ const playlistSongFingerprints = computed(() =>
 )
 
 function syncNormalizedSongs(songList: Song[], nextFingerprints: string[]): void {
-  const nextNormalizedSongs = new Array<PlaylistItem>(songList.length)
+  const nextNormalizedSongs: PlaylistItem[] = []
   let changed = normalizedSongFingerprints.length !== songList.length
 
   for (let index = 0; index < songList.length; index += 1) {
@@ -94,11 +94,11 @@ function syncNormalizedSongs(songList: Song[], nextFingerprints: string[]): void
     const fingerprint = nextFingerprints[index]
 
     if (normalizedSongFingerprints[index] === fingerprint) {
-      nextNormalizedSongs[index] = normalizedSongs.value[index]
+      nextNormalizedSongs.push(normalizedSongs.value[index])
       continue
     }
 
-    nextNormalizedSongs[index] = normalizePlaylistItem(song)
+    nextNormalizedSongs.push(normalizePlaylistItem(song))
     changed = true
   }
 

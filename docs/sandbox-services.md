@@ -83,7 +83,7 @@ await window.services.config.set('theme', 'dark')
 await window.services.config.set('defaultVolume', 80)
 
 // 监听配置变化
-const unsubscribe = window.services.config.onConfigChange((event) => {
+const unsubscribe = window.services.config.onConfigChange(event => {
   console.log(`配置 ${event.key} 从 ${event.oldValue} 变为 ${event.newValue}`)
 })
 
@@ -96,11 +96,11 @@ unsubscribe()
 ```typescript
 // 搜索
 const searchResult = await window.services.api.search(
-  '周杰伦',      // 关键词
-  'song',        // 类型：song | artist | album | playlist | user
-  'qq',          // 平台：netease | qq
-  1,             // 页码
-  30             // 每页数量
+  '周杰伦', // 关键词
+  'song', // 类型：song | artist | album | playlist | user
+  'qq', // 平台：netease | qq
+  1, // 页码
+  30 // 每页数量
 )
 
 // 获取歌曲 URL
@@ -121,10 +121,7 @@ const songDetail = await window.services.api.getSongDetail({
   platform: 'netease'
 })
 
-const playlistDetail = await window.services.api.getPlaylistDetail(
-  'playlist-123',
-  'qq'
-)
+const playlistDetail = await window.services.api.getPlaylistDetail('playlist-123', 'qq')
 ```
 
 ### 5. 窗口控制
@@ -192,19 +189,19 @@ const playlist = await window.services.player.getPlaylist()
 const lyrics = await window.services.player.getLyric('123', 'netease')
 
 // 事件监听
-const unsubscribePlayState = window.services.player.onPlayStateChange((data) => {
+const unsubscribePlayState = window.services.player.onPlayStateChange(data => {
   console.log('播放状态变化:', data.isPlaying, data.currentTime)
 })
 
-const unsubscribeSongChange = window.services.player.onSongChange((data) => {
+const unsubscribeSongChange = window.services.player.onSongChange(data => {
   console.log('歌曲变化:', data.song, data.index)
 })
 
-const unsubscribeLyricUpdate = window.services.player.onLyricUpdate((data) => {
+const unsubscribeLyricUpdate = window.services.player.onLyricUpdate(data => {
   console.log('歌词更新:', data.index, data.line)
 })
 
-const unsubscribeError = window.services.player.onPlayError((data) => {
+const unsubscribeError = window.services.player.onPlayError(data => {
   console.error('播放错误:', data.error, data.song)
 })
 ```
@@ -221,12 +218,7 @@ const unsubscribeError = window.services.player.onPlayError((data) => {
         {{ isPlaying ? '暂停' : '播放' }}
       </button>
       <button @click="skipToNext">下一首</button>
-      <input
-        type="range"
-        :value="currentTime"
-        :max="duration"
-        @input="seekTo"
-      />
+      <input type="range" :value="currentTime" :max="duration" @input="seekTo" />
       <span>{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
     </div>
     <div class="lyrics">
@@ -286,13 +278,13 @@ onMounted(async () => {
   await loadState()
 
   // 监听播放状态
-  unsubscribePlayState = window.services.player.onPlayStateChange((data) => {
+  unsubscribePlayState = window.services.player.onPlayStateChange(data => {
     isPlaying.value = data.isPlaying
     currentTime.value = data.currentTime
   })
 
   // 监听歌曲变化
-  unsubscribeSongChange = window.services.player.onSongChange(async (data) => {
+  unsubscribeSongChange = window.services.player.onSongChange(async data => {
     currentSong.value = data.song
     if (data.song) {
       lyrics.value = await window.services.player.getLyric(data.song.id)
@@ -300,7 +292,7 @@ onMounted(async () => {
   })
 
   // 监听歌词更新
-  unsubscribeLyricUpdate = window.services.player.onLyricUpdate((data) => {
+  unsubscribeLyricUpdate = window.services.player.onLyricUpdate(data => {
     activeLyricIndex.value = data.index
   })
 })

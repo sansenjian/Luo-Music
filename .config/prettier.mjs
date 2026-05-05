@@ -2,11 +2,11 @@ export default {
   semi: false,
   singleQuote: true,
   tabWidth: 2,
-  trailingComma: 'none',
+  trailingComma: "none",
   printWidth: 100,
   bracketSpacing: true,
-  arrowParens: 'avoid',
-  endOfLine: 'lf',
+  arrowParens: "avoid",
+  endOfLine: "lf",
   vueIndentScriptAndStyle: false,
-  htmlWhitespaceSensitivity: 'ignore'
-}
+  htmlWhitespaceSensitivity: "ignore",
+};

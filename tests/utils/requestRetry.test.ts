@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vite-plus/test'
 import {
   shouldRetry,
   calculateRetryDelay,
@@ -78,14 +78,18 @@ describe('requestRetry', () => {
       const config = getRetryConfig()
       // 注意：shouldRetry 不处理 null/undefined 输入，这是预期行为
       // 调用方应确保传入有效的 AxiosError
-      expect(() => shouldRetry(null as unknown as AxiosError, config)).toThrow()
+      expect(() => shouldRetry(null as unknown as AxiosError, config)).toThrow(
+        /Cannot read properties of null/
+      )
     })
 
     it('undefined 错误对象应该抛出错误（不安全调用）', () => {
       const config = getRetryConfig()
       // 注意：shouldRetry 不处理 null/undefined 输入，这是预期行为
       // 调用方应确保传入有效的 AxiosError
-      expect(() => shouldRetry(undefined as unknown as AxiosError, config)).toThrow()
+      expect(() => shouldRetry(undefined as unknown as AxiosError, config)).toThrow(
+        /Cannot read properties of undefined/
+      )
     })
   })
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { useLocalLibraryQueries } from '@/composables/local-library/useLocalLibraryQueries'
 import { CoverCacheManager } from '@/utils/cache/coverCache'

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vite-plus/test'
 import { createSong, type Song } from '@/platform/music/interface'
 import type { Artist } from '@/platform/music/interface'
 

@@ -25,6 +25,7 @@ export default [
       'playwright.config.js',
       '.config/playwright.config.ts',
       'vitest.config.js',
+      '.config/vitest.config.js',
       '.config/vitest.config.ts',
       'forge.config.js',
       'electron/forge.config.ts',

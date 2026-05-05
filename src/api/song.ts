@@ -68,7 +68,7 @@ export async function getMusicUrl(
     })) as MusicUrlResponse
 
     // 检查是否有有效的 URL
-    const data = res.data || (res as unknown as { data?: MusicUrlData[] }).data
+    const data = res.data
 
     if (data && data[0] && data[0].url) {
       return res

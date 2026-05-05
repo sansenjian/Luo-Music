@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { ShuffleHelper } from '@/utils/player/helpers/shuffleHelper'
 
@@ -12,10 +12,7 @@ describe('shuffleHelper', () => {
   it('keeps the current song at the front when not playing all songs', () => {
     const helper = new ShuffleHelper()
     const songs = [{ id: 1 }, { id: 2 }, { id: 3 }]
-    const random = vi
-      .spyOn(Math, 'random')
-      .mockReturnValueOnce(0.2)
-      .mockReturnValueOnce(0.8)
+    const random = vi.spyOn(Math, 'random').mockReturnValueOnce(0.2).mockReturnValueOnce(0.8)
 
     const shuffled = helper.shuffle(songs, 2, 1)
 

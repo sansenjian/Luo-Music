@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, beforeEach, vi } from 'vitest'
+import { describe, expect, it, beforeEach, vi } from 'vite-plus/test'
 
 const getUserPlaylistMock = vi.hoisted(() => vi.fn())
 const getPlaylistDetailMock = vi.hoisted(() => vi.fn())

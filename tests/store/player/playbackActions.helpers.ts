@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 
 import { replaceRuntimePlatformDescriptors } from '@/platform/music/descriptors'
 import { createInitialState } from '@/store/player/playerState'

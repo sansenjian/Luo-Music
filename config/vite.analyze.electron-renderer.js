@@ -1,4 +1,4 @@
-import { defineConfig, mergeConfig } from 'vite'
+import { defineConfig, mergeConfig } from 'vite-plus'
 
 import baseConfig, { ANALYZE_EXCLUDE_PLUGIN_MARKER } from '../electron/vite.config.ts'
 

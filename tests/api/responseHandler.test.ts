@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { handleApiError } from '@/api/responseHandler'
 import { errorCenter } from '@/utils/error/center'

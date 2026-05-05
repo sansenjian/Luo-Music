@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { MusicPlatformAdapter } from '@/platform/music/interface'
 import { LogLevel, type ILogger } from '@/services/loggerService'
 

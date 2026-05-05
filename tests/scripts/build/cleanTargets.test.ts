@@ -2,28 +2,46 @@ import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { join, relative, resolve } from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 const require = createRequire(import.meta.url)
-const { cleanTargets, isProjectScopedWindowsProcess, resolveCleanupTargets } =
-  require('../../../scripts/build/clean-targets.cjs') as {
-    cleanTargets: (targetArgs: string[], options?: { force?: boolean }) => void
-    isProjectScopedWindowsProcess: (
-      processInfo: {
-        Name?: string
-        CommandLine?: string
-        ExecutablePath?: string
-      },
-      projectRootPath?: string
-    ) => boolean
-    resolveCleanupTargets: (
-      targetArgs: string[]
-    ) => Array<{ targetPath: string; absolutePath: string }>
-  }
+const {
+  buildWindowsProcessQueryScripts,
+  cleanTargets,
+  isProjectScopedWindowsProcess,
+  resolveCleanupTargets
+} = require('../../../scripts/build/clean-targets.cjs') as {
+  buildWindowsProcessQueryScripts: () => string[]
+  cleanTargets: (targetArgs: string[], options?: { force?: boolean }) => void
+  isProjectScopedWindowsProcess: (
+    processInfo: {
+      Name?: string
+      CommandLine?: string
+      ExecutablePath?: string
+    },
+    projectRootPath?: string
+  ) => boolean
+  resolveCleanupTargets: (
+    targetArgs: string[]
+  ) => Array<{ targetPath: string; absolutePath: string }>
+}
 
 const projectRoot = resolve(process.cwd())
 
 describe('clean-targets script', () => {
+  it('builds Windows process queries with PowerShell 5 compatible pipelines', () => {
+    for (const script of buildWindowsProcessQueryScripts()) {
+      const invalidLeadingPipeLine = script
+        .split(/\r?\n/)
+        .find(line => line.trimStart().startsWith('|'))
+
+      expect(invalidLeadingPipeLine).toBeUndefined()
+      expect(script).toMatch(/\|\n\s+Where-Object/)
+      expect(script).toMatch(/\|\n\s+Select-Object/)
+      expect(script).toMatch(/\|\n\s+ConvertTo-Json/)
+    }
+  })
+
   it('refuses to resolve paths outside the project root', () => {
     expect(() => resolveCleanupTargets(['..'])).toThrow('outside project root')
   })

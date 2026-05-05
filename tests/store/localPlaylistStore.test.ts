@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { useLocalPlaylistStore } from '@/store/localPlaylistStore'
 import { createMockSong } from '../utils/test-utils'
