@@ -1,0 +1,7 @@
+export { default as EventsView } from './components/EventsView.vue'
+export { default as LikedSongsView } from './components/LikedSongsView.vue'
+export { default as PlaylistDetailPanel } from './components/PlaylistDetailPanel.vue'
+export { default as PlaylistsView } from './components/PlaylistsView.vue'
+export { default as UserProfileHeader } from './components/UserProfileHeader.vue'
+export { useUserCenterPage, type UseUserCenterPageDeps } from './composables/useUserCenterPage'
+export type { UserTab, UserTabStateMap } from './composables/shared'

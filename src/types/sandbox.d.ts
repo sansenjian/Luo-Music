@@ -4,7 +4,7 @@
  * 此文件提供 window.services 和 window.electronAPI 的类型定义
  */
 
-import type { ServiceAPI, ElectronAPI } from '@/platform/contracts/sandbox'
+import type { ServiceAPI, ElectronAPI } from '@shared/contracts/sandbox'
 
 declare global {
   interface Window {

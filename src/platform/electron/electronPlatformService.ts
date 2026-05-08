@@ -4,7 +4,7 @@
 
 import type { IDisposable } from '@/base/common/lifecycle/disposable'
 import { Disposable, DisposableStore } from '@/base/common/lifecycle/disposable'
-import { INVOKE_CHANNELS, SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS, SEND_CHANNELS } from '@shared/protocol/channels'
 import { PlatformServiceBase } from '@/platform/common/platformService'
 import type {
   ICacheSize,
@@ -20,7 +20,7 @@ import type {
   LocalLibrarySummaryQuery,
   LocalLibraryTrack,
   LocalLibraryTrackQuery
-} from '@/types/localLibrary'
+} from '@shared/types/localLibrary'
 
 interface IElectronAPI {
   minimizeWindow(): void

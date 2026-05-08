@@ -8,8 +8,8 @@ import type {
   LocalLibraryScanStatus,
   LocalLibraryState,
   LocalLibraryTrack
-} from '@/types/localLibrary'
-import type { Song } from '@/types/schemas'
+} from '@shared/types/localLibrary'
+import type { Song } from '@shared/types/schemas'
 
 export function createLocalLibraryTrack(song: Song, index = 0): LocalLibraryTrack {
   return {

@@ -1,4 +1,4 @@
-import type { LocalLibraryFolder } from '@/types/localLibrary'
+import type { LocalLibraryFolder } from '@shared/types/localLibrary'
 
 export type BetterSqlite3Database = import('better-sqlite3').Database
 export type BetterSqlite3Statement = import('better-sqlite3').Statement

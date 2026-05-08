@@ -4,7 +4,7 @@ import { services } from '@/services'
 import type { PlayerService } from '@/services/playerService'
 import type { PlatformService } from '@/services/platformService'
 import { usePlayerStore } from '@/store/playerStore'
-import type { Song } from '@/types/schemas'
+import type { Song } from '@shared/types/schemas'
 import { CoverCacheManager } from '@/utils/cache/coverCache'
 
 type MediaSessionActionHandlerLike =

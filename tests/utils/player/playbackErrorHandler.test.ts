@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import { PLAY_MODE } from '@shared/player/playMode'
 import { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
 import { TEST_BASE_DATE, TIME_OFFSETS, getTestDate } from '../../utils/testConstants'
 import { createMockSong, createQQSong } from '../test-utils'

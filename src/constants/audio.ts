@@ -3,4 +3,4 @@ export {
   AUDIO_BITRATE_MAP,
   DEFAULT_AUDIO_BITRATE,
   getBitrateByLevel
-} from '@/platform/contracts/audio'
+} from '@shared/contracts/audio'

@@ -1,8 +1,6 @@
-import {
-  getPlatformDescriptors,
-  replaceRuntimePlatformDescriptors,
-  type PlatformDescriptor
-} from '@/platform/music/descriptors'
+import { getPlatformDescriptors } from '@/platform/music/descriptors'
+import { replaceRuntimePlatformDescriptors } from '@/platform/music/descriptors'
+import type { PlatformDescriptor } from '@shared/types/platform'
 import { useExperimentalFeatures } from '@/composables/useExperimentalFeatures'
 import { useProjectUi } from '@/composables/useProjectUi'
 import {

@@ -1,13 +1,13 @@
-import type { Song } from '@/types/schemas'
-import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@/types/localLibrary'
+import type { Song } from '@shared/types/schemas'
+import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@shared/types/localLibrary'
 import { getPlatformCapabilities } from '@/platform/music'
 import type { MusicService } from '@/services/musicService'
 import { getSongPlatformKey, isSameSongIdentity, resolveMediaId } from '@/utils/songIdentity'
 import { errorCenter } from '@/utils/error/center'
 import { Errors } from '@/utils/error/types'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
-import { PLAY_MODE } from '@/utils/player/constants/playMode'
-import { LyricParser } from '@/utils/player/core/lyric'
+import { PLAY_MODE } from '@shared/player/playMode'
+import { LyricParser } from '@shared/player/lyric'
 
 import type { PlayerState } from './playerState'
 import { songPrefetcher } from './songPrefetcher'
@@ -16,7 +16,7 @@ export interface PlaybackActionsDeps {
   getState: () => PlayerState
   onStateChange: (changes: Partial<PlayerState>) => void
   playSongByIndex: (index: number, song?: Song) => Promise<void>
-  setLyricsArray: (lyrics: import('@/utils/player/core/lyric').LyricLine[]) => void
+  setLyricsArray: (lyrics: import('@shared/player/lyric').LyricLine[]) => void
   onPlaybackCommitted?: (song: Song) => void
   musicService: Pick<MusicService, 'getSongUrl' | 'getSongDetail' | 'getLyric'>
   createErrorHandler: () => import('@/utils/player/modules/playbackErrorHandler').PlaybackErrorHandler

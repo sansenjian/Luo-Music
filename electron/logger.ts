@@ -1,6 +1,6 @@
 import type * as SentryMain from '@sentry/electron/main'
 import log from 'electron-log'
-import { LogLevel, type LogEntry } from '@/platform/contracts/log'
+import { LogLevel, type LogEntry } from '@shared/contracts/log'
 
 let Sentry: typeof SentryMain | null = null
 let sentryInitialized = false

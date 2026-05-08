@@ -1,7 +1,7 @@
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import type { Song } from '@/types/schemas'
+import type { Song } from '@shared/types/schemas'
 
 const getLikelistMock = vi.hoisted(() => vi.fn())
 const getSongDetailMock = vi.hoisted(() => vi.fn())
@@ -18,8 +18,8 @@ vi.mock('@/api/album', () => ({
   getAlbumDetail: getAlbumDetailMock
 }))
 
-import HomeLikedSongsPanel from '@/components/home/HomeLikedSongsPanel.vue'
-import { useHomeLikedSongsPanel } from '@/composables/home/useHomeLikedSongsPanel'
+import HomeLikedSongsPanel from '@/features/home/components/HomeLikedSongsPanel.vue'
+import { useHomeLikedSongsPanel } from '@/features/home/composables/useHomeLikedSongsPanel'
 import { usePlayerStore } from '@/store/playerStore'
 import { useUserStore } from '@/store/userStore'
 import { createLocalLibraryMockFromSongs } from '../../fixtures/localLibrary'

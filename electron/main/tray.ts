@@ -10,7 +10,7 @@ import type { Tray as TrayType, MenuItemConstructorOptions } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import logger from '../logger'
-import { RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 import { VITE_PUBLIC, __dirname } from '../utils/paths'
 
 /**

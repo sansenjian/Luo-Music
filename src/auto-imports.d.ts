@@ -22,6 +22,7 @@ declare global {
   const asyncComputed: typeof import('@vueuse/core').asyncComputed
   const autoResetRef: typeof import('@vueuse/core').autoResetRef
   const buildCachedEventViewModels: typeof import('./composables/useUserEvents').buildCachedEventViewModels
+  const buildPlaybackSelection: typeof import('./features/home/composables/mediaPanelShared').buildPlaybackSelection
   const clearLocalPlaylistCover: typeof import('./store/localPlaylistStore').clearLocalPlaylistCover
   const computed: typeof import('vue').computed
   const computedAsync: typeof import('@vueuse/core').computedAsync
@@ -30,13 +31,20 @@ declare global {
   const computedWithControl: typeof import('@vueuse/core').computedWithControl
   const controlledComputed: typeof import('@vueuse/core').controlledComputed
   const controlledRef: typeof import('@vueuse/core').controlledRef
+  const createAlbumCollectionSelection: typeof import('./features/home/composables/homeCollectionSelection').createAlbumCollectionSelection
   const createApp: typeof import('vue').createApp
   const createEventHook: typeof import('@vueuse/core').createEventHook
   const createEventViewModel: typeof import('./composables/useUserEvents').createEventViewModel
   const createGlobalState: typeof import('@vueuse/core').createGlobalState
+  const createHomeMediaSong: typeof import('./features/home/composables/mediaPanelShared').createHomeMediaSong
   const createInjectionState: typeof import('@vueuse/core').createInjectionState
+  const createLoadedTabs: typeof import('./features/user-center/composables/shared').createLoadedTabs
+  const createLoadingMap: typeof import('./features/user-center/composables/shared').createLoadingMap
+  const createLocalPlaylistCollectionSelection: typeof import('./features/home/composables/homeCollectionSelection').createLocalPlaylistCollectionSelection
+  const createMountedTabs: typeof import('./features/user-center/composables/shared').createMountedTabs
   const createPinia: typeof import('pinia').createPinia
   const createPlayerStore: typeof import('./store/playerStore').createPlayerStore
+  const createPlaylistCollectionSelection: typeof import('./features/home/composables/homeCollectionSelection').createPlaylistCollectionSelection
   const createReactiveFn: typeof import('@vueuse/core').createReactiveFn
   const createRef: typeof import('@vueuse/core').createRef
   const createReusableTemplate: typeof import('@vueuse/core').createReusableTemplate
@@ -53,6 +61,7 @@ declare global {
   const eagerComputed: typeof import('@vueuse/core').eagerComputed
   const effectScope: typeof import('vue').effectScope
   const extendRef: typeof import('@vueuse/core').extendRef
+  const filterMediaSongsByQuery: typeof import('./features/home/composables/mediaPanelShared').filterMediaSongsByQuery
   const formatEventArtists: typeof import('./composables/useUserEvents').formatEventArtists
   const formatEventTimeLabel: typeof import('./composables/useUserEvents').formatEventTimeLabel
   const getActivePinia: typeof import('pinia').getActivePinia
@@ -79,6 +88,7 @@ declare global {
   const mapWritableState: typeof import('pinia').mapWritableState
   const markRaw: typeof import('vue').markRaw
   const nextTick: typeof import('vue').nextTick
+  const normalizeMediaSearchQuery: typeof import('./features/home/composables/mediaPanelShared').normalizeMediaSearchQuery
   const normalizeRecentPlayItems: typeof import('./store/recentPlayStore').normalizeRecentPlayItems
   const onActivated: typeof import('vue').onActivated
   const onBeforeMount: typeof import('vue').onBeforeMount
@@ -101,8 +111,11 @@ declare global {
   const onUnmounted: typeof import('vue').onUnmounted
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
+  const parseQueryValue: typeof import('./features/user-center/composables/shared').parseQueryValue
+  const parseUserTab: typeof import('./features/user-center/composables/shared').parseUserTab
   const pausableWatch: typeof import('@vueuse/core').pausableWatch
   const pinia: typeof import('./store/pinia').default
+  const playMediaSongSelection: typeof import('./features/home/composables/mediaPanelShared').playMediaSongSelection
   const provide: typeof import('vue').provide
   const provideLocal: typeof import('@vueuse/core').provideLocal
   const reactify: typeof import('@vueuse/core').reactify
@@ -123,6 +136,7 @@ declare global {
   const removeSongFromLocalPlaylist: typeof import('./store/localPlaylistStore').removeSongFromLocalPlaylist
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveCoverUrl: typeof import('./composables/usePlayerViewModel').resolveCoverUrl
+  const resolvePanelErrorMessage: typeof import('./features/home/composables/mediaPanelShared').resolvePanelErrorMessage
   const resolveRef: typeof import('@vueuse/core').resolveRef
   const restorePersistedPlayerState: typeof import('./store/playerStore').restorePersistedPlayerState
   const searchResultItemToSong: typeof import('./store/searchStore').searchResultItemToSong
@@ -231,11 +245,15 @@ declare global {
   const useFullscreen: typeof import('@vueuse/core').useFullscreen
   const useGamepad: typeof import('@vueuse/core').useGamepad
   const useGeolocation: typeof import('@vueuse/core').useGeolocation
-  const useHomeBrandPlacement: typeof import('./composables/useHomeBrandPlacement').useHomeBrandPlacement
-  const useHomePage: typeof import('./composables/useHomePage').default
-  const useHomeShell: typeof import('./composables/useHomeShell').useHomeShell
-  const useHomeSidebarCollections: typeof import('./composables/useHomeSidebarCollections').useHomeSidebarCollections
-  const useHomeWorkspaceState: typeof import('./composables/useHomeWorkspaceState').useHomeWorkspaceState
+  const useHomeBrandPlacement: typeof import('./features/home/composables/useHomeBrandPlacement').useHomeBrandPlacement
+  const useHomeCollectionPanel: typeof import('./features/home/composables/useHomeCollectionPanel').useHomeCollectionPanel
+  const useHomeLikedSongsPanel: typeof import('./features/home/composables/useHomeLikedSongsPanel').useHomeLikedSongsPanel
+  const useHomeLocalMusicPanel: typeof import('./features/home/composables/useHomeLocalMusicPanel').useHomeLocalMusicPanel
+  const useHomePage: typeof import('./features/home/composables/useHomePage').default
+  const useHomeRecentPlayPanel: typeof import('./features/home/composables/useHomeRecentPlayPanel').useHomeRecentPlayPanel
+  const useHomeShell: typeof import('./features/home/composables/useHomeShell').useHomeShell
+  const useHomeSidebarCollections: typeof import('./features/home/composables/useHomeSidebarCollections').useHomeSidebarCollections
+  const useHomeWorkspaceState: typeof import('./features/home/composables/useHomeWorkspaceState').useHomeWorkspaceState
   const useId: typeof import('vue').useId
   const useIdle: typeof import('@vueuse/core').useIdle
   const useImage: typeof import('@vueuse/core').useImage
@@ -345,7 +363,10 @@ declare global {
   const useToggle: typeof import('@vueuse/core').useToggle
   const useTransition: typeof import('@vueuse/core').useTransition
   const useUrlSearchParams: typeof import('@vueuse/core').useUrlSearchParams
-  const useUserCenterPage: typeof import('./composables/useUserCenterPage').default
+  const useUserCenterDetails: typeof import('./features/user-center/composables/useUserCenterDetails').useUserCenterDetails
+  const useUserCenterPage: typeof import('./features/user-center/composables/useUserCenterPage').default
+  const useUserCenterPlayback: typeof import('./features/user-center/composables/useUserCenterPlayback').useUserCenterPlayback
+  const useUserCenterTabs: typeof import('./features/user-center/composables/useUserCenterTabs').useUserCenterTabs
   const useUserData: typeof import('./composables/useUserData').useUserData
   const useUserDataQuery: typeof import('./composables/useUserDataQuery').useUserDataQuery
   const useUserEvents: typeof import('./composables/useUserEvents').useUserEvents
@@ -441,21 +462,6 @@ declare global {
   export type { FavoriteAlbumItem, UseFavoriteAlbumsReturn } from './composables/useFavoriteAlbums'
   import('./composables/useFavoriteAlbums')
   // @ts-ignore
-  export type {
-    HomeBrandPlacement,
-    HomeBrandPlacementDeps
-  } from './composables/useHomeBrandPlacement'
-  import('./composables/useHomeBrandPlacement')
-  // @ts-ignore
-  export type { MusicServerOption, HomePageDeps } from './composables/useHomePage'
-  import('./composables/useHomePage')
-  // @ts-ignore
-  export type { HomeTab, HomeShellDeps } from './composables/useHomeShell'
-  import('./composables/useHomeShell')
-  // @ts-ignore
-  export type { HomeWorkspaceView } from './composables/useHomeWorkspaceState'
-  import('./composables/useHomeWorkspaceState')
-  // @ts-ignore
   export type { KeyboardShortcutDeps } from './composables/useKeyboardShortcuts'
   import('./composables/useKeyboardShortcuts')
   // @ts-ignore
@@ -489,12 +495,6 @@ declare global {
     ThemeResourcePacksDeps
   } from './composables/useThemeResourcePacks'
   import('./composables/useThemeResourcePacks')
-  // @ts-ignore
-  export type {
-    UseUserCenterPageDeps,
-    UseUserCenterPageReturn
-  } from './composables/useUserCenterPage'
-  import('./composables/useUserCenterPage')
   // @ts-ignore
   export type { UserStats, UseUserDataReturn } from './composables/useUserData'
   import('./composables/useUserData')
@@ -540,6 +540,80 @@ declare global {
   // @ts-ignore
   export type { UserInfo } from './store/userStore'
   import('./store/userStore')
+  // @ts-ignore
+  export type {
+    LocalMusicEmptyStateModel,
+    LocalMusicSummaryCard,
+    LocalMusicPlaylistOption,
+    LocalMusicViewModeOption
+  } from './features/home/composables/localMusic.types'
+  import('./features/home/composables/localMusic.types')
+  // @ts-ignore
+  export type {
+    HomeMediaSongItem,
+    HomeMediaPlayerStore,
+    HomeMediaToastStore
+  } from './features/home/composables/mediaPanelShared'
+  import('./features/home/composables/mediaPanelShared')
+  // @ts-ignore
+  export type {
+    HomeBrandPlacement,
+    HomeBrandPlacementDeps
+  } from './features/home/composables/useHomeBrandPlacement'
+  import('./features/home/composables/useHomeBrandPlacement')
+  // @ts-ignore
+  export type { HomeLikedSongsPanelModel } from './features/home/composables/useHomeLikedSongsPanel'
+  import('./features/home/composables/useHomeLikedSongsPanel')
+  // @ts-ignore
+  export type { MusicServerOption, HomePageDeps } from './features/home/composables/useHomePage'
+  import('./features/home/composables/useHomePage')
+  // @ts-ignore
+  export type { HomeTab, HomeShellDeps } from './features/home/composables/useHomeShell'
+  import('./features/home/composables/useHomeShell')
+  // @ts-ignore
+  export type { HomeWorkspaceView } from './features/home/composables/useHomeWorkspaceState'
+  import('./features/home/composables/useHomeWorkspaceState')
+  // @ts-ignore
+  export type { UserTab, UserTabStateMap } from './features/user-center/composables/shared'
+  import('./features/user-center/composables/shared')
+  // @ts-ignore
+  export type {
+    UserStoreLike,
+    PlaylistStoreLike,
+    PlayerStoreLike,
+    UserCenterRouterLike,
+    UserCenterRouteLike,
+    UserCenterLikedSongsLike,
+    UserCenterPlaylistsLike,
+    UserCenterFavoriteAlbumsLike,
+    UserCenterEventsLike,
+    LoadSongsById
+  } from './features/user-center/composables/types'
+  import('./features/user-center/composables/types')
+  // @ts-ignore
+  export type {
+    UseUserCenterDetailsOptions,
+    UseUserCenterDetailsReturn
+  } from './features/user-center/composables/useUserCenterDetails'
+  import('./features/user-center/composables/useUserCenterDetails')
+  // @ts-ignore
+  export type {
+    UseUserCenterPageDeps,
+    UseUserCenterPageReturn
+  } from './features/user-center/composables/useUserCenterPage'
+  import('./features/user-center/composables/useUserCenterPage')
+  // @ts-ignore
+  export type {
+    UseUserCenterPlaybackOptions,
+    UseUserCenterPlaybackReturn
+  } from './features/user-center/composables/useUserCenterPlayback'
+  import('./features/user-center/composables/useUserCenterPlayback')
+  // @ts-ignore
+  export type {
+    UseUserCenterTabsOptions,
+    UseUserCenterTabsReturn
+  } from './features/user-center/composables/useUserCenterTabs'
+  import('./features/user-center/composables/useUserCenterTabs')
 }
 
 // for vue template auto import
@@ -585,6 +659,9 @@ declare module 'vue' {
     readonly buildCachedEventViewModels: UnwrapRef<
       (typeof import('./composables/useUserEvents'))['buildCachedEventViewModels']
     >
+    readonly buildPlaybackSelection: UnwrapRef<
+      (typeof import('./features/home/composables/mediaPanelShared'))['buildPlaybackSelection']
+    >
     readonly clearLocalPlaylistCover: UnwrapRef<
       (typeof import('./store/localPlaylistStore'))['clearLocalPlaylistCover']
     >
@@ -595,18 +672,39 @@ declare module 'vue' {
     readonly computedWithControl: UnwrapRef<(typeof import('@vueuse/core'))['computedWithControl']>
     readonly controlledComputed: UnwrapRef<(typeof import('@vueuse/core'))['controlledComputed']>
     readonly controlledRef: UnwrapRef<(typeof import('@vueuse/core'))['controlledRef']>
+    readonly createAlbumCollectionSelection: UnwrapRef<
+      (typeof import('./features/home/composables/homeCollectionSelection'))['createAlbumCollectionSelection']
+    >
     readonly createApp: UnwrapRef<(typeof import('vue'))['createApp']>
     readonly createEventHook: UnwrapRef<(typeof import('@vueuse/core'))['createEventHook']>
     readonly createEventViewModel: UnwrapRef<
       (typeof import('./composables/useUserEvents'))['createEventViewModel']
     >
     readonly createGlobalState: UnwrapRef<(typeof import('@vueuse/core'))['createGlobalState']>
+    readonly createHomeMediaSong: UnwrapRef<
+      (typeof import('./features/home/composables/mediaPanelShared'))['createHomeMediaSong']
+    >
     readonly createInjectionState: UnwrapRef<
       (typeof import('@vueuse/core'))['createInjectionState']
+    >
+    readonly createLoadedTabs: UnwrapRef<
+      (typeof import('./features/user-center/composables/shared'))['createLoadedTabs']
+    >
+    readonly createLoadingMap: UnwrapRef<
+      (typeof import('./features/user-center/composables/shared'))['createLoadingMap']
+    >
+    readonly createLocalPlaylistCollectionSelection: UnwrapRef<
+      (typeof import('./features/home/composables/homeCollectionSelection'))['createLocalPlaylistCollectionSelection']
+    >
+    readonly createMountedTabs: UnwrapRef<
+      (typeof import('./features/user-center/composables/shared'))['createMountedTabs']
     >
     readonly createPinia: UnwrapRef<(typeof import('pinia'))['createPinia']>
     readonly createPlayerStore: UnwrapRef<
       (typeof import('./store/playerStore'))['createPlayerStore']
+    >
+    readonly createPlaylistCollectionSelection: UnwrapRef<
+      (typeof import('./features/home/composables/homeCollectionSelection'))['createPlaylistCollectionSelection']
     >
     readonly createReactiveFn: UnwrapRef<(typeof import('@vueuse/core'))['createReactiveFn']>
     readonly createRef: UnwrapRef<(typeof import('@vueuse/core'))['createRef']>
@@ -632,6 +730,9 @@ declare module 'vue' {
     readonly eagerComputed: UnwrapRef<(typeof import('@vueuse/core'))['eagerComputed']>
     readonly effectScope: UnwrapRef<(typeof import('vue'))['effectScope']>
     readonly extendRef: UnwrapRef<(typeof import('@vueuse/core'))['extendRef']>
+    readonly filterMediaSongsByQuery: UnwrapRef<
+      (typeof import('./features/home/composables/mediaPanelShared'))['filterMediaSongsByQuery']
+    >
     readonly formatEventArtists: UnwrapRef<
       (typeof import('./composables/useUserEvents'))['formatEventArtists']
     >
@@ -664,6 +765,9 @@ declare module 'vue' {
     readonly mapWritableState: UnwrapRef<(typeof import('pinia'))['mapWritableState']>
     readonly markRaw: UnwrapRef<(typeof import('vue'))['markRaw']>
     readonly nextTick: UnwrapRef<(typeof import('vue'))['nextTick']>
+    readonly normalizeMediaSearchQuery: UnwrapRef<
+      (typeof import('./features/home/composables/mediaPanelShared'))['normalizeMediaSearchQuery']
+    >
     readonly normalizeRecentPlayItems: UnwrapRef<
       (typeof import('./store/recentPlayStore'))['normalizeRecentPlayItems']
     >
@@ -688,8 +792,17 @@ declare module 'vue' {
     readonly onUnmounted: UnwrapRef<(typeof import('vue'))['onUnmounted']>
     readonly onUpdated: UnwrapRef<(typeof import('vue'))['onUpdated']>
     readonly onWatcherCleanup: UnwrapRef<(typeof import('vue'))['onWatcherCleanup']>
+    readonly parseQueryValue: UnwrapRef<
+      (typeof import('./features/user-center/composables/shared'))['parseQueryValue']
+    >
+    readonly parseUserTab: UnwrapRef<
+      (typeof import('./features/user-center/composables/shared'))['parseUserTab']
+    >
     readonly pausableWatch: UnwrapRef<(typeof import('@vueuse/core'))['pausableWatch']>
     readonly pinia: UnwrapRef<(typeof import('./store/pinia'))['default']>
+    readonly playMediaSongSelection: UnwrapRef<
+      (typeof import('./features/home/composables/mediaPanelShared'))['playMediaSongSelection']
+    >
     readonly provide: UnwrapRef<(typeof import('vue'))['provide']>
     readonly provideLocal: UnwrapRef<(typeof import('@vueuse/core'))['provideLocal']>
     readonly reactify: UnwrapRef<(typeof import('@vueuse/core'))['reactify']>
@@ -715,6 +828,9 @@ declare module 'vue' {
     readonly resolveComponent: UnwrapRef<(typeof import('vue'))['resolveComponent']>
     readonly resolveCoverUrl: UnwrapRef<
       (typeof import('./composables/usePlayerViewModel'))['resolveCoverUrl']
+    >
+    readonly resolvePanelErrorMessage: UnwrapRef<
+      (typeof import('./features/home/composables/mediaPanelShared'))['resolvePanelErrorMessage']
     >
     readonly resolveRef: UnwrapRef<(typeof import('@vueuse/core'))['resolveRef']>
     readonly restorePersistedPlayerState: UnwrapRef<
@@ -857,15 +973,31 @@ declare module 'vue' {
     readonly useGamepad: UnwrapRef<(typeof import('@vueuse/core'))['useGamepad']>
     readonly useGeolocation: UnwrapRef<(typeof import('@vueuse/core'))['useGeolocation']>
     readonly useHomeBrandPlacement: UnwrapRef<
-      (typeof import('./composables/useHomeBrandPlacement'))['useHomeBrandPlacement']
+      (typeof import('./features/home/composables/useHomeBrandPlacement'))['useHomeBrandPlacement']
     >
-    readonly useHomePage: UnwrapRef<(typeof import('./composables/useHomePage'))['default']>
-    readonly useHomeShell: UnwrapRef<(typeof import('./composables/useHomeShell'))['useHomeShell']>
+    readonly useHomeCollectionPanel: UnwrapRef<
+      (typeof import('./features/home/composables/useHomeCollectionPanel'))['useHomeCollectionPanel']
+    >
+    readonly useHomeLikedSongsPanel: UnwrapRef<
+      (typeof import('./features/home/composables/useHomeLikedSongsPanel'))['useHomeLikedSongsPanel']
+    >
+    readonly useHomeLocalMusicPanel: UnwrapRef<
+      (typeof import('./features/home/composables/useHomeLocalMusicPanel'))['useHomeLocalMusicPanel']
+    >
+    readonly useHomePage: UnwrapRef<
+      (typeof import('./features/home/composables/useHomePage'))['default']
+    >
+    readonly useHomeRecentPlayPanel: UnwrapRef<
+      (typeof import('./features/home/composables/useHomeRecentPlayPanel'))['useHomeRecentPlayPanel']
+    >
+    readonly useHomeShell: UnwrapRef<
+      (typeof import('./features/home/composables/useHomeShell'))['useHomeShell']
+    >
     readonly useHomeSidebarCollections: UnwrapRef<
-      (typeof import('./composables/useHomeSidebarCollections'))['useHomeSidebarCollections']
+      (typeof import('./features/home/composables/useHomeSidebarCollections'))['useHomeSidebarCollections']
     >
     readonly useHomeWorkspaceState: UnwrapRef<
-      (typeof import('./composables/useHomeWorkspaceState'))['useHomeWorkspaceState']
+      (typeof import('./features/home/composables/useHomeWorkspaceState'))['useHomeWorkspaceState']
     >
     readonly useId: UnwrapRef<(typeof import('vue'))['useId']>
     readonly useIdle: UnwrapRef<(typeof import('@vueuse/core'))['useIdle']>
@@ -1030,8 +1162,17 @@ declare module 'vue' {
     readonly useToggle: UnwrapRef<(typeof import('@vueuse/core'))['useToggle']>
     readonly useTransition: UnwrapRef<(typeof import('@vueuse/core'))['useTransition']>
     readonly useUrlSearchParams: UnwrapRef<(typeof import('@vueuse/core'))['useUrlSearchParams']>
+    readonly useUserCenterDetails: UnwrapRef<
+      (typeof import('./features/user-center/composables/useUserCenterDetails'))['useUserCenterDetails']
+    >
     readonly useUserCenterPage: UnwrapRef<
-      (typeof import('./composables/useUserCenterPage'))['default']
+      (typeof import('./features/user-center/composables/useUserCenterPage'))['default']
+    >
+    readonly useUserCenterPlayback: UnwrapRef<
+      (typeof import('./features/user-center/composables/useUserCenterPlayback'))['useUserCenterPlayback']
+    >
+    readonly useUserCenterTabs: UnwrapRef<
+      (typeof import('./features/user-center/composables/useUserCenterTabs'))['useUserCenterTabs']
     >
     readonly useUserData: UnwrapRef<(typeof import('./composables/useUserData'))['useUserData']>
     readonly useUserDataQuery: UnwrapRef<

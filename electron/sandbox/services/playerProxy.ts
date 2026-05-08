@@ -1,14 +1,14 @@
 import { getIpcProxy } from './ipcProxy'
-import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@shared/protocol/channels'
 
-import type { Song, SongPlatform } from '../../../src/types/schemas'
-import type { PlayMode, PlayerStateResponse } from '../../../src/types/player'
-import type { LyricLine } from '../../../src/utils/player/core/lyric'
+import type { LyricLine } from '@shared/player/lyric'
+import type { PlayMode, PlayerStateResponse } from '@shared/types/player'
+import type { Song, SongPlatform } from '@shared/types/schemas'
 import type {
   DesktopLyricSnapshot,
   PlayerPlaySongByIdPayload,
   PlayerPlaySongPayload
-} from '@/platform/contracts/ipc'
+} from '@shared/contracts/ipc'
 
 export type PlayerState = PlayerStateResponse
 

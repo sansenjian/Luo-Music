@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { LyricEngine, LyricParser, parseLyricTimestamp } from '@/utils/player/core/lyric'
+import { LyricEngine, LyricParser, parseLyricTimestamp } from '@shared/player/lyric'
 
 describe('parseLyricTimestamp', () => {
   it('supports minute-second, dotted fractional, and colon millisecond formats', () => {

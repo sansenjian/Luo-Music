@@ -6,7 +6,7 @@ import {
   sanitizeExperimentalFeatures,
   type ExperimentalFeaturesState
 } from '@/extensions/experimentalFeatures'
-import { INVOKE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS } from '@shared/protocol/channels'
 import { services } from '@/services'
 import type { StorageService } from '@/services/storageService'
 

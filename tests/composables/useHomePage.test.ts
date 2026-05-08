@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { useHomePage } from '@/composables/useHomePage'
+import { useHomePage } from '@/features/home/composables/useHomePage'
 import type { SearchResultItem } from '@/store/searchStore'
 import { mountComposable } from '../helpers/mountComposable'
 

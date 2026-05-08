@@ -7,7 +7,7 @@ import type {
   LocalLibrarySummaryQuery,
   LocalLibraryTrack,
   LocalLibraryTrackQuery
-} from '@/types/localLibrary'
+} from '@shared/types/localLibrary'
 import type { Ref } from 'vue'
 
 export interface LocalLibraryPlatformService {

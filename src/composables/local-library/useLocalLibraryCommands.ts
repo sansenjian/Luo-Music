@@ -1,4 +1,4 @@
-import type { LocalLibraryState } from '@/types/localLibrary'
+import type { LocalLibraryState } from '@shared/types/localLibrary'
 
 import type {
   LocalLibraryMutationRunner,

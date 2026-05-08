@@ -2,9 +2,9 @@
  * 桌面歌词 IPC 处理器
  */
 
-import { INVOKE_CHANNELS, SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS, SEND_CHANNELS } from '@shared/protocol/channels'
 import { ipcService } from '../IpcService'
-import type { LyricTimeUpdate } from '@/platform/contracts/ipc'
+import type { LyricTimeUpdate } from '@shared/contracts/ipc'
 import { desktopLyricManager } from '../../DesktopLyricManager'
 import { setConfigValue } from './config.handler'
 

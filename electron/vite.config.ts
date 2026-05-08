@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { config as loadDotEnv } from 'dotenv'
 import type { PluginOption } from 'vite'
 import {
+  createAppRuntimeHtmlMarkerPlugin,
   createSharedDevProxy,
   createSrcAlias,
   createVueRendererPlugins,
@@ -65,7 +66,10 @@ const sentryUploadEnabled = Boolean(
   process.env.SENTRY_PROJECT
 )
 
-const rendererPlugins: PluginOption[] = createVueRendererPlugins({ dts: false })
+const rendererPlugins: PluginOption[] = [
+  ...createVueRendererPlugins({ dts: false }),
+  createAppRuntimeHtmlMarkerPlugin('electron')
+]
 if (sentryUploadEnabled) {
   const sentryPlugins = sentryVitePlugin({
     org: process.env.SENTRY_ORG,

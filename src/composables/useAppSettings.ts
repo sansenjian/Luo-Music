@@ -5,11 +5,11 @@ import {
   type DockedPlayerBarLayout
 } from '@/composables/useDockedPlayerBarLayout'
 import { useExperimentalFeatures } from '@/composables/useExperimentalFeatures'
-import { useHomeBrandPlacement, type HomeBrandPlacement } from '@/composables/useHomeBrandPlacement'
+import { useHomeBrandPlacement, type HomeBrandPlacement } from '@/features/home'
 import { useProjectUi } from '@/composables/useProjectUi'
 import { services } from '@/services'
 import { usePlayerStore } from '@/store/playerStore'
-import type { WebLyricAppearance } from '@/types/player'
+import type { WebLyricAppearance } from '@shared/types/player'
 
 export function useAppSettings() {
   const playerStore = usePlayerStore()

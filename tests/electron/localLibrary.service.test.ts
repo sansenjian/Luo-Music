@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { LOCAL_LIBRARY_SONG_ID_PREFIX } from '@/types/localLibrary'
+import { LOCAL_LIBRARY_SONG_ID_PREFIX } from '@shared/types/localLibrary'
 
 import {
   createFolderId,

@@ -24,7 +24,7 @@
 
 - ✅ **electron-vite 迁移** - 从 electron-builder + tsup 迁移到 electron-vite 方案
 - ✅ **TypeScript 测试迁移** - 所有测试文件从 JavaScript 迁移到 TypeScript
-- ✅ **构建输出统一** - 所有生产构建产物输出到 `build/` 目录
+- ✅ **构建输出收敛** - Web 输出到 `dist/`，Electron bundle 与本地服务输出到 `build/`
 - ✅ **开发体验优化** - 主进程和渲染进程都支持 HMR 热更新
 - ✅ **文档完善** - 新增构建文档和迁移指南（见 [`docs/`](./docs/) 目录）
 
@@ -47,7 +47,7 @@
 ## 🚀 开发计划
 
 - [x] 进度条拖动时实时追踪歌词
-- [x] 升级 Vite 到 v7 版本
+- [x] 升级 Vite 到 v8 版本
 - [x] 升级 Vue 到 v3.5 版本
 - [x] 升级 Node.js 到 v24 版本
 - [x] 升级 Electron 到 v40 版本
@@ -164,9 +164,9 @@ mindmap
         Vue Router 4.6
         TypeScript 5.9
       构建工具
-        Vite 7.3
-        Electron 40.0
-        Electron-Vite 5.0
+        Vite 8.0
+        Electron 40.8
+        Electron-Vite 6.0 beta
         Electron Forge 7.11
       动画库
         Anime.js 4.3
@@ -175,14 +175,14 @@ mindmap
         TanStack Query 5.92
         持久化插件
       网络请求
-        Axios 1.7
+        Axios 1.15
         自定义封装
       代码质量
         ESLint 10.0
         Prettier 3.8
         Husky 9.1
       测试框架
-        Vitest 4.0
+        Vitest 4.1
         Playwright 1.58
 
     部署支持
@@ -231,24 +231,26 @@ mindmap
 | ----------------------------- | -------------- | ----------------- |
 | Vue                           | 3.5.29         | 前端框架          |
 | TypeScript                    | 5.9.3          | 静态类型检查      |
-| Electron                      | 40.0.0         | 桌面应用框架      |
+| Electron                      | 40.8.5         | 桌面应用框架      |
 | Pinia                         | 3.0.4          | 状态管理          |
 | TanStack Query                | 5.92.9         | 服务端状态管理    |
 | Pinia Plugin Persistedstate   | 4.7.1          | 状态持久化        |
-| Axios                         | 1.7.9          | HTTP 客户端       |
-| Vite                          | 7.3.2          | 构建工具          |
+| Axios                         | 1.15.0         | HTTP 客户端       |
+| Vite                          | 8.0.10         | 构建工具          |
 | Anime.js                      | 4.3.6          | 动画效果          |
 | NeteaseCloudMusicApi Enhanced | 4.30.1         | 网易云音乐 API    |
 | QQ Music API                  | 2.2.10         | QQ 音乐 API 服务  |
-| Electron-Vite                 | 5.0.0          | Electron 构建工具 |
+| Electron-Vite                 | 6.0.0-beta.1   | Electron 构建工具 |
 | Electron Forge                | 7.11.1         | Electron 打包工具 |
 | ESLint                        | 10.0.3         | 代码检查          |
 | Prettier                      | 3.8.1          | 代码格式化        |
-| Vitest                        | 4.1.2          | 单元测试框架      |
+| Vitest                        | 4.1.5          | 单元测试框架      |
 | Playwright                    | 1.58.2         | E2E 测试框架      |
 | VitePress                     | 2.0.0-alpha.17 | 文档生成工具      |
 | Husky                         | 9.1.7          | Git 钩子          |
 | lint-staged                   | 16.1.2         | 预提交检查        |
+
+> 版本信息以 `package.json` 为准；上表只记录当前主线依赖快照。
 
 ## 依赖结构说明
 
@@ -262,15 +264,15 @@ mindmap
     "pinia": "^3.0.4",
     "animejs": "^4.3.6",
     "@tanstack/vue-query": "^5.92.9",
-    "axios": "^1.7.9",
+    "axios": "^1.15.0",
     "@vueuse/core": "^14.2.1",
     "zod": "^4.3.6"
     // ...
   },
   "devDependencies": {
     // Electron 专属依赖 - 仅开发/打包时安装
-    "electron": "^40.0.0",
-    "electron-vite": "^5.0.0",
+    "electron": "40.8.5",
+    "electron-vite": "^6.0.0-beta.1",
     "@electron-forge/cli": "^7.11.1",
     "typescript": "^5.9.3",
     "vue-tsc": "^3.2.5"
@@ -337,7 +339,9 @@ luo_music/
 │   │   └── shortcuts.ts # 快捷键
 │   ├── sandbox/      # 预加载脚本
 │   ├── ipc/          # IPC 通信
-│   ├── shared/       # 共享代码
+│   ├── local-library/# 本地音乐库扫描与索引
+│   ├── plugins/      # 插件宿主能力
+│   ├── service/      # 本地服务管理
 │   ├── utils/        # 工具函数
 │   ├── WindowManager.ts
 │   ├── ServiceManager.ts  # 服务管理 (子进程)
@@ -350,12 +354,35 @@ luo_music/
 │   └── utils/        # 工具脚本
 ├── server/           # API 服务端
 │   └── index.ts
+├── packages/
+│   ├── plugin-sdk/   # 插件开发 SDK
+│   └── shared/       # renderer / preload / main 共享协议和纯合同
+│       ├── contracts/# audio/config/log/netease/ipc/sandbox 等纯共享合同
+│       ├── player/   # 播放模式、歌词等跨端播放器纯类型 / 纯工具
+│       ├── protocol/ # IPC channel/cache 等协议常量
+│       └── types/    # schema/localLibrary/player/platform 等跨端纯类型
+├── plugins/
+│   ├── examples/     # 插件示例
+│   └── third-party/  # 第三方插件
 ├── src/
 │   ├── api/          # 渲染侧 API 适配层（请求封装、参数与响应适配）
 │   ├── assets/       # 静态资源（CSS/字体）
 │   ├── base/         # 基础架构 (事件/生命周期)
-│   ├── components/   # Vue 组件
-│   ├── composables/  # 组合式函数
+│   ├── components/   # 跨功能复用 Vue 组件
+│   │   ├── home/     # HomeEmptyState 等跨页面复用的 Home 来源组件
+│   │   ├── media/    # AlbumDetailPanel/FavoriteAlbumsView/SongDetailList 等媒体展示组件
+│   │   ├── settings/
+│   │   └── window/
+│   ├── composables/  # 跨功能复用组合式函数
+│   ├── features/     # 成规模业务域
+│   │   ├── home/     # 首页 feature，包含专属 components/composables 和 public API
+│   │       ├── components/
+│   │       ├── composables/
+│   │       └── index.ts
+│   │   └── user-center/ # 用户中心页面专属组件/composables 和 public API
+│   │       ├── components/
+│   │       ├── composables/
+│   │       └── index.ts
 │   ├── platform/     # 平台适配层 (TypeScript)
 │   │   ├── music/    # 音乐平台适配器
 │   │   ├── electron/ # Electron 平台服务
@@ -379,7 +406,8 @@ luo_music/
 │   ├── platform/     # 平台适配器测试
 │   ├── store/        # Store 测试
 │   └── utils/        # 工具函数测试
-├── build/            # 构建输出目录
+├── build/            # Electron bundle 与本地服务构建输出
+├── dist/             # Web 构建输出
 ├── .vscode/          # VSCode 配置
 │   ├── launch.json   # 调试配置
 │   ├── tasks.json    # 任务配置
@@ -409,7 +437,7 @@ luo_music/
 └── index.html
 ```
 
-> 目录边界：根目录 `api/` 只服务 Vercel 部署的 Serverless Function 路由，例如 `/api/*` 与 `/qq-api` 重写；业务代码中的请求封装、响应适配和类型约束放在 `src/api/`。不要从渲染层、Electron 主进程或通用模块直接导入根 `api/` 下的部署 handler。
+> 目录边界：根目录 `api/` 只服务 Vercel 部署的 Serverless Function 路由，例如 `/api/*` 与 `/qq-api` 重写；业务代码中的请求封装、响应适配和类型约束放在 `src/api/`。跨 Electron main / preload / renderer 的纯协议和纯合同优先放在 `packages/shared`，通过 `@shared/*` 导入。不要从渲染层、Electron 主进程或通用模块直接导入根 `api/` 下的部署 handler。
 
 ## 环境支持
 
@@ -444,7 +472,7 @@ npm run dev:web          # 仅 Web 开发（Vite）
 npm run dev:electron     # Electron 开发（桌面应用）
 
 # 生产构建
-npm run build:web        # 输出 build/ → Web 产物
+npm run build:web        # 输出 dist/ → Web 产物
 npm run build:electron   # 输出 build/ + out/make/ → Electron 安装包
 npm run build:electron:portable # 输出 out/portable/ → 单文件便携版
 
@@ -495,7 +523,7 @@ npm run dev:web
 npm run build:web
 ```
 
-构建输出目录：`build/`
+构建输出目录：`dist/`
 
 ---
 
@@ -534,7 +562,8 @@ npm run build:electron:portable
 
 构建输出目录：
 
-- `build/` - 构建产物（前端 + Electron 主进程）
+- `dist/` - Web 构建产物
+- `build/` - Electron renderer bundle、主进程 / preload 和本地服务构建产物
 - `out/make/` - Electron 安装包
 - `out/portable/` - 单文件便携版
 

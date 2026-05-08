@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import type { LocalLibrarySummaryQuery, LocalLibraryTrackQuery } from '@/types/localLibrary'
+import type { LocalLibrarySummaryQuery, LocalLibraryTrackQuery } from '@shared/types/localLibrary'
 
 import {
   appendSummarySearchFilter,

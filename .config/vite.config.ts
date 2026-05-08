@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { PluginOption } from 'vite-plus'
 import {
+  createAppRuntimeHtmlMarkerPlugin,
   createSharedDevProxy,
   createSrcAlias,
   createVueRendererPlugins,
@@ -25,7 +26,10 @@ export default defineConfig(({ command, mode }) => {
   const outputDir = appRuntime === 'electron' ? 'build' : 'dist'
 
   return {
-    plugins: createVueRendererPlugins({ dts: !isBuild }) as PluginOption[],
+    plugins: [
+      ...createVueRendererPlugins({ dts: !isBuild }),
+      createAppRuntimeHtmlMarkerPlugin(appRuntime)
+    ] as PluginOption[],
     base: './',
     define: {
       'import.meta.env.APP_RUNTIME': JSON.stringify(appRuntime),

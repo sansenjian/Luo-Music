@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { createMusicService } from '@/services/musicService'
-import type { Song, LyricResult, PlaylistDetail, SearchResult } from '@/types/schemas'
+import type { Song, LyricResult, PlaylistDetail, SearchResult } from '@shared/types/schemas'
 import type { MusicPlatformAdapter } from '@/platform/music/interface'
 
 // Mock getMusicAdapter

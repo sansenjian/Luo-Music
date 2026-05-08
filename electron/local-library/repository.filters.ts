@@ -1,4 +1,4 @@
-import type { LocalLibrarySummaryQuery, LocalLibraryTrackQuery } from '@/types/localLibrary'
+import type { LocalLibrarySummaryQuery, LocalLibraryTrackQuery } from '@shared/types/localLibrary'
 
 export function appendTrackFilters(
   clauses: string[],

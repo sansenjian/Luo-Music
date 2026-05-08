@@ -3,7 +3,7 @@ import type {
   LocalLibraryArtistSummary,
   LocalLibraryFolder,
   LocalLibraryTrack
-} from '@/types/localLibrary'
+} from '@shared/types/localLibrary'
 
 import { createTrackSong } from './service.helpers'
 import { createAlbumId, createArtistId } from './repository.helpers'

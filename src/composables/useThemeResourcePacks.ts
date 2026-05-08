@@ -1,7 +1,8 @@
 import { computed, readonly, ref } from 'vue'
 
 import type { PluginThemeResource } from '@plugin-sdk'
-import { getPlatformDescriptors, type PlatformDescriptor } from '@/platform/music/descriptors'
+import type { PlatformDescriptor } from '@shared/types/platform'
+import { getPlatformDescriptors } from '@/platform/music/descriptors'
 import { services } from '@/services'
 import type { StorageService } from '@/services/storageService'
 import type { RenderStyle } from '@/composables/useRenderStyle'

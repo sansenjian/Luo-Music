@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 
 import { storageAdapter } from '@/services/storageService'
 import type { Song } from '@/platform/music/interface'
-import { isLocalLibrarySong } from '@/types/localLibrary'
+import { isLocalLibrarySong } from '@shared/types/localLibrary'
 import { cloneSongData, isSameSongIdentity } from '@/utils/songIdentity'
 
 export type LocalPlaylist = {

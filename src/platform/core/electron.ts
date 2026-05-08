@@ -1,5 +1,5 @@
 import { PlatformAdapter } from './adapter'
-import type { CacheClearOptions, CacheClearResult } from '@/platform/contracts/protocol/cache'
+import type { CacheClearOptions, CacheClearResult } from '@shared/protocol/cache'
 
 type ElectronAPI = {
   minimizeWindow?: () => void

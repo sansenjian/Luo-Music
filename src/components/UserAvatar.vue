@@ -4,10 +4,8 @@ import { useRouter } from 'vue-router'
 
 import { logout } from '@/api/user'
 import { qqMusicApi } from '@/api/qqmusic'
-import {
-  getLoginCapablePlatformDescriptors,
-  type PlatformDescriptor
-} from '@/platform/music/descriptors'
+import type { PlatformDescriptor } from '@shared/types/platform'
+import { getLoginCapablePlatformDescriptors } from '@/platform/music/descriptors'
 import { services } from '@/services'
 import { useUserStore } from '@/store/userStore'
 import LoginModal from './LoginModal.vue'

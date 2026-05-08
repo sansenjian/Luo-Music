@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vite-plus/test'
 
-import HomeMediaPanelShell from '@/components/home/media/HomeMediaPanelShell.vue'
+import HomeMediaPanelShell from '@/features/home/components/media/HomeMediaPanelShell.vue'
 
 describe('HomeMediaPanelShell', () => {
   it('renders the default empty state when the shell is empty', () => {

@@ -21,11 +21,11 @@ import type {
   LocalLibrarySummaryQuery,
   LocalLibraryTrack,
   LocalLibraryTrackQuery
-} from '@/types/localLibrary'
+} from '@shared/types/localLibrary'
 import {
   createEmptyLocalLibraryPage,
   createUnsupportedLocalLibraryState
-} from '@/types/localLibrary'
+} from '@shared/types/localLibrary'
 import { isElectronRuntime } from '@/utils/runtime'
 
 /**

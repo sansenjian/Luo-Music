@@ -1,6 +1,6 @@
-import { PLAY_MODE } from '@/utils/player/constants/playMode'
-import type { Song } from '@/types/schemas'
-import { isLocalLibrarySong } from '@/types/localLibrary'
+import { PLAY_MODE } from '@shared/player/playMode'
+import type { Song } from '@shared/types/schemas'
+import { isLocalLibrarySong } from '@shared/types/localLibrary'
 import { resolveMediaId } from '@/utils/songIdentity'
 import type { MusicService } from '@/services/musicService'
 

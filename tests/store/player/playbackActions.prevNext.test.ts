@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import { PLAY_MODE } from '@shared/player/playMode'
 import { createMockSong } from '../../utils/test-utils'
 import { createSubject, resetPlaybackActionMocks } from './playbackActions.helpers'
 

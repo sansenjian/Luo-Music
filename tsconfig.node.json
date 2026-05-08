@@ -15,7 +15,9 @@
     "paths": {
       "@/*": ["src/*"],
       "@plugin-sdk": ["packages/plugin-sdk/index.ts"],
-      "@plugin-sdk/*": ["packages/plugin-sdk/*"]
+      "@plugin-sdk/*": ["packages/plugin-sdk/*"],
+      "@shared": ["packages/shared/index.ts"],
+      "@shared/*": ["packages/shared/*"]
     }
   },
   "include": [
@@ -25,6 +27,7 @@
     "server/**/*.ts",
     "server/**/*.d.ts",
     "packages/plugin-sdk/**/*.ts",
+    "packages/shared/**/*.ts",
     "electron/**/*.js",
     "electron/**/*.ts",
     "electron/**/*.d.ts",

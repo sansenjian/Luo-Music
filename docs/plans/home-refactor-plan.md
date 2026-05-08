@@ -8,13 +8,15 @@ Split `Home.vue` by responsibility instead of by visual chunks so the page becom
 
 ```text
 src/views/Home.vue
-src/composables/useHomePage.ts
-src/components/home/HomeHeader.vue
-src/components/home/HomeWorkspace.vue
-src/components/home/HomeFooter.vue
-src/components/home/HomeSearchResults.vue
-src/components/home/HomeTabBar.vue
+src/features/home/index.ts
+src/features/home/composables/useHomePage.ts
+src/features/home/components/HomeHeader.vue
+src/features/home/components/HomeWorkspace.vue
+src/features/home/components/HomeFooter.vue
+src/features/home/components/HomeTabBar.vue
 ```
+
+Current status: Home 专属组件和 composable 已迁入 `src/features/home/`；`src/components/home/HomeEmptyState.vue` 暂留通用组件层供歌词和播放列表复用。
 
 ## Split Strategy
 

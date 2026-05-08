@@ -8,7 +8,7 @@ import {
   USER_SCROLL_IDLE_DELAY
 } from '@/constants/lyric'
 import { useLyricAutoScroll } from '@/composables/useLyricAutoScroll'
-import type { LyricLine } from '@/utils/player/core/lyric'
+import type { LyricLine } from '@shared/player/lyric'
 
 type AutoScrollApi = ReturnType<typeof useLyricAutoScroll>
 

@@ -1,7 +1,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-import type { AppConfig, ConfigKey } from '@/platform/contracts/config'
-import { DEFAULT_APP_CONFIG } from '@/platform/contracts/config'
+import type { AppConfig, ConfigKey } from '@shared/contracts/config'
+import { DEFAULT_APP_CONFIG } from '@shared/contracts/config'
 import { services } from '@/services'
 import { resolveDesktopLyricPresetColors } from '@/utils/player/desktopLyricSettings'
 

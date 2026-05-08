@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vite-plus/test'
 
-import PlaylistsView from '@/components/user/PlaylistsView.vue'
+import PlaylistsView from '@/features/user-center/components/PlaylistsView.vue'
 
 describe('PlaylistsView', () => {
   it('keeps the playlist grid visible when cached data exists during loading', () => {

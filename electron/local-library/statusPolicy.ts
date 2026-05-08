@@ -1,5 +1,5 @@
-import type { LocalLibraryFolder, LocalLibraryScanStatus } from '@/types/localLibrary'
-import { createLocalLibraryScanStatus } from '@/types/localLibrary'
+import type { LocalLibraryFolder, LocalLibraryScanStatus } from '@shared/types/localLibrary'
+import { createLocalLibraryScanStatus } from '@shared/types/localLibrary'
 
 export function createIdleLocalLibraryStatus(
   folders: LocalLibraryFolder[],

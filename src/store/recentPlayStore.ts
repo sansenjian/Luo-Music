@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { storageAdapter } from '@/services/storageService'
-import type { Song } from '@/types/schemas'
+import type { Song } from '@shared/types/schemas'
 import { cloneSongData, getSongPlatformKey, isSameSongIdentity } from '@/utils/songIdentity'
 
 const MAX_RECENT_PLAYS = 100

@@ -2,29 +2,31 @@
 import { computed } from 'vue'
 
 import ErrorToast from '@/components/ErrorToast.vue'
-import HomeCollectionDetailPanel from '@/components/home/HomeCollectionDetailPanel.vue'
-import HomeDiscover from '@/components/home/HomeDiscover.vue'
-import HomeFooter from '@/components/home/HomeFooter.vue'
-import HomeOverview from '@/components/home/HomeOverview.vue'
-import HomeHeader from '@/components/home/HomeHeader.vue'
-import HomeLikedSongsPanel from '@/components/home/HomeLikedSongsPanel.vue'
-import HomeLocalMusicPanel from '@/components/home/HomeLocalMusicPanel.vue'
-import HomePluginsPanel from '@/components/home/HomePluginsPanel.vue'
-import HomeRecentPlayPanel from '@/components/home/HomeRecentPlayPanel.vue'
-import HomeRoaming from '@/components/home/HomeRoaming.vue'
-import HomeSettingsPanel from '@/components/home/HomeSettingsPanel.vue'
-import HomeSidebar from '@/components/home/HomeSidebar.vue'
-import HomeWorkspace from '@/components/home/HomeWorkspace.vue'
 import LyricDisplay from '@/components/LyricDisplay.vue'
 import Player from '@/components/Player.vue'
 import Playlist from '@/components/Playlist.vue'
 import Toast from '@/components/Toast.vue'
 import { useDockedPlayerBarLayout } from '@/composables/useDockedPlayerBarLayout'
 import { useDeferredMount } from '@/composables/useDeferredMount'
-import { useHomeBrandPlacement } from '@/composables/useHomeBrandPlacement'
-import { useHomeLikedSongsPanel } from '@/composables/home/useHomeLikedSongsPanel'
-import { useHomePage } from '@/composables/useHomePage'
-import { useHomeWorkspaceState } from '@/composables/useHomeWorkspaceState'
+import {
+  HomeCollectionDetailPanel,
+  HomeDiscover,
+  HomeFooter,
+  HomeHeader,
+  HomeLikedSongsPanel,
+  HomeLocalMusicPanel,
+  HomeOverview,
+  HomePluginsPanel,
+  HomeRecentPlayPanel,
+  HomeRoaming,
+  HomeSettingsPanel,
+  HomeSidebar,
+  HomeWorkspace,
+  useHomeBrandPlacement,
+  useHomeLikedSongsPanel,
+  useHomePage,
+  useHomeWorkspaceState
+} from '@/features/home'
 import { useLocalLibrary } from '@/composables/useLocalLibrary'
 
 const {
@@ -53,6 +55,7 @@ const { dockedPlayerBarLayout } = useDockedPlayerBarLayout()
 const usesAdaptiveSidebarFooterLayout = computed(
   () => playerStore.isPlayerDocked && dockedPlayerBarLayout.value === 'with-sidebar'
 )
+const isSidebarCollapsed = computed(() => !playerStore.isPlayerDocked)
 const {
   activeSidebarItemId,
   activeWorkspaceView,
@@ -93,7 +96,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
     data-ui="home-window"
     :class="{
       'player-docked': playerStore.isPlayerDocked,
-      'sidebar-collapsed': !playerStore.isPlayerDocked,
+      'sidebar-collapsed': isSidebarCollapsed,
       'footer-with-sidebar': usesAdaptiveSidebarFooterLayout
     }"
   >
@@ -124,7 +127,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
       <HomeSidebar
         :active-item-id="activeSidebarItemId"
         class="sidebar-panel"
-        :collapsed="!playerStore.isPlayerDocked"
+        :collapsed="isSidebarCollapsed"
         :show-brand="brandPlacement === 'sidebar'"
         @collection-select="handleSidebarCollectionSelect"
         @item-select="handleSidebarItemSelect"
@@ -296,6 +299,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
 
 .sidebar-panel {
   grid-area: sidebar;
+  width: 100%;
   min-width: 0;
   min-height: 0;
 }
@@ -380,7 +384,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
   }
 
   .window.sidebar-collapsed .app-shell {
-    grid-template-columns: var(--home-sidebar-width) minmax(0, 1fr);
+    grid-template-columns: var(--home-collapsed-sidebar-width) minmax(0, 1fr);
     grid-template-areas:
       'sidebar workspace'
       'footer footer';

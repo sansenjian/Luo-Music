@@ -7,8 +7,8 @@ import type {
   LocalLibrarySummaryQuery,
   LocalLibraryTrack,
   LocalLibraryTrackQuery
-} from '@/types/localLibrary'
-import { createLocalLibraryScanStatus } from '@/types/localLibrary'
+} from '@shared/types/localLibrary'
+import { createLocalLibraryScanStatus } from '@shared/types/localLibrary'
 
 import { LocalLibraryCoverManager } from './coverManager'
 import { LocalLibraryEventHub } from './eventHub'

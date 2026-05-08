@@ -8,8 +8,8 @@ import type {
   LocalLibraryScanStatus,
   LocalLibraryState,
   LocalLibraryTrack
-} from '@/types/localLibrary'
-import type { Song } from '@/types/schemas'
+} from '@shared/types/localLibrary'
+import type { Song } from '@shared/types/schemas'
 import { useLocalPlaylistStore } from '@/store/localPlaylistStore'
 import { createLocalLibraryMock } from '../../fixtures/localLibrary'
 
@@ -50,7 +50,7 @@ describe('HomeLocalMusicPanel', () => {
     useLocalLibraryMock.mockReturnValue(createLocalLibraryMock())
 
     const { default: HomeLocalMusicPanel } =
-      await import('@/components/home/HomeLocalMusicPanel.vue')
+      await import('@/features/home/components/HomeLocalMusicPanel.vue')
     const wrapper = mount(HomeLocalMusicPanel)
 
     expect(wrapper.text()).toContain('本地音乐仅支持桌面端')
@@ -149,7 +149,7 @@ describe('HomeLocalMusicPanel', () => {
     )
 
     const { default: HomeLocalMusicPanel } =
-      await import('@/components/home/HomeLocalMusicPanel.vue')
+      await import('@/features/home/components/HomeLocalMusicPanel.vue')
     const wrapper = mount(HomeLocalMusicPanel, {
       global: {
         stubs: {
@@ -247,7 +247,7 @@ describe('HomeLocalMusicPanel', () => {
     )
 
     const { default: HomeLocalMusicPanel } =
-      await import('@/components/home/HomeLocalMusicPanel.vue')
+      await import('@/features/home/components/HomeLocalMusicPanel.vue')
     const wrapper = mount(HomeLocalMusicPanel, {
       global: {
         stubs: {
@@ -380,7 +380,7 @@ describe('HomeLocalMusicPanel', () => {
     )
 
     const { default: HomeLocalMusicPanel } =
-      await import('@/components/home/HomeLocalMusicPanel.vue')
+      await import('@/features/home/components/HomeLocalMusicPanel.vue')
     const wrapper = mount(HomeLocalMusicPanel, {
       global: {
         stubs: {
@@ -492,7 +492,7 @@ describe('HomeLocalMusicPanel', () => {
     )
 
     const { default: HomeLocalMusicPanel } =
-      await import('@/components/home/HomeLocalMusicPanel.vue')
+      await import('@/features/home/components/HomeLocalMusicPanel.vue')
     const wrapper = mount(HomeLocalMusicPanel, {
       global: {
         stubs: {
@@ -592,7 +592,7 @@ describe('HomeLocalMusicPanel', () => {
     )
 
     const { default: HomeLocalMusicPanel } =
-      await import('@/components/home/HomeLocalMusicPanel.vue')
+      await import('@/features/home/components/HomeLocalMusicPanel.vue')
     const wrapper = mount(HomeLocalMusicPanel)
 
     expect(wrapper.text()).toContain('--:--')

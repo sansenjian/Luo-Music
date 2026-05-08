@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
-import { DEFAULT_APP_CONFIG } from '@/platform/contracts/config'
+import { DEFAULT_APP_CONFIG } from '@shared/contracts/config'
 import { TIME_OFFSETS } from '../utils/testConstants'
 
 const platformState = vi.hoisted(() => {

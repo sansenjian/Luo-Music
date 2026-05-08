@@ -1,4 +1,4 @@
-import type { WebLyricAppearance, WebLyricTextAlign } from '@/types/player'
+import type { WebLyricAppearance, WebLyricTextAlign } from '@shared/types/player'
 
 export type WebLyricOption<T extends string = string> = {
   label: string

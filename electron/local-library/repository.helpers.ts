@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 
-import type { Artist } from '@/types/schemas'
-import type { LocalLibraryArtistSummary } from '@/types/localLibrary'
-import { LOCAL_LIBRARY_DEFAULT_PAGE_SIZE } from '@/types/localLibrary'
+import type { LocalLibraryArtistSummary } from '@shared/types/localLibrary'
+import { LOCAL_LIBRARY_DEFAULT_PAGE_SIZE } from '@shared/types/localLibrary'
+import type { Artist } from '@shared/types/schemas'
 
 export function resolveDefaultDatabasePath(): string {
   const electronModule = require('electron') as

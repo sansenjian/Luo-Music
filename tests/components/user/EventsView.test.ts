@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { mount } from '@vue/test-utils'
 
-import EventsView from '@/components/user/EventsView.vue'
+import EventsView from '@/features/user-center/components/EventsView.vue'
 import { createMockSong } from '../../utils/test-utils'
 
 describe('EventsView', () => {

@@ -1,7 +1,7 @@
-import type { Song } from '@/types/schemas'
+import type { Song } from '@shared/types/schemas'
 import { getSongPlatformKey, isSameSongIdentity, resolveMediaId } from '@/utils/songIdentity'
 import type { MusicService } from '@/services/musicService'
-import { isLocalLibrarySong } from '@/types/localLibrary'
+import { isLocalLibrarySong } from '@shared/types/localLibrary'
 
 interface PrefetchedSongData {
   song: Song

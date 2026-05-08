@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import UserProfileHeader from '@/components/user/UserProfileHeader.vue'
+import UserProfileHeader from '@/features/user-center/components/UserProfileHeader.vue'
 
 const clipboardWriteTextMock = vi.fn()
 

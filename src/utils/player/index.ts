@@ -6,7 +6,7 @@ export * from './modules'
 import { playerCore as audioManager } from './core/playerCore'
 import { playbackController } from './core/playbackController'
 import { playlistManager } from './core/playlistManager'
-import { LyricEngine } from './core/lyric'
+import { LyricEngine } from '@shared/player/lyric'
 
 export function createPlayer() {
   return {
@@ -21,11 +21,11 @@ export function createPlayer() {
 import { playerCore } from './core/playerCore'
 import { playbackController as pc } from './core/playbackController'
 import { playlistManager as pm } from './core/playlistManager'
-import { LyricParser, LyricEngine as LE } from './core/lyric'
+import { LyricParser, LyricEngine as LE } from '@shared/player/lyric'
 import { timeFormatter } from './helpers/timeFormatter'
 import { shuffleHelper } from './helpers/shuffleHelper'
 import { PlaybackErrorHandler } from './modules/playbackErrorHandler'
-import { PLAY_MODE, PLAY_MODE_LABELS, PLAY_MODE_ICONS } from './constants/playMode'
+import { PLAY_MODE, PLAY_MODE_LABELS, PLAY_MODE_ICONS } from '@shared/player/playMode'
 import { TIME_INTERVAL, SKIP_CONFIG } from './constants/timeInterval'
 import { VOLUME, AUDIO_CONFIG } from './constants/volume'
 

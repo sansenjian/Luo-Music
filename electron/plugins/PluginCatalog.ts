@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { PlatformDescriptor } from '../../src/platform/music/descriptors'
+import type { PlatformDescriptor } from '@shared/types/platform'
 import { PluginInstaller } from './PluginInstaller'
 import { PluginStateStore } from './PluginStateStore'
 import { ExternalPluginHost } from './ExternalPluginHost'

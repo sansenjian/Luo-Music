@@ -59,7 +59,7 @@ const pageMocks = vi.hoisted(() => ({
   goBack: vi.fn()
 }))
 
-vi.mock('@/composables/useUserCenterPage', async () => {
+vi.mock('@/features/user-center/composables/useUserCenterPage', async () => {
   const { computed, ref } = await import('vue')
 
   return {

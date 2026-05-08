@@ -8,6 +8,7 @@
 | ---------------------------------------------------------------------- | ---------------------------------------- |
 | [架构重构计划](/plans/architecture-refactoring-plan)                   | 架构层面的调整路线                       |
 | [项目结构优化详细规划](/plans/project-structure-optimization-plan)     | 目录边界、feature 收拢与 shared 抽离路线 |
+| [项目结构归属审计](/plans/project-structure-ownership-audit)           | composables / utils 后续归属记录         |
 | [DI 优化计划](/plans/di-optimization-plan)                             | 依赖注入与服务层治理计划                 |
 | [DI 后续路线图](/plans/di-followup-roadmap)                            | DI 收口后的下一步工作                    |
 | [首页重构计划](/plans/home-refactor-plan)                              | 首页结构和交互重构                       |

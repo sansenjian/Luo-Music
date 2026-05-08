@@ -39,7 +39,7 @@ export const noCopyrightMock = mocks.noCopyrightMock
 export const fatalErrorMock = mocks.fatalErrorMock
 export const isCanceledRequestErrorMock = mocks.isCanceledRequestErrorMock
 
-vi.mock('@/utils/player/core/lyric', () => ({
+vi.mock('@shared/player/lyric', () => ({
   LyricParser: {
     parse: mocks.lyricParseMock
   }

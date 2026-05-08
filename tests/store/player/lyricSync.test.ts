@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { LyricEngine, type LyricLine } from '@/utils/player/core/lyric'
+import { LyricEngine, type LyricLine } from '@shared/player/lyric'
 import { ensurePlayerStoreRuntime, resetPlayerStoreRuntime } from '@/store/player/runtime'
 import {
   createLyricTimeUpdatePayload,

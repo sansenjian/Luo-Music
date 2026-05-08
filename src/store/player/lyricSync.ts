@@ -1,6 +1,6 @@
-import type { Song } from '@/types/schemas'
-import type { LyricLine } from '@/utils/player/core/lyric'
-import type { DesktopLyricUpdateCause, LyricTimeUpdate } from '@/platform/contracts/ipc'
+import type { Song } from '@shared/types/schemas'
+import type { LyricLine } from '@shared/player/lyric'
+import type { DesktopLyricUpdateCause, LyricTimeUpdate } from '@shared/contracts/ipc'
 
 import { getPlayerStoreRuntime, type CurrentLyricLine, type PlayerStoreOwner } from './runtime'
 

@@ -2,11 +2,11 @@
  * Legacy lyric compatibility helpers.
  *
  * NOTE:
- * 新代码请优先使用 `src/utils/player/core/lyric.ts` 中的 `LyricParser/LyricEngine`。
+ * 新代码请优先使用 `@shared/player/lyric` 中的 `LyricParser/LyricEngine`。
  * 该文件仅保留旧 API 以兼容历史调用方。
  */
 
-import { LyricParser, parseLyricTimestamp } from './core/lyric'
+import { LyricParser, parseLyricTimestamp } from '@shared/player/lyric'
 
 // 歌词提前显示的偏移量（秒）
 export const LYRIC_OFFSET = 0.3

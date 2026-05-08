@@ -1,5 +1,5 @@
-import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
-import type { PlatformDescriptor } from '@/platform/music/descriptors'
+import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@shared/protocol/channels'
+import type { PlatformDescriptor } from '@shared/types/platform'
 import { getIpcProxy } from './ipcProxy'
 
 export interface PluginListPayload {

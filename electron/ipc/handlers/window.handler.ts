@@ -3,7 +3,7 @@
  */
 
 import { screen } from 'electron'
-import { INVOKE_CHANNELS, SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS, SEND_CHANNELS } from '@shared/protocol/channels'
 import { ipcService } from '../IpcService'
 import type { WindowManager } from '../../WindowManager'
 

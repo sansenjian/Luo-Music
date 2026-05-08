@@ -7,7 +7,7 @@ import type {
   PluginSettingDefinition,
   PluginThemeResource
 } from '../../packages/plugin-sdk'
-import type { PlatformDescriptor } from '../../src/platform/music/descriptors'
+import type { PlatformDescriptor } from '@shared/types/platform'
 
 export interface ExternalPluginEntry {
   main: string

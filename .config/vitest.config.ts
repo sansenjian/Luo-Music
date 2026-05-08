@@ -8,6 +8,7 @@ const resolveConfig = {
   alias: {
     '@': fileURLToPath(new URL('../src', import.meta.url)),
     '@plugin-sdk': fileURLToPath(new URL('../packages/plugin-sdk', import.meta.url)),
+    '@shared': fileURLToPath(new URL('../packages/shared', import.meta.url)),
     '~': fileURLToPath(new URL('../tests', import.meta.url))
   }
 }

@@ -7,7 +7,7 @@
 
 import { globalShortcut } from 'electron'
 import logger from '../logger'
-import { RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 
 /**
  * 快捷键动作映射类型

@@ -18,7 +18,7 @@ vi.mock('@/api/album', () => ({
   getAlbumDetail: getAlbumDetailMock
 }))
 
-import HomeSidebar from '@/components/home/HomeSidebar.vue'
+import HomeSidebar from '@/features/home/components/HomeSidebar.vue'
 import { useLocalPlaylistStore } from '@/store/localPlaylistStore'
 import { useUserStore } from '@/store/userStore'
 import { createMockSong } from '../../utils/test-utils'

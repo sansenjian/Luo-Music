@@ -1,5 +1,5 @@
 import { Disposable, DisposableStore } from '@/base/common/lifecycle/disposable'
-import type { LyricEngine } from '@/utils/player/core/lyric'
+import type { LyricEngine } from '@shared/player/lyric'
 import type { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
 
 import {

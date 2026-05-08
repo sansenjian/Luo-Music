@@ -25,7 +25,7 @@ vi.mock('@/api/album', () => ({
   getAlbumSublist: getAlbumSublistMock
 }))
 
-import HomeCollectionDetailPanel from '@/components/home/HomeCollectionDetailPanel.vue'
+import HomeCollectionDetailPanel from '@/features/home/components/HomeCollectionDetailPanel.vue'
 import { useLocalPlaylistStore } from '@/store/localPlaylistStore'
 import { usePlayerStore } from '@/store/playerStore'
 import { useUserStore } from '@/store/userStore'

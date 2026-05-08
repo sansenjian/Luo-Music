@@ -1,4 +1,4 @@
-import type { LocalLibraryTrack } from '@/types/localLibrary'
+import type { LocalLibraryTrack } from '@shared/types/localLibrary'
 
 import type { LocalLibraryRepository } from './repository'
 import { isLegacyState, type LegacyStoreShape } from './service.helpers'

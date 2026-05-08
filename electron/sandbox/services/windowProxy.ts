@@ -8,7 +8,7 @@
  */
 
 import { getIpcProxy } from './ipcProxy'
-import { SEND_CHANNELS, INVOKE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { SEND_CHANNELS, INVOKE_CHANNELS } from '@shared/protocol/channels'
 
 /**
  * 窗口状态

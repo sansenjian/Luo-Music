@@ -10,7 +10,7 @@ import type { PlatformService } from '@/services/platformService'
 import { storageAdapter } from '@/services/storageService'
 import type { StorageService } from '@/services/storageService'
 import { isSameSongIdentity } from '@/utils/songIdentity'
-import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@/types/localLibrary'
+import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@shared/types/localLibrary'
 import {
   createLyricTimeUpdatePayload,
   getCurrentLyricLine,
@@ -26,8 +26,8 @@ import {
 } from '@/store/player/runtime'
 import { createInitialState, PLAY_MODE_TEXTS, type PlayerState } from '@/store/player/playerState'
 import { songPrefetcher } from '@/store/player/songPrefetcher'
-import { PLAY_MODE } from '@/utils/player/constants/playMode'
-import { LyricEngine, type LyricLine } from '@/utils/player/core/lyric'
+import { PLAY_MODE } from '@shared/player/playMode'
+import { LyricEngine, type LyricLine } from '@shared/player/lyric'
 import { playerCore as defaultAudioManager } from '@/utils/player/core/playerCore'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
 import { resolvePlaybackMediaUrl } from '@/utils/player/mediaProxy'
@@ -38,12 +38,12 @@ import {
   sanitizeWebLyricAppearance
 } from '@/utils/player/webLyricAppearance'
 import { useRecentPlayStore } from '@/store/recentPlayStore'
-import type { SongPlatform } from '@/types/schemas'
-import { SongSchema } from '@/types/schemas'
-import type { LyricDisplayType, WebLyricAppearance } from '@/types/player'
+import type { SongPlatform } from '@shared/types/schemas'
+import { SongSchema } from '@shared/types/schemas'
+import type { LyricDisplayType, WebLyricAppearance } from '@shared/types/player'
 
-import { SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
-import type { PlayerStateSnapshot, PlayerStateSyncPayload } from '@/platform/contracts/ipc'
+import { SEND_CHANNELS } from '@shared/protocol/channels'
+import type { PlayerStateSnapshot, PlayerStateSyncPayload } from '@shared/contracts/ipc'
 
 export type PlayerStoreActions = {
   seek: (time: number) => void

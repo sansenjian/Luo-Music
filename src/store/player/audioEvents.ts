@@ -1,6 +1,6 @@
 import { Disposable, DisposableStore, type IDisposable } from '@/base/common/lifecycle/disposable'
 import { playerCore } from '@/utils/player/core/playerCore'
-import type { DesktopLyricUpdateCause } from '@/platform/contracts/ipc'
+import type { DesktopLyricUpdateCause } from '@shared/contracts/ipc'
 
 import type { PlayerState } from './playerState'
 

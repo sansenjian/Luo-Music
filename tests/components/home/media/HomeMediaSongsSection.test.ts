@@ -2,7 +2,7 @@ import { defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vite-plus/test'
 
-import HomeMediaSongsSection from '@/components/home/media/HomeMediaSongsSection.vue'
+import HomeMediaSongsSection from '@/features/home/components/media/HomeMediaSongsSection.vue'
 import { createMockSong } from '../../../utils/test-utils'
 
 function mountSongsSection(props: Record<string, unknown> = {}) {

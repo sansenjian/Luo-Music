@@ -3,6 +3,8 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "LUO Music",
   description: "LUO Music 项目文档站，覆盖开发指南、架构设计、参考资料、方案计划与审查归档。",
+  // VitePress 2 alpha currently depends on Vite 7.x; MPA avoids the failing SPA bundle path.
+  mpa: true,
   rewrites: {
     "GETTING_STARTED.md": "guide/getting-started.md",
     "build.md": "guide/build-and-release.md",

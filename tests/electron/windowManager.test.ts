@@ -16,7 +16,9 @@ class BrowserWindowMock {
     on: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
       this.webContentsEvents[event] = callback
     }),
+    isDestroyed: vi.fn(() => false),
     getURL: vi.fn(() => 'http://localhost:5173'),
+    isDevToolsOpened: vi.fn(() => false),
     openDevTools: vi.fn(),
     send: vi.fn()
   }
@@ -147,15 +149,15 @@ describe('electron/WindowManager', () => {
     })
   })
 
-  it('creates the main window with a transparent background for rounded render styles', async () => {
+  it('uses an opaque background so startup stalls do not show a blank transparent shell', async () => {
     const { WindowManager } = await import('../../electron/WindowManager')
     const manager = new WindowManager()
     manager.createWindow()
 
     const window = browserWindowInstances.at(-1)
     expect(window?.options).toMatchObject({
-      transparent: true,
-      backgroundColor: '#00000000'
+      transparent: false,
+      backgroundColor: '#101014'
     })
   })
 
@@ -224,7 +226,73 @@ describe('electron/WindowManager', () => {
     expect(window?.show).toHaveBeenCalledTimes(1)
   })
 
-  it('shows the window through fallback when renderer readiness stalls', async () => {
+  it('opens devtools only after the dev renderer has finished loading', async () => {
+    process.env.VITE_DEV_SERVER_URL = 'http://localhost:5173'
+
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    expect(window?.webContents.openDevTools).not.toHaveBeenCalled()
+
+    window?.webContentsEvents['did-finish-load']?.()
+
+    expect(window?.webContents.openDevTools).toHaveBeenCalledWith({ mode: 'detach' })
+  })
+
+  it('does not reopen devtools if the developer already opened it', async () => {
+    process.env.VITE_DEV_SERVER_URL = 'http://localhost:5173'
+
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    window?.webContents.isDevToolsOpened.mockReturnValue(true)
+
+    window?.webContentsEvents['did-finish-load']?.()
+
+    expect(window?.webContents.openDevTools).not.toHaveBeenCalled()
+  })
+
+  it('does not open devtools for the packaged renderer', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+
+    window?.webContentsEvents['did-finish-load']?.()
+
+    expect(window?.webContents.openDevTools).not.toHaveBeenCalled()
+  })
+
+  it('ignores late renderer load events after the main window is destroyed', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+
+    window?.isDestroyed.mockReturnValue(true)
+    window?.webContents.isDestroyed.mockReturnValue(true)
+    window?.webContents.getURL.mockImplementation(() => {
+      throw new Error('Object has been destroyed')
+    })
+
+    expect(() => window?.webContentsEvents['did-finish-load']?.()).not.toThrow()
+    expect(window?.webContents.send).not.toHaveBeenCalledWith(
+      'main-process-message',
+      expect.any(String)
+    )
+  })
+
+  it('retries the renderer instead of showing a blank window when readiness stalls', async () => {
     const { WindowManager } = await import('../../electron/WindowManager')
     const manager = new WindowManager()
     manager.createWindow()
@@ -235,7 +303,50 @@ describe('electron/WindowManager', () => {
 
     await vi.advanceTimersByTimeAsync(3000)
 
-    expect(window?.show).toHaveBeenCalledTimes(1)
+    expect(window?.show).not.toHaveBeenCalled()
+    expect(loggerWarn).toHaveBeenCalledWith(
+      '[WindowManager] Renderer readiness stalled before first show; retrying load',
+      {
+        elapsed: '3.00s',
+        loadTarget: '/renderer/index.html'
+      }
+    )
+    expect(loggerError).toHaveBeenCalledWith('[WindowManager] Renderer load issue', {
+      reason: 'startup-renderer-stall',
+      loadTarget: '/renderer/index.html'
+    })
+
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(window?.loadFile).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps waiting for the dev renderer instead of reloading during slow first compilation', async () => {
+    process.env.VITE_DEV_SERVER_URL = 'http://localhost:5173'
+
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+    expect(window?.show).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(30000)
+
+    expect(window?.show).not.toHaveBeenCalled()
+    expect(loggerWarn).toHaveBeenCalledWith(
+      '[WindowManager] Dev renderer is still compiling before first show',
+      {
+        elapsed: '30.0s',
+        loadTarget: 'http://localhost:5173'
+      }
+    )
+    expect(loggerError).not.toHaveBeenCalledWith('[WindowManager] Renderer load issue', {
+      reason: 'startup-renderer-stall',
+      loadTarget: 'http://localhost:5173'
+    })
+    expect(window?.loadURL).toHaveBeenCalledTimes(1)
   })
 
   it('retries the packaged renderer after an unexpected renderer crash', async () => {

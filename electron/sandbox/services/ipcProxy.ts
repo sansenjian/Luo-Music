@@ -6,7 +6,7 @@ import {
   type InvokeChannel,
   type SendChannel,
   type ReceiveChannel
-} from '@/platform/contracts/protocol/channels'
+} from '@shared/protocol/channels'
 
 export interface IpcResult<T = unknown> {
   success: boolean

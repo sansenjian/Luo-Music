@@ -1,10 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import {
-  SEND_CHANNELS,
-  RECEIVE_CHANNELS,
-  INVOKE_CHANNELS
-} from '@/platform/contracts/protocol/channels'
-import type { ElectronAPI, ServiceAPI as ExposedServiceAPI } from '@/platform/contracts/sandbox'
+import { SEND_CHANNELS, RECEIVE_CHANNELS, INVOKE_CHANNELS } from '@shared/protocol/channels'
+import type { ElectronAPI, ServiceAPI as ExposedServiceAPI } from '@shared/contracts/sandbox'
 import { createLegacyElectronAPI } from './legacyElectronApi'
 
 // 导入服务代理

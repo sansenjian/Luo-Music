@@ -1,4 +1,4 @@
-import type { CacheClearOptions, CacheClearResult } from '@/platform/contracts/protocol/cache'
+import type { CacheClearOptions, CacheClearResult } from '@shared/protocol/cache'
 import type { IDisposable } from '@/base/common/lifecycle/disposable'
 import type {
   LocalLibraryAlbumSummary,
@@ -8,7 +8,7 @@ import type {
   LocalLibrarySummaryQuery,
   LocalLibraryTrack,
   LocalLibraryTrackQuery
-} from '@/types/localLibrary'
+} from '@shared/types/localLibrary'
 
 export const enum Platform {
   Web,

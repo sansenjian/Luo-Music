@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { NETEASE_API_PORT, QQ_API_PORT } from '@/platform/contracts/protocol/cache'
+import { NETEASE_API_PORT, QQ_API_PORT } from '@shared/protocol/cache'
 import type { ExternalPluginManifest, PluginStateRecord } from './types'
 
 interface StoreLike {
