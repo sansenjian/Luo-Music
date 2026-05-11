@@ -180,7 +180,6 @@ mindmap
       代码质量
         Oxlint 1.63
         ESLint 10.3
-        Prettier 3.8
         Oxfmt 0.48
         Husky 9.1
       测试框架
@@ -247,8 +246,7 @@ mindmap
 | Electron Forge                | 7.11.1         | Electron 打包工具 |
 | Oxlint                        | 1.63.0         | 主线代码检查      |
 | ESLint                        | 10.3.0         | 兼容性备用检查    |
-| Prettier                      | 3.8.3          | 默认代码格式化    |
-| Oxfmt                         | 0.48.0         | 可选快速格式化    |
+| Oxfmt                         | 0.48.0         | 主线代码格式化    |
 | Vitest                        | 4.1.6          | 单元测试框架      |
 | Playwright                    | 1.59.1         | E2E 测试框架      |
 | VitePress                     | 2.0.0-alpha.17 | 文档生成工具      |
@@ -604,6 +602,16 @@ npm run build:electron:portable
 - `build/` - Electron renderer bundle、主进程 / preload 和本地服务构建产物
 - `out/make/` - Electron 安装包
 - `out/portable/` - 单文件便携版
+
+### Electron 打包器职责
+
+桌面端构建采用分层打包策略：
+
+- `electron-vite` 负责 Electron main、preload 与 renderer bundle。
+- Electron Forge 是主安装包打包器，`npm run build:electron` / `npm run make` 输出 `out/make/`。
+- `electron-builder` 仅用于 portable 单文件构建，`npm run build:electron:portable` 输出 `out/portable/`。
+
+不要把 portable 配置迁回 Forge 主流程，也不要把 Forge maker 配置复制到 `electron-builder` 配置里；两者只共享 `config/packaging.shared.cjs` 中的产品信息、额外资源和瘦身规则。
 
 ### Electron 特性
 

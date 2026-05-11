@@ -29,7 +29,6 @@
 | vscode-typescript-vue-plugin   | Vue 中的 TypeScript 支持  |
 | oxc.oxc-vscode                 | Oxlint / OXC 集成         |
 | vs code-eslint                 | ESLint 备用规则支持       |
-| prettier-vscode                | Prettier 默认格式化       |
 | vscode-tailwindcss             | Tailwind CSS 支持         |
 | markdown-preview-github-styles | GitHub 风格 Markdown 预览 |
 | vscode-typescript-next         | 最新版 TypeScript 支持    |
@@ -71,11 +70,10 @@
 - 单引号偏好
 - Vue 组件命名规范
 
-**Oxlint / Prettier / Oxfmt**：
+**Vite+ / Oxlint / Oxfmt**：
 
 - 保存时通过 OXC 扩展执行可自动修复项
-- Prettier 继续作为 VSCode 默认格式化器
-- Oxfmt 提供 CLI 格式化和检查脚本
+- Oxfmt 提供主线 CLI 格式化和检查脚本
 - ESLint 配置保留为备用检查入口
 
 **Git 设置**：

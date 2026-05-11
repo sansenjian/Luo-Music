@@ -174,8 +174,10 @@ tests/Test Material/
 .claude/
 .codex/
 .codex_tmp/
+.codex-tmp/
 .ai/
 .playwright-mcp/
+inspection-results/
 
 # Husky
 .husky/.gitignore
