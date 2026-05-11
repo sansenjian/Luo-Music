@@ -1,20 +1,15 @@
-import { defineStore, type StoreGeneric } from 'pinia'
-import { markRaw, toRaw } from 'vue'
+import { defineStore } from 'pinia'
+import { markRaw } from 'vue'
 
 import { handleError } from '@/utils/error'
 import { DESKTOP_LYRIC_IPC_INTERVAL, LYRIC_UI_UPDATE_INTERVAL } from '@/constants/lyric'
 import type { Song } from '@/platform/music/interface'
-import { services } from '@/services'
-import type { MusicService } from '@/services/musicService'
-import type { PlatformService } from '@/services/platformService'
 import { storageAdapter } from '@/services/storageService'
-import type { StorageService } from '@/services/storageService'
 import { isSameSongIdentity } from '@/utils/songIdentity'
 import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@shared/types/localLibrary'
 import {
   createLyricTimeUpdatePayload,
   getCurrentLyricLine,
-  getDesktopLyricSequence,
   notifyLyricTimeUpdate,
   resolveLyricIndex
 } from '@/store/player/lyricSync'
@@ -28,277 +23,40 @@ import { createInitialState, PLAY_MODE_TEXTS, type PlayerState } from '@/store/p
 import { songPrefetcher } from '@/store/player/songPrefetcher'
 import { PLAY_MODE } from '@shared/player/playMode'
 import { LyricEngine, type LyricLine } from '@shared/player/lyric'
-import { playerCore as defaultAudioManager } from '@/utils/player/core/playerCore'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
 import { resolvePlaybackMediaUrl } from '@/utils/player/mediaProxy'
 import { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
 import {
   DEFAULT_WEB_LYRIC_APPEARANCE,
-  patchWebLyricAppearance,
-  sanitizeWebLyricAppearance
+  patchWebLyricAppearance
 } from '@/utils/player/webLyricAppearance'
 import { useRecentPlayStore } from '@/store/recentPlayStore'
 import type { SongPlatform } from '@shared/types/schemas'
-import { SongSchema } from '@shared/types/schemas'
-import type { LyricDisplayType, WebLyricAppearance } from '@shared/types/player'
+import type { WebLyricAppearance } from '@shared/types/player'
+import {
+  normalizeHydratedPlayerState,
+  normalizeLyricTypes,
+  restorePersistedPlayerState,
+  toPlayMode,
+  type StorePlayMode
+} from '@/store/player/playerPersistence'
+import {
+  notifyPlayerStateSnapshot as sendPlayerStateSnapshot,
+  type PlayerStateSnapshotOptions
+} from '@/store/player/playerSnapshot'
+import {
+  resolvePlayerStoreDeps,
+  type PlayerStoreDeps,
+  type PlayerStoreInstance
+} from '@/store/player/playerStoreDeps'
 
-import { SEND_CHANNELS } from '@shared/protocol/channels'
-import type { PlayerStateSnapshot, PlayerStateSyncPayload } from '@shared/contracts/ipc'
+export type { PlayerStoreActions, PlayerStoreDeps } from '@/store/player/playerStoreDeps'
+export { restorePersistedPlayerState } from '@/store/player/playerPersistence'
 
-export type PlayerStoreActions = {
-  seek: (time: number) => void
-  playNextSkipUnavailable: () => Promise<void>
-  initAudio: () => void
-  setupIpcListeners: () => void
-  teardownIpcListeners: () => void
-  notifyPlayingState: (playing?: boolean) => void
-  notifyPlayModeChange: () => void
-  handleAudioError: (error: unknown) => Promise<void>
-  createErrorHandler: () => PlaybackErrorHandler
-  applyResolvedLyricIndex: (time?: number) => boolean
-  updateLyricIndex: (time?: number) => boolean
-  setSongList: (songs: Song[]) => void
-  replaceQueue: (songs: Song[]) => void
-  replaceQueueAndPlay: (songs: Song[], index: number) => Promise<void>
-  addSong: (song: Song) => void
-  playSongByIndex: (index: number, song?: Song) => Promise<void>
-  playSongWithDetails: (index: number, autoSkip?: boolean) => Promise<void>
-  togglePlay: () => void
-  getRandomIndex: (excludeCurrent?: boolean) => number
-  playPrev: () => void
-  playNext: () => void
-  handleSongEnd: () => void
-  resetErrorHandler: () => void
-  setVolume: (vol: number) => void
-  toggleMute: () => void
-  togglePlayMode: () => void
-  setPlayMode: (mode: PlayerState['playMode']) => void
-  setLyric: (lyric: unknown) => void
-  toggleLyricType: (type: 'trans' | 'roma') => void
-  setWebLyricAppearance: (patch: Partial<WebLyricAppearance>) => void
-  resetWebLyricAppearance: () => void
-  togglePlayerDocked: () => void
-  setLyricsArray: (lyrics: LyricLine[]) => void
-  removeSongFromPlaylist: (index: number) => void
-  clearPlaylist: () => void
-}
-
-type PlayerStoreInstance = PlayerState &
-  PlayerStoreActions &
-  PlayerStoreOwner & {
-    $state: PlayerState
-  } & StoreGeneric
-
-type PlayerStoreMusicService = Pick<MusicService, 'getSongUrl' | 'getSongDetail' | 'getLyric'>
-type PlayerStoreStorageService = Pick<StorageService, 'setItem'>
-type PlayerStorePlatformService = Pick<
-  PlatformService,
-  'isElectron' | 'send' | 'sendPlayingState' | 'sendPlayModeChange' | 'on'
->
-type PlayerStoreAudioManager = Pick<
-  typeof defaultAudioManager,
-  'getMuted' | 'pause' | 'play' | 'seek' | 'setMuted' | 'setVolume' | 'toggle'
-> & {
-  src?: string
-}
-
-export type PlayerStoreDeps = {
-  getMusicService?: () => PlayerStoreMusicService
-  getStorageService?: () => PlayerStoreStorageService
-  getPlatformAccessor?: () => PlayerStorePlatformService
-  audioManager?: PlayerStoreAudioManager
-}
-
-function getDefaultPlayerStoreDeps(): Required<PlayerStoreDeps> {
-  return {
-    getMusicService: () => services.music(),
-    getStorageService: () => services.storage(),
-    getPlatformAccessor: () => services.platform(),
-    audioManager: defaultAudioManager
-  }
-}
-
-function resolvePlayerStoreDeps(deps: PlayerStoreDeps): Required<PlayerStoreDeps> {
-  const defaultDeps = getDefaultPlayerStoreDeps()
-
-  return {
-    getMusicService: deps.getMusicService ?? defaultDeps.getMusicService,
-    getStorageService: deps.getStorageService ?? defaultDeps.getStorageService,
-    getPlatformAccessor: deps.getPlatformAccessor ?? defaultDeps.getPlatformAccessor,
-    audioManager: deps.audioManager ?? defaultDeps.audioManager
-  }
-}
-
-/**
- * Convert a value into an IPC-safe representation suitable for sending between processes.
- *
- * Recursively transforms the input into primitives, plain objects, and arrays while handling cycles.
- * Special cases:
- * - `bigint` is converted to its decimal string.
- * - `function` and `symbol` values are dropped (`undefined`); when appearing in arrays they become `null`.
- * - `Date` and `RegExp` are converted to new equivalent instances.
- * - `Error` is converted to an object with `name`, `message`, and `stack`.
- *
- * @param value - The value to serialize for IPC transport.
- * @param seen - Internal WeakMap used to track visited objects and handle cyclic references; callers can omit.
- * @returns A representation of `value` safe for IPC (primitives, arrays, or plain objects), or `undefined` when the input cannot be represented.
- */
-function toIpcSerializable(value: unknown, seen = new WeakMap<object, unknown>()): unknown {
-  if (value == null) {
-    return value
-  }
-
-  const valueType = typeof value
-  if (valueType === 'bigint') {
-    return value.toString()
-  }
-
-  if (valueType === 'function' || valueType === 'symbol') {
-    return undefined
-  }
-
-  if (valueType !== 'object') {
-    return value
-  }
-
-  const rawValue = toRaw(value as object)
-  if (seen.has(rawValue)) {
-    return seen.get(rawValue)
-  }
-
-  if (rawValue instanceof Date) {
-    return new Date(rawValue.getTime())
-  }
-
-  if (rawValue instanceof RegExp) {
-    return new RegExp(rawValue.source, rawValue.flags)
-  }
-
-  if (rawValue instanceof Error) {
-    return {
-      name: rawValue.name,
-      message: rawValue.message,
-      stack: rawValue.stack
-    }
-  }
-
-  if (Array.isArray(rawValue)) {
-    const serialized: unknown[] = []
-    seen.set(rawValue, serialized)
-    for (const item of rawValue) {
-      const next = toIpcSerializable(item, seen)
-      serialized.push(next === undefined ? null : next)
-    }
-    return serialized
-  }
-
-  const output: Record<string, unknown> = {}
-  seen.set(rawValue, output)
-
-  for (const [key, item] of Object.entries(rawValue as Record<string, unknown>)) {
-    const next = toIpcSerializable(item, seen)
-    if (next !== undefined) {
-      output[key] = next
-    }
-  }
-
-  return output
-}
-
-type StorePlayMode = PlayerState['playMode']
 const PLAYER_STATE_SYNC_INTERVAL_MS = 500
-
-function toPlayMode(mode: number): StorePlayMode {
-  if (!Number.isFinite(mode) || !Number.isInteger(mode)) {
-    return PLAY_MODE.SEQUENTIAL as StorePlayMode
-  }
-
-  const normalizedMode = ((mode % 4) + 4) % 4
-  return normalizedMode as StorePlayMode
-}
 
 function isSameSong(left: Song, right: Song): boolean {
   return isSameSongIdentity(left, right)
-}
-
-function normalizeLyricTypes(value: unknown): Array<'original' | 'trans' | 'roma'> {
-  const allowedOptionalTypes: Array<'trans' | 'roma'> = ['trans', 'roma']
-  const nextOptionalTypes = Array.isArray(value)
-    ? allowedOptionalTypes.filter(type => value.includes(type))
-    : ['trans']
-
-  return ['original', ...nextOptionalTypes] as Array<'original' | 'trans' | 'roma'>
-}
-
-function normalizePlaylistSong(song: Song): Song {
-  const normalizedSong = { ...song }
-
-  delete normalizedSong.url
-  delete normalizedSong.retryCount
-  delete normalizedSong.unavailable
-  delete normalizedSong.errorMessage
-
-  return normalizedSong
-}
-
-function normalizePersistedPlaylist(value: unknown): Song[] {
-  if (!Array.isArray(value)) {
-    return []
-  }
-
-  const songs: Song[] = []
-  let skipped = 0
-  for (const item of value) {
-    const parsed = SongSchema.safeParse(item)
-    if (parsed.success) {
-      songs.push(normalizePlaylistSong(parsed.data))
-    } else {
-      skipped++
-    }
-  }
-
-  if (skipped > 0) {
-    console.warn(`[playerStore] ${skipped} persisted song(s) failed validation and were discarded`)
-  }
-
-  return songs
-}
-
-function resolveCurrentIndexFromPlaylist(songs: Song[], currentIndex: unknown): number {
-  if (!Array.isArray(songs) || songs.length === 0) {
-    return -1
-  }
-
-  if (
-    typeof currentIndex === 'number' &&
-    Number.isInteger(currentIndex) &&
-    currentIndex >= 0 &&
-    currentIndex < songs.length
-  ) {
-    return currentIndex
-  }
-
-  return 0
-}
-
-export function restorePersistedPlayerState(store: PlayerState): void {
-  store.songList = normalizePersistedPlaylist(store.songList)
-  store.currentIndex = resolveCurrentIndexFromPlaylist(store.songList, store.currentIndex)
-  store.currentSong =
-    store.currentIndex >= 0 && store.currentIndex < store.songList.length
-      ? store.songList[store.currentIndex]
-      : null
-  store.lyricSong = null
-  store.lyric = null
-  store.lyricsArray = []
-  store.currentLyricIndex = -1
-  store.loading = false
-  store.playing = false
-  store.progress = 0
-  store.duration = 0
-  store.initialized = false
-  store.ipcInitialized = false
-  store.trackSwitching = false
 }
 
 function isCurrentAudioSourceSong(song: Song | null, currentAudioSrc: string): boolean {
@@ -356,55 +114,11 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
     })
   }
 
-  type PlayerStateSnapshotOptions = {
-    includeHeavy?: boolean
-  }
-
-  function createPlayerStateSnapshot(
-    store: PlayerStoreInstance,
-    options: PlayerStateSnapshotOptions = {}
-  ): PlayerStateSyncPayload {
-    const includeHeavy = options.includeHeavy ?? true
-    const snapshot: PlayerStateSyncPayload = {
-      isPlaying: store.playing,
-      isLoading: store.loading,
-      progress: store.progress,
-      duration: store.duration,
-      volume: store.volume,
-      isMuted:
-        store.initialized && typeof audioManager.getMuted === 'function'
-          ? audioManager.getMuted()
-          : store.volume === 0,
-      playMode: store.playMode,
-      currentIndex: store.currentIndex,
-      currentSong: toIpcSerializable(store.currentSong) as PlayerStateSnapshot['currentSong'],
-      lyricSong: toIpcSerializable(store.lyricSong) as PlayerStateSnapshot['lyricSong'],
-      currentLyricIndex: store.currentLyricIndex,
-      showLyric: store.showLyric,
-      showPlaylist: store.showPlaylist,
-      isPlayerDocked: store.isPlayerDocked,
-      lyricType: [...store.lyricType] as LyricDisplayType[],
-      desktopLyricSequence: getDesktopLyricSequence(store)
-    }
-
-    if (includeHeavy) {
-      snapshot.playlist = toIpcSerializable(store.songList) as PlayerStateSnapshot['playlist']
-      snapshot.lyrics = toIpcSerializable(store.lyricsArray) as PlayerStateSnapshot['lyrics']
-    }
-
-    return snapshot
-  }
-
   function notifyPlayerStateSnapshot(
     store: PlayerStoreInstance,
     options: PlayerStateSnapshotOptions = {}
   ): void {
-    const platform = getPlatformService()
-    if (!platform.isElectron()) {
-      return
-    }
-
-    platform.send(SEND_CHANNELS.PLAYER_SYNC_STATE, createPlayerStateSnapshot(store, options))
+    sendPlayerStateSnapshot(store, getPlatformService(), audioManager, options)
   }
 
   function handlePlaybackActionFailure(
@@ -1186,31 +900,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       },
       afterHydrate: (context: unknown) => {
         const store = (context as { store: PlayerState }).store
-
-        restorePersistedPlayerState(store)
-
-        if (typeof store.volume !== 'number' || !Number.isFinite(store.volume)) {
-          store.volume = 0.7
-        } else if (store.volume < 0 || store.volume > 1) {
-          store.volume = 0.7
-        }
-
-        if (store.initialized) {
-          audioManager.setVolume(store.volume)
-        }
-
-        if (
-          typeof store.playMode !== 'number' ||
-          !Number.isFinite(store.playMode) ||
-          !Number.isInteger(store.playMode)
-        ) {
-          store.playMode = 0
-        } else if (store.playMode < 0 || store.playMode > 3) {
-          store.playMode = 0
-        }
-
-        store.lyricType = normalizeLyricTypes(store.lyricType)
-        store.webLyricAppearance = sanitizeWebLyricAppearance(store.webLyricAppearance)
+        normalizeHydratedPlayerState(store, audioManager)
       }
     }
   })

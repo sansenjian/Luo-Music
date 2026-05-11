@@ -1,0 +1,29 @@
+{
+  "$schema": "../node_modules/oxfmt/configuration_schema.json",
+  "semi": false,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "none",
+  "printWidth": 100,
+  "bracketSpacing": true,
+  "arrowParens": "avoid",
+  "endOfLine": "lf",
+  "insertFinalNewline": true,
+  "vueIndentScriptAndStyle": false,
+  "htmlWhitespaceSensitivity": "ignore",
+  "proseWrap": "preserve",
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "../node_modules/**",
+    "../build/**",
+    "../dist/**",
+    "../out/**",
+    "../release/**",
+    "../coverage/**",
+    "../playwright-report/**",
+    "../test-results/**",
+    "../inspection-results/**",
+    "../src/auto-imports.d.ts",
+    "../src/components.d.ts"
+  ]
+}

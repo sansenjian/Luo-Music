@@ -15,6 +15,8 @@ const {
   isLikelyViteHtmlResponse,
   isProjectWebDevProcess,
   parseWindowsProcessList,
+  resolveElectronInspectArg,
+  resolveElectronInspectPort,
   terminateProcessTree
 } = require('../../scripts/dev/dev-electron-launcher.cjs') as {
   CONFIG: {
@@ -60,6 +62,8 @@ const {
   parseWindowsProcessList: (
     output: string
   ) => Array<{ pid: number; parentPid: number; name: string; commandLine: string }>
+  resolveElectronInspectArg: (value: string | undefined) => string | null
+  resolveElectronInspectPort: (value: string | undefined) => string | null
   terminateProcessTree: (pid: number, killTree?: (pid: number) => void) => boolean
 }
 
@@ -107,6 +111,15 @@ afterEach(async () => {
 })
 
 describe('dev Electron launcher Vite detection', () => {
+  it('uses the default Electron inspector port unless explicitly disabled', () => {
+    expect(resolveElectronInspectArg(undefined)).toBe('--inspect=9223')
+    expect(resolveElectronInspectArg('')).toBeNull()
+    expect(resolveElectronInspectArg(' 9223 ')).toBe('--inspect=9223')
+    expect(resolveElectronInspectPort(undefined)).toBe('9223')
+    expect(resolveElectronInspectPort('9223')).toBe('9223')
+    expect(() => resolveElectronInspectArg('invalid')).toThrow('Invalid ELECTRON_INSPECTOR port')
+  })
+
   it('waits long enough for Vite to finish cold renderer compilation before launching Electron', () => {
     expect(CONFIG.indexWarmupHttpTimeoutMs).toBeGreaterThanOrEqual(90000)
     expect(CONFIG.indexWarmupTimeoutMs).toBeGreaterThanOrEqual(90000)
@@ -207,7 +220,7 @@ describe('dev Electron launcher dev:web cleanup detection', () => {
       isProjectWebDevProcess(
         {
           commandLine:
-            '"node" "D:/Desktop/python/MusicWeb/luo_music_new/node_modules/concurrently/dist/bin/concurrently.js" "npm run server" "node scripts/run-with-env.cjs APP_RUNTIME=web -- vite --config .config/vite.config.ts --mode web"'
+            '"node" "D:/Desktop/python/MusicWeb/luo_music_new/node_modules/concurrently/dist/bin/concurrently.js" "npm run server" "node scripts/run-with-env.cjs APP_RUNTIME=web -- npm run vp -- --config .config/vite.config.ts --mode web"'
         },
         projectRoot
       )

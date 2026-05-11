@@ -1,5 +1,6 @@
 import { services } from '@/services'
 import type { ApiService } from '@/services/apiService'
+import { clearNeteaseServiceCookieCache } from './shared/neteaseServiceRequest'
 
 type UserApiClient = Pick<ApiService, 'request'>
 
@@ -20,10 +21,12 @@ export function configureUserApiDeps(deps: UserApiDeps): void {
     ...userApiDeps,
     ...deps
   }
+  clearNeteaseServiceCookieCache()
 }
 
 export function resetUserApiDeps(): void {
   userApiDeps = defaultUserApiDeps
+  clearNeteaseServiceCookieCache()
 }
 
 function neteaseRequest(endpoint: string, params: Record<string, unknown> = {}): Promise<unknown> {

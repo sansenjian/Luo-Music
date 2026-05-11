@@ -38,6 +38,18 @@ function createHomePageDeps() {
         setSongList: mockSetSongList
       },
       switchTab: mockSwitchTab
+    },
+    musicService: {
+      getSearchPlatformOptions: vi.fn(() => [
+        {
+          value: 'netease',
+          label: 'Netease Music'
+        },
+        {
+          value: 'qq',
+          label: 'QQ Music'
+        }
+      ])
     }
   }
 }

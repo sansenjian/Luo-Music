@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 
-import { getSearchPlatformOptions } from '@/platform/music'
 import { useHomeShell } from './useHomeShell'
+import { services } from '@/services'
 import { searchResultItemToSong, useSearchStore } from '@/store/searchStore'
 import { useToastStore } from '@/store/toastStore'
 
@@ -43,11 +43,13 @@ export interface HomePageDeps {
   toastStore?: ToastStoreLike
   searchStore?: SearchStoreLike
   homeShell?: HomeShellLike
+  musicService?: Pick<ReturnType<typeof services.music>, 'getSearchPlatformOptions'>
 }
 
 export function useHomePage(deps: HomePageDeps = {}) {
   const toastStore = deps.toastStore ?? useToastStore()
   const searchStore = deps.searchStore ?? useSearchStore()
+  const musicService = deps.musicService ?? services.music()
   const actualHomeShell = deps.homeShell ? null : useHomeShell()
   const resolvedPlayerStore = deps.homeShell?.playerStore ?? actualHomeShell?.playerStore
   if (!resolvedPlayerStore) {
@@ -69,7 +71,7 @@ export function useHomePage(deps: HomePageDeps = {}) {
 
   const searchKeyword = ref('')
   const showSelect = ref(false)
-  const servers = computed<MusicServerOption[]>(() => getSearchPlatformOptions())
+  const servers = computed<MusicServerOption[]>(() => musicService.getSearchPlatformOptions())
 
   const selectedServerLabel = computed(() => {
     const server = servers.value.find(item => item.value === searchStore.server)

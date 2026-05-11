@@ -1,0 +1,496 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>18</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 window-maximized 从未使用</description>
+  <highlighted_element>.window-maximized</highlighted_element>
+  <language>CSS</language>
+  <offset>69</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>77</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 cyber-input 从未使用</description>
+  <highlighted_element>.cyber-input</highlighted_element>
+  <language>CSS</language>
+  <offset>47</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>210</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 sidebar-login 从未使用</description>
+  <highlighted_element>.sidebar-login</highlighted_element>
+  <language>CSS</language>
+  <offset>2</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>336</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 cover-frame 从未使用</description>
+  <highlighted_element>.cover-frame</highlighted_element>
+  <language>CSS</language>
+  <offset>71</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>340</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 corner 从未使用</description>
+  <highlighted_element>.corner</highlighted_element>
+  <language>CSS</language>
+  <offset>47</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>384</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 volume-bar 从未使用</description>
+  <highlighted_element>.volume-bar</highlighted_element>
+  <language>CSS</language>
+  <offset>47</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>398</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 volume-fill 从未使用</description>
+  <highlighted_element>.volume-fill</highlighted_element>
+  <language>CSS</language>
+  <offset>47</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>419</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 ctrl-btn 从未使用</description>
+  <highlighted_element>.ctrl-btn</highlighted_element>
+  <language>CSS</language>
+  <offset>47</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>426</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 ctrl-btn 从未使用</description>
+  <highlighted_element>.ctrl-btn</highlighted_element>
+  <language>CSS</language>
+  <offset>47</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/CacheManager.vue</file>
+  <line>293</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/CacheManager.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 logged-in 从未使用</description>
+  <highlighted_element>.logged-in</highlighted_element>
+  <language>PostCSS</language>
+  <offset>14</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/CacheManager.vue</file>
+  <line>298</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/CacheManager.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 logged-out 从未使用</description>
+  <highlighted_element>.logged-out</highlighted_element>
+  <language>PostCSS</language>
+  <offset>14</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/LoginModal.vue</file>
+  <line>443</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/LoginModal.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 status-scanned 从未使用</description>
+  <highlighted_element>.status-scanned</highlighted_element>
+  <language>PostCSS</language>
+  <offset>12</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/PlaybackQueueDrawer.vue</file>
+  <line>603</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/PlaybackQueueDrawer.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 queue-slide-enter-active 从未使用</description>
+  <highlighted_element>.queue-slide-enter-active</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>25</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/PlaybackQueueDrawer.vue</file>
+  <line>604</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/PlaybackQueueDrawer.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 queue-slide-leave-active 从未使用</description>
+  <highlighted_element>.queue-slide-leave-active</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>25</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/PlaybackQueueDrawer.vue</file>
+  <line>610</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/PlaybackQueueDrawer.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 queue-slide-enter-from 从未使用</description>
+  <highlighted_element>.queue-slide-enter-from</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>23</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/PlaybackQueueDrawer.vue</file>
+  <line>611</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/PlaybackQueueDrawer.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 queue-slide-leave-to 从未使用</description>
+  <highlighted_element>.queue-slide-leave-to</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>21</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/Toast.vue</file>
+  <line>129</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/Toast.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 toast-enter-active 从未使用</description>
+  <highlighted_element>.toast-enter-active</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>19</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/Toast.vue</file>
+  <line>130</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/Toast.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 toast-leave-active 从未使用</description>
+  <highlighted_element>.toast-leave-active</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>19</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/Toast.vue</file>
+  <line>134</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/Toast.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 toast-enter-from 从未使用</description>
+  <highlighted_element>.toast-enter-from</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/Toast.vue</file>
+  <line>139</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/Toast.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 toast-leave-to 从未使用</description>
+  <highlighted_element>.toast-leave-to</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/settings/PluginPlatformCard.vue</file>
+  <line>223</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/settings/PluginPlatformCard.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 plugin-icon-builtin 从未使用</description>
+  <highlighted_element>.plugin-icon-builtin</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>20</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/settings/PluginPlatformCard.vue</file>
+  <line>274</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/settings/PluginPlatformCard.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 badge-builtin 从未使用</description>
+  <highlighted_element>.badge-builtin</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/settings/PluginPlatformCard.vue</file>
+  <line>279</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/settings/PluginPlatformCard.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 badge-external 从未使用</description>
+  <highlighted_element>.badge-external</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/settings/PluginPlatformCard.vue</file>
+  <line>284</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/settings/PluginPlatformCard.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 badge-core 从未使用</description>
+  <highlighted_element>.badge-core</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/window/WindowResizeFrame.vue</file>
+  <line>89</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/window/WindowResizeFrame.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 handle-nw 从未使用</description>
+  <highlighted_element>.handle-nw</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/window/WindowResizeFrame.vue</file>
+  <line>102</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/window/WindowResizeFrame.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 handle-nw 从未使用</description>
+  <highlighted_element>.handle-nw</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/HomeCollectionDetailPanel.vue</file>
+  <line>236</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/HomeCollectionDetailPanel.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 collection-cover 从未使用</description>
+  <highlighted_element>.collection-cover</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/HomeCollectionDetailPanel.vue</file>
+  <line>240</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/HomeCollectionDetailPanel.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 collection-cover-fallback 从未使用</description>
+  <highlighted_element>.collection-cover-fallback</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>26</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/HomeLikedSongsPanel.vue</file>
+  <line>232</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/HomeLikedSongsPanel.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 liked-cover-fallback 从未使用</description>
+  <highlighted_element>.liked-cover-fallback</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>21</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/HomeSidebarPlaylistCard.vue</file>
+  <line>211</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/HomeSidebarPlaylistCard.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 tone-mono 从未使用</description>
+  <highlighted_element>.tone-mono</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/HomeSidebarPlaylistCard.vue</file>
+  <line>221</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/HomeSidebarPlaylistCard.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 tone-mist 从未使用</description>
+  <highlighted_element>.tone-mist</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/HomeSidebarPlaylistCard.vue</file>
+  <line>226</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/HomeSidebarPlaylistCard.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 tone-ocean 从未使用</description>
+  <highlighted_element>.tone-ocean</highlighted_element>
+  <language>PostCSS</language>
+  <offset>0</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/local-music/localMusic.css</file>
+  <line>123</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/local-music/localMusic.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 is-scanning 从未使用</description>
+  <highlighted_element>.is-scanning</highlighted_element>
+  <language>CSS</language>
+  <offset>18</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/local-music/localMusic.css</file>
+  <line>398</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/local-music/localMusic.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 detail-list-virtualized 从未使用</description>
+  <highlighted_element>.detail-list-virtualized</highlighted_element>
+  <language>CSS</language>
+  <offset>40</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/local-music/localMusic.css</file>
+  <line>403</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/local-music/localMusic.css" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 detail-song-row 从未使用</description>
+  <highlighted_element>.detail-song-row</highlighted_element>
+  <language>CSS</language>
+  <offset>40</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/media/HomeMediaHero.vue</file>
+  <line>176</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/media/HomeMediaHero.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 collection-cover 从未使用</description>
+  <highlighted_element>.collection-cover</highlighted_element>
+  <language>PostCSS</language>
+  <offset>12</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/media/HomeMediaHero.vue</file>
+  <line>180</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/media/HomeMediaHero.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 collection-cover-fallback 从未使用</description>
+  <highlighted_element>.collection-cover-fallback</highlighted_element>
+  <language>PostCSS</language>
+  <offset>21</offset>
+  <length>26</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/media/HomeMediaHero.vue</file>
+  <line>195</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/media/HomeMediaHero.vue" />
+  <problem_class id="CssUnusedSymbol" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">未使用的选择器</problem_class>
+  <hints />
+  <description>选择器 liked-cover-fallback 从未使用</description>
+  <highlighted_element>.liked-cover-fallback</highlighted_element>
+  <language>PostCSS</language>
+  <offset>21</offset>
+  <length>21</length>
+</problem>
+</problems>

@@ -1,0 +1,74 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/config/vite.analyze.electron-renderer.js</file>
+  <line>10</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/config/vite.analyze.electron-renderer.js" />
+  <problem_class id="ES6RedundantAwait" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">冗余 'await' 表达式</problem_class>
+  <description>冗余 'return await'</description>
+  <highlighted_element>return await baseConfig</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>2</offset>
+  <length>23</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/config/vite.analyze.web.js</file>
+  <line>7</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/config/vite.analyze.web.js" />
+  <problem_class id="ES6RedundantAwait" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">冗余 'await' 表达式</problem_class>
+  <description>冗余 'return await'</description>
+  <highlighted_element>return await baseConfig(env)</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>4</offset>
+  <length>28</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/config/vite.analyze.web.js</file>
+  <line>10</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/config/vite.analyze.web.js" />
+  <problem_class id="ES6RedundantAwait" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">冗余 'await' 表达式</problem_class>
+  <description>冗余 'return await'</description>
+  <highlighted_element>return await baseConfig</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>2</offset>
+  <length>23</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/electron/ipc/handlers/service.handler.ts</file>
+  <line>114</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/electron/ipc/handlers/service.handler.ts" />
+  <problem_class id="ES6RedundantAwait" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">冗余 'await' 表达式</problem_class>
+  <description>非 promise 类型的冗余 'await'</description>
+  <highlighted_element>await serviceManager.updateServiceConfig(serviceId, config)</highlighted_element>
+  <language>TypeScript</language>
+  <offset>8</offset>
+  <length>59</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/Player.test.ts</file>
+  <line>152</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/Player.test.ts" />
+  <problem_class id="ES6RedundantAwait" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">冗余 'await' 表达式</problem_class>
+  <description>非 promise 类型的冗余 'await'</description>
+  <highlighted_element>await wrapper.vm.$forceUpdate()</highlighted_element>
+  <language>TypeScript</language>
+  <offset>4</offset>
+  <length>31</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/composables/useSearch.test.ts</file>
+  <line>144</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/composables/useSearch.test.ts" />
+  <problem_class id="ES6RedundantAwait" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">冗余 'await' 表达式</problem_class>
+  <description>非 promise 类型的冗余 'await'</description>
+  <highlighted_element>await addToPlaylist(3)</highlighted_element>
+  <language>TypeScript</language>
+  <offset>4</offset>
+  <length>22</length>
+</problem>
+</problems>

@@ -1,6 +1,17 @@
 import { VOLUME } from '@/utils/player/constants'
 import { isRemoteMediaProxyUrl } from '@/utils/player/mediaProxy'
 
+const isPlayerCoreDebugEnabled =
+  import.meta.env.DEV && import.meta.env.VITE_PLAYER_CORE_DEBUG === '1'
+
+function debugPlayerCore(message: string, data?: unknown): void {
+  if (!isPlayerCoreDebugEnabled) {
+    return
+  }
+
+  console.debug(message, data)
+}
+
 export enum PlayerState {
   IDLE = 'idle',
   LOADING = 'loading',
@@ -80,13 +91,13 @@ export class PlayerCore {
     if (url && isRemoteMediaProxyUrl(url)) {
       this.audio.crossOrigin = 'anonymous'
       this.audio.setAttribute('crossorigin', 'anonymous')
-      console.log('[PlayerCore] CrossOrigin enabled for proxied media', { url })
+      debugPlayerCore('[PlayerCore] CrossOrigin enabled for proxied media', { url })
       return
     }
 
     this.audio.crossOrigin = null
     this.audio.removeAttribute('crossorigin')
-    console.log('[PlayerCore] CrossOrigin cleared', { url })
+    debugPlayerCore('[PlayerCore] CrossOrigin cleared', { url })
   }
 
   private _canUseMediaElementSourceFallback(): boolean {

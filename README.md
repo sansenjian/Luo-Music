@@ -178,8 +178,10 @@ mindmap
         Axios 1.15
         自定义封装
       代码质量
+        Oxlint 1.62
         ESLint 10.0
         Prettier 3.8
+        Oxfmt 0.48
         Husky 9.1
       测试框架
         Vitest 4.1
@@ -235,15 +237,18 @@ mindmap
 | Pinia                         | 3.0.4          | 状态管理          |
 | TanStack Query                | 5.92.9         | 服务端状态管理    |
 | Pinia Plugin Persistedstate   | 4.7.1          | 状态持久化        |
-| Axios                         | 1.15.0         | HTTP 客户端       |
+| Axios                         | 1.15.2         | HTTP 客户端       |
 | Vite                          | 8.0.10         | 构建工具          |
+| Vite+                         | 0.1.20         | 统一工具链入口    |
 | Anime.js                      | 4.3.6          | 动画效果          |
 | NeteaseCloudMusicApi Enhanced | 4.30.1         | 网易云音乐 API    |
 | QQ Music API                  | 2.2.10         | QQ 音乐 API 服务  |
 | Electron-Vite                 | 6.0.0-beta.1   | Electron 构建工具 |
 | Electron Forge                | 7.11.1         | Electron 打包工具 |
-| ESLint                        | 10.0.3         | 代码检查          |
-| Prettier                      | 3.8.1          | 代码格式化        |
+| Oxlint                        | 1.62.0         | 主线代码检查      |
+| ESLint                        | 10.0.3         | 兼容性备用检查    |
+| Prettier                      | 3.8.1          | 默认代码格式化    |
+| Oxfmt                         | 0.48.0         | 可选快速格式化    |
 | Vitest                        | 4.1.5          | 单元测试框架      |
 | Playwright                    | 1.58.2         | E2E 测试框架      |
 | VitePress                     | 2.0.0-alpha.17 | 文档生成工具      |
@@ -264,7 +269,7 @@ mindmap
     "pinia": "^3.0.4",
     "animejs": "^4.3.6",
     "@tanstack/vue-query": "^5.92.9",
-    "axios": "^1.15.0",
+    "axios": "^1.15.2",
     "@vueuse/core": "^14.2.1",
     "zod": "^4.3.6"
     // ...
@@ -418,6 +423,7 @@ luo_music/
 │   ├── vitest.config.ts
 │   ├── playwright.config.ts
 │   ├── prettier.mjs
+│   ├── oxfmt.json
 │   ├── lintstaged.mjs
 │   ├── qodana.yaml
 │   └── .env
@@ -432,6 +438,7 @@ luo_music/
 ├── package.json
 ├── vercel.json
 ├── tsconfig.json
+├── .oxlintrc.json
 ├── eslint.config.js
 ├── .npmrc
 └── index.html
@@ -463,6 +470,29 @@ cd luo_music
 npm install
 ```
 
+### Vite+ / VP CLI
+
+项目使用本地 `vite-plus@0.1.20` 依赖提供 `vp` CLI。团队命令默认通过 npm scripts 调用项目内的 `./node_modules/vite-plus/bin/vp`，不要求全局安装。Windows / PowerShell 用户优先用下面的命令验证本地 CLI：
+
+```bash
+npm run vp:version
+npm run vp:help
+npm run vp:lint
+npm run vp:fmt:check
+```
+
+当前迁移采用分阶段策略：Web 开发、Web 构建和 Web 预览已经通过本地 VP CLI 调用 `.config/vite.config.ts`；测试仍通过 `scripts/run-vitest-with-native-restore.cjs` 保护 `better-sqlite3` 的 Node / Electron ABI 切换；Electron bundle、Forge 打包和 portable 构建仍保留项目脚本包装。
+
+可选全局安装只用于提升手动执行 `vp migrate`、`vp help` 等命令的体验，项目运行仍以本地依赖和 npm scripts 为准。官方 Windows 安装命令如下：
+
+```powershell
+irm https://vite.plus/ps1 | iex
+```
+
+全局安装建议在原生 Windows Terminal / PowerShell 新窗口中执行；不要从 WSL bash 间接调用 PowerShell 安装脚本，否则可能遇到 Windows `cmd` / Node PATH 桥接问题。
+
+如果在 WSL bash 中直接执行 `./node_modules/.bin/vp` 出现 `node: not found`，这是当前 shell 没有 Linux 侧 Node.js 或 PATH 未暴露导致的运行环境问题，不代表 Vite+ 安装失败。解决方式是改用 Windows PowerShell 中的 `npm run vp:version`，或在 WSL 内安装/暴露 Linux 侧 Node.js 后再运行本地 `vp`。
+
 ### NPM 脚本命令
 
 ```bash
@@ -479,6 +509,10 @@ npm run build:electron:portable # 输出 out/portable/ → 单文件便携版
 # 其他命令
 npm run preview          # 预览构建结果
 npm run test             # 运行测试
+npm run vp:version       # 验证本地 VP / Vite+ CLI
+npm run vp:help          # 查看 VP CLI 帮助
+npm run vp:lint          # 通过 VP / Oxlint 检查代码
+npm run vp:fmt:check     # 通过 VP / Oxfmt 检查格式
 npm run clean            # 清理构建产物
 ```
 
@@ -776,6 +810,14 @@ SENTRY_RELEASE=
 ### Q: 安装依赖时提示 EBUSY 错误
 
 **A**: 文件被占用，请关闭所有 Node.js 和 Electron 进程，或重启电脑后重试。
+
+### Q: `vp` 或 `./node_modules/.bin/vp` 提示 `node: not found`
+
+**A**: 这通常发生在 WSL bash 使用 Windows 侧 npm / node_modules 时。`node_modules/.bin/vp` 是项目本地 Vite+ CLI 包装脚本，它需要当前 shell 能找到 `node`。解决方式：
+
+1. 在 Windows PowerShell 中通过项目 npm script 运行 `npm run vp:version`。
+2. 或在 WSL 内安装 Linux 侧 Node.js，并确保 `node --version` 可用。
+3. 可选全局 VP CLI 安装请在原生 Windows Terminal / PowerShell 新窗口执行，不要从 WSL 间接调用安装脚本。
 
 ### Q: 如何清理依赖缓存
 

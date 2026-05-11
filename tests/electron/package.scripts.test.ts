@@ -12,9 +12,18 @@ const packageJson = JSON.parse(
 ) as PackageJson
 
 describe('package scripts for forge workflows', () => {
-  it('cleans only web outputs before build:web', () => {
-    expect(packageJson.scripts?.['build:web']).toBe(
-      'node scripts/build/clean-targets.cjs dist build/service && npm run guard:configs && npm run build:server && node scripts/run-with-env.cjs APP_RUNTIME=web -- vite build --config .config/vite.config.ts --mode web'
+  it('runs web dev and preview through the local VP CLI', () => {
+    expect(packageJson.scripts?.['dev:server']).toContain(
+      'APP_RUNTIME=web -- npm run vp -- --config .config/vite.config.ts --mode web'
+    )
+    expect(packageJson.scripts?.preview).toContain(
+      'APP_RUNTIME=web -- npm run vp -- preview --config .config/vite.config.ts'
+    )
+  })
+
+  it('keeps Electron dev on the existing Electron-safe Vite path', () => {
+    expect(packageJson.scripts?.['dev:electron']).toContain(
+      'APP_RUNTIME=electron -- vite --config .config/vite.config.ts'
     )
   })
 
@@ -25,34 +34,23 @@ describe('package scripts for forge workflows', () => {
     }
   )
 
-  it('cleans electron bundle outputs inside build:electron:bundle', () => {
-    expect(packageJson.scripts?.['build:electron:bundle']).toBe(
-      'node scripts/build/clean-targets.cjs --force build && npm run build:electron:bundle:no-clean'
-    )
-    expect(packageJson.scripts?.['build:electron:bundle:no-clean']).toBe(
-      'npm run rebuild:native && npm run guard:configs && npm run build:qq-runtime && concurrently --success all "npm run build:server" "electron-vite build --config electron/vite.config.ts"'
-    )
-  })
-
-  it('cleans only the packaged app directory before package', () => {
-    expect(packageJson.scripts?.package).toBe(
-      'node scripts/build/clean-targets.cjs --force "out/LUO Music-win32-x64" && npm run build:electron:bundle && electron-forge package'
-    )
-  })
-
-  it.each(['build:electron', 'make', 'make:fast'])(
-    'cleans only forge make outputs before %s',
-    scriptName => {
-      expect(packageJson.scripts?.[scriptName]).toMatch(
-        /^node scripts\/build\/clean-targets\.cjs --force "out\/LUO Music-win32-x64" out\/make && npm run build:electron:bundle && /
-      )
-    }
-  )
-
-  it('runs build:electron:bundle before the portable single-exe workflow', () => {
-    expect(packageJson.scripts?.['build:electron:portable']).toBe(
-      'node scripts/build/clean-targets.cjs --force out/portable && npm run build:electron:bundle && electron-builder --config electron/builder.portable.cjs --publish never && node scripts/build/finalize-portable-output.cjs out/portable'
-    )
+  it.each([
+    ['build', 'node scripts/build/run-target.cjs build'],
+    ['build:web', 'node scripts/build/run-target.cjs web'],
+    ['build:electron:bundle', 'node scripts/build/run-target.cjs electron-bundle'],
+    [
+      'build:electron:bundle:no-clean',
+      'node scripts/build/run-target.cjs electron-bundle-no-clean'
+    ],
+    ['build:electron', 'node scripts/build/run-target.cjs electron'],
+    ['build:electron:portable', 'node scripts/build/run-target.cjs electron-portable'],
+    ['package', 'node scripts/build/run-target.cjs package'],
+    ['make', 'node scripts/build/run-target.cjs make'],
+    ['make:fast', 'node scripts/build/run-target.cjs make-fast'],
+    ['clean', 'node scripts/build/clean.cjs'],
+    ['clean:all', 'node scripts/build/clean.cjs --all']
+  ])('maps %s to a short script entrypoint', (scriptName, expectedCommand) => {
+    expect(packageJson.scripts?.[scriptName]).toBe(expectedCommand)
   })
 
   it('lets build:electron:fast delegate to make:fast without rebuilding twice', () => {
@@ -65,5 +63,12 @@ describe('package scripts for forge workflows', () => {
 
   it('lets make:portable delegate to the canonical portable workflow', () => {
     expect(packageJson.scripts?.['make:portable']).toBe('npm run build:electron:portable')
+  })
+
+  it('keeps VP lint and format commands as parallel migration entrypoints', () => {
+    expect(packageJson.scripts?.['vp:lint']).toBe('npm run vp -- lint -c .oxlintrc.json .')
+    expect(packageJson.scripts?.['vp:fmt:check']).toContain(
+      'npm run vp -- fmt -c .config/oxfmt.json --check'
+    )
   })
 })

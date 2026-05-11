@@ -1,0 +1,554 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/LyricFloat.vue</file>
+  <line>255</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/LyricFloat.vue" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/composables/useWindowResizeFrame.ts</file>
+  <line>93</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/composables/useWindowResizeFrame.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>21</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/composables/useWindowResizeFrame.ts</file>
+  <line>95</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/composables/useWindowResizeFrame.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>4</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/composables/useWindowResizeFrame.ts</file>
+  <line>100</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/composables/useWindowResizeFrame.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>4</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/UserProfileHeader.vue</file>
+  <line>71</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/UserProfileHeader.vue" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/UserProfileHeader.vue</file>
+  <line>74</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/UserProfileHeader.vue" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/Playlist.test.ts</file>
+  <line>182</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/Playlist.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/Playlist.test.ts</file>
+  <line>229</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/Playlist.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/Playlist.test.ts</file>
+  <line>255</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/Playlist.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>41</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>55</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>11</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>64</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>76</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>11</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>77</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>11</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>78</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>11</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>92</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>104</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>11</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>105</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>11</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>107</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>6</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>117</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>129</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>32</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>151</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>163</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>29</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>166</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>11</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>179</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>191</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>29</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>214</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts</file>
+  <line>226</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/SettingsPanel.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>30</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/UserAvatar.test.ts</file>
+  <line>64</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/UserAvatar.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>14</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/UserAvatar.test.ts</file>
+  <line>86</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/UserAvatar.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>4</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/UserAvatar.test.ts</file>
+  <line>106</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/UserAvatar.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>4</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/media/SongDetailList.test.ts</file>
+  <line>48</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/media/SongDetailList.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>4</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/media/SongDetailList.test.ts</file>
+  <line>96</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/media/SongDetailList.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/media/SongDetailList.test.ts</file>
+  <line>179</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/media/SongDetailList.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>4</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts</file>
+  <line>62</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>4</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts</file>
+  <line>128</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts</file>
+  <line>155</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts</file>
+  <line>187</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts</file>
+  <line>215</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts</file>
+  <line>258</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts</file>
+  <line>303</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/user/LikedSongsView.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>16</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/composables/useKeyboardShortcuts.test.ts</file>
+  <line>72</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/composables/useKeyboardShortcuts.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>14</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/composables/useKeyboardShortcuts.test.ts</file>
+  <line>199</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/composables/useKeyboardShortcuts.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>14</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/composables/useKeyboardShortcuts.test.ts</file>
+  <line>207</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/composables/useKeyboardShortcuts.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>14</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/composables/useKeyboardShortcuts.test.ts</file>
+  <line>249</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/composables/useKeyboardShortcuts.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>14</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/main.test.ts</file>
+  <line>63</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/main.test.ts" />
+  <problem_class id="XHTMLIncompatabilitiesJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不兼容的 XHTML 用法</problem_class>
+  <description>对于 XHTML 文档，'document.body' 可能会产生不一致的结果</description>
+  <highlighted_element>document.body</highlighted_element>
+  <language>TypeScript</language>
+  <offset>4</offset>
+  <length>13</length>
+</problem>
+</problems>

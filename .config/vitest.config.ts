@@ -17,20 +17,11 @@ const sharedTestOptions = {
   testTimeout: 10000,
   hookTimeout: 10000
 }
+const testFilePattern = '**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+const testDir = (name: string) => `tests/${name}/${testFilePattern}`
 const commonProjectExcludes = ['tests/e2e/**']
-const nodeProjectIncludes = [
-  'tests/api/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/base/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/constants/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/electron/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/plugins/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/scripts/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/services/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/store/player/playbackActions.*.test.ts',
-  'tests/utils/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
-]
-const nodeProjectExcludes = [
-  ...commonProjectExcludes,
+
+const rendererRuntimeTests = [
   'tests/api/responseHandler.test.ts',
   'tests/services/apiService.test.ts',
   'tests/services/loggerService.test.ts',
@@ -44,27 +35,35 @@ const nodeProjectExcludes = [
   'tests/utils/sentryRenderer.test.ts',
   'tests/utils/transportFactory.test.ts'
 ]
+
+const nodeRuntimeTestDirs = [
+  'api',
+  'base',
+  'constants',
+  'electron',
+  'plugins',
+  'scripts',
+  'services',
+  'utils'
+]
+const rendererRuntimeTestDirs = [
+  'components',
+  'composables',
+  'extensions',
+  'platform',
+  'store',
+  'views'
+]
+const nodeProjectIncludes = [
+  ...nodeRuntimeTestDirs.map(testDir),
+  'tests/store/player/playbackActions.*.test.ts'
+]
+const nodeProjectExcludes = [...commonProjectExcludes, ...rendererRuntimeTests]
 const jsdomProjectIncludes = [
   'tests/App.test.ts',
   'tests/main.test.ts',
-  'tests/api/responseHandler.test.ts',
-  'tests/components/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/composables/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/extensions/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/platform/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/services/apiService.test.ts',
-  'tests/services/loggerService.test.ts',
-  'tests/services/platformService.test.ts',
-  'tests/services/playerService.test.ts',
-  'tests/store/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/utils/electronIpcRequest.test.ts',
-  'tests/utils/performanceMonitor.test.ts',
-  'tests/utils/player/core/playerCore.test.ts',
-  'tests/utils/requestCache.test.ts',
-  'tests/utils/requestCanceler.test.ts',
-  'tests/utils/sentryRenderer.test.ts',
-  'tests/utils/transportFactory.test.ts',
-  'tests/views/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+  ...rendererRuntimeTestDirs.map(testDir),
+  ...rendererRuntimeTests
 ]
 
 export default defineConfig({

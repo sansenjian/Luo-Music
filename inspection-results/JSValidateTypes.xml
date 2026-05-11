@@ -1,0 +1,14 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/config/vite.analyze.electron-renderer.js</file>
+  <line>7</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/config/vite.analyze.electron-renderer.js" />
+  <problem_class id="JSValidateTypes" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">类型不匹配</problem_class>
+  <description>方法表达式不是函数类型</description>
+  <highlighted_element>baseConfig</highlighted_element>
+  <language>JavaScript</language>
+  <offset>17</offset>
+  <length>10</length>
+</problem>
+</problems>

@@ -1,0 +1,134 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/electron/utils/paths.ts</file>
+  <line>34</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/electron/utils/paths.ts" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#a9b7c6;&quot;&gt;scriptPath&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>scriptPath</highlighted_element>
+  <language>JavaScript</language>
+  <offset>8</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/scripts/build/clean-targets.cjs</file>
+  <line>126</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/scripts/build/clean-targets.cjs" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#a9b7c6;&quot;&gt;processes&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>processes</highlighted_element>
+  <language>JavaScript</language>
+  <offset>12</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/scripts/run-with-env.cjs</file>
+  <line>39</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/scripts/run-with-env.cjs" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#a9b7c6;&quot;&gt;value&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>value</highlighted_element>
+  <language>JavaScript</language>
+  <offset>10</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/scripts/run-with-env.cjs</file>
+  <line>70</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/scripts/run-with-env.cjs" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#a9b7c6;&quot;&gt;value&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>value</highlighted_element>
+  <language>JavaScript</language>
+  <offset>8</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/api/song.ts</file>
+  <line>84</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/api/song.ts" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#a9b7c6;&quot;&gt;fallbackRes&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>fallbackRes</highlighted_element>
+  <language>JavaScript</language>
+  <offset>12</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/composables/useLikedSongs.ts</file>
+  <line>214</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/composables/useLikedSongs.ts" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#a9b7c6;&quot;&gt;sessionId&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>sessionId</highlighted_element>
+  <language>JavaScript</language>
+  <offset>10</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/composables/useMediaSession.ts</file>
+  <line>259</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/composables/useMediaSession.ts" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#a9b7c6;&quot;&gt;metadata&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>metadata</highlighted_element>
+  <language>JavaScript</language>
+  <offset>10</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/utils/player/core/playerCore.ts</file>
+  <line>375</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/utils/player/core/playerCore.ts" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#56a8f5;&quot;&gt;cancelPendingPlay&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>cancelPendingPlay</highlighted_element>
+  <language>JavaScript</language>
+  <offset>16</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>130</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#a9b7c6;&quot;&gt;staleSong&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>staleSong</highlighted_element>
+  <language>JavaScript</language>
+  <offset>12</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/utils/player/core/playerCore.test.ts</file>
+  <line>74</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/utils/player/core/playerCore.test.ts" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#a9b7c6;&quot;&gt;source&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>source</highlighted_element>
+  <language>JavaScript</language>
+  <offset>10</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/utils/player/core/playerCore.test.ts</file>
+  <line>79</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/utils/player/core/playerCore.test.ts" />
+  <problem_class id="UnnecessaryLocalVariableJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余局部变量</problem_class>
+  <description>&lt;html&gt;局部变量 &lt;code&gt;&lt;span style=&quot;color:#a9b7c6;&quot;&gt;source&lt;/span&gt;&lt;/code&gt; 冗余&lt;/html&gt;</description>
+  <highlighted_element>source</highlighted_element>
+  <language>JavaScript</language>
+  <offset>10</offset>
+  <length>6</length>
+</problem>
+</problems>

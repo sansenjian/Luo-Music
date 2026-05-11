@@ -1,0 +1,494 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/scripts/dev/qq-api-server.cjs</file>
+  <line>96</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/scripts/dev/qq-api-server.cjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>57</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/scripts/runtime/netease-api-server.cjs</file>
+  <line>110</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/scripts/runtime/netease-api-server.cjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>67</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/scripts/runtime/qq-api-server.entry.cjs</file>
+  <line>60</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/scripts/runtime/qq-api-server.entry.cjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>57</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/composables/useMediaSession.ts</file>
+  <line>78</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/composables/useMediaSession.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>20</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/utils/cache/coverCache.ts</file>
+  <line>28</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/utils/cache/coverCache.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>https:/</highlighted_element>
+  <language>TypeScript</language>
+  <offset>24</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/UserProfile.test.ts</file>
+  <line>29</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/UserProfile.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>18</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/UserProfile.test.ts</file>
+  <line>38</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/UserProfile.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>68</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/user/UserProfileHeader.test.ts</file>
+  <line>30</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/user/UserProfileHeader.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>20</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/components/user/UserProfileHeader.test.ts</file>
+  <line>68</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/components/user/UserProfileHeader.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>20</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/electron/localMediaProtocol.test.ts</file>
+  <line>113</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/electron/localMediaProtocol.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>23</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteaseNormalize.test.mjs</file>
+  <line>14</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteaseNormalize.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>19</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteaseNormalize.test.mjs</file>
+  <line>48</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteaseNormalize.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>19</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteaseNormalize.test.mjs</file>
+  <line>54</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteaseNormalize.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>36</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs</file>
+  <line>41</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>21</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs</file>
+  <line>46</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>7</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs</file>
+  <line>60</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>21</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs</file>
+  <line>67</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>7</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs</file>
+  <line>85</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>23</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs</file>
+  <line>90</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>7</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs</file>
+  <line>108</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>23</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs</file>
+  <line>115</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/plugins/neteasePlugin.test.mjs" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>ECMAScript 6</language>
+  <offset>7</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/services/musicService.test.ts</file>
+  <line>124</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/services/musicService.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>48</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/services/musicService.test.ts</file>
+  <line>128</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/services/musicService.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>27</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/services/musicService.test.ts</file>
+  <line>146</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/services/musicService.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>50</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/services/musicService.test.ts</file>
+  <line>231</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/services/musicService.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>22</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/player/playbackActions.playback.test.ts</file>
+  <line>279</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/player/playbackActions.playback.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>30</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/player/playbackActions.playback.test.ts</file>
+  <line>280</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/player/playbackActions.playback.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>30</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/player/playbackActions.playback.test.ts</file>
+  <line>307</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/player/playbackActions.playback.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>27</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>291</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>25</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>302</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>70</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>330</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>54</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>331</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>54</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>360</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>70</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>361</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>71</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>497</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>65</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>565</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>54</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>566</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>54</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/playerStore.test.ts</file>
+  <line>567</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/playerStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>54</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/userStore.test.ts</file>
+  <line>124</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/userStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>20</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/store/userStore.test.ts</file>
+  <line>129</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/store/userStore.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>36</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/utils/player/mediaProxy.test.ts</file>
+  <line>12</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/utils/player/mediaProxy.test.ts" />
+  <problem_class id="HttpUrlsUsage" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">采用未加密协议的链接</problem_class>
+  <description>HTTP 链接不安全</description>
+  <highlighted_element>http://</highlighted_element>
+  <language>TypeScript</language>
+  <offset>23</offset>
+  <length>7</length>
+</problem>
+</problems>

@@ -34,6 +34,13 @@ vi.mock('@/utils/error/legacy', () => ({
 }))
 
 const adapterMock = {
+  getDefaultSearchPlatformId: vi.fn(() => 'netease'),
+  getSearchPlatformOptions: vi.fn(() => [
+    {
+      value: 'netease',
+      label: 'Netease Music'
+    }
+  ]),
   search: vi.fn()
 }
 
@@ -52,6 +59,13 @@ describe('searchStore', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+    adapterMock.getDefaultSearchPlatformId.mockReturnValue('netease')
+    adapterMock.getSearchPlatformOptions.mockReturnValue([
+      {
+        value: 'netease',
+        label: 'Netease Music'
+      }
+    ])
     resetServices()
     handleApiErrorMock.mockClear()
     replaceRuntimePlatformDescriptors([
@@ -249,6 +263,13 @@ describe('searchStore', () => {
           error: vi.fn()
         },
         musicService: {
+          getDefaultSearchPlatformId: vi.fn(() => 'netease'),
+          getSearchPlatformOptions: vi.fn(() => [
+            {
+              value: 'netease',
+              label: 'Netease Music'
+            }
+          ]),
           search: searchMock
         } as never
       },

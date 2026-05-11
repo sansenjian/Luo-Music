@@ -1,0 +1,50 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/workflows/deploy-docs.yml</file>
+  <line>24</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/workflows/deploy-docs.yml" />
+  <problem_class id="UndefinedParamsPresent" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未定义的形参</problem_class>
+  <description>未定义的形参:“fetch-depth”</description>
+  <highlighted_element>fetch-depth: 0</highlighted_element>
+  <language>yaml</language>
+  <offset>10</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/workflows/deploy-docs.yml</file>
+  <line>29</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/workflows/deploy-docs.yml" />
+  <problem_class id="UndefinedParamsPresent" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未定义的形参</problem_class>
+  <description>未定义的形参:“node-version”</description>
+  <highlighted_element>node-version: 24</highlighted_element>
+  <language>yaml</language>
+  <offset>10</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/workflows/deploy-docs.yml</file>
+  <line>30</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/workflows/deploy-docs.yml" />
+  <problem_class id="UndefinedParamsPresent" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未定义的形参</problem_class>
+  <description>未定义的形参:“cache”</description>
+  <highlighted_element>cache: npm</highlighted_element>
+  <language>yaml</language>
+  <offset>10</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/workflows/deploy-docs.yml</file>
+  <line>44</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/workflows/deploy-docs.yml" />
+  <problem_class id="UndefinedParamsPresent" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未定义的形参</problem_class>
+  <description>未定义的形参:“path”</description>
+  <highlighted_element>path: docs/.vitepress/dist</highlighted_element>
+  <language>yaml</language>
+  <offset>10</offset>
+  <length>26</length>
+</problem>
+</problems>

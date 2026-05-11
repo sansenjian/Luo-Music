@@ -55,7 +55,7 @@ git checkout -b fix/your-bug-fix
 在提交代码前，请确保：
 
 - 运行所有测试并通过：`npm run test:run`
-- ESLint 检查通过：`npm run lint`
+- Oxlint 检查通过：`npm run lint`
 - TypeScript 类型检查通过：`npm run typecheck`
 
 ### 5. 提交代码
@@ -81,18 +81,20 @@ git push origin feature/your-feature-name
 
 ## 🔧 代码规范
 
-### ESLint + Prettier
+### Oxlint + Prettier / Oxfmt
 
-项目使用 ESLint 和 Prettier 来保证代码风格一致：
+项目默认使用 Oxlint 做快速代码检查，Prettier 作为主格式化器；Oxfmt 已作为可选格式化检查引入，便于逐步对比和迁移：
 
 ```bash
 # 检查代码
 npm run lint
 npm run format:check
+npm run format:oxfmt:check
 
 # 自动修复
 npm run lint:fix
 npm run format
+npm run format:oxfmt
 ```
 
 ### TypeScript

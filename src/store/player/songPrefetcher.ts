@@ -23,7 +23,10 @@ interface PrefetchEntry {
 const PREFETCH_CACHE_TTL = 15 * 60 * 1000 // 15 minutes
 const MAX_PREFETCH_ENTRIES = 8
 
-type MusicServiceLike = Pick<MusicService, 'getSongUrl' | 'getSongDetail' | 'getLyric'>
+type MusicServiceLike = Pick<
+  MusicService,
+  'getPlatformCapabilities' | 'getSongUrl' | 'getSongDetail' | 'getLyric'
+>
 
 class SongPrefetcher {
   private cache = new Map<string, PrefetchEntry>()

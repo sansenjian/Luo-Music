@@ -1,0 +1,14 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/electron/plugins/PluginInstaller.ts</file>
+  <line>138</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/electron/plugins/PluginInstaller.ts" />
+  <problem_class id="UnnecessaryContinueJS" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">不必要的 'continue' 语句</problem_class>
+  <description>&lt;code&gt;continue&lt;/code&gt; 不必要，因为它是循环中的最后一条语句</description>
+  <highlighted_element>continue</highlighted_element>
+  <language>JavaScript</language>
+  <offset>8</offset>
+  <length>8</length>
+</problem>
+</problems>

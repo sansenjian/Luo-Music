@@ -8,7 +8,9 @@
 scripts/
 ├── README.md           # 本说明文件
 ├── build/              # 构建相关脚本
-│   ├── clean-force.js  # 强制清理构建产物（Windows 优化）
+│   ├── clean.cjs       # 统一清理入口
+│   ├── clean-targets.cjs # 定向清理构建产物（Windows 优化）
+│   ├── run-target.cjs  # build / make / package 调度入口
 │   └── finalize-portable-output.cjs # 收敛单文件便携版输出，只保留 .exe
 │
 ├── dev/                # 开发环境脚本
@@ -67,20 +69,22 @@ npm run dev:electron
 
 ### build/
 
-#### clean-force.js
+#### clean.cjs
 
-Windows 优化的强制清理脚本，处理文件锁定问题。
+统一清理入口，复用 `clean-targets.cjs` 的 Windows 文件锁定处理能力。
 
 **参数：**
 
 - `--force`: 自动结束占用进程
 - `--all`: 删除 node_modules
+- 额外路径参数：只清理指定路径
 
 **使用示例：**
 
 ```bash
-node scripts/build/clean-force.js --force
-node scripts/build/clean-force.js --all
+node scripts/build/clean.cjs --force
+node scripts/build/clean.cjs --all
+node scripts/build/clean.cjs dist build/service
 ```
 
 **功能：**
@@ -88,6 +92,22 @@ node scripts/build/clean-force.js --all
 1. 强制结束 Electron 相关进程
 2. 使用重命名策略绕过文件锁定
 3. 清理构建产物目录
+
+#### run-target.cjs
+
+构建调度入口，承载 `package.json` 中较长的 build / make / package 流程。
+
+**常用目标：**
+
+- `build`: Electron bundle 构建
+- `web`: Web 构建
+- `electron-bundle`: 清理并构建 Electron bundle
+- `electron-bundle-no-clean`: 不清理，直接构建 Electron bundle
+- `electron`: 生成 Electron 安装包
+- `electron-portable`: 生成单文件便携版
+- `package`: 生成 Electron package
+- `make`: 生成 Electron 安装包
+- `make-fast`: 快速 make 模式
 
 #### finalize-portable-output.cjs
 
@@ -226,6 +246,6 @@ npm run clean:all
 
 ## ⚠️ 注意事项
 
-1. **Windows 文件锁定**：使用 `clean-force.js` 的 `--force` 参数可自动结束占用进程
+1. **Windows 文件锁定**：使用 `clean.cjs` 的 `--force` 参数可自动结束占用进程
 2. **权限问题**：QQ API 服务会自动切换到用户数据目录，避免写入权限问题
 3. **路径依赖**：所有脚本都使用相对路径计算，确保从任何位置调用都能正确定位

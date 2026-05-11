@@ -938,5 +938,7 @@ module.exports = {
   isLikelyViteHtmlResponse,
   isProjectWebDevProcess,
   parseWindowsProcessList,
+  resolveElectronInspectArg,
+  resolveElectronInspectPort,
   terminateProcessTree
 }

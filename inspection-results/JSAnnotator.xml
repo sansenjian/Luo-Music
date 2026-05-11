@@ -1,0 +1,266 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/LuoMusic-插件化架构改造方案.md</file>
+  <line>447</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/LuoMusic-插件化架构改造方案.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>缺少函数实现或此声明之后未紧随函数实现 #loc</description>
+  <highlighted_element>createSong</highlighted_element>
+  <language>Markdown</language>
+  <offset>16</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/reports/ipc-performance-logging-optimization.md</file>
+  <line>26</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/reports/ipc-performance-logging-optimization.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>修饰符 private 不能出现在此处 #loc</description>
+  <highlighted_element>private</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/reports/ipc-performance-logging-optimization.md</file>
+  <line>28</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/reports/ipc-performance-logging-optimization.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>修饰符 private 不能出现在此处 #loc</description>
+  <highlighted_element>private</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/reports/ipc-performance-logging-optimization.md</file>
+  <line>55</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/reports/ipc-performance-logging-optimization.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>修饰符 private 不能出现在此处 #loc</description>
+  <highlighted_element>private</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/reports/ipc-performance-logging-optimization.md</file>
+  <line>57</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/reports/ipc-performance-logging-optimization.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>修饰符 private 不能出现在此处 #loc</description>
+  <highlighted_element>private</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/reports/re-audit-report-2026-03-21.md</file>
+  <line>43</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/reports/re-audit-report-2026-03-21.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>不能重复声明块作用域变量 #loc</description>
+  <highlighted_element>sanitizePlayMode</highlighted_element>
+  <language>Markdown</language>
+  <offset>6</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/reports/re-audit-report-2026-03-21.md</file>
+  <line>50</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/reports/re-audit-report-2026-03-21.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>不能重复声明块作用域变量 #loc</description>
+  <highlighted_element>sanitizePlayMode</highlighted_element>
+  <language>Markdown</language>
+  <offset>6</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/reports/re-audit-report-2026-03-21.md</file>
+  <line>352</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/reports/re-audit-report-2026-03-21.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>不能重复声明块作用域变量 #loc</description>
+  <highlighted_element>api</highlighted_element>
+  <language>Markdown</language>
+  <offset>6</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/reports/re-audit-report-2026-03-21.md</file>
+  <line>355</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/reports/re-audit-report-2026-03-21.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>不能重复声明块作用域变量 #loc</description>
+  <highlighted_element>api</highlighted_element>
+  <language>Markdown</language>
+  <offset>6</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/reports/re-audit-report-2026-03-21.md</file>
+  <line>361</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/reports/re-audit-report-2026-03-21.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>不能重复声明块作用域变量 #loc</description>
+  <highlighted_element>api</highlighted_element>
+  <language>Markdown</language>
+  <offset>6</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/service-layer.md</file>
+  <line>255</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/service-layer.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>tsconfig.json 中不包含相应文件 #loc</description>
+  <highlighted_element>audioManager</highlighted_element>
+  <language>Markdown</language>
+  <offset>4</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/service-manager-architecture.md</file>
+  <line>77</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/service-manager-architecture.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>缺少函数实现或此声明之后未紧随函数实现 #loc</description>
+  <highlighted_element>initialize</highlighted_element>
+  <language>Markdown</language>
+  <offset>8</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/service-manager-architecture.md</file>
+  <line>78</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/service-manager-architecture.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>缺少函数实现或此声明之后未紧随函数实现 #loc</description>
+  <highlighted_element>startService</highlighted_element>
+  <language>Markdown</language>
+  <offset>8</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/service-manager-architecture.md</file>
+  <line>79</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/service-manager-architecture.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>缺少函数实现或此声明之后未紧随函数实现 #loc</description>
+  <highlighted_element>stopService</highlighted_element>
+  <language>Markdown</language>
+  <offset>8</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/service-manager-architecture.md</file>
+  <line>80</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/service-manager-architecture.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>缺少函数实现或此声明之后未紧随函数实现 #loc</description>
+  <highlighted_element>restartService</highlighted_element>
+  <language>Markdown</language>
+  <offset>8</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/service-manager-architecture.md</file>
+  <line>81</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/service-manager-architecture.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>缺少函数实现或此声明之后未紧随函数实现 #loc</description>
+  <highlighted_element>getServiceStatus</highlighted_element>
+  <language>Markdown</language>
+  <offset>2</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/unified-ipc-implementation.md</file>
+  <line>104</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/unified-ipc-implementation.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>缺少函数实现或此声明之后未紧随函数实现 #loc</description>
+  <highlighted_element>registerInvoke</highlighted_element>
+  <language>Markdown</language>
+  <offset>2</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/unified-ipc-implementation.md</file>
+  <line>105</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/unified-ipc-implementation.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>缺少函数实现或此声明之后未紧随函数实现 #loc</description>
+  <highlighted_element>registerSend</highlighted_element>
+  <language>Markdown</language>
+  <offset>2</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/unified-ipc-implementation.md</file>
+  <line>106</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/unified-ipc-implementation.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>缺少函数实现或此声明之后未紧随函数实现 #loc</description>
+  <highlighted_element>registerReceive</highlighted_element>
+  <language>Markdown</language>
+  <offset>2</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/本地音乐.md</file>
+  <line>195</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/本地音乐.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>tsconfig.json 中不包含相应文件 #loc</description>
+  <highlighted_element>songs</highlighted_element>
+  <language>Markdown</language>
+  <offset>13</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/docs/本地音乐.md</file>
+  <line>195</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/docs/本地音乐.md" />
+  <problem_class id="JSAnnotator" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>tsconfig.json 中不包含相应文件 #loc</description>
+  <highlighted_element>nextCursor</highlighted_element>
+  <language>Markdown</language>
+  <offset>20</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/types.d.ts</file>
+  <line>1</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/types.d.ts" />
+  <problem_class id="JSAnnotator" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">未遵循 ECMAScript 规范</problem_class>
+  <description>引用包括项目范围之外的文件 #loc</description>
+  <highlighted_element>/// &lt;reference types=&quot;vite-plus/test/globals&quot; /&gt;</highlighted_element>
+  <language>JavaScript</language>
+  <offset>0</offset>
+  <length>48</length>
+</problem>
+</problems>

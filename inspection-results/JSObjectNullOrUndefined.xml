@@ -1,0 +1,14 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/electron/local-library/protocol.ts</file>
+  <line>273</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/electron/local-library/protocol.ts" />
+  <problem_class id="JSObjectNullOrUndefined" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">对象为 'null' 或 'undefined'</problem_class>
+  <description>handle 为 null</description>
+  <highlighted_element>handle</highlighted_element>
+  <language>TypeScript</language>
+  <offset>12</offset>
+  <length>6</length>
+</problem>
+</problems>

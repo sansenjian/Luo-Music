@@ -1,0 +1,14 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/utils/runtime.ts</file>
+  <line>12</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/utils/runtime.ts" />
+  <problem_class id="ES6ConvertVarToLetConst" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">已使用 'var' 而不是 'let' 或 'const'</problem_class>
+  <description>已使用 'var' 而不是 'let' 或 'const'</description>
+  <highlighted_element>var</highlighted_element>
+  <language>JavaScript</language>
+  <offset>2</offset>
+  <length>3</length>
+</problem>
+</problems>

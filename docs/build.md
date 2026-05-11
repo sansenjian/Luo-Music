@@ -26,7 +26,7 @@ npm run build:web
 1. 清理 `dist` 与 `build/service`
 2. 执行配置守卫
 3. 构建服务端
-4. 以 Web 模式构建 Vite 渲染端
+4. 通过本地 VP CLI 以 Web 模式构建 Vite+ 渲染端
 
 ### Electron
 
@@ -41,6 +41,8 @@ npm run build:electron
 3. 构建 QQ runtime
 4. 并行构建 server 与 electron-vite bundle
 5. 使用 Electron Forge 产出安装包
+
+Electron bundle 暂不切换到 `vp build`：主进程、preload、Forge 和 native rebuild 仍依赖 Electron 专属构建链路。
 
 ### Portable
 
@@ -82,6 +84,8 @@ out/
 
 ```bash
 npm run test:run
+npm run vp:lint
+npm run vp:fmt:check
 ```
 
 ### 涉及构建 / Electron / 路径

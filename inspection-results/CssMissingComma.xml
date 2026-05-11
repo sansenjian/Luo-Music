@@ -1,0 +1,530 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>144</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>145</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>146</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>18</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>154</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>155</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>167</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>168</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>170</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>171</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>177</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>178</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>180</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>181</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>199</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>200</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>207</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>208</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>209</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>28</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>214</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>215</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>216</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>28</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>225</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>226</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>227</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>28</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>229</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>230</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>29</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>231</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>28</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>237</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>238</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>40</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>244</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>245</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>40</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>250</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>251</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>40</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>252</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>18</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>257</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>258</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>40</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>260</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>261</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>40</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>269</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>270</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>40</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>275</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>276</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>40</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>324</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>46</offset>
+  <length>0</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css</file>
+  <line>325</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/plugins/third-party/restart-theme/theme.css" />
+  <problem_class id="CssMissingComma" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">选择器列表中缺少逗号</problem_class>
+  <description>缺少逗号</description>
+  <highlighted_element />
+  <language>CSS</language>
+  <offset>32</offset>
+  <length>0</length>
+</problem>
+</problems>

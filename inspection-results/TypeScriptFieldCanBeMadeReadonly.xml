@@ -1,0 +1,122 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/electron/sandbox/services/validation.ts</file>
+  <line>192</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/electron/sandbox/services/validation.ts" />
+  <problem_class id="TypeScriptFieldCanBeMadeReadonly" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">可以为只读字段</problem_class>
+  <description>可以为只读字段</description>
+  <highlighted_element>private</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/electron/sandbox/services/validation.ts</file>
+  <line>193</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/electron/sandbox/services/validation.ts" />
+  <problem_class id="TypeScriptFieldCanBeMadeReadonly" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">可以为只读字段</problem_class>
+  <description>可以为只读字段</description>
+  <highlighted_element>private</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/electron/sandbox/services/validation.ts</file>
+  <line>240</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/electron/sandbox/services/validation.ts" />
+  <problem_class id="TypeScriptFieldCanBeMadeReadonly" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">可以为只读字段</problem_class>
+  <description>可以为只读字段</description>
+  <highlighted_element>private</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/electron/sandbox/services/validation.ts</file>
+  <line>241</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/electron/sandbox/services/validation.ts" />
+  <problem_class id="TypeScriptFieldCanBeMadeReadonly" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">可以为只读字段</problem_class>
+  <description>可以为只读字段</description>
+  <highlighted_element>private</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/packages/shared/player/lyric.ts</file>
+  <line>237</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/packages/shared/player/lyric.ts" />
+  <problem_class id="TypeScriptFieldCanBeMadeReadonly" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">可以为只读字段</problem_class>
+  <description>可以为只读字段</description>
+  <highlighted_element>private</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/base/common/lifecycle/disposable.ts</file>
+  <line>172</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/base/common/lifecycle/disposable.ts" />
+  <problem_class id="TypeScriptFieldCanBeMadeReadonly" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">可以为只读字段</problem_class>
+  <description>可以为只读字段</description>
+  <highlighted_element>private</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/utils/player/core/playerCore.ts</file>
+  <line>56</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/utils/player/core/playerCore.ts" />
+  <problem_class id="TypeScriptFieldCanBeMadeReadonly" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">可以为只读字段</problem_class>
+  <description>可以为只读字段</description>
+  <highlighted_element>private</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/utils/player/modules/playbackErrorHandler.ts</file>
+  <line>35</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/utils/player/modules/playbackErrorHandler.ts" />
+  <problem_class id="TypeScriptFieldCanBeMadeReadonly" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">可以为只读字段</problem_class>
+  <description>可以为只读字段</description>
+  <highlighted_element>private</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/utils/player/modules/playbackErrorHandler.ts</file>
+  <line>40</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/utils/player/modules/playbackErrorHandler.ts" />
+  <problem_class id="TypeScriptFieldCanBeMadeReadonly" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">可以为只读字段</problem_class>
+  <description>可以为只读字段</description>
+  <highlighted_element>private</highlighted_element>
+  <language>TypeScript</language>
+  <offset>2</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/electron/pluginStateStore.test.ts</file>
+  <line>18</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/electron/pluginStateStore.test.ts" />
+  <problem_class id="TypeScriptFieldCanBeMadeReadonly" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">可以为只读字段</problem_class>
+  <description>可以为只读字段</description>
+  <highlighted_element>private</highlighted_element>
+  <language>TypeScript</language>
+  <offset>6</offset>
+  <length>7</length>
+</problem>
+</problems>

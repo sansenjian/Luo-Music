@@ -191,6 +191,3 @@ tests/Test Material/
 *.bak
 .sentryclirc
 .env.sentry
-
-# Sentry Config File
-.env.sentry-build-plugin

@@ -25,6 +25,10 @@ const {
     targetArgs: string[]
   ) => Array<{ targetPath: string; absolutePath: string }>
 }
+const { DEFAULT_CLEAN_TARGETS, parseCleanArgs } = require('../../../scripts/build/clean.cjs') as {
+  DEFAULT_CLEAN_TARGETS: string[]
+  parseCleanArgs: (argv: string[]) => { force: boolean; targets: string[] }
+}
 
 const projectRoot = resolve(process.cwd())
 
@@ -70,6 +74,19 @@ describe('clean-targets script', () => {
     } finally {
       await rm(projectScopedRoot, { recursive: true, force: true })
     }
+  })
+
+  it('maps the canonical clean entrypoint to default targets', () => {
+    expect(parseCleanArgs([])).toEqual({
+      force: false,
+      targets: DEFAULT_CLEAN_TARGETS
+    })
+
+    expect(parseCleanArgs(['--all']).targets).toEqual([...DEFAULT_CLEAN_TARGETS, 'node_modules'])
+    expect(parseCleanArgs(['--force', 'dist', 'build/service'])).toEqual({
+      force: true,
+      targets: ['dist', 'build/service']
+    })
   })
 
   it('matches only Electron processes that belong to the current project path', () => {

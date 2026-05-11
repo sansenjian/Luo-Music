@@ -1,0 +1,362 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/UserAvatar.vue</file>
+  <line>337</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/UserAvatar.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>7</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/UserAvatar.vue</file>
+  <line>349</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/UserAvatar.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>8</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/UserAvatar.vue</file>
+  <line>398</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/UserAvatar.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>13</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/UserAvatar.vue</file>
+  <line>411</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/UserAvatar.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>14</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/UserAvatar.vue</file>
+  <line>412</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/UserAvatar.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>13</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/UserAvatar.vue</file>
+  <line>417</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/UserAvatar.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>14</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/FavoriteAlbumsView.vue</file>
+  <line>62</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/FavoriteAlbumsView.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>13</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/FavoriteAlbumsView.vue</file>
+  <line>67</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/FavoriteAlbumsView.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>14</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/FavoriteAlbumsView.vue</file>
+  <line>68</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/FavoriteAlbumsView.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>13</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/FavoriteAlbumsView.vue</file>
+  <line>72</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/FavoriteAlbumsView.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>14</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/SongDetailList.vue</file>
+  <line>525</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/SongDetailList.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>15</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/SongDetailList.vue</file>
+  <line>529</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/SongDetailList.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>17</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/SongDetailList.vue</file>
+  <line>530</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/SongDetailList.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>15</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/SongDetailList.vue</file>
+  <line>533</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/SongDetailList.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>16</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/SongDetailList.vue</file>
+  <line>562</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/SongDetailList.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>9</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/SongDetailList.vue</file>
+  <line>562</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/SongDetailList.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>94</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/SongDetailList.vue</file>
+  <line>563</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/SongDetailList.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>9</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/media/SongDetailList.vue</file>
+  <line>566</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/media/SongDetailList.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>10</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/HomeRecentPlayPanel.vue</file>
+  <line>175</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/HomeRecentPlayPanel.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>17</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/home/components/HomeRecentPlayPanel.vue</file>
+  <line>177</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/home/components/HomeRecentPlayPanel.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>18</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/LikedSongListItem.vue</file>
+  <line>26</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/LikedSongListItem.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>5</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/LikedSongListItem.vue</file>
+  <line>33</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/LikedSongListItem.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>6</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/LikedSongListItem.vue</file>
+  <line>34</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/LikedSongListItem.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>5</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/LikedSongListItem.vue</file>
+  <line>37</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/LikedSongListItem.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>6</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/PlaylistsView.vue</file>
+  <line>66</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/PlaylistsView.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>11</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/PlaylistsView.vue</file>
+  <line>85</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/PlaylistsView.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/PlaylistsView.vue</file>
+  <line>86</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/PlaylistsView.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>11</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/PlaylistsView.vue</file>
+  <line>89</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/PlaylistsView.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>12</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/UserProfileHeader.vue</file>
+  <line>120</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/UserProfileHeader.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>7</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/features/user-center/components/UserProfileHeader.vue</file>
+  <line>122</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/features/user-center/components/UserProfileHeader.vue" />
+  <problem_class id="HtmlUnknownTag" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">未知标记</problem_class>
+  <description>此处不允许使用元素 div</description>
+  <highlighted_element>div</highlighted_element>
+  <language>XML</language>
+  <offset>8</offset>
+  <length>3</length>
+</problem>
+</problems>

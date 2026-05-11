@@ -1,0 +1,74 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/LyricFloat.vue</file>
+  <line>520</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/LyricFloat.vue" />
+  <problem_class id="CssRedundantUnit" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余度量单位</problem_class>
+  <description>计量单位 &lt;code&gt;px&lt;/code&gt; 冗余</description>
+  <highlighted_element>px</highlighted_element>
+  <language>CSS</language>
+  <offset>23</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/LyricFloat.vue</file>
+  <line>546</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/LyricFloat.vue" />
+  <problem_class id="CssRedundantUnit" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余度量单位</problem_class>
+  <description>计量单位 &lt;code&gt;px&lt;/code&gt; 冗余</description>
+  <highlighted_element>px</highlighted_element>
+  <language>CSS</language>
+  <offset>23</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/LyricFloat.vue</file>
+  <line>583</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/LyricFloat.vue" />
+  <problem_class id="CssRedundantUnit" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余度量单位</problem_class>
+  <description>计量单位 &lt;code&gt;px&lt;/code&gt; 冗余</description>
+  <highlighted_element>px</highlighted_element>
+  <language>CSS</language>
+  <offset>23</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/LyricFloat.vue</file>
+  <line>595</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/LyricFloat.vue" />
+  <problem_class id="CssRedundantUnit" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余度量单位</problem_class>
+  <description>计量单位 &lt;code&gt;px&lt;/code&gt; 冗余</description>
+  <highlighted_element>px</highlighted_element>
+  <language>CSS</language>
+  <offset>23</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/Player.css</file>
+  <line>361</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/Player.css" />
+  <problem_class id="CssRedundantUnit" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余度量单位</problem_class>
+  <description>计量单位 &lt;code&gt;%&lt;/code&gt; 冗余</description>
+  <highlighted_element>%</highlighted_element>
+  <language>CSS</language>
+  <offset>10</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/components/Player.css</file>
+  <line>488</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/components/Player.css" />
+  <problem_class id="CssRedundantUnit" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">冗余度量单位</problem_class>
+  <description>计量单位 &lt;code&gt;%&lt;/code&gt; 冗余</description>
+  <highlighted_element>%</highlighted_element>
+  <language>CSS</language>
+  <offset>10</offset>
+  <length>1</length>
+</problem>
+</problems>

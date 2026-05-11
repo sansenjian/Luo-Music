@@ -1,0 +1,12 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/.gitignore</file>
+  <line>196</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.gitignore" />
+  <problem_class id="IgnoreFileDuplicateEntry" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">忽略文件重复项</problem_class>
+  <description>&lt;code&gt;&lt;/code&gt; 模式不止定义一次</description>
+  <highlighted_element />
+  <language />
+</problem>
+</problems>

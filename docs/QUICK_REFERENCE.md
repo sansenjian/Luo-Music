@@ -30,9 +30,18 @@ npm run test:coverage
 npm run test:e2e
 npm run lint
 npm run lint:fix
+npm run vp:lint
+npm run vp:lint:fix
 npm run format
+npm run format:check
+npm run format:oxfmt
+npm run format:oxfmt:check
+npm run vp:fmt
+npm run vp:fmt:check
 npm run typecheck
 ```
+
+`vp:*` 命令是 Vite+ 迁移期的本地 CLI 入口；正式测试仍使用 `npm run test:*`，不要绕过 native restore 包装。
 
 ## 关键目录
 
@@ -53,7 +62,7 @@ npm run typecheck
 
 | 目标                      | 路径              |
 | ------------------------- | ----------------- |
-| Web 构建                  | `build/`          |
+| Web 构建                  | `dist/`           |
 | Electron 主进程 / preload | `build/electron/` |
 | Server 构建               | `build/service/`  |
 | Electron 安装包           | `out/make/`       |

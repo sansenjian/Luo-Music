@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { getSearchPlatformOptions } from '@/platform/music'
+import { services } from '@/services'
 import { useSearchStore } from '@/store/searchStore'
 
 const searchStore = useSearchStore()
+const musicService = services.music()
 
 const keyword = ref('')
 
-const servers = computed(() => getSearchPlatformOptions())
+const servers = computed(() => musicService.getSearchPlatformOptions())
 
 const isLoading = computed(() => searchStore.isLoading)
 

@@ -1,0 +1,157 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>3</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求为以下选项之一: array, string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>7</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>4</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求: string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>8</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>5</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求: string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>16</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>6</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求: string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>6</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>7</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求: string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>9</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>8</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求: string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>17</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>9</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求: string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>10</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>10</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求: string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>10</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>11</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不允许使用属性 'lfx_crowdfunding'</description>
+  <highlighted_element>lfx_crowdfunding</highlighted_element>
+  <language>yaml</language>
+  <offset>0</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>12</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求: string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>6</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>13</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求: string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>16</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/.github/FUNDING.yml</file>
+  <line>14</line>
+  <module>project</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/.github/FUNDING.yml" />
+  <problem_class id="YAMLSchemaValidation" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">由 JSON 架构验证</problem_class>
+  <description>架构验证: 不兼容的类型。
+ 要求: string。 实际:null.</description>
+  <highlighted_element />
+  <language>yaml</language>
+  <offset>11</offset>
+  <length>1</length>
+</problem>
+</problems>

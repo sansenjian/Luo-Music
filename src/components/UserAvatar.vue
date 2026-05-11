@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router'
 import { logout } from '@/api/user'
 import { qqMusicApi } from '@/api/qqmusic'
 import type { PlatformDescriptor } from '@shared/types/platform'
-import { getLoginCapablePlatformDescriptors } from '@/platform/music/descriptors'
 import { services } from '@/services'
 import { useUserStore } from '@/store/userStore'
 import LoginModal from './LoginModal.vue'
@@ -25,6 +24,7 @@ type QQLoginStatusResponse = {
 
 const router = useRouter()
 const logger = services.logger().createLogger('userAvatar')
+const musicService = services.music()
 const platformService = services.platform()
 const pluginService = services.plugins()
 const userStore = useUserStore()
@@ -42,7 +42,7 @@ let shouldRestoreTriggerFocus = true
 let unsubscribePluginPlatforms: (() => void) | null = null
 
 const isQQMusicLoggedIn = computed(() => userStore.isQQMusicLoggedIn)
-const loginPlatforms = computed(() => getLoginCapablePlatformDescriptors())
+const loginPlatforms = computed(() => musicService.getLoginCapablePlatformDescriptors())
 const visibleLoginPlatforms = computed(() =>
   loginPlatforms.value.filter(platform => !isPlatformRepresentedByHeader(platform.id))
 )

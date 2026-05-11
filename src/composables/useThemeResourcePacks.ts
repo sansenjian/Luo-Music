@@ -2,8 +2,8 @@ import { computed, readonly, ref } from 'vue'
 
 import type { PluginThemeResource } from '@plugin-sdk'
 import type { PlatformDescriptor } from '@shared/types/platform'
-import { getPlatformDescriptors } from '@/platform/music/descriptors'
 import { services } from '@/services'
+import type { MusicService } from '@/services/musicService'
 import type { StorageService } from '@/services/storageService'
 import type { RenderStyle } from '@/composables/useRenderStyle'
 import {
@@ -41,9 +41,11 @@ const activeThemeVariableKeys = new Set<string>()
 let isThemeResourcePacksInitialized = false
 
 type ThemeResourcePackStorage = Pick<StorageService, 'getJSON' | 'setJSON' | 'getItem'>
+type ThemeResourcePackMusicService = Pick<MusicService, 'getPlatformDescriptors'>
 
 export type ThemeResourcePacksDeps = {
   storageService?: ThemeResourcePackStorage
+  musicService?: ThemeResourcePackMusicService
 }
 
 function isThemeResourcePackId(value: unknown): value is ThemeResourcePackId {
@@ -109,8 +111,10 @@ function getFirstPartyThemeResourcePacks(): ThemeResourcePackDescriptor[] {
   }))
 }
 
-function getDescriptorThemeResourcePacks(): ThemeResourcePackDescriptor[] {
-  return getPlatformDescriptors().flatMap(platform =>
+function getDescriptorThemeResourcePacks(
+  musicService: ThemeResourcePackMusicService
+): ThemeResourcePackDescriptor[] {
+  return musicService.getPlatformDescriptors().flatMap(platform =>
     (platform.themeResources ?? []).map(themeResourcePack => ({
       ...themeResourcePack,
       pluginId: platform.id,
@@ -121,14 +125,16 @@ function getDescriptorThemeResourcePacks(): ThemeResourcePackDescriptor[] {
   )
 }
 
-function getThemeResourcePacks(): ThemeResourcePackDescriptor[] {
+function getThemeResourcePacks(
+  musicService: ThemeResourcePackMusicService
+): ThemeResourcePackDescriptor[] {
   const resourcesById = new Map<string, ThemeResourcePackDescriptor>()
 
   for (const resource of getFirstPartyThemeResourcePacks()) {
     resourcesById.set(resource.id, resource)
   }
 
-  for (const resource of getDescriptorThemeResourcePacks()) {
+  for (const resource of getDescriptorThemeResourcePacks(musicService)) {
     resourcesById.set(resource.id, resource)
   }
 
@@ -136,21 +142,24 @@ function getThemeResourcePacks(): ThemeResourcePackDescriptor[] {
 }
 
 function getEnabledThemeResourcePackByRenderStyle(
-  style: RenderStyle
+  style: RenderStyle,
+  musicService: ThemeResourcePackMusicService
 ): ThemeResourcePackDescriptor | undefined {
-  const resources = getThemeResourcePacks().filter(
+  const resources = getThemeResourcePacks(musicService).filter(
     resource => resource.enabled && resource.renderStyle === style
   )
 
   return resources.find(resource => resource.source === 'external') ?? resources[0]
 }
 
-function getRenderStyleOptions(): ProjectRenderStyleOption[] {
+function getRenderStyleOptions(
+  musicService: ThemeResourcePackMusicService
+): ProjectRenderStyleOption[] {
   const optionsByStyle = new Map<RenderStyle, ProjectRenderStyleOption>([
     [PROJECT_DEFAULT_RENDER_STYLE_OPTION.value, PROJECT_DEFAULT_RENDER_STYLE_OPTION]
   ])
 
-  for (const resource of getThemeResourcePacks()) {
+  for (const resource of getThemeResourcePacks(musicService)) {
     if (!resource.enabled) {
       continue
     }
@@ -246,6 +255,7 @@ function applyThemeResource(themeResourcePack?: ThemeResourcePackDescriptor): vo
 
 export function useThemeResourcePacks(deps: ThemeResourcePacksDeps = {}) {
   const storageService = deps.storageService ?? services.storage()
+  const musicService = deps.musicService ?? services.music()
 
   if (!isThemeResourcePacksInitialized) {
     themeResourcePacksState.value =
@@ -264,7 +274,8 @@ export function useThemeResourcePacks(deps: ThemeResourcePacksDeps = {}) {
 
   function isThemeResourcePackEnabled(themeResourcePackId: ThemeResourcePackId): boolean {
     return Boolean(
-      getThemeResourcePacks().find(resource => resource.id === themeResourcePackId)?.enabled
+      getThemeResourcePacks(musicService).find(resource => resource.id === themeResourcePackId)
+        ?.enabled
     )
   }
 
@@ -285,18 +296,19 @@ export function useThemeResourcePacks(deps: ThemeResourcePacksDeps = {}) {
 
   function isRenderStyleAvailable(style: RenderStyle): boolean {
     return (
-      style === DEFAULT_RENDER_STYLE || Boolean(getEnabledThemeResourcePackByRenderStyle(style))
+      style === DEFAULT_RENDER_STYLE ||
+      Boolean(getEnabledThemeResourcePackByRenderStyle(style, musicService))
     )
   }
 
   function applyThemeResourceForRenderStyle(style: RenderStyle): void {
-    applyThemeResource(getEnabledThemeResourcePackByRenderStyle(style))
+    applyThemeResource(getEnabledThemeResourcePackByRenderStyle(style, musicService))
   }
 
   return {
     themeResourcePacks: readonly(themeResourcePacksState),
-    availableThemeResourcePacks: computed(() => getThemeResourcePacks()),
-    availableRenderStyleOptions: computed(() => getRenderStyleOptions()),
+    availableThemeResourcePacks: computed(() => getThemeResourcePacks(musicService)),
+    availableRenderStyleOptions: computed(() => getRenderStyleOptions(musicService)),
     enabledThemeResourcePackIds: computed(() => [
       ...themeResourcePacksState.value.enabledThemeResourcePackIds
     ]),

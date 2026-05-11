@@ -4,6 +4,7 @@ import { nextTick } from 'vue'
 
 import UserAvatar from '@/components/UserAvatar.vue'
 import {
+  getLoginCapablePlatformDescriptors,
   replaceRuntimePlatformDescriptors,
   resetRuntimePlatformDescriptors
 } from '@/platform/music/descriptors'
@@ -19,6 +20,9 @@ const platformServiceMock = vi.hoisted(() => ({
 const pluginServiceMock = vi.hoisted(() => ({
   refreshPlatformDescriptors: vi.fn(() => Promise.resolve([])),
   onPlatformsChanged: vi.fn(() => () => {})
+}))
+const musicServiceMock = vi.hoisted(() => ({
+  getLoginCapablePlatformDescriptors: vi.fn()
 }))
 
 vi.mock('vue-router', () => ({
@@ -53,6 +57,7 @@ vi.mock('@/services', async importOriginal => {
           warn: warnMock
         })
       }),
+      music: () => musicServiceMock,
       platform: () => platformServiceMock,
       plugins: () => pluginServiceMock
     }
@@ -83,6 +88,9 @@ describe('UserAvatar', () => {
     vi.clearAllMocks()
     platformServiceMock.isElectron.mockReturnValue(true)
     resetRuntimePlatformDescriptors()
+    musicServiceMock.getLoginCapablePlatformDescriptors.mockImplementation(() =>
+      getLoginCapablePlatformDescriptors()
+    )
     document.body.innerHTML = ''
   })
 
