@@ -40,7 +40,7 @@ const themeResourcePacksState = ref<ThemeResourcePacksState>({
 const activeThemeVariableKeys = new Set<string>()
 let isThemeResourcePacksInitialized = false
 
-type ThemeResourcePackStorage = Pick<StorageService, 'getJSON' | 'setJSON' | 'getItem'>
+export type ThemeResourcePackStorage = Pick<StorageService, 'getJSON' | 'setJSON' | 'getItem'>
 type ThemeResourcePackMusicService = Pick<MusicService, 'getPlatformDescriptors'>
 
 export type ThemeResourcePacksDeps = {

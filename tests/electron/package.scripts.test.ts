@@ -21,9 +21,27 @@ describe('package scripts for forge workflows', () => {
     )
   })
 
-  it('keeps Electron dev on the existing Electron-safe Vite path', () => {
+  it('runs Electron renderer dev through the local VP CLI', () => {
     expect(packageJson.scripts?.['dev:electron']).toContain(
-      'APP_RUNTIME=electron -- vite --config .config/vite.config.ts'
+      'APP_RUNTIME=electron -- npm run vp -- --config .config/vite.config.ts'
+    )
+  })
+
+  it('runs Electron bundle builds through the local electron-vite CLI', () => {
+    expect(packageJson.scripts?.['electron-vite']).toBe(
+      'node ./node_modules/electron-vite/bin/electron-vite.js'
+    )
+    expect(packageJson.scripts?.['electron-vite:build']).toBe(
+      'npm run electron-vite -- build --config electron/vite.config.ts'
+    )
+  })
+
+  it('runs unit tests through the native-safe VP test wrapper', () => {
+    expect(packageJson.scripts?.['test:run']).toBe(
+      'node scripts/run-vitest-with-native-restore.cjs run -c .config/vite.config.ts'
+    )
+    expect(packageJson.scripts?.['test:coverage']).toBe(
+      'node scripts/run-vitest-with-native-restore.cjs run -c .config/vite.config.ts --coverage'
     )
   })
 
@@ -65,10 +83,19 @@ describe('package scripts for forge workflows', () => {
     expect(packageJson.scripts?.['make:portable']).toBe('npm run build:electron:portable')
   })
 
-  it('keeps VP lint and format commands as parallel migration entrypoints', () => {
-    expect(packageJson.scripts?.['vp:lint']).toBe('npm run vp -- lint -c .oxlintrc.json .')
-    expect(packageJson.scripts?.['vp:fmt:check']).toContain(
-      'npm run vp -- fmt -c .config/oxfmt.json --check'
+  it('keeps quality commands on Vite+ config-backed entrypoints', () => {
+    expect(packageJson.scripts?.['vp:lint']).toBe(
+      'npm run vp -- lint --no-error-on-unmatched-pattern .'
     )
+    expect(packageJson.scripts?.['vp:fmt:check']).toContain(
+      'npm run vp -- fmt --check --no-error-on-unmatched-pattern'
+    )
+    expect(packageJson.scripts?.['vp:check']).toContain('npm run vp -- check')
+    expect(packageJson.scripts?.['lint']).toBe('npm run check:architecture && npm run vp:lint')
+    expect(packageJson.scripts?.['format:check']).toBe('npm run vp:fmt:check')
+    expect(packageJson.scripts?.['quality']).toBe(
+      'npm run typecheck && npm run lint && npm run format:check'
+    )
+    expect(packageJson.scripts?.['lint:staged']).toBe('npm run vp -- staged')
   })
 })

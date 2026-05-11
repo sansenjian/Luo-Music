@@ -39,10 +39,10 @@ npm run build:electron
 1. 清理安装包输出目录
 2. 通过 `build:electron:bundle` 清理并重建 `build/`
 3. 构建 QQ runtime
-4. 并行构建 server 与 electron-vite bundle
+4. 构建 server 与本地 `electron-vite:build`
 5. 使用 Electron Forge 产出安装包
 
-Electron bundle 暂不切换到 `vp build`：主进程、preload、Forge 和 native rebuild 仍依赖 Electron 专属构建链路。
+Electron bundle 暂不切换到 `vp build`：主进程、preload、Forge 和 native rebuild 仍依赖 Electron 专属构建链路。项目通过 `npm run electron-vite:build` 调用本地 `electron-vite` CLI，避免依赖全局 PATH。
 
 ### Portable
 
@@ -84,6 +84,8 @@ out/
 
 ```bash
 npm run test:run
+npm run quality
+npm run vp:check
 npm run vp:lint
 npm run vp:fmt:check
 ```
@@ -122,7 +124,7 @@ npm run docs:build
 先确认 Node / npm 版本，再重新执行：
 
 ```bash
-npm install
+npm install --prefer-online
 ```
 
-项目会在 `postinstall` 中自动修补部分 Windows 打包链路兼容性问题。
+项目 `.npmrc` 默认使用官方 npm registry，并启用 `prefer-online` 避免旧缓存或镜像旧元数据影响依赖解析。CI 安装优先使用 `npm ci --prefer-online`。项目会在 `postinstall` 中自动修补部分 Windows 打包链路兼容性问题。

@@ -113,7 +113,7 @@ export function animateListItems(
   animate(elements, {
     opacity: [0, 1],
     translateX: [-20, 0],
-    delay: (_, i) => i * 50,
+    delay: (_: HTMLElement, i: number) => i * 50,
     duration: 400,
     ease: 'out(3)'
   })

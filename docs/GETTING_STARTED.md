@@ -18,10 +18,10 @@ npm --version
 ## 安装依赖
 
 ```bash
-npm install
+npm install --prefer-online
 ```
 
-项目使用 `package-lock.json` 锁定依赖版本，默认按 npm 工作流维护。
+项目使用 `package-lock.json` 锁定依赖版本，默认按 npm 工作流维护。项目 `.npmrc` 使用官方 npm registry 并启用 `prefer-online`，避免本机旧缓存或镜像旧元数据影响版本解析。
 
 ## 启动方式
 
@@ -110,7 +110,7 @@ npm run build:electron
 
 ```bash
 npm run clean:all
-npm install
+npm install --prefer-online
 ```
 
 ### Electron 白屏或 404

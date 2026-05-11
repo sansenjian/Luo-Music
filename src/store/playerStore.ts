@@ -36,7 +36,6 @@ import type { WebLyricAppearance } from '@shared/types/player'
 import {
   normalizeHydratedPlayerState,
   normalizeLyricTypes,
-  restorePersistedPlayerState,
   toPlayMode,
   type StorePlayMode
 } from '@/store/player/playerPersistence'

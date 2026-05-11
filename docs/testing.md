@@ -24,9 +24,11 @@ npm run vp:version
 npm run vp:help
 ```
 
-Vite+ 迁移期还提供并行质量检查入口：`npm run vp:lint` 与 `npm run vp:fmt:check`。这些命令读取现有 `.oxlintrc.json` 和 `.config/oxfmt.json`，暂不要求根目录 `vite.config.ts` 承载 `lint` / `fmt` 配置。
+Vite+ 迁移期还提供质量检查入口：`npm run vp:lint`、`npm run vp:fmt:check` 与 `npm run vp:check`。这些命令读取根目录 `vite.config.ts` 中的 `lint` / `fmt` / `staged` 配置；应用和测试流程继续显式使用 `.config/vite.config.ts`。
 
-单测入口仍然以 npm scripts 为准：`npm run test`、`npm run test:run`、`npm run test:coverage` 会统一经过 `scripts/run-vitest-with-native-restore.cjs`，再由包装脚本调用 Vite+ test runner。这个包装脚本会在测试前把 `better-sqlite3` 切到 Node 测试运行时，并在测试后恢复 Electron 运行时，避免 Node / Electron ABI 不匹配。
+单测入口仍然以 npm scripts 为准：`npm run test`、`npm run test:run`、`npm run test:coverage` 会统一经过 `scripts/run-vitest-with-native-restore.cjs`，再由包装脚本调用本地 `npm run vp -- test`。这个包装脚本会在测试前把 `better-sqlite3` 切到 Node 测试运行时，并在测试后恢复 Electron 运行时，避免 Node / Electron ABI 不匹配。
+
+Vite+ test 配置已经并入 `.config/vite.config.ts` 的 `test` 块，继续保留 node / jsdom 两个项目分组。不要重新引入独立 `.config/vitest.config.ts`；如需调整 include、setupFiles、coverage 或项目分组，直接修改 `.config/vite.config.ts`。
 
 不要在日常验证中绕过包装脚本直接运行 `vp test` 或 `vitest`。只有在明确设置 `LUO_TEST_SKIP_NATIVE_REBUILD=1` 与 `LUO_TEST_SKIP_NATIVE_RESTORE=1`，并确认本轮测试不触发 native 模块 ABI 切换时，才适合临时跳过这层保护。
 

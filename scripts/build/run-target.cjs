@@ -67,7 +67,7 @@ const workflows = {
     clean(['build'])
     npmRun('rebuild:native')
     npmRun('guard:configs')
-    run('electron-vite', ['build', '--config', 'electron/vite.config.ts'])
+    npmRun('electron-vite:build')
   },
 
   web() {
@@ -99,12 +99,8 @@ const workflows = {
     npmRun('rebuild:native')
     npmRun('guard:configs')
     npmRun('build:qq-runtime')
-    run('concurrently', [
-      '--success',
-      'all',
-      'npm run build:server',
-      'electron-vite build --config electron/vite.config.ts'
-    ])
+    npmRun('build:server')
+    npmRun('electron-vite:build')
   },
 
   electron() {

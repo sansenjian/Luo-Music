@@ -5,7 +5,7 @@
 ### 开发
 
 ```bash
-npm install
+npm install --prefer-online
 npm run dev
 npm run dev:web
 npm run dev:electron
@@ -32,6 +32,8 @@ npm run lint
 npm run lint:fix
 npm run vp:lint
 npm run vp:lint:fix
+npm run vp:check
+npm run vp:check:fix
 npm run format
 npm run format:check
 npm run format:oxfmt
@@ -39,9 +41,11 @@ npm run format:oxfmt:check
 npm run vp:fmt
 npm run vp:fmt:check
 npm run typecheck
+npm run quality
+npm run quality:full
 ```
 
-`vp:*` 命令是 Vite+ 迁移期的本地 CLI 入口；正式测试仍使用 `npm run test:*`，不要绕过 native restore 包装。
+`vp:*` 命令是 Vite+ 迁移期的本地 CLI 入口；lint、format、check、staged 规则集中在根目录 `vite.config.ts`，供 VP 自动发现。`npm run quality` 是团队日常静态门禁，`npm run quality:full` 会额外跑单测和 Web 构建。正式测试仍使用 `npm run test:*`，这些测试脚本会经过 native restore 包装后调用本地 `vp test`，不要直接绕过包装器。
 
 ## 关键目录
 

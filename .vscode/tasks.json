@@ -82,16 +82,6 @@
       },
       "problemMatcher": [],
       "label": "npm: lint:fix"
-    },
-    {
-      "type": "shell",
-      "label": "build:electron",
-      "command": "${workspaceFolder}/node_modules/.bin/electron-vite build --config electron.vite.config.ts",
-      "windows": {
-        "command": "${workspaceFolder}/node_modules/.bin/electron-vite.cmd build --config electron.vite.config.ts"
-      },
-      "problemMatcher": [],
-      "group": "build"
     }
   ]
 }

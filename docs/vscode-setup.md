@@ -110,19 +110,16 @@
 npm run lint:staged
 ```
 
-在提交前自动运行 lint-staged，检查提交的文件。
+在提交前自动运行 Vite+ staged，检查提交的文件。
 
-### 7. Lint-staged 配置 (`.config/lintstaged.mjs`)
+### 7. Vite+ staged 配置 (`vite.config.ts`)
 
 定义了预提交检查规则：
 
-```js
-export default {
-  '*.{ts,vue,js}': [
-    'oxlint --fix -c .oxlintrc.json',
-    'prettier --config .config/prettier.mjs --write'
-  ],
-  '*.{json,md}': ['prettier --config .config/prettier.mjs --write']
+```ts
+const stagedConfig = {
+  '*.{ts,vue,js,json,md}': 'vp fmt --write --no-error-on-unmatched-pattern',
+  '*.{ts,vue,js}': 'vp lint --fix --no-error-on-unmatched-pattern'
 }
 ```
 
@@ -173,10 +170,10 @@ export default {
 
 ```bash
 # 安装依赖
-npm install
+npm install --prefer-online
 ```
 
-`npm install` 会通过 `prepare` 脚本自动安装 Husky，无需再额外执行安装命令。
+`npm install --prefer-online` 会通过 `prepare` 脚本自动安装 Husky，无需再额外执行安装命令。项目 `.npmrc` 使用官方 npm registry 并启用 `prefer-online`，避免旧缓存或镜像旧元数据影响版本解析。
 
 ### 调试配置
 
@@ -200,7 +197,7 @@ npm install
 # 暂存文件
 git add .
 
-# 提交（会自动运行 lint-staged）
+# 提交（会自动运行 Vite+ staged）
 git commit -m "feat: 添加新功能"
 
 # 如果忘记使用模板
@@ -263,6 +260,6 @@ git commit
 
 - [VSCode 调试文档](https://code.visualstudio.com/docs/editor/debugging)
 - [Husky 文档](https://typicode.github.io/husky/)
-- [Lint-staged 文档](https://github.com/okonet/lint-staged)
+- [Vite+ commit hooks 文档](https://viteplus.dev/guide/commit-hooks)
 - [约定式提交](https://www.conventionalcommits.org/)
 - [EditorConfig](https://editorconfig.org/)

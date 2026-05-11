@@ -14,7 +14,7 @@
 - ✅ **调试配置** - 添加 launch.json，支持主进程/渲染进程联合调试
 - ✅ **扩展推荐** - 推荐 8 个必备 VSCode 扩展
 - ✅ **任务配置** - 8 个常用任务一键执行
-- ✅ **Git 钩子** - Husky + lint-staged 预提交检查
+- ✅ **Git 钩子** - Husky + Vite+ staged 预提交检查
 - ✅ **提交规范** - 约定式提交模板
 - ✅ **GitHub 模板** - PR/Issue 模板规范化
 - ✅ **依赖清理** - 移除未使用的 Babel 依赖
@@ -162,30 +162,30 @@ mindmap
         Vue 3.5
         Pinia 3.0
         Vue Router 4.6
-        TypeScript 5.9
+        TypeScript 6.0
       构建工具
         Vite 8.0
-        Electron 40.8
+        Electron 40.10
         Electron-Vite 6.0 beta
         Electron Forge 7.11
       动画库
-        Anime.js 4.3
+        Anime.js 4.4
       状态管理
         Pinia Store
-        TanStack Query 5.92
+        TanStack Query 5.100
         持久化插件
       网络请求
-        Axios 1.15
+        Axios 1.16
         自定义封装
       代码质量
-        Oxlint 1.62
-        ESLint 10.0
+        Oxlint 1.63
+        ESLint 10.3
         Prettier 3.8
         Oxfmt 0.48
         Husky 9.1
       测试框架
         Vitest 4.1
-        Playwright 1.58
+        Playwright 1.59
 
     部署支持
       Web 部署
@@ -231,29 +231,29 @@ mindmap
 
 | 技术                          | 版本           | 用途              |
 | ----------------------------- | -------------- | ----------------- |
-| Vue                           | 3.5.29         | 前端框架          |
-| TypeScript                    | 5.9.3          | 静态类型检查      |
-| Electron                      | 40.8.5         | 桌面应用框架      |
+| Vue                           | 3.5.34         | 前端框架          |
+| TypeScript                    | 6.0.3          | 静态类型检查      |
+| Electron                      | 40.10.0        | 桌面应用框架      |
 | Pinia                         | 3.0.4          | 状态管理          |
-| TanStack Query                | 5.92.9         | 服务端状态管理    |
+| TanStack Query                | 5.100.10       | 服务端状态管理    |
 | Pinia Plugin Persistedstate   | 4.7.1          | 状态持久化        |
-| Axios                         | 1.15.2         | HTTP 客户端       |
-| Vite                          | 8.0.10         | 构建工具          |
+| Axios                         | 1.16.0         | HTTP 客户端       |
+| Vite                          | 8.0.12         | 构建工具          |
 | Vite+                         | 0.1.20         | 统一工具链入口    |
-| Anime.js                      | 4.3.6          | 动画效果          |
-| NeteaseCloudMusicApi Enhanced | 4.30.1         | 网易云音乐 API    |
+| Anime.js                      | 4.4.1          | 动画效果          |
+| NeteaseCloudMusicApi Enhanced | 4.32.0         | 网易云音乐 API    |
 | QQ Music API                  | 2.2.10         | QQ 音乐 API 服务  |
 | Electron-Vite                 | 6.0.0-beta.1   | Electron 构建工具 |
 | Electron Forge                | 7.11.1         | Electron 打包工具 |
-| Oxlint                        | 1.62.0         | 主线代码检查      |
-| ESLint                        | 10.0.3         | 兼容性备用检查    |
-| Prettier                      | 3.8.1          | 默认代码格式化    |
+| Oxlint                        | 1.63.0         | 主线代码检查      |
+| ESLint                        | 10.3.0         | 兼容性备用检查    |
+| Prettier                      | 3.8.3          | 默认代码格式化    |
 | Oxfmt                         | 0.48.0         | 可选快速格式化    |
 | Vitest                        | 4.1.5          | 单元测试框架      |
-| Playwright                    | 1.58.2         | E2E 测试框架      |
+| Playwright                    | 1.59.1         | E2E 测试框架      |
 | VitePress                     | 2.0.0-alpha.17 | 文档生成工具      |
 | Husky                         | 9.1.7          | Git 钩子          |
-| lint-staged                   | 16.1.2         | 预提交检查        |
+| Vite+ staged                  | 0.1.20         | 预提交检查        |
 
 > 版本信息以 `package.json` 为准；上表只记录当前主线依赖快照。
 
@@ -264,23 +264,23 @@ mindmap
 ```json
 {
   "dependencies": {
-    // 纯 Web 依赖 - Vercel 部署时安装
-    "vue": "^3.5.29",
+    // 运行时依赖
+    "vue": "^3.5.34",
     "pinia": "^3.0.4",
-    "animejs": "^4.3.6",
-    "@tanstack/vue-query": "^5.92.9",
-    "axios": "^1.15.2",
-    "@vueuse/core": "^14.2.1",
-    "zod": "^4.3.6"
+    "animejs": "^4.4.1",
+    "@tanstack/vue-query": "^5.100.10",
+    "axios": "^1.16.0",
+    "@vueuse/core": "^14.3.0",
+    "zod": "^4.4.3"
     // ...
   },
   "devDependencies": {
-    // Electron 专属依赖 - 仅开发/打包时安装
-    "electron": "40.8.5",
+    // 构建与桌面端工具链
+    "electron": "40.10.0",
     "electron-vite": "^6.0.0-beta.1",
     "@electron-forge/cli": "^7.11.1",
-    "typescript": "^5.9.3",
-    "vue-tsc": "^3.2.5"
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.2.8"
     // ...
   }
 }
@@ -299,26 +299,28 @@ mindmap
 
 ### 为什么这样设计？
 
-| 场景                | 安装命令                   | 安装的依赖      |
-| ------------------- | -------------------------- | --------------- |
-| **本地开发**        | `npm install`              | 全部依赖        |
-| **Electron 打包**   | `npm install`              | 全部依赖        |
-| **Vercel Web 部署** | `npm install --production` | 仅 dependencies |
+| 场景                | 安装命令                      | 安装的依赖                        |
+| ------------------- | ----------------------------- | --------------------------------- |
+| **本地开发**        | `npm install --prefer-online` | 全部依赖                          |
+| **Electron 打包**   | `npm install --prefer-online` | 全部依赖                          |
+| **Vercel Web 部署** | `npm install --prefer-online` | 全部依赖，Web 构建需要 dev 工具链 |
+
+项目 `.npmrc` 默认使用官方 npm registry，并启用 `prefer-online` 避免旧缓存或镜像元数据导致版本解析落后。CI 环境优先使用 `npm ci --prefer-online`。
 
 ### 安装 Electron 相关依赖
 
 ```bash
 # 安装 Electron（开发依赖）
-npm install -D electron
+npm install -D electron --prefer-online
 
 # 安装 Electron 打包工具
-npm install -D @electron-forge/cli
+npm install -D @electron-forge/cli --prefer-online
 
 # 安装 Electron-Vite
-npm install -D electron-vite
+npm install -D electron-vite --prefer-online
 ```
 
-> **注意**：Electron 相关包必须放在 `devDependencies` 中，否则 Vercel 部署时会安装不必要的依赖，导致部署失败或体积过大。
+> **注意**：Electron 相关包必须放在 `devDependencies` 中，作为桌面端构建工具链维护；Web 构建会安装完整依赖，但不会把这些工具包打进最终浏览器运行产物。
 
 ## 项目结构
 
@@ -420,11 +422,7 @@ luo_music/
 │   └── extensions.json # 扩展推荐
 ├── .config/          # 开发工具配置
 │   ├── vite.config.ts
-│   ├── vitest.config.ts
 │   ├── playwright.config.ts
-│   ├── prettier.mjs
-│   ├── oxfmt.json
-│   ├── lintstaged.mjs
 │   ├── qodana.yaml
 │   └── .env
 ├── config/           # 构建共享逻辑
@@ -436,9 +434,9 @@ luo_music/
 │   ├── ISSUE_TEMPLATE/
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── package.json
+├── vite.config.ts
 ├── vercel.json
 ├── tsconfig.json
-├── .oxlintrc.json
 ├── eslint.config.js
 ├── .npmrc
 └── index.html
@@ -467,8 +465,10 @@ luo_music/
 
 ```bash
 cd luo_music
-npm install
+npm install --prefer-online
 ```
+
+项目 `.npmrc` 已固定使用官方 npm registry 并启用 `prefer-online`。如果本机全局 npm 配置里曾设置 `prefer-offline=true`，请先删除或覆盖它，避免继续读取旧元数据。
 
 ### Vite+ / VP CLI
 
@@ -479,9 +479,11 @@ npm run vp:version
 npm run vp:help
 npm run vp:lint
 npm run vp:fmt:check
+npm run vp:check
+npm run quality
 ```
 
-当前迁移采用分阶段策略：Web 开发、Web 构建和 Web 预览已经通过本地 VP CLI 调用 `.config/vite.config.ts`；测试仍通过 `scripts/run-vitest-with-native-restore.cjs` 保护 `better-sqlite3` 的 Node / Electron ABI 切换；Electron bundle、Forge 打包和 portable 构建仍保留项目脚本包装。
+当前迁移采用分阶段策略：Web 开发、Web 构建、Web 预览和 Electron renderer 开发服务器已经通过本地 VP CLI 调用 `.config/vite.config.ts`；测试、lint、format、check、staged 配置已经并入 Vite+ 配置链路，质量配置集中在根目录 `vite.config.ts`，应用和测试流程继续显式使用 `.config/vite.config.ts`。正式测试入口仍通过 `scripts/run-vitest-with-native-restore.cjs` 保护 `better-sqlite3` 的 Node / Electron ABI 切换，再调用本地 `vp test`；Electron main/preload bundle、Forge 打包和 portable 构建仍保留 Electron 专属脚本包装。
 
 可选全局安装只用于提升手动执行 `vp migrate`、`vp help` 等命令的体验，项目运行仍以本地依赖和 npm scripts 为准。官方 Windows 安装命令如下：
 
@@ -498,7 +500,7 @@ irm https://vite.plus/ps1 | iex
 ```bash
 # 开发模式
 npm run dev              # 全部开发（API 服务器 + Vite）
-npm run dev:web          # 仅 Web 开发（Vite）
+npm run dev:web          # 仅 Web 开发（VP / Vite+）
 npm run dev:electron     # Electron 开发（桌面应用）
 
 # 生产构建
@@ -513,6 +515,8 @@ npm run vp:version       # 验证本地 VP / Vite+ CLI
 npm run vp:help          # 查看 VP CLI 帮助
 npm run vp:lint          # 通过 VP / Oxlint 检查代码
 npm run vp:fmt:check     # 通过 VP / Oxfmt 检查格式
+npm run vp:check         # 通过 VP 统一执行格式和 lint 检查
+npm run quality          # 团队日常静态质量门禁
 npm run clean            # 清理构建产物
 ```
 
@@ -796,16 +800,15 @@ SENTRY_RELEASE=
 
 **A**: Vercel 免费版函数执行时间限制为 10 秒，部分 API 可能需要重试。
 
-### Q: Vercel 部署时如何跳过测试依赖安装？
+### Q: Vercel 部署时如何保证依赖安装稳定？
 
 **A**: 在 Vercel Dashboard 中配置：
 
 1. 进入项目 → **Settings** → **General**
 2. 找到 **Build & Development Settings**
-3. 修改 **Install Command** 为：`npm install --production`
-4. 或添加环境变量：`NODE_ENV = production`
+3. 修改 **Install Command** 为：`npm install --prefer-online`
 
-这样 Vercel 只会安装 `dependencies` 中的依赖，跳过 `devDependencies` 中的测试工具（如 Playwright、Vitest 等），加快部署速度。
+当前 `npm run build:web` 需要 `vite-plus`、`vite`、`tsup` 等 devDependencies，不要在 Vercel Web 构建阶段使用 `npm install --production` 或 `NODE_ENV=production` 跳过开发工具链。
 
 ### Q: 安装依赖时提示 EBUSY 错误
 
@@ -828,7 +831,15 @@ SENTRY_RELEASE=
 npm run clean:all
 
 # 重新安装依赖
-npm install
+npm install --prefer-online
+```
+
+如果 `which`、`@electron/rebuild` 等包版本仍被解析到旧版本，优先检查全局 npm 配置：
+
+```bash
+npm config delete prefer-offline --global
+npm config set prefer-online true --global
+npm cache verify
 ```
 
 ### Q: 如何配置 Git 提交模板
