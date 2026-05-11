@@ -106,20 +106,20 @@ const workflows = {
   electron() {
     clean(['out/LUO Music-win32-x64', 'out/make'], { force: true })
     npmRun('build:electron:bundle')
-    run('electron-forge', ['make'])
+    npmRun('electron-forge', ['--', 'make'])
   },
 
   'electron-portable'() {
     clean(['out/portable'], { force: true })
     npmRun('build:electron:bundle')
-    run('electron-builder', ['--config', 'electron/builder.portable.cjs', '--publish', 'never'])
+    npmRun('electron-builder', ['--', '--config', 'electron/builder.portable.cjs', '--publish', 'never'])
     runNode('scripts/build/finalize-portable-output.cjs', ['out/portable'])
   },
 
   package() {
     clean(['out/LUO Music-win32-x64'], { force: true })
     npmRun('build:electron:bundle')
-    run('electron-forge', ['package'])
+    npmRun('electron-forge', ['--', 'package'])
   },
 
   make() {
@@ -129,7 +129,7 @@ const workflows = {
   'make-fast'() {
     clean(['out/LUO Music-win32-x64', 'out/make'], { force: true })
     npmRun('build:electron:bundle')
-    runWithEnv(['LUO_FAST_MAKE=1'], ['electron-forge', 'make'])
+    runWithEnv(['LUO_FAST_MAKE=1'], [...getNpmCommandParts(), 'run', 'electron-forge', '--', 'make'])
   }
 }
 

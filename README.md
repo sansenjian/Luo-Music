@@ -165,7 +165,7 @@ mindmap
         TypeScript 6.0
       构建工具
         Vite 8.0
-        Electron 40.10
+        Electron 41.5
         Electron-Vite 6.0 beta
         Electron Forge 7.11
       动画库
@@ -233,7 +233,7 @@ mindmap
 | ----------------------------- | -------------- | ----------------- |
 | Vue                           | 3.5.34         | 前端框架          |
 | TypeScript                    | 6.0.3          | 静态类型检查      |
-| Electron                      | 40.10.0        | 桌面应用框架      |
+| Electron                      | 41.5.1         | 桌面应用框架      |
 | Pinia                         | 3.0.4          | 状态管理          |
 | TanStack Query                | 5.100.10       | 服务端状态管理    |
 | Pinia Plugin Persistedstate   | 4.7.1          | 状态持久化        |
@@ -249,7 +249,7 @@ mindmap
 | ESLint                        | 10.3.0         | 兼容性备用检查    |
 | Prettier                      | 3.8.3          | 默认代码格式化    |
 | Oxfmt                         | 0.48.0         | 可选快速格式化    |
-| Vitest                        | 4.1.5          | 单元测试框架      |
+| Vitest                        | 4.1.6          | 单元测试框架      |
 | Playwright                    | 1.59.1         | E2E 测试框架      |
 | VitePress                     | 2.0.0-alpha.17 | 文档生成工具      |
 | Husky                         | 9.1.7          | Git 钩子          |
@@ -276,7 +276,7 @@ mindmap
   },
   "devDependencies": {
     // 构建与桌面端工具链
-    "electron": "40.10.0",
+    "electron": "41.5.1",
     "electron-vite": "^6.0.0-beta.1",
     "@electron-forge/cli": "^7.11.1",
     "typescript": "^6.0.3",

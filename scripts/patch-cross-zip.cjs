@@ -10,6 +10,13 @@ const electronWinstallerSignPath = path.join(
   "lib",
   "sign.js",
 );
+const electronWinstallerVendorPath = path.join(
+  __dirname,
+  "..",
+  "node_modules",
+  "electron-winstaller",
+  "vendor",
+);
 const appBuilderLibNodeModulesCollectorPath = path.join(
   __dirname,
   "..",
@@ -102,6 +109,32 @@ function patchElectronWinstallerSign(filePath) {
   console.log("[patch-cross-zip] patched electron-winstaller sign.js guard for DEP0187");
 }
 
+function patchElectronWinstaller7Zip(vendorPath) {
+  if (!fs.existsSync(vendorPath)) {
+    console.log("[patch-cross-zip] electron-winstaller vendor directory is not installed, skipping");
+    return;
+  }
+
+  const arch = process.arch === "arm64" ? "arm64" : "x64";
+  const sourceExePath = path.join(vendorPath, `7z-${arch}.exe`);
+  const sourceDllPath = path.join(vendorPath, `7z-${arch}.dll`);
+  const targetExePath = path.join(vendorPath, "7z.exe");
+  const targetDllPath = path.join(vendorPath, "7z.dll");
+
+  if (!fs.existsSync(sourceExePath) || !fs.existsSync(sourceDllPath)) {
+    handleUnchangedPatch({
+      alreadyPatched: fs.existsSync(targetExePath) && fs.existsSync(targetDllPath),
+      alreadyPatchedMessage: "[patch-cross-zip] electron-winstaller 7-Zip files already exist",
+      unsupportedMessage: `[patch-cross-zip] electron-winstaller unsupported 7-Zip vendor layout for ${arch}`,
+    });
+    return;
+  }
+
+  fs.copyFileSync(sourceExePath, targetExePath);
+  fs.copyFileSync(sourceDllPath, targetDllPath);
+  console.log(`[patch-cross-zip] selected electron-winstaller 7-Zip binaries for ${arch}`);
+}
+
 function patchAppBuilderLibNodeModulesCollector(filePath) {
   if (!fs.existsSync(filePath)) {
     console.log("[patch-cross-zip] app-builder-lib is not installed, skipping");
@@ -190,6 +223,7 @@ function patchAppBuilderLibNodeModulesCollector(filePath) {
 function main() {
   patchCrossZip(crossZipPath);
   patchElectronWinstallerSign(electronWinstallerSignPath);
+  patchElectronWinstaller7Zip(electronWinstallerVendorPath);
   patchAppBuilderLibNodeModulesCollector(appBuilderLibNodeModulesCollectorPath);
 }
 
@@ -203,5 +237,6 @@ module.exports = {
   main,
   patchAppBuilderLibNodeModulesCollector,
   patchCrossZip,
+  patchElectronWinstaller7Zip,
   patchElectronWinstallerSign,
 };
