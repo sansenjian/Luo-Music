@@ -24,6 +24,7 @@ type PlayerStoreLike = Pick<
   | 'playing'
   | 'progress'
   | 'duration'
+  | 'playMode'
   | 'trackSwitching'
   | 'seek'
   | 'playNext'
@@ -46,11 +47,13 @@ export type MediaSessionDeps = {
 const MEDIA_SESSION_ARTWORK_SIZE = '300x300'
 const DEFAULT_SEEK_OFFSET_SECONDS = 5
 const POSITION_SYNC_INTERVAL_MS = 1000
+const PLAYBACK_RESYNC_RETRY_DELAYS_MS = [120, 450, 1000] as const
 const IMMEDIATE_POSITION_SYNC_DELTA_SECONDS = 1
 const POSITION_STATE_KEY_PRECISION = 3
 const MEDIA_SESSION_ACTIONS: MediaSessionAction[] = [
   'play',
   'pause',
+  'stop',
   'nexttrack',
   'previoustrack',
   'seekto',
@@ -168,6 +171,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
 
   let positionTimer: ReturnType<typeof setInterval> | null = null
   let metadataRequestId = 0
+  let playbackResyncToken = 0
   let isSessionActive = false
   let lastPositionStateKey: string | null = null
 
@@ -176,6 +180,10 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
       clearInterval(positionTimer)
       positionTimer = null
     }
+  }
+
+  function invalidatePlaybackResyncs(): void {
+    playbackResyncToken += 1
   }
 
   function clearActionHandlers(): void {
@@ -336,6 +344,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   function registerActionHandlers(): void {
     setActionHandlerSafely('play', () => invokePlayerAction(() => playerService.play()))
     setActionHandlerSafely('pause', () => invokePlayerAction(() => playerService.pause()))
+    setActionHandlerSafely('stop', () => invokePlayerAction(() => playerService.pause()))
     setActionHandlerSafely('nexttrack', () => invokePlayerAction(() => playerStore.playNext()))
     setActionHandlerSafely('previoustrack', () => invokePlayerAction(() => playerStore.playPrev()))
     setActionHandlerSafely('seekto', details => {
@@ -361,6 +370,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
 
   function cleanupSession(): void {
     invalidateMetadataRequest()
+    invalidatePlaybackResyncs()
     isSessionActive = false
     clearPositionTimer()
     lastPositionStateKey = null
@@ -398,6 +408,21 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     syncPlaybackPositionLifecycle()
   }
 
+  function schedulePlaybackResyncs(): void {
+    const currentToken = playbackResyncToken + 1
+    playbackResyncToken = currentToken
+
+    for (const delay of PLAYBACK_RESYNC_RETRY_DELAYS_MS) {
+      setTimeout(() => {
+        if (!isSessionActive || currentToken !== playbackResyncToken) {
+          return
+        }
+
+        resyncAfterAudioPlay()
+      }, delay)
+    }
+  }
+
   const stopEnabledWatcher = watch(
     () => enabled(),
     nextEnabled => {
@@ -414,7 +439,16 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   )
 
   const stopMetadataWatcher = watch(
-    () => [playerStore.currentSong?.id, playerStore.currentSong?.album?.picUrl] as const,
+    () =>
+      [
+        playerStore.currentSong?.id,
+        playerStore.currentSong?.name,
+        playerStore.currentSong?.artists.map(artist => artist.name).join('\u0000'),
+        playerStore.currentSong?.album?.name,
+        playerStore.currentSong?.album?.picUrl,
+        getLocalCoverHash(playerStore.currentSong),
+        playerStore.playMode
+      ] as const,
     () => {
       if (!isSessionActive) {
         return
@@ -423,6 +457,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
       invalidateMetadataRequest()
       void syncMetadata()
       syncPlaybackPositionLifecycle()
+      schedulePlaybackResyncs()
     }
   )
 
@@ -435,6 +470,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
 
       if (previousSwitching && !nextSwitching && playerStore.playing && playerStore.currentSong) {
         resyncAfterAudioPlay()
+        schedulePlaybackResyncs()
       }
     }
   )
@@ -453,6 +489,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
       // Re-sync metadata and playbackState to keep SMTC stable.
       if (nextPlaying && !prevPlaying) {
         resyncAfterAudioPlay()
+        schedulePlaybackResyncs()
       }
     }
   )

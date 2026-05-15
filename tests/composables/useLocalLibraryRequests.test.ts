@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 
 import { useLocalLibraryRequests } from '@/composables/local-library/useLocalLibraryRequests'
 import { createDeferred } from '../helpers/deferred'

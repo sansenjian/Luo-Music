@@ -26,6 +26,8 @@ npm run docs:build
 
 ```bash
 npm run test:run
+npm run test:native
+npm run test:ci
 npm run test:coverage
 npm run test:e2e
 npm run lint
@@ -45,7 +47,7 @@ npm run quality
 npm run quality:full
 ```
 
-`vp:*` 命令是 Vite+ 迁移期的本地 CLI 入口；lint、format、check、staged 规则集中在根目录 `vite.config.ts`，供 VP 自动发现。`npm run quality` 是团队日常静态门禁，`npm run quality:full` 会额外跑单测和 Web 构建。正式测试仍使用 `npm run test:*`，这些测试脚本会经过 native restore 包装后调用本地 `vp test`，不要直接绕过包装器。
+`vp:*` 命令是 Vite+ 迁移期的本地 CLI 入口；lint、format、check、staged 规则集中在根目录 `vite.config.ts`，供 VP 自动发现。`npm run quality` 是团队日常静态门禁，`npm run quality:full` 会额外跑单测和 Web 构建。普通单测和覆盖率使用 `.config/vitest.config.ts` 与项目本地 Vitest；涉及 `better-sqlite3` 的本地音乐库测试使用 `npm run test:native`。
 
 ## 关键目录
 
@@ -90,7 +92,7 @@ npm run quality:full
 
 ## 推荐验证顺序
 
-1. `npm run test:run`
+1. `npm run test:ci`
 2. `npm run build:web`
 3. `npm run build:electron`
 4. 如改动文档站，再跑 `npm run docs:build`

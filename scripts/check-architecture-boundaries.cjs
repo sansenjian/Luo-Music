@@ -28,6 +28,11 @@ const forbiddenElectronResolvedPrefixes = [
   'src/platform/contracts/'
 ]
 
+const allowedLocalLibraryNativeTests = new Set([
+  'tests/electron/localLibrary.repository.test.ts',
+  'tests/electron/localLibrary.service.test.ts'
+])
+const forbiddenLocalLibraryPureTestRuntimeImports = new Set(['better-sqlite3', 'node:sqlite'])
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue'])
 const importPattern =
   /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
@@ -36,11 +41,19 @@ function toPosix(filePath) {
   return filePath.split(path.sep).join('/')
 }
 
-function listTrackedSourceFiles() {
-  const output = execFileSync('git', ['ls-files'], { cwd: projectRoot, encoding: 'utf8' })
-  return output
+function listGitFiles(args) {
+  return execFileSync('git', args, { cwd: projectRoot, encoding: 'utf8' })
     .split(/\r?\n/)
     .filter(Boolean)
+}
+
+function listProjectSourceFiles() {
+  const files = new Set([
+    ...listGitFiles(['ls-files']),
+    ...listGitFiles(['ls-files', '--others', '--exclude-standard'])
+  ])
+
+  return Array.from(files)
     .filter(file => fs.existsSync(path.join(projectRoot, file)))
     .filter(file => sourceExtensions.has(path.extname(file)))
 }
@@ -63,8 +76,8 @@ function matchesRule(specifier, rule) {
   return specifier === rule
 }
 
-function extractImports(file) {
-  const source = fs.readFileSync(path.join(projectRoot, file), 'utf8')
+function extractImports(file, rootDir = projectRoot) {
+  const source = fs.readFileSync(path.join(rootDir, file), 'utf8')
   const imports = []
   let match
 
@@ -104,6 +117,10 @@ function resolveProjectPath(fromFile, specifier) {
   return toPosix(resolved)
 }
 
+function stripSourceExtension(projectPath) {
+  return projectPath.replace(/\.(?:[cm]?[tj]sx?|vue)$/, '')
+}
+
 function checkElectronImports(files, errors) {
   const electronFiles = files.filter(file => file.startsWith('electron/'))
 
@@ -129,6 +146,34 @@ function checkElectronImports(files, errors) {
       if (forbiddenElectronResolvedPrefixes.some(prefix => resolved.startsWith(prefix))) {
         errors.push(`${file}: Electron code must not import renderer-private module "${specifier}"`)
       }
+    }
+  }
+}
+
+function checkLocalLibraryNativeTestBoundaries(files, errors, rootDir = projectRoot) {
+  const localLibraryTests = files.filter(file =>
+    /^tests\/electron\/localLibrary.*\.test\.[cm]?[tj]sx?$/.test(file)
+  )
+
+  for (const file of localLibraryTests) {
+    if (allowedLocalLibraryNativeTests.has(file)) {
+      continue
+    }
+
+    for (const specifier of extractImports(file, rootDir)) {
+      const resolved = resolveProjectPath(file, specifier)
+      const resolvedWithoutExtension = resolved ? stripSourceExtension(resolved) : null
+      const importsNativeRepository =
+        resolvedWithoutExtension === 'electron/local-library/repository'
+      const importsNativeRuntime = forbiddenLocalLibraryPureTestRuntimeImports.has(specifier)
+
+      if (!importsNativeRepository && !importsNativeRuntime) {
+        continue
+      }
+
+      errors.push(
+        `${file}: pure local-library tests must not import native SQLite boundary "${specifier}"; use helper modules or move true SQLite coverage to test:native`
+      )
     }
   }
 }
@@ -227,20 +272,40 @@ function checkSharedImports(files, errors) {
   }
 }
 
-const files = listTrackedSourceFiles()
-const errors = []
+function runArchitectureBoundaryChecks() {
+  const files = listProjectSourceFiles()
+  const errors = []
 
-checkElectronImports(files, errors)
-checkRootApiImports(files, errors)
-checkFeaturePublicApi(files, errors)
-checkSharedImports(files, errors)
+  checkElectronImports(files, errors)
+  checkLocalLibraryNativeTestBoundaries(files, errors)
+  checkRootApiImports(files, errors)
+  checkFeaturePublicApi(files, errors)
+  checkSharedImports(files, errors)
 
-if (errors.length > 0) {
-  console.error('Architecture boundary check failed:')
-  for (const error of errors) {
-    console.error(`- ${error}`)
-  }
-  process.exit(1)
+  return errors
 }
 
-console.log('Architecture boundary check passed.')
+function main() {
+  const errors = runArchitectureBoundaryChecks()
+
+  if (errors.length > 0) {
+    console.error('Architecture boundary check failed:')
+    for (const error of errors) {
+      console.error(`- ${error}`)
+    }
+    process.exit(1)
+  }
+
+  console.log('Architecture boundary check passed.')
+}
+
+if (require.main === module) {
+  main()
+} else {
+  module.exports = {
+    checkLocalLibraryNativeTestBoundaries,
+    extractImports,
+    resolveProjectPath,
+    runArchitectureBoundaryChecks
+  }
+}

@@ -1,5 +1,5 @@
 import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   createCachedCookieResolver,

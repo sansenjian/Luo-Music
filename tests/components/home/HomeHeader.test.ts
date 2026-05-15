@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import HomeHeader from '@/features/home/components/HomeHeader.vue'

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PLAY_MODE } from '@shared/player/playMode'
 import type { LyricLine } from '@shared/player/lyric'

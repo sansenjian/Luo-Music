@@ -81,6 +81,7 @@ export class WindowManager {
   private tray: TrayType | null = null
   private contextMenu: MenuType | null = null
   private lastSize: { width: number; height: number } | null = null
+  private appQuitting = false
 
   constructor() {
     const size = store.get('windowSize') as { width: number; height: number } | undefined
@@ -329,6 +330,15 @@ export class WindowManager {
       this.updateThumbarButtons(false)
     })
 
+    win.on('close', event => {
+      if (this.appQuitting || !this.tray) {
+        return
+      }
+
+      event.preventDefault()
+      this.minimizeToTray()
+    })
+
     win.on('closed', () => {
       clearRendererStallTimer()
       this.win = null
@@ -420,7 +430,20 @@ export class WindowManager {
   }
 
   close(): void {
-    this.win?.close()
+    if (!this.win || isBrowserWindowDestroyed(this.win)) {
+      return
+    }
+
+    if (this.tray && !this.appQuitting) {
+      this.minimizeToTray()
+      return
+    }
+
+    this.win.close()
+  }
+
+  markAppQuitting(): void {
+    this.appQuitting = true
   }
 
   setAlwaysOnTop(alwaysOnTop: boolean): void {

@@ -1,6 +1,6 @@
 import { nextTick } from 'vue'
 import { flushPromises } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useUserCenterPage } from '@/features/user-center/composables/useUserCenterPage'
 import { createSong, type Song } from '@/platform/music/interface'

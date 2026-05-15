@@ -1,10 +1,10 @@
 import { createRequire } from 'node:module'
 
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
-const { createVpTestCommand } = require('../../scripts/run-vitest-with-native-restore.cjs') as {
-  createVpTestCommand: (
+const { createVitestCommand } = require('../../scripts/run-vitest-with-native-restore.cjs') as {
+  createVitestCommand: (
     args: string[],
     options?: {
       execPath?: string
@@ -19,9 +19,9 @@ const { createVpTestCommand } = require('../../scripts/run-vitest-with-native-re
 }
 
 describe('run-vitest-with-native-restore', () => {
-  it('runs tests through the local VP CLI npm script', () => {
+  it('runs native tests through the local Vitest npm script', () => {
     expect(
-      createVpTestCommand(['run', '-c', '.config/vite.config.ts'], {
+      createVitestCommand(['run', '-c', '.config/vitest.config.ts'], {
         execPath: 'C:/Program Files/nodejs/node.exe',
         npmExecPath: 'C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js',
         platform: 'win32'
@@ -31,12 +31,11 @@ describe('run-vitest-with-native-restore', () => {
       args: [
         'C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js',
         'run',
-        'vp',
+        'vitest',
         '--',
-        'test',
         'run',
         '-c',
-        '.config/vite.config.ts'
+        '.config/vitest.config.ts'
       ],
       shell: false
     })

@@ -58,9 +58,6 @@ jobs:
         run: npm ci --prefer-online
 
       - name: Run coverage tests
-        env:
-          LUO_TEST_SKIP_NATIVE_REBUILD: '1'
-          LUO_TEST_SKIP_NATIVE_RESTORE: '1'
         run: >
           npm run test:coverage -- --shard=${{ matrix.shard }}/2
           --reporter=default
@@ -106,13 +103,10 @@ jobs:
           merge-multiple: true
 
       - name: Merge coverage reports
-        env:
-          LUO_TEST_SKIP_NATIVE_REBUILD: '1'
-          LUO_TEST_SKIP_NATIVE_RESTORE: '1'
         run: >
-          node scripts/run-vitest-with-native-restore.cjs
+          npm run vitest --
           --merge-reports .vitest-reports
-          -c .config/vite.config.ts
+          -c .config/vitest.config.ts
           --coverage
           --coverage.reporter=lcov
           --coverage.reporter=json

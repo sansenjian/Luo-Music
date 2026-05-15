@@ -1,6 +1,6 @@
 import { computed, defineComponent, ref, type ComputedRef, type Ref } from 'vue'
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,

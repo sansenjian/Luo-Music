@@ -49,9 +49,47 @@ export function parseLyricTimestamp(timeStr: string): number {
 export class LyricParser {
   private static readonly MERGE_TOLERANCE_MS = 80
   private static readonly FALLBACK_MERGE_TOLERANCE_MS = 500
+  private static readonly INFO_TAG_PATTERN =
+    /^\[(?:ar|al|ti|by|re|ve|length|tool|encoding|kana|language|id):/i
+  private static readonly OFFSET_TAG_PATTERN = /^\[offset:([+-]?\d+)\]$/i
+  private static readonly TIMED_WORD_PATTERN = /<(\d+:\d+(?:[.:]\d+)?)(?:,(\d+))?>([^<]*)/g
 
   private static parseTime(timeStr: string): number {
     return parseLyricTimestamp(timeStr)
+  }
+
+  private static normalizeLine(rawLine: string): string {
+    return rawLine.replace(/^\uFEFF/, '').trim()
+  }
+
+  private static stripInlineMetadata(content: string): string {
+    return content.replace(/\[[^\]]+:[^\]]*\]/g, '').trim()
+  }
+
+  private static parseTimedWords(content: string): { text: string; words?: LyricWord[] } {
+    const words: LyricWord[] = []
+    let plainText = ''
+
+    for (const match of content.matchAll(LyricParser.TIMED_WORD_PATTERN)) {
+      const time = LyricParser.parseTime(match[1])
+      const duration = match[2] ? Number.parseInt(match[2], 10) / 1000 : 0
+      const text = match[3] ?? ''
+      if (!text) {
+        continue
+      }
+
+      words.push({ time, duration, text })
+      plainText += text
+    }
+
+    if (words.length === 0) {
+      return { text: content.trim() }
+    }
+
+    return {
+      text: plainText.trim(),
+      words
+    }
   }
 
   private static mergeField(current: string, next: string): string {
@@ -168,18 +206,36 @@ export class LyricParser {
 
     const linesMap = new Map<number, LyricLine>()
 
+    let offsetMs = 0
+
     const parseContent = (text: string, type: 'text' | 'trans' | 'roma') => {
       if (!text || typeof text !== 'string') return
 
       let lastMatchedTextKey: number | null = null
 
       const lines = text.split('\n')
-      lines.forEach(line => {
+      lines.forEach(rawLine => {
+        const line = LyricParser.normalizeLine(rawLine)
+        if (!line || LyricParser.INFO_TAG_PATTERN.test(line)) {
+          return
+        }
+
+        const offsetMatch = line.match(LyricParser.OFFSET_TAG_PATTERN)
+        if (offsetMatch && type === 'text') {
+          offsetMs = Number.parseInt(offsetMatch[1], 10)
+          return
+        }
+
         // Match all timestamps: [mm:ss.xx]
         // Some lines have multiple: [00:01.00][00:03.00]Text
         const timeMatches = [...line.matchAll(/\[(\d+:\d+(?:[.:]\d+)?)\]/g)]
         if (timeMatches.length > 0) {
-          const content = line.replace(/\[\d+:\d+(?:[.:]\d+)?\]/g, '').trim()
+          const rawContent = line.replace(/\[\d+:\d+(?:[.:]\d+)?\]/g, '').trim()
+          const parsedContent =
+            type === 'text'
+              ? LyricParser.parseTimedWords(LyricParser.stripInlineMetadata(rawContent))
+              : { text: LyricParser.stripInlineMetadata(rawContent) }
+          const content = parsedContent.text
           if (!content) {
             return
           }
@@ -187,7 +243,7 @@ export class LyricParser {
           timeMatches.forEach(match => {
             const timeStr = match[1]
             const time = LyricParser.parseTime(timeStr) || 0
-            const rawKey = Math.round(time * 1000)
+            const rawKey = Math.max(0, Math.round(time * 1000 + offsetMs))
             const matchedKey = LyricParser.findMatchingKey(linesMap, rawKey, type)
             const sequentialKey =
               matchedKey === null && type !== 'text'
@@ -207,6 +263,13 @@ export class LyricParser {
             const entry = linesMap.get(key)!
             if (type === 'text') {
               entry.text = LyricParser.mergeField(entry.text, content)
+              if (parsedContent.words) {
+                const shiftedWords = parsedContent.words.map(word => ({
+                  ...word,
+                  time: Math.max(0, word.time + offsetMs / 1000)
+                }))
+                entry.words = [...(entry.words ?? []), ...shiftedWords]
+              }
             } else if (type === 'trans') {
               entry.trans = LyricParser.mergeField(entry.trans, content)
             } else if (type === 'roma') {

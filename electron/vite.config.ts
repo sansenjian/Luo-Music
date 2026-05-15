@@ -65,6 +65,15 @@ const sentryUploadEnabled = Boolean(
   process.env.SENTRY_ORG &&
   process.env.SENTRY_PROJECT
 )
+const mainBundledDependencies = [
+  'electron-log',
+  '@sentry/electron',
+  'electron-store',
+  'conf',
+  'kysely',
+  '@neteasecloudmusicapienhanced/api',
+  '@sansenjian/qq-music-api'
+]
 
 const rendererPlugins: PluginOption[] = [
   ...createVueRendererPlugins({ dts: false }),
@@ -97,9 +106,11 @@ export default defineConfig({
     plugins: [copyExternalPluginWorkerPlugin()],
     resolve: {
       extensions: ['.ts', '.tsx', '.mjs', '.js', '.mts', '.jsx', '.json'],
-      alias: createSrcAlias(rootDir)
+      alias: createSrcAlias(rootDir),
+      noExternal: mainBundledDependencies
     },
     build: {
+      externalizeDeps: false,
       outDir: 'build/electron',
       lib: {
         entry: resolve(rootDir, 'electron/main/index.ts'),
@@ -107,16 +118,7 @@ export default defineConfig({
         fileName: () => 'main.cjs'
       },
       rollupOptions: {
-        external: [
-          'electron',
-          'electron-log',
-          '@sentry/electron',
-          'better-sqlite3',
-          'electron-store',
-          'conf',
-          '@neteasecloudmusicapienhanced/api',
-          '@sansenjian/qq-music-api'
-        ],
+        external: ['electron', 'better-sqlite3'],
         output: {
           format: 'cjs',
           exports: 'named',

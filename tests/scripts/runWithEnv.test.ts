@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module'
 
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
 const { createSpawnTarget, parseArgs } = require('../../scripts/run-with-env.cjs') as {

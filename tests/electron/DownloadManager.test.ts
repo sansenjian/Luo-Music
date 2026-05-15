@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const appWhenReady = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 const appGetPath = vi.hoisted(() => vi.fn(() => '/downloads'))

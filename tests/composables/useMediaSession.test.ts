@@ -1,9 +1,10 @@
 import { flushPromises } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, reactive, ref } from 'vue'
 
 import { useMediaSession } from '@/composables/useMediaSession'
 import { CoverCacheManager } from '@/utils/cache/coverCache'
+import { PLAY_MODE, type PlayMode } from '@shared/player/playMode'
 import { mountComposable } from '../helpers/mountComposable'
 import { createMockSong } from '../utils/test-utils'
 
@@ -50,6 +51,7 @@ function createPlayerStoreMock() {
     playing: false,
     progress: 0,
     duration: 0,
+    playMode: PLAY_MODE.SEQUENTIAL as PlayMode,
     trackSwitching: false,
     seek: vi.fn(),
     playNext: vi.fn(),
@@ -186,6 +188,7 @@ describe('useMediaSession', () => {
     expect(handlers.pause).toBeNull()
     expect(handlers.nexttrack).toBeNull()
     expect(handlers.previoustrack).toBeNull()
+    expect(handlers.stop).toBeNull()
     expect(handlers.seekto).toBeNull()
     expect(handlers.seekforward).toBeNull()
     expect(handlers.seekbackward).toBeNull()
@@ -391,6 +394,7 @@ describe('useMediaSession', () => {
 
     handlers.play?.()
     handlers.pause?.()
+    handlers.stop?.()
     handlers.nexttrack?.()
     handlers.previoustrack?.()
     handlers.seekto?.({ seekTime: 90 })
@@ -402,7 +406,7 @@ describe('useMediaSession', () => {
     await flushPromises()
 
     expect(play).toHaveBeenCalledTimes(1)
-    expect(pause).toHaveBeenCalledTimes(1)
+    expect(pause).toHaveBeenCalledTimes(2)
     expect(playerStore.playNext).toHaveBeenCalledTimes(1)
     expect(playerStore.playPrev).toHaveBeenCalledTimes(1)
     expect(playerStore.seek).toHaveBeenNthCalledWith(1, 90)
@@ -718,6 +722,143 @@ describe('useMediaSession', () => {
       artist: 'Artist 2'
     })
     expect(mediaSession.playbackState).toBe('playing')
+
+    wrapper.unmount()
+  })
+
+  it('retries metadata sync shortly after playback resumes because Chromium may clear MediaSession', async () => {
+    const playerStore = createPlayerStoreMock()
+    playerStore.currentSong = createMockSong({
+      id: 'song-resync',
+      name: 'Track Resync',
+      artists: [{ id: 1, name: 'Artist Resync' }],
+      album: { id: 1, name: 'Album Resync', picUrl: 'https://cdn.example.com/resync.jpg' }
+    })
+    playerStore.playing = false
+    playerStore.duration = 200
+
+    const { mediaSession } = createMediaSessionMock()
+
+    const { wrapper } = mountComposable(() =>
+      useMediaSession({
+        enabled: () => true,
+        playerStore,
+        playerService: { play: vi.fn(), pause: vi.fn() },
+        platformService: { isElectron: () => true, getLocalLibraryCover: vi.fn() },
+        getMediaSession: () => mediaSession,
+        createMetadata: init => init
+      })
+    )
+
+    await flushPromises()
+
+    playerStore.playing = true
+    await nextTick()
+    await flushPromises()
+
+    mediaSession.metadata = null
+    mediaSession.playbackState = 'none'
+
+    await vi.advanceTimersByTimeAsync(120)
+    await flushPromises()
+
+    expect(mediaSession.metadata).toMatchObject({
+      title: 'Track Resync',
+      artist: 'Artist Resync'
+    })
+    expect(mediaSession.playbackState).toBe('playing')
+
+    wrapper.unmount()
+  })
+
+  it('updates metadata when async song detail hydration changes title, artist, album, or artwork', async () => {
+    const playerStore = createPlayerStoreMock()
+    playerStore.currentSong = createMockSong({
+      id: 'song-hydrate',
+      name: 'Pending Title',
+      artists: [{ id: 1, name: 'Pending Artist' }],
+      album: { id: 1, name: 'Pending Album', picUrl: 'https://cdn.example.com/pending.jpg' }
+    })
+    playerStore.playing = true
+    playerStore.duration = 200
+
+    const { mediaSession } = createMediaSessionMock()
+
+    const { wrapper } = mountComposable(() =>
+      useMediaSession({
+        enabled: () => true,
+        playerStore,
+        playerService: { play: vi.fn(), pause: vi.fn() },
+        platformService: { isElectron: () => true, getLocalLibraryCover: vi.fn() },
+        getMediaSession: () => mediaSession,
+        createMetadata: init => init
+      })
+    )
+
+    await flushPromises()
+
+    playerStore.currentSong.name = 'Hydrated Title'
+    playerStore.currentSong.artists = [{ id: 2, name: 'Hydrated Artist' }]
+    playerStore.currentSong.album = {
+      id: 2,
+      name: 'Hydrated Album',
+      picUrl: 'https://cdn.example.com/hydrated.png'
+    }
+
+    await nextTick()
+    await flushPromises()
+
+    expect(mediaSession.metadata).toMatchObject({
+      title: 'Hydrated Title',
+      artist: 'Hydrated Artist',
+      album: 'Hydrated Album',
+      artwork: [
+        expect.objectContaining({
+          src: 'https://cdn.example.com/hydrated.png',
+          type: 'image/png'
+        })
+      ]
+    })
+
+    wrapper.unmount()
+  })
+
+  it('re-syncs metadata when play mode changes so SMTC state stays fresh', async () => {
+    const playerStore = createPlayerStoreMock()
+    playerStore.currentSong = createMockSong({
+      id: 'song-play-mode',
+      name: 'Track Play Mode',
+      artists: [{ id: 1, name: 'Artist Play Mode' }],
+      album: { id: 1, name: 'Album Play Mode', picUrl: 'https://cdn.example.com/play-mode.jpg' }
+    })
+    playerStore.playing = true
+    playerStore.duration = 200
+
+    const { mediaSession } = createMediaSessionMock()
+
+    const { wrapper } = mountComposable(() =>
+      useMediaSession({
+        enabled: () => true,
+        playerStore,
+        playerService: { play: vi.fn(), pause: vi.fn() },
+        platformService: { isElectron: () => true, getLocalLibraryCover: vi.fn() },
+        getMediaSession: () => mediaSession,
+        createMetadata: init => init
+      })
+    )
+
+    await flushPromises()
+
+    const metadataBefore = mediaSession.metadata
+    playerStore.playMode = 3
+    await nextTick()
+    await flushPromises()
+
+    expect(mediaSession.metadata).not.toBe(metadataBefore)
+    expect(mediaSession.metadata).toMatchObject({
+      title: 'Track Play Mode',
+      artist: 'Artist Play Mode'
+    })
 
     wrapper.unmount()
   })

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vite-plus/test'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockListPlatforms = vi.fn()
 const mockInstallFromPath = vi.fn()

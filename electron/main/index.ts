@@ -249,6 +249,10 @@ function main(): void {
   registerAppLifecycle({
     onReady: initializeApp,
 
+    onBeforeQuit: () => {
+      windowManager.markAppQuitting()
+    },
+
     onWindowAllClosed: async () => {
       unregisterAllShortcuts()
       if (process.platform !== 'darwin') {

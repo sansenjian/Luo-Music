@@ -25,8 +25,16 @@ npm run build:web
 
 1. 清理 `dist` 与 `build/service`
 2. 执行配置守卫
-3. 构建服务端
+3. 通过本地 `tsdown` CLI 构建服务端
 4. 通过本地 VP CLI 以 Web 模式构建 Vite+ 渲染端
+
+### Server
+
+```bash
+npm run build:server
+```
+
+服务端入口 `server/index.ts` 通过本地 `tsdown` CLI 打包到 `build/service/index.cjs`。该构建使用 Rolldown，显式读取 `tsconfig.node.json`，并通过 `--no-config` 避免被未来其他 tsdown 配置影响。当前服务端依赖仍保持外置运行时加载，和迁移前产物行为一致。
 
 ### Electron
 

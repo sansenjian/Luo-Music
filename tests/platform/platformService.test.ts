@@ -3,7 +3,7 @@
  * 平台服务单元测试
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Disposable } from '@/base/common/lifecycle/disposable'
 import {
   PlatformServiceRegistry,

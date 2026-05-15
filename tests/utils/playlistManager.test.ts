@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vite-plus/test'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { PlaylistManager, type Playlist } from '@/utils/player/core/playlistManager'
 import { PLAY_MODE } from '@shared/player/playMode'
 import type { Song } from '@/platform/music/interface'

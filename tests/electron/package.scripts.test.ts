@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 
 type PackageJson = {
   scripts?: Record<string, string>
@@ -36,12 +36,27 @@ describe('package scripts for forge workflows', () => {
     )
   })
 
-  it('runs unit tests through the native-safe VP test wrapper', () => {
+  it('runs the local service bundle through the local tsdown CLI', () => {
+    expect(packageJson.scripts?.tsdown).toBe('node ./node_modules/tsdown/dist/run.mjs')
+    expect(packageJson.scripts?.['build:server']).toBe(
+      'npm run tsdown -- server/index.ts --no-config --format cjs --out-dir build/service --clean --target node22 --tsconfig tsconfig.node.json --no-report --no-cjs-default'
+    )
+  })
+
+  it('runs regular tests through Vitest and keeps native tests behind the ABI-safe wrapper', () => {
     expect(packageJson.scripts?.['test:run']).toBe(
-      'node scripts/run-vitest-with-native-restore.cjs run -c .config/vite.config.ts'
+      'npm run vitest -- run -c .config/vitest.config.ts'
+    )
+    expect(packageJson.scripts?.['test:native']).toBe(
+      'node scripts/run-with-env.cjs LUO_TEST_INCLUDE_NATIVE=1 LUO_TEST_NATIVE_ONLY=1 -- node scripts/run-vitest-with-native-restore.cjs run -c .config/vitest.config.ts'
+    )
+    expect(packageJson.scripts?.['test:ci']).toBe('npm run test:run && npm run test:native')
+    expect(packageJson.scripts?.['vitest']).toBe('node ./node_modules/vitest/vitest.mjs')
+    expect(packageJson.scripts?.['test:changed']).toBe(
+      'npm run vitest -- related --run -c .config/vitest.config.ts'
     )
     expect(packageJson.scripts?.['test:coverage']).toBe(
-      'node scripts/run-vitest-with-native-restore.cjs run -c .config/vite.config.ts --coverage'
+      'npm run vitest -- run -c .config/vitest.config.ts --coverage'
     )
   })
 

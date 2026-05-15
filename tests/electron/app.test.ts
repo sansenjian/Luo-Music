@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const setPathMock = vi.fn()
 const setAppUserModelIdMock = vi.fn()

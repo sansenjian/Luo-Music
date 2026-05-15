@@ -2,11 +2,11 @@ import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { LOCAL_LIBRARY_SONG_ID_PREFIX } from '@shared/types/localLibrary'
 
-import { createFolderId, createTrackId } from '../../electron/local-library/repository'
+import { createFolderId, createTrackId } from '../../electron/local-library/repository.helpers'
 import { LocalLibraryScanEngine } from '../../electron/local-library/scanEngine'
 
 const createdPaths: string[] = []

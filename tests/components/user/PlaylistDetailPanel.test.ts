@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 
 import PlaylistDetailPanel from '@/features/user-center/components/PlaylistDetailPanel.vue'
 import { createMockSong } from '../../utils/test-utils'

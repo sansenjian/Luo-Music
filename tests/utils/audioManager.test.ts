@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vite-plus/test'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { PlayerCore as AudioManager } from '@/utils/player/core/playerCore'
 
 describe('AudioManager', () => {

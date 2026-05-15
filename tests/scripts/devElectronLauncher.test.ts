@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module'
 import http from 'node:http'
 
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
 const {

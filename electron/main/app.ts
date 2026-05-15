@@ -152,6 +152,7 @@ export function setupErrorHandlers(): void {
  */
 export interface AppLifecycleCallbacks {
   onReady: () => Promise<void> | void
+  onBeforeQuit?: () => Promise<void> | void
   onWindowAllClosed: () => Promise<void> | void
   onWillQuit: (event: Electron.Event) => Promise<void> | void
   onActivate: () => void
@@ -164,6 +165,10 @@ export interface AppLifecycleCallbacks {
 export function registerAppLifecycle(callbacks: AppLifecycleCallbacks): void {
   app.on('window-all-closed', async () => {
     await callbacks.onWindowAllClosed()
+  })
+
+  app.on('before-quit', async () => {
+    await callbacks.onBeforeQuit?.()
   })
 
   app.on('will-quit', (event: Electron.Event) => {

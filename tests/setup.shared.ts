@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { vi } from 'vite-plus/test'
+import { vi } from 'vitest'
 
 import { MockAudio } from './mocks/audio'
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 function createStorageServiceMock(initialEntries: Record<string, unknown> = {}) {
   const jsonStore = new Map(

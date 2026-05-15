@@ -5,7 +5,7 @@
  * 遵循 VSCode 的 Tray 模式，将托盘逻辑与主入口分离。
  */
 
-import { Tray, Menu, nativeImage } from 'electron'
+import { app, Tray, Menu, nativeImage } from 'electron'
 import type { Tray as TrayType, MenuItemConstructorOptions } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -25,6 +25,7 @@ let windowManager: {
   show: () => void
   send: (channel: string, ...args: unknown[]) => void
   setTray: (tray: TrayType, menu: Menu) => void
+  markAppQuitting?: () => void
 } | null = null
 
 /**
@@ -108,7 +109,7 @@ function createTrayMenu(): MenuItemConstructorOptions[] {
     {
       label: '退出',
       click: () => {
-        const { app } = require('electron')
+        windowManager?.markAppQuitting?.()
         app.quit()
       }
     }

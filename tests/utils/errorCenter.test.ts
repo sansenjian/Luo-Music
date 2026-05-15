@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vite-plus/test'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { errorCenter } from '@/utils/error/center'
 import { AppError, ErrorCode } from '@/utils/error/types'
 

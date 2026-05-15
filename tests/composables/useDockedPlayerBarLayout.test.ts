@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const storageServiceMock = vi.hoisted(() => ({
   getItem: vi.fn<(key: string) => string | null>(() => null),

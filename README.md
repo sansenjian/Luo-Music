@@ -22,7 +22,7 @@
 
 ### v2.2 - Electron-Vite 构建升级 (2026-03-10)
 
-- ✅ **electron-vite 迁移** - 从 electron-builder + tsup 迁移到 electron-vite 方案
+- ✅ **electron-vite 迁移** - 从旧 Electron 构建链路迁移到 electron-vite 方案
 - ✅ **TypeScript 测试迁移** - 所有测试文件从 JavaScript 迁移到 TypeScript
 - ✅ **构建输出收敛** - Web 输出到 `dist/`，Electron bundle 与本地服务输出到 `build/`
 - ✅ **开发体验优化** - 主进程和渲染进程都支持 HMR 热更新
@@ -481,7 +481,7 @@ npm run vp:check
 npm run quality
 ```
 
-当前迁移采用分阶段策略：Web 开发、Web 构建、Web 预览和 Electron renderer 开发服务器已经通过本地 VP CLI 调用 `.config/vite.config.ts`；测试、lint、format、check、staged 配置已经并入 Vite+ 配置链路，质量配置集中在根目录 `vite.config.ts`，应用和测试流程继续显式使用 `.config/vite.config.ts`。正式测试入口仍通过 `scripts/run-vitest-with-native-restore.cjs` 保护 `better-sqlite3` 的 Node / Electron ABI 切换，再调用本地 `vp test`；Electron main/preload bundle、Forge 打包和 portable 构建仍保留 Electron 专属脚本包装。
+当前迁移采用分阶段策略：Web 开发、Web 构建、Web 预览和 Electron renderer 开发服务器已经通过本地 VP CLI 调用 `.config/vite.config.ts`；lint、format、check、staged 配置集中在根目录 `vite.config.ts`，供 VP 自动发现。单测配置独立放在 `.config/vitest.config.ts`，普通测试和覆盖率直接调用项目本地 Vitest；涉及 `better-sqlite3` 的本地音乐库测试通过 `npm run test:native` 使用 `scripts/run-vitest-with-native-restore.cjs` 保护 Node / Electron ABI 切换。Electron main/preload bundle、Forge 打包和 portable 构建仍保留 Electron 专属脚本包装。
 
 可选全局安装只用于提升手动执行 `vp migrate`、`vp help` 等命令的体验，项目运行仍以本地依赖和 npm scripts 为准。官方 Windows 安装命令如下：
 
@@ -509,6 +509,8 @@ npm run build:electron:portable # 输出 out/portable/ → 单文件便携版
 # 其他命令
 npm run preview          # 预览构建结果
 npm run test             # 运行测试
+npm run test:native      # 运行需要 better-sqlite3 ABI 切换的 native 测试
+npm run test:ci          # 运行普通测试 + native 测试
 npm run vp:version       # 验证本地 VP / Vite+ CLI
 npm run vp:help          # 查看 VP CLI 帮助
 npm run vp:lint          # 通过 VP / Oxlint 检查代码
@@ -623,7 +625,7 @@ npm run build:electron:portable
 
 ### 构建系统迁移
 
-项目已从 `electron-builder + tsup` 迁移到 `electron-vite` 方案。详见 [`docs/build.md`](./docs/build.md)。
+项目已将 Electron 主进程 / preload 迁移到 `electron-vite`，本地服务构建迁移到基于 Rolldown 的 `tsdown`。详见 [`docs/build.md`](./docs/build.md)。
 
 ## 📚 文档
 
@@ -816,7 +818,7 @@ SENTRY_RELEASE=
 2. 找到 **Build & Development Settings**
 3. 修改 **Install Command** 为：`npm install --prefer-online`
 
-当前 `npm run build:web` 需要 `vite-plus`、`vite`、`tsup` 等 devDependencies，不要在 Vercel Web 构建阶段使用 `npm install --production` 或 `NODE_ENV=production` 跳过开发工具链。
+当前 `npm run build:web` 需要 `vite-plus`、`vite`、`tsdown` 等 devDependencies，不要在 Vercel Web 构建阶段使用 `npm install --production` 或 `NODE_ENV=production` 跳过开发工具链。
 
 ### Q: 安装依赖时提示 EBUSY 错误
 

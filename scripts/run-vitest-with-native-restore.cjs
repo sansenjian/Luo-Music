@@ -21,12 +21,12 @@ function getNpmRunner(options = {}) {
   }
 }
 
-function createVpTestCommand(args, options = {}) {
+function createVitestCommand(args, options = {}) {
   const runner = getNpmRunner(options)
 
   return {
     command: runner.command,
-    args: [...runner.prefixArgs, 'run', 'vp', '--', 'test', ...args],
+    args: [...runner.prefixArgs, 'run', 'vitest', '--', ...args],
     shell: runner.needsShell
   }
 }
@@ -112,13 +112,13 @@ async function main() {
 
   let testCode = 1
   try {
-    const vpTestCommand = createVpTestCommand(vitestArgs)
-    testCode = await runCommand(vpTestCommand.command, vpTestCommand.args, 'vp test', {
-      shell: vpTestCommand.shell
+    const vitestCommand = createVitestCommand(vitestArgs)
+    testCode = await runCommand(vitestCommand.command, vitestCommand.args, 'vitest', {
+      shell: vitestCommand.shell
     }).then(result => {
       if (result.signal) {
         console.error(
-          `[run-vitest-with-native-restore] vp test terminated by signal ${result.signal}`
+          `[run-vitest-with-native-restore] vitest terminated by signal ${result.signal}`
         )
         return 1
       }
@@ -154,7 +154,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-  createVpTestCommand,
+  createVitestCommand,
   getNpmRunner,
   isTruthyEnv
 }

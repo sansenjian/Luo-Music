@@ -14,6 +14,7 @@
 | [首页重构计划](/plans/home-refactor-plan)                              | 首页结构和交互重构                       |
 | [歌词系统重构](/plans/lyric-system-refactor-process)                   | 歌词链路迭代过程                         |
 | [桌面歌词优化](/plans/desktop-lyric-optimization)                      | 桌面歌词专项优化                         |
+| [第一方音频输出插件方案](/plans/first-party-audio-output-plugin-plan)  | WASAPI / Voicemeeter 三模式输出路线      |
 | [打包瘦身计划](/plans/packaging-slimming-plan)                         | 产物与依赖体积优化                       |
 | [Player Store 重构](/plans/player-store-refactoring)                   | 播放器状态层改造                         |
 | [统一 IPC 方案](/plans/unified-ipc-plan)                               | 渲染层与主进程边界收敛                   |

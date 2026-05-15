@@ -1,6 +1,6 @@
 import { computed, reactive, ref, shallowRef } from 'vue'
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
-import { vi } from 'vite-plus/test'
+import { vi } from 'vitest'
 
 import type { FavoriteAlbumItem } from '@/composables/useFavoriteAlbums'
 import type { EventItem } from '@/composables/useUserEvents'

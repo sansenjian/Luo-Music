@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PlayerCore, PlayerState } from '@/utils/player/core/playerCore'
 import { VOLUME } from '@/utils/player/constants/volume'

@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { join, relative, resolve } from 'node:path'
 
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
 const {

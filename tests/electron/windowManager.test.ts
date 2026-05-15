@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const browserWindowInstances: BrowserWindowMock[] = []
 const ipcMainOn = vi.fn()
@@ -28,6 +28,9 @@ class BrowserWindowMock {
   public loadURL = vi.fn(() => Promise.resolve())
   public show = vi.fn(() => {
     this.visible = true
+  })
+  public hide = vi.fn(() => {
+    this.visible = false
   })
   public focus = vi.fn()
   public minimize = vi.fn()
@@ -409,6 +412,56 @@ describe('electron/WindowManager', () => {
     window?.events.closed?.()
 
     expect(appQuitMock).not.toHaveBeenCalled()
+  })
+
+  it('hides the main window to the tray when the renderer asks to close it', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window).toBeDefined()
+
+    manager.setTray({} as never, { items: [] } as never)
+    manager.close()
+
+    expect(window?.hide).toHaveBeenCalledTimes(1)
+    expect(window?.close).not.toHaveBeenCalled()
+  })
+
+  it('prevents native window close and hides to tray while the app keeps running', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    const preventDefault = vi.fn()
+    expect(window).toBeDefined()
+
+    manager.setTray({} as never, { items: [] } as never)
+    window?.events.close?.({ preventDefault })
+
+    expect(preventDefault).toHaveBeenCalledTimes(1)
+    expect(window?.hide).toHaveBeenCalledTimes(1)
+  })
+
+  it('allows the main window to close during an app quit', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    const preventDefault = vi.fn()
+    expect(window).toBeDefined()
+
+    manager.setTray({} as never, { items: [] } as never)
+    manager.markAppQuitting()
+    window?.events.close?.({ preventDefault })
+    manager.close()
+
+    expect(preventDefault).not.toHaveBeenCalled()
+    expect(window?.hide).not.toHaveBeenCalled()
+    expect(window?.close).toHaveBeenCalledTimes(1)
   })
 
   it('releases the download manager window reference when the main window closes', async () => {
