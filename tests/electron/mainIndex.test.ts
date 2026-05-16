@@ -239,18 +239,18 @@ describe('electron/main/index', () => {
     expect(lifecycleCallbacks?.onReady).toBeTypeOf('function')
   })
 
-  it('keeps Chromium media session features available even when SMTC is off by default', async () => {
+  it('disables Chromium media session features when persisted SMTC setting is off', async () => {
     const electron = await import('electron')
     const appendSwitchMock = vi.mocked(electron.app.commandLine.appendSwitch)
 
     await import('../../electron/main/index.ts')
 
     expect(appendSwitchMock).toHaveBeenCalledWith(
-      'enable-features',
+      'disable-features',
       'HardwareMediaKeyHandling,MediaSessionService'
     )
     expect(appendSwitchMock).not.toHaveBeenCalledWith(
-      'disable-features',
+      'enable-features',
       'HardwareMediaKeyHandling,MediaSessionService'
     )
   })

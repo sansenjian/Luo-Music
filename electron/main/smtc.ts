@@ -37,12 +37,20 @@ export function isSmtcCommandLineEnabled(): boolean {
   return smtcCommandLineEnabled
 }
 
+export function configureSmtcCommandLineForState(state: ExperimentalFeaturesState): boolean {
+  const enabled = state.smtcEnabled
+  smtcCommandLineEnabled = enabled
+
+  app.commandLine.appendSwitch(
+    enabled ? 'enable-features' : 'disable-features',
+    SMTC_CHROMIUM_FEATURES
+  )
+
+  return enabled
+}
+
 export function configureSmtcCommandLine(): boolean {
-  smtcCommandLineEnabled = true
-
-  app.commandLine.appendSwitch('enable-features', SMTC_CHROMIUM_FEATURES)
-
-  return true
+  return configureSmtcCommandLineForState(readExperimentalFeatures())
 }
 
 export function setSmtcEnabledFromRenderer(enabled: boolean): { restartRequired: boolean } {
