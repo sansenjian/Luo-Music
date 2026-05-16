@@ -127,6 +127,19 @@ describe('LyricParser', () => {
     ])
   })
 
+  it('strips inline metadata without treating plain bracketed text as metadata', () => {
+    const lyrics = LyricParser.parse('[00:01.00]Line [by:metadata] [Live] text [bad')
+
+    expect(lyrics).toEqual([{ time: 1, text: 'Line  [Live] text [bad', trans: '', roma: '' }])
+  })
+
+  it('handles repeated opening brackets in lyric content without regex backtracking', () => {
+    const prefix = '['.repeat(10_000)
+    const lyrics = LyricParser.parse(`[00:01.00]${prefix}[by:metadata]Line`)
+
+    expect(lyrics).toEqual([{ time: 1, text: `${prefix}Line`, trans: '', roma: '' }])
+  })
+
   it('parses enhanced word-level LRC fragments into line text and word timings', () => {
     const lyrics = LyricParser.parse('[00:10.00]<00:10.00,300>Hello <00:10.30,250>world')
 

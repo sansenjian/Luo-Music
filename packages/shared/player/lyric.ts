@@ -63,7 +63,45 @@ export class LyricParser {
   }
 
   private static stripInlineMetadata(content: string): string {
-    return content.replace(/\[[^\]]+:[^\]]*\]/g, '').trim()
+    const parts: string[] = []
+    let cursor = 0
+
+    while (cursor < content.length) {
+      const openIndex = content.indexOf('[', cursor)
+      if (openIndex === -1) {
+        parts.push(content.slice(cursor))
+        break
+      }
+
+      if (openIndex > cursor) {
+        parts.push(content.slice(cursor, openIndex))
+      }
+
+      const closeIndex = content.indexOf(']', openIndex + 1)
+      if (closeIndex === -1) {
+        parts.push(content.slice(openIndex))
+        break
+      }
+
+      const tagBody = content.slice(openIndex + 1, closeIndex)
+      if (tagBody.includes('[')) {
+        parts.push(content[openIndex])
+        cursor = openIndex + 1
+        continue
+      }
+
+      if (!LyricParser.isInlineMetadataBody(tagBody)) {
+        parts.push(content.slice(openIndex, closeIndex + 1))
+      }
+
+      cursor = closeIndex + 1
+    }
+
+    return parts.join('').trim()
+  }
+
+  private static isInlineMetadataBody(tagBody: string): boolean {
+    return tagBody.indexOf(':') > 0
   }
 
   private static parseTimedWords(content: string): { text: string; words?: LyricWord[] } {
