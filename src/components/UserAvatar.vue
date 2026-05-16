@@ -10,6 +10,9 @@ import { useUserStore } from '@/store/userStore'
 import LoginModal from './LoginModal.vue'
 import PluginLoginModal from './PluginLoginModal.vue'
 import QQLoginModal from './QQLoginModal.vue'
+import PlatformLoginCard from './user-avatar/PlatformLoginCard.vue'
+import UserAvatarTrigger from './user-avatar/UserAvatarTrigger.vue'
+import UserProfileCard from './user-avatar/UserProfileCard.vue'
 
 type QQLoginStatusResponse = {
   data?: {
@@ -31,7 +34,7 @@ const userStore = useUserStore()
 const isElectron = computed(() => platformService.isElectron())
 
 const wrapperRef = ref<HTMLElement | null>(null)
-const triggerButtonRef = ref<HTMLButtonElement | null>(null)
+const triggerRef = ref<InstanceType<typeof UserAvatarTrigger> | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const showLoginModal = ref(false)
 const showQQLoginModal = ref(false)
@@ -193,7 +196,7 @@ function handleTriggerClick(): void {
 }
 
 function updateDropdownPlacement(): void {
-  const trigger = triggerButtonRef.value
+  const trigger = triggerRef.value?.getElement()
   const dropdown = dropdownRef.value
 
   if (!trigger || !dropdown) {
@@ -305,7 +308,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 
   if (wasOpen && shouldRestoreTriggerFocus) {
     await nextTick()
-    triggerButtonRef.value?.focus()
+    triggerRef.value?.focus()
   }
 
   shouldRestoreTriggerFocus = true
@@ -315,128 +318,41 @@ watch(showDropdown, async (isOpen, wasOpen) => {
 
 <template>
   <div v-if="isElectron" ref="wrapperRef" class="user-avatar-wrapper" data-ui="user-avatar">
-    <button
-      ref="triggerButtonRef"
-      class="user-trigger"
-      data-ui="user-avatar-trigger"
-      type="button"
-      aria-haspopup="menu"
-      :aria-expanded="showDropdown"
-      :aria-label="
-        userStore.isLoggedIn ? userStore.nickname || '打开账户菜单' : '打开登录/注册菜单'
-      "
-      @click.stop="handleTriggerClick"
-    >
-      <img
-        v-if="userStore.isLoggedIn && userStore.avatarUrl"
-        :src="userStore.avatarUrl"
-        :alt="userStore.nickname"
-        class="avatar"
-        data-ui="user-avatar-image"
-      />
-      <div v-else class="avatar-placeholder" data-ui="user-avatar-placeholder">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
-      </div>
-    </button>
+    <UserAvatarTrigger
+      ref="triggerRef"
+      :logged-in="userStore.isLoggedIn"
+      :avatar-url="userStore.avatarUrl"
+      :nickname="userStore.nickname"
+      :expanded="showDropdown"
+      @click="handleTriggerClick"
+    />
 
     <Transition name="dropdown">
       <div v-if="showDropdown" ref="dropdownRef" class="dropdown" :style="dropdownStyle">
-        <div
+        <UserProfileCard
           v-if="userStore.isLoggedIn"
-          class="dropdown-header platform-profile-card"
-          role="button"
-          tabindex="0"
-          @click="openPlatformCenter('netease')"
-          @keydown.enter.prevent="openPlatformCenter('netease')"
-          @keydown.space.prevent="openPlatformCenter('netease')"
-        >
-          <img
-            v-if="userStore.avatarUrl"
-            :src="userStore.avatarUrl"
-            :alt="userStore.nickname"
-            class="dropdown-avatar"
-          />
-          <div v-else class="dropdown-avatar-placeholder"></div>
-          <div class="dropdown-info">
-            <span class="dropdown-nickname">{{ userStore.nickname }}</span>
-            <span class="dropdown-id">ID: {{ userStore.userId }}</span>
-          </div>
-          <button class="logout-btn-small" @click.stop="handleLogout" title="退出登录">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-          </button>
-        </div>
+          :nickname="userStore.nickname"
+          :avatar-url="userStore.avatarUrl"
+          :user-id="userStore.userId"
+          @open="openPlatformCenter('netease')"
+          @logout="handleLogout"
+        />
 
         <div v-if="showLoginPlatformList" class="platform-login-list">
-          <button
+          <PlatformLoginCard
             v-for="platform in visibleLoginPlatforms"
             :key="platform.id"
-            class="platform-login-card login-platform-btn"
-            type="button"
-            @click="openPlatformLogin(platform)"
-          >
-            <div class="dropdown-avatar-placeholder">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </div>
-            <div class="dropdown-info">
-              <span class="dropdown-nickname platform-login-title">
-                {{ getPlatformLoginTitle(platform) }}
-              </span>
-              <span class="dropdown-id login-link">{{ getPlatformLoginHint(platform.id) }}</span>
-            </div>
-          </button>
+            :title="getPlatformLoginTitle(platform)"
+            :hint="getPlatformLoginHint(platform.id)"
+            @open="openPlatformLogin(platform)"
+          />
 
-          <div v-if="loginPlatforms.length === 0" class="platform-login-card platform-login-empty">
-            <div class="dropdown-avatar-placeholder">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </div>
-            <div class="dropdown-info">
-              <span class="dropdown-nickname">未登录</span>
-              <span class="dropdown-id login-link">暂无可登录平台</span>
-            </div>
-          </div>
+          <PlatformLoginCard
+            v-if="loginPlatforms.length === 0"
+            title="未登录"
+            hint="暂无可登录平台"
+            empty
+          />
         </div>
       </div>
     </Transition>
@@ -459,47 +375,6 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   position: relative;
   width: max-content;
   -webkit-app-region: no-drag;
-}
-
-.user-trigger {
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--black);
-  object-fit: cover;
-  transition: transform 0.2s;
-}
-
-.avatar:hover {
-  transform: scale(1.05);
-}
-
-.avatar-placeholder {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--black);
-  background: var(--white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gray);
-  transition: all 0.2s;
-}
-
-.avatar-placeholder:hover {
-  background: var(--black);
-  color: var(--white);
 }
 
 .dropdown {
@@ -529,240 +404,12 @@ watch(showDropdown, async (isOpen, wasOpen) => {
   }
 }
 
-.dropdown-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 16px;
-  background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
-  border-bottom: 2px solid var(--black);
-  position: relative;
-  color: var(--black);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    background 0.2s,
-    color 0.2s;
-}
-
-.dropdown-header:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -4px;
-}
-
-.logout-btn-small {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  color: var(--gray);
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.logout-btn-small:hover {
-  color: #dc3545;
-  background: rgba(220, 53, 69, 0.1);
-  border-radius: 50%;
-}
-
-.dropdown-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 2px solid var(--black);
-  object-fit: cover;
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
-}
-
-.dropdown-avatar-placeholder {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 2px solid var(--black);
-  background: var(--white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gray);
-}
-
-.dropdown-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.dropdown-nickname {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--black);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dropdown-id {
-  font-size: 11px;
-  color: var(--gray);
-  font-family: monospace;
-}
-
-.dropdown-menu {
-  display: flex;
-  flex-direction: column;
-}
-
 .platform-login-list {
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-}
-
-.platform-login-card {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: 9px 12px;
-  background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
-  border: none;
-  border-bottom: 2px solid var(--black);
-  color: var(--black);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    background 0.2s,
-    color 0.2s;
-}
-
-.platform-login-card .dropdown-avatar-placeholder {
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-}
-
-.platform-login-title {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  line-height: 1.25;
-  word-break: break-word;
-}
-
-.platform-login-card:hover,
-.platform-login-card:focus-visible {
-  background: var(--black);
-  color: var(--white);
-  outline: none;
-}
-
-.platform-login-card:hover .dropdown-nickname,
-.platform-login-card:hover .dropdown-id,
-.platform-login-card:hover .login-link,
-.platform-login-card:focus-visible .dropdown-nickname,
-.platform-login-card:focus-visible .dropdown-id,
-.platform-login-card:focus-visible .login-link {
-  color: var(--white);
-}
-
-.platform-login-card:hover .dropdown-avatar-placeholder,
-.platform-login-card:focus-visible .dropdown-avatar-placeholder {
-  background: var(--white);
-  color: var(--black);
-  border-color: var(--white);
-}
-
-.platform-login-empty {
-  cursor: default;
-}
-
-.platform-login-empty:hover,
-.platform-login-empty:focus-visible {
-  background: linear-gradient(135deg, var(--bg) 0%, var(--white) 100%);
-  color: var(--black);
-}
-
-.platform-login-empty:hover .dropdown-nickname,
-.platform-login-empty:hover .dropdown-id,
-.platform-login-empty:hover .login-link,
-.platform-login-empty:focus-visible .dropdown-nickname,
-.platform-login-empty:focus-visible .dropdown-id,
-.platform-login-empty:focus-visible .login-link {
-  color: inherit;
-}
-
-.platform-login-empty:hover .dropdown-avatar-placeholder,
-.platform-login-empty:focus-visible .dropdown-avatar-placeholder {
-  background: var(--white);
-  color: var(--gray);
-  border-color: var(--black);
-}
-
-.menu-btn,
-.logout-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  background: var(--white);
-  border: none;
-  border-bottom: 1px solid var(--bg-dark);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--black);
-  transition: all 0.2s;
-  position: relative;
-}
-
-.menu-btn:last-child,
-.logout-btn:last-child {
-  border-bottom: none;
-}
-
-.menu-btn:hover,
-.logout-btn:hover {
-  background: var(--black);
-  color: var(--white);
-  padding-left: 20px;
-}
-
-.menu-btn svg,
-.logout-btn svg {
-  flex-shrink: 0;
-  transition: transform 0.2s;
-}
-
-.menu-btn:hover svg,
-.logout-btn:hover svg {
-  transform: translateX(4px);
-}
-
-.login-link {
-  color: #4ade80;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.login-link:hover {
-  text-decoration: underline;
 }
 
 .dropdown-enter-active,

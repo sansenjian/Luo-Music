@@ -176,10 +176,10 @@ export class PlayerCore {
       } catch (e) {
         this._resetVisualizationGraph()
 
-        if (!this._canUseMediaElementSourceFallback()) {
+        if (this._systemMediaSessionEnabled || !this._canUseMediaElementSourceFallback()) {
           console.warn(
             '[PlayerCore] Visualization disabled for this media source because captureStream() ' +
-              'is unavailable and MediaElementSource can mute cross-origin audio.',
+              'is unavailable and MediaElementSource can break Windows SMTC / MediaSession integration.',
             e
           )
           return

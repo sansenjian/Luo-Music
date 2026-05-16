@@ -172,7 +172,19 @@ describe('useMediaSession', () => {
 
     await flushPromises()
 
+    expect(mediaSession.metadata).toMatchObject({
+      title: 'Track 1',
+      artwork: [
+        expect.objectContaining({
+          src: 'https://cdn.example.com/cover.jpg'
+        })
+      ]
+    })
+    expect(mediaSession.playbackState).toBe('playing')
     expect(systemMediaSessionController.setSystemMediaSessionEnabled).toHaveBeenCalledWith(true)
+    expect(
+      systemMediaSessionController.setSystemMediaSessionEnabled.mock.invocationCallOrder[0]
+    ).toBeGreaterThan(vi.mocked(mediaSession.setPositionState).mock.invocationCallOrder[0])
 
     enabled.value = false
     await nextTick()
@@ -225,6 +237,65 @@ describe('useMediaSession', () => {
     expect(systemMediaSessionController.setSystemMediaSessionEnabled).toHaveBeenLastCalledWith(
       false
     )
+  })
+
+  it('does not expose the system media session when enable sync finishes after disable', async () => {
+    const enabled = ref(true)
+    const cover = createDeferred<string | null>()
+    const playerStore = createPlayerStoreMock()
+    playerStore.currentSong = createMockSong({
+      id: 'local-race',
+      name: 'Race Track',
+      platform: 'local',
+      album: { id: 1, name: 'Race Album', picUrl: '' },
+      extra: {
+        localSource: true,
+        localCoverHash: 'race-cover'
+      }
+    })
+    playerStore.playing = true
+    playerStore.progress = 12
+    playerStore.duration = 180
+
+    const systemMediaSessionController = {
+      setSystemMediaSessionEnabled: vi.fn()
+    }
+    const { mediaSession } = createMediaSessionMock()
+
+    const { wrapper } = mountComposable(() =>
+      useMediaSession({
+        enabled: () => enabled.value,
+        playerStore,
+        playerService: {
+          play: vi.fn(),
+          pause: vi.fn()
+        },
+        platformService: {
+          isElectron: () => true,
+          getLocalLibraryCover: vi.fn(() => cover.promise)
+        },
+        systemMediaSessionController,
+        getMediaSession: () => mediaSession,
+        createMetadata: init => init
+      })
+    )
+
+    await nextTick()
+
+    enabled.value = false
+    await nextTick()
+    await flushPromises()
+
+    expect(systemMediaSessionController.setSystemMediaSessionEnabled).toHaveBeenLastCalledWith(
+      false
+    )
+
+    cover.resolve('race-cover-data')
+    await flushPromises()
+
+    expect(systemMediaSessionController.setSystemMediaSessionEnabled).not.toHaveBeenCalledWith(true)
+
+    wrapper.unmount()
   })
 
   it('resolves local cover hashes through the cover cache as data urls', async () => {

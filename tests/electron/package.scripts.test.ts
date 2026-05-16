@@ -14,7 +14,7 @@ const packageJson = JSON.parse(
 describe('package scripts for forge workflows', () => {
   it('runs web dev and preview through the local VP CLI', () => {
     expect(packageJson.scripts?.['dev:server']).toContain(
-      'APP_RUNTIME=web -- npm run vp -- --config .config/vite.config.ts --mode web'
+      'APP_RUNTIME=web -- npm run vp -- dev --config .config/vite.config.ts --mode web'
     )
     expect(packageJson.scripts?.preview).toContain(
       'APP_RUNTIME=web -- npm run vp -- preview --config .config/vite.config.ts'
@@ -23,7 +23,7 @@ describe('package scripts for forge workflows', () => {
 
   it('runs Electron renderer dev through the local VP CLI', () => {
     expect(packageJson.scripts?.['dev:electron']).toContain(
-      'APP_RUNTIME=electron -- npm run vp -- --config .config/vite.config.ts'
+      'APP_RUNTIME=electron -- npm run vp -- dev --config .config/vite.config.ts'
     )
   })
 

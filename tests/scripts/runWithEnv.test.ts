@@ -20,6 +20,15 @@ const { createSpawnTarget, parseArgs } = require('../../scripts/run-with-env.cjs
 }
 
 describe('run-with-env', () => {
+  it('runs npm through the current Node executable instead of relying on platform shims', () => {
+    const target = createSpawnTarget(['npm', 'run', 'vp'])
+
+    expect(target.command).toBe(process.execPath)
+    expect(target.args[0]).toMatch(/npm-cli\.js$/)
+    expect(target.args.slice(1)).toEqual(['run', 'vp'])
+    expect(target.shell).toBe(false)
+  })
+
   it('keeps executable paths with spaces as a command instead of a shell string', () => {
     expect(
       createSpawnTarget([

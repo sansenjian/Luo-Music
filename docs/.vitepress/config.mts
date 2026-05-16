@@ -83,25 +83,17 @@ export default defineConfig({
       ],
       '/plans/': [
         {
-          text: '方案与计划',
+          text: '方案与路线图',
           items: [
             { text: '总览', link: '/plans/' },
-            { text: '架构重构计划', link: '/plans/architecture-refactoring-plan' },
             { text: '项目结构优化规划', link: '/plans/project-structure-optimization-plan' },
-            { text: 'DI 优化计划', link: '/plans/di-optimization-plan' },
+            { text: '项目结构归属审计', link: '/plans/project-structure-ownership-audit' },
             { text: 'DI 后续路线图', link: '/plans/di-followup-roadmap' },
-            { text: '首页重构计划', link: '/plans/home-refactor-plan' },
-            { text: '歌词系统重构', link: '/plans/lyric-system-refactor-process' },
             { text: '桌面歌词优化', link: '/plans/desktop-lyric-optimization' },
+            { text: 'Windows 原生 SMTC', link: '/plans/native-smtc-implementation-plan' },
             { text: '音频输出插件', link: '/plans/first-party-audio-output-plugin-plan' },
             { text: '打包瘦身计划', link: '/plans/packaging-slimming-plan' },
-            { text: 'Player Store 重构', link: '/plans/player-store-refactoring' },
-            { text: '统一 IPC 方案', link: '/plans/unified-ipc-plan' },
-            {
-              text: 'Review Findings 修复计划',
-              link: '/plans/review-findings-fix-plan-2026-03-28'
-            },
-            { text: '常量重构', link: '/plans/refactoring/constants-refactoring' }
+            { text: '统一 IPC 方案', link: '/plans/unified-ipc-plan' }
           ]
         }
       ],

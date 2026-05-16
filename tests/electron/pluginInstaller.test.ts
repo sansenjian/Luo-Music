@@ -164,6 +164,34 @@ describe('PluginInstaller', () => {
       ])
     })
 
+    it('installs a plugin with v2 player hook contributions', async () => {
+      const sourceDir = path.join(tempRoot, 'player-hook-plugin')
+      await writePlugin(sourceDir, {
+        ...VALID_MANIFEST,
+        id: 'com.example.playerhook',
+        name: 'Player Hook',
+        platformId: 'player-hook',
+        contributionsV2: [
+          {
+            type: 'playerHook',
+            hook: 'beforeSongUrlRefresh',
+            description: 'Observe song URL refreshes'
+          }
+        ]
+      })
+
+      const installer = await createInstaller()
+      const result = await installer.installFromPath(sourceDir)
+
+      expect(result.manifest.contributionsV2).toEqual([
+        {
+          type: 'playerHook',
+          hook: 'beforeSongUrlRefresh',
+          description: 'Observe song URL refreshes'
+        }
+      ])
+    })
+
     it('inlines theme CSS files declared by theme resources', async () => {
       const sourceDir = path.join(tempRoot, 'theme-css-file-plugin')
       await writePlugin(sourceDir, {

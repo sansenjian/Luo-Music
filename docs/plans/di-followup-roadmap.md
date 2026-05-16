@@ -71,7 +71,7 @@
 
 建议更新：
 
-- [`docs/plans/di-optimization-plan.md`](./di-optimization-plan.md)
+- DI Phase 1 到 Phase 3 的完成记录已从 `docs/plans/` 清理；如需追溯请查看 Git 历史。
 - [`docs/reports/service-layer-gap-report.md`](./../reports/service-layer-gap-report.md)
 - [`docs/reports/vscode-gap-issues.md`](./../reports/vscode-gap-issues.md)
 

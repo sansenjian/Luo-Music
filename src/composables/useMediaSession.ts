@@ -172,6 +172,7 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   let positionTimer: ReturnType<typeof setInterval> | null = null
   let metadataRequestId = 0
   let playbackResyncToken = 0
+  let activationToken = 0
   let isSessionActive = false
   let lastPositionStateKey: string | null = null
 
@@ -184,6 +185,10 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
 
   function invalidatePlaybackResyncs(): void {
     playbackResyncToken += 1
+  }
+
+  function invalidateActivation(): void {
+    activationToken += 1
   }
 
   function clearActionHandlers(): void {
@@ -258,6 +263,11 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     if (playerStore.currentSong && playerStore.playing) {
       positionTimer = setInterval(syncPosition, POSITION_SYNC_INTERVAL_MS)
     }
+  }
+
+  async function syncSessionBeforeExposure(): Promise<void> {
+    await syncMetadata()
+    syncPlaybackPositionLifecycle()
   }
 
   // Synchronously set metadata using whatever cover URL is available right
@@ -368,7 +378,10 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     })
   }
 
-  function cleanupSession(): void {
+  function cleanupSession(options: { invalidateActivationRequest?: boolean } = {}): void {
+    if (options.invalidateActivationRequest ?? true) {
+      invalidateActivation()
+    }
     invalidateMetadataRequest()
     invalidatePlaybackResyncs()
     isSessionActive = false
@@ -381,11 +394,9 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   }
 
   function activateSession(): void {
-    cleanupSession()
+    cleanupSession({ invalidateActivationRequest: false })
     registerActionHandlers()
     isSessionActive = true
-    void syncMetadata()
-    syncPlaybackPositionLifecycle()
   }
 
   function resyncAfterAudioPlay(): void {
@@ -427,8 +438,14 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     () => enabled(),
     nextEnabled => {
       if (nextEnabled) {
-        setSystemMediaSessionEnabled(true)
+        const currentActivationToken = activationToken + 1
+        activationToken = currentActivationToken
         activateSession()
+        void syncSessionBeforeExposure().finally(() => {
+          if (isSessionActive && currentActivationToken === activationToken && enabled()) {
+            setSystemMediaSessionEnabled(true)
+          }
+        })
         return
       }
 

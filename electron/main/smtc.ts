@@ -22,10 +22,8 @@ const Store =
 const store = new Store({ projectName: 'luo-music' })
 
 const SMTC_CHROMIUM_FEATURES = 'HardwareMediaKeyHandling,MediaSessionService'
-const SMTC_RELAUNCH_DELAY_MS = 120
 
 let smtcCommandLineEnabled = false
-let smtcRelaunchScheduled = false
 
 function readExperimentalFeatures(): ExperimentalFeaturesState {
   return sanitizeExperimentalFeatures(store.get<unknown>(EXPERIMENTAL_FEATURES_STORAGE_KEY))
@@ -40,27 +38,11 @@ export function isSmtcCommandLineEnabled(): boolean {
 }
 
 export function configureSmtcCommandLine(): boolean {
-  const enabled = readExperimentalFeatures().smtcEnabled
-  smtcCommandLineEnabled = enabled
+  smtcCommandLineEnabled = true
 
-  app.commandLine.appendSwitch(
-    enabled ? 'enable-features' : 'disable-features',
-    SMTC_CHROMIUM_FEATURES
-  )
+  app.commandLine.appendSwitch('enable-features', SMTC_CHROMIUM_FEATURES)
 
-  return enabled
-}
-
-function scheduleSmtcRelaunch(): void {
-  if (smtcRelaunchScheduled) {
-    return
-  }
-
-  smtcRelaunchScheduled = true
-  setTimeout(() => {
-    app.relaunch()
-    app.exit(0)
-  }, SMTC_RELAUNCH_DELAY_MS)
+  return true
 }
 
 export function setSmtcEnabledFromRenderer(enabled: boolean): { restartRequired: boolean } {
@@ -70,10 +52,5 @@ export function setSmtcEnabledFromRenderer(enabled: boolean): { restartRequired:
     smtcEnabled: enabled
   })
 
-  const restartRequired = process.platform === 'win32' && smtcCommandLineEnabled !== enabled
-  if (restartRequired) {
-    scheduleSmtcRelaunch()
-  }
-
-  return { restartRequired }
+  return { restartRequired: false }
 }
