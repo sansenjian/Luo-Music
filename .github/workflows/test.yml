@@ -58,6 +58,8 @@ jobs:
         run: npm ci --prefer-online
 
       - name: Run coverage tests
+        env:
+          LUO_TEST_INCLUDE_NATIVE: "1"
         run: >
           npm run test:coverage -- --shard=${{ matrix.shard }}/2
           --reporter=default
