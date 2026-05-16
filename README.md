@@ -31,10 +31,7 @@ npm run dev:electron
 
 ## 分支流程
 
-- 默认开发基线是 `dev`，新功能、修复和文档分支都从 `dev` 创建。
-- `master` 只作为稳定主分支，必须通过 Pull Request 更新。
-- `dev` 也优先通过 Pull Request 更新，减少未验证变更直接进入集成分支。
-- 详细流程见 [开发分支流程](./docs/development-workflow.md)。
+分支职责、PR 目标和日常开发命令见 [开发分支流程](./docs/development-workflow.md)。
 
 ## 构建
 

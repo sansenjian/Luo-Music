@@ -4,14 +4,7 @@
 
 ### 分支
 
-```bash
-git fetch origin
-git switch dev
-git pull --ff-only
-git switch -c feature/your-feature-name
-```
-
-日常开发从 `dev` 创建分支，普通 PR 目标分支选 `dev`。`master` 只接受 Pull Request 更新；`dev` 也优先通过 Pull Request 更新。
+分支职责、日常开发命令和 PR 目标见 [开发分支流程](/guide/development-workflow)。
 
 ### 开发
 

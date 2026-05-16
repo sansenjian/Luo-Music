@@ -45,7 +45,7 @@
 
 ## 提交前检查
 
-日常开发分支从最新 `dev` 创建。普通开发 PR 合入 `dev`，稳定发布或主线同步再从 `dev` 向 `master` 提 PR。
+分支创建和 PR 目标见 [开发分支流程](../development-workflow.md)。
 
 ### 常规改动
 

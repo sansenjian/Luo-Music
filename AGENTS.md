@@ -6,7 +6,7 @@ LUO Music 是一个同时支持 Web 与 Electron 桌面端的 Vue 3 音乐播放
 
 - 包管理器：`npm`（使用 `package-lock.json`）
 - 环境：Windows 优先；`package.json` 当前约束 `node >=22.x`，团队推荐 Node 24+ / npm 10+
-- 分支流程：日常开发基于 `dev` 创建分支；`master` 只接受 PR；`dev` 也优先通过 PR 更新。
+- 分支流程：以 [开发分支流程](docs/development-workflow.md) 为准。
 - 常用命令：
   - `npm run dev:web`
   - `npm run dev:electron`
@@ -36,8 +36,7 @@ LUO Music 是一个同时支持 Web 与 Electron 桌面端的 Vue 3 音乐播放
 - 服务访问默认走 `services.xxx()`；构造注入和 `deps` 注入的例外规则见服务层文档
 - Vite / Vitest / Playwright / Prettier / Oxfmt / lint-staged 入口如需显式配置，优先使用 `.config/` 下对应文件
 - 本地开发和构建脚本如需加载环境变量，优先使用 `--env-file .config/.env`
-- 不要从 `master` 直接开始日常开发；除非用户明确要求，功能 / 修复 / 文档分支都从最新 `dev` 拉出。
-- 不要直接推送到 `master`；合入 `master` 必须通过 PR。`dev` 也默认走 PR，只有用户明确要求时才直接推送。
+- 创建分支、推送和 PR 目标遵循 [开发分支流程](docs/development-workflow.md)；除非用户明确要求，不要绕过该流程。
 
 ## 详细指南
 

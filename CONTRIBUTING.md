@@ -31,12 +31,7 @@ npm run dev:electron
 
 ## 分支策略
 
-- `master` 是稳定主分支，只接受 Pull Request 更新。
-- `dev` 是默认开发集成分支，日常开发从 `dev` 拉分支。
-- `dev` 也优先通过 Pull Request 更新，避免未验证变更直接进入集成分支。
-- 紧急修复如需从 `master` 拉 hotfix 分支，应在合并后同步回 `dev`。
-
-详细规则见 [开发分支流程](./docs/development-workflow.md)。
+分支职责、日常开发命令、PR 目标和 hotfix 同步规则见 [开发分支流程](./docs/development-workflow.md)。
 
 ## 开发流程
 
@@ -49,18 +44,11 @@ npm run dev:electron
 ```bash
 git clone https://github.com/<your-username>/luo-music.git
 cd luo-music
-git fetch origin
-git switch dev
-git pull --ff-only
 ```
 
 ### 3. 创建分支
 
-```bash
-git switch -c feature/your-feature-name
-# 或
-git switch -c fix/your-bug-fix
-```
+按 [开发分支流程](./docs/development-workflow.md) 从当前开发基线创建分支。
 
 ### 4. 开发和测试
 
@@ -89,7 +77,7 @@ git push origin feature/your-feature-name
 
 ### 7. 创建 Pull Request
 
-在 GitHub 上导航到你的 Fork，点击 "Compare & pull request"。普通开发 PR 的目标分支选择 `dev`；需要发布或稳定化时，再从 `dev` 向 `master` 创建 PR。
+在 GitHub 上导航到你的 Fork，点击 "Compare & pull request"。目标分支选择规则见 [开发分支流程](./docs/development-workflow.md)。
 
 ## 代码规范
 

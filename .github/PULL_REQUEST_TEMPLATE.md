@@ -4,7 +4,7 @@
 
 ## 🌿 目标分支
 
-<!-- 日常开发 PR 目标分支应为 dev；只有稳定发布或主线同步 PR 才指向 master。 -->
+<!-- 请确认目标分支符合 docs/development-workflow.md。 -->
 
 ## 🎯 问题关联
 
