@@ -2,6 +2,17 @@
 
 ## 高频命令
 
+### 分支
+
+```bash
+git fetch origin
+git switch dev
+git pull --ff-only
+git switch -c feature/your-feature-name
+```
+
+日常开发从 `dev` 创建分支，普通 PR 目标分支选 `dev`。`master` 只接受 Pull Request 更新；`dev` 也优先通过 Pull Request 更新。
+
 ### 开发
 
 ```bash

@@ -1,8 +1,8 @@
 # 贡献指南
 
-感谢你对本项目的关注！以下是参与项目开发的指南。
+以下是参与项目开发的基本流程。
 
-## 🚀 快速开始
+## 快速开始
 
 ### 环境要求
 
@@ -29,7 +29,16 @@ npm run dev:web
 npm run dev:electron
 ```
 
-## 📋 开发流程
+## 分支策略
+
+- `master` 是稳定主分支，只接受 Pull Request 更新。
+- `dev` 是默认开发集成分支，日常开发从 `dev` 拉分支。
+- `dev` 也优先通过 Pull Request 更新，避免未验证变更直接进入集成分支。
+- 紧急修复如需从 `master` 拉 hotfix 分支，应在合并后同步回 `dev`。
+
+详细规则见 [开发分支流程](./docs/development-workflow.md)。
+
+## 开发流程
 
 ### 1. Fork 项目
 
@@ -40,14 +49,17 @@ npm run dev:electron
 ```bash
 git clone https://github.com/<your-username>/luo-music.git
 cd luo-music
+git fetch origin
+git switch dev
+git pull --ff-only
 ```
 
 ### 3. 创建分支
 
 ```bash
-git checkout -b feature/your-feature-name
+git switch -c feature/your-feature-name
 # 或
-git checkout -b fix/your-bug-fix
+git switch -c fix/your-bug-fix
 ```
 
 ### 4. 开发和测试
@@ -77,9 +89,9 @@ git push origin feature/your-feature-name
 
 ### 7. 创建 Pull Request
 
-在 GitHub 上导航到你的 Fork，点击 "Compare & pull request"。
+在 GitHub 上导航到你的 Fork，点击 "Compare & pull request"。普通开发 PR 的目标分支选择 `dev`；需要发布或稳定化时，再从 `dev` 向 `master` 创建 PR。
 
-## 🔧 代码规范
+## 代码规范
 
 ### Oxlint + Prettier / Oxfmt
 
@@ -107,7 +119,7 @@ npm run format:oxfmt
 - 组件名使用 PascalCase
 - Props 使用 camelCase 定义，模板中使用 kebab-case
 
-## 🧪 测试
+## 测试
 
 ```bash
 # 运行所有测试
@@ -116,14 +128,17 @@ npm run test
 # 运行测试（不监听）
 npm run test:run
 
-# 交互式测试 UI
-npm run test:ui
-
 # 生成覆盖率报告
 npm run test:coverage
 ```
 
-## 📁 项目结构
+涉及 `better-sqlite3` 的 native 测试使用：
+
+```bash
+npm run test:native
+```
+
+## 项目结构
 
 ```
 luo-music/
@@ -143,7 +158,7 @@ luo-music/
 └── docs/                  # 文档
 ```
 
-## 📝 提交规范
+## 提交规范
 
 我们遵循约定式提交规范：
 
@@ -161,7 +176,7 @@ luo-music/
 | `build`    | 构建系统变更               |
 | `revert`   | 回滚提交                   |
 
-## 🐛 报告问题
+## 报告问题
 
 请在 [Issues](https://github.com/sansenjian/Luo-Music/issues) 中报告问题，并提供：
 
@@ -171,7 +186,7 @@ luo-music/
 - 环境信息（OS、Node.js 版本等）
 - 截图（如适用）
 
-## 💡 功能建议
+## 功能建议
 
 欢迎在 Issues 中提出功能建议，请描述：
 
@@ -179,10 +194,6 @@ luo-music/
 - 期望的解决方案
 - 使用场景
 
-## 📄 许可证
+## 许可证
 
 本项目采用 PolyForm-Noncommercial-1.0.0 许可证。
-
-## 🙏 致谢
-
-感谢所有为项目做出贡献的开发者！

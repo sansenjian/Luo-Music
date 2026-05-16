@@ -29,6 +29,13 @@ npm run dev:electron
 
 `dev:web` 启动 Web 开发服务，`dev:electron` 启动 Electron 桌面开发环境。
 
+## 分支流程
+
+- 默认开发基线是 `dev`，新功能、修复和文档分支都从 `dev` 创建。
+- `master` 只作为稳定主分支，必须通过 Pull Request 更新。
+- `dev` 也优先通过 Pull Request 更新，减少未验证变更直接进入集成分支。
+- 详细流程见 [开发分支流程](./docs/development-workflow.md)。
+
 ## 构建
 
 ```bash
