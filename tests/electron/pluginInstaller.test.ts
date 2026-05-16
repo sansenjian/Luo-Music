@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({
   app: {
@@ -161,6 +161,34 @@ describe('PluginInstaller', () => {
           renderStyle: 'example.ocean',
           cssText: expect.stringContaining("[data-ui='player']")
         })
+      ])
+    })
+
+    it('installs a plugin with v2 player hook contributions', async () => {
+      const sourceDir = path.join(tempRoot, 'player-hook-plugin')
+      await writePlugin(sourceDir, {
+        ...VALID_MANIFEST,
+        id: 'com.example.playerhook',
+        name: 'Player Hook',
+        platformId: 'player-hook',
+        contributionsV2: [
+          {
+            type: 'playerHook',
+            hook: 'beforeSongUrlRefresh',
+            description: 'Observe song URL refreshes'
+          }
+        ]
+      })
+
+      const installer = await createInstaller()
+      const result = await installer.installFromPath(sourceDir)
+
+      expect(result.manifest.contributionsV2).toEqual([
+        {
+          type: 'playerHook',
+          hook: 'beforeSongUrlRefresh',
+          description: 'Observe song URL refreshes'
+        }
       ])
     })
 

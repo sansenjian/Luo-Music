@@ -1,5 +1,5 @@
-import request from '@/utils/http'
 import { getBitrateByLevel, DEFAULT_AUDIO_BITRATE } from '@/constants/audio'
+import { neteaseRequest, withTimestamp } from './shared/neteaseServiceRequest'
 
 /** 音乐 URL 响应数据 */
 interface MusicUrlData {
@@ -22,11 +22,7 @@ interface MusicUrlResponse {
  * @param {number} limit - 数量，默认 10
  */
 export function getNewestSong(limit: number = 10) {
-  return request({
-    url: '/personalized/newsong',
-    method: 'get',
-    params: { limit }
-  })
+  return neteaseRequest('/personalized/newsong', { limit })
 }
 
 /**
@@ -34,15 +30,7 @@ export function getNewestSong(limit: number = 10) {
  * @param {number} id - 歌曲 ID
  */
 export function checkMusic(id: number) {
-  return request({
-    url: '/check/music',
-    method: 'get',
-    params: {
-      id,
-      randomCNIP: true,
-      timestamp: Date.now()
-    }
-  })
+  return neteaseRequest('/check/music', withTimestamp({ id, randomCNIP: true }))
 }
 
 /**
@@ -55,17 +43,15 @@ export async function getMusicUrl(
   level: string = 'standard'
 ): Promise<MusicUrlResponse> {
   try {
-    const res = (await request({
-      url: '/song/url/v1',
-      method: 'get',
-      params: {
+    const res = (await neteaseRequest(
+      '/song/url/v1',
+      withTimestamp({
         id,
         level,
         randomCNIP: true,
-        unblock: 'true',
-        timestamp: Date.now()
-      }
-    })) as MusicUrlResponse
+        unblock: 'true'
+      })
+    )) as MusicUrlResponse
 
     // 检查是否有有效的 URL
     const data = res.data
@@ -81,16 +67,14 @@ export async function getMusicUrl(
     const br = getBitrateByLevel(level, DEFAULT_AUDIO_BITRATE)
 
     try {
-      const fallbackRes = (await request({
-        url: '/song/url',
-        method: 'get',
-        params: {
+      const fallbackRes = (await neteaseRequest(
+        '/song/url',
+        withTimestamp({
           id,
           br,
-          randomCNIP: true,
-          timestamp: Date.now()
-        }
-      })) as MusicUrlResponse
+          randomCNIP: true
+        })
+      )) as MusicUrlResponse
       return fallbackRes
     } catch (fallbackError) {
       console.error('[API] Failed to get music URL:', fallbackError)
@@ -105,15 +89,7 @@ export async function getMusicUrl(
  * @param {boolean} like - 是否喜欢
  */
 export function likeMusic(id: number, like: boolean = true) {
-  return request({
-    url: '/like',
-    method: 'get',
-    params: {
-      id,
-      like,
-      timestamp: new Date().getTime()
-    }
-  })
+  return neteaseRequest('/like', withTimestamp({ id, like }))
 }
 
 /**
@@ -121,14 +97,7 @@ export function likeMusic(id: number, like: boolean = true) {
  * @param {number} id - 歌曲 ID
  */
 export function getLyric(id: number) {
-  return request({
-    url: '/lyric',
-    method: 'get',
-    params: {
-      id,
-      timestamp: new Date().getTime()
-    }
-  })
+  return neteaseRequest('/lyric', withTimestamp({ id }))
 }
 
 /**
@@ -136,14 +105,7 @@ export function getLyric(id: number) {
  * @param {string} ids - 歌曲 ID，多个用逗号分隔
  */
 export function getSongDetail(ids: string) {
-  return request({
-    url: '/song/detail',
-    method: 'get',
-    params: {
-      ids,
-      timestamp: new Date().getTime()
-    }
-  })
+  return neteaseRequest('/song/detail', withTimestamp({ ids }))
 }
 
 /**
@@ -151,9 +113,5 @@ export function getSongDetail(ids: string) {
  * @param {number} uid - 用户 ID
  */
 export function getLikelist(uid: number) {
-  return request({
-    url: '/likelist',
-    method: 'get',
-    params: { uid, timestamp: new Date().getTime() }
-  })
+  return neteaseRequest('/likelist', withTimestamp({ uid }))
 }

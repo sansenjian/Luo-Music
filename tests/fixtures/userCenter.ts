@@ -1,11 +1,11 @@
 import { computed, reactive, ref, shallowRef } from 'vue'
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
-import { vi } from 'vite-plus/test'
+import { vi } from 'vitest'
 
 import type { FavoriteAlbumItem } from '@/composables/useFavoriteAlbums'
 import type { EventItem } from '@/composables/useUserEvents'
 import type { PlaylistItem } from '@/composables/useUserPlaylists'
-import type { UseUserCenterPageDeps } from '@/composables/useUserCenterPage'
+import type { UseUserCenterPageDeps } from '@/features/user-center/composables/useUserCenterPage'
 import { createSong, type Song } from '@/platform/music/interface'
 import { formatSongs } from '@/utils/songFormatter'
 

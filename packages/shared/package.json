@@ -1,0 +1,17 @@
+{
+  "name": "@luo-music/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./contracts": "./contracts/index.ts",
+    "./contracts/*": "./contracts/*.ts",
+    "./player": "./player/index.ts",
+    "./player/*": "./player/*.ts",
+    "./protocol": "./protocol/index.ts",
+    "./protocol/*": "./protocol/*.ts",
+    "./types": "./types/index.ts",
+    "./types/*": "./types/*.ts"
+  }
+}

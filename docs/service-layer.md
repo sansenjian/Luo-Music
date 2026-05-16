@@ -94,7 +94,7 @@ if (platformService.isElectron()) {
 
 - [`src/store/playerStore.ts`](./../src/store/playerStore.ts)
 - [`src/composables/useSearch.ts`](./../src/composables/useSearch.ts)
-- [`src/composables/useHomePage.ts`](./../src/composables/useHomePage.ts)
+- [`src/features/home/composables/useHomePage.ts`](./../src/features/home/composables/useHomePage.ts)
 - [`src/api/user.ts`](./../src/api/user.ts)
 
 推荐形式：

@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import HomeServerSelect from '@/components/home/HomeServerSelect.vue'
-import type { MusicServerOption } from '@/composables/useHomePage'
+import HomeServerSelect from '@/features/home/components/HomeServerSelect.vue'
+import type { MusicServerOption } from '@/features/home/composables/useHomePage'
 
 const servers: MusicServerOption[] = [
   { value: 'netease', label: 'Netease' },

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const registerInvokeMock = vi.hoisted(() => vi.fn())
 const executeWithRetryMock = vi.hoisted(() => vi.fn())

@@ -4,6 +4,8 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import type { PluginOption } from 'vite'
 
+export type AppRuntime = 'web' | 'electron'
+
 type RewritePath = (path: string) => string
 
 type ProxyEntry = {
@@ -39,7 +41,8 @@ export function resolveViteDevServerPort(
 export function createSrcAlias(rootDir: string): Record<string, string> {
   return {
     '@': resolve(rootDir, 'src'),
-    '@plugin-sdk': resolve(rootDir, 'packages/plugin-sdk')
+    '@plugin-sdk': resolve(rootDir, 'packages/plugin-sdk'),
+    '@shared': resolve(rootDir, 'packages/shared')
   }
 }
 
@@ -51,16 +54,53 @@ export function createVueRendererPlugins(options: VueRendererPluginOptions = {})
     AutoImport({
       imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
       dts: dtsEnabled ? 'src/auto-imports.d.ts' : false,
-      dirs: ['src/composables', 'src/store'],
+      dirs: ['src/composables', 'src/store', 'src/features/*/composables'],
       vueTemplate: true
     }) as PluginOption,
     Components({
-      dirs: ['src/components'],
+      dirs: ['src/components', 'src/features/*/components'],
       extensions: ['vue'],
       dts: dtsEnabled ? 'src/components.d.ts' : false,
       deep: true
     }) as PluginOption
   ]
+}
+
+export function createAppRuntimeHtmlMarkerPlugin(runtime: AppRuntime): PluginOption {
+  return {
+    name: 'luo-app-runtime-html-marker',
+    configureServer(server) {
+      server.middlewares.use('/__luo-runtime', (request, response, next) => {
+        if (request.method !== 'GET' && request.method !== 'HEAD') {
+          next()
+          return
+        }
+
+        response.statusCode = 200
+        response.setHeader('Cache-Control', 'no-store')
+        response.setHeader('Content-Type', 'application/json; charset=utf-8')
+
+        if (request.method === 'HEAD') {
+          response.end()
+          return
+        }
+
+        response.end(JSON.stringify({ runtime }))
+      })
+    },
+    transformIndexHtml() {
+      return [
+        {
+          tag: 'meta',
+          attrs: {
+            name: 'luo-app-runtime',
+            content: runtime
+          },
+          injectTo: 'head'
+        }
+      ]
+    }
+  }
 }
 
 export function createSharedDevProxy(

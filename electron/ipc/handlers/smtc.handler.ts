@@ -1,5 +1,5 @@
 import { ipcService } from '../IpcService'
-import { INVOKE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS } from '@shared/protocol/channels'
 import { setSmtcEnabledFromRenderer } from '../../main/smtc'
 
 export function registerSmtcHandlers(): void {

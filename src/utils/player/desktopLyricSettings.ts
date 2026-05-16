@@ -6,8 +6,8 @@ import type {
   LyricLineMode,
   LyricStrokeStyle,
   LyricTextAlign
-} from '@/platform/contracts/config'
-import { DEFAULT_APP_CONFIG } from '@/platform/contracts/config'
+} from '@shared/contracts/config'
+import { DEFAULT_APP_CONFIG } from '@shared/contracts/config'
 
 export type DesktopLyricOption<T extends string = string> = {
   label: string

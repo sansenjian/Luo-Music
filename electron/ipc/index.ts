@@ -8,7 +8,7 @@
 export { ipcService, IpcService } from './IpcService'
 export type { IpcMiddleware, IpcMiddlewareContext, IpcServiceConfig } from './IpcService'
 
-// 通道定义（与 src/platform/contracts 保持一致）
+// 通道定义（共享协议，供 main / preload / renderer 一致使用）
 export {
   INVOKE_CHANNELS,
   SEND_CHANNELS,
@@ -19,10 +19,10 @@ export {
   isValidSendChannel,
   isValidReceiveChannel,
   isValidInvokeChannel
-} from '@/platform/contracts/protocol/channels'
+} from '@shared/protocol/channels'
 
 // 类型定义
-export * from '@/platform/contracts/ipc'
+export * from '@shared/contracts/ipc'
 
 // 中间件
 export { errorMiddleware } from './middleware/error'

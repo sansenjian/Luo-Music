@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vite-plus/test'
-import { PLAY_MODE, PLAY_MODE_LABELS, PLAY_MODE_ICONS } from '@/utils/player/constants/playMode'
+import { describe, it, expect } from 'vitest'
+import { PLAY_MODE, PLAY_MODE_LABELS, PLAY_MODE_ICONS } from '@shared/player/playMode'
 
 describe('PlayMode Constants', () => {
   describe('PLAY_MODE', () => {

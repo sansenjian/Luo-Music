@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, beforeEach, vi } from 'vite-plus/test'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
 
 const getUserPlaylistMock = vi.hoisted(() => vi.fn())
 const getPlaylistDetailMock = vi.hoisted(() => vi.fn())
@@ -18,7 +18,7 @@ vi.mock('@/api/album', () => ({
   getAlbumDetail: getAlbumDetailMock
 }))
 
-import HomeSidebar from '@/components/home/HomeSidebar.vue'
+import HomeSidebar from '@/features/home/components/HomeSidebar.vue'
 import { useLocalPlaylistStore } from '@/store/localPlaylistStore'
 import { useUserStore } from '@/store/userStore'
 import { createMockSong } from '../../utils/test-utils'

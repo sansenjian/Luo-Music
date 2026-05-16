@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 
 const storeData = vi.hoisted(() => new Map<string, unknown>())
 const originalNodeEnv = process.env.NODE_ENV

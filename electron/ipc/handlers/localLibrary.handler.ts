@@ -3,10 +3,10 @@ import { dialog } from 'electron'
 import type { OpenDialogOptions } from 'electron'
 
 import { getLocalLibraryService } from '../../local-library/service'
-import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@shared/protocol/channels'
 import { ipcService } from '../IpcService'
 import type { WindowManager } from '../../WindowManager'
-import type { LocalLibrarySummaryQuery, LocalLibraryTrackQuery } from '@/types/localLibrary'
+import type { LocalLibrarySummaryQuery, LocalLibraryTrackQuery } from '@shared/types/localLibrary'
 
 let listenersRegistered = false
 const LOCAL_LIBRARY_FOLDER_ID_PATTERN = /^local-folder:[a-f0-9]{40}$/i

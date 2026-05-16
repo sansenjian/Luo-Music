@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMockSong } from '../../utils/test-utils'
 import { createSubject, resetPlaybackActionMocks } from './playbackActions.helpers'

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 
-import { LyricEngine, LyricParser, parseLyricTimestamp } from '@/utils/player/core/lyric'
+import { LyricEngine, LyricParser, parseLyricTimestamp } from '@shared/player/lyric'
 
 describe('parseLyricTimestamp', () => {
   it('supports minute-second, dotted fractional, and colon millisecond formats', () => {
@@ -106,6 +106,53 @@ describe('LyricParser', () => {
         text: 'Line A\nLine B',
         trans: '译文 A\n译文 B',
         roma: 'roma A'
+      }
+    ])
+  })
+
+  it('ignores metadata tags and applies LRC offset tags', () => {
+    const lyrics = LyricParser.parse(
+      [
+        '[ar:Artist]',
+        '[ti:Title]',
+        '[offset:500]',
+        '[00:01.00]Line one',
+        '[00:02.00]Line two [by:metadata]'
+      ].join('\n')
+    )
+
+    expect(lyrics).toEqual([
+      { time: 1.5, text: 'Line one', trans: '', roma: '' },
+      { time: 2.5, text: 'Line two', trans: '', roma: '' }
+    ])
+  })
+
+  it('strips inline metadata without treating plain bracketed text as metadata', () => {
+    const lyrics = LyricParser.parse('[00:01.00]Line [by:metadata] [Live] text [bad')
+
+    expect(lyrics).toEqual([{ time: 1, text: 'Line  [Live] text [bad', trans: '', roma: '' }])
+  })
+
+  it('handles repeated opening brackets in lyric content without regex backtracking', () => {
+    const prefix = '['.repeat(10_000)
+    const lyrics = LyricParser.parse(`[00:01.00]${prefix}[by:metadata]Line`)
+
+    expect(lyrics).toEqual([{ time: 1, text: `${prefix}Line`, trans: '', roma: '' }])
+  })
+
+  it('parses enhanced word-level LRC fragments into line text and word timings', () => {
+    const lyrics = LyricParser.parse('[00:10.00]<00:10.00,300>Hello <00:10.30,250>world')
+
+    expect(lyrics).toEqual([
+      {
+        time: 10,
+        text: 'Hello world',
+        trans: '',
+        roma: '',
+        words: [
+          { time: 10, duration: 0.3, text: 'Hello ' },
+          { time: 10.3, duration: 0.25, text: 'world' }
+        ]
       }
     ])
   })

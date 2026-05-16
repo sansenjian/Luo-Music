@@ -52,7 +52,7 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
-  // eslint-config-prettier 禁用所有与 Prettier 冲突的 ESLint 规则
+  // eslint-config-prettier 禁用所有与格式化工具冲突的 ESLint 规则
   // 必须放在最后以覆盖前面的规则
   eslintConfigPrettier,
   {
@@ -166,7 +166,7 @@ export default [
       }
     },
     rules: {
-      // === 错误预防规则（只保留逻辑相关，格式全部交给 Prettier）===
+      // === 错误预防规则（只保留逻辑相关，格式全部交给 Vite+ / Oxfmt）===
       // TypeScript 逻辑规则
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -182,7 +182,7 @@ export default [
       // Vue 逻辑规则（关闭所有格式相关）
       'vue/multi-word-component-names': 'off',
       'vue/no-v-html': 'off',
-      // 关闭属性顺序规则（由 Prettier 管理）
+      // 关闭属性顺序规则（由 Vite+ / Oxfmt 管理）
       'vue/attributes-order': 'off',
       // 必须保留的 Vue 错误预防规则
       'vue/require-v-for-key': 'error',

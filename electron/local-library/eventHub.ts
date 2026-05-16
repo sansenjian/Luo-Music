@@ -1,4 +1,4 @@
-import type { LocalLibraryScanStatus, LocalLibraryState } from '@/types/localLibrary'
+import type { LocalLibraryScanStatus, LocalLibraryState } from '@shared/types/localLibrary'
 
 type StatusListener = (status: LocalLibraryScanStatus) => void
 type UpdatedListener = (state: LocalLibraryState) => void

@@ -1,5 +1,5 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import type { PlatformDescriptor } from '@/platform/music/descriptors'
+import type { PlatformDescriptor } from '@shared/types/platform'
 import { services } from '@/services'
 import type { PluginService } from '@/services/pluginService'
 import type { PlatformService } from '@/services/platformService'

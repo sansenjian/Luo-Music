@@ -5,10 +5,10 @@
  * 借鉴 VSCode 的状态管理模式：状态与行为分离
  */
 
-import type { LyricLine } from '@/utils/player/core/lyric'
-import type { WebLyricAppearance } from '@/types/player'
-import type { Song } from '@/types/schemas'
-import { PLAY_MODE, type PlayMode } from '@/utils/player/constants/playMode'
+import type { LyricLine } from '@shared/player/lyric'
+import type { WebLyricAppearance } from '@shared/types/player'
+import type { Song } from '@shared/types/schemas'
+import { PLAY_MODE, type PlayMode } from '@shared/player/playMode'
 import { DEFAULT_WEB_LYRIC_APPEARANCE } from '@/utils/player/webLyricAppearance'
 
 /**

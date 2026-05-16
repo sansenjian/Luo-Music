@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vitest'
 
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { COMMANDS } from '@/core/commands/commands'

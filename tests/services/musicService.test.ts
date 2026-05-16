@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMusicService } from '@/services/musicService'
-import type { Song, LyricResult, PlaylistDetail, SearchResult } from '@/types/schemas'
+import type { Song, LyricResult, PlaylistDetail, SearchResult } from '@shared/types/schemas'
 import type { MusicPlatformAdapter } from '@/platform/music/interface'
+import type { PlatformDescriptor } from '@shared/types/platform'
 
 // Mock getMusicAdapter
 const mockAdapter = {
@@ -24,6 +25,57 @@ describe('musicService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     musicService = createMusicService()
+  })
+
+  describe('platform metadata', () => {
+    it('exposes platform descriptors and searchable platform options through the service', () => {
+      const descriptors: PlatformDescriptor[] = [
+        {
+          id: 'netease',
+          displayName: 'Netease Music',
+          source: 'external',
+          runtime: 'external-host',
+          enabled: true,
+          capabilities: {
+            search: true,
+            songUrl: true,
+            songDetail: true,
+            lyric: true,
+            playlistDetail: true,
+            needsHydration: true,
+            supportsLyricFetch: true,
+            supportsUrlRefreshOnFailure: true,
+            auth: {
+              login: true
+            }
+          }
+        }
+      ]
+      const service = createMusicService({
+        getPlatformDescriptors: () => descriptors,
+        getLoginCapablePlatformDescriptors: () => descriptors,
+        getDefaultSearchPlatformId: () => 'netease',
+        getSearchPlatformOptions: () => [{ value: 'netease', label: 'Netease Music' }],
+        getPlatformCapabilities: () => ({
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true
+        })
+      })
+
+      expect(service.getPlatformDescriptors()).toBe(descriptors)
+      expect(service.getLoginCapablePlatformDescriptors()).toBe(descriptors)
+      expect(service.getDefaultSearchPlatformId()).toBe('netease')
+      expect(service.getSearchPlatformOptions()).toEqual([
+        { value: 'netease', label: 'Netease Music' }
+      ])
+      expect(service.hasPlatformCapability('netease', 'supportsLyricFetch')).toBe(true)
+    })
   })
 
   describe('search', () => {

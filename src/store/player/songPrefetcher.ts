@@ -1,7 +1,7 @@
-import type { Song } from '@/types/schemas'
+import type { Song } from '@shared/types/schemas'
 import { getSongPlatformKey, isSameSongIdentity, resolveMediaId } from '@/utils/songIdentity'
 import type { MusicService } from '@/services/musicService'
-import { isLocalLibrarySong } from '@/types/localLibrary'
+import { isLocalLibrarySong } from '@shared/types/localLibrary'
 
 interface PrefetchedSongData {
   song: Song
@@ -23,7 +23,10 @@ interface PrefetchEntry {
 const PREFETCH_CACHE_TTL = 15 * 60 * 1000 // 15 minutes
 const MAX_PREFETCH_ENTRIES = 8
 
-type MusicServiceLike = Pick<MusicService, 'getSongUrl' | 'getSongDetail' | 'getLyric'>
+type MusicServiceLike = Pick<
+  MusicService,
+  'getPlatformCapabilities' | 'getSongUrl' | 'getSongDetail' | 'getLyric'
+>
 
 class SongPrefetcher {
   private cache = new Map<string, PrefetchEntry>()

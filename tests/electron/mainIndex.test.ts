@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 type AppLifecycleCallbacks = {
   onActivate?: () => void
+  onBeforeQuit?: () => Promise<void> | void
   onReady?: () => Promise<void> | void
   onSecondInstance?: () => void
   onWillQuit?: () => Promise<void> | void
@@ -10,6 +11,7 @@ type AppLifecycleCallbacks = {
 
 const createWindowMock = vi.hoisted(() => vi.fn())
 const getWindowMock = vi.hoisted(() => vi.fn())
+const markAppQuittingMock = vi.hoisted(() => vi.fn())
 const restoreWindowMock = vi.hoisted(() => vi.fn())
 const createTrayMock = vi.hoisted(() => vi.fn())
 const registerShortcutsMock = vi.hoisted(() => vi.fn())
@@ -112,6 +114,7 @@ vi.mock('../../electron/WindowManager', () => ({
   windowManager: {
     createWindow: createWindowMock,
     getWindow: getWindowMock,
+    markAppQuitting: markAppQuittingMock,
     restore: restoreWindowMock
   }
 }))
@@ -189,7 +192,7 @@ vi.mock('@/config/shortcuts', () => ({
   DEFAULT_SHORTCUTS: [{ key: 'Ctrl+Shift+L' }]
 }))
 
-vi.mock('@/platform/contracts/protocol/cache', () => ({
+vi.mock('@shared/protocol/cache', () => ({
   NETEASE_API_PORT: 14532,
   QQ_API_PORT: 3200
 }))
@@ -236,7 +239,7 @@ describe('electron/main/index', () => {
     expect(lifecycleCallbacks?.onReady).toBeTypeOf('function')
   })
 
-  it('disables Chromium media session features when SMTC is off by default', async () => {
+  it('disables Chromium media session features when persisted SMTC setting is off', async () => {
     const electron = await import('electron')
     const appendSwitchMock = vi.mocked(electron.app.commandLine.appendSwitch)
 
@@ -244,6 +247,10 @@ describe('electron/main/index', () => {
 
     expect(appendSwitchMock).toHaveBeenCalledWith(
       'disable-features',
+      'HardwareMediaKeyHandling,MediaSessionService'
+    )
+    expect(appendSwitchMock).not.toHaveBeenCalledWith(
+      'enable-features',
       'HardwareMediaKeyHandling,MediaSessionService'
     )
   })
@@ -281,5 +288,13 @@ describe('electron/main/index', () => {
     expect(stopAllServicesMock).toHaveBeenCalledTimes(1)
     expect(disposePerformanceMonitorMock).toHaveBeenCalledTimes(1)
     expect(ipcDisposeMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('marks the window manager as quitting before Electron starts closing windows', async () => {
+    await import('../../electron/main/index.ts')
+
+    await lifecycleCallbacks?.onBeforeQuit?.()
+
+    expect(markAppQuittingMock).toHaveBeenCalledTimes(1)
   })
 })

@@ -15,9 +15,10 @@ npm run build:web        # Output to dist/ (Vercel deployment)
 npm run build:electron   # Output to build/ + release/
 
 # Testing
-npm run test:run         # Run all tests once
-npm run test:ui          # Interactive test UI
-npm run test:coverage    # Tests with coverage
+npm run test:run         # Run regular tests once
+npm run test:native      # Run better-sqlite3 native tests with ABI restore
+npm run test:ci          # Run regular + native tests
+npm run test:coverage    # Regular tests with renderer coverage
 
 # Type checking
 npm run typecheck        # Run vue-tsc and tsc
@@ -102,7 +103,7 @@ Stores use `pinia-plugin-persistedstate` for localStorage persistence of specifi
 | Renderer     | Vite           | `build/`                     |
 | Main process | electron-vite  | `build/electron/main.cjs`    |
 | Preload      | electron-vite  | `build/electron/preload.cjs` |
-| API server   | tsup           | `build/server/server.cjs`    |
+| API server   | tsdown         | `build/service/index.cjs`    |
 | Package      | Electron Forge | `release/`                   |
 
 Path utilities are centralized in `electron/utils/paths.ts` - never use `__dirname` directly.
@@ -112,7 +113,7 @@ Path utilities are centralized in `electron/utils/paths.ts` - never use `__dirna
 1. **No direct Electron imports in renderer** - Use `src/platform/` abstraction or preload IPC
 2. **No `any` types** - Migrating to TypeScript; all new code must be typed
 3. **Single source of truth** - Player state lives in `playerStore.ts`, not scattered in components
-4. **ESM throughout** - Use `import/export` syntax; Electron main uses CJS output via tsup
+4. **ESM throughout** - Use `import/export` syntax; Electron main uses CJS output via electron-vite and the local API service uses CJS output via tsdown
 5. **npm only** - No pnpm; project uses `package-lock.json`
 6. **UTF-8 only** - Text files must use UTF-8 (no BOM)
 
@@ -136,13 +137,13 @@ Path utilities are centralized in `electron/utils/paths.ts` - never use `__dirna
 
 ```bash
 # Test a specific file
-npx vitest run tests/store/playerStore.test.ts
+npm run test:run -- tests/store/playerStore.test.ts
 
 # Test with pattern
-npx vitest run -t "lyric"
+npm run test:run -- -t "lyric"
 
 # Watch mode
-npm run test -- --watch
+npm run test:watch
 ```
 
 ## Package Manager

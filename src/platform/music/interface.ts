@@ -1,6 +1,6 @@
-import type { Song } from '@/types/schemas'
+import type { Song } from '@shared/types/schemas'
 
-export type { Song, Artist, Album, SongPlatform } from '@/types/schemas'
+export type { Song, Artist, Album, SongPlatform } from '@shared/types/schemas'
 
 export interface PlaylistDetail {
   id: string | number

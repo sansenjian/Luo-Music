@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const storageServiceMock = vi.hoisted(() => ({
   getItem: vi.fn<(key: string) => string | null>(() => null),
@@ -29,8 +29,11 @@ describe('useProjectUi', () => {
   })
 
   it('only exposes render styles backed by enabled theme resources', async () => {
+    const { getPlatformDescriptors } = await import('@/platform/music/descriptors')
     const { useProjectUi } = await import('@/composables/useProjectUi')
-    const { availableRenderStyleOptions, setRenderStyle } = useProjectUi()
+    const { availableRenderStyleOptions, setRenderStyle } = useProjectUi({
+      musicService: { getPlatformDescriptors }
+    })
 
     expect(availableRenderStyleOptions.value.map(option => option.value)).toEqual(['classic'])
 
@@ -60,7 +63,8 @@ describe('useProjectUi', () => {
   })
 
   it('allows render styles contributed by enabled theme plugins', async () => {
-    const { replaceRuntimePlatformDescriptors } = await import('@/platform/music/descriptors')
+    const { getPlatformDescriptors, replaceRuntimePlatformDescriptors } =
+      await import('@/platform/music/descriptors')
     replaceRuntimePlatformDescriptors([
       {
         id: 'community-theme',
@@ -94,7 +98,9 @@ describe('useProjectUi', () => {
     ])
 
     const { useProjectUi } = await import('@/composables/useProjectUi')
-    const { availableRenderStyleOptions, setRenderStyle } = useProjectUi()
+    const { availableRenderStyleOptions, setRenderStyle } = useProjectUi({
+      musicService: { getPlatformDescriptors }
+    })
 
     expect(availableRenderStyleOptions.value.map(option => option.value)).toContain(
       'community.ocean'

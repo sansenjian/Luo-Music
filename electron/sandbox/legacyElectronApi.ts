@@ -1,10 +1,6 @@
-import {
-  INVOKE_CHANNELS,
-  SEND_CHANNELS,
-  isValidSendChannel
-} from '@/platform/contracts/protocol/channels'
-import type { CacheClearOptions, CacheClearResult } from '@/platform/contracts/protocol/cache'
-import type { ServiceStatusResponse } from '@/platform/contracts/ipc'
+import { INVOKE_CHANNELS, SEND_CHANNELS, isValidSendChannel } from '@shared/protocol/channels'
+import type { CacheClearOptions, CacheClearResult } from '@shared/protocol/cache'
+import type { ServiceStatusResponse } from '@shared/contracts/ipc'
 
 type ChannelBridge = {
   send(channel: string, ...args: unknown[]): void

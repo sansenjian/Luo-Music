@@ -53,7 +53,7 @@ import {
 } from './shortcuts'
 import { configureSmtcCommandLine } from './smtc'
 import { DEFAULT_SHORTCUTS } from '../../src/config/shortcuts'
-import { NETEASE_API_PORT, QQ_API_PORT } from '@/platform/contracts/protocol/cache'
+import { NETEASE_API_PORT, QQ_API_PORT } from '@shared/protocol/cache'
 
 console.log = logger.log.bind(logger)
 console.error = logger.error.bind(logger)
@@ -248,6 +248,10 @@ function main(): void {
 
   registerAppLifecycle({
     onReady: initializeApp,
+
+    onBeforeQuit: () => {
+      windowManager.markAppQuitting()
+    },
 
     onWindowAllClosed: async () => {
       unregisterAllShortcuts()

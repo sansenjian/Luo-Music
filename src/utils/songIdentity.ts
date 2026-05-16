@@ -1,4 +1,4 @@
-import type { Song } from '@/types/schemas'
+import type { Song } from '@shared/types/schemas'
 
 function readLegacySongServer(song: Song): string | undefined {
   if (!('server' in song) || typeof song.server !== 'string' || song.server.length === 0) {

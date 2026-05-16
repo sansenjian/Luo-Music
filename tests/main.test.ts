@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const setupServicesMock = vi.hoisted(() => vi.fn())
 const vueQueryInstallMock = vi.hoisted(() => vi.fn())

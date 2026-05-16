@@ -2,7 +2,8 @@ import type {
   BrowserWindow as BrowserWindowType,
   Menu as MenuType,
   Tray as TrayType,
-  Rectangle
+  Rectangle,
+  WebContents as WebContentsType
 } from 'electron'
 import { BrowserWindow, nativeImage } from 'electron'
 import path from 'node:path'
@@ -10,7 +11,7 @@ import path from 'node:path'
 import { downloadManager } from './DownloadManager'
 import logger from './logger'
 import { getWindowsShellIdentity } from './main/app'
-import { RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 import { MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
 const StoreModule = require('electron-store') as {
   default?: new (options?: { projectName: string }) => {
@@ -32,10 +33,40 @@ const MIN_WIDTH = 400
 const MIN_HEIGHT = 80
 const LOAD_RETRY_DELAY_MS = 1000
 const WINDOWS_APP_ICON_FILE = 'tray.ico'
-const WINDOW_SHOW_FALLBACK_DELAY_MS = 3000
+const PACKAGED_RENDERER_STALL_RETRY_DELAY_MS = 3000
+const DEV_RENDERER_STALL_WARNING_DELAY_MS = 30000
 
 process.env.DIST = RENDERER_DIST
 process.env.VITE_PUBLIC = VITE_PUBLIC
+
+function isBrowserWindowDestroyed(win: BrowserWindowType): boolean {
+  try {
+    return win.isDestroyed()
+  } catch {
+    return true
+  }
+}
+
+function isWebContentsDestroyed(webContents: WebContentsType): boolean {
+  try {
+    return webContents.isDestroyed()
+  } catch {
+    return true
+  }
+}
+
+function getRendererUrl(webContents: WebContentsType): string | null {
+  if (isWebContentsDestroyed(webContents)) {
+    return null
+  }
+
+  try {
+    return webContents.getURL()
+  } catch (error) {
+    logger.warn('[WindowManager] Failed to read renderer URL', error)
+    return null
+  }
+}
 
 function formatDuration(ms: number): string {
   if (ms < 1000) {
@@ -50,6 +81,7 @@ export class WindowManager {
   private tray: TrayType | null = null
   private contextMenu: MenuType | null = null
   private lastSize: { width: number; height: number } | null = null
+  private appQuitting = false
 
   constructor() {
     const size = store.get('windowSize') as { width: number; height: number } | undefined
@@ -90,8 +122,8 @@ export class WindowManager {
       titleBarStyle: 'hidden',
       icon: path.join(VITE_PUBLIC, 'electron-vite.svg'),
       show: false,
-      transparent: true,
-      backgroundColor: '#00000000',
+      transparent: false,
+      backgroundColor: '#101014',
       webPreferences: {
         preload: path.join(MAIN_DIST, 'preload.cjs'),
         nodeIntegration: false,
@@ -104,31 +136,32 @@ export class WindowManager {
       }
     })
     this.win = win
+    const webContents = win.webContents
     this.applyWindowsAppDetails(win)
 
     let hasRecoveredRenderer = false
     let hasShownWindow = false
-    let showFallbackTimer: ReturnType<typeof setTimeout> | null = null
+    let rendererStallTimer: ReturnType<typeof setTimeout> | null = null
 
-    const clearShowFallbackTimer = (): void => {
-      if (!showFallbackTimer) {
+    const clearRendererStallTimer = (): void => {
+      if (!rendererStallTimer) {
         return
       }
 
-      clearTimeout(showFallbackTimer)
-      showFallbackTimer = null
+      clearTimeout(rendererStallTimer)
+      rendererStallTimer = null
     }
 
     const recoverRenderer = (reason: string, details: Record<string, unknown>): void => {
       logger.error('[WindowManager] Renderer load issue', { reason, ...details })
 
-      if (hasRecoveredRenderer || win.isDestroyed()) {
+      if (hasRecoveredRenderer || isBrowserWindowDestroyed(win)) {
         return
       }
 
       hasRecoveredRenderer = true
       setTimeout(() => {
-        if (win.isDestroyed()) {
+        if (isBrowserWindowDestroyed(win)) {
           return
         }
 
@@ -147,30 +180,42 @@ export class WindowManager {
     }
 
     const showWindow = (reason: string): void => {
-      if (hasShownWindow || win.isDestroyed()) {
+      if (hasShownWindow || isBrowserWindowDestroyed(win)) {
         return
       }
 
       hasShownWindow = true
-      clearShowFallbackTimer()
+      clearRendererStallTimer()
       logger.info(`[WindowManager] Showing main window (${reason})`, {
         elapsed: formatDuration(Date.now() - startedAt)
       })
       win.show()
     }
 
-    showFallbackTimer = setTimeout(() => {
-      if (win.isDestroyed() || win.isVisible()) {
+    const rendererStallDelay = devServerUrl
+      ? DEV_RENDERER_STALL_WARNING_DELAY_MS
+      : PACKAGED_RENDERER_STALL_RETRY_DELAY_MS
+
+    rendererStallTimer = setTimeout(() => {
+      if (isBrowserWindowDestroyed(win) || win.isVisible()) {
         return
       }
 
-      logger.info('[WindowManager] Showing main window through startup fallback', {
+      if (devServerUrl) {
+        logger.warn('[WindowManager] Dev renderer is still compiling before first show', {
+          elapsed: formatDuration(Date.now() - startedAt),
+          loadTarget
+        })
+        return
+      }
+
+      logger.warn('[WindowManager] Renderer readiness stalled before first show; retrying load', {
         elapsed: formatDuration(Date.now() - startedAt),
-        loadTarget,
-        reason: 'ready-to-show timeout'
+        loadTarget
       })
-      showWindow('fallback')
-    }, WINDOW_SHOW_FALLBACK_DELAY_MS)
+
+      recoverRenderer('startup-renderer-stall', { loadTarget })
+    }, rendererStallDelay)
 
     win.once('ready-to-show', () => {
       logger.info('[WindowManager] ready-to-show', {
@@ -182,17 +227,25 @@ export class WindowManager {
     downloadManager.setWindow(win)
     downloadManager.init()
 
-    win.webContents.on('did-start-loading', () => {
+    webContents.on('did-start-loading', () => {
+      if (isBrowserWindowDestroyed(win) || isWebContentsDestroyed(webContents)) {
+        return
+      }
+
       logger.info('[WindowManager] renderer did-start-loading', {
         elapsed: formatDuration(Date.now() - startedAt),
         loadTarget
       })
     })
 
-    win.webContents.on('dom-ready', () => {
+    webContents.on('dom-ready', () => {
+      if (isBrowserWindowDestroyed(win) || isWebContentsDestroyed(webContents)) {
+        return
+      }
+
       logger.info('[WindowManager] renderer dom-ready', {
         elapsed: formatDuration(Date.now() - startedAt),
-        url: win.webContents.getURL()
+        url: getRendererUrl(webContents)
       })
 
       if (devServerUrl) {
@@ -200,23 +253,35 @@ export class WindowManager {
       }
     })
 
-    win.webContents.on('did-finish-load', () => {
+    webContents.on('did-finish-load', () => {
+      if (isBrowserWindowDestroyed(win) || isWebContentsDestroyed(webContents)) {
+        return
+      }
+
       hasRecoveredRenderer = false
       logger.info('[WindowManager] renderer did-finish-load', {
         elapsed: formatDuration(Date.now() - startedAt),
-        url: win.webContents.getURL()
+        url: getRendererUrl(webContents)
       })
-      win.webContents.send('main-process-message', new Date().toLocaleString())
+      webContents.send('main-process-message', new Date().toLocaleString())
+
+      if (devServerUrl && !webContents.isDevToolsOpened()) {
+        webContents.openDevTools({ mode: 'detach' })
+      }
     })
 
-    win.webContents.on('did-stop-loading', () => {
+    webContents.on('did-stop-loading', () => {
+      if (isBrowserWindowDestroyed(win) || isWebContentsDestroyed(webContents)) {
+        return
+      }
+
       logger.info('[WindowManager] renderer did-stop-loading', {
         elapsed: formatDuration(Date.now() - startedAt),
-        url: win.webContents.getURL()
+        url: getRendererUrl(webContents)
       })
     })
 
-    win.webContents.on(
+    webContents.on(
       'did-fail-load',
       (_event, errorCode: number, errorDescription: string, validatedURL: string, isMainFrame) => {
         if (!isMainFrame) {
@@ -237,7 +302,7 @@ export class WindowManager {
       }
     )
 
-    win.webContents.on('render-process-gone', (_event, details) => {
+    webContents.on('render-process-gone', (_event, details) => {
       if (details.reason === 'clean-exit') {
         return
       }
@@ -256,7 +321,6 @@ export class WindowManager {
     if (devServerUrl) {
       logger.info('[WindowManager] Loading renderer URL', { loadTarget })
       void win.loadURL(devServerUrl)
-      win.webContents.openDevTools()
     } else {
       logger.info('[WindowManager] Loading renderer file', { loadTarget })
       void win.loadFile(indexPath)
@@ -266,8 +330,17 @@ export class WindowManager {
       this.updateThumbarButtons(false)
     })
 
+    win.on('close', event => {
+      if (this.appQuitting || !this.tray) {
+        return
+      }
+
+      event.preventDefault()
+      this.minimizeToTray()
+    })
+
     win.on('closed', () => {
-      clearShowFallbackTimer()
+      clearRendererStallTimer()
       this.win = null
       downloadManager.setWindow(null)
     })
@@ -357,7 +430,20 @@ export class WindowManager {
   }
 
   close(): void {
-    this.win?.close()
+    if (!this.win || isBrowserWindowDestroyed(this.win)) {
+      return
+    }
+
+    if (this.tray && !this.appQuitting) {
+      this.minimizeToTray()
+      return
+    }
+
+    this.win.close()
+  }
+
+  markAppQuitting(): void {
+    this.appQuitting = true
   }
 
   setAlwaysOnTop(alwaysOnTop: boolean): void {
@@ -395,7 +481,16 @@ export class WindowManager {
   }
 
   send(channel: string, ...args: unknown[]): void {
-    this.win?.webContents.send(channel, ...args)
+    if (!this.win || isBrowserWindowDestroyed(this.win)) {
+      return
+    }
+
+    const webContents = this.win.webContents
+    if (isWebContentsDestroyed(webContents)) {
+      return
+    }
+
+    webContents.send(channel, ...args)
   }
 
   setTray(tray: TrayType, contextMenu: MenuType): void {

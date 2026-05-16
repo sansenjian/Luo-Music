@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PlayerCore, PlayerState } from '@/utils/player/core/playerCore'
 import { VOLUME } from '@/utils/player/constants/volume'
@@ -694,7 +694,7 @@ describe('PlayerCore', () => {
       expect(getInternals(player).analyser).toBeNull()
     })
 
-    it('keeps MediaElementSource fallback audible for same-origin media without captureStream', () => {
+    it('disables MediaElementSource fallback while system media session exposure is enabled', () => {
       const { audio } = getInternals(player)
       const createMediaElementSourceSpy = vi.spyOn(
         MockAudioContext.prototype,
@@ -706,6 +706,25 @@ describe('PlayerCore', () => {
 
       audioWithCaptureStream.captureStream = undefined
       audio.src = `${window.location.origin}/song.mp3`
+
+      expect(player.getWaveformData()).toBeNull()
+      expect(createMediaElementSourceSpy).not.toHaveBeenCalled()
+      expect(getInternals(player).analyser).toBeNull()
+    })
+
+    it('allows MediaElementSource fallback only after system media session exposure is disabled', () => {
+      const { audio } = getInternals(player)
+      const createMediaElementSourceSpy = vi.spyOn(
+        MockAudioContext.prototype,
+        'createMediaElementSource'
+      )
+      const audioWithCaptureStream = audio as MockAudioElement & {
+        captureStream?: () => MediaStream
+      }
+
+      audioWithCaptureStream.captureStream = undefined
+      audio.src = `${window.location.origin}/song.mp3`
+      player.setSystemMediaSessionEnabled(false)
 
       expect(player.getWaveformData()).toBeInstanceOf(Uint8Array)
       expect(createMediaElementSourceSpy).toHaveBeenCalledTimes(1)

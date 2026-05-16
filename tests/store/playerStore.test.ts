@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PLAY_MODE } from '@/utils/player/constants/playMode'
-import type { LyricLine } from '@/utils/player/core/lyric'
+import { PLAY_MODE } from '@shared/player/playMode'
+import type { LyricLine } from '@shared/player/lyric'
 import {
   createPlayerStore,
   restorePersistedPlayerState,

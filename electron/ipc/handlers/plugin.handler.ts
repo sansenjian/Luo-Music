@@ -1,6 +1,6 @@
 import { dialog, BrowserWindow, type OpenDialogOptions } from 'electron'
 import { ipcService } from '../IpcService'
-import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@shared/protocol/channels'
 import type { PluginCatalog } from '../../plugins/PluginCatalog'
 import type { PluginMethodName } from '../../plugins/types'
 

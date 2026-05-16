@@ -1,154 +1,160 @@
-const { spawn } = require("node:child_process");
-const { createRequire } = require("node:module");
-const path = require("node:path");
-const { getProjectScopedWindowsProcesses } = require("./build/clean-targets.cjs");
+const { spawn } = require('node:child_process')
+const { getProjectScopedWindowsProcesses } = require('./build/clean-targets.cjs')
 
-function getNpmRunner() {
-  if (process.env.npm_execpath) {
+function getNpmRunner(options = {}) {
+  const npmExecPath = options.npmExecPath ?? process.env.npm_execpath
+  const execPath = options.execPath ?? process.execPath
+  const platform = options.platform ?? process.platform
+
+  if (npmExecPath) {
     return {
-      command: process.execPath,
-      prefixArgs: [process.env.npm_execpath],
-      needsShell: false,
-    };
+      command: execPath,
+      prefixArgs: [npmExecPath],
+      needsShell: false
+    }
   }
 
   return {
-    command: process.platform === "win32" ? "npm.cmd" : "npm",
+    command: platform === 'win32' ? 'npm.cmd' : 'npm',
     prefixArgs: [],
-    needsShell: process.platform === "win32",
-  };
+    needsShell: platform === 'win32'
+  }
+}
+
+function createVitestCommand(args, options = {}) {
+  const runner = getNpmRunner(options)
+
+  return {
+    command: runner.command,
+    args: [...runner.prefixArgs, 'run', 'vitest', '--', ...args],
+    shell: runner.needsShell
+  }
 }
 
 function runCommand(command, args, label, options = {}) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const child = spawn(command, args, {
-      stdio: "inherit",
+      stdio: 'inherit',
       env: process.env,
-      shell: options.shell === true,
-    });
+      shell: options.shell === true
+    })
 
-    child.once("error", (error) => {
-      console.error(`[run-vitest-with-native-restore] failed to start ${label}`);
-      console.error(error);
+    child.once('error', error => {
+      console.error(`[run-vitest-with-native-restore] failed to start ${label}`)
+      console.error(error)
       resolve({
         code: 1,
-        signal: null,
-      });
-    });
+        signal: null
+      })
+    })
 
-    child.once("exit", (code, signal) => {
+    child.once('exit', (code, signal) => {
       resolve({
-        code: typeof code === "number" ? code : 1,
-        signal: signal ?? null,
-      });
-    });
-  });
-}
-
-function getVitePlusTestCliPath() {
-  const projectRequire = createRequire(path.join(process.cwd(), "package.json"));
-  const vitePlusPackageJsonPath = projectRequire.resolve("vite-plus/package.json");
-  const vitePlusRequire = createRequire(vitePlusPackageJsonPath);
-  const vitePlusTestPackageJsonPath = vitePlusRequire.resolve(
-    "@voidzero-dev/vite-plus-test/package.json",
-  );
-
-  return path.join(path.dirname(vitePlusTestPackageJsonPath), "dist", "cli.js");
+        code: typeof code === 'number' ? code : 1,
+        signal: signal ?? null
+      })
+    })
+  })
 }
 
 function ensureNoProjectElectronProcesses(phaseLabel) {
-  const processes = getProjectScopedWindowsProcesses();
+  const processes = getProjectScopedWindowsProcesses()
   if (processes.length === 0) {
-    return true;
+    return true
   }
 
   console.error(
-    `[run-vitest-with-native-restore] close LUO Music / Electron before ${phaseLabel}; the native module is currently locked by:`,
-  );
+    `[run-vitest-with-native-restore] close LUO Music / Electron before ${phaseLabel}; the native module is currently locked by:`
+  )
   for (const processInfo of processes) {
-    console.error(`  - ${processInfo.Name} (PID ${processInfo.ProcessId})`);
+    console.error(`  - ${processInfo.Name} (PID ${processInfo.ProcessId})`)
   }
 
-  return false;
+  return false
 }
 
 function isTruthyEnv(name) {
-  const value = process.env[name];
-  return value === "1" || value === "true" || value === "yes";
+  const value = process.env[name]
+  return value === '1' || value === 'true' || value === 'yes'
 }
 
 async function runNpmCommand(args, label) {
-  const runner = getNpmRunner();
+  const runner = getNpmRunner()
   const result = await runCommand(runner.command, [...runner.prefixArgs, ...args], label, {
-    shell: runner.needsShell,
-  });
+    shell: runner.needsShell
+  })
   if (result.signal) {
-    console.error(
-      `[run-vitest-with-native-restore] ${label} terminated by signal ${result.signal}`,
-    );
-    return 1;
+    console.error(`[run-vitest-with-native-restore] ${label} terminated by signal ${result.signal}`)
+    return 1
   }
 
-  return result.code;
+  return result.code
 }
 
 async function main() {
-  const vitestArgs = process.argv.slice(2);
-  const skipNativeRebuild = isTruthyEnv("LUO_TEST_SKIP_NATIVE_REBUILD");
-  const skipNativeRestore = isTruthyEnv("LUO_TEST_SKIP_NATIVE_RESTORE");
+  const vitestArgs = process.argv.slice(2)
+  const skipNativeRebuild = isTruthyEnv('LUO_TEST_SKIP_NATIVE_REBUILD')
+  const skipNativeRestore = isTruthyEnv('LUO_TEST_SKIP_NATIVE_RESTORE')
 
   if (skipNativeRebuild) {
-    console.log("[run-vitest-with-native-restore] skipping Node native rebuild");
+    console.log('[run-vitest-with-native-restore] skipping Node native rebuild')
   } else {
-    if (!ensureNoProjectElectronProcesses("switching better-sqlite3 to the Node test runtime")) {
-      process.exit(1);
+    if (!ensureNoProjectElectronProcesses('switching better-sqlite3 to the Node test runtime')) {
+      process.exit(1)
     }
 
-    console.log("[run-vitest-with-native-restore] rebuilding better-sqlite3 for Node test runtime");
-    const prepareCode = await runNpmCommand(["run", "rebuild:native:node"], "rebuild:native:node");
+    console.log('[run-vitest-with-native-restore] rebuilding better-sqlite3 for Node test runtime')
+    const prepareCode = await runNpmCommand(['run', 'rebuild:native:node'], 'rebuild:native:node')
     if (prepareCode !== 0) {
-      process.exit(prepareCode);
+      process.exit(prepareCode)
     }
   }
 
-  let testCode = 1;
+  let testCode = 1
   try {
-    testCode = await runCommand(
-      process.execPath,
-      [getVitePlusTestCliPath(), ...vitestArgs],
-      "vite-plus test",
-    ).then((result) => {
+    const vitestCommand = createVitestCommand(vitestArgs)
+    testCode = await runCommand(vitestCommand.command, vitestCommand.args, 'vitest', {
+      shell: vitestCommand.shell
+    }).then(result => {
       if (result.signal) {
         console.error(
-          `[run-vitest-with-native-restore] vite-plus test terminated by signal ${result.signal}`,
-        );
-        return 1;
+          `[run-vitest-with-native-restore] vitest terminated by signal ${result.signal}`
+        )
+        return 1
       }
 
-      return result.code;
-    });
+      return result.code
+    })
   } finally {
     if (skipNativeRestore) {
-      console.log("[run-vitest-with-native-restore] skipping Electron native restore");
-      process.exit(testCode);
+      console.log('[run-vitest-with-native-restore] skipping Electron native restore')
+      process.exit(testCode)
     }
 
-    if (!ensureNoProjectElectronProcesses("restoring better-sqlite3 to the Electron runtime")) {
-      process.exit(1);
+    if (!ensureNoProjectElectronProcesses('restoring better-sqlite3 to the Electron runtime')) {
+      process.exit(1)
     }
 
-    console.log("[run-vitest-with-native-restore] restoring better-sqlite3 for Electron runtime");
-    const restoreCode = await runNpmCommand(["run", "rebuild:native"], "rebuild:native");
+    console.log('[run-vitest-with-native-restore] restoring better-sqlite3 for Electron runtime')
+    const restoreCode = await runNpmCommand(['run', 'rebuild:native'], 'rebuild:native')
     if (restoreCode !== 0) {
-      process.exit(restoreCode);
+      process.exit(restoreCode)
     }
   }
 
-  process.exit(testCode);
+  process.exit(testCode)
 }
 
-main().catch((error) => {
-  console.error("[run-vitest-with-native-restore] unexpected failure");
-  console.error(error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(error => {
+    console.error('[run-vitest-with-native-restore] unexpected failure')
+    console.error(error)
+    process.exit(1)
+  })
+}
+
+module.exports = {
+  createVitestCommand,
+  getNpmRunner,
+  isTruthyEnv
+}

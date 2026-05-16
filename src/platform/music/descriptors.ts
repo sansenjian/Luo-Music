@@ -1,44 +1,19 @@
 import { shallowRef } from 'vue'
-import type { PluginManifest, PluginSettingDefinition, PluginThemeResource } from '@plugin-sdk'
+import type { PluginThemeResource } from '@plugin-sdk'
+import type {
+  PlatformBooleanCapability,
+  PlatformCapabilities,
+  PlatformDescriptor,
+  PlatformOption
+} from '@shared/types/platform'
 
-export type PlatformCapabilities = PluginManifest['capabilities']
-export type PlatformBooleanCapability = {
-  [K in keyof PlatformCapabilities]-?: NonNullable<PlatformCapabilities[K]> extends boolean
-    ? K
-    : never
-}[keyof PlatformCapabilities]
-
-export interface PlatformPermissions {
-  networkDomains?: string[]
-  storage?: boolean
-  secrets?: boolean
-}
-
-export interface PlatformDescriptor {
-  id: string
-  displayName: string
-  source: PluginManifest['source']
-  runtime: PluginManifest['runtime']
-  category?: PluginManifest['category']
-  enabled: boolean
-  capabilities: PlatformCapabilities
-  requiresServices?: string[]
-  version?: string
-  description?: string
-  author?: string
-  status?: 'ready' | 'disabled' | 'error' | 'circuit-tripped'
-  lastError?: string
-  permissions?: PlatformPermissions
-  settingsSchema?: PluginSettingDefinition[]
-  themeResources?: PluginThemeResource[]
-  consecutiveFailures?: number
-  circuitTrippedAt?: number
-}
-
-export interface PlatformOption {
-  value: string
-  label: string
-}
+export type {
+  PlatformBooleanCapability,
+  PlatformCapabilities,
+  PlatformDescriptor,
+  PlatformOption,
+  PlatformPermissions
+} from '@shared/types/platform'
 
 const unsupportedPlatformCapabilities: PlatformCapabilities = {
   search: false,

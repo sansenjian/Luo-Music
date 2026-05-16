@@ -14,7 +14,7 @@ import {
   USER_SCROLL_END_DEBOUNCE,
   USER_SCROLL_IDLE_DELAY
 } from '@/constants/lyric'
-import type { LyricLine } from '@/utils/player/core/lyric'
+import type { LyricLine } from '@shared/player/lyric'
 
 const ACTIVE_LINE_SELECTOR = '.lyric-line.active'
 const SCROLL_ALIGNMENT_TOLERANCE = 2

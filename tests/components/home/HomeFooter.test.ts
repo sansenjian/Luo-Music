@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import HomeFooter from '@/components/home/HomeFooter.vue'
+import HomeFooter from '@/features/home/components/HomeFooter.vue'
 
 describe('HomeFooter', () => {
   it('renders the status bar when the player is not docked', () => {

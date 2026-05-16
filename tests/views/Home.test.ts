@@ -1,16 +1,16 @@
 import { computed, defineComponent, ref } from 'vue'
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const useHomePageMock = vi.hoisted(() => vi.fn())
 const useHomeBrandPlacementMock = vi.hoisted(() => vi.fn())
 const useDockedPlayerBarLayoutMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@/composables/useHomePage', () => ({
+vi.mock('@/features/home/composables/useHomePage', () => ({
   useHomePage: useHomePageMock
 }))
 
-vi.mock('@/composables/useHomeBrandPlacement', () => ({
+vi.mock('@/features/home/composables/useHomeBrandPlacement', () => ({
   useHomeBrandPlacement: useHomeBrandPlacementMock
 }))
 
@@ -53,17 +53,17 @@ vi.mock('@/components/Playlist.vue', () => ({
   }
 }))
 
-vi.mock('@/components/home/HomeLikedSongsPanel.vue', () => ({
+vi.mock('@/features/home/components/HomeLikedSongsPanel.vue', () => ({
   default: {
-    name: 'HomeLikedSongsAsyncStub',
-    template: '<section class="home-liked-songs-async-stub"></section>'
+    name: 'HomeLikedSongsPanelStub',
+    template: '<section class="home-liked-songs-stub"></section>'
   }
 }))
 
-vi.mock('@/components/home/HomeLocalMusicPanel.vue', () => ({
+vi.mock('@/features/home/components/HomeLocalMusicPanel.vue', () => ({
   default: {
-    name: 'HomeLocalMusicAsyncStub',
-    template: '<section class="home-local-music-async-stub"></section>'
+    name: 'HomeLocalMusicPanelStub',
+    template: '<section class="home-local-music-stub"></section>'
   }
 }))
 
@@ -304,6 +304,17 @@ describe('Home view layout', () => {
     expect(wrapper.find('.home-sidebar-stub').attributes('data-collapsed')).toBe('true')
     expect(wrapper.find('.home-sidebar-stub').attributes('data-active-item')).toBe('home')
     expect(wrapper.find('.left-panel').exists()).toBe(true)
+  })
+
+  it('keeps collapsed sidebar rendering aligned with the narrow mobile grid', async () => {
+    const wrapper = await mountHome({
+      isPlayerDocked: false,
+      dockedPlayerBarLayout: 'full'
+    })
+
+    expect(wrapper.find('.window').classes()).toContain('sidebar-collapsed')
+    expect(wrapper.find('.home-sidebar-stub').attributes('data-collapsed')).toBe('true')
+    expect(wrapper.find('.app-shell').exists()).toBe(true)
   })
 
   it('switches the workspace content to liked songs when the sidebar selects the liked library item', async () => {

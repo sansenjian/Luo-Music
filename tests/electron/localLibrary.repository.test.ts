@@ -3,9 +3,9 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { DatabaseSync } from 'node:sqlite'
 
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import { LOCAL_LIBRARY_SONG_ID_PREFIX } from '@/types/localLibrary'
+import { LOCAL_LIBRARY_SONG_ID_PREFIX } from '@shared/types/localLibrary'
 
 import {
   createFolderId,

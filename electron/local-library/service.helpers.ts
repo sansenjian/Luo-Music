@@ -4,8 +4,8 @@ import path from 'node:path'
 import chokidar, { type FSWatcher } from 'chokidar'
 import { parseFile } from 'music-metadata'
 
-import type { Song } from '@/types/schemas'
-import type { LocalLibraryTrack } from '@/types/localLibrary'
+import type { LocalLibraryTrack } from '@shared/types/localLibrary'
+import type { Song } from '@shared/types/schemas'
 
 import { createLocalMediaUrl } from './protocol'
 import { createAlbumId, createLocalSongArtists } from './repository.helpers'

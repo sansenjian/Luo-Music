@@ -1,5 +1,5 @@
 import { config } from '@vue/test-utils'
-import { beforeEach } from 'vite-plus/test'
+import { beforeEach } from 'vitest'
 
 import { createTestPinia, installMockAudio } from './setup.shared'
 

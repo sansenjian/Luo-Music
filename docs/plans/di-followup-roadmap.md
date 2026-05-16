@@ -17,7 +17,7 @@
 - 热点模块显式注入
   - [`src/store/playerStore.ts`](./../../src/store/playerStore.ts)
   - [`src/composables/useSearch.ts`](./../../src/composables/useSearch.ts)
-  - [`src/composables/useHomePage.ts`](./../../src/composables/useHomePage.ts)
+  - [`src/features/home/composables/useHomePage.ts`](./../../src/features/home/composables/useHomePage.ts)
 - 业务入口统一到主服务路径
   - 平台/播放器 accessor 兼容层已删除
   - `storage`、`platform`、`config`、部分 `api` 已走 `services.xxx()`
@@ -71,7 +71,7 @@
 
 建议更新：
 
-- [`docs/plans/di-optimization-plan.md`](./di-optimization-plan.md)
+- DI Phase 1 到 Phase 3 的完成记录已从 `docs/plans/` 清理；如需追溯请查看 Git 历史。
 - [`docs/reports/service-layer-gap-report.md`](./../reports/service-layer-gap-report.md)
 - [`docs/reports/vscode-gap-issues.md`](./../reports/vscode-gap-issues.md)
 

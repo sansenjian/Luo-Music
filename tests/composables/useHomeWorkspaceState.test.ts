@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 
-import { useHomeWorkspaceState } from '@/composables/useHomeWorkspaceState'
+import { useHomeWorkspaceState } from '@/features/home/composables/useHomeWorkspaceState'
 
 describe('useHomeWorkspaceState', () => {
   it('switches the workspace to recent play when the history sidebar item is selected', () => {

@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module'
 
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vitest'
 
 type FileSet = {
   from: string
@@ -28,6 +28,9 @@ type PortableConfig = {
 
 const require = createRequire(import.meta.url)
 const portableConfig = require('../../electron/builder.portable.cjs') as PortableConfig
+const { asarUnpackPattern } = require('../../config/packaging.shared.cjs') as {
+  asarUnpackPattern: string
+}
 
 describe('electron-builder portable config', () => {
   it('emits a single x64 portable exe into a dedicated output directory', () => {
@@ -42,8 +45,9 @@ describe('electron-builder portable config', () => {
   })
 
   it('reuses the packaged runtime resources without shipping source trees', () => {
-    expect(portableConfig.asarUnpack).toContain(
-      '**/node_modules/{conf,ajv,json-schema-traverse,atomically,dot-prop,uint8array-extras,type-fest}/**'
+    expect(portableConfig.asarUnpack).toEqual([asarUnpackPattern])
+    expect(portableConfig.asarUnpack).not.toEqual(
+      expect.arrayContaining([expect.stringContaining('{conf,ajv')])
     )
     expect(portableConfig.files).toEqual(
       expect.arrayContaining([

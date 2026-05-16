@@ -25,8 +25,16 @@ npm run build:web
 
 1. 清理 `dist` 与 `build/service`
 2. 执行配置守卫
-3. 构建服务端
-4. 以 Web 模式构建 Vite 渲染端
+3. 通过本地 `tsdown` CLI 构建服务端
+4. 通过本地 VP CLI 以 Web 模式构建 Vite+ 渲染端
+
+### Server
+
+```bash
+npm run build:server
+```
+
+服务端入口 `server/index.ts` 通过本地 `tsdown` CLI 打包到 `build/service/index.cjs`。该构建使用 Rolldown，显式读取 `tsconfig.node.json`，并通过 `--no-config` 避免被未来其他 tsdown 配置影响。当前服务端依赖仍保持外置运行时加载，和迁移前产物行为一致。
 
 ### Electron
 
@@ -39,8 +47,18 @@ npm run build:electron
 1. 清理安装包输出目录
 2. 通过 `build:electron:bundle` 清理并重建 `build/`
 3. 构建 QQ runtime
-4. 并行构建 server 与 electron-vite bundle
+4. 构建 server 与本地 `electron-vite:build`
 5. 使用 Electron Forge 产出安装包
+
+Electron bundle 暂不切换到 `vp build`：主进程、preload、Forge 和 native rebuild 仍依赖 Electron 专属构建链路。项目通过 `npm run electron-vite:build` 调用本地 `electron-vite` CLI，避免依赖全局 PATH。
+
+Electron 打包职责保持拆分：
+
+- Electron Forge 是主安装包打包器，负责 `npm run build:electron`、`npm run make` 和 Squirrel / zip 输出。
+- electron-builder 只服务 portable 单文件构建，由 `npm run build:electron:portable` 调用 `electron/builder.portable.cjs`。
+- 两条链路共享 `config/packaging.shared.cjs`，但不要在 Forge 和 electron-builder 之间复制专属配置。
+
+生产包瘦身规则也集中在 `config/packaging.shared.cjs`：打包时会排除工作区缓存、检查结果、dev-only 工具链，以及仅构建期使用的根层 Sentry browser/replay 相关包；Electron 主进程仍通过 `@sentry/electron` 在有 DSN 时动态初始化。
 
 ### Portable
 
@@ -82,6 +100,10 @@ out/
 
 ```bash
 npm run test:run
+npm run quality
+npm run vp:check
+npm run vp:lint
+npm run vp:fmt:check
 ```
 
 ### 涉及构建 / Electron / 路径
@@ -118,7 +140,7 @@ npm run docs:build
 先确认 Node / npm 版本，再重新执行：
 
 ```bash
-npm install
+npm install --prefer-online
 ```
 
-项目会在 `postinstall` 中自动修补部分 Windows 打包链路兼容性问题。
+项目 `.npmrc` 默认使用官方 npm registry，并启用 `prefer-online` 避免旧缓存或镜像旧元数据影响依赖解析。CI 安装优先使用 `npm ci --prefer-online`。项目会在 `postinstall` 中自动修补部分 Windows 打包链路兼容性问题。

@@ -9,7 +9,7 @@
 
 // 导入服务代理
 import { getIpcProxy } from './ipcProxy'
-import { INVOKE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS } from '@shared/protocol/channels'
 
 /**
  * 音乐平台类型

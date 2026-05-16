@@ -50,6 +50,40 @@ export interface PluginThemeResource {
   cssText?: string
 }
 
+export interface PluginCallErrorPayload {
+  code: string
+  message: string
+  retryable?: boolean
+  userMessage?: string
+  details?: Record<string, unknown>
+}
+
+export class PluginCallError extends Error {
+  readonly code: string
+  readonly retryable: boolean
+  readonly userMessage?: string
+  readonly details?: Record<string, unknown>
+
+  constructor(payload: PluginCallErrorPayload) {
+    super(payload.message)
+    this.name = 'PluginCallError'
+    this.code = payload.code
+    this.retryable = payload.retryable ?? false
+    this.userMessage = payload.userMessage
+    this.details = payload.details
+  }
+
+  toJSON(): PluginCallErrorPayload {
+    return {
+      code: this.code,
+      message: this.message,
+      retryable: this.retryable,
+      userMessage: this.userMessage,
+      details: this.details
+    }
+  }
+}
+
 export interface PluginPermissionDeclaration {
   network?: {
     domains: string[]
@@ -187,6 +221,40 @@ export interface StandardLoginChallenge {
   fields?: StandardLoginField[]
 }
 
+export type PluginPlayerHookName =
+  | 'beforePlay'
+  | 'afterPlay'
+  | 'beforeSongUrlRefresh'
+  | 'afterSongUrlRefresh'
+  | 'playbackError'
+
+export interface PluginPlayerHookContext {
+  platformId: string
+  song?: PluginSong
+  reason?: string
+  error?: PluginCallErrorPayload
+  extra?: Record<string, unknown>
+}
+
+export interface PluginPlayerHookResult {
+  handled?: boolean
+  message?: string
+  song?: PluginSong
+  extra?: Record<string, unknown>
+}
+
+export type PluginPlayerHook = (
+  context: PluginPlayerHookContext
+) => Promise<PluginPlayerHookResult | void> | PluginPlayerHookResult | void
+
+export interface PluginPlayerHookContribution {
+  type: 'playerHook'
+  hook: PluginPlayerHookName
+  description?: string
+}
+
+export type PluginContribution = PluginPlayerHookContribution
+
 export interface PluginAuthCapability {
   login?: boolean
   logout?: boolean
@@ -240,6 +308,7 @@ export interface PluginManifest {
     settings?: PluginSettingDefinition[]
     themeResources?: PluginThemeResource[]
   }
+  contributionsV2?: PluginContribution[]
 }
 
 export interface MusicPluginInstance {

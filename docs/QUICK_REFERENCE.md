@@ -5,7 +5,7 @@
 ### 开发
 
 ```bash
-npm install
+npm install --prefer-online
 npm run dev
 npm run dev:web
 npm run dev:electron
@@ -26,13 +26,28 @@ npm run docs:build
 
 ```bash
 npm run test:run
+npm run test:native
+npm run test:ci
 npm run test:coverage
 npm run test:e2e
 npm run lint
 npm run lint:fix
+npm run vp:lint
+npm run vp:lint:fix
+npm run vp:check
+npm run vp:check:fix
 npm run format
+npm run format:check
+npm run format:oxfmt
+npm run format:oxfmt:check
+npm run vp:fmt
+npm run vp:fmt:check
 npm run typecheck
+npm run quality
+npm run quality:full
 ```
+
+`vp:*` 命令是 Vite+ 迁移期的本地 CLI 入口；lint、format、check、staged 规则集中在根目录 `vite.config.ts`，供 VP 自动发现。`npm run quality` 是团队日常静态门禁，`npm run quality:full` 会额外跑单测和 Web 构建。普通单测和覆盖率使用 `.config/vitest.config.ts` 与项目本地 Vitest；涉及 `better-sqlite3` 的本地音乐库测试使用 `npm run test:native`。
 
 ## 关键目录
 
@@ -53,7 +68,7 @@ npm run typecheck
 
 | 目标                      | 路径              |
 | ------------------------- | ----------------- |
-| Web 构建                  | `build/`          |
+| Web 构建                  | `dist/`           |
 | Electron 主进程 / preload | `build/electron/` |
 | Server 构建               | `build/service/`  |
 | Electron 安装包           | `out/make/`       |
@@ -77,7 +92,7 @@ npm run typecheck
 
 ## 推荐验证顺序
 
-1. `npm run test:run`
+1. `npm run test:ci`
 2. `npm run build:web`
 3. `npm run build:electron`
 4. 如改动文档站，再跑 `npm run docs:build`

@@ -1,7 +1,7 @@
 import logger, { Sentry, writeStructuredLog } from '../../logger'
-import { SEND_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { SEND_CHANNELS } from '@shared/protocol/channels'
 import { ipcService } from '../IpcService'
-import type { ErrorReport, LogMessage } from '@/platform/contracts/ipc'
+import type { ErrorReport, LogMessage } from '@shared/contracts/ipc'
 
 export function registerLogHandlers(): void {
   ipcService.registerSend(SEND_CHANNELS.LOG_MESSAGE, (entry: LogMessage) => {

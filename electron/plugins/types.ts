@@ -2,12 +2,13 @@ import { z } from 'zod'
 import type {
   MusicPluginCapabilities,
   PluginCategory,
+  PluginContribution,
   PluginMethodName,
   PluginPermissionDeclaration,
   PluginSettingDefinition,
   PluginThemeResource
 } from '../../packages/plugin-sdk'
-import type { PlatformDescriptor } from '../../src/platform/music/descriptors'
+import type { PlatformDescriptor } from '@shared/types/platform'
 
 export interface ExternalPluginEntry {
   main: string
@@ -33,6 +34,7 @@ export interface ExternalPluginManifest {
     settings?: PluginSettingDefinition[]
     themeResources?: PluginThemeResource[]
   }
+  contributionsV2?: PluginContribution[]
 }
 
 export interface PluginDiagnosticEntry {
@@ -107,6 +109,18 @@ const pluginThemeResourceSchema = z.object({
   cssText: z.string().max(100_000).optional()
 })
 
+const pluginPlayerHookContributionSchema = z.object({
+  type: z.literal('playerHook'),
+  hook: z.enum([
+    'beforePlay',
+    'afterPlay',
+    'beforeSongUrlRefresh',
+    'afterSongUrlRefresh',
+    'playbackError'
+  ]),
+  description: z.string().optional()
+})
+
 const pluginCapabilitiesSchema = z.object({
   search: z.boolean(),
   songUrl: z.boolean(),
@@ -165,7 +179,8 @@ export const ExternalPluginManifestSchema = z.object({
       settings: z.array(pluginSettingDefinitionSchema).optional(),
       themeResources: z.array(pluginThemeResourceSchema).optional()
     })
-    .optional()
+    .optional(),
+  contributionsV2: z.array(pluginPlayerHookContributionSchema).optional()
 })
 
 export function createPlatformDescriptorFromExternalPlugin(

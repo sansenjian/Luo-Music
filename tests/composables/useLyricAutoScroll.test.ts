@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref, type Ref } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
@@ -8,7 +8,7 @@ import {
   USER_SCROLL_IDLE_DELAY
 } from '@/constants/lyric'
 import { useLyricAutoScroll } from '@/composables/useLyricAutoScroll'
-import type { LyricLine } from '@/utils/player/core/lyric'
+import type { LyricLine } from '@shared/player/lyric'
 
 type AutoScrollApi = ReturnType<typeof useLyricAutoScroll>
 

@@ -7,6 +7,8 @@
 - 构建关键路径中不要裸用 `__dirname`。
 - preload 路径优先使用统一路径工具或 `fileURLToPath` 处理。
 - IPC 通道必须在 preload 中显式暴露，禁止依赖 `contextIsolation: false`。
+- Electron main / preload 新增跨进程协议或纯共享合同时优先导入 `@shared/*`，不要继续把共享合同放进渲染实现目录。
+- Electron 代码禁止依赖 renderer 私有目录，例如 `@/components`、`@/composables`、`@/views`、`@/store`、`@/services`、`@/types`、`@/platform/contracts`、`@/utils/player`。
 - 不要假设 Web 与 Electron 完全一致，差异统一收口到适配层。
 
 ## 依赖与环境
@@ -46,6 +48,7 @@
 ### 常规改动
 
 ```bash
+npm run check:architecture
 npm run test:run
 ```
 

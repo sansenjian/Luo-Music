@@ -10,7 +10,8 @@
 
 ## 类型定义位置
 
-- 实体类型优先放 `src/types/`。
+- renderer 专用实体类型优先放 `src/types/`。
+- 跨 renderer / preload / main 使用的纯类型放 `packages/shared/types/`，跨端播放器纯类型或纯工具放 `packages/shared/player/`。
 - API 专用类型放到对应文件旁，例如 `xx.types.ts`。
 - 组件 Props 类型优先用 `defineProps<...>()` 内联声明或就近提取。
 
@@ -31,6 +32,6 @@
 
 ## 文档组织
 
-- 根目录仅保留 `AGENTS.md` 和 `README.md`
-- 其余 Markdown 文档统一放在 `docs/`
-- 修改文档结构后，补跑 `npm run docs:build`
+- 根目录 Markdown 只保留项目入口、协作入口和贡献入口，例如 `AGENTS.md`、`README.md`、`CLAUDE.md`、`CONTRIBUTING.md`。
+- 架构说明、计划、报告和长期参考文档统一放在 `docs/`。
+- 修改文档结构后，补跑 `npm run docs:build`。

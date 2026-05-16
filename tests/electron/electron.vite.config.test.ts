@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 type ElectronViteConfigEnv = {
   sentryAuthToken?: string
@@ -111,5 +111,16 @@ describe('electron/vite.config sourcemap policy', () => {
     const plugins = config.main?.plugins as Array<{ name?: string }> | undefined
 
     expect(plugins?.map(plugin => plugin.name)).toContain('luo-copy-external-plugin-worker')
+  })
+
+  it('bundles Kysely into the main process and keeps the native SQLite binding external', async () => {
+    const config = await loadElectronViteConfig()
+    const mainResolve = config.main?.resolve as { noExternal?: string[] } | undefined
+    const mainRollupOptions = config.main?.build?.rollupOptions as
+      | { external?: string[] }
+      | undefined
+
+    expect(mainResolve?.noExternal).toContain('kysely')
+    expect(mainRollupOptions?.external).toContain('better-sqlite3')
   })
 })

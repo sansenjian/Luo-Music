@@ -7,7 +7,7 @@ import {
   type LogEntry,
   type LogLevel,
   shouldLog
-} from '@/platform/contracts/log'
+} from '@shared/contracts/log'
 
 export { LogLevels as LogLevel }
 export type { LogEntry, LogLevel as LogLevelValue }

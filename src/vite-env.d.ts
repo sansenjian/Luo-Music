@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_PUBLIC: string
   readonly VITE_DEV_SERVER_URL: string
   readonly VITE_DESKTOP_LYRIC_DEBUG?: string
+  readonly VITE_PLAYER_CORE_DEBUG?: '0' | '1'
+  readonly VITE_PLAYER_PLAYBACK_DEBUG?: '0' | '1'
   readonly SENTRY_DSN?: string
   readonly SENTRY_RELEASE?: string
   readonly SENTRY_TRACING_ENABLED?: '0' | '1'

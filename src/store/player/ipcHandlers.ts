@@ -1,6 +1,6 @@
 import { Disposable, DisposableStore, type IDisposable } from '@/base/common/lifecycle/disposable'
-import type { Song } from '@/types/schemas'
-import type { PlayMode } from '@/utils/player/constants/playMode'
+import type { Song } from '@shared/types/schemas'
+import type { PlayMode } from '@shared/player/playMode'
 
 import type { PlayerState } from './playerState'
 

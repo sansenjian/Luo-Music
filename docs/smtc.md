@@ -20,11 +20,11 @@
   - `App.vue` 只调用 `useSmtcExtension()`，不再直接组合 SMTC 开关、窗口归属、MediaSession 和 `playerCore`
   - 启动器负责判断 Electron 环境、读取 `smtcEnabled`、排除桌面歌词预加载窗口，并把底层 `playerCore` 注入给 MediaSession 同步层
   - 窗口归属判断抽成 `isSmtcPrimaryWindow()`，避免散落 `#/desktop-lyric` 判断
-- 主进程按 SMTC 开关控制 Chromium 启动参数：
-  - `smtcEnabled = true` 时启动参数使用 `enable-features=HardwareMediaKeyHandling,MediaSessionService`
-  - `smtcEnabled = false` 时启动参数使用 `disable-features=HardwareMediaKeyHandling,MediaSessionService`
+- 主进程保持 Chromium MediaSession 能力常开：
+  - 启动参数始终使用 `enable-features=HardwareMediaKeyHandling,MediaSessionService`
   - 渲染端切换 `builtin.smtc` 时通过 `smtc:set-enabled` 同步状态到主进程 `electron-store`
-  - Windows 下如果当前进程启动参数与新开关不一致，主进程会 relaunch 应用，使关闭后不再残留“未知应用 / Luo-Music”的系统媒体面板
+  - 插件开关不再触发 relaunch；关闭插件只清理 renderer `navigator.mediaSession` 和底层 Audio 的系统媒体暴露状态
+  - 这样避免“UI 已开启但 Chromium MediaSessionService 仍处于禁用启动参数”的不一致状态
 - 重构 src/composables/useMediaSession.ts 为“响应式启停”模型：
   - 输入改为 enabled: () => boolean
   - 输入可注入 systemMediaSessionController，用于同步播放器底层 Audio 的系统媒体暴露状态
@@ -45,6 +45,10 @@
   - 启用时移除 disableremoteplayback / noremoteplayback 限制
   - 停用时设置 disableRemotePlayback、disableremoteplayback 和 controlsList.noremoteplayback
   - 该逻辑只处理系统媒体暴露，不停止当前播放，也不改变播放队列
+- 可视化 fallback 规则：
+  - `captureStream()` 可用时继续复制音频流给可视化，不影响 `<audio>` 原生输出
+  - SMTC 开启时禁止 fallback 到 `createMediaElementSource()`，因为该路径会把音频输出接入 Web Audio，容易破坏 Chromium MediaSession / Windows SMTC 识别
+  - 只有在 SMTC 暴露关闭后，才允许同源媒体使用 `createMediaElementSource()` fallback
 - 本地封面解析继续复用现有 src/utils/cache/coverCache.ts 和 PlatformService.getLocalLibraryCover(hash)。
   - CoverCacheManager 继续负责把返回值标准化为 MediaMetadata.artwork 可用 URL
   - 远程封面直接使用 song.album.picUrl
@@ -101,7 +105,7 @@
   - 非 Electron 下不显示 `builtin.smtc`
   - 切换第一方拓展插件会更新 SMTC 启用状态
 - 主进程启动测试：
-  - 默认 SMTC 关闭时禁用 Chromium MediaSession / HardwareMediaKeyHandling features
+  - 即使 SMTC 插件默认关闭，启动时也保持 Chromium MediaSession / HardwareMediaKeyHandling features 可用
   - 插件开关通过 `useExperimentalFeatures` 同步到主进程
 - SMTC 启动器测试：
   - 主窗口启用时注册 MediaSession

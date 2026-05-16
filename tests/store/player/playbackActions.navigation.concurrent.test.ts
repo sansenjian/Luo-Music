@@ -1,8 +1,8 @@
 // @vitest-environment node
 
-import { beforeEach, describe, expect, it } from 'vite-plus/test'
+import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { Song } from '@/types/schemas'
+import type { Song } from '@shared/types/schemas'
 import { createMockSong, createQQSong } from '../../utils/test-utils'
 import {
   adapterMock,

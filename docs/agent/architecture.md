@@ -4,6 +4,8 @@
 
 - 根目录 `api/`：仅用于 Vercel Serverless Function 部署路由，例如 `/api/*` 与 `/qq-api` 重写；不要从 `src/`、`electron/` 或通用包导入。
 - `src/api/`：仅负责 HTTP 请求、响应适配、接口类型定义；不要放视图逻辑。
+- `packages/shared/`：跨 renderer / preload / main 的共享协议、纯 TypeScript 合同和纯类型；通过 `@shared/contracts/*`、`@shared/protocol/*`、`@shared/types/*`、`@shared/player/*` 暴露，不能依赖 Vue、Pinia、DOM、Electron 或 Node-only API。
+- `src/base/common/`：平台无关基础设施，例如事件、生命周期和基础类型；业务工具不要为了目录统一下沉到这里。
 - `src/platform/`：统一封装 Web / Electron 差异；不要直接耦合 UI。
 - `src/store/`：全局共享状态唯一数据源；播放器、登录、下载等状态不要多处维护。
 - `src/composables/`：沉淀可复用的状态编排、副作用和页面逻辑。
@@ -24,6 +26,7 @@
 - 请求逻辑优先收敛到 `src/api/` 与 `src/utils/http/`。
 - 错误处理优先复用 `src/utils/error/`，不要在页面或组件里散落重复分支。
 - 平台接口异常要区分网络问题、鉴权问题、空数据和平台差异。
+- 根 `api/`、`src/api/` 和 `server/` 是三个不同入口：Vercel handler、渲染侧请求适配、本地 API 服务端。
 
 ## 页面 / 组件组织
 
@@ -56,5 +59,6 @@
 
 - `src/store/`（playerStore、searchStore、userStore、playlistStore 等）
 - `src/composables/`
-- `src/components/user/`
+- `src/features/user-center/`（用户中心页面专属组件与 composable）
+- `src/components/media/`（跨 Home / UserCenter 复用的媒体展示组件）
 - `src/views/UserCenter.vue`

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const ipcMainOnMock = vi.hoisted(() => vi.fn())
 const ipcMainRemoveListenerMock = vi.hoisted(() => vi.fn())
@@ -43,7 +43,7 @@ describe('IpcService', () => {
   it('replaces send listeners when a channel is re-registered and removes them on dispose', async () => {
     const [{ ipcService }, { SEND_CHANNELS }] = await Promise.all([
       import('../../electron/ipc/IpcService.ts'),
-      import('@/platform/contracts/protocol/channels')
+      import('@shared/protocol/channels')
     ])
 
     const firstHandler = vi.fn()
@@ -87,7 +87,7 @@ describe('IpcService', () => {
     try {
       const [{ ipcService }, { INVOKE_CHANNELS }] = await Promise.all([
         import('../../electron/ipc/IpcService.ts'),
-        import('@/platform/contracts/protocol/channels')
+        import('@shared/protocol/channels')
       ])
 
       ipcService.configure({ defaultTimeout: 1000 })

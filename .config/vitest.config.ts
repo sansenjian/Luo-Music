@@ -1,35 +1,25 @@
 import { defineConfig } from 'vitest/config'
+import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
-import { fileURLToPath } from 'node:url'
 
-const rootDir = fileURLToPath(new URL('..', import.meta.url))
-const resolveConfig = {
-  extensions: ['.ts', '.tsx', '.mts', '.js', '.mjs', '.jsx', '.json'],
-  alias: {
-    '@': fileURLToPath(new URL('../src', import.meta.url)),
-    '@plugin-sdk': fileURLToPath(new URL('../packages/plugin-sdk', import.meta.url)),
-    '~': fileURLToPath(new URL('../tests', import.meta.url))
-  }
-}
+import { createSrcAlias } from '../config/vite.shared.ts'
+
 const sharedTestOptions = {
   globals: true,
   testTimeout: 10000,
   hookTimeout: 10000
 }
+const testFilePattern = '**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+const testDir = (name: string) => `tests/${name}/${testFilePattern}`
 const commonProjectExcludes = ['tests/e2e/**']
-const nodeProjectIncludes = [
-  'tests/api/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/base/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/constants/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/electron/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/plugins/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/scripts/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/services/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/store/player/playbackActions.*.test.ts',
-  'tests/utils/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+const nativeTestIncludes = [
+  'tests/electron/localLibrary.repository.test.ts',
+  'tests/electron/localLibrary.service.test.ts'
 ]
-const nodeProjectExcludes = [
-  ...commonProjectExcludes,
+const includeNativeTests = process.env.LUO_TEST_INCLUDE_NATIVE === '1'
+const nativeOnly = process.env.LUO_TEST_NATIVE_ONLY === '1'
+
+const rendererRuntimeTests = [
   'tests/api/responseHandler.test.ts',
   'tests/services/apiService.test.ts',
   'tests/services/loggerService.test.ts',
@@ -43,33 +33,57 @@ const nodeProjectExcludes = [
   'tests/utils/sentryRenderer.test.ts',
   'tests/utils/transportFactory.test.ts'
 ]
+
+const nodeRuntimeTestDirs = [
+  'api',
+  'base',
+  'constants',
+  'electron',
+  'plugins',
+  'scripts',
+  'services',
+  'utils'
+]
+const rendererRuntimeTestDirs = [
+  'components',
+  'composables',
+  'extensions',
+  'platform',
+  'store',
+  'views'
+]
+const nodeProjectIncludes = [
+  ...(nativeOnly
+    ? nativeTestIncludes
+    : [...nodeRuntimeTestDirs.map(testDir), 'tests/store/player/playbackActions.*.test.ts'])
+]
+const nodeProjectExcludes = [
+  ...commonProjectExcludes,
+  ...rendererRuntimeTests,
+  ...(includeNativeTests ? [] : nativeTestIncludes)
+]
 const jsdomProjectIncludes = [
-  'tests/App.test.ts',
-  'tests/main.test.ts',
-  'tests/api/responseHandler.test.ts',
-  'tests/components/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/composables/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/extensions/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/platform/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/services/apiService.test.ts',
-  'tests/services/loggerService.test.ts',
-  'tests/services/platformService.test.ts',
-  'tests/services/playerService.test.ts',
-  'tests/store/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-  'tests/utils/electronIpcRequest.test.ts',
-  'tests/utils/performanceMonitor.test.ts',
-  'tests/utils/player/core/playerCore.test.ts',
-  'tests/utils/requestCache.test.ts',
-  'tests/utils/requestCanceler.test.ts',
-  'tests/utils/sentryRenderer.test.ts',
-  'tests/utils/transportFactory.test.ts',
-  'tests/views/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+  ...(nativeOnly
+    ? []
+    : [
+        'tests/App.test.ts',
+        'tests/main.test.ts',
+        ...rendererRuntimeTestDirs.map(testDir),
+        ...rendererRuntimeTests
+      ])
 ]
 
+const rootDir = process.cwd()
+const testResolve = {
+  extensions: ['.ts', '.tsx', '.mts', '.js', '.mjs', '.jsx', '.json'],
+  alias: {
+    ...createSrcAlias(rootDir),
+    '@electron/sandbox': resolve(rootDir, 'electron/sandbox'),
+    '~': resolve(rootDir, 'tests')
+  }
+}
+
 export default defineConfig({
-  plugins: [vue()],
-  root: rootDir,
-  resolve: resolveConfig,
   test: {
     coverage: {
       provider: 'v8',
@@ -95,7 +109,7 @@ export default defineConfig({
       {
         plugins: [vue()],
         root: rootDir,
-        resolve: resolveConfig,
+        resolve: testResolve,
         test: {
           ...sharedTestOptions,
           name: 'node',
@@ -108,7 +122,7 @@ export default defineConfig({
       {
         plugins: [vue()],
         root: rootDir,
-        resolve: resolveConfig,
+        resolve: testResolve,
         test: {
           ...sharedTestOptions,
           name: 'jsdom',

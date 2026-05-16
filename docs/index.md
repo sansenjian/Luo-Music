@@ -49,6 +49,7 @@ features:
 | [服务层设计](/architecture/service-layer)        | 服务注册、依赖组织与调用边界            |
 | [Service Manager](/architecture/service-manager) | Electron 子进程与服务生命周期           |
 | [请求层说明](/architecture/request-layer)        | `src/utils/http` 的缓存、重试与取消机制 |
+| [数据库层路线](/architecture/database)           | SQLite、Kysely 与后续 Drizzle 迁移边界  |
 | [统一 IPC](/architecture/unified-ipc)            | preload / IPC 落地说明                  |
 
 ### 参考资料

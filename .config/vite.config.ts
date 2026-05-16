@@ -1,8 +1,9 @@
 import { defineConfig, loadEnv } from 'vite-plus'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import type { PluginOption } from 'vite-plus'
+import type { ConfigEnv, PluginOption, UserConfig } from 'vite-plus'
 import {
+  createAppRuntimeHtmlMarkerPlugin,
   createSharedDevProxy,
   createSrcAlias,
   createVueRendererPlugins,
@@ -10,7 +11,7 @@ import {
   webManualChunks
 } from '../config/vite.shared.ts'
 
-export default defineConfig(({ command, mode }) => {
+function createConfig({ command, mode }: ConfigEnv): UserConfig {
   const rootDir = process.cwd()
   const envDir = existsSync(resolve(rootDir, '.config/.env')) ? '.config' : rootDir
   const env = loadEnv(mode, envDir, '')
@@ -20,12 +21,16 @@ export default defineConfig(({ command, mode }) => {
   const sentryTracingEnabled = env.SENTRY_TRACING_ENABLED ?? '0'
   const sentryReplayEnabled = env.SENTRY_REPLAY_ENABLED ?? '0'
   const isBuild = command === 'build'
+  const isTest = mode === 'test'
   const devServerPort = resolveViteDevServerPort(env.VITE_DEV_SERVER_PORT)
-
+  const srcAlias = createSrcAlias(rootDir)
   const outputDir = appRuntime === 'electron' ? 'build' : 'dist'
 
-  return {
-    plugins: createVueRendererPlugins({ dts: !isBuild }) as PluginOption[],
+  const config = {
+    plugins: [
+      ...createVueRendererPlugins({ dts: !isBuild && !isTest }),
+      createAppRuntimeHtmlMarkerPlugin(appRuntime)
+    ] as PluginOption[],
     base: './',
     define: {
       'import.meta.env.APP_RUNTIME': JSON.stringify(appRuntime),
@@ -51,11 +56,19 @@ export default defineConfig(({ command, mode }) => {
         }
       }
     },
-    esbuild: {
-      drop: isBuild ? ['console', 'debugger'] : []
-    },
+    ...(isBuild
+      ? {
+          esbuild: {
+            drop: ['console', 'debugger']
+          }
+        }
+      : {}),
     resolve: {
-      alias: createSrcAlias(process.cwd())
+      alias: srcAlias
     }
   }
-})
+
+  return config as unknown as UserConfig
+}
+
+export default defineConfig(createConfig)

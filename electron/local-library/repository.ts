@@ -8,9 +8,8 @@ import type {
   LocalLibrarySummaryQuery,
   LocalLibraryTrack,
   LocalLibraryTrackQuery
-} from '@/types/localLibrary'
+} from '@shared/types/localLibrary'
 
-import { appendSummarySearchFilter, appendTrackFilters } from './repository.filters'
 import {
   createFilePathKey,
   createPathKey,
@@ -23,9 +22,14 @@ import {
   summarizeLocalArtists,
   toPageLimit
 } from './repository.helpers'
+import {
+  createListAlbumsPageQueries,
+  createListTracksBatchQuery,
+  createListTracksPageQueries,
+  type LocalLibraryCompiledQuery
+} from './repository.kysely'
 import { mapFolderListRow, mapFolderRow, mapTrackRow, toAlbumSummary } from './repository.mappers'
 import type {
-  AlbumRow,
   ArtistSummarySourceRow,
   BetterSqlite3Constructor,
   BetterSqlite3Database,
@@ -426,18 +430,6 @@ export class LocalLibraryRepository {
           artist: undefined
         }
       : query
-    const params: unknown[] = []
-    const whereClauses: string[] = []
-
-    appendTrackFilters(whereClauses, params, databaseQuery)
-
-    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : ''
-    const fromSql = `
-      FROM local_library_tracks AS track
-      INNER JOIN local_library_folders AS folder
-        ON folder.id = track.folder_id
-      ${whereSql}
-    `
 
     if (artistFilter) {
       const batchSize = Math.max(200, limit)
@@ -445,26 +437,10 @@ export class LocalLibraryRepository {
       let filteredCount = 0
       let fetchOffset = 0
 
-      const selectRowsStatement = this.db.prepare(`
-        SELECT
-          track.id,
-          track.folder_id,
-          track.file_path,
-          track.file_name,
-          track.title,
-          track.artist,
-          track.album,
-          track.duration,
-          track.file_size,
-          track.modified_at,
-          track.cover_hash
-        ${fromSql}
-        ORDER BY track.title COLLATE NOCASE ASC, track.file_path COLLATE NOCASE ASC
-        LIMIT ? OFFSET ?
-      `)
-
       while (true) {
-        const batchRows = selectRowsStatement.all(...params, batchSize, fetchOffset) as TrackRow[]
+        const batchRows = this.allCompiledQuery(
+          createListTracksBatchQuery(databaseQuery, batchSize, fetchOffset)
+        )
         if (batchRows.length === 0) {
           break
         }
@@ -495,31 +471,9 @@ export class LocalLibraryRepository {
       }
     }
 
-    const totalRow = this.db
-      .prepare(`SELECT COUNT(track.id) AS count ${fromSql}`)
-      .get(...params) as { count: number }
-
-    const rows = this.db
-      .prepare(
-        `
-        SELECT
-          track.id,
-          track.folder_id,
-          track.file_path,
-          track.file_name,
-          track.title,
-          track.artist,
-          track.album,
-          track.duration,
-          track.file_size,
-          track.modified_at,
-          track.cover_hash
-        ${fromSql}
-        ORDER BY track.title COLLATE NOCASE ASC, track.file_path COLLATE NOCASE ASC
-        LIMIT ? OFFSET ?
-      `
-      )
-      .all(...params, limit, offset) as TrackRow[]
+    const pageQueries = createListTracksPageQueries(query, limit, offset)
+    const totalRow = this.getCompiledQuery(pageQueries.count) ?? { count: 0 }
+    const rows = this.allCompiledQuery(pageQueries.rows)
 
     return {
       items: rows.map(mapTrackRow),
@@ -555,39 +509,9 @@ export class LocalLibraryRepository {
   getAlbumsPage(query: LocalLibrarySummaryQuery = {}): LocalLibraryPage<LocalLibraryAlbumSummary> {
     const limit = toPageLimit(query.limit)
     const offset = decodeCursor(query.cursor)
-    const params: unknown[] = []
-    const whereClauses: string[] = []
-
-    appendSummarySearchFilter(whereClauses, params, query, ['track.album', 'track.artist'])
-
-    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : ''
-    const groupedSql = `
-      FROM local_library_tracks AS track
-      INNER JOIN local_library_folders AS folder
-        ON folder.id = track.folder_id
-      ${whereSql}
-      GROUP BY track.album, track.artist
-    `
-
-    const totalRow = this.db
-      .prepare(`SELECT COUNT(*) AS count FROM (SELECT track.album, track.artist ${groupedSql})`)
-      .get(...params) as { count: number }
-
-    const rows = this.db
-      .prepare(
-        `
-        SELECT
-          track.album AS album,
-          track.artist AS artist,
-          COUNT(track.id) AS track_count,
-          SUM(track.duration) AS total_duration,
-          MAX(track.cover_hash) AS cover_hash
-        ${groupedSql}
-        ORDER BY track.album COLLATE NOCASE ASC, track.artist COLLATE NOCASE ASC
-        LIMIT ? OFFSET ?
-      `
-      )
-      .all(...params, limit, offset) as AlbumRow[]
+    const pageQueries = createListAlbumsPageQueries(query, limit, offset)
+    const totalRow = this.getCompiledQuery(pageQueries.count) ?? { count: 0 }
+    const rows = this.allCompiledQuery(pageQueries.rows)
 
     return {
       items: rows.map(toAlbumSummary),
@@ -622,6 +546,14 @@ export class LocalLibraryRepository {
       CREATE INDEX IF NOT EXISTS ${indexName}
         ON local_library_tracks(${columnName});
     `)
+  }
+
+  private getCompiledQuery<T>(query: LocalLibraryCompiledQuery<T>): T | undefined {
+    return this.db.prepare(query.sql).get(...query.parameters) as T | undefined
+  }
+
+  private allCompiledQuery<T>(query: LocalLibraryCompiledQuery<T>): T[] {
+    return this.db.prepare(query.sql).all(...query.parameters) as T[]
   }
 
   private runInsertTrack(track: LocalLibraryTrack): void {

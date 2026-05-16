@@ -217,7 +217,7 @@
 
 ### 架构设计
 
-- [architecture-refactoring-plan.md](/plans/architecture-refactoring-plan) - 架构重构
+- [项目结构优化规划](/plans/project-structure-optimization-plan) - 架构与目录边界路线
 - [服务层设计](/architecture/service-layer) - 服务层设计
 - [unified-ipc-plan.md](/plans/unified-ipc-plan) - IPC 统一方案
 

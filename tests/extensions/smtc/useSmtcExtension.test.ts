@@ -1,5 +1,5 @@
 import { nextTick, reactive, ref } from 'vue'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   DESKTOP_LYRIC_ROUTE_PATH,

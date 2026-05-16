@@ -1,22 +1,28 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
 
-import { useUserCenterPage } from '@/composables/useUserCenterPage'
+import { useUserCenterPage } from '@/features/user-center'
 
 const UserProfileHeader = defineAsyncComponent(
-  () => import('@/components/user/UserProfileHeader.vue')
+  () => import('@/features/user-center/components/UserProfileHeader.vue')
 )
-const LikedSongsView = defineAsyncComponent(() => import('@/components/user/LikedSongsView.vue'))
-const PlaylistsView = defineAsyncComponent(() => import('@/components/user/PlaylistsView.vue'))
+const LikedSongsView = defineAsyncComponent(
+  () => import('@/features/user-center/components/LikedSongsView.vue')
+)
+const PlaylistsView = defineAsyncComponent(
+  () => import('@/features/user-center/components/PlaylistsView.vue')
+)
 const FavoriteAlbumsView = defineAsyncComponent(
-  () => import('@/components/user/FavoriteAlbumsView.vue')
+  () => import('@/components/media/FavoriteAlbumsView.vue')
 )
 const AlbumDetailPanel = defineAsyncComponent(
-  () => import('@/components/user/AlbumDetailPanel.vue')
+  () => import('@/components/media/AlbumDetailPanel.vue')
 )
-const EventsView = defineAsyncComponent(() => import('@/components/user/EventsView.vue'))
+const EventsView = defineAsyncComponent(
+  () => import('@/features/user-center/components/EventsView.vue')
+)
 const PlaylistDetailPanel = defineAsyncComponent(
-  () => import('@/components/user/PlaylistDetailPanel.vue')
+  () => import('@/features/user-center/components/PlaylistDetailPanel.vue')
 )
 
 const {

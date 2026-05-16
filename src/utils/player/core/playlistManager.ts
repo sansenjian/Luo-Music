@@ -1,6 +1,6 @@
-import { PLAY_MODE } from '@/utils/player/constants'
+import { PLAY_MODE } from '@shared/player/playMode'
 import { shuffleHelper } from '@/utils/player/helpers/shuffleHelper'
-import type { Song } from '@/types/schemas'
+import type { Song } from '@shared/types/schemas'
 
 export interface Playlist {
   list: Song[]

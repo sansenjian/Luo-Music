@@ -14,11 +14,14 @@
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["vite/client", "vitest/globals"],
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@plugin-sdk": ["packages/plugin-sdk/index.ts"],
       "@plugin-sdk/*": ["packages/plugin-sdk/*"],
+      "@shared": ["packages/shared/index.ts"],
+      "@shared/*": ["packages/shared/*"],
       "@electron/sandbox": ["electron/sandbox/index.ts"]
     },
     "allowJs": false,
@@ -34,6 +37,7 @@
     "src/**/*.vue",
     "src/config/**/*.js",
     "packages/plugin-sdk/**/*.ts",
+    "packages/shared/**/*.ts",
     "tests/**/*.ts",
     "tests/**/*.d.ts",
     "electron/sandbox/**/*.ts"

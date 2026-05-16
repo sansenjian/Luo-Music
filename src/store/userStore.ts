@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 
 import { storageAdapter } from '@/services/storageService'
 import { clearQQCookieCache } from '@/api/qqmusic'
+import { clearNeteaseServiceCookieCache } from '@/api/shared/neteaseServiceRequest'
 import { AUTH_REQUEST_CACHE_NAMESPACE, clearCacheNamespaces, clearCookieCache } from '@/utils/http'
 
 export interface UserInfo {
@@ -52,6 +53,7 @@ export const useUserStore = defineStore('user', {
     setCookie(cookie: string) {
       this.cookie = cookie
       this.syncNeteaseSession()
+      clearNeteaseServiceCookieCache()
       clearCookieCache()
       clearAuthRequestCacheNamespace()
     },
@@ -65,6 +67,7 @@ export const useUserStore = defineStore('user', {
       this.userInfo = userInfo
       this.cookie = cookie
       this.syncNeteaseSession()
+      clearNeteaseServiceCookieCache()
       clearCookieCache()
       clearAuthRequestCacheNamespace()
     },
@@ -72,6 +75,7 @@ export const useUserStore = defineStore('user', {
       this.userInfo = null
       this.cookie = ''
       this.isLoggedIn = false
+      clearNeteaseServiceCookieCache()
       clearCookieCache()
       clearAuthRequestCacheNamespace()
     },

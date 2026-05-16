@@ -7,8 +7,8 @@ import type {
   LocalLibrarySummaryQuery,
   LocalLibraryTrack,
   LocalLibraryTrackQuery
-} from '@/types/localLibrary'
-import { createEmptyLocalLibraryPage } from '@/types/localLibrary'
+} from '@shared/types/localLibrary'
+import { createEmptyLocalLibraryPage } from '@shared/types/localLibrary'
 import { CoverCacheManager } from '@/utils/cache/coverCache'
 
 import type { LocalLibraryPageRunner, LocalLibraryPlatformService } from './types'

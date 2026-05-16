@@ -1,14 +1,13 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 
-import { getDefaultSearchPlatformId, getSearchPlatformOptions } from '@/platform/music'
 import type { Song } from '@/platform/music/interface'
 import { services } from '@/services'
 import type { LoggerService } from '@/services/loggerService'
 import type { MusicService } from '@/services/musicService'
 import type { PlatformService } from '@/services/platformService'
 import { storageAdapter } from '@/services/storageService'
-import type { LocalLibraryTrack } from '@/types/localLibrary'
+import type { LocalLibraryTrack } from '@shared/types/localLibrary'
 import { handleApiError } from '@/utils/error/legacy'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
 import { createLatestRequestController } from '@/utils/http/requestScope'
@@ -81,7 +80,10 @@ function normalizeSearchResults(songs: Song[]): SearchResultItem[] {
 
 export type SearchStoreDeps = {
   logger?: Pick<LoggerService, 'info' | 'debug' | 'warn' | 'error'>
-  musicService?: Pick<MusicService, 'search'>
+  musicService?: Pick<
+    MusicService,
+    'getDefaultSearchPlatformId' | 'getSearchPlatformOptions' | 'search'
+  >
   platformService?: PlatformService
   getPlayerStore?: typeof usePlayerStore
   getPlaylistStore?: typeof usePlaylistStore
@@ -103,14 +105,17 @@ function getDefaultSearchStoreDeps(): Required<SearchStoreDeps> {
   }
 }
 
-function resolveSearchPlatformId(serverId?: string): string {
-  const searchPlatformOptions = getSearchPlatformOptions()
+function resolveSearchPlatformId(
+  musicService: Pick<MusicService, 'getDefaultSearchPlatformId' | 'getSearchPlatformOptions'>,
+  serverId?: string
+): string {
+  const searchPlatformOptions = musicService.getSearchPlatformOptions()
 
   if (serverId && searchPlatformOptions.some(option => option.value === serverId)) {
     return serverId
   }
 
-  return searchPlatformOptions[0]?.value ?? getDefaultSearchPlatformId()
+  return searchPlatformOptions[0]?.value ?? musicService.getDefaultSearchPlatformId()
 }
 
 function localTrackToSearchResult(track: LocalLibraryTrack): SearchResultItem {
@@ -152,7 +157,7 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
       }
       const keyword = ref('')
       const results = ref<SearchResultItem[]>([])
-      const server = ref(resolveSearchPlatformId())
+      const server = ref(resolveSearchPlatformId(musicService))
       const isLoading = ref(false)
       const error = ref<string | null>(null)
       const totalResults = ref(0)
@@ -162,7 +167,7 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
       watch(
         server,
         serverId => {
-          const resolvedServerId = resolveSearchPlatformId(serverId)
+          const resolvedServerId = resolveSearchPlatformId(musicService, serverId)
 
           if (resolvedServerId !== serverId) {
             logger.warn('searchStore', 'Reset invalid search platform', {
@@ -176,7 +181,7 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
       )
 
       function setServer(serverId: string) {
-        const resolvedServerId = resolveSearchPlatformId(serverId)
+        const resolvedServerId = resolveSearchPlatformId(musicService, serverId)
 
         if (resolvedServerId !== serverId) {
           logger.warn('searchStore', 'Requested unsupported search platform', {
@@ -210,7 +215,7 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
         isLoading.value = true
         error.value = null
 
-        const activeServer = resolveSearchPlatformId(server.value)
+        const activeServer = resolveSearchPlatformId(musicService, server.value)
         if (activeServer !== server.value) {
           server.value = activeServer
         }

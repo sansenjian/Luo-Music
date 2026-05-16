@@ -1,4 +1,11 @@
 import { getMusicAdapter } from '@/platform/music'
+import {
+  getDefaultSearchPlatformId,
+  getLoginCapablePlatformDescriptors,
+  getPlatformCapabilities,
+  getPlatformDescriptors,
+  getSearchPlatformOptions
+} from '@/platform/music/descriptors'
 import type {
   LyricResult,
   PlaylistDetail,
@@ -6,8 +13,20 @@ import type {
   Song,
   SongUrlOptions
 } from '@/platform/music/interface'
+import type {
+  PlatformBooleanCapability,
+  PlatformCapabilities,
+  PlatformDescriptor,
+  PlatformOption
+} from '@shared/types/platform'
 
 export type MusicService = {
+  getPlatformDescriptors(): PlatformDescriptor[]
+  getLoginCapablePlatformDescriptors(): PlatformDescriptor[]
+  getDefaultSearchPlatformId(): string
+  getSearchPlatformOptions(): PlatformOption[]
+  getPlatformCapabilities(platformId: string): PlatformCapabilities
+  hasPlatformCapability(platformId: string, capability: PlatformBooleanCapability): boolean
   search(platform: string, keyword: string, limit: number, page: number): Promise<SearchResult>
   getSongUrl(
     platform: string,
@@ -23,12 +42,48 @@ type ResolveMusicAdapter = typeof getMusicAdapter
 
 export type MusicServiceDeps = {
   resolveAdapter?: ResolveMusicAdapter
+  getPlatformDescriptors?: typeof getPlatformDescriptors
+  getLoginCapablePlatformDescriptors?: typeof getLoginCapablePlatformDescriptors
+  getDefaultSearchPlatformId?: typeof getDefaultSearchPlatformId
+  getSearchPlatformOptions?: typeof getSearchPlatformOptions
+  getPlatformCapabilities?: typeof getPlatformCapabilities
 }
 
 export function createMusicService(deps: MusicServiceDeps = {}): MusicService {
   const resolveAdapter = deps.resolveAdapter ?? getMusicAdapter
+  const resolvePlatformDescriptors = deps.getPlatformDescriptors ?? getPlatformDescriptors
+  const resolveLoginCapablePlatformDescriptors =
+    deps.getLoginCapablePlatformDescriptors ?? getLoginCapablePlatformDescriptors
+  const resolveDefaultSearchPlatformId =
+    deps.getDefaultSearchPlatformId ?? getDefaultSearchPlatformId
+  const resolveSearchPlatformOptions = deps.getSearchPlatformOptions ?? getSearchPlatformOptions
+  const resolvePlatformCapabilities = deps.getPlatformCapabilities ?? getPlatformCapabilities
 
   return {
+    getPlatformDescriptors(): PlatformDescriptor[] {
+      return resolvePlatformDescriptors()
+    },
+
+    getLoginCapablePlatformDescriptors(): PlatformDescriptor[] {
+      return resolveLoginCapablePlatformDescriptors()
+    },
+
+    getDefaultSearchPlatformId(): string {
+      return resolveDefaultSearchPlatformId()
+    },
+
+    getSearchPlatformOptions(): PlatformOption[] {
+      return resolveSearchPlatformOptions()
+    },
+
+    getPlatformCapabilities(platformId: string): PlatformCapabilities {
+      return resolvePlatformCapabilities(platformId)
+    },
+
+    hasPlatformCapability(platformId: string, capability: PlatformBooleanCapability): boolean {
+      return resolvePlatformCapabilities(platformId)[capability]
+    },
+
     async search(
       platform: string,
       keyword: string,

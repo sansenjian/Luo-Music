@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { IDisposable } from '@/base/common/lifecycle/disposable'
 import { Platform } from '@/platform/common/types'

@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import type { PlatformDescriptor } from '@/platform/music/descriptors'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { PlatformDescriptor } from '@shared/types/platform'
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks

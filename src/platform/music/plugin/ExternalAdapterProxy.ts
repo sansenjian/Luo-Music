@@ -1,4 +1,4 @@
-import type { PlatformBooleanCapability, PlatformCapabilities } from '@/platform/music/descriptors'
+import type { PlatformBooleanCapability, PlatformCapabilities } from '@shared/types/platform'
 import {
   MusicPlatformAdapter,
   type LyricResult,

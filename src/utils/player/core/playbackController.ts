@@ -1,5 +1,5 @@
 import { playerCore as audioManager } from './playerCore'
-import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import { PLAY_MODE } from '@shared/player/playMode'
 import { shuffleHelper } from '@/utils/player/helpers/shuffleHelper'
 
 export class PlaybackController {

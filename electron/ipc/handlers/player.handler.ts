@@ -1,16 +1,11 @@
-import {
-  INVOKE_CHANNELS,
-  RECEIVE_CHANNELS,
-  SEND_CHANNELS
-} from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS, RECEIVE_CHANNELS, SEND_CHANNELS } from '@shared/protocol/channels'
 import { ipcService } from '../IpcService'
 import type { ServiceManager } from '../../ServiceManager'
 import type { WindowManager } from '../../WindowManager'
-import { isLocalLibrarySongId } from '@/types/localLibrary'
-import { SongSchema } from '@/types/schemas'
-import type { Song } from '../../../src/types/schemas'
-import { LyricParser } from '../../../src/utils/player/core/lyric'
-import { PLAY_MODE } from '../../../src/utils/player/constants/playMode'
+import { isLocalLibrarySongId } from '@shared/types/localLibrary'
+import { SongSchema, type Song } from '@shared/types/schemas'
+import { LyricParser } from '@shared/player/lyric'
+import { PLAY_MODE } from '@shared/player/playMode'
 import type {
   DesktopLyricSnapshot,
   PlayMode,
@@ -18,7 +13,7 @@ import type {
   PlayerPlaySongPayload,
   PlayerStateSnapshot,
   PlayerStateSyncPayload
-} from '@/platform/contracts/ipc'
+} from '@shared/contracts/ipc'
 import { normalizeLyricResponse } from './api.normalizers'
 
 // ========== 配置常量 ==========

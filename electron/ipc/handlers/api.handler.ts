@@ -1,4 +1,4 @@
-import { INVOKE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { INVOKE_CHANNELS } from '@shared/protocol/channels'
 import type { ServiceManager } from '../../ServiceManager'
 import logger from '../../logger'
 import { ipcService } from '../IpcService'

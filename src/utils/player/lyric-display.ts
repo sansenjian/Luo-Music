@@ -1,4 +1,4 @@
-import type { LyricLine } from './core/lyric'
+import type { LyricLine } from '@shared/player/lyric'
 
 export interface LyricDisplayVisibility {
   showOriginal: boolean

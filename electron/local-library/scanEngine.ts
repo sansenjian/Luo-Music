@@ -1,8 +1,8 @@
-import type { LocalLibraryTrack } from '@/types/localLibrary'
-import { LOCAL_LIBRARY_SONG_ID_PREFIX } from '@/types/localLibrary'
+import { LOCAL_LIBRARY_SONG_ID_PREFIX, type LocalLibraryTrack } from '@shared/types/localLibrary'
 
 import { LocalLibraryCoverManager } from './coverManager'
-import { createTrackId, LocalLibraryRepository } from './repository'
+import { createTrackId } from './repository.helpers'
+import type { LocalLibraryRepository } from './repository'
 import type { PersistedFolder } from './repository.types'
 import {
   collectAudioFiles,

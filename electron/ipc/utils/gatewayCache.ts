@@ -1,6 +1,6 @@
 import { LRUCache } from 'lru-cache'
 import { Mutex } from 'async-mutex'
-import { CACHE_DEFAULTS, GATEWAY_CACHEABLE_ENDPOINTS } from '@/platform/contracts/protocol/cache'
+import { CACHE_DEFAULTS, GATEWAY_CACHEABLE_ENDPOINTS } from '@shared/protocol/cache'
 import logger from '../../logger'
 import { HTTP_DEFAULT_RETRY_COUNT, HTTP_DEFAULT_RETRY_DELAY } from '../../../src/constants/http'
 

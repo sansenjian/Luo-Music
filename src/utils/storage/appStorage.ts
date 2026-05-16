@@ -1,6 +1,6 @@
-import type { WebLyricAppearance } from '@/types/player'
+import type { WebLyricAppearance } from '@shared/types/player'
 
-import { PLAY_MODE } from '@/utils/player/constants/playMode'
+import { PLAY_MODE } from '@shared/player/playMode'
 import {
   DEFAULT_WEB_LYRIC_APPEARANCE,
   sanitizeWebLyricAppearance

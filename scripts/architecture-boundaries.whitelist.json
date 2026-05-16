@@ -1,0 +1,8 @@
+{
+  "allowedElectronImports": {
+    "@shared/*": true,
+    "@/platform/music/*": "allowed until runtime music adapters are separated from renderer state"
+  },
+  "forbiddenSharedImports": ["vue", "pinia", "electron", "node:*", "@/*"],
+  "featurePublicAPI": {}
+}

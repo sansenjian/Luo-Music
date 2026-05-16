@@ -1,7 +1,6 @@
 const appId = "com.sansenjian.luo-music";
 const productName = "LUO Music";
-const asarUnpackPattern =
-  "**/node_modules/{conf,ajv,json-schema-traverse,atomically,dot-prop,uint8array-extras,type-fest}/**";
+const asarUnpackPattern = "**/node_modules/better-sqlite3/build/Release/*.node";
 
 const runtimeExtraResources = {
   service: "build/service",
@@ -20,10 +19,14 @@ const packagingExtraResources = [
 const packagingWorkspaceArtifactsToRemove = [
   ".ai",
   ".claude",
+  ".codex_tmp",
+  ".codex-tmp",
   ".codex",
+  ".eslintcache",
   ".github",
   ".husky",
   ".idea",
+  "inspection-results",
   ".kilocode",
   ".playwright-mcp",
   ".trae",
@@ -33,9 +36,13 @@ const packagingWorkspaceArtifactsToRemove = [
 ];
 
 const packagingNodeModulesToRemoveAfterPrune = [
+  "node_modules/.vite",
   "node_modules/.vite-temp",
+  "node_modules/@oxfmt",
   "node_modules/@electron-forge",
   "node_modules/@playwright",
+  "node_modules/@sentry-internal",
+  "node_modules/@sentry/browser",
   "node_modules/@sentry/bundler-plugin-core",
   "node_modules/@sentry/rollup-plugin",
   "node_modules/@sentry/vite-plugin",

@@ -2,7 +2,7 @@
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 
 import { usePlayerStore } from '@/store/playerStore'
-import type { Song } from '@/types/schemas'
+import type { Song } from '@shared/types/schemas'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
 
 const props = defineProps<{

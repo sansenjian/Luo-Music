@@ -27,8 +27,8 @@
 | ------------------------------ | ------------------------- |
 | Vue.volar                      | Vue 3 语言支持            |
 | vscode-typescript-vue-plugin   | Vue 中的 TypeScript 支持  |
-| vs code-eslint                 | ESLint 集成               |
-| prettier-vscode                | Prettier 格式化           |
+| oxc.oxc-vscode                 | Oxlint / OXC 集成         |
+| vs code-eslint                 | ESLint 备用规则支持       |
 | vscode-tailwindcss             | Tailwind CSS 支持         |
 | markdown-preview-github-styles | GitHub 风格 Markdown 预览 |
 | vscode-typescript-next         | 最新版 TypeScript 支持    |
@@ -70,11 +70,11 @@
 - 单引号偏好
 - Vue 组件命名规范
 
-**ESLint/Prettier**：
+**Vite+ / Oxlint / Oxfmt**：
 
-- 保存时运行 ESLint
-- 启用缓存
-- 针对每种文件类型的格式化器
+- 保存时通过 OXC 扩展执行可自动修复项
+- Oxfmt 提供主线 CLI 格式化和检查脚本
+- ESLint 配置保留为备用检查入口
 
 **Git 设置**：
 
@@ -108,16 +108,16 @@
 npm run lint:staged
 ```
 
-在提交前自动运行 lint-staged，检查提交的文件。
+在提交前自动运行 Vite+ staged，检查提交的文件。
 
-### 7. Lint-staged 配置 (`.lintstagedrc.json`)
+### 7. Vite+ staged 配置 (`vite.config.ts`)
 
 定义了预提交检查规则：
 
-```json
-{
-  "*.{ts,vue,js}": ["eslint --fix", "prettier --write"],
-  "*.{json,md}": ["prettier --write"]
+```ts
+const stagedConfig = {
+  '*.{ts,vue,js,json,md}': 'vp fmt --write --no-error-on-unmatched-pattern',
+  '*.{ts,vue,js}': 'vp lint --fix --no-error-on-unmatched-pattern'
 }
 ```
 
@@ -168,10 +168,10 @@ npm run lint:staged
 
 ```bash
 # 安装依赖
-npm install
+npm install --prefer-online
 ```
 
-`npm install` 会通过 `prepare` 脚本自动安装 Husky，无需再额外执行安装命令。
+`npm install --prefer-online` 会通过 `prepare` 脚本自动安装 Husky，无需再额外执行安装命令。项目 `.npmrc` 使用官方 npm registry 并启用 `prefer-online`，避免旧缓存或镜像旧元数据影响版本解析。
 
 ### 调试配置
 
@@ -195,7 +195,7 @@ npm install
 # 暂存文件
 git add .
 
-# 提交（会自动运行 lint-staged）
+# 提交（会自动运行 Vite+ staged）
 git commit -m "feat: 添加新功能"
 
 # 如果忘记使用模板
@@ -258,6 +258,6 @@ git commit
 
 - [VSCode 调试文档](https://code.visualstudio.com/docs/editor/debugging)
 - [Husky 文档](https://typicode.github.io/husky/)
-- [Lint-staged 文档](https://github.com/okonet/lint-staged)
+- [Vite+ commit hooks 文档](https://viteplus.dev/guide/commit-hooks)
 - [约定式提交](https://www.conventionalcommits.org/)
 - [EditorConfig](https://editorconfig.org/)

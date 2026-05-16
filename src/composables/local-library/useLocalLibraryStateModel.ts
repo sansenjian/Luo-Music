@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 
-import type { LocalLibraryScanStatus, LocalLibraryState } from '@/types/localLibrary'
-import { createUnsupportedLocalLibraryState } from '@/types/localLibrary'
+import type { LocalLibraryScanStatus, LocalLibraryState } from '@shared/types/localLibrary'
+import { createUnsupportedLocalLibraryState } from '@shared/types/localLibrary'
 
 export function useLocalLibraryStateModel() {
   const state = ref<LocalLibraryState>(createUnsupportedLocalLibraryState())

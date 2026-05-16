@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { assignDefaultUserCenterPageMockState } from '../fixtures/userCenter'
 
 const pageMocks = vi.hoisted(() => ({
@@ -59,7 +59,7 @@ const pageMocks = vi.hoisted(() => ({
   goBack: vi.fn()
 }))
 
-vi.mock('@/composables/useUserCenterPage', async () => {
+vi.mock('@/features/user-center/composables/useUserCenterPage', async () => {
   const { computed, ref } = await import('vue')
 
   return {

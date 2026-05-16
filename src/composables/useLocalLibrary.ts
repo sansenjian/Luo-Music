@@ -1,12 +1,12 @@
 import { onMounted, onUnmounted } from 'vue'
 
-import { RECEIVE_CHANNELS } from '@/platform/contracts/protocol/channels'
+import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 import { useLocalLibraryCommands } from '@/composables/local-library/useLocalLibraryCommands'
 import { useLocalLibraryQueries } from '@/composables/local-library/useLocalLibraryQueries'
 import { useLocalLibraryRequests } from '@/composables/local-library/useLocalLibraryRequests'
 import { useLocalLibraryStateModel } from '@/composables/local-library/useLocalLibraryStateModel'
 import { services } from '@/services'
-import type { LocalLibraryScanStatus, LocalLibraryState } from '@/types/localLibrary'
+import type { LocalLibraryScanStatus, LocalLibraryState } from '@shared/types/localLibrary'
 
 import type {
   LocalLibraryPlatformService,

@@ -1,24 +1,37 @@
-import type { Song } from '@/types/schemas'
-import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@/types/localLibrary'
-import { getPlatformCapabilities } from '@/platform/music'
+import type { Song } from '@shared/types/schemas'
+import { hasKnownLocalSongDuration, isLocalLibrarySong } from '@shared/types/localLibrary'
 import type { MusicService } from '@/services/musicService'
 import { getSongPlatformKey, isSameSongIdentity, resolveMediaId } from '@/utils/songIdentity'
 import { errorCenter } from '@/utils/error/center'
 import { Errors } from '@/utils/error/types'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
-import { PLAY_MODE } from '@/utils/player/constants/playMode'
-import { LyricParser } from '@/utils/player/core/lyric'
+import { PLAY_MODE } from '@shared/player/playMode'
+import { LyricParser } from '@shared/player/lyric'
 
 import type { PlayerState } from './playerState'
 import { songPrefetcher } from './songPrefetcher'
+
+const isPlaybackDebugEnabled =
+  import.meta.env.DEV && import.meta.env.VITE_PLAYER_PLAYBACK_DEBUG === '1'
+
+function debugPlayback(message: string, data?: unknown): void {
+  if (!isPlaybackDebugEnabled) {
+    return
+  }
+
+  console.debug(message, data)
+}
 
 export interface PlaybackActionsDeps {
   getState: () => PlayerState
   onStateChange: (changes: Partial<PlayerState>) => void
   playSongByIndex: (index: number, song?: Song) => Promise<void>
-  setLyricsArray: (lyrics: import('@/utils/player/core/lyric').LyricLine[]) => void
+  setLyricsArray: (lyrics: import('@shared/player/lyric').LyricLine[]) => void
   onPlaybackCommitted?: (song: Song) => void
-  musicService: Pick<MusicService, 'getSongUrl' | 'getSongDetail' | 'getLyric'>
+  musicService: Pick<
+    MusicService,
+    'getPlatformCapabilities' | 'getSongUrl' | 'getSongDetail' | 'getLyric'
+  >
   createErrorHandler: () => import('@/utils/player/modules/playbackErrorHandler').PlaybackErrorHandler
   getErrorHandler: () =>
     | import('@/utils/player/modules/playbackErrorHandler').PlaybackErrorHandler
@@ -79,7 +92,7 @@ export class PlaybackActions {
   }
 
   private shouldHydrateSongForPlayback(_song: Song, platformKey: string): boolean {
-    return getPlatformCapabilities(platformKey).needsHydration
+    return this.deps.musicService.getPlatformCapabilities(platformKey).needsHydration
   }
 
   private shouldFetchLyrics(song: Song, platformKey: string): boolean {
@@ -87,7 +100,7 @@ export class PlaybackActions {
       return false
     }
 
-    return getPlatformCapabilities(platformKey).supportsLyricFetch
+    return this.deps.musicService.getPlatformCapabilities(platformKey).supportsLyricFetch
   }
 
   private clearPlaybackFailureState(song: Song): void {
@@ -126,10 +139,13 @@ export class PlaybackActions {
   }
 
   private async refreshSongUrl(song: Song, platformKey: string): Promise<string | null> {
-    console.log('[Player] Refreshing URL for song:', song.id)
+    debugPlayback('[Player] Refreshing URL for song', { songId: song.id })
     const mediaId = resolveMediaId(song)
     const url = await this.deps.musicService.getSongUrl(platformKey, song.id, { mediaId })
-    console.log('[Player] Refreshed URL:', url ? 'Success' : 'Failed')
+    debugPlayback('[Player] Refreshed URL', {
+      songId: song.id,
+      ok: Boolean(url)
+    })
 
     return url
   }
@@ -281,7 +297,11 @@ export class PlaybackActions {
     const platformKey = getSongPlatformKey(song)
     const musicService = this.deps.musicService
 
-    console.log(`[Player] Playing song: ${song.name} (ID: ${song.id}, Platform: ${platformKey})`)
+    debugPlayback('[Player] Playing song', {
+      songId: song.id,
+      songName: song.name,
+      platform: platformKey
+    })
 
     try {
       // Try to get prefetched data first — if URL is cached, skip fetch entirely
@@ -355,7 +375,8 @@ export class PlaybackActions {
         songPrefetcher.schedulePrefetch(state.songList, index)
       } catch (playbackError) {
         const canRetryWithFreshUrl =
-          getPlatformCapabilities(platformKey).supportsUrlRefreshOnFailure && Boolean(song.url)
+          this.deps.musicService.getPlatformCapabilities(platformKey).supportsUrlRefreshOnFailure &&
+          Boolean(song.url)
 
         if (!canRetryWithFreshUrl) {
           throw playbackError

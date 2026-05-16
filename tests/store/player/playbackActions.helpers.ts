@@ -1,4 +1,4 @@
-import { vi } from 'vite-plus/test'
+import { vi } from 'vitest'
 
 import { replaceRuntimePlatformDescriptors } from '@/platform/music/descriptors'
 import { createInitialState } from '@/store/player/playerState'
@@ -13,6 +13,7 @@ type MockPlaybackErrorHandler = PlaybackErrorHandler & {
 
 const mocks = vi.hoisted(() => ({
   adapterMock: {
+    getPlatformCapabilities: vi.fn(),
     getSongUrl: vi.fn(),
     getSongDetail: vi.fn(),
     getLyric: vi.fn()
@@ -39,7 +40,7 @@ export const noCopyrightMock = mocks.noCopyrightMock
 export const fatalErrorMock = mocks.fatalErrorMock
 export const isCanceledRequestErrorMock = mocks.isCanceledRequestErrorMock
 
-vi.mock('@/utils/player/core/lyric', () => ({
+vi.mock('@shared/player/lyric', () => ({
   LyricParser: {
     parse: mocks.lyricParseMock
   }
@@ -107,6 +108,22 @@ const TEST_PLATFORM_DESCRIPTORS = [
 
 export function resetPlaybackActionMocks() {
   vi.clearAllMocks()
+  adapterMock.getPlatformCapabilities.mockReset()
+  adapterMock.getPlatformCapabilities.mockImplementation((platformId: string) => {
+    const descriptor = TEST_PLATFORM_DESCRIPTORS.find(item => item.id === platformId)
+    return (
+      descriptor?.capabilities ?? {
+        search: false,
+        songUrl: false,
+        songDetail: false,
+        lyric: false,
+        playlistDetail: false,
+        needsHydration: false,
+        supportsLyricFetch: false,
+        supportsUrlRefreshOnFailure: false
+      }
+    )
+  })
   adapterMock.getSongUrl.mockReset()
   adapterMock.getSongDetail.mockReset()
   adapterMock.getLyric.mockReset()
