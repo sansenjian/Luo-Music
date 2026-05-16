@@ -298,6 +298,73 @@ describe('useMediaSession', () => {
     wrapper.unmount()
   })
 
+  it('syncs playback state before exposure even when metadata sync rejects', async () => {
+    const playerStore = createPlayerStoreMock()
+    playerStore.currentSong = createMockSong({
+      id: 'local-cover-error',
+      name: 'Local Cover Error',
+      platform: 'local',
+      album: { id: 1, name: 'Local Album', picUrl: '' },
+      extra: {
+        localSource: true,
+        localCoverHash: 'broken-cover'
+      }
+    })
+    playerStore.playing = true
+    playerStore.progress = 24
+    playerStore.duration = 180
+
+    const getLocalLibraryCover = vi.fn().mockRejectedValue(new Error('cover unavailable'))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const systemMediaSessionController = {
+      setSystemMediaSessionEnabled: vi.fn()
+    }
+    const { mediaSession } = createMediaSessionMock()
+
+    const { wrapper } = mountComposable(() =>
+      useMediaSession({
+        enabled: () => true,
+        playerStore,
+        playerService: {
+          play: vi.fn(),
+          pause: vi.fn()
+        },
+        platformService: {
+          isElectron: () => true,
+          getLocalLibraryCover
+        },
+        systemMediaSessionController,
+        getMediaSession: () => mediaSession,
+        createMetadata: init => init
+      })
+    )
+
+    await flushPromises()
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[MediaSession] Failed to sync metadata before exposure',
+      expect.any(Error)
+    )
+    expect(mediaSession.playbackState).toBe('playing')
+    expect(mediaSession.setPositionState).toHaveBeenCalledWith({
+      duration: 180,
+      playbackRate: 1,
+      position: 24
+    })
+    expect(systemMediaSessionController.setSystemMediaSessionEnabled).toHaveBeenCalledWith(true)
+
+    vi.advanceTimersByTime(1000)
+
+    expect(mediaSession.setPositionState).toHaveBeenLastCalledWith({
+      duration: 180,
+      playbackRate: 1,
+      position: 24
+    })
+
+    wrapper.unmount()
+    warnSpy.mockRestore()
+  })
+
   it('resolves local cover hashes through the cover cache as data urls', async () => {
     const playerStore = createPlayerStoreMock()
     playerStore.currentSong = createMockSong({

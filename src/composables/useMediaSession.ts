@@ -266,8 +266,13 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
   }
 
   async function syncSessionBeforeExposure(): Promise<void> {
-    await syncMetadata()
-    syncPlaybackPositionLifecycle()
+    try {
+      await syncMetadata()
+    } catch (error) {
+      console.warn('[MediaSession] Failed to sync metadata before exposure', error)
+    } finally {
+      syncPlaybackPositionLifecycle()
+    }
   }
 
   // Synchronously set metadata using whatever cover URL is available right
