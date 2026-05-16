@@ -66,4 +66,35 @@ describe('electron/main/smtc', () => {
       'HardwareMediaKeyHandling,MediaSessionService'
     )
   })
+
+  it('signals restart when runtime SMTC toggle differs from startup command-line state', async () => {
+    const { configureSmtcCommandLineForState, setSmtcEnabledFromRenderer } =
+      await import('../../electron/main/smtc')
+
+    configureSmtcCommandLineForState({
+      smtcEnabled: false,
+      waveformEnabled: false,
+      coverSwipeEnabled: false
+    })
+
+    expect(setSmtcEnabledFromRenderer(true)).toEqual({ restartRequired: true })
+    expect(electronStoreSetMock).toHaveBeenCalledWith('experimentalFeatures', {
+      smtcEnabled: true,
+      waveformEnabled: false,
+      coverSwipeEnabled: false
+    })
+  })
+
+  it('does not signal restart when runtime SMTC toggle matches startup command-line state', async () => {
+    const { configureSmtcCommandLineForState, setSmtcEnabledFromRenderer } =
+      await import('../../electron/main/smtc')
+
+    configureSmtcCommandLineForState({
+      smtcEnabled: true,
+      waveformEnabled: false,
+      coverSwipeEnabled: false
+    })
+
+    expect(setSmtcEnabledFromRenderer(true)).toEqual({ restartRequired: false })
+  })
 })

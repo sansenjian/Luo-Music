@@ -1,4 +1,5 @@
 import { app } from 'electron'
+import Store from 'electron-store'
 
 import {
   EXPERIMENTAL_FEATURES_STORAGE_KEY,
@@ -11,15 +12,13 @@ type ElectronStoreShape = {
   set: (key: string, value: unknown) => void
 }
 
-const StoreModule = require('electron-store') as {
-  default?: new (options?: { projectName: string }) => ElectronStoreShape
+type ElectronStoreOptions = ConstructorParameters<typeof Store>[0] & {
+  projectName: string
 }
 
-const Store =
-  StoreModule.default ??
-  (StoreModule as unknown as new (options?: { projectName: string }) => ElectronStoreShape)
-
-const store = new Store({ projectName: 'luo-music' })
+const store = new Store({
+  projectName: 'luo-music'
+} as ElectronStoreOptions) as ElectronStoreShape
 
 const SMTC_CHROMIUM_FEATURES = 'HardwareMediaKeyHandling,MediaSessionService'
 
@@ -60,5 +59,5 @@ export function setSmtcEnabledFromRenderer(enabled: boolean): { restartRequired:
     smtcEnabled: enabled
   })
 
-  return { restartRequired: false }
+  return { restartRequired: smtcCommandLineEnabled !== enabled }
 }
