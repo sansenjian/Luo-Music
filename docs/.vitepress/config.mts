@@ -7,6 +7,7 @@ export default defineConfig({
   mpa: true,
   rewrites: {
     'GETTING_STARTED.md': 'guide/getting-started.md',
+    'development-workflow.md': 'guide/development-workflow.md',
     'build.md': 'guide/build-and-release.md',
     'testing.md': 'guide/testing.md',
     'vscode-setup.md': 'guide/vscode-setup.md',
@@ -43,6 +44,7 @@ export default defineConfig({
           items: [
             { text: '总览', link: '/guide/' },
             { text: '快速开始', link: '/guide/getting-started' },
+            { text: '开发分支流程', link: '/guide/development-workflow' },
             { text: '构建与发布', link: '/guide/build-and-release' },
             { text: '测试指南', link: '/guide/testing' },
             { text: 'E2E 测试', link: '/guide/e2e-testing' },

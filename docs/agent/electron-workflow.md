@@ -45,6 +45,8 @@
 
 ## 提交前检查
 
+分支创建和 PR 目标见 [开发分支流程](../development-workflow.md)。
+
 ### 常规改动
 
 ```bash

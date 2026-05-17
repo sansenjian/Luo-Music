@@ -29,6 +29,10 @@ npm run dev:electron
 
 `dev:web` 启动 Web 开发服务，`dev:electron` 启动 Electron 桌面开发环境。
 
+## 分支流程
+
+分支职责、PR 目标和日常开发命令见 [开发分支流程](./docs/development-workflow.md)。
+
 ## 构建
 
 ```bash
