@@ -1,6 +1,7 @@
 import type { AxiosResponse } from 'axios'
 
 import { neteaseRequest } from './shared/neteaseServiceRequest'
+import type { SongPlatform } from '@shared/types/schemas'
 
 export interface AlbumArtistResponse {
   id?: string | number
@@ -19,8 +20,8 @@ export interface AlbumInfoResponse {
 export interface AlbumTrackResponse {
   id?: string | number
   name?: string
-  platform?: 'netease' | 'qq'
-  server?: 'netease' | 'qq'
+  platform?: SongPlatform
+  server?: SongPlatform
   artists?: AlbumArtistResponse[]
   ar?: AlbumArtistResponse[]
   album?: {

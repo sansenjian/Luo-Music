@@ -105,6 +105,36 @@ describe('api.handler', () => {
     })
   })
 
+  it('rejects custom platform ids in the built-in API gateway without falling back', async () => {
+    const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
+
+    const serviceManager = {
+      handleRequest: vi.fn(),
+      getAvailableServices: vi.fn(() => ({ netease: { status: 'ready' } }))
+    }
+
+    const { registerApiHandlers } = await import('../../electron/ipc/handlers/api.handler.ts')
+    registerApiHandlers(serviceManager as never)
+
+    const search = invokeHandlers.get('api:search')
+    await expect(
+      search?.({
+        keyword: 'jay',
+        platform: 'kugou'
+      })
+    ).resolves.toEqual({
+      success: false,
+      error: 'Unsupported API platform for built-in gateway: kugou'
+    })
+
+    expect(serviceManager.handleRequest).not.toHaveBeenCalled()
+  })
+
   it('normalizes song url responses for both platforms', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
     registerInvokeMock.mockImplementation(

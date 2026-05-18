@@ -1,4 +1,5 @@
 import type {
+  ApiPlatform,
   DesktopLyricSnapshot,
   InvokeChannel,
   PlayerStateResponse,
@@ -37,26 +38,26 @@ export interface ApiServiceAPI {
   search(
     keyword: string,
     type?: string,
-    platform?: 'netease' | 'qq',
+    platform?: ApiPlatform,
     page?: number,
     limit?: number
   ): Promise<unknown>
   getSongUrl(params: {
     id: string | number
-    platform?: 'netease' | 'qq'
+    platform?: ApiPlatform
     quality?: number
     mediaId?: string
   }): Promise<string>
   getLyric(params: {
     id: string | number
-    platform?: 'netease' | 'qq'
+    platform?: ApiPlatform
   }): Promise<{ lyric?: string; translated?: string; romalrc?: string; error?: string }>
-  getSongDetail(params: { id: string | number; platform?: 'netease' | 'qq' }): Promise<unknown>
-  getPlaylistDetail(id: string | number, platform?: 'netease' | 'qq'): Promise<unknown>
-  getArtistDetail(id: string | number, platform?: 'netease' | 'qq'): Promise<unknown>
-  getAlbumDetail(id: string | number, platform?: 'netease' | 'qq'): Promise<unknown>
-  getRecommendedPlaylists(platform?: 'netease' | 'qq', limit?: number): Promise<unknown>
-  getChart(platform?: 'netease' | 'qq', id?: string): Promise<unknown>
+  getSongDetail(params: { id: string | number; platform?: ApiPlatform }): Promise<unknown>
+  getPlaylistDetail(id: string | number, platform?: ApiPlatform): Promise<unknown>
+  getArtistDetail(id: string | number, platform?: ApiPlatform): Promise<unknown>
+  getAlbumDetail(id: string | number, platform?: ApiPlatform): Promise<unknown>
+  getRecommendedPlaylists(platform?: ApiPlatform, limit?: number): Promise<unknown>
+  getChart(platform?: ApiPlatform, id?: string): Promise<unknown>
 }
 
 export interface WindowServiceAPI {

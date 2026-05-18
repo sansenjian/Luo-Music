@@ -330,6 +330,36 @@ describe('player.handler', () => {
     })
   })
 
+  it('does not fetch plugin-platform lyrics through built-in services', async () => {
+    const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
+
+    const { registerPlayerHandlers } = await import('../../electron/ipc/handlers/player.handler')
+
+    const serviceManager = {
+      handleRequest: vi.fn()
+    }
+
+    registerPlayerHandlers(
+      {
+        send: vi.fn(),
+        syncPlaybackState: vi.fn(),
+        syncTrayPlayMode: vi.fn()
+      } as never,
+      serviceManager as never
+    )
+
+    await expect(
+      invokeHandlers.get('player:get-lyric')?.({ id: 'song-2', platform: 'kugou' })
+    ).resolves.toEqual([])
+
+    expect(serviceManager.handleRequest).not.toHaveBeenCalled()
+  })
+
   it('refetches current-song lyrics when the synced cache is still empty', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
     const sendHandlers = new Map<string, (...args: unknown[]) => unknown>()

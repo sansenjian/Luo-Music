@@ -15,6 +15,7 @@ import type {
   PlayerStateSyncPayload
 } from '@shared/contracts/ipc'
 import { normalizeLyricResponse } from './api.normalizers'
+import { isBuiltInApiPlatform, resolvePlatform } from './api.validation'
 
 // ========== 配置常量 ==========
 
@@ -290,7 +291,11 @@ async function fetchLyricsForSong(
     return []
   }
 
-  const targetPlatform = payload.platform === 'qq' ? 'qq' : 'netease'
+  const targetPlatform = resolvePlatform(payload.platform)
+  if (!isBuiltInApiPlatform(targetPlatform)) {
+    return []
+  }
+
   const response =
     targetPlatform === 'qq'
       ? await serviceManager.handleRequest('qq', 'getLyric', { songmid: payload.id })

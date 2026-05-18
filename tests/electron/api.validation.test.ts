@@ -5,6 +5,7 @@ import {
   validateEndpoint,
   validateParams,
   normalizeEndpoint,
+  isBuiltInApiPlatform,
   resolvePlatform
 } from '../../electron/ipc/handlers/api.validation'
 
@@ -30,9 +31,18 @@ describe('api.validation', () => {
       expect(resolvePlatform(undefined)).toBe('netease')
     })
 
-    it('should return "netease" for any other value', () => {
-      expect(resolvePlatform('other')).toBe('netease')
+    it('should preserve custom platform ids', () => {
+      expect(resolvePlatform('kugou')).toBe('kugou')
+      expect(resolvePlatform('other')).toBe('other')
       expect(resolvePlatform('')).toBe('netease')
+    })
+  })
+
+  describe('isBuiltInApiPlatform', () => {
+    it('should only match platforms backed by the built-in API gateway', () => {
+      expect(isBuiltInApiPlatform('netease')).toBe(true)
+      expect(isBuiltInApiPlatform('qq')).toBe(true)
+      expect(isBuiltInApiPlatform('kugou')).toBe(false)
     })
   })
 
@@ -180,7 +190,8 @@ describe('api.validation', () => {
     it('should validate platform param', () => {
       expect(validateParams({ platform: 'netease' }).valid).toBe(true)
       expect(validateParams({ platform: 'qq' }).valid).toBe(true)
-      expect(validateParams({ platform: 'other' }).valid).toBe(false)
+      expect(validateParams({ platform: 'kugou' }).valid).toBe(true)
+      expect(validateParams({ platform: '' }).valid).toBe(false)
     })
 
     it('should reject non-object params', () => {

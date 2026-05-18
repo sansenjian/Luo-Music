@@ -11,6 +11,7 @@ import {
   resolveSongUrlFallbackBitrate
 } from './api.normalizers'
 import {
+  isBuiltInApiPlatform,
   resolvePlatform,
   validateEndpoint,
   validateParams,
@@ -19,6 +20,40 @@ import {
 
 function logValidationFailure(scope: string, errors: string[]): void {
   logger.warn(`[API Gateway] ${scope} params validation failed: ${errors.join(', ')}`)
+}
+
+function unsupportedApiPlatform(platform: MusicPlatform): { success: false; error: string } {
+  logger.warn(`[API Gateway] Unsupported API platform for built-in gateway: ${platform}`)
+
+  return {
+    success: false,
+    error: `Unsupported API platform for built-in gateway: ${platform}`
+  }
+}
+
+function unsupportedApiSongUrlPlatform(platform: MusicPlatform): { url: string; error: string } {
+  logger.warn(`[API Gateway] Unsupported API platform for built-in gateway: ${platform}`)
+
+  return {
+    url: '',
+    error: `Unsupported API platform for built-in gateway: ${platform}`
+  }
+}
+
+function unsupportedApiLyricPlatform(platform: MusicPlatform): {
+  lyric: string
+  translated: string
+  romalrc: string
+  error: string
+} {
+  logger.warn(`[API Gateway] Unsupported API platform for built-in gateway: ${platform}`)
+
+  return {
+    lyric: '',
+    translated: '',
+    romalrc: '',
+    error: `Unsupported API platform for built-in gateway: ${platform}`
+  }
 }
 
 export function registerApiHandlers(serviceManager: ServiceManager): void {
@@ -99,6 +134,10 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
       }
 
       const targetPlatform = resolvePlatform(platform)
+      if (!isBuiltInApiPlatform(targetPlatform)) {
+        return unsupportedApiPlatform(targetPlatform)
+      }
+
       const target = getSearchTarget(targetPlatform, keyword, type, page, limit)
       return requestService(serviceManager, targetPlatform, target.endpoint, target.params)
     }
@@ -125,10 +164,8 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
 
       const targetPlatform = resolvePlatform(platform)
 
-      // 验证平台是否受支持
-      if (targetPlatform !== 'qq' && targetPlatform !== 'netease') {
-        logger.error(`[API] Unsupported platform: ${targetPlatform}`)
-        return { url: '', error: `Unsupported platform: ${targetPlatform}` }
+      if (!isBuiltInApiPlatform(targetPlatform)) {
+        return unsupportedApiSongUrlPlatform(targetPlatform)
       }
 
       if (targetPlatform === 'qq') {
@@ -170,6 +207,10 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
       }
 
       const targetPlatform = resolvePlatform(platform)
+      if (!isBuiltInApiPlatform(targetPlatform)) {
+        return unsupportedApiLyricPlatform(targetPlatform)
+      }
+
       const response =
         targetPlatform === 'qq'
           ? await requestService(serviceManager, 'qq', 'getLyric', { songmid: id })
@@ -189,6 +230,10 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
       }
 
       const targetPlatform = resolvePlatform(platform)
+      if (!isBuiltInApiPlatform(targetPlatform)) {
+        return unsupportedApiPlatform(targetPlatform)
+      }
+
       return targetPlatform === 'qq'
         ? requestService(serviceManager, 'qq', `getSongInfo/${id}`, {})
         : requestService(serviceManager, 'netease', 'song/detail', { ids: String(id) })
@@ -205,6 +250,10 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
       }
 
       const targetPlatform = resolvePlatform(platform)
+      if (!isBuiltInApiPlatform(targetPlatform)) {
+        return unsupportedApiPlatform(targetPlatform)
+      }
+
       return targetPlatform === 'qq'
         ? requestService(serviceManager, 'qq', `getSongListDetail/${id}`, {})
         : requestService(serviceManager, 'netease', 'playlist/detail', { id })
@@ -221,6 +270,10 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
       }
 
       const targetPlatform = resolvePlatform(platform)
+      if (!isBuiltInApiPlatform(targetPlatform)) {
+        return unsupportedApiPlatform(targetPlatform)
+      }
+
       return targetPlatform === 'qq'
         ? requestService(serviceManager, 'qq', `getSingerDesc/${id}`, {})
         : requestService(serviceManager, 'netease', 'artist/detail', { id })
@@ -237,6 +290,10 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
       }
 
       const targetPlatform = resolvePlatform(platform)
+      if (!isBuiltInApiPlatform(targetPlatform)) {
+        return unsupportedApiPlatform(targetPlatform)
+      }
+
       return targetPlatform === 'qq'
         ? requestService(serviceManager, 'qq', `getAlbumInfo/${id}`, {})
         : requestService(serviceManager, 'netease', 'album', { id })
@@ -253,6 +310,10 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
       }
 
       const targetPlatform = resolvePlatform(platform)
+      if (!isBuiltInApiPlatform(targetPlatform)) {
+        return unsupportedApiPlatform(targetPlatform)
+      }
+
       return targetPlatform === 'qq'
         ? requestService(serviceManager, 'qq', 'getRecommend', {})
         : requestService(serviceManager, 'netease', 'personalized', { limit })
@@ -269,6 +330,10 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
       }
 
       const targetPlatform = resolvePlatform(platform)
+      if (!isBuiltInApiPlatform(targetPlatform)) {
+        return unsupportedApiPlatform(targetPlatform)
+      }
+
       return targetPlatform === 'qq'
         ? requestService(serviceManager, 'qq', id ? `getRanks/${id}/100/1` : 'getTopLists', {})
         : requestService(

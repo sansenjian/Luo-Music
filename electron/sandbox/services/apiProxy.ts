@@ -10,11 +10,12 @@
 // 导入服务代理
 import { getIpcProxy } from './ipcProxy'
 import { INVOKE_CHANNELS } from '@shared/protocol/channels'
+import type { ApiPlatform } from '@shared/contracts/ipc'
 
 /**
  * 音乐平台类型
  */
-export type MusicPlatform = 'netease' | 'qq'
+export type MusicPlatform = ApiPlatform
 
 /**
  * 搜索类型
