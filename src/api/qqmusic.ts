@@ -20,7 +20,7 @@ const QQ_LOGIN_CHECK_PATH = '/user/getCookie'
 type QQMusicApiDeps = {
   getLoggerFactory: () => { createLogger(resource: string): ILogger }
   getPlatformService: () => Pick<PlatformService, 'getServiceStatus'>
-  getConfigService: () => Pick<ConfigService, 'getPort'>
+  getConfigService: () => Pick<ConfigService, 'getServiceBaseUrl'>
 }
 
 const defaultQQMusicApiDeps: QQMusicApiDeps = {
@@ -56,10 +56,6 @@ function getLogger() {
   return _logger
 }
 
-export function getQQMusicApiServerURL(port: number): string {
-  return `http://127.0.0.1:${port}`
-}
-
 async function resolveQQMusicBaseURL(): Promise<string> {
   if (!isElectronRenderer() || !import.meta.env.PROD) {
     return DEFAULT_QQ_MUSIC_BASE_URL
@@ -76,14 +72,14 @@ async function resolveQQMusicBaseURL(): Promise<string> {
         const status = await platformService.getServiceStatus?.('qq')
         const port = typeof status?.port === 'number' ? status.port : null
         if (port) {
-          cachedQQBaseURL = `http://127.0.0.1:${port}`
+          cachedQQBaseURL = qqMusicApiDeps.getConfigService().getServiceBaseUrl('qq', port)
           return cachedQQBaseURL
         }
       } catch {
         // ignore and fall back
       }
 
-      cachedQQBaseURL = getQQMusicApiServerURL(qqMusicApiDeps.getConfigService().getPort('qq'))
+      cachedQQBaseURL = qqMusicApiDeps.getConfigService().getServiceBaseUrl('qq')
       return cachedQQBaseURL
     })()
   }

@@ -28,8 +28,8 @@
 
 仍然存在的现实限制：
 
-- `ApiService` 只是试点，不是默认业务 API 入口
-- `ConfigService` 只是部分落地，不是唯一配置入口
+- `ApiService` 已覆盖主要 Netease API 入口，但不是所有外部服务请求的默认入口
+- `ConfigService` 已覆盖服务 fallback URL，URL 型兼容常量已删除，端口默认值仍保留为常量
 - `services.xxx()` 仍然是 service locator 形态，不是完整显式依赖图
 
 ## 路线原则
@@ -92,27 +92,28 @@
 - [`src/api/album.ts`](./../../src/api/album.ts)
 - [`src/api/playlist.ts`](./../../src/api/playlist.ts)
 - [`src/api/song.ts`](./../../src/api/song.ts)
+- [`src/api/netease.ts`](./../../src/api/netease.ts) 已移除 legacy `NeteaseAdapter(request)` 出口
 
 下一批建议目标：
 
-- 清理或改造 [`src/api/netease.ts`](./../../src/api/netease.ts) 中的 legacy `NeteaseAdapter(request)` 出口。
-- 增加自动检查，阻止新增 Netease API 模块直接依赖 `@/utils/http`。
+- 保持自动检查，阻止新增 Netease API 模块直接依赖 `@/utils/http`。
 - 继续观察是否还有业务调用绕过 `services.api()`。
 
 优先顺序建议：
 
-1. 确认 `neteaseAdapter` 是否仍有调用方
-2. 为 Netease API 旧请求路径补自动检查
-3. 按调用方风险拆除或改造 legacy adapter
+1. 维护 Netease API 旧请求路径自动检查
+2. 按调用方风险继续迁移仍有收益的 API 文件
+3. 观察是否还有业务调用需要 `ApiAdapter.fetch()` 形态
 
 原因：
 
 - 当前主要 API 文件已走 `services.api()` 或共享 Netease helper。
-- 剩余问题更像旧兼容出口和防回流规则，不适合继续按文件名机械迁移。
+- 剩余问题更像防回流和少量特殊链路，不适合继续按文件名机械迁移。
 
 完成标准：
 
 - Netease API 新增入口默认使用 `services.api()`
+- `src/api/netease.ts` 不再暴露 legacy adapter 出口
 - 模块级测试能通过显式 deps 或服务替身覆盖核心路径
 
 ## P1：扩大 `ConfigService` 接入面
@@ -124,11 +125,14 @@
 当前试点：
 
 - [`src/api/qqmusic.ts`](./../../src/api/qqmusic.ts)
+- [`src/utils/http/index.ts`](./../../src/utils/http/index.ts)
+- [`src/services/configService.ts`](./../../src/services/configService.ts)
 
 建议继续收口：
 
-- 其他拼接服务地址的入口
-- 仍直接依赖 `QQ_API_SERVER` / `NETEASE_API_PORT` / `QQ_API_PORT` 的业务模块
+- 其他拼接服务地址的入口优先改用 `getServiceBaseUrl()`
+- 继续避免新增 `http://127.0.0.1:${port}` 形式的业务层 URL 拼接
+- 评估 `NETEASE_API_PORT` / `QQ_API_PORT` 是否只应保留在 `ConfigService` 和共享协议边界
 
 完成标准：
 
@@ -162,7 +166,7 @@
 - `services.api()` 进入了多少业务模块
 - `services.config()` 替换了多少旧常量入口
 - 显式 `deps` 覆盖了多少热点模块
-- 旧 request/adapter 写法还有多少保留点
+- 旧 request/adapter 写法是否重新出现
 
 建议输出方式：
 
@@ -181,9 +185,9 @@
 ## 建议执行顺序
 
 1. 更新过时分析文档，统一当前状态口径
-2. 清点 `src/api/netease.ts` 的 legacy adapter 调用方
-3. 继续收口剩余配置型常量入口
-4. 增加 1 条自动检查，防止旧模式回流
+2. 继续收口剩余配置型常量入口
+3. 扩展自动检查，防止更多旧模式回流
+4. 对特殊请求链路做按收益迁移，不做全仓机械替换
 
 ## 验收标准
 
@@ -192,5 +196,5 @@
 - `ApiService` 成为 Netease API 新增入口的默认路径
 - `ConfigService` 接入面继续扩大
 - 文档中的过时问题陈述被清理
-- 至少有 1 条自动化规则防止服务边界回流
+- 自动化规则能防止 Netease API 直连旧 request 入口
 - `typecheck`、`lint`、受影响测试继续全绿

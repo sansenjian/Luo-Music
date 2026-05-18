@@ -15,27 +15,29 @@
   - `src/api/album.ts`
   - `src/api/playlist.ts`
   - `src/api/song.ts`
-- `ConfigService` 已在 QQ 音乐 API 基础路径解析中使用，避免业务层直接固化 QQ 服务端口。
+- `src/api/netease.ts` 不再暴露 legacy `NeteaseAdapter(request)` 出口，Netease API 入口默认通过共享 helper 或 `services.api()`。
+- `ConfigService` 已提供 `getServiceBaseUrl()`，QQ 音乐 fallback URL 与 Electron 生产环境 Netease 默认 URL 都从配置服务读取。
 - `check:architecture` 已进入 `lint`，用于阻止部分结构边界回流。
 
 ## 当前主要差距
 
-### 1. Netease adapter 仍保留旧 request 构造入口
+### 1. Netease 旧请求入口需要防回流
 
-`src/api/netease.ts` 仍通过 `new NeteaseAdapter(request)` 暴露 legacy adapter。它目前更多是兼容出口，不应继续作为新增业务调用路径。
+`src/api/netease.ts` 的 legacy adapter 出口已删除，主要 Netease API 文件已走 `src/api/shared/neteaseServiceRequest.ts`。后续重点是防止新增模块重新直接依赖 `@/utils/http`。
 
 建议：
 
 - 新增 Netease API 入口优先使用 `src/api/shared/neteaseServiceRequest.ts`。
-- 删除或改造 `neteaseAdapter` 前，先确认调用方是否仍需要 `ApiAdapter.fetch()` 形态。
+- 保持 `check:architecture` 中的 Netease 请求边界检查，发现新直连时优先改为共享 helper。
 
-### 2. 仍有配置常量直接从 `src/constants/http.ts` 暴露
+### 2. 端口常量仍需继续收口为配置边界
 
-`NETEASE_API_PORT`、`QQ_API_PORT`、`DEV_API_SERVER` 和 `QQ_API_SERVER` 仍作为兼容常量存在。当前服务层已经有 `ConfigService`，但还没有成为所有配置读取的唯一入口。
+`DEV_API_SERVER` 和 `QQ_API_SERVER` 已删除，运行时 fallback URL 统一通过 `services.config().getServiceBaseUrl()` 获取。`NETEASE_API_PORT` 和 `QQ_API_PORT` 仍作为默认端口常量存在，后续可继续评估是否只保留在服务层或共享协议边界内部。
 
 建议：
 
 - 服务端口和 fallback URL 优先从 `services.config()` 或边界层读取。
+- 新增业务模块不要直接拼接 `http://127.0.0.1:${port}`。
 - 共享协议常量继续放在 `@shared/protocol/cache`，避免 Electron 和 renderer 各自复制端口值。
 
 ### 3. 部分模块仍直接使用 runtime helper
@@ -55,7 +57,7 @@
 
 ## 建议推进路径
 
-1. 将剩余 Netease legacy adapter 调用方清零或改造为 `services.api()` 路径。
-2. 继续收口 `ConfigService`，减少业务层直接读取端口和服务 URL。
-3. 增加一条自动检查，阻止新增业务模块直接依赖 `@/utils/http` 作为 Netease 请求入口。
-4. 按收益迁移旧 API 文件，不做一次性全仓请求层重写。
+1. 保持 Netease 旧请求路径自动检查，避免 legacy adapter 或直连 request 回流。
+2. 继续收口端口默认值，减少业务层直接读取端口。
+3. 按收益迁移旧 API 文件，不做一次性全仓请求层重写。
+4. 继续观察低层 runtime helper 的使用面，业务层新增平台判断默认走 `PlatformService`。

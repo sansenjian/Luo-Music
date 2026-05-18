@@ -73,12 +73,19 @@ describe('architecture boundary checks', () => {
     await writeTestFile('src/api/search.ts', "import request from '@/utils/http'\n")
     await writeTestFile('src/api/album.ts', "import request from '@/utils/http/index'\n")
     await writeTestFile('src/api/song.ts', "import request from '../utils/http'\n")
+    await writeTestFile('src/api/netease.ts', "import request from '@/utils/http'\n")
     await writeTestFile('src/api/qqmusic.ts', "import request from '@/utils/http'\n")
 
     const errors: string[] = []
 
     checkNeteaseApiRequestImports(
-      ['src/api/search.ts', 'src/api/album.ts', 'src/api/song.ts', 'src/api/qqmusic.ts'],
+      [
+        'src/api/search.ts',
+        'src/api/album.ts',
+        'src/api/song.ts',
+        'src/api/netease.ts',
+        'src/api/qqmusic.ts'
+      ],
       errors,
       tempDir
     )
@@ -92,6 +99,9 @@ describe('architecture boundary checks', () => {
       ),
       expect.stringContaining(
         'src/api/song.ts: Netease API modules should use src/api/shared/neteaseServiceRequest.ts'
+      ),
+      expect.stringContaining(
+        'src/api/netease.ts: Netease API modules should use src/api/shared/neteaseServiceRequest.ts'
       )
     ])
   })

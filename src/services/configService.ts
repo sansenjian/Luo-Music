@@ -12,9 +12,12 @@ export type AppConfig = {
   }
 }
 
+export type ServiceName = keyof AppConfig['ports']
+
 export type ConfigService = {
   get(): AppConfig
-  getPort(name: keyof AppConfig['ports']): number
+  getPort(name: ServiceName): number
+  getServiceBaseUrl(name: ServiceName, port?: number): string
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -36,8 +39,11 @@ export function createConfigService(): ConfigService {
     get(): AppConfig {
       return config
     },
-    getPort(name: keyof AppConfig['ports']): number {
+    getPort(name: ServiceName): number {
       return config.ports[name]
+    },
+    getServiceBaseUrl(name: ServiceName, port: number = config.ports[name]): string {
+      return `http://127.0.0.1:${port}`
     }
   }
 }

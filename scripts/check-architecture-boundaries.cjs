@@ -34,8 +34,6 @@ const allowedLocalLibraryNativeTests = new Set([
 ])
 const forbiddenLocalLibraryPureTestRuntimeImports = new Set(['better-sqlite3', 'node:sqlite'])
 const allowedApiHttpRequestFiles = new Set([
-  'src/api/adapter.ts',
-  'src/api/netease.ts',
   'src/api/qqmusic.ts',
   'src/api/shared/neteaseServiceRequest.ts'
 ])

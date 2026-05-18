@@ -61,7 +61,8 @@ describe('performanceMonitor', () => {
           env: { mode: 'test', isDev: true, isProd: false },
           ports: { qq: 3200, netease: 14532 }
         }),
-        getPort: () => 3000
+        getPort: () => 3000,
+        getServiceBaseUrl: (_name, port = 3000) => `http://127.0.0.1:${port}`
       }))
 
       getService(IApiService)
@@ -148,7 +149,8 @@ describe('performanceMonitor', () => {
           env: { mode: 'test', isDev: true, isProd: false },
           ports: { qq: 3200, netease: 14532 }
         }),
-        getPort: () => 3000
+        getPort: () => 3000,
+        getServiceBaseUrl: (_name, port = 3000) => `http://127.0.0.1:${port}`
       }))
 
       getService(IApiService)
