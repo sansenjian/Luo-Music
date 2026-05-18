@@ -30,15 +30,15 @@
 - 新增 Netease API 入口优先使用 `src/api/shared/neteaseServiceRequest.ts`。
 - 保持 `check:architecture` 中的 Netease 请求边界检查，发现新直连时优先改为共享 helper。
 
-### 2. 端口常量仍需继续收口为配置边界
+### 2. 端口默认值已收口到共享协议边界
 
-`DEV_API_SERVER` 和 `QQ_API_SERVER` 已删除，运行时 fallback URL 统一通过 `services.config().getServiceBaseUrl()` 获取。`NETEASE_API_PORT` 和 `QQ_API_PORT` 仍作为默认端口常量存在，后续可继续评估是否只保留在服务层或共享协议边界内部。
+`DEV_API_SERVER` 和 `QQ_API_SERVER` 已删除，运行时 fallback URL 统一通过 `services.config().getServiceBaseUrl()` 获取。`NETEASE_API_PORT` 和 `QQ_API_PORT` 的默认值已收口到 `@shared/protocol/cache`，renderer 的 `ConfigService`、Vite 开发代理和 Electron 主进程共用同一份端口默认值。
 
 建议：
 
 - 服务端口和 fallback URL 优先从 `services.config()` 或边界层读取。
 - 新增业务模块不要直接拼接 `http://127.0.0.1:${port}`。
-- 共享协议常量继续放在 `@shared/protocol/cache`，避免 Electron 和 renderer 各自复制端口值。
+- 共享协议常量继续放在 `@shared/protocol/cache`，避免 Electron、renderer 和构建配置各自复制端口值。
 
 ### 3. 部分模块仍直接使用 runtime helper
 
@@ -58,6 +58,6 @@
 ## 建议推进路径
 
 1. 保持 Netease 旧请求路径自动检查，避免 legacy adapter 或直连 request 回流。
-2. 继续收口端口默认值，减少业务层直接读取端口。
+2. 继续减少业务层直接读取端口，新增服务地址默认走 `ConfigService`。
 3. 按收益迁移旧 API 文件，不做一次性全仓请求层重写。
 4. 继续观察低层 runtime helper 的使用面，业务层新增平台判断默认走 `PlatformService`。

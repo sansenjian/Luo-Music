@@ -29,7 +29,7 @@
 仍然存在的现实限制：
 
 - `ApiService` 已覆盖主要 Netease API 入口，但不是所有外部服务请求的默认入口
-- `ConfigService` 已覆盖服务 fallback URL，URL 型兼容常量已删除，端口默认值仍保留为常量
+- `ConfigService` 已覆盖服务 fallback URL，URL 型兼容常量已删除，服务端口默认值已收口到共享协议边界
 - `services.xxx()` 仍然是 service locator 形态，不是完整显式依赖图
 
 ## 路线原则
@@ -132,7 +132,7 @@
 
 - 其他拼接服务地址的入口优先改用 `getServiceBaseUrl()`
 - 继续避免新增 `http://127.0.0.1:${port}` 形式的业务层 URL 拼接
-- 评估 `NETEASE_API_PORT` / `QQ_API_PORT` 是否只应保留在 `ConfigService` 和共享协议边界
+- `NETEASE_API_PORT` / `QQ_API_PORT` 默认值只从 `@shared/protocol/cache` 引入
 
 完成标准：
 

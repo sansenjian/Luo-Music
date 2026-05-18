@@ -14,6 +14,7 @@ const { checkLocalLibraryNativeTestBoundaries, checkNeteaseApiRequestImports } =
       rootDir?: string
     ) => void
     checkNeteaseApiRequestImports: (files: string[], errors: string[], rootDir?: string) => void
+    checkRendererHttpConstants: (errors: string[], rootDir?: string) => void
   }
 
 describe('architecture boundary checks', () => {
@@ -23,6 +24,7 @@ describe('architecture boundary checks', () => {
     tempDir = await mkdtemp(join(tmpdir(), 'luo-architecture-boundaries-'))
     await mkdir(join(tempDir, 'tests', 'electron'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'api'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'constants'), { recursive: true })
   })
 
   afterEach(async () => {
@@ -102,6 +104,26 @@ describe('architecture boundary checks', () => {
       ),
       expect.stringContaining(
         'src/api/netease.ts: Netease API modules should use src/api/shared/neteaseServiceRequest.ts'
+      )
+    ])
+  })
+
+  it('keeps service port defaults out of renderer HTTP constants', async () => {
+    const { checkRendererHttpConstants } =
+      require('../../scripts/check-architecture-boundaries.cjs') as {
+        checkRendererHttpConstants: (errors: string[], rootDir?: string) => void
+      }
+    await writeTestFile(
+      'src/constants/http.ts',
+      'export const NETEASE_API_PORT = 14532\nexport const QQ_API_PORT = 3200\n'
+    )
+
+    const errors: string[] = []
+    checkRendererHttpConstants(errors, tempDir)
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/constants/http.ts: service port defaults belong in packages/shared/protocol/cache.ts'
       )
     ])
   })

@@ -1,4 +1,4 @@
-import { NETEASE_API_PORT, QQ_API_PORT } from '@/constants/http'
+import { NETEASE_API_PORT, QQ_API_PORT } from '@shared/protocol/cache'
 
 export type AppConfig = {
   env: {

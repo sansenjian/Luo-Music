@@ -300,6 +300,21 @@ function checkSharedImports(files, errors) {
   }
 }
 
+function checkRendererHttpConstants(errors, rootDir = projectRoot) {
+  const file = 'src/constants/http.ts'
+  const sourcePath = path.join(rootDir, file)
+  if (!fs.existsSync(sourcePath)) {
+    return
+  }
+
+  const source = fs.readFileSync(sourcePath, 'utf8')
+  if (/\bexport\s+const\s+(?:NETEASE_API_PORT|QQ_API_PORT)\b/.test(source)) {
+    errors.push(
+      `${file}: service port defaults belong in packages/shared/protocol/cache.ts, not renderer HTTP constants`
+    )
+  }
+}
+
 function runArchitectureBoundaryChecks() {
   const files = listProjectSourceFiles()
   const errors = []
@@ -310,6 +325,7 @@ function runArchitectureBoundaryChecks() {
   checkNeteaseApiRequestImports(files, errors)
   checkFeaturePublicApi(files, errors)
   checkSharedImports(files, errors)
+  checkRendererHttpConstants(errors)
 
   return errors
 }
@@ -334,6 +350,7 @@ if (require.main === module) {
   module.exports = {
     checkLocalLibraryNativeTestBoundaries,
     checkNeteaseApiRequestImports,
+    checkRendererHttpConstants,
     extractImports,
     resolveProjectPath,
     runArchitectureBoundaryChecks
