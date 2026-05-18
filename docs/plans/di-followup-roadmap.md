@@ -31,6 +31,8 @@
 - `ApiService` 已覆盖主要 Netease API 入口，但不是所有外部服务请求的默认入口
 - `ConfigService` 已覆盖服务 fallback URL，URL 型兼容常量已删除，服务端口默认值已收口到共享协议边界
 - `services.xxx()` 仍然是 service locator 形态，不是完整显式依赖图
+- `check:architecture` 已覆盖 Netease 直连 request、renderer 端口常量、旧 accessor 和重点模块顶层 `services.xxx()` 缓存防回流
+- 来源接口的长期方向是统一框架内部通用格式；QQ / Netease 只是当前内置来源和迁移样例，不应成为业务接口形态的中心
 
 ## 路线原则
 
@@ -60,6 +62,17 @@
 - 整体 store/composable 风格迁移
 - 一次性全仓替换旧请求层
 
+### 4. 来源接口统一到内部通用模型
+
+后续 API、插件和服务层迁移都以框架内部模型为目标，而不是以某个具体音乐平台的响应为目标。
+
+默认要求：
+
+- 平台适配器和插件在边界内返回 `Song`、`SearchResult`、`LyricResult`、`PlaylistDetail` 等通用模型。
+- 框架桥接层可以做保护性归一化，但只作为防御措施。
+- 新增业务代码不要直接依赖 QQ / Netease / 第三方接口的原始字段。
+- 平台专属字段先放 `extra`，只有跨来源稳定后才提升为通用字段。
+
 ## 优先级
 
 ## P0：收口过时分析结论
@@ -84,6 +97,7 @@
 目标：
 
 - 把 `ApiService` 从试点推进到“可持续复用”
+- 保持 API 返回进入业务层前已经映射到框架内部通用模型
 
 当前已接入：
 
@@ -115,6 +129,7 @@
 - Netease API 新增入口默认使用 `services.api()`
 - `src/api/netease.ts` 不再暴露 legacy adapter 出口
 - 模块级测试能通过显式 deps 或服务替身覆盖核心路径
+- 新增来源或插件不把平台原始响应直接暴露给 store / 组件
 
 ## P1：扩大 `ConfigService` 接入面
 
@@ -145,15 +160,20 @@
 
 - 把现在文档里的规则，逐步变成自动检查
 
-建议方向：
+已完成：
 
-- 新增静态检查，阻止业务层重新引入 `platformAccessor/playerAccessor`
-- 增加 lint 规则或脚本，提示模块顶层固化 `services.xxx()` 返回值
+- 新增静态检查，阻止生产代码重新引入 `platformAccessor/playerAccessor`
+- 新增静态检查，阻止 API / store / composable 模块顶层固化 `services.xxx()` 返回值
+- 新增静态检查，阻止 Netease API 模块直接依赖 `@/utils/http`
+- 新增静态检查，阻止 renderer HTTP 常量重新定义服务端口默认值
+
+后续可选方向：
+
 - 增加对 `localStorage` 直接访问的白名单检查，仅允许边界模块使用
 
 完成标准：
 
-- 至少有 1 条规则能自动阻止旧模式回流
+- 核心服务边界已有自动规则防止旧模式回流
 
 ## P2：补服务层采用度观测
 

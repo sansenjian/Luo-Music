@@ -291,6 +291,12 @@ interface PluginLogger {
 
 ### 4.3 数据模型
 
+插件数据模型和应用内部 `Song` / `SearchResult` / `LyricResult` / `PlaylistDetail` 保持同构。插件作者应在插件内部完成外部接口到通用模型的映射，再把结果返回给宿主。
+
+宿主在桥接层会做保护性归一化，用来处理旧插件、缺字段或类型不稳定的返回值；但这只是安全网，不是主要开发方式。新插件不要把 QQ 音乐、网易云音乐或其他来源的原始响应直接返回给框架。
+
+平台专属字段优先放在 `extra`，例如第三方接口 token、来源原始 ID、专属音质字段等。只有当字段变成跨来源稳定能力后，才应提升到通用模型。
+
 ```typescript
 interface PluginSong {
   id: string | number

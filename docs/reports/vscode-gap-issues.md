@@ -1,6 +1,6 @@
 # LUO Music 当前问题清单（对比 VS Code 架构思路）
 
-更新日期：2026-03-21
+更新日期：2026-05-19
 
 ## 概览
 
@@ -8,11 +8,12 @@
 
 - 第一阶段已完成（2026-03-21）
 - 第二阶段已完成（2026-03-21）
-- 第三阶段未开始
+- 第三阶段部分推进：服务层/DI 默认路径、Netease API 请求入口、服务 URL 与端口默认值已完成收口
+- 后续来源接口方向已明确：业务层消费框架内部通用模型，QQ / Netease 只作为当前内置来源和迁移样例
 
 当前项目已经具备部分 VS Code 风格基础设施，包括统一 IPC、服务层、事件系统、生命周期工具、Context Key、Command Service 和子进程服务管理。
 
-真正的差距不在于“缺少更多概念”，而在于这些基础设施还没有彻底成为默认开发路径。现在的主要问题集中在启动路径、生命周期一致性、基础设施收口程度和大规模交互场景下的运行成本。
+真正的差距不在于“缺少更多概念”，而在于这些基础设施还要持续防止旁路回流。现在的主要问题集中在启动路径、生命周期一致性、可观测性闭环和大规模交互场景下的运行成本。
 
 ## 优先级结论
 
@@ -20,7 +21,7 @@
 
 1. 主进程与渲染层边界仍有回流
 2. 可观测性还未形成闭环
-3. 基础设施重复实现仍未彻底统一
+3. 基础设施重复实现仍需继续统一
 
 ### P1
 
@@ -63,48 +64,59 @@
 - 将非首屏必需服务改成按需启动
 - 为主进程启动过程补分段耗时记录
 
-### 2. 基础设施没有完全收口
+### 2. 基础设施已形成默认路径，仍需防回流
 
 问题：
 
-- 仓库已经有 service layer，但业务层仍存在直接访问浏览器 API、隐式服务注册和绕过服务层的写法
+- 仓库已经有 service layer，平台、存储、配置和 Netease API 请求入口已完成主要收口；后续重点是防止旧 accessor、旧 request 和配置常量旁路回流
 
 代码位置：
 
-- `src/services/platformAccessor.ts`
-- `src/App.vue`
-- `src/store/playerStore.ts`
-- `src/composables/useHomePage.ts`
+- `src/services/index.ts`
+- `src/services/configService.ts`
+- `src/api/shared/neteaseServiceRequest.ts`
+- `scripts/check-architecture-boundaries.cjs`
 
 具体表现：
 
-- `getPlatformAccessor()` 会在未注册时自行注册平台服务，属于隐式入口
-- `App.vue` 直接读写 `localStorage` 处理播放器状态
-- `playerStore.ts` 直接写 `localStorage.setItem('compactModeUserToggled', 'true')`
-- `useHomePage.ts` 使用 `document.querySelector` 查找 DOM 处理点击外部收起逻辑
+- 平台能力默认走 `services.platform()`
+- Netease API 默认走 `services.api()` 或 `src/api/shared/neteaseServiceRequest.ts`
+- 服务 URL 默认走 `services.config().getServiceBaseUrl()`
+- 端口默认值集中在 `@shared/protocol/cache`
+- 插件和平台适配层应返回 `Song`、`SearchResult`、`LyricResult`、`PlaylistDetail` 等框架通用模型，保护性归一化只放在桥接边界
+- `check:architecture` 已阻止 Netease API 直连 `@/utils/http`、renderer HTTP 常量重新定义服务端口、生产代码重新引入旧 accessor
 
 影响：
 
-- 框架层和业务层边界不稳定
-- 后续测试、迁移和替换实现时成本变高
-- service layer 的收益会被业务代码旁路削弱
+- 默认路径已经稳定，但如果没有自动检查，新增代码仍可能重新引入旧旁路
+- 文档或示例一旦滞后，代码评审成本会升高
 
 建议：
 
-- 统一将平台能力、存储能力、窗口能力和 IPC 能力收敛到单一入口
-- 减少运行时隐式注册
-- 逐步清理直接使用 `localStorage`、`document.querySelector`、原始环境判断的代码
+- 保持 `check:architecture` 作为防回流入口
+- 新增业务代码默认使用 `services.xxx()` 或显式 `deps`
+- 新增 Netease API 模块默认使用 `neteaseServiceRequest`
+- 新增来源或插件先在边界内转换为框架内部通用模型，平台专属字段优先放入 `extra`
+- 继续避免业务层直接拼服务 URL 或读取服务端口常量
 
-### 3. 依赖注入仍是半成品
+### 3. DI 路线已明确，剩余是边界治理
 
 问题：
 
-- 当前 DI 更接近 Service Locator 的扩展版本，还不能算稳定的实例化系统
+- 当前项目有意保留“`services.xxx()` + 热点模块显式 `deps`”的务实路线，不再追求全业务构造注入；剩余工作是让这条路线稳定可维护
 
 状态更新（2026-03-21）：
 
-- `src/services/injector.ts` 已移除按参数位置猜测依赖和未知标识 fallback，构造注入改为显式 `@Inject(...)`
+- `src/services/injector.ts` 已移除按参数位置猜测依赖和未知标识 fallback，构造注入改为显式 `@injectParam(...)`
 - 当前路线已明确为“默认继续使用 `services.xxx()`，构造注入仅在显式标注时启用”，不再继续扩散半成品 DI
+
+状态更新（2026-05-19）：
+
+- `ApiService` 已覆盖主要 Netease API 入口
+- `ConfigService` 已覆盖服务 fallback URL
+- Netease legacy adapter 出口已删除
+- URL 型兼容常量已删除，端口默认值已收口到 `@shared/protocol/cache`
+- `check:architecture` 已加入多条服务边界防回流规则
 
 代码位置：
 
@@ -115,19 +127,19 @@
 
 - `Injector.resolveDependencies()` 已改为仅解析显式注解的构造参数
 - `Inject()` 不再对未知标识做静默 fallback
-- 业务层主要仍依赖 `services.xxx()` 获取能力，而不是统一实例化模型
+- 业务层主要依赖 `services.xxx()` 获取能力，测试敏感模块使用显式 `deps`
+- `@injectParam(...)` 仅保留给基础设施类或明确由 `Injector` 创建的类
 
 影响：
 
-- 复杂度已经上来，但注入约束不足
-- 错误注入和隐式耦合不容易被及时发现
-- 长期处于“不够简单，也不够严格”的中间态
+- 路线已经稳定，但新增模块仍需要遵守边界，否则会重新出现旧 request、旧 accessor 或顶层服务实例缓存
 
 建议：
 
-- 二选一推进
-- 方案 A：保留 `services.xxx()`，弱化半成品 DI，避免继续扩散
-- 方案 B：补齐真正的 identifier + instantiation service 体系，再推广到业务层
+- 保留 `services.xxx()` 作为默认路径
+- 继续只在高副作用/测试敏感模块使用显式 `deps`
+- 不引入完整 IoC 或全业务构造注入
+- 通过自动检查和文档示例防止旧模式回流
 
 ### 4. 生命周期管理没有贯穿热路径
 
@@ -302,7 +314,7 @@
 - `electron/main/index.ts`：主窗口创建不再等待服务预热完成
 - `electron/ServiceManager.ts`：服务启动改为并行预热
 - `src/services/storageService.ts`：收口 storage 访问入口
-- `src/services/platformAccessor.ts`：平台能力统一收口为 `services.platform()`
+- 平台能力统一收口为 `services.platform()`
 - `src/App.vue`、`src/composables/useHomeShell.ts`、`src/store/playerStore.ts`：清理 `localStorage` 旁路访问
 - `src/composables/useHomePage.ts`、`src/components/home/HomeServerSelect.vue`：清理 `document.querySelector` 和全局 click 收起逻辑
 - `src/components/Playlist.vue`：引入固定行高虚拟化
@@ -322,13 +334,13 @@
 
 状态：已完成（2026-03-21）
 
-1. 明确 DI 路线，停止半成品状态继续扩散
+1. 明确 DI 路线，停止构造注入向普通业务层扩散
 2. 将播放器和相关 Store 继续拆层
 3. 把 `Disposable` / `EventEmitter` 彻底推广到热路径
 
 已完成项：
 
-- `src/services/injector.ts`：移除按参数位置猜测与静默 fallback，构造注入改为显式 `@Inject(...)`
+- `src/services/injector.ts`：移除按参数位置猜测与静默 fallback，构造注入改为显式 `@injectParam(...)`
 - `tests/services/injector.test.ts`：补齐显式注入、缺失注解与单例行为校验
 - `src/store/player/runtime.ts`、`src/store/playerStore.ts`：将播放器运行时资源收敛到 `PlayerStoreRuntime`，由 Store owner 负责创建、复用与重置
 - `src/store/player/audioEvents.ts`、`src/store/player/ipcHandlers.ts`：将热路径监听切换为 `DisposableStore` 托管

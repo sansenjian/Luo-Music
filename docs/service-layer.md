@@ -194,6 +194,26 @@ class DownloadJob {
 
 ## `ApiService` 与 `ConfigService` 的使用边界
 
+### 平台接口的通用格式原则
+
+服务层和请求层不是为 QQ 音乐或网易云音乐定制的。它们面向的是所有内置来源、第三方插件和未来来源都要遵守的框架内部通用格式。
+
+当前通用模型以 [`packages/shared/types/schemas.ts`](./../packages/shared/types/schemas.ts) 和 [`src/platform/music/interface.ts`](./../src/platform/music/interface.ts) 为准，包括：
+
+- `Song`
+- `SearchResult`
+- `LyricResult`
+- `PlaylistDetail`
+
+插件或平台适配器应在自己的边界内把外部接口返回值转换成这些通用模型，再交给框架内部使用。框架可以在 [`src/platform/music/plugin/standardModels.ts`](./../src/platform/music/plugin/standardModels.ts) 这类桥接层做保护性归一化，但它只是防御边界，不是鼓励业务层继续消费平台原始结构。
+
+因此：
+
+- `qq`、`netease` 只是当前内置来源和迁移样例，不是接口设计的中心。
+- 新增来源或插件不要把平台专属字段扩散到 store、组件或共享服务里。
+- 平台专属字段优先放入 `extra`，只有确认为框架通用能力后才提升为 `Song` 等通用模型字段。
+- 业务层接收的应是框架通用模型，而不是某个平台的原始响应。
+
 ### `ApiService`
 
 适用场景：

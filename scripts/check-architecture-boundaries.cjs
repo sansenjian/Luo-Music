@@ -37,6 +37,10 @@ const allowedApiHttpRequestFiles = new Set([
   'src/api/qqmusic.ts',
   'src/api/shared/neteaseServiceRequest.ts'
 ])
+const forbiddenServiceAccessorModules = new Set([
+  'src/services/platformAccessor',
+  'src/services/playerAccessor'
+])
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue'])
 const importPattern =
   /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
@@ -315,6 +319,75 @@ function checkRendererHttpConstants(errors, rootDir = projectRoot) {
   }
 }
 
+function checkLegacyServiceAccessorImports(files, errors, rootDir = projectRoot) {
+  const productionFiles = files.filter(
+    file =>
+      (file.startsWith('src/') ||
+        file.startsWith('electron/') ||
+        file.startsWith('packages/') ||
+        file.startsWith('server/')) &&
+      !file.endsWith('.test.ts') &&
+      !file.endsWith('.test.tsx')
+  )
+
+  for (const file of productionFiles) {
+    for (const specifier of extractImports(file, rootDir)) {
+      const resolved = resolveProjectPath(file, specifier)
+      const resolvedWithoutExtension = resolved ? stripSourceExtension(resolved) : null
+
+      if (
+        resolvedWithoutExtension &&
+        forbiddenServiceAccessorModules.has(resolvedWithoutExtension)
+      ) {
+        errors.push(
+          `${file}: use services.platform()/services.player() instead of legacy accessor "${specifier}"`
+        )
+      }
+    }
+  }
+}
+
+function checkTopLevelServiceAccess(files, errors, rootDir = projectRoot) {
+  const monitoredFiles = files.filter(
+    file =>
+      (file.startsWith('src/api/') ||
+        file.startsWith('src/store/') ||
+        file.startsWith('src/composables/')) &&
+      !file.endsWith('.test.ts') &&
+      !file.endsWith('.test.tsx')
+  )
+
+  for (const file of monitoredFiles) {
+    const source = fs.readFileSync(path.join(rootDir, file), 'utf8')
+    let braceDepth = 0
+    const lines = source.split(/\r?\n/)
+
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index]
+      const depthBeforeLine = braceDepth
+
+      if (
+        depthBeforeLine === 0 &&
+        /^\s*(?:export\s+)?(?:const|let|var)\s+\w+(?:\s*:\s*[^=]+)?\s*=\s*services\.\w+\(/.test(
+          line
+        )
+      ) {
+        errors.push(
+          `${file}:${index + 1}: avoid caching services.xxx() at module top level; resolve inside a function or deps factory`
+        )
+      }
+
+      for (const char of line.replace(/\/\/.*$/, '')) {
+        if (char === '{') {
+          braceDepth++
+        } else if (char === '}') {
+          braceDepth = Math.max(0, braceDepth - 1)
+        }
+      }
+    }
+  }
+}
+
 function runArchitectureBoundaryChecks() {
   const files = listProjectSourceFiles()
   const errors = []
@@ -326,6 +399,8 @@ function runArchitectureBoundaryChecks() {
   checkFeaturePublicApi(files, errors)
   checkSharedImports(files, errors)
   checkRendererHttpConstants(errors)
+  checkLegacyServiceAccessorImports(files, errors)
+  checkTopLevelServiceAccess(files, errors)
 
   return errors
 }
@@ -349,8 +424,10 @@ if (require.main === module) {
 } else {
   module.exports = {
     checkLocalLibraryNativeTestBoundaries,
+    checkLegacyServiceAccessorImports,
     checkNeteaseApiRequestImports,
     checkRendererHttpConstants,
+    checkTopLevelServiceAccess,
     extractImports,
     resolveProjectPath,
     runArchitectureBoundaryChecks
