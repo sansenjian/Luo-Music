@@ -6,13 +6,14 @@ import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
-const { checkLocalLibraryNativeTestBoundaries } =
+const { checkLocalLibraryNativeTestBoundaries, checkNeteaseApiRequestImports } =
   require('../../scripts/check-architecture-boundaries.cjs') as {
     checkLocalLibraryNativeTestBoundaries: (
       files: string[],
       errors: string[],
       rootDir?: string
     ) => void
+    checkNeteaseApiRequestImports: (files: string[], errors: string[], rootDir?: string) => void
   }
 
 describe('architecture boundary checks', () => {
@@ -21,6 +22,7 @@ describe('architecture boundary checks', () => {
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'luo-architecture-boundaries-'))
     await mkdir(join(tempDir, 'tests', 'electron'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'api'), { recursive: true })
   })
 
   afterEach(async () => {
@@ -63,6 +65,33 @@ describe('architecture boundary checks', () => {
     expect(errors).toEqual([
       expect.stringContaining(
         `${pureTest}: pure local-library tests must not import native SQLite boundary`
+      )
+    ])
+  })
+
+  it('blocks direct Netease request imports in API modules', async () => {
+    await writeTestFile('src/api/search.ts', "import request from '@/utils/http'\n")
+    await writeTestFile('src/api/album.ts', "import request from '@/utils/http/index'\n")
+    await writeTestFile('src/api/song.ts', "import request from '../utils/http'\n")
+    await writeTestFile('src/api/qqmusic.ts', "import request from '@/utils/http'\n")
+
+    const errors: string[] = []
+
+    checkNeteaseApiRequestImports(
+      ['src/api/search.ts', 'src/api/album.ts', 'src/api/song.ts', 'src/api/qqmusic.ts'],
+      errors,
+      tempDir
+    )
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/api/search.ts: Netease API modules should use src/api/shared/neteaseServiceRequest.ts'
+      ),
+      expect.stringContaining(
+        'src/api/album.ts: Netease API modules should use src/api/shared/neteaseServiceRequest.ts'
+      ),
+      expect.stringContaining(
+        'src/api/song.ts: Netease API modules should use src/api/shared/neteaseServiceRequest.ts'
       )
     ])
   })

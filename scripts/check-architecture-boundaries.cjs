@@ -33,6 +33,12 @@ const allowedLocalLibraryNativeTests = new Set([
   'tests/electron/localLibrary.service.test.ts'
 ])
 const forbiddenLocalLibraryPureTestRuntimeImports = new Set(['better-sqlite3', 'node:sqlite'])
+const allowedApiHttpRequestFiles = new Set([
+  'src/api/adapter.ts',
+  'src/api/netease.ts',
+  'src/api/qqmusic.ts',
+  'src/api/shared/neteaseServiceRequest.ts'
+])
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue'])
 const importPattern =
   /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
@@ -201,6 +207,30 @@ function checkRootApiImports(files, errors) {
   }
 }
 
+function checkNeteaseApiRequestImports(files, errors, rootDir = projectRoot) {
+  const apiFiles = files.filter(file => file.startsWith('src/api/'))
+
+  for (const file of apiFiles) {
+    if (allowedApiHttpRequestFiles.has(file)) {
+      continue
+    }
+
+    for (const specifier of extractImports(file, rootDir)) {
+      const resolved = resolveProjectPath(file, specifier)
+      const resolvedWithoutExtension = resolved ? stripSourceExtension(resolved) : null
+      const importsNeteaseRequestEntry =
+        resolvedWithoutExtension === 'src/utils/http' ||
+        resolvedWithoutExtension === 'src/utils/http/index'
+
+      if (importsNeteaseRequestEntry) {
+        errors.push(
+          `${file}: Netease API modules should use src/api/shared/neteaseServiceRequest.ts instead of importing "@/utils/http" directly`
+        )
+      }
+    }
+  }
+}
+
 function getFeatureRoot(file) {
   const match = file.match(/^src\/features\/([^/]+)\//)
   return match ? `src/features/${match[1]}` : null
@@ -279,6 +309,7 @@ function runArchitectureBoundaryChecks() {
   checkElectronImports(files, errors)
   checkLocalLibraryNativeTestBoundaries(files, errors)
   checkRootApiImports(files, errors)
+  checkNeteaseApiRequestImports(files, errors)
   checkFeaturePublicApi(files, errors)
   checkSharedImports(files, errors)
 
@@ -304,6 +335,7 @@ if (require.main === module) {
 } else {
   module.exports = {
     checkLocalLibraryNativeTestBoundaries,
+    checkNeteaseApiRequestImports,
     extractImports,
     resolveProjectPath,
     runArchitectureBoundaryChecks

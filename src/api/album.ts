@@ -1,6 +1,6 @@
 import type { AxiosResponse } from 'axios'
 
-import request from '@/utils/http'
+import { neteaseRequest } from './shared/neteaseServiceRequest'
 
 export interface AlbumArtistResponse {
   id?: string | number
@@ -91,13 +91,9 @@ function unwrapResponseData<T>(response: HttpResponseData<T>): T {
  * @param {number} id - 专辑 ID
  */
 export async function getAlbumDetail(id: number): Promise<AlbumDetailResponse> {
-  const response = await request<AlbumDetailResponse>({
-    url: '/album',
-    method: 'get',
-    params: { id }
-  })
+  const response = await neteaseRequest('/album', { id })
 
-  return unwrapResponseData(response)
+  return unwrapResponseData(response as HttpResponseData<AlbumDetailResponse>)
 }
 
 /**
@@ -109,11 +105,7 @@ export async function getAlbumSublist(
   limit: number = 50,
   offset: number = 0
 ): Promise<AlbumSublistResponse> {
-  const response = await request<AlbumSublistResponse>({
-    url: '/album/sublist',
-    method: 'get',
-    params: { limit, offset }
-  })
+  const response = await neteaseRequest('/album/sublist', { limit, offset })
 
-  return unwrapResponseData(response)
+  return unwrapResponseData(response as HttpResponseData<AlbumSublistResponse>)
 }

@@ -1,20 +1,31 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-const requestMock = vi.hoisted(() => vi.fn())
-
-vi.mock('@/utils/http', () => ({
-  default: requestMock
-}))
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getAlbumDetail, getAlbumSublist } from '@/api/album'
+import {
+  configureNeteaseServiceApiDeps,
+  resetNeteaseServiceApiDeps
+} from '@/api/shared/neteaseServiceRequest'
+
+const apiRequestMock = vi.fn()
 
 describe('album api', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    configureNeteaseServiceApiDeps({
+      getApiService: () => ({
+        request: apiRequestMock
+      }),
+      getTimestamp: () => 1234567890,
+      getCookie: () => null
+    })
+  })
+
+  afterEach(() => {
+    resetNeteaseServiceApiDeps()
   })
 
   it('unwraps axios responses for album detail requests', async () => {
-    requestMock.mockResolvedValue({
+    apiRequestMock.mockResolvedValue({
       data: {
         album: {
           id: 1,
@@ -29,11 +40,7 @@ describe('album api', () => {
 
     const result = await getAlbumDetail(1)
 
-    expect(requestMock).toHaveBeenCalledWith({
-      url: '/album',
-      method: 'get',
-      params: { id: 1 }
-    })
+    expect(apiRequestMock).toHaveBeenCalledWith('netease', '/album', { id: 1 })
     expect(result).toEqual({
       album: {
         id: 1,
@@ -54,17 +61,13 @@ describe('album api', () => {
       ],
       hasMore: false
     }
-    requestMock.mockResolvedValue(payload)
+    apiRequestMock.mockResolvedValue(payload)
 
     const result = await getAlbumSublist(20, 40)
 
-    expect(requestMock).toHaveBeenCalledWith({
-      url: '/album/sublist',
-      method: 'get',
-      params: {
-        limit: 20,
-        offset: 40
-      }
+    expect(apiRequestMock).toHaveBeenCalledWith('netease', '/album/sublist', {
+      limit: 20,
+      offset: 40
     })
     expect(result).toEqual(payload)
   })

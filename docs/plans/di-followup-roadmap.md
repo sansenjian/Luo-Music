@@ -85,31 +85,34 @@
 
 - 把 `ApiService` 从试点推进到“可持续复用”
 
-当前试点：
+当前已接入：
 
 - [`src/api/user.ts`](./../../src/api/user.ts)
-
-下一批建议目标：
-
 - [`src/api/search.ts`](./../../src/api/search.ts)
+- [`src/api/album.ts`](./../../src/api/album.ts)
 - [`src/api/playlist.ts`](./../../src/api/playlist.ts)
 - [`src/api/song.ts`](./../../src/api/song.ts)
 
+下一批建议目标：
+
+- 清理或改造 [`src/api/netease.ts`](./../../src/api/netease.ts) 中的 legacy `NeteaseAdapter(request)` 出口。
+- 增加自动检查，阻止新增 Netease API 模块直接依赖 `@/utils/http`。
+- 继续观察是否还有业务调用绕过 `services.api()`。
+
 优先顺序建议：
 
-1. `search.ts`
-2. `playlist.ts`
-3. `song.ts`
+1. 确认 `neteaseAdapter` 是否仍有调用方
+2. 为 Netease API 旧请求路径补自动检查
+3. 按调用方风险拆除或改造 legacy adapter
 
 原因：
 
-- `search.ts` 结构最简单，迁移风险最低
-- `playlist.ts` 次之
-- `song.ts` 涉及更多特殊参数、fallback 和音质逻辑，放最后
+- 当前主要 API 文件已走 `services.api()` 或共享 Netease helper。
+- 剩余问题更像旧兼容出口和防回流规则，不适合继续按文件名机械迁移。
 
 完成标准：
 
-- 至少 2 个 Netease API 模块切到 `services.api()`
+- Netease API 新增入口默认使用 `services.api()`
 - 模块级测试能通过显式 deps 或服务替身覆盖核心路径
 
 ## P1：扩大 `ConfigService` 接入面
@@ -178,16 +181,15 @@
 ## 建议执行顺序
 
 1. 更新过时分析文档，统一当前状态口径
-2. 迁移 `src/api/search.ts` 到 `services.api()`
-3. 迁移 `src/api/playlist.ts` 到 `services.api()`
-4. 继续收口剩余配置型常量入口
-5. 增加 1 条自动检查，防止旧模式回流
+2. 清点 `src/api/netease.ts` 的 legacy adapter 调用方
+3. 继续收口剩余配置型常量入口
+4. 增加 1 条自动检查，防止旧模式回流
 
 ## 验收标准
 
 一轮后续路线完成后，至少应满足：
 
-- `ApiService` 不再只有试点模块
+- `ApiService` 成为 Netease API 新增入口的默认路径
 - `ConfigService` 接入面继续扩大
 - 文档中的过时问题陈述被清理
 - 至少有 1 条自动化规则防止服务边界回流

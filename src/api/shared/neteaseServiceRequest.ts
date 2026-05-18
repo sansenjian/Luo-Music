@@ -1,6 +1,7 @@
 import { services } from '@/services'
 import type { ApiService } from '@/services/apiService'
 import { storageAdapter } from '@/services/storageService'
+import { useUserStore } from '@/store/userStore'
 import { HTTP_COOKIE_CACHE_TTL } from '@/constants/http'
 
 type NeteaseApiClient = Pick<ApiService, 'request'>
@@ -9,6 +10,7 @@ export type NeteaseServiceApiDeps = {
   getApiService?: () => NeteaseApiClient
   getTimestamp?: () => number
   getCookie?: () => string | null
+  onAuthExpired?: () => void
 }
 
 const defaultNeteaseServiceApiDeps: Required<NeteaseServiceApiDeps> = {
@@ -25,6 +27,16 @@ const defaultNeteaseServiceApiDeps: Required<NeteaseServiceApiDeps> = {
       return typeof parsed.cookie === 'string' ? parsed.cookie : null
     } catch {
       return null
+    }
+  },
+  onAuthExpired: () => {
+    try {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn) {
+        userStore.logout()
+      }
+    } catch {
+      clearNeteaseServiceCookieCache()
     }
   }
 }
@@ -86,6 +98,23 @@ export function withCachedCookie(params: Record<string, unknown> = {}): Record<s
   }
 }
 
+function getNeteaseBusinessCode(response: unknown): unknown {
+  if (!response || typeof response !== 'object') {
+    return undefined
+  }
+
+  const record = response as { code?: unknown; data?: unknown }
+  if (record.code !== undefined) {
+    return record.code
+  }
+
+  if (record.data && typeof record.data === 'object') {
+    return (record.data as { code?: unknown }).code
+  }
+
+  return undefined
+}
+
 export function neteaseRequest(
   endpoint: string,
   params: Record<string, unknown> = {}
@@ -93,4 +122,11 @@ export function neteaseRequest(
   return neteaseServiceApiDeps
     .getApiService()
     .request('netease', endpoint, withCachedCookie(params))
+    .then(response => {
+      if (getNeteaseBusinessCode(response) === 301) {
+        neteaseServiceApiDeps.onAuthExpired()
+      }
+
+      return response
+    })
 }
