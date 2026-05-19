@@ -7,6 +7,7 @@
 | 优先级 | 文档                                                                 | 当前状态                                                           | 下一步                                                                            |
 | ------ | -------------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
 | P0     | [Windows 原生 SMTC 实现计划](/plans/native-smtc-implementation-plan) | Chromium SMTC 已完成一轮稳定性修复；Rust helper 尚未实现           | 先做 helper PoC，再接入 `builtin.smtc` fallback                                   |
+| P0     | [下一步优化路线图](/plans/next-optimization-roadmap)                 | 汇总服务层 / DI 收口、插件系统增强和剩余风险                       | 先补插件 SDK 类型、入站模型 fixtures、登录兼容收口和边界自动检查                  |
 | P1     | [项目结构优化详细规划](/plans/project-structure-optimization-plan)   | shared、IPC、Home、UserCenter 已部分收敛                           | 继续拆 `UserAvatar` 后续逻辑、`electron/local-library/service.ts` 和 feature 边界 |
 | P1     | [插件体系拓展架构](/plugin-extension-architecture)                   | SDK、外部插件宿主、`ctx.secrets`、第一方 SMTC / cover-swipe 已落地 | 补 runtime hook 执行器、extension registry、桌面歌词 / 波形插件化                 |
 | P1     | [插件规范](/plugin-specification)                                    | 当前插件 API 和 manifest 规范                                      | 随 SDK 能力变化同步更新                                                           |
