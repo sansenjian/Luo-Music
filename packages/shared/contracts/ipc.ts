@@ -40,6 +40,14 @@ export type PluginMethodName =
   | 'getSongDetail'
   | 'getLyric'
   | 'getPlaylistDetail'
+  | 'auth.getState'
+  | 'auth.startLogin'
+  | 'auth.pollLogin'
+  | 'auth.submitLogin'
+  | 'auth.cancelLogin'
+  | 'auth.importSession'
+  | 'auth.refresh'
+  | 'auth.logout'
 
 export type ApiPlatform = SongPlatform
 

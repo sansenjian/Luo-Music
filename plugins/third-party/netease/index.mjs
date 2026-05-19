@@ -123,6 +123,23 @@ function normalizeAccountProfile(profile) {
   }
 }
 
+function normalizeImportedSession(input) {
+  const session = input && typeof input === 'object' ? input.session : null
+  if (!session || typeof session !== 'object') return null
+
+  const credential =
+    session.credential && typeof session.credential === 'object' ? session.credential : null
+  const credentialType = credential?.type
+  const credentialValue = normalizeStringValue(credential?.value).trim()
+  if (credentialType !== 'cookie' || !credentialValue) return null
+
+  return {
+    cookie: credentialValue,
+    account: normalizeAccountProfile(session.account),
+    expiresAt: normalizeNumberLikeValue(session.expiresAt) ?? undefined
+  }
+}
+
 export default {
   async create(ctx) {
     const apiBase = (ctx.settings.apiBase || 'http://127.0.0.1:14532').replace(/\/+$/, '')
@@ -380,6 +397,44 @@ export default {
 
       async 'auth.cancelLogin'() {
         return null
+      },
+
+      async 'auth.importSession'(input) {
+        const session = normalizeImportedSession(input)
+        if (!session) {
+          return {
+            platform: ctx.platformId,
+            status: 'error',
+            message: '导入的登录会话无效'
+          }
+        }
+
+        await ctx.secrets.set('cookie', session.cookie)
+
+        let account = session.account
+        if (!account) {
+          try {
+            account = await fetchAccountProfile(session.cookie)
+          } catch (error) {
+            ctx.logger.warn('Failed to fetch Netease account profile during session import', {
+              error
+            })
+          }
+        }
+
+        if (account) {
+          await ctx.secrets.set('account', account)
+        } else {
+          await ctx.secrets.remove('account')
+        }
+
+        return {
+          platform: ctx.platformId,
+          status: 'authenticated',
+          ...(account ? { account } : {}),
+          ...(session.expiresAt ? { expiresAt: session.expiresAt } : {}),
+          message: '登录会话已导入'
+        }
       },
 
       async 'auth.refresh'() {

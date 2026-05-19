@@ -11,7 +11,7 @@ function createLogger() {
   };
 }
 
-async function createAdapter(httpGet) {
+async function createAdapter(httpGet, secrets = {}) {
   const ctx = {
     platformId: "qq",
     settings: {
@@ -20,12 +20,26 @@ async function createAdapter(httpGet) {
     },
     http: {
       get: httpGet,
+      post: vi.fn(),
+    },
+    storage: {
+      get: vi.fn(),
+      set: vi.fn(),
+      remove: vi.fn(),
+      clear: vi.fn(),
+    },
+    secrets: {
+      get: vi.fn((key) => secrets[key]),
+      set: vi.fn(),
+      remove: vi.fn(),
+      clear: vi.fn(),
     },
     logger: createLogger(),
   };
 
   return {
     adapter: await qqPlugin.create(ctx),
+    ctx,
   };
 }
 
@@ -122,5 +136,27 @@ describe("QQ external plugin", () => {
     await expect(adapter.getSongUrl({ id: "002NWZkm4a6W1h" })).resolves.toBe(
       "https://dl.stream.qqmusic.qq.com/test.mp3",
     );
+  });
+
+  it("imports a standardized cookie session into plugin secrets", async () => {
+    const httpGet = vi.fn();
+    const { adapter, ctx } = await createAdapter(httpGet);
+
+    await expect(
+      adapter["auth.importSession"]({
+        session: {
+          credential: {
+            type: "cookie",
+            value: "uin=123; qm_keyst=legacy",
+          },
+        },
+      }),
+    ).resolves.toEqual({
+      platform: "qq",
+      status: "authenticated",
+      message: "登录会话已导入",
+    });
+
+    expect(ctx.secrets.set).toHaveBeenCalledWith("cookie", "uin=123; qm_keyst=legacy");
   });
 });

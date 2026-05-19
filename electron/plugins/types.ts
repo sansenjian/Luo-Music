@@ -136,6 +136,7 @@ const pluginCapabilitiesSchema = z.object({
       logout: z.boolean().optional(),
       refresh: z.boolean().optional(),
       profile: z.boolean().optional(),
+      importSession: z.boolean().optional(),
       preferredMode: z.enum(['qr', 'browser', 'form']).optional(),
       modes: z.array(z.enum(['qr', 'browser', 'form'])).optional()
     })

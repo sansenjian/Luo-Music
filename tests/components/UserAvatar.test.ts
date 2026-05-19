@@ -20,16 +20,12 @@ const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => false)
 }))
 const pluginServiceMock = vi.hoisted(() => ({
-  refreshPlatformDescriptors: vi.fn<() => Promise<PlatformDescriptor[]>>(() => Promise.resolve([])),
-  getAuthState: vi.fn<(platformId: string) => Promise<PlatformAuthState>>(() =>
-    Promise.resolve({
-      platform: 'kugou',
-      status: 'anonymous',
-      message: '未登录',
-      updatedAt: Date.now()
-    })
-  ),
-  onPlatformsChanged: vi.fn(() => () => {})
+  refreshPlatformDescriptors: vi.fn<() => Promise<PlatformDescriptor[]>>(),
+  auth: {
+    getState: vi.fn<(platformId: string) => Promise<PlatformAuthState>>(),
+    importSession: vi.fn<(platformId: string, session: unknown) => Promise<PlatformAuthState>>()
+  },
+  onPlatformsChanged: vi.fn<() => () => void>()
 }))
 const musicServiceMock = vi.hoisted(() => ({
   getLoginCapablePlatformDescriptors: vi.fn()
@@ -97,6 +93,23 @@ describe('UserAvatar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     platformServiceMock.isElectron.mockReturnValue(true)
+    checkQQMusicLoginMock.mockResolvedValue({ data: { cookie: '' } })
+    pluginServiceMock.refreshPlatformDescriptors.mockResolvedValue([])
+    pluginServiceMock.auth.getState.mockResolvedValue({
+      platform: 'kugou',
+      status: 'anonymous',
+      message: '未登录',
+      updatedAt: Date.now()
+    })
+    pluginServiceMock.auth.importSession.mockImplementation(platformId =>
+      Promise.resolve({
+        platform: platformId,
+        status: 'authenticated',
+        message: '登录会话已导入',
+        updatedAt: Date.now()
+      })
+    )
+    pluginServiceMock.onPlatformsChanged.mockReturnValue(() => {})
     resetRuntimePlatformDescriptors()
     musicServiceMock.getLoginCapablePlatformDescriptors.mockImplementation(() =>
       getLoginCapablePlatformDescriptors()
@@ -490,7 +503,7 @@ describe('UserAvatar', () => {
       }
     }
     pluginServiceMock.refreshPlatformDescriptors.mockResolvedValue([kugouDescriptor])
-    pluginServiceMock.getAuthState.mockResolvedValue({
+    pluginServiceMock.auth.getState.mockResolvedValue({
       platform: 'kugou',
       status: 'authenticated',
       account: {
@@ -503,7 +516,7 @@ describe('UserAvatar', () => {
     replaceRuntimePlatformDescriptors([kugouDescriptor])
 
     const wrapper = createWrapper()
-    await vi.waitFor(() => expect(pluginServiceMock.getAuthState).toHaveBeenCalledWith('kugou'))
+    await vi.waitFor(() => expect(pluginServiceMock.auth.getState).toHaveBeenCalledWith('kugou'))
 
     await wrapper.find('.user-trigger').trigger('click')
     await nextTick()
@@ -515,5 +528,123 @@ describe('UserAvatar', () => {
       path: '/user',
       query: { platform: 'kugou' }
     })
+  })
+
+  it('imports legacy Netease cookie into plugin auth secrets when plugin state is anonymous', async () => {
+    const neteaseDescriptor = {
+      id: 'netease',
+      displayName: 'Netease Music',
+      source: 'external' as const,
+      runtime: 'external-host' as const,
+      enabled: true,
+      capabilities: {
+        search: true,
+        songUrl: true,
+        songDetail: true,
+        lyric: true,
+        playlistDetail: true,
+        needsHydration: true,
+        supportsLyricFetch: true,
+        supportsUrlRefreshOnFailure: true,
+        auth: {
+          login: true,
+          importSession: true,
+          preferredMode: 'qr' as const,
+          modes: ['qr' as const]
+        }
+      }
+    }
+    pluginServiceMock.refreshPlatformDescriptors.mockResolvedValue([neteaseDescriptor])
+    pluginServiceMock.auth.getState.mockResolvedValue({
+      platform: 'netease',
+      status: 'anonymous',
+      message: '未登录',
+      updatedAt: Date.now()
+    })
+    pluginServiceMock.auth.importSession.mockResolvedValue({
+      platform: 'netease',
+      status: 'authenticated',
+      account: {
+        id: 42,
+        nickname: 'Tester'
+      },
+      message: '登录会话已导入',
+      updatedAt: Date.now()
+    })
+
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'Tester',
+        avatarUrl: 'https://example.com/avatar.png',
+        userId: 42
+      },
+      'MUSIC_U=legacy'
+    )
+
+    createWrapper()
+
+    await vi.waitFor(() =>
+      expect(pluginServiceMock.auth.importSession).toHaveBeenCalledWith('netease', {
+        credential: {
+          type: 'cookie',
+          value: 'MUSIC_U=legacy'
+        },
+        account: {
+          id: 42,
+          nickname: 'Tester',
+          avatarUrl: 'https://example.com/avatar.png'
+        }
+      })
+    )
+    expect(userStore.getPlatformAuthState('netease').status).toBe('authenticated')
+  })
+
+  it('imports legacy QQ cookie after login status validation succeeds', async () => {
+    const qqDescriptor = {
+      id: 'qq',
+      displayName: 'QQ Music',
+      source: 'external' as const,
+      runtime: 'external-host' as const,
+      enabled: true,
+      capabilities: {
+        search: true,
+        songUrl: true,
+        songDetail: true,
+        lyric: true,
+        playlistDetail: false,
+        needsHydration: false,
+        supportsLyricFetch: true,
+        supportsUrlRefreshOnFailure: false,
+        auth: {
+          login: true,
+          importSession: true,
+          preferredMode: 'qr' as const,
+          modes: ['qr' as const]
+        }
+      }
+    }
+    checkQQMusicLoginMock.mockResolvedValue({ data: { cookie: 'qq-cookie' } })
+    pluginServiceMock.refreshPlatformDescriptors.mockResolvedValue([qqDescriptor])
+    pluginServiceMock.auth.getState.mockResolvedValue({
+      platform: 'qq',
+      status: 'anonymous',
+      message: '未登录',
+      updatedAt: Date.now()
+    })
+
+    const userStore = useUserStore()
+    userStore.setQQCookie('qq-cookie')
+
+    createWrapper()
+
+    await vi.waitFor(() =>
+      expect(pluginServiceMock.auth.importSession).toHaveBeenCalledWith('qq', {
+        credential: {
+          type: 'cookie',
+          value: 'qq-cookie'
+        }
+      })
+    )
   })
 })

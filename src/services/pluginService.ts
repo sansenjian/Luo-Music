@@ -6,7 +6,12 @@ import {
   normalizePlatformAuthState,
   type PlatformAuthState
 } from '@/platform/music/authState'
-import type { StandardLoginChallenge, StandardLoginField, StandardLoginMode } from '@plugin-sdk'
+import type {
+  StandardImportedAuthSession,
+  StandardLoginChallenge,
+  StandardLoginField,
+  StandardLoginMode
+} from '@plugin-sdk'
 import type { PlatformDescriptor } from '@shared/types/platform'
 import { useExperimentalFeatures } from '@/composables/useExperimentalFeatures'
 import { useProjectUi } from '@/composables/useProjectUi'
@@ -65,6 +70,10 @@ export type PluginAuthFacade = {
     values: Record<string, string>
   ): Promise<PlatformAuthState>
   cancelLogin(platformId: string, challengeId: string): Promise<void>
+  importSession(
+    platformId: string,
+    session: StandardImportedAuthSession
+  ): Promise<PlatformAuthState>
   refresh(platformId: string): Promise<PlatformAuthState>
   logout(platformId: string): Promise<PlatformAuthState>
 }
@@ -476,6 +485,16 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
     await call(platformId, 'auth.cancelLogin', { challengeId })
   }
 
+  async function importSession(
+    platformId: string,
+    session: StandardImportedAuthSession
+  ): Promise<PlatformAuthState> {
+    return normalizePlatformAuthState(
+      await call(platformId, 'auth.importSession', { session }),
+      platformId
+    )
+  }
+
   async function refreshAuthState(platformId: string): Promise<PlatformAuthState> {
     return readAuthState(platformId, 'auth.refresh', {}, '登录状态刷新失败')
   }
@@ -523,6 +542,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
       pollLogin,
       submitLogin,
       cancelLogin,
+      importSession,
       refresh: refreshAuthState,
       logout: logoutAuth
     },

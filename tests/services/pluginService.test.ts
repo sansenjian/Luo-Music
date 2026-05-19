@@ -811,6 +811,48 @@ describe('createPluginService', () => {
     })
   })
 
+  it('imports a standardized auth session through the auth facade', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      platform: 'plugin-x',
+      status: 'authenticated',
+      account: {
+        id: 'user-1',
+        nickname: 'Plugin User'
+      },
+      message: '登录会话已导入'
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const session = {
+      credential: {
+        type: 'cookie' as const,
+        value: 'SESSION=legacy'
+      },
+      account: {
+        id: 'user-1',
+        nickname: 'Plugin User'
+      }
+    }
+
+    await expect(service.auth.importSession('plugin-x', session)).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated',
+        account: expect.objectContaining({
+          id: 'user-1',
+          nickname: 'Plugin User'
+        })
+      })
+    )
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'auth.importSession', { session })
+  })
+
   // -----------------------------------------------------------------------
   // 12. onPlatformsChanged returns noop in non-Electron, subscribes in Electron
   // -----------------------------------------------------------------------

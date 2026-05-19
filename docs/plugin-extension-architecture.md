@@ -269,11 +269,12 @@ export interface StandardLoginField {
 ```text
 用户点击某个平台登录
   -> getLoginCapablePlatformDescriptors() 发现可登录平台
-  -> services.plugins().call(platformId, 'auth.startLogin')
+  -> services.plugins().auth.startLogin(platformId)
   -> 插件调用平台登录接口
   -> 返回 StandardLoginChallenge
   -> 宿主展示统一登录容器
-  -> services.plugins().call(platformId, 'auth.pollLogin' / 'auth.submitLogin')
+  -> services.plugins().auth.pollLogin(platformId, challengeId)
+     或 services.plugins().auth.submitLogin(platformId, challengeId, values)
   -> 插件保存 Cookie / token 到 ctx.secrets
   -> 返回 StandardAuthState
   -> 宿主更新平台登录摘要和 UI
@@ -283,8 +284,9 @@ export interface StandardLoginField {
 
 - 登录入口像搜索源一样由平台描述符驱动。启用的插件只要声明 `capabilities.auth.login = true`，就会自动出现在头像菜单的登录选项中；新增一个支持登录的平台 API 插件，不需要再改 `UserAvatar.vue` 的固定菜单。
 - `getLoginCapablePlatformDescriptors()` / `getLoginPlatformOptions()` 是登录入口对应的发现 API，规则与 `getSearchablePlatformDescriptors()` / `getSearchPlatformOptions()` 保持一致。
-- `services.plugins().auth` 已作为宿主认证 facade 落地，负责调用插件 `auth.getState` / `auth.startLogin` / `auth.pollLogin` / `auth.submitLogin` / `auth.cancelLogin` / `auth.refresh` / `auth.logout` 并把登录态归一化为宿主内部 `PlatformAuthState`。业务 UI 只消费 facade 返回的标准挑战和状态摘要，不直接解析插件返回值或平台 Cookie。
-- `PluginLoginModal.vue` 作为通用插件登录容器，支持 `auth.startLogin`、`auth.pollLogin` 和关闭时的 `auth.cancelLogin`。网易云 / QQ 插件已提供 `auth.*` handler；头像菜单暂时仍把它们路由到专属弹窗作为兼容适配，避免迁移中断现有 `userStore.cookie` / `userStore.qqCookie` 登录链路。
+- `services.plugins().auth` 已作为宿主认证 facade 落地，负责调用插件 `auth.getState` / `auth.startLogin` / `auth.pollLogin` / `auth.submitLogin` / `auth.cancelLogin` / `auth.importSession` / `auth.refresh` / `auth.logout` 并把登录态归一化为宿主内部 `PlatformAuthState`。业务 UI 只消费 facade 返回的标准挑战和状态摘要，不直接解析插件返回值或平台 Cookie。
+- `auth.importSession` 是过渡期的窄迁移入口，用于把宿主旧登录链路中已经存在的标准会话凭据交还给插件处理。宿主传入 `StandardImportedAuthSession`，插件自行决定如何验证、刷新账号摘要并写入自己的 `ctx.secrets`；renderer 不暴露通用 secrets 读写能力。
+- `PluginLoginModal.vue` 作为通用插件登录容器，支持 `auth.startLogin`、`auth.pollLogin` 和关闭时的 `auth.cancelLogin`。网易云 / QQ 插件已提供 `auth.*` handler；头像菜单暂时仍把它们路由到专属弹窗作为兼容适配，并在插件状态匿名且声明 `capabilities.auth.importSession = true` 时把 `userStore.cookie` / `userStore.qqCookie` 转换为标准导入会话。
 - 内置第三方插件 manifest 增加 `auth` 能力时必须 bump 插件版本，确保 `ensureBundledPlugins()` 能自动刷新已安装插件。过渡期内，已安装但尚未刷新 manifest 的网易云 / QQ 插件仍通过兼容桥显示登录入口，避免用户看到“暂无可登录平台”。
 
 建议的认证方法:
@@ -296,8 +298,19 @@ export type PluginAuthMethodName =
   | 'auth.pollLogin'
   | 'auth.submitLogin'
   | 'auth.cancelLogin'
+  | 'auth.importSession'
   | 'auth.refresh'
   | 'auth.logout'
+
+export interface StandardImportedAuthSession {
+  credential: {
+    type: 'cookie' | 'token' | 'opaque'
+    value: string
+  }
+  account?: StandardAccountProfile
+  expiresAt?: number
+  extra?: Record<string, unknown>
+}
 
 export interface PluginAuthFacade {
   getState(platformId: string): Promise<StandardAuthState>
@@ -312,6 +325,10 @@ export interface PluginAuthFacade {
     values: Record<string, string>
   ): Promise<StandardAuthState>
   cancelLogin(platformId: string, challengeId: string): Promise<void>
+  importSession(
+    platformId: string,
+    session: StandardImportedAuthSession
+  ): Promise<StandardAuthState>
   refresh(platformId: string): Promise<StandardAuthState>
   logout(platformId: string): Promise<StandardAuthState>
 }
@@ -671,12 +688,12 @@ export interface PluginManifestV2Extensions {
 - [x] 登录入口已像搜索源一样从已启用平台描述符自适应生成；`capabilities.auth.login = true` 的平台会自动出现在头像菜单。
 - [x] 已新增通用 `PluginLoginModal.vue`，支持二维码 / 浏览器 challenge 的最小统一容器和关闭时取消 challenge。
 - [x] `userStore` 已增加通用 `PlatformAuthState` 摘要缓存，头像菜单、缓存管理和侧边栏登录摘要不再直接依赖 QQ / 网易云专属展示状态。
-- [~] 网易云、QQ 音乐插件侧已提供 `auth.*` 登录请求、轮询和 Cookie 托管；宿主旧登录组件仍保留一段兼容期。
+- [~] 网易云、QQ 音乐插件侧已提供 `auth.*` 登录请求、轮询、Cookie 托管和标准旧会话导入；宿主旧登录组件仍保留一段兼容期。
 - 将平台专属登录弹窗完全收口为统一登录容器，具体二维码、授权 URL、表单字段由插件返回。
 - [x] 新增 `PluginSecretStore` / `ctx.secrets`，并通过 Worker 代理给外部插件。
 - [x] `storage` / `secrets` 命名空间按 `pluginId` 隔离，避免同平台替代插件互相覆盖。
 - [x] manifest 权限和平台描述已支持 `permissions.secrets`。
-- 提供一次性迁移，把 `userStore.cookie` / `userStore.qqCookie` 导入对应插件 secrets；迁移后旧字段只读读取一段时间，不再写入。
+- [x] 提供 `auth.importSession` 一次性迁移，把 `userStore.cookie` / `userStore.qqCookie` 以 `StandardImportedAuthSession` 导入对应插件，由插件写入自身 secrets；迁移后旧字段只读读取一段时间，不再作为长期兼容入口。
 - [x] 宿主/Worker 调用链已支持 `auth.cancelLogin` 方法名；通用插件登录窗口关闭时会主动取消 challenge，网易云 / QQ 兼容弹窗仍走现有本地轮询清理。
 - 播放、歌单、收藏等能力遇到登录失效时，通过标准状态驱动宿主提示。
 
@@ -713,7 +730,7 @@ export interface PluginManifestV2Extensions {
 - `src/api/` 不新增平台专属登录流程；平台登录、会话刷新和凭据解析属于插件。
 - `src/platform/` 负责运行时差异收口。
 - `src/store/` 只保存共享状态和展示摘要，不承载插件协议解析或平台会话凭据。
-- Cookie / token / refresh token 等敏感凭据只能进入 `ctx.secrets`，不能进入 `ctx.storage`、`userStore`、日志或 renderer IPC payload。
+- Cookie / token / refresh token 等敏感凭据只能进入 `ctx.secrets`。过渡期内，已存在于旧登录链路的 `userStore.cookie` / `userStore.qqCookie` 只能通过 `auth.importSession` 交还给对应插件，不能再扩散到 `ctx.storage`、日志或新的业务 IPC payload。
 - 第三方插件网络访问只能经过 `ctx.http`，外部插件沙箱不得暴露原生网络 API。
 - 第三方 UI 插件 v1 只允许声明式贡献，不允许任意代码直接进入 renderer。
 - 插件 SDK 类型必须保持稳定，避免把内部实现细节暴露给插件作者。

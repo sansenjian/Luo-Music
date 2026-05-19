@@ -31,7 +31,8 @@ async function createAdapter(httpGet, secrets = {}) {
   }
 
   return {
-    adapter: await neteasePlugin.create(ctx)
+    adapter: await neteasePlugin.create(ctx),
+    ctx
   }
 }
 
@@ -119,6 +120,45 @@ describe('Netease external plugin', () => {
     expect(requestedUrl.pathname).toBe('/song/url')
     expect(requestedUrl.searchParams.get('cookie')).toBe(
       'MUSIC_U=member-session; __csrf=csrf-token'
+    )
+  })
+
+  it('imports a standardized cookie session into plugin secrets', async () => {
+    const httpGet = vi.fn()
+    const { adapter, ctx } = await createAdapter(httpGet)
+
+    await expect(
+      adapter['auth.importSession']({
+        session: {
+          credential: {
+            type: 'cookie',
+            value: 'MUSIC_U=legacy-session'
+          },
+          account: {
+            id: 42,
+            nickname: 'Tester',
+            avatarUrl: 'https://example.com/avatar.png'
+          }
+        }
+      })
+    ).resolves.toEqual({
+      platform: 'netease',
+      status: 'authenticated',
+      account: expect.objectContaining({
+        id: 42,
+        nickname: 'Tester',
+        avatarUrl: 'https://example.com/avatar.png'
+      }),
+      message: '登录会话已导入'
+    })
+
+    expect(ctx.secrets.set).toHaveBeenCalledWith('cookie', 'MUSIC_U=legacy-session')
+    expect(ctx.secrets.set).toHaveBeenCalledWith(
+      'account',
+      expect.objectContaining({
+        id: 42,
+        nickname: 'Tester'
+      })
     )
   })
 })

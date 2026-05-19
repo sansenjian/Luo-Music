@@ -221,6 +221,20 @@ export interface StandardLoginChallenge {
   fields?: StandardLoginField[]
 }
 
+export type StandardAuthSessionCredentialType = 'cookie' | 'token' | 'opaque'
+
+export interface StandardAuthSessionCredential {
+  type: StandardAuthSessionCredentialType
+  value: string
+}
+
+export interface StandardImportedAuthSession {
+  credential: StandardAuthSessionCredential
+  account?: StandardAccountProfile
+  expiresAt?: number
+  extra?: Record<string, unknown>
+}
+
 export type PluginPlayerHookName =
   | 'beforePlay'
   | 'afterPlay'
@@ -260,6 +274,7 @@ export interface PluginAuthCapability {
   logout?: boolean
   refresh?: boolean
   profile?: boolean
+  importSession?: boolean
   preferredMode?: StandardLoginMode
   modes?: StandardLoginMode[]
 }
@@ -275,6 +290,7 @@ export type PluginMethodName =
   | 'auth.pollLogin'
   | 'auth.submitLogin'
   | 'auth.cancelLogin'
+  | 'auth.importSession'
   | 'auth.refresh'
   | 'auth.logout'
 

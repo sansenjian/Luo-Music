@@ -80,6 +80,20 @@ function extractSessionCookie(payload) {
   );
 }
 
+function normalizeImportedSession(input) {
+  const session = isRecord(input) ? input.session : null;
+  if (!isRecord(session)) return null;
+
+  const credential = isRecord(session.credential) ? session.credential : null;
+  const credentialType = credential?.type;
+  const credentialValue = normalizeString(credential?.value).trim();
+  if (credentialType !== "cookie" || !credentialValue) return null;
+
+  return {
+    cookie: credentialValue,
+  };
+}
+
 function resolveSearchPayload(value) {
   const payload = unwrapQQResponse(value);
   if (!isRecord(payload)) return null;
@@ -317,6 +331,25 @@ export default {
           await ctx.storage.remove(`auth:${challengeId}`);
         }
         return null;
+      },
+
+      async "auth.importSession"(input) {
+        const session = normalizeImportedSession(input);
+        if (!session) {
+          return {
+            platform: ctx.platformId,
+            status: "error",
+            message: "导入的登录会话无效",
+          };
+        }
+
+        await ctx.secrets.set("cookie", session.cookie);
+
+        return {
+          platform: ctx.platformId,
+          status: "authenticated",
+          message: "登录会话已导入",
+        };
       },
 
       async "auth.refresh"() {
