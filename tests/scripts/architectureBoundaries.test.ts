@@ -11,6 +11,7 @@ const {
   checkLocalLibraryNativeTestBoundaries,
   checkNeteaseApiRequestImports,
   checkPlatformDisplayClassHardcoding,
+  checkPluginAuthFacadeUsage,
   checkRendererHttpConstants,
   checkTopLevelServiceAccess
 } = require('../../scripts/check-architecture-boundaries.cjs') as {
@@ -22,6 +23,7 @@ const {
   ) => void
   checkNeteaseApiRequestImports: (files: string[], errors: string[], rootDir?: string) => void
   checkPlatformDisplayClassHardcoding: (files: string[], errors: string[], rootDir?: string) => void
+  checkPluginAuthFacadeUsage: (files: string[], errors: string[], rootDir?: string) => void
   checkRendererHttpConstants: (errors: string[], rootDir?: string) => void
   checkTopLevelServiceAccess: (files: string[], errors: string[], rootDir?: string) => void
 }
@@ -36,6 +38,7 @@ describe('architecture boundary checks', () => {
     await mkdir(join(tempDir, 'src', 'components'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'composables'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'constants'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'services'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'store'), { recursive: true })
   })
 
@@ -197,6 +200,30 @@ describe('architecture boundary checks', () => {
 
     expect(errors).toEqual([
       expect.stringContaining('src/components/PlatformBadge.vue:1: use getPlatformDisplayInfo()')
+    ])
+  })
+
+  it('blocks direct plugin auth call strings outside the plugin service facade', async () => {
+    await writeTestFile(
+      'src/components/PluginLogin.vue',
+      "const state = await pluginService.call(platformId, 'auth.pollLogin', { challengeId })\n"
+    )
+    await writeTestFile(
+      'src/services/pluginService.ts',
+      "const state = await bridge.call(platformId, 'auth.pollLogin', { challengeId })\n"
+    )
+
+    const errors: string[] = []
+    checkPluginAuthFacadeUsage(
+      ['src/components/PluginLogin.vue', 'src/services/pluginService.ts'],
+      errors,
+      tempDir
+    )
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/components/PluginLogin.vue:1: use services.plugins().auth methods'
+      )
     ])
   })
 })

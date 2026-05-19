@@ -283,7 +283,7 @@ export interface StandardLoginField {
 
 - 登录入口像搜索源一样由平台描述符驱动。启用的插件只要声明 `capabilities.auth.login = true`，就会自动出现在头像菜单的登录选项中；新增一个支持登录的平台 API 插件，不需要再改 `UserAvatar.vue` 的固定菜单。
 - `getLoginCapablePlatformDescriptors()` / `getLoginPlatformOptions()` 是登录入口对应的发现 API，规则与 `getSearchablePlatformDescriptors()` / `getSearchPlatformOptions()` 保持一致。
-- `services.plugins().getAuthState(platformId)` 已作为轻量服务入口落地，负责调用插件 `auth.getState` 并归一化为宿主内部 `PlatformAuthState`。业务 UI 只消费 `PlatformAuthState` 展示摘要，不直接解析插件返回值或平台 Cookie。
+- `services.plugins().auth` 已作为宿主认证 facade 落地，负责调用插件 `auth.getState` / `auth.startLogin` / `auth.pollLogin` / `auth.submitLogin` / `auth.cancelLogin` / `auth.refresh` / `auth.logout` 并把登录态归一化为宿主内部 `PlatformAuthState`。业务 UI 只消费 facade 返回的标准挑战和状态摘要，不直接解析插件返回值或平台 Cookie。
 - `PluginLoginModal.vue` 作为通用插件登录容器，支持 `auth.startLogin`、`auth.pollLogin` 和关闭时的 `auth.cancelLogin`。网易云 / QQ 插件已提供 `auth.*` handler；头像菜单暂时仍把它们路由到专属弹窗作为兼容适配，避免迁移中断现有 `userStore.cookie` / `userStore.qqCookie` 登录链路。
 - 内置第三方插件 manifest 增加 `auth` 能力时必须 bump 插件版本，确保 `ensureBundledPlugins()` 能自动刷新已安装插件。过渡期内，已安装但尚未刷新 manifest 的网易云 / QQ 插件仍通过兼容桥显示登录入口，避免用户看到“暂无可登录平台”。
 
@@ -667,7 +667,7 @@ export interface PluginManifestV2Extensions {
 
 ### 阶段三: 登录插件化
 
-- [x] SDK 和外部插件调用链已接受 `auth.*` 方法名；宿主服务层已提供 `getAuthState(platformId)` 状态读取封装，`startLogin` / `pollLogin` / `submitLogin` / `refresh` / `logout` 的完整 `PluginAuthFacade` 仍待收口。
+- [x] SDK 和外部插件调用链已接受 `auth.*` 方法名；宿主服务层已提供完整 `PluginAuthFacade`，组件通过 `services.plugins().auth` 访问认证能力。
 - [x] 登录入口已像搜索源一样从已启用平台描述符自适应生成；`capabilities.auth.login = true` 的平台会自动出现在头像菜单。
 - [x] 已新增通用 `PluginLoginModal.vue`，支持二维码 / 浏览器 challenge 的最小统一容器和关闭时取消 challenge。
 - [x] `userStore` 已增加通用 `PlatformAuthState` 摘要缓存，头像菜单、缓存管理和侧边栏登录摘要不再直接依赖 QQ / 网易云专属展示状态。

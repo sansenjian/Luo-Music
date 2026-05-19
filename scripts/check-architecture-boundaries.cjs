@@ -43,6 +43,7 @@ const forbiddenServiceAccessorModules = new Set([
 ])
 const forbiddenPlatformDisplayClassPattern =
   /\b(?:service|server|platform)-badge[-.]?(?:netease|qq)\b/
+const pluginAuthCallPattern = /\.call\s*\([^,\n]+,\s*['"]auth\./
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue'])
 const importPattern =
   /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
@@ -411,6 +412,28 @@ function checkPlatformDisplayClassHardcoding(files, errors, rootDir = projectRoo
   }
 }
 
+function checkPluginAuthFacadeUsage(files, errors, rootDir = projectRoot) {
+  const productionFiles = files.filter(
+    file =>
+      file.startsWith('src/') &&
+      !file.endsWith('.test.ts') &&
+      !file.endsWith('.test.tsx') &&
+      file !== 'src/services/pluginService.ts'
+  )
+
+  for (const file of productionFiles) {
+    const lines = fs.readFileSync(path.join(rootDir, file), 'utf8').split(/\r?\n/)
+
+    for (let index = 0; index < lines.length; index++) {
+      if (pluginAuthCallPattern.test(lines[index])) {
+        errors.push(
+          `${file}:${index + 1}: use services.plugins().auth methods instead of direct plugin auth call strings`
+        )
+      }
+    }
+  }
+}
+
 function runArchitectureBoundaryChecks() {
   const files = listProjectSourceFiles()
   const errors = []
@@ -425,6 +448,7 @@ function runArchitectureBoundaryChecks() {
   checkLegacyServiceAccessorImports(files, errors)
   checkTopLevelServiceAccess(files, errors)
   checkPlatformDisplayClassHardcoding(files, errors)
+  checkPluginAuthFacadeUsage(files, errors)
 
   return errors
 }
@@ -451,6 +475,7 @@ if (require.main === module) {
     checkLegacyServiceAccessorImports,
     checkNeteaseApiRequestImports,
     checkPlatformDisplayClassHardcoding,
+    checkPluginAuthFacadeUsage,
     checkRendererHttpConstants,
     checkTopLevelServiceAccess,
     extractImports,

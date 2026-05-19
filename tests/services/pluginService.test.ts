@@ -708,6 +708,109 @@ describe('createPluginService', () => {
     )
   })
 
+  it('starts plugin login through the auth facade and normalizes challenges', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      challengeId: 'challenge-1',
+      type: 'qr',
+      title: 'Plugin Login',
+      statusText: 'scan',
+      qrImageUrl: 'https://example.com/qr.png',
+      pollIntervalMs: 500
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.auth.startLogin('plugin-x', { mode: 'qr' })
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'auth.startLogin', { mode: 'qr' })
+    expect(result).toEqual({
+      challengeId: 'challenge-1',
+      type: 'qr',
+      title: 'Plugin Login',
+      statusText: 'scan',
+      qrImageUrl: 'https://example.com/qr.png',
+      pollIntervalMs: 500
+    })
+  })
+
+  it('polls, submits, refreshes, logs out, and cancels plugin auth through the auth facade', async () => {
+    const bridge = createBridge()
+    bridge.call
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'pending',
+        message: 'waiting'
+      })
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'authenticated',
+        account: {
+          id: 'user-1',
+          nickname: 'Plugin User'
+        }
+      })
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'authenticated'
+      })
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'anonymous'
+      })
+      .mockResolvedValueOnce(undefined)
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.auth.pollLogin('plugin-x', 'challenge-1')).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'pending',
+        message: 'waiting'
+      })
+    )
+    await expect(
+      service.auth.submitLogin('plugin-x', 'challenge-1', { username: 'u' })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated'
+      })
+    )
+    await expect(service.auth.refresh('plugin-x')).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated'
+      })
+    )
+    await expect(service.auth.logout('plugin-x')).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'anonymous'
+      })
+    )
+    await expect(service.auth.cancelLogin('plugin-x', 'challenge-1')).resolves.toBeUndefined()
+
+    expect(bridge.call).toHaveBeenNthCalledWith(1, 'plugin-x', 'auth.pollLogin', {
+      challengeId: 'challenge-1'
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(2, 'plugin-x', 'auth.submitLogin', {
+      challengeId: 'challenge-1',
+      values: { username: 'u' }
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(3, 'plugin-x', 'auth.refresh', {})
+    expect(bridge.call).toHaveBeenNthCalledWith(4, 'plugin-x', 'auth.logout', {})
+    expect(bridge.call).toHaveBeenNthCalledWith(5, 'plugin-x', 'auth.cancelLogin', {
+      challengeId: 'challenge-1'
+    })
+  })
+
   // -----------------------------------------------------------------------
   // 12. onPlatformsChanged returns noop in non-Electron, subscribes in Electron
   // -----------------------------------------------------------------------

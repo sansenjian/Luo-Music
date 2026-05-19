@@ -6,6 +6,7 @@ import {
   normalizePlatformAuthState,
   type PlatformAuthState
 } from '@/platform/music/authState'
+import type { StandardLoginChallenge, StandardLoginField, StandardLoginMode } from '@plugin-sdk'
 import type { PlatformDescriptor } from '@shared/types/platform'
 import { useExperimentalFeatures } from '@/composables/useExperimentalFeatures'
 import { useProjectUi } from '@/composables/useProjectUi'
@@ -51,6 +52,23 @@ export type PluginBridge = {
   onChanged(listener: (platforms: PlatformDescriptor[]) => void): () => void
 }
 
+export type PluginAuthFacade = {
+  getState(platformId: string): Promise<PlatformAuthState>
+  startLogin(
+    platformId: string,
+    options?: { mode?: StandardLoginMode }
+  ): Promise<StandardLoginChallenge>
+  pollLogin(platformId: string, challengeId: string): Promise<PlatformAuthState>
+  submitLogin(
+    platformId: string,
+    challengeId: string,
+    values: Record<string, string>
+  ): Promise<PlatformAuthState>
+  cancelLogin(platformId: string, challengeId: string): Promise<void>
+  refresh(platformId: string): Promise<PlatformAuthState>
+  logout(platformId: string): Promise<PlatformAuthState>
+}
+
 export type PluginService = {
   listPlatforms(): Promise<PlatformDescriptor[]>
   refreshPlatformDescriptors(): Promise<PlatformDescriptor[]>
@@ -63,6 +81,7 @@ export type PluginService = {
     platformId: string,
     settings: Record<string, unknown>
   ): Promise<Record<string, unknown>>
+  auth: PluginAuthFacade
   getAuthState(platformId: string): Promise<PlatformAuthState>
   call(platformId: string, method: string, payload: unknown): Promise<unknown>
   onPlatformsChanged(listener: (platforms: PlatformDescriptor[]) => void): () => void
@@ -74,6 +93,97 @@ export type PluginServiceDeps = {
 }
 
 type FirstPartyPluginCategory = NonNullable<PlatformDescriptor['category']>
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value))
+}
+
+function normalizeString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function normalizeNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+function normalizeBoolean(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined
+}
+
+function normalizeLoginMode(value: unknown): StandardLoginChallenge['type'] {
+  return value === 'qr' || value === 'browser' || value === 'form' || value === 'none'
+    ? value
+    : 'none'
+}
+
+function normalizeLoginFieldType(value: unknown): StandardLoginField['type'] {
+  return value === 'password' || value === 'otp' ? value : 'text'
+}
+
+function normalizeLoginFields(value: unknown): StandardLoginField[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const fields = value
+    .filter(isRecord)
+    .map(field => {
+      const key = normalizeString(field.key)
+      const label = normalizeString(field.label)
+
+      if (!key || !label) {
+        return null
+      }
+
+      return {
+        key,
+        label,
+        type: normalizeLoginFieldType(field.type),
+        ...(normalizeBoolean(field.required) !== undefined
+          ? { required: normalizeBoolean(field.required) }
+          : {})
+      } satisfies StandardLoginField
+    })
+    .filter((field): field is StandardLoginField => field !== null)
+
+  return fields.length > 0 ? fields : undefined
+}
+
+function normalizeLoginChallenge(value: unknown): StandardLoginChallenge {
+  if (!isRecord(value)) {
+    throw new Error('Invalid login challenge')
+  }
+
+  const challengeId = normalizeString(value.challengeId)
+  if (!challengeId) {
+    throw new Error('Login challenge missing challengeId')
+  }
+
+  return {
+    challengeId,
+    type: normalizeLoginMode(value.type),
+    ...(normalizeString(value.title) ? { title: normalizeString(value.title) } : {}),
+    ...(normalizeString(value.statusText) ? { statusText: normalizeString(value.statusText) } : {}),
+    ...(normalizeString(value.qrImageUrl) ? { qrImageUrl: normalizeString(value.qrImageUrl) } : {}),
+    ...(normalizeString(value.authorizeUrl)
+      ? { authorizeUrl: normalizeString(value.authorizeUrl) }
+      : {}),
+    ...(normalizeNumber(value.expiresAt) !== undefined
+      ? { expiresAt: normalizeNumber(value.expiresAt) }
+      : {}),
+    ...(normalizeNumber(value.pollIntervalMs) !== undefined
+      ? { pollIntervalMs: normalizeNumber(value.pollIntervalMs) }
+      : {}),
+    ...(normalizeBoolean(value.canRefresh) !== undefined
+      ? { canRefresh: normalizeBoolean(value.canRefresh) }
+      : {}),
+    ...(normalizeBoolean(value.cancelable) !== undefined
+      ? { cancelable: normalizeBoolean(value.cancelable) }
+      : {}),
+    ...(normalizeString(value.helpUrl) ? { helpUrl: normalizeString(value.helpUrl) } : {}),
+    ...(normalizeLoginFields(value.fields) ? { fields: normalizeLoginFields(value.fields) } : {})
+  }
+}
 
 function resolvePluginBridge(): PluginBridge | undefined {
   if (typeof window === 'undefined') {
@@ -308,6 +418,15 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   }
 
   async function getAuthState(platformId: string): Promise<PlatformAuthState> {
+    return readAuthState(platformId, 'auth.getState', {}, '登录状态读取失败')
+  }
+
+  async function readAuthState(
+    platformId: string,
+    method: string,
+    payload: unknown,
+    errorMessage: string
+  ): Promise<PlatformAuthState> {
     if (isFirstPartyPlugin(platformId)) {
       return createAnonymousPlatformAuthState(platformId)
     }
@@ -318,13 +437,51 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
     }
 
     try {
-      return normalizePlatformAuthState(
-        await bridge.call(platformId, 'auth.getState', {}),
-        platformId
-      )
+      return normalizePlatformAuthState(await bridge.call(platformId, method, payload), platformId)
     } catch {
-      return createErrorPlatformAuthState(platformId, '登录状态读取失败')
+      return createErrorPlatformAuthState(platformId, errorMessage)
     }
+  }
+
+  async function startLogin(
+    platformId: string,
+    options: { mode?: StandardLoginMode } = {}
+  ): Promise<StandardLoginChallenge> {
+    return normalizeLoginChallenge(
+      await call(platformId, 'auth.startLogin', {
+        mode: options.mode
+      })
+    )
+  }
+
+  async function pollLogin(platformId: string, challengeId: string): Promise<PlatformAuthState> {
+    return normalizePlatformAuthState(
+      await call(platformId, 'auth.pollLogin', { challengeId }),
+      platformId
+    )
+  }
+
+  async function submitLogin(
+    platformId: string,
+    challengeId: string,
+    values: Record<string, string>
+  ): Promise<PlatformAuthState> {
+    return normalizePlatformAuthState(
+      await call(platformId, 'auth.submitLogin', { challengeId, values }),
+      platformId
+    )
+  }
+
+  async function cancelLogin(platformId: string, challengeId: string): Promise<void> {
+    await call(platformId, 'auth.cancelLogin', { challengeId })
+  }
+
+  async function refreshAuthState(platformId: string): Promise<PlatformAuthState> {
+    return readAuthState(platformId, 'auth.refresh', {}, '登录状态刷新失败')
+  }
+
+  async function logoutAuth(platformId: string): Promise<PlatformAuthState> {
+    return readAuthState(platformId, 'auth.logout', {}, '平台登出失败')
   }
 
   async function call(platformId: string, method: string, payload: unknown): Promise<unknown> {
@@ -360,6 +517,15 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
     uninstall,
     getSettings,
     updateSettings,
+    auth: {
+      getState: getAuthState,
+      startLogin,
+      pollLogin,
+      submitLogin,
+      cancelLogin,
+      refresh: refreshAuthState,
+      logout: logoutAuth
+    },
     getAuthState,
     call,
     onPlatformsChanged
