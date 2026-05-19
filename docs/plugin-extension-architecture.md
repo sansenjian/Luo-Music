@@ -721,7 +721,7 @@ export interface PluginManifestV2Extensions {
 
 - [x] 插件禁用 / 卸载会停止外部 Worker，终止 pending 调用。
 - [x] 插件卸载时删除 `plugin:<pluginId>:storage` 和 `plugin:<pluginId>:secrets` 所在状态记录。
-- 插件升级时保留 storage / secrets，但 manifest 降权时必须清理不再被授权的能力数据。
+- [x] 插件升级时保留已授权的 storage / secrets；manifest 降权移除 `permissions.storage` / `permissions.secrets` 时会清理不再被授权的持久化数据，Worker 运行期也会拒绝未声明权限的访问。
 - 熔断后保留诊断摘要，但不能保留原始 Cookie、token、密码、验证码或完整请求头。
 
 ## 10. 实现约束

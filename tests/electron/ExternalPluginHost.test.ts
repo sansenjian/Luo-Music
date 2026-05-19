@@ -30,6 +30,7 @@ vi.mock('../../electron/logger', () => ({
 import { ExternalPluginHost } from '../../electron/plugins/ExternalPluginHost'
 
 type ExternalPluginHostInternals = {
+  runtimes: Map<string, { worker: { postMessage: (message: unknown) => void } }>
   handleHttpRequest(
     registration: ExternalPluginRegistration,
     method: 'GET' | 'POST',
@@ -40,6 +41,11 @@ type ExternalPluginHostInternals = {
       timeoutMs?: number
     }
   ): Promise<unknown>
+  ensurePermission(
+    registration: ExternalPluginRegistration,
+    capability: 'storage' | 'secrets',
+    requestId: string
+  ): boolean
 }
 
 function makeRegistration(): ExternalPluginRegistration {
@@ -170,5 +176,54 @@ describe('ExternalPluginHost HTTP proxy', () => {
       Cookie: 'MUSIC_U=abc'
     })
     expect(init.signal).toBeInstanceOf(AbortSignal)
+  })
+})
+
+describe('ExternalPluginHost storage and secrets permissions', () => {
+  it('rejects worker storage and secrets requests when permissions are missing', () => {
+    const postMessage = vi.fn()
+    const host = new ExternalPluginHost({
+      stateStore: {} as never
+    }) as unknown as ExternalPluginHostInternals
+    host.runtimes.set('netease', { worker: { postMessage } })
+    const registration = makeRegistration()
+
+    expect(host.ensurePermission(registration, 'storage', 'storage-request')).toBe(false)
+    expect(host.ensurePermission(registration, 'secrets', 'secrets-request')).toBe(false)
+
+    expect(postMessage).toHaveBeenNthCalledWith(1, {
+      type: 'response',
+      requestId: 'storage-request',
+      ok: false,
+      error: {
+        message: 'Plugin storage access denied: missing permissions.storage'
+      }
+    })
+    expect(postMessage).toHaveBeenNthCalledWith(2, {
+      type: 'response',
+      requestId: 'secrets-request',
+      ok: false,
+      error: {
+        message: 'Plugin secrets access denied: missing permissions.secrets'
+      }
+    })
+  })
+
+  it('allows worker storage and secrets requests when permissions are declared', () => {
+    const postMessage = vi.fn()
+    const host = new ExternalPluginHost({
+      stateStore: {} as never
+    }) as unknown as ExternalPluginHostInternals
+    host.runtimes.set('netease', { worker: { postMessage } })
+    const registration = makeRegistration()
+    registration.manifest.permissions = {
+      ...registration.manifest.permissions,
+      storage: true,
+      secrets: true
+    }
+
+    expect(host.ensurePermission(registration, 'storage', 'storage-request')).toBe(true)
+    expect(host.ensurePermission(registration, 'secrets', 'secrets-request')).toBe(true)
+    expect(postMessage).not.toHaveBeenCalled()
   })
 })
