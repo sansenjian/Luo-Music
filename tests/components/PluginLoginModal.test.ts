@@ -83,4 +83,28 @@ describe('PluginLoginModal.vue', () => {
 
     expect(pluginServiceMock.auth.cancelLogin).toHaveBeenCalledWith('kugou', 'challenge-1')
   })
+
+  it('treats missing cancelable as cancelable when closing', async () => {
+    pluginServiceMock.auth.startLogin.mockResolvedValueOnce({
+      challengeId: 'challenge-default',
+      type: 'qr',
+      qrImageUrl: 'data:image/png;base64,qr',
+      pollIntervalMs: 1000
+    })
+
+    const { default: PluginLoginModal } = await import('@/components/PluginLoginModal.vue')
+    const wrapper = mount(PluginLoginModal, {
+      props: {
+        modelValue: true,
+        platformId: 'kugou',
+        platformName: 'Kugou Music'
+      }
+    })
+    await flushPromises()
+
+    await wrapper.setProps({ modelValue: false })
+    await flushPromises()
+
+    expect(pluginServiceMock.auth.cancelLogin).toHaveBeenCalledWith('kugou', 'challenge-default')
+  })
 })

@@ -60,7 +60,7 @@ function isAttemptCurrent(attemptId: number): boolean {
 }
 
 function cancelChallenge(currentChallenge: StandardLoginChallenge): void {
-  if (!currentChallenge.cancelable) {
+  if (currentChallenge.cancelable === false) {
     return
   }
 
