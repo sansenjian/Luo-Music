@@ -3,6 +3,7 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 
 import { usePlayerStore } from '@/store/playerStore'
 import type { Song } from '@shared/types/schemas'
+import { getPlatformDisplayInfo, type PlatformDisplayInfo } from '@/platform/music/display'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
 
 const props = defineProps<{
@@ -19,7 +20,7 @@ type QueueSongView = {
   duration: number
   id: Song['id']
   isCurrent: boolean
-  platformText: string
+  platform: PlatformDisplayInfo
   song: Song
 }
 
@@ -35,7 +36,7 @@ const queueSongs = computed<QueueSongView[]>(() =>
     duration: Math.floor((song.duration || 0) / 1000),
     id: song.id,
     isCurrent: index === playerStore.currentIndex,
-    platformText: song.platform === 'qq' ? 'QQ' : song.platform === 'local' ? 'LOCAL' : 'NETEASE',
+    platform: getPlatformDisplayInfo(song.platform),
     song
   }))
 )
@@ -181,7 +182,7 @@ onUnmounted(() => {
               <template v-else>
                 <article
                   v-for="(item, index) in queueSongs"
-                  :key="`${item.platformText}-${item.id}-${index}`"
+                  :key="`${item.platform.id}-${item.id}-${index}`"
                   class="queue-item"
                   :class="{ active: item.isCurrent }"
                   :data-current="item.isCurrent ? 'true' : undefined"
@@ -206,7 +207,9 @@ onUnmounted(() => {
                     <span class="queue-copy">
                       <span class="queue-title-row">
                         <strong class="queue-title">{{ item.song.name }}</strong>
-                        <span class="queue-platform">{{ item.platformText }}</span>
+                        <span class="queue-platform" :title="item.platform.displayName">
+                          {{ item.platform.badgeText }}
+                        </span>
                       </span>
                       <span class="queue-artist">{{ item.artistText || 'Unknown Artist' }}</span>
                     </span>

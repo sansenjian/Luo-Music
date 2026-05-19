@@ -52,8 +52,27 @@ describe('Playlist.vue', () => {
     expect(items[0].text()).toContain('Artist 1')
     expect(items[1].text()).toContain('Song 2')
     expect(items[0].find('img').attributes('src')).toBe('cover-1.jpg')
-    expect(items[0].find('.server-badge.netease').exists()).toBe(true)
-    expect(items[1].find('.server-badge.qq').exists()).toBe(true)
+    expect(items[0].find('.server-badge.platform-netease').text()).toBe('NETEASE')
+    expect(items[1].find('.server-badge.platform-qq').text()).toBe('QQ')
+  })
+
+  it('renders custom platform badges without built-in platform branches', () => {
+    const store = usePlayerStore()
+    store.songList = [
+      createMockSong({
+        id: 'kg-1',
+        name: 'Plugin Song',
+        platform: 'kugou'
+      })
+    ]
+    store.currentIndex = 0
+
+    const wrapper = mount(Playlist)
+    const badge = wrapper.get('.server-badge')
+
+    expect(badge.classes()).toContain('platform-kugou')
+    expect(badge.text()).toBe('KUGOU')
+    expect(badge.attributes('title')).toBe('Kugou')
   })
 
   it('renders sparse playlist songs without crashing', () => {
