@@ -10,6 +10,7 @@ const {
   checkLegacyServiceAccessorImports,
   checkLocalLibraryNativeTestBoundaries,
   checkNeteaseApiRequestImports,
+  checkPlatformDisplayClassHardcoding,
   checkRendererHttpConstants,
   checkTopLevelServiceAccess
 } = require('../../scripts/check-architecture-boundaries.cjs') as {
@@ -20,6 +21,7 @@ const {
     rootDir?: string
   ) => void
   checkNeteaseApiRequestImports: (files: string[], errors: string[], rootDir?: string) => void
+  checkPlatformDisplayClassHardcoding: (files: string[], errors: string[], rootDir?: string) => void
   checkRendererHttpConstants: (errors: string[], rootDir?: string) => void
   checkTopLevelServiceAccess: (files: string[], errors: string[], rootDir?: string) => void
 }
@@ -31,6 +33,7 @@ describe('architecture boundary checks', () => {
     tempDir = await mkdtemp(join(tmpdir(), 'luo-architecture-boundaries-'))
     await mkdir(join(tempDir, 'tests', 'electron'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'api'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'components'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'composables'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'constants'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'store'), { recursive: true })
@@ -180,6 +183,20 @@ describe('architecture boundary checks', () => {
       expect.stringContaining(
         'src/api/example.ts:3: avoid caching services.xxx() at module top level'
       )
+    ])
+  })
+
+  it('blocks platform-specific badge classes in production display code', async () => {
+    await writeTestFile(
+      'src/components/PlatformBadge.vue',
+      '<template><span class="service-badge service-badge-qq">QQ</span></template>\n'
+    )
+
+    const errors: string[] = []
+    checkPlatformDisplayClassHardcoding(['src/components/PlatformBadge.vue'], errors, tempDir)
+
+    expect(errors).toEqual([
+      expect.stringContaining('src/components/PlatformBadge.vue:1: use getPlatformDisplayInfo()')
     ])
   })
 })

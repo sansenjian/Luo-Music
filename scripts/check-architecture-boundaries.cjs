@@ -41,6 +41,8 @@ const forbiddenServiceAccessorModules = new Set([
   'src/services/platformAccessor',
   'src/services/playerAccessor'
 ])
+const forbiddenPlatformDisplayClassPattern =
+  /\b(?:service|server|platform)-badge[-.]?(?:netease|qq)\b/
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue'])
 const importPattern =
   /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
@@ -388,6 +390,27 @@ function checkTopLevelServiceAccess(files, errors, rootDir = projectRoot) {
   }
 }
 
+function checkPlatformDisplayClassHardcoding(files, errors, rootDir = projectRoot) {
+  const productionFiles = files.filter(
+    file =>
+      file.startsWith('src/') &&
+      !file.endsWith('.test.ts') &&
+      !file.endsWith('.test.tsx')
+  )
+
+  for (const file of productionFiles) {
+    const lines = fs.readFileSync(path.join(rootDir, file), 'utf8').split(/\r?\n/)
+
+    for (let index = 0; index < lines.length; index++) {
+      if (forbiddenPlatformDisplayClassPattern.test(lines[index])) {
+        errors.push(
+          `${file}:${index + 1}: use getPlatformDisplayInfo() for platform display classes instead of hardcoding built-in platform badge classes`
+        )
+      }
+    }
+  }
+}
+
 function runArchitectureBoundaryChecks() {
   const files = listProjectSourceFiles()
   const errors = []
@@ -401,6 +424,7 @@ function runArchitectureBoundaryChecks() {
   checkRendererHttpConstants(errors)
   checkLegacyServiceAccessorImports(files, errors)
   checkTopLevelServiceAccess(files, errors)
+  checkPlatformDisplayClassHardcoding(files, errors)
 
   return errors
 }
@@ -426,6 +450,7 @@ if (require.main === module) {
     checkLocalLibraryNativeTestBoundaries,
     checkLegacyServiceAccessorImports,
     checkNeteaseApiRequestImports,
+    checkPlatformDisplayClassHardcoding,
     checkRendererHttpConstants,
     checkTopLevelServiceAccess,
     extractImports,

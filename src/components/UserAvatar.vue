@@ -44,7 +44,6 @@ const activePluginLoginPlatform = ref<PlatformDescriptor | null>(null)
 let shouldRestoreTriggerFocus = true
 let unsubscribePluginPlatforms: (() => void) | null = null
 
-const isQQMusicLoggedIn = computed(() => userStore.isQQMusicLoggedIn)
 const loginPlatforms = computed(() => musicService.getLoginCapablePlatformDescriptors())
 const visibleLoginPlatforms = computed(() =>
   loginPlatforms.value.filter(platform => !isPlatformRepresentedByHeader(platform.id))
@@ -149,19 +148,11 @@ function openPlatformCenter(platformId: string): void {
 }
 
 function isPlatformLoggedIn(platformId: string): boolean {
-  if (platformId === 'netease') {
-    return userStore.isLoggedIn
-  }
-
-  if (platformId === 'qq') {
-    return isQQMusicLoggedIn.value
-  }
-
-  return false
+  return userStore.isPlatformAuthenticated(platformId)
 }
 
 function isPlatformRepresentedByHeader(platformId: string): boolean {
-  return platformId === 'netease' && userStore.isLoggedIn
+  return platformId === 'netease' && userStore.isPlatformAuthenticated('netease')
 }
 
 function getPlatformLoginTitle(platform: PlatformDescriptor): string {
@@ -257,11 +248,31 @@ function handleDocumentKeydown(event: KeyboardEvent): void {
 }
 
 function handleQQLoginSuccess(): void {
+  userStore.syncQQSession()
   openDropdown()
 }
 
-function handlePluginLoginSuccess(): void {
+function handlePluginLoginSuccess(state: unknown): void {
+  userStore.setPlatformAuthState(state, activePluginLoginPlatform.value?.id ?? 'unknown')
   openDropdown()
+}
+
+function shouldRefreshPluginAuthState(platform: PlatformDescriptor): boolean {
+  return (
+    platform.capabilities.auth?.login === true && platform.id !== 'netease' && platform.id !== 'qq'
+  )
+}
+
+async function refreshLoginPlatformAuthStates(platforms = loginPlatforms.value): Promise<void> {
+  if (!platformService.isElectron()) {
+    return
+  }
+
+  await Promise.all(
+    platforms.filter(shouldRefreshPluginAuthState).map(async platform => {
+      userStore.setPlatformAuthState(await pluginService.getAuthState(platform.id), platform.id)
+    })
+  )
 }
 
 async function refreshPluginPlatforms(): Promise<void> {
@@ -270,7 +281,8 @@ async function refreshPluginPlatforms(): Promise<void> {
   }
 
   try {
-    await pluginService.refreshPlatformDescriptors()
+    const platforms = await pluginService.refreshPlatformDescriptors()
+    await refreshLoginPlatformAuthStates(platforms)
   } catch (error) {
     logger.warn('Failed to refresh plugin login platforms', error)
   }
@@ -280,7 +292,9 @@ onMounted(() => {
   if (platformService.isElectron()) {
     void checkQQMusicLoginStatus()
     void refreshPluginPlatforms()
-    unsubscribePluginPlatforms = pluginService.onPlatformsChanged(() => {})
+    unsubscribePluginPlatforms = pluginService.onPlatformsChanged(platforms => {
+      void refreshLoginPlatformAuthStates(platforms)
+    })
   }
 
   document.addEventListener('pointerdown', handleDocumentPointerDown)

@@ -1,5 +1,11 @@
 import { getPlatformDescriptors } from '@/platform/music/descriptors'
 import { replaceRuntimePlatformDescriptors } from '@/platform/music/descriptors'
+import {
+  createAnonymousPlatformAuthState,
+  createErrorPlatformAuthState,
+  normalizePlatformAuthState,
+  type PlatformAuthState
+} from '@/platform/music/authState'
 import type { PlatformDescriptor } from '@shared/types/platform'
 import { useExperimentalFeatures } from '@/composables/useExperimentalFeatures'
 import { useProjectUi } from '@/composables/useProjectUi'
@@ -57,6 +63,7 @@ export type PluginService = {
     platformId: string,
     settings: Record<string, unknown>
   ): Promise<Record<string, unknown>>
+  getAuthState(platformId: string): Promise<PlatformAuthState>
   call(platformId: string, method: string, payload: unknown): Promise<unknown>
   onPlatformsChanged(listener: (platforms: PlatformDescriptor[]) => void): () => void
 }
@@ -300,6 +307,26 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
     return result
   }
 
+  async function getAuthState(platformId: string): Promise<PlatformAuthState> {
+    if (isFirstPartyPlugin(platformId)) {
+      return createAnonymousPlatformAuthState(platformId)
+    }
+
+    const bridge = getPluginBridge()
+    if (!isElectron() || !bridge) {
+      return createAnonymousPlatformAuthState(platformId)
+    }
+
+    try {
+      return normalizePlatformAuthState(
+        await bridge.call(platformId, 'auth.getState', {}),
+        platformId
+      )
+    } catch {
+      return createErrorPlatformAuthState(platformId, '登录状态读取失败')
+    }
+  }
+
   async function call(platformId: string, method: string, payload: unknown): Promise<unknown> {
     if (isFirstPartyPlugin(platformId)) {
       throw new Error('First-party plugins do not expose external calls')
@@ -333,6 +360,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
     uninstall,
     getSettings,
     updateSettings,
+    getAuthState,
     call,
     onPlatformsChanged
   }

@@ -616,6 +616,98 @@ describe('createPluginService', () => {
     expect(result).toBe('result')
   })
 
+  it('reads and normalizes plugin auth state through the bridge', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      platform: 'plugin-x',
+      status: 'authenticated',
+      account: {
+        id: 'user-1',
+        nickname: 'Plugin User'
+      },
+      message: 'ok'
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getAuthState('plugin-x')
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'auth.getState', {})
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated',
+        account: expect.objectContaining({
+          id: 'user-1',
+          nickname: 'Plugin User'
+        }),
+        message: 'ok',
+        updatedAt: expect.any(Number)
+      })
+    )
+  })
+
+  it('returns anonymous plugin auth state when the bridge is unavailable', async () => {
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => false
+    })
+
+    const result = await service.getAuthState('plugin-x')
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'anonymous',
+        message: '未登录',
+        updatedAt: expect.any(Number)
+      })
+    )
+  })
+
+  it('returns anonymous auth state for first-party plugins without bridge calls', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getAuthState('builtin.smtc')
+
+    expect(bridge.call).not.toHaveBeenCalled()
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'builtin.smtc',
+        status: 'anonymous'
+      })
+    )
+  })
+
+  it('returns error auth state when the plugin auth state call fails', async () => {
+    const bridge = createBridge()
+    bridge.call.mockRejectedValueOnce(new Error('missing method'))
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getAuthState('plugin-x')
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'error',
+        message: '登录状态读取失败',
+        updatedAt: expect.any(Number)
+      })
+    )
+  })
+
   // -----------------------------------------------------------------------
   // 12. onPlatformsChanged returns noop in non-Electron, subscribes in Electron
   // -----------------------------------------------------------------------

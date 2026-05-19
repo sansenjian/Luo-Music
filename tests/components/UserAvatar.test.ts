@@ -3,12 +3,14 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 import UserAvatar from '@/components/UserAvatar.vue'
+import type { PlatformAuthState } from '@/platform/music/authState'
 import {
   getLoginCapablePlatformDescriptors,
   replaceRuntimePlatformDescriptors,
   resetRuntimePlatformDescriptors
 } from '@/platform/music/descriptors'
 import { useUserStore } from '@/store/userStore'
+import type { PlatformDescriptor } from '@shared/types/platform'
 
 const pushMock = vi.hoisted(() => vi.fn())
 const logoutMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
@@ -18,7 +20,15 @@ const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => false)
 }))
 const pluginServiceMock = vi.hoisted(() => ({
-  refreshPlatformDescriptors: vi.fn(() => Promise.resolve([])),
+  refreshPlatformDescriptors: vi.fn<() => Promise<PlatformDescriptor[]>>(() => Promise.resolve([])),
+  getAuthState: vi.fn<(platformId: string) => Promise<PlatformAuthState>>(() =>
+    Promise.resolve({
+      platform: 'kugou',
+      status: 'anonymous',
+      message: '未登录',
+      updatedAt: Date.now()
+    })
+  ),
   onPlatformsChanged: vi.fn(() => () => {})
 }))
 const musicServiceMock = vi.hoisted(() => ({
@@ -454,5 +464,56 @@ describe('UserAvatar', () => {
       'Netease Music 未登录',
       'QQ Music 未登录'
     ])
+  })
+
+  it('refreshes plugin auth state and opens a plugin user center from a logged-in plugin row', async () => {
+    const kugouDescriptor = {
+      id: 'kugou',
+      displayName: 'Kugou Music',
+      source: 'external' as const,
+      runtime: 'external-host' as const,
+      enabled: true,
+      capabilities: {
+        search: true,
+        songUrl: true,
+        songDetail: true,
+        lyric: true,
+        playlistDetail: false,
+        needsHydration: false,
+        supportsLyricFetch: true,
+        supportsUrlRefreshOnFailure: false,
+        auth: {
+          login: true,
+          preferredMode: 'browser' as const,
+          modes: ['browser' as const]
+        }
+      }
+    }
+    pluginServiceMock.refreshPlatformDescriptors.mockResolvedValue([kugouDescriptor])
+    pluginServiceMock.getAuthState.mockResolvedValue({
+      platform: 'kugou',
+      status: 'authenticated',
+      account: {
+        id: 'plugin-user',
+        nickname: 'Plugin User'
+      },
+      message: 'ok',
+      updatedAt: Date.now()
+    })
+    replaceRuntimePlatformDescriptors([kugouDescriptor])
+
+    const wrapper = createWrapper()
+    await vi.waitFor(() => expect(pluginServiceMock.getAuthState).toHaveBeenCalledWith('kugou'))
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('.platform-login-title').text()).toBe('Kugou Music 已登录')
+    await wrapper.find('.login-platform-btn').trigger('click')
+
+    expect(pushMock).toHaveBeenCalledWith({
+      path: '/user',
+      query: { platform: 'kugou' }
+    })
   })
 })
