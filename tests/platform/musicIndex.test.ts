@@ -132,6 +132,7 @@ describe('platform music index', () => {
       getAvailablePlatforms,
       getPlatformDescriptor,
       getLoginPlatformOptions,
+      resolvePlatformLoginRoute,
       getSearchPlatformOptions,
       getPlatformCapabilities,
       replaceRuntimePlatformDescriptors
@@ -217,6 +218,14 @@ describe('platform music index', () => {
       { value: 'netease', label: 'Netease Music' },
       { value: 'qq', label: 'QQ Music' }
     ])
+    expect(resolvePlatformLoginRoute(getPlatformDescriptor('netease')!)).toEqual({
+      kind: 'legacy',
+      platformId: 'netease'
+    })
+    expect(resolvePlatformLoginRoute(getPlatformDescriptor('qq')!)).toEqual({
+      kind: 'legacy',
+      platformId: 'qq'
+    })
     expect(getAvailablePlatforms()).toEqual([
       { id: 'local', name: '本地音乐' },
       { id: 'netease', name: 'Netease Music' },
@@ -266,6 +275,42 @@ describe('platform music index', () => {
     ])
 
     expect(getLoginPlatformOptions()).toEqual([{ value: 'netease', label: 'Netease Music' }])
+  })
+
+  it('routes non-legacy login-capable platforms to the generic plugin login container', async () => {
+    const { getPlatformDescriptor, resolvePlatformLoginRoute, replaceRuntimePlatformDescriptors } =
+      await import('@/platform/music')
+
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'kugou',
+        displayName: 'Kugou Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'browser',
+            modes: ['browser']
+          }
+        }
+      }
+    ])
+
+    const platform = getPlatformDescriptor('kugou')!
+    expect(resolvePlatformLoginRoute(platform)).toEqual({
+      kind: 'plugin',
+      platform
+    })
   })
 
   it('reuses the lazily created logger across repeated invalid lookups', async () => {

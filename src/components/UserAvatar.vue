@@ -6,6 +6,7 @@ import { logout } from '@/api/user'
 import { qqMusicApi } from '@/api/qqmusic'
 import type { StandardImportedAuthSession } from '@plugin-sdk'
 import type { PlatformDescriptor } from '@shared/types/platform'
+import { resolvePlatformLoginRoute } from '@/platform/music/loginRouting'
 import { services } from '@/services'
 import { useUserStore } from '@/store/userStore'
 import LoginModal from './LoginModal.vue'
@@ -128,17 +129,18 @@ function openPlatformLogin(platform: PlatformDescriptor): void {
     return
   }
 
-  if (platform.id === 'netease') {
+  const route = resolvePlatformLoginRoute(platform)
+
+  if (route.kind === 'plugin') {
+    openPluginLogin(route.platform)
+    return
+  }
+
+  if (route.platformId === 'netease') {
     openLogin()
-    return
-  }
-
-  if (platform.id === 'qq') {
+  } else {
     openQQLogin()
-    return
   }
-
-  openPluginLogin(platform)
 }
 
 function openPlatformCenter(platformId: string): void {

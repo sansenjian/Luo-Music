@@ -287,6 +287,7 @@ export interface StandardLoginField {
 - `services.plugins().auth` 已作为宿主认证 facade 落地，负责调用插件 `auth.getState` / `auth.startLogin` / `auth.pollLogin` / `auth.submitLogin` / `auth.cancelLogin` / `auth.importSession` / `auth.refresh` / `auth.logout` 并把登录态归一化为宿主内部 `PlatformAuthState`。业务 UI 只消费 facade 返回的标准挑战和状态摘要，不直接解析插件返回值或平台 Cookie。
 - `auth.importSession` 是过渡期的窄迁移入口，用于把宿主旧登录链路中已经存在的标准会话凭据交还给插件处理。宿主传入 `StandardImportedAuthSession`，插件自行决定如何验证、刷新账号摘要并写入自己的 `ctx.secrets`；renderer 不暴露通用 secrets 读写能力。
 - `PluginLoginModal.vue` 作为通用插件登录容器，支持 `auth.startLogin`、`auth.pollLogin` 和关闭时的 `auth.cancelLogin`。网易云 / QQ 插件已提供 `auth.*` handler；头像菜单暂时仍把它们路由到专属弹窗作为兼容适配，并在插件状态匿名且声明 `capabilities.auth.importSession = true` 时把 `userStore.cookie` / `userStore.qqCookie` 转换为标准导入会话。
+- 头像菜单的登录入口必须通过 `resolvePlatformLoginRoute()` 选择通用插件登录或 legacy 登录桥。平台特例只能留在这个路由策略里，组件层不要继续散落 `platform.id === 'netease'` / `platform.id === 'qq'` 判断。
 - 内置第三方插件 manifest 增加 `auth` 能力时必须 bump 插件版本，确保 `ensureBundledPlugins()` 能自动刷新已安装插件。过渡期内，已安装但尚未刷新 manifest 的网易云 / QQ 插件仍通过兼容桥显示登录入口，避免用户看到“暂无可登录平台”。
 
 建议的认证方法:
@@ -643,7 +644,7 @@ export interface PluginPlayerFacade {
 - 现有 `userStore.cookie` / `userStore.qqCookie` 迁移到插件 `ctx.secrets` 后，仅保留一次性迁移读取，不作为长期兼容入口。
 - 入站边界先同时接受旧 `PluginSong` 和新 `StandardSong`，业务层逐步收敛到只接收标准模型。不要在旧插件仍存在时一次性删除兼容转换。
 - 旧接口和旧字段先标记 `@deprecated`，并在诊断日志中统计调用量。只有确认旧路径使用量足够低后，才能进入删除阶段。
-- `LoginModal.vue`、`QQLoginModal.vue` 在统一登录容器完成前保留为适配层，不直接删除。
+- `LoginModal.vue`、`QQLoginModal.vue` 在统一登录容器完成前保留为适配层，不直接删除；组件入口必须经过 `resolvePlatformLoginRoute()`，避免新增散落的平台判断。
 - 新字段通过可选 `capabilitiesV2` 和 `contributionsV2` 增量加入。
 
 推荐 manifest 扩展:
@@ -688,6 +689,7 @@ export interface PluginManifestV2Extensions {
 - [x] 登录入口已像搜索源一样从已启用平台描述符自适应生成；`capabilities.auth.login = true` 的平台会自动出现在头像菜单。
 - [x] 已新增通用 `PluginLoginModal.vue`，支持二维码 / 浏览器 challenge 的最小统一容器和关闭时取消 challenge。
 - [x] `userStore` 已增加通用 `PlatformAuthState` 摘要缓存，头像菜单、缓存管理和侧边栏登录摘要不再直接依赖 QQ / 网易云专属展示状态。
+- [x] 登录入口路由已收口到 `resolvePlatformLoginRoute()`；非 legacy 登录平台默认进入 `PluginLoginModal.vue`，网易云 / QQ 暂时经 legacy 登录桥保留旧 cookie 写入链路。
 - [~] 网易云、QQ 音乐插件侧已提供 `auth.*` 登录请求、轮询、Cookie 托管和标准旧会话导入；宿主旧登录组件仍保留一段兼容期。
 - 将平台专属登录弹窗完全收口为统一登录容器，具体二维码、授权 URL、表单字段由插件返回。
 - [x] 新增 `PluginSecretStore` / `ctx.secrets`，并通过 Worker 代理给外部插件。

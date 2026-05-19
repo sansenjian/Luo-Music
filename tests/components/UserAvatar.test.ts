@@ -530,6 +530,111 @@ describe('UserAvatar', () => {
     })
   })
 
+  it('opens the generic plugin login modal for non-legacy auth platforms', async () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'kugou',
+        displayName: 'Kugou Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            preferredMode: 'browser',
+            modes: ['browser']
+          }
+        }
+      }
+    ])
+
+    const wrapper = createWrapper()
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+    await wrapper.find('.login-platform-btn').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('.plugin-login-modal-stub').exists()).toBe(true)
+    expect(wrapper.find('.login-modal-stub').exists()).toBe(false)
+  })
+
+  it('keeps Netease and QQ routed to legacy login modals during the cookie compatibility phase', async () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'netease',
+        displayName: 'Netease Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: true,
+          needsHydration: true,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: true,
+          auth: {
+            login: true,
+            importSession: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      },
+      {
+        id: 'qq',
+        displayName: 'QQ Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false,
+          auth: {
+            login: true,
+            importSession: true,
+            preferredMode: 'qr',
+            modes: ['qr']
+          }
+        }
+      }
+    ])
+
+    const wrapper = createWrapper()
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+
+    const loginButtons = wrapper.findAll('.login-platform-btn')
+    await loginButtons[0].trigger('click')
+    await nextTick()
+    expect(wrapper.find('.login-modal-stub').exists()).toBe(true)
+    expect(wrapper.find('.plugin-login-modal-stub').exists()).toBe(false)
+
+    await wrapper.find('.user-trigger').trigger('click')
+    await nextTick()
+    await wrapper.findAll('.login-platform-btn')[1].trigger('click')
+    await nextTick()
+    expect(wrapper.find('.qq-login-modal-stub').exists()).toBe(true)
+  })
+
   it('imports legacy Netease cookie into plugin auth secrets when plugin state is anonymous', async () => {
     const neteaseDescriptor = {
       id: 'netease',
