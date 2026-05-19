@@ -61,7 +61,9 @@ function cloneCapabilities(capabilities: PlatformCapabilities): PlatformCapabili
             ...(capabilities.auth.modes ? { modes: [...capabilities.auth.modes] } : {})
           }
         }
-      : {})
+      : {}),
+    ...(capabilities.account ? { account: { ...capabilities.account } } : {}),
+    ...(capabilities.library ? { library: { ...capabilities.library } } : {})
   }
 }
 

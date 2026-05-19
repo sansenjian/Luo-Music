@@ -231,6 +231,49 @@ export interface StandardLoginField {
 - `password` 和 `otp` 字段值是敏感输入，只能在一次 `submitLogin()` 调用中传递给插件，不允许进入日志、诊断记录、普通 storage 或 renderer 持久化状态。
 - 多个平台可以同时处于 `authenticated`。默认搜索 / 播放平台属于用户偏好设置，不放入 `StandardAuthState`，避免把“当前选择”误写成平台会话属性。
 
+### 3.8 账号与资料库标准模型
+
+账号资料、喜欢歌曲、用户歌单和歌单歌曲属于通用资料库能力，不属于某个具体音乐平台的专属接口。插件应该返回框架内部可直接消费的标准模型；宿主的归一化只做保护性兜底，不作为插件返回原始响应的长期入口。
+
+```ts
+export interface StandardPlaylistSummary {
+  id: string | number
+  name: string
+  coverImgUrl?: string
+  description?: string
+  trackCount?: number
+  subscribed?: boolean
+  creator?: StandardAccountProfile
+  extra?: Record<string, unknown>
+}
+
+export interface StandardPageInfo {
+  limit: number
+  offset: number
+  total?: number
+  hasMore: boolean
+}
+
+export interface StandardSongPage {
+  list: PluginSong[]
+  page: StandardPageInfo
+}
+
+export interface StandardPlaylistPage {
+  list: StandardPlaylistSummary[]
+  page: StandardPageInfo
+}
+```
+
+方法名:
+
+- `account.getProfile`
+- `library.getLikedSongs`
+- `library.getPlaylists`
+- `library.getPlaylistTracks`
+
+业务层必须通过 `services.plugins().account` / `services.plugins().library` facade 调用这些能力。`src/services/pluginService.ts` 是允许直接使用插件方法名字符串的边界；组件、composable 和 store 不应直接调用 `pluginService.call(platformId, 'account.xxx' | 'library.xxx')`。
+
 ## 4. 歌词统一流转
 
 歌词是最容易出现平台差异的能力，应作为内部标准模型的第一批落地点。
@@ -690,6 +733,7 @@ export interface PluginManifestV2Extensions {
 - [x] 已新增通用 `PluginLoginModal.vue`，支持二维码 / 浏览器 challenge 的最小统一容器和关闭时取消 challenge。
 - [x] `userStore` 已增加通用 `PlatformAuthState` 摘要缓存，头像菜单、缓存管理和侧边栏登录摘要不再直接依赖 QQ / 网易云专属展示状态。
 - [x] 登录入口路由已收口到 `resolvePlatformLoginRoute()`；非 legacy 登录平台默认进入 `PluginLoginModal.vue`，网易云 / QQ 暂时经 legacy 登录桥保留旧 cookie 写入链路。
+- [x] SDK 和服务层已提供 `account` / `library` facade；网易云插件已输出标准 profile、liked songs、playlists、playlist tracks，QQ 插件已输出标准 profile。
 - [~] 网易云、QQ 音乐插件侧已提供 `auth.*` 登录请求、轮询、Cookie 托管和标准旧会话导入；宿主旧登录组件仍保留一段兼容期。
 - 将平台专属登录弹窗完全收口为统一登录容器，具体二维码、授权 URL、表单字段由插件返回。
 - [x] 新增 `PluginSecretStore` / `ctx.secrets`，并通过 Worker 代理给外部插件。

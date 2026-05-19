@@ -43,7 +43,7 @@ const forbiddenServiceAccessorModules = new Set([
 ])
 const forbiddenPlatformDisplayClassPattern =
   /\b(?:service|server|platform)-badge[-.]?(?:netease|qq)\b/
-const pluginAuthCallPattern = /\.call\s*\([^,\n]+,\s*['"]auth\./
+const pluginFacadeCallPattern = /\.call\s*\([^,\n]+,\s*['"](?:auth|account|library)\./
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue'])
 const importPattern =
   /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
@@ -393,10 +393,7 @@ function checkTopLevelServiceAccess(files, errors, rootDir = projectRoot) {
 
 function checkPlatformDisplayClassHardcoding(files, errors, rootDir = projectRoot) {
   const productionFiles = files.filter(
-    file =>
-      file.startsWith('src/') &&
-      !file.endsWith('.test.ts') &&
-      !file.endsWith('.test.tsx')
+    file => file.startsWith('src/') && !file.endsWith('.test.ts') && !file.endsWith('.test.tsx')
   )
 
   for (const file of productionFiles) {
@@ -412,7 +409,7 @@ function checkPlatformDisplayClassHardcoding(files, errors, rootDir = projectRoo
   }
 }
 
-function checkPluginAuthFacadeUsage(files, errors, rootDir = projectRoot) {
+function checkPluginFacadeUsage(files, errors, rootDir = projectRoot) {
   const productionFiles = files.filter(
     file =>
       file.startsWith('src/') &&
@@ -425,9 +422,9 @@ function checkPluginAuthFacadeUsage(files, errors, rootDir = projectRoot) {
     const lines = fs.readFileSync(path.join(rootDir, file), 'utf8').split(/\r?\n/)
 
     for (let index = 0; index < lines.length; index++) {
-      if (pluginAuthCallPattern.test(lines[index])) {
+      if (pluginFacadeCallPattern.test(lines[index])) {
         errors.push(
-          `${file}:${index + 1}: use services.plugins().auth methods instead of direct plugin auth call strings`
+          `${file}:${index + 1}: use services.plugins().auth/account/library methods instead of direct plugin facade call strings`
         )
       }
     }
@@ -448,7 +445,7 @@ function runArchitectureBoundaryChecks() {
   checkLegacyServiceAccessorImports(files, errors)
   checkTopLevelServiceAccess(files, errors)
   checkPlatformDisplayClassHardcoding(files, errors)
-  checkPluginAuthFacadeUsage(files, errors)
+  checkPluginFacadeUsage(files, errors)
 
   return errors
 }
@@ -475,7 +472,8 @@ if (require.main === module) {
     checkLegacyServiceAccessorImports,
     checkNeteaseApiRequestImports,
     checkPlatformDisplayClassHardcoding,
-    checkPluginAuthFacadeUsage,
+    checkPluginFacadeUsage,
+    checkPluginAuthFacadeUsage: checkPluginFacadeUsage,
     checkRendererHttpConstants,
     checkTopLevelServiceAccess,
     extractImports,

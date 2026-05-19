@@ -346,7 +346,54 @@ interface PlaylistDetail {
   trackCount?: number
   tracks: PluginSong[]
 }
+
+interface StandardAccountProfile {
+  id: string | number
+  nickname: string
+  avatarUrl?: string
+  homepageUrl?: string
+  extra?: Record<string, unknown>
+}
+
+interface StandardPageInfo {
+  limit: number
+  offset: number
+  total?: number
+  hasMore: boolean
+}
+
+interface StandardSongPage {
+  list: PluginSong[]
+  page: StandardPageInfo
+}
+
+interface StandardPlaylistSummary {
+  id: string | number
+  name: string
+  coverImgUrl?: string
+  description?: string
+  trackCount?: number
+  subscribed?: boolean
+  creator?: StandardAccountProfile
+  extra?: Record<string, unknown>
+}
+
+interface StandardPlaylistPage {
+  list: StandardPlaylistSummary[]
+  page: StandardPageInfo
+}
 ```
+
+账号和资料库能力使用独立方法名:
+
+| 方法                        | 输入                           | 输出                             | 说明             |
+| --------------------------- | ------------------------------ | -------------------------------- | ---------------- |
+| `account.getProfile`        | `{ userId? }`                  | `StandardAccountProfile \| null` | 获取账号资料摘要 |
+| `library.getLikedSongs`     | `{ userId?, limit?, offset? }` | `StandardSongPage`               | 获取喜欢歌曲分页 |
+| `library.getPlaylists`      | `{ userId?, limit?, offset? }` | `StandardPlaylistPage`           | 获取用户歌单分页 |
+| `library.getPlaylistTracks` | `{ id, limit?, offset? }`      | `StandardSongPage`               | 获取歌单歌曲分页 |
+
+业务层必须通过 `services.plugins().account` / `services.plugins().library` facade 访问这些能力，不要直接拼接 `pluginService.call(platformId, 'library.xxx')`。
 
 ### 4.4 插件定义
 

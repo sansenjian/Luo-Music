@@ -222,7 +222,37 @@ describe('architecture boundary checks', () => {
 
     expect(errors).toEqual([
       expect.stringContaining(
-        'src/components/PluginLogin.vue:1: use services.plugins().auth methods'
+        'src/components/PluginLogin.vue:1: use services.plugins().auth/account/library methods'
+      )
+    ])
+  })
+
+  it('blocks direct plugin account and library call strings outside the plugin service facade', async () => {
+    await writeTestFile(
+      'src/components/UserLibrary.vue',
+      [
+        "await pluginService.call(platformId, 'account.getProfile', {})",
+        "await pluginService.call(platformId, 'library.getLikedSongs', {})"
+      ].join('\n')
+    )
+    await writeTestFile(
+      'src/services/pluginService.ts',
+      "await bridge.call(platformId, 'library.getLikedSongs', {})\n"
+    )
+
+    const errors: string[] = []
+    checkPluginAuthFacadeUsage(
+      ['src/components/UserLibrary.vue', 'src/services/pluginService.ts'],
+      errors,
+      tempDir
+    )
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/components/UserLibrary.vue:1: use services.plugins().auth/account/library methods'
+      ),
+      expect.stringContaining(
+        'src/components/UserLibrary.vue:2: use services.plugins().auth/account/library methods'
       )
     ])
   })

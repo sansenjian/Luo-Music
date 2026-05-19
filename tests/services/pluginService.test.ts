@@ -853,6 +853,167 @@ describe('createPluginService', () => {
     expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'auth.importSession', { session })
   })
 
+  it('reads a standard account profile through the account facade', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      id: 'user-1',
+      nickname: 'Plugin User',
+      avatarUrl: 'https://example.test/avatar.png',
+      homepageUrl: 'https://example.test/user/user-1',
+      extra: {
+        level: 9
+      }
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.account.getProfile('plugin-x', 'user-1')).resolves.toEqual({
+      id: 'user-1',
+      nickname: 'Plugin User',
+      avatarUrl: 'https://example.test/avatar.png',
+      homepageUrl: 'https://example.test/user/user-1',
+      extra: {
+        level: 9
+      }
+    })
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'account.getProfile', {
+      userId: 'user-1'
+    })
+  })
+
+  it('normalizes plugin library pages through the library facade', async () => {
+    const bridge = createBridge()
+    bridge.call
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'song-1',
+            name: 'Song 1',
+            artists: [{ id: 'artist-1', name: 'Artist 1' }],
+            album: { id: 'album-1', name: 'Album 1', picUrl: 'cover.png' },
+            duration: 180000,
+            mvid: 0,
+            originalId: 'song-1'
+          },
+          {
+            id: false
+          }
+        ],
+        page: { limit: 2, offset: 4, total: 7 }
+      })
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'playlist-1',
+            name: 'Playlist 1',
+            coverImgUrl: 'playlist.png',
+            trackCount: 12,
+            subscribed: true,
+            creator: {
+              id: 'user-1',
+              nickname: 'Plugin User'
+            }
+          },
+          {
+            id: null,
+            name: 'Invalid'
+          }
+        ],
+        page: { limit: 10, offset: 0, hasMore: false }
+      })
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'song-2',
+            name: 'Song 2',
+            artists: [],
+            album: { id: 'album-2', name: 'Album 2', picUrl: '' },
+            duration: 200000,
+            mvid: 0,
+            originalId: 'song-2'
+          }
+        ]
+      })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(
+      service.library.getLikedSongs('plugin-x', { userId: 'user-1', limit: 2, offset: 4 })
+    ).resolves.toEqual({
+      list: [
+        expect.objectContaining({
+          id: 'song-1',
+          name: 'Song 1',
+          platform: 'plugin-x'
+        })
+      ],
+      page: {
+        limit: 2,
+        offset: 4,
+        total: 7,
+        hasMore: true
+      }
+    })
+    await expect(service.library.getPlaylists('plugin-x', { limit: 10 })).resolves.toEqual({
+      list: [
+        {
+          id: 'playlist-1',
+          name: 'Playlist 1',
+          coverImgUrl: 'playlist.png',
+          trackCount: 12,
+          subscribed: true,
+          creator: {
+            id: 'user-1',
+            nickname: 'Plugin User'
+          }
+        }
+      ],
+      page: {
+        limit: 10,
+        offset: 0,
+        hasMore: false
+      }
+    })
+    await expect(
+      service.library.getPlaylistTracks('plugin-x', 'playlist-1', { limit: 5, offset: 5 })
+    ).resolves.toEqual({
+      list: [
+        expect.objectContaining({
+          id: 'song-2',
+          name: 'Song 2',
+          platform: 'plugin-x'
+        })
+      ],
+      page: {
+        limit: 5,
+        offset: 5,
+        hasMore: false
+      }
+    })
+
+    expect(bridge.call).toHaveBeenNthCalledWith(1, 'plugin-x', 'library.getLikedSongs', {
+      userId: 'user-1',
+      limit: 2,
+      offset: 4
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(2, 'plugin-x', 'library.getPlaylists', {
+      limit: 10,
+      offset: 0
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(3, 'plugin-x', 'library.getPlaylistTracks', {
+      id: 'playlist-1',
+      limit: 5,
+      offset: 5
+    })
+  })
+
   // -----------------------------------------------------------------------
   // 12. onPlatformsChanged returns noop in non-Electron, subscribes in Electron
   // -----------------------------------------------------------------------
