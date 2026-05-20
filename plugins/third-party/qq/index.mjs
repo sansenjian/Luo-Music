@@ -172,11 +172,23 @@ export default {
       const cookie = normalizeString(await ctx.secrets.get('cookie'))
       const account = normalizeAccountProfile(await ctx.secrets.get('account'))
 
+      if (!cookie) {
+        if (account) {
+          await ctx.secrets.remove('account')
+        }
+
+        return {
+          platform: ctx.platformId,
+          status: 'anonymous',
+          message: '未登录'
+        }
+      }
+
       return {
         platform: ctx.platformId,
-        status: cookie ? 'authenticated' : 'anonymous',
+        status: 'authenticated',
         ...(account ? { account } : {}),
-        message: cookie ? '已登录' : '未登录'
+        message: '已登录'
       }
     }
 
@@ -324,6 +336,8 @@ export default {
           const account = normalizeAccountProfile(data?.user || data?.profile || data?.creator)
           if (account) {
             await ctx.secrets.set('account', account)
+          } else {
+            await ctx.secrets.remove('account')
           }
           await ctx.storage.remove(`auth:${challengeId}`)
 

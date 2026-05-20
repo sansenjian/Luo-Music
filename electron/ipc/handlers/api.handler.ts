@@ -31,6 +31,16 @@ function unsupportedApiPlatform(platform: MusicPlatform): { success: false; erro
   }
 }
 
+function unsupportedApiDetailPlatform(platform: MusicPlatform): null {
+  logger.warn(`[API Gateway] Unsupported API platform for built-in gateway: ${platform}`)
+  return null
+}
+
+function unsupportedApiListPlatform(platform: MusicPlatform): [] {
+  logger.warn(`[API Gateway] Unsupported API platform for built-in gateway: ${platform}`)
+  return []
+}
+
 function unsupportedApiSongUrlPlatform(platform: MusicPlatform): { url: string; error: string } {
   logger.warn(`[API Gateway] Unsupported API platform for built-in gateway: ${platform}`)
 
@@ -231,7 +241,7 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
 
       const targetPlatform = resolvePlatform(platform)
       if (!isBuiltInApiPlatform(targetPlatform)) {
-        return unsupportedApiPlatform(targetPlatform)
+        return unsupportedApiDetailPlatform(targetPlatform)
       }
 
       return targetPlatform === 'qq'
@@ -251,7 +261,7 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
 
       const targetPlatform = resolvePlatform(platform)
       if (!isBuiltInApiPlatform(targetPlatform)) {
-        return unsupportedApiPlatform(targetPlatform)
+        return unsupportedApiDetailPlatform(targetPlatform)
       }
 
       return targetPlatform === 'qq'
@@ -271,7 +281,7 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
 
       const targetPlatform = resolvePlatform(platform)
       if (!isBuiltInApiPlatform(targetPlatform)) {
-        return unsupportedApiPlatform(targetPlatform)
+        return unsupportedApiDetailPlatform(targetPlatform)
       }
 
       return targetPlatform === 'qq'
@@ -291,7 +301,7 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
 
       const targetPlatform = resolvePlatform(platform)
       if (!isBuiltInApiPlatform(targetPlatform)) {
-        return unsupportedApiPlatform(targetPlatform)
+        return unsupportedApiDetailPlatform(targetPlatform)
       }
 
       return targetPlatform === 'qq'
@@ -311,7 +321,7 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
 
       const targetPlatform = resolvePlatform(platform)
       if (!isBuiltInApiPlatform(targetPlatform)) {
-        return unsupportedApiPlatform(targetPlatform)
+        return unsupportedApiListPlatform(targetPlatform)
       }
 
       return targetPlatform === 'qq'
@@ -326,12 +336,12 @@ export function registerApiHandlers(serviceManager: ServiceManager): void {
       const paramsValidation = validateParams({ platform, id }, [])
       if (!paramsValidation.valid) {
         logValidationFailure('GetChart', paramsValidation.errors)
-        return null
+        return []
       }
 
       const targetPlatform = resolvePlatform(platform)
       if (!isBuiltInApiPlatform(targetPlatform)) {
-        return unsupportedApiPlatform(targetPlatform)
+        return unsupportedApiListPlatform(targetPlatform)
       }
 
       return targetPlatform === 'qq'

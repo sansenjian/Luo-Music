@@ -1,4 +1,4 @@
-import { getPlatformDescriptor } from './descriptors'
+import { getPlatformDescriptor } from '@/platform/music/descriptors'
 
 export interface PlatformDisplayInfo {
   badgeText: string

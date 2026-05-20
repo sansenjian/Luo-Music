@@ -1,4 +1,4 @@
-import { neteaseRequest } from './shared/neteaseServiceRequest'
+import { neteaseRequest } from '@/api/shared/neteaseServiceRequest'
 
 /**
  * 搜索

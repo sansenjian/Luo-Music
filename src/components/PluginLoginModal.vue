@@ -189,8 +189,23 @@ async function startLogin(): Promise<void> {
     }
 
     if (nextChallenge.type === 'none') {
+      const state = await pluginService.auth.refresh(props.platformId)
+      if (!isAttemptCurrent(attemptId)) {
+        return
+      }
+
+      if (state.status !== 'authenticated') {
+        status.value =
+          state.status === 'pending' ? 'waiting' : state.status === 'expired' ? 'expired' : 'error'
+        statusText.value = state.message || nextChallenge.statusText || '登录状态未完成'
+        return
+      }
+
       status.value = 'success'
-      statusText.value = nextChallenge.statusText || '已完成登录'
+      statusText.value = state.message || nextChallenge.statusText || '已完成登录'
+      toastStore.success(`${props.platformName} 登录成功`)
+      emit('login-success', state)
+      emit('update:modelValue', false)
       return
     }
 

@@ -202,4 +202,51 @@ describe('QQ external plugin', () => {
       avatarUrl: 'https://example.test/qq.png'
     })
   })
+
+  it('clears stale account profile when QR login returns only a cookie', async () => {
+    const httpGet = vi.fn()
+    const { adapter, ctx } = await createAdapter(httpGet, {
+      account: {
+        id: 'old',
+        nickname: 'Old QQ'
+      }
+    })
+    ctx.storage.get.mockResolvedValue({
+      ptqrtoken: 'token',
+      qrsig: 'sig'
+    })
+    ctx.http.post.mockResolvedValue({
+      response: {
+        code: 0,
+        isOk: true,
+        cookie: 'uin=456; qm_keyst=fresh'
+      }
+    })
+
+    await expect(adapter['auth.pollLogin']({ challengeId: 'challenge-1' })).resolves.toEqual({
+      platform: 'qq',
+      status: 'authenticated',
+      message: '登录成功'
+    })
+
+    expect(ctx.secrets.set).toHaveBeenCalledWith('cookie', 'uin=456; qm_keyst=fresh')
+    expect(ctx.secrets.remove).toHaveBeenCalledWith('account')
+  })
+
+  it('does not expose stale account profile without a stored cookie', async () => {
+    const httpGet = vi.fn()
+    const { adapter, ctx } = await createAdapter(httpGet, {
+      account: {
+        id: 'old',
+        nickname: 'Old QQ'
+      }
+    })
+
+    await expect(adapter['auth.getState']()).resolves.toEqual({
+      platform: 'qq',
+      status: 'anonymous',
+      message: '未登录'
+    })
+    expect(ctx.secrets.remove).toHaveBeenCalledWith('account')
+  })
 })

@@ -151,7 +151,7 @@ function normalizeBoolean(value: unknown): boolean | undefined {
 
 function normalizePageLimit(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
-    ? Math.round(value)
+    ? Math.max(1, Math.round(value))
     : DEFAULT_LIBRARY_PAGE_LIMIT
 }
 
@@ -159,10 +159,10 @@ function normalizePageOffset(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : 0
 }
 
-function normalizeLoginMode(value: unknown): StandardLoginChallenge['type'] {
+function normalizeLoginMode(value: unknown): StandardLoginChallenge['type'] | undefined {
   return value === 'qr' || value === 'browser' || value === 'form' || value === 'none'
     ? value
-    : 'none'
+    : undefined
 }
 
 function normalizeLoginFieldType(value: unknown): StandardLoginField['type'] {
@@ -345,9 +345,14 @@ function normalizeLoginChallenge(value: unknown): StandardLoginChallenge {
     throw new Error('Login challenge missing challengeId')
   }
 
+  const type = normalizeLoginMode(value.type)
+  if (!type) {
+    throw new Error('Login challenge missing or invalid type')
+  }
+
   return {
     challengeId,
-    type: normalizeLoginMode(value.type),
+    type,
     ...(normalizeString(value.title) ? { title: normalizeString(value.title) } : {}),
     ...(normalizeString(value.statusText) ? { statusText: normalizeString(value.statusText) } : {}),
     ...(normalizeString(value.qrImageUrl) ? { qrImageUrl: normalizeString(value.qrImageUrl) } : {}),

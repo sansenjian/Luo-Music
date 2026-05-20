@@ -44,7 +44,8 @@ type ExternalPluginHostInternals = {
   ensurePermission(
     registration: ExternalPluginRegistration,
     capability: 'storage' | 'secrets',
-    requestId: string
+    requestId: string,
+    worker?: { postMessage: (message: unknown) => void }
   ): boolean
 }
 
@@ -225,5 +226,26 @@ describe('ExternalPluginHost storage and secrets permissions', () => {
     expect(host.ensurePermission(registration, 'storage', 'storage-request')).toBe(true)
     expect(host.ensurePermission(registration, 'secrets', 'secrets-request')).toBe(true)
     expect(postMessage).not.toHaveBeenCalled()
+  })
+
+  it('sends permission denials through the active worker before runtime registration', () => {
+    const postMessage = vi.fn()
+    const host = new ExternalPluginHost({
+      stateStore: {} as never
+    }) as unknown as ExternalPluginHostInternals
+    const registration = makeRegistration()
+
+    expect(host.ensurePermission(registration, 'storage', 'storage-request', { postMessage })).toBe(
+      false
+    )
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'response',
+      requestId: 'storage-request',
+      ok: false,
+      error: {
+        message: 'Plugin storage access denied: missing permissions.storage'
+      }
+    })
   })
 })

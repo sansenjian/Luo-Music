@@ -135,6 +135,47 @@ describe('api.handler', () => {
     expect(serviceManager.handleRequest).not.toHaveBeenCalled()
   })
 
+  it('uses handler-specific fallback shapes for unsupported built-in API shortcuts', async () => {
+    const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
+
+    const serviceManager = {
+      handleRequest: vi.fn(),
+      getAvailableServices: vi.fn(() => ({ netease: { status: 'ready' } }))
+    }
+
+    const { registerApiHandlers } = await import('../../electron/ipc/handlers/api.handler.ts')
+    registerApiHandlers(serviceManager as never)
+
+    await expect(
+      invokeHandlers.get('api:get-song-detail')?.({ id: '1', platform: 'kugou' })
+    ).resolves.toBeNull()
+    await expect(
+      invokeHandlers.get('api:get-recommended-playlists')?.({ platform: 'kugou' })
+    ).resolves.toEqual([])
+    await expect(invokeHandlers.get('api:get-chart')?.({ platform: 'kugou' })).resolves.toEqual([])
+    await expect(
+      invokeHandlers.get('api:get-song-url')?.({ id: '1', platform: 'kugou' })
+    ).resolves.toEqual({
+      url: '',
+      error: 'Unsupported API platform for built-in gateway: kugou'
+    })
+    await expect(
+      invokeHandlers.get('api:get-lyric')?.({ id: '1', platform: 'kugou' })
+    ).resolves.toEqual({
+      lyric: '',
+      translated: '',
+      romalrc: '',
+      error: 'Unsupported API platform for built-in gateway: kugou'
+    })
+
+    expect(serviceManager.handleRequest).not.toHaveBeenCalled()
+  })
+
   it('normalizes song url responses for both platforms', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
     registerInvokeMock.mockImplementation(

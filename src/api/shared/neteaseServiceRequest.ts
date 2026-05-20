@@ -1,7 +1,6 @@
 import { services } from '@/services'
 import type { ApiService } from '@/services/apiService'
 import { storageAdapter } from '@/services/storageService'
-import { useUserStore } from '@/store/userStore'
 import { HTTP_COOKIE_CACHE_TTL } from '@/constants/http'
 
 type NeteaseApiClient = Pick<ApiService, 'request'>
@@ -29,16 +28,7 @@ const defaultNeteaseServiceApiDeps: Required<NeteaseServiceApiDeps> = {
       return null
     }
   },
-  onAuthExpired: () => {
-    try {
-      const userStore = useUserStore()
-      if (userStore.isLoggedIn) {
-        userStore.logout()
-      }
-    } catch {
-      clearNeteaseServiceCookieCache()
-    }
-  }
+  onAuthExpired: () => clearNeteaseServiceCookieCache()
 }
 
 let neteaseServiceApiDeps: Required<NeteaseServiceApiDeps> = defaultNeteaseServiceApiDeps

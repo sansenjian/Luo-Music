@@ -332,6 +332,7 @@ async function importLegacyPlatformSession(platformId: string): Promise<boolean>
     userStore.setPlatformAuthState(state, platformId)
     return state.status === 'authenticated'
   } catch (error) {
+    legacySessionImportAttempts.delete(platformId)
     logger.warn(`Failed to import legacy ${platformId} login session`, error)
     return false
   }
@@ -355,13 +356,21 @@ async function refreshLoginPlatformAuthState(platform: PlatformDescriptor): Prom
   userStore.setPlatformAuthState(state, platform.id)
 }
 
+async function refreshLoginPlatformAuthStateSafely(platform: PlatformDescriptor): Promise<void> {
+  try {
+    await refreshLoginPlatformAuthState(platform)
+  } catch (error) {
+    logger.warn(`Failed to refresh ${platform.id} login state`, error)
+  }
+}
+
 async function refreshLoginPlatformAuthStates(platforms = loginPlatforms.value): Promise<void> {
   if (!platformService.isElectron()) {
     return
   }
 
   await Promise.all(
-    platforms.filter(shouldRefreshPluginAuthState).map(refreshLoginPlatformAuthState)
+    platforms.filter(shouldRefreshPluginAuthState).map(refreshLoginPlatformAuthStateSafely)
   )
 }
 

@@ -737,6 +737,22 @@ describe('createPluginService', () => {
     })
   })
 
+  it('rejects plugin login challenges with missing types', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      challengeId: 'challenge-1'
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.auth.startLogin('plugin-x')).rejects.toThrow(
+      'Login challenge missing or invalid type'
+    )
+  })
+
   it('polls, submits, refreshes, logs out, and cancels plugin auth through the auth facade', async () => {
     const bridge = createBridge()
     bridge.call
@@ -1011,6 +1027,23 @@ describe('createPluginService', () => {
       id: 'playlist-1',
       limit: 5,
       offset: 5
+    })
+  })
+
+  it('clamps small positive decimal library limits to one', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({ list: [] })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await service.library.getPlaylists('plugin-x', { limit: 0.4 })
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'library.getPlaylists', {
+      limit: 1,
+      offset: 0
     })
   })
 

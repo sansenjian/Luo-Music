@@ -74,7 +74,7 @@ export function isValidUrl(url: string): boolean {
  * 验证音乐平台
  */
 export function isValidPlatform(platform: string): platform is ApiPlatform {
-  return platform.length > 0
+  return platform.trim().length > 0
 }
 
 /**

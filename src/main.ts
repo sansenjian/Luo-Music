@@ -14,6 +14,7 @@ import {
   runRendererNonCriticalInit,
   scheduleNonCriticalInit
 } from './app/startup'
+import { installNeteaseServiceApiAuthInvalidation } from './app/neteaseServiceApi'
 import { ensureVueQueryPlugin } from './app/vueQuery'
 import router from './router'
 import { setupServices } from './services'
@@ -43,6 +44,7 @@ app.config.errorHandler = (err: unknown, _vm: unknown, info: string) => {
 installGlobalErrorHandlers()
 
 app.use(pinia)
+installNeteaseServiceApiAuthInvalidation(pinia)
 app.use(router)
 
 app.mount('#app')

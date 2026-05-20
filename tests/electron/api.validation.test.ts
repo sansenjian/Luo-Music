@@ -35,6 +35,8 @@ describe('api.validation', () => {
       expect(resolvePlatform('kugou')).toBe('kugou')
       expect(resolvePlatform('other')).toBe('other')
       expect(resolvePlatform('')).toBe('netease')
+      expect(resolvePlatform('  kugou  ')).toBe('kugou')
+      expect(resolvePlatform('   ')).toBe('netease')
     })
   })
 
@@ -192,6 +194,7 @@ describe('api.validation', () => {
       expect(validateParams({ platform: 'qq' }).valid).toBe(true)
       expect(validateParams({ platform: 'kugou' }).valid).toBe(true)
       expect(validateParams({ platform: '' }).valid).toBe(false)
+      expect(validateParams({ platform: '   ' }).valid).toBe(false)
     })
 
     it('should reject non-object params', () => {

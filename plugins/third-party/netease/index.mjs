@@ -151,7 +151,7 @@ function normalizeImportedSession(input) {
 function normalizePageInput(input, defaults = {}) {
   const limit =
     typeof input?.limit === 'number' && Number.isFinite(input.limit) && input.limit > 0
-      ? Math.round(input.limit)
+      ? Math.max(1, Math.round(input.limit))
       : defaults.limit || 50
   const offset =
     typeof input?.offset === 'number' && Number.isFinite(input.offset) && input.offset > 0
@@ -428,14 +428,15 @@ export default {
       },
 
       async 'library.getPlaylistTracks'({ id, limit = 50, offset = 0 } = {}) {
+        const page = normalizePageInput({ limit, offset }, { limit: 50 })
+
         if (id === undefined || id === null || id === '') {
           return {
             list: [],
-            page: createPage(limit, offset, 0)
+            page: createPage(page.limit, page.offset, 0)
           }
         }
 
-        const page = normalizePageInput({ limit, offset }, { limit: 50 })
         const data = await apiGet('/playlist/track/all', {
           id,
           limit: page.limit,
@@ -593,7 +594,7 @@ export default {
           platform: ctx.platformId,
           status: 'authenticated',
           ...(account ? { account } : {}),
-          ...(session.expiresAt ? { expiresAt: session.expiresAt } : {}),
+          ...(session.expiresAt !== undefined ? { expiresAt: session.expiresAt } : {}),
           message: '登录会话已导入'
         }
       },

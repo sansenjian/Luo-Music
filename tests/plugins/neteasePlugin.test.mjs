@@ -162,6 +162,63 @@ describe('Netease external plugin', () => {
     )
   })
 
+  it('preserves zero session expiration when importing a cookie session', async () => {
+    const httpGet = vi.fn()
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(
+      adapter['auth.importSession']({
+        session: {
+          credential: {
+            type: 'cookie',
+            value: 'MUSIC_U=legacy-session'
+          },
+          expiresAt: 0
+        }
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'netease',
+        status: 'authenticated',
+        expiresAt: 0
+      })
+    )
+  })
+
+  it('normalizes pagination before returning empty playlist tracks for missing ids', async () => {
+    const httpGet = vi.fn()
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(
+      adapter['library.getPlaylistTracks']({ id: '', limit: -2.5, offset: -10.2 })
+    ).resolves.toEqual({
+      list: [],
+      page: {
+        limit: 50,
+        offset: 0,
+        hasMore: false
+      }
+    })
+
+    expect(httpGet).not.toHaveBeenCalled()
+  })
+
+  it('clamps small positive playlist track limits before empty id pagination', async () => {
+    const httpGet = vi.fn()
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(
+      adapter['library.getPlaylistTracks']({ id: '', limit: 0.4, offset: 0 })
+    ).resolves.toEqual({
+      list: [],
+      page: {
+        limit: 1,
+        offset: 0,
+        hasMore: false
+      }
+    })
+  })
+
   it('exposes standard account and library APIs backed by plugin secrets', async () => {
     const httpGet = vi.fn(url => {
       const requestUrl = new URL(url)

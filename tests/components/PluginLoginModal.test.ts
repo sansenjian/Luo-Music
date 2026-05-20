@@ -5,6 +5,7 @@ const pluginServiceMock = vi.hoisted(() => ({
   auth: {
     startLogin: vi.fn(),
     pollLogin: vi.fn(),
+    refresh: vi.fn(),
     cancelLogin: vi.fn()
   }
 }))
@@ -46,6 +47,12 @@ describe('PluginLoginModal.vue', () => {
       platform: 'kugou',
       status: 'pending',
       message: '等待扫码',
+      updatedAt: Date.now()
+    })
+    pluginServiceMock.auth.refresh.mockResolvedValue({
+      platform: 'kugou',
+      status: 'authenticated',
+      message: '已登录',
       updatedAt: Date.now()
     })
     pluginServiceMock.auth.cancelLogin.mockResolvedValue(undefined)
@@ -106,5 +113,69 @@ describe('PluginLoginModal.vue', () => {
     await flushPromises()
 
     expect(pluginServiceMock.auth.cancelLogin).toHaveBeenCalledWith('kugou', 'challenge-default')
+  })
+
+  it('refreshes auth state before closing a none challenge', async () => {
+    pluginServiceMock.auth.startLogin.mockResolvedValueOnce({
+      challengeId: 'challenge-none',
+      type: 'none',
+      statusText: '已授权'
+    })
+    pluginServiceMock.auth.refresh.mockResolvedValueOnce({
+      platform: 'kugou',
+      status: 'authenticated',
+      message: '真实已登录',
+      updatedAt: 100
+    })
+
+    const { default: PluginLoginModal } = await import('@/components/PluginLoginModal.vue')
+    const wrapper = mount(PluginLoginModal, {
+      props: {
+        modelValue: true,
+        platformId: 'kugou',
+        platformName: 'Kugou Music'
+      }
+    })
+    await flushPromises()
+
+    expect(pluginServiceMock.auth.refresh).toHaveBeenCalledWith('kugou')
+    expect(wrapper.emitted('login-success')?.[0]).toEqual([
+      expect.objectContaining({
+        platform: 'kugou',
+        status: 'authenticated',
+        message: '真实已登录',
+        updatedAt: 100
+      })
+    ])
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([false])
+    expect(toastMocks.success).toHaveBeenCalledWith('Kugou Music 登录成功')
+  })
+
+  it('keeps the modal open when a none challenge refresh is not authenticated', async () => {
+    pluginServiceMock.auth.startLogin.mockResolvedValueOnce({
+      challengeId: 'challenge-none',
+      type: 'none',
+      statusText: '等待授权'
+    })
+    pluginServiceMock.auth.refresh.mockResolvedValueOnce({
+      platform: 'kugou',
+      status: 'pending',
+      message: '仍在授权',
+      updatedAt: 100
+    })
+
+    const { default: PluginLoginModal } = await import('@/components/PluginLoginModal.vue')
+    const wrapper = mount(PluginLoginModal, {
+      props: {
+        modelValue: true,
+        platformId: 'kugou',
+        platformName: 'Kugou Music'
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.emitted('login-success')).toBeUndefined()
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    expect(toastMocks.success).not.toHaveBeenCalled()
   })
 })
