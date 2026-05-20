@@ -114,7 +114,11 @@ export function neteaseRequest(
     .request('netease', endpoint, withCachedCookie(params))
     .then(response => {
       if (getNeteaseBusinessCode(response) === 301) {
-        neteaseServiceApiDeps.onAuthExpired()
+        try {
+          neteaseServiceApiDeps.onAuthExpired()
+        } catch {
+          // Keep request adapters from failing when app-level cleanup throws.
+        }
       }
 
       return response

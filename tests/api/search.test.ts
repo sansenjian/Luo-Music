@@ -71,4 +71,15 @@ describe('search api', () => {
 
     expect(authExpiredMock).toHaveBeenCalledTimes(1)
   })
+
+  it('still returns the response when expired-login cleanup fails', async () => {
+    const response = { code: 301, data: { list: [] } }
+    apiRequestMock.mockResolvedValue(response)
+    authExpiredMock.mockImplementationOnce(() => {
+      throw new Error('cleanup failed')
+    })
+
+    await expect(getHotSearch()).resolves.toBe(response)
+    expect(authExpiredMock).toHaveBeenCalledTimes(1)
+  })
 })

@@ -14,7 +14,7 @@ import {
   runRendererNonCriticalInit,
   scheduleNonCriticalInit
 } from './app/startup'
-import { installNeteaseServiceApiAuthInvalidation } from './app/neteaseServiceApi'
+import { installNeteaseServiceApiAuthInvalidation } from '@/app/neteaseServiceApi'
 import { ensureVueQueryPlugin } from './app/vueQuery'
 import router from './router'
 import { setupServices } from './services'

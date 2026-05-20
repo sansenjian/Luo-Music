@@ -25,7 +25,7 @@ const pluginServiceMock = vi.hoisted(() => ({
     getState: vi.fn<(platformId: string) => Promise<PlatformAuthState>>(),
     importSession: vi.fn<(platformId: string, session: unknown) => Promise<PlatformAuthState>>()
   },
-  onPlatformsChanged: vi.fn<() => () => void>()
+  onPlatformsChanged: vi.fn<(listener: (platforms: PlatformDescriptor[]) => void) => () => void>()
 }))
 const musicServiceMock = vi.hoisted(() => ({
   getLoginCapablePlatformDescriptors: vi.fn()
@@ -751,5 +751,72 @@ describe('UserAvatar', () => {
         }
       })
     )
+  })
+
+  it('allows retrying legacy session import after a non-authenticated result', async () => {
+    const neteaseDescriptor = {
+      id: 'netease',
+      displayName: 'Netease Music',
+      source: 'external' as const,
+      runtime: 'external-host' as const,
+      enabled: true,
+      capabilities: {
+        search: true,
+        songUrl: true,
+        songDetail: true,
+        lyric: true,
+        playlistDetail: true,
+        needsHydration: true,
+        supportsLyricFetch: true,
+        supportsUrlRefreshOnFailure: true,
+        auth: {
+          login: true,
+          importSession: true,
+          preferredMode: 'qr' as const,
+          modes: ['qr' as const]
+        }
+      }
+    }
+    const platformChangeListener: {
+      current: ((platforms: PlatformDescriptor[]) => void) | null
+    } = { current: null }
+    pluginServiceMock.onPlatformsChanged.mockImplementation(listener => {
+      platformChangeListener.current = listener
+      return () => {}
+    })
+    pluginServiceMock.refreshPlatformDescriptors.mockResolvedValue([neteaseDescriptor])
+    pluginServiceMock.auth.getState.mockResolvedValue({
+      platform: 'netease',
+      status: 'anonymous',
+      message: '未登录',
+      updatedAt: Date.now()
+    })
+    pluginServiceMock.auth.importSession
+      .mockResolvedValueOnce({
+        platform: 'netease',
+        status: 'anonymous',
+        message: '导入失败',
+        updatedAt: Date.now()
+      })
+      .mockResolvedValueOnce({
+        platform: 'netease',
+        status: 'authenticated',
+        message: '登录会话已导入',
+        updatedAt: Date.now()
+      })
+
+    const userStore = useUserStore()
+    userStore.login({ nickname: 'Tester', userId: 42 }, 'MUSIC_U=legacy')
+
+    createWrapper()
+    await vi.waitFor(() => expect(pluginServiceMock.auth.importSession).toHaveBeenCalledTimes(1))
+
+    if (!platformChangeListener.current) {
+      throw new Error('Expected plugin platform change listener to be registered')
+    }
+    platformChangeListener.current([neteaseDescriptor])
+
+    await vi.waitFor(() => expect(pluginServiceMock.auth.importSession).toHaveBeenCalledTimes(2))
+    expect(userStore.getPlatformAuthState('netease').status).toBe('authenticated')
   })
 })

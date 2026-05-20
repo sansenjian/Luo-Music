@@ -1,12 +1,12 @@
 import type { Pinia } from 'pinia'
 
 import { configureNeteaseServiceApiDeps } from '@/api/shared/neteaseServiceRequest'
-import { useUserStore } from '@/store/userStore'
+import { clearLegacyPlatformSession } from '@/app/legacyPlatformAuth'
 
 export function installNeteaseServiceApiAuthInvalidation(pinia: Pinia): void {
   configureNeteaseServiceApiDeps({
     onAuthExpired: () => {
-      useUserStore(pinia).logout()
+      clearLegacyPlatformSession('netease', pinia)
     }
   })
 }

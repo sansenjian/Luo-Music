@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 
 import { logout } from '@/api/user'
 import { qqMusicApi } from '@/api/qqmusic'
+import { clearLegacyPlatformSession, logoutLegacyPlatform } from '@/app/legacyPlatformAuth'
 import type { StandardImportedAuthSession } from '@plugin-sdk'
 import type { PlatformDescriptor } from '@shared/types/platform'
 import { resolvePlatformLoginRoute } from '@/platform/music/loginRouting'
@@ -67,7 +68,7 @@ const showPluginLoginModal = computed({
 
 async function checkQQMusicLoginStatus(): Promise<void> {
   if (!userStore.qqCookie) {
-    userStore.logoutQQ()
+    clearLegacyPlatformSession('qq')
     return
   }
 
@@ -80,10 +81,10 @@ async function checkQQMusicLoginStatus(): Promise<void> {
       return
     }
 
-    userStore.logoutQQ()
+    clearLegacyPlatformSession('qq')
   } catch (error) {
     logger.warn('Failed to refresh QQ Music login state', error)
-    userStore.logoutQQ()
+    clearLegacyPlatformSession('qq')
   }
 }
 
@@ -93,7 +94,7 @@ async function handleLogout(): Promise<void> {
   } catch (error) {
     logger.warn('Netease logout request failed, clearing local session', error)
   } finally {
-    userStore.logout()
+    await logoutLegacyPlatform('netease')
     closeDropdown({ restoreFocus: false })
   }
 }
@@ -330,7 +331,11 @@ async function importLegacyPlatformSession(platformId: string): Promise<boolean>
   try {
     const state = await pluginService.auth.importSession(platformId, session)
     userStore.setPlatformAuthState(state, platformId)
-    return state.status === 'authenticated'
+    const isAuthenticated = state.status === 'authenticated'
+    if (!isAuthenticated) {
+      legacySessionImportAttempts.delete(platformId)
+    }
+    return isAuthenticated
   } catch (error) {
     legacySessionImportAttempts.delete(platformId)
     logger.warn(`Failed to import legacy ${platformId} login session`, error)

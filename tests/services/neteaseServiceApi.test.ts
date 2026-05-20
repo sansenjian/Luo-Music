@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { getHotSearch } from '@/api/search'
@@ -10,6 +10,10 @@ import { installNeteaseServiceApiAuthInvalidation } from '@/app/neteaseServiceAp
 import { useUserStore } from '@/store/userStore'
 
 describe('installNeteaseServiceApiAuthInvalidation', () => {
+  afterEach(() => {
+    resetNeteaseServiceApiDeps()
+  })
+
   it('logs out the Netease user when the service API reports an expired session', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
@@ -28,7 +32,5 @@ describe('installNeteaseServiceApiAuthInvalidation', () => {
 
     expect(userStore.isLoggedIn).toBe(false)
     expect(userStore.cookie).toBe('')
-
-    resetNeteaseServiceApiDeps()
   })
 })
