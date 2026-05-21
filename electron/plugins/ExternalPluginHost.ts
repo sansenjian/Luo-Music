@@ -529,6 +529,10 @@ export class ExternalPluginHost {
     const wrapped = new Error(message)
     wrapped.name = typeof errorRecord.name === 'string' ? errorRecord.name : 'PluginCallError'
 
+    if (typeof errorRecord.stack === 'string') {
+      wrapped.stack = errorRecord.stack
+    }
+
     if (typeof errorRecord.code === 'string') {
       ;(wrapped as Error & { code?: string }).code = errorRecord.code
     }

@@ -7,17 +7,6 @@
 
 import { normalizeSong } from './normalize.mjs'
 
-class PluginCallError extends Error {
-  constructor(code, message, options = {}) {
-    super(message)
-    this.name = 'PluginCallError'
-    this.code = code
-    this.retryable = Boolean(options.retryable)
-    this.userMessage = options.userMessage
-    this.details = options.details
-  }
-}
-
 function normalizeLyricText(value) {
   if (typeof value === 'string') return value
   if (value && typeof value === 'object') {
@@ -44,16 +33,6 @@ function resolvePlayableUrl(playData, songId) {
   if (typeof value.url === 'string' && value.url.length > 0) return value.url
 
   return null
-}
-
-function createSongUrlResult(url, options = {}) {
-  if (!url) return { url: null }
-
-  return {
-    url,
-    ...(options.mediaId ? { mediaId: options.mediaId } : {}),
-    level: 'unknown'
-  }
 }
 
 function isRecord(value) {
@@ -154,6 +133,7 @@ function resolveSearchPayload(value) {
 
 export default {
   async create(ctx) {
+    const { createPluginCallError, createSongUrlResult } = ctx.sdk
     const apiBase = (ctx.settings.apiBase || 'http://127.0.0.1:3200').replace(/\/+$/, '')
     const verbose = Boolean(ctx.settings.verboseLog)
 
@@ -270,7 +250,7 @@ export default {
         if (!url) {
           ctx.logger.warn('getSongUrl empty playUrl', { id, mediaId })
         }
-        return createSongUrlResult(url, { mediaId })
+        return createSongUrlResult(url, { mediaId, level: 'unknown' })
       },
 
       async getSongDetail({ id }) {
@@ -291,10 +271,14 @@ export default {
       },
 
       async getPlaylistDetail() {
-        throw new PluginCallError('UNSUPPORTED_OPERATION', 'QQ playlist detail is not supported', {
-          retryable: false,
-          userMessage: 'QQ 音乐插件暂不支持歌单详情'
-        })
+        throw createPluginCallError(
+          'UNSUPPORTED_OPERATION',
+          'QQ playlist detail is not supported',
+          {
+            retryable: false,
+            userMessage: 'QQ 音乐插件暂不支持歌单详情'
+          }
+        )
       },
 
       async 'account.getProfile'() {

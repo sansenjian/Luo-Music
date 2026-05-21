@@ -58,6 +58,24 @@ export interface PluginCallErrorPayload {
   details?: Record<string, unknown>
 }
 
+export type CreatePluginCallError = (
+  codeOrPayload: string | PluginCallErrorPayload,
+  message?: string,
+  options?: Omit<PluginCallErrorPayload, 'code' | 'message'>
+) => PluginCallError
+
+export interface CreateSongUrlResultOptions {
+  mediaId?: string | number
+  expiresAt?: number
+  level?: StandardSongUrlLevel
+  bitrate?: number
+}
+
+export type CreateSongUrlResult = (
+  url: string | null | undefined,
+  options?: CreateSongUrlResultOptions
+) => StandardSongUrl
+
 export class PluginCallError extends Error {
   readonly code: string
   readonly retryable: boolean
@@ -94,6 +112,12 @@ export interface PluginPermissionDeclaration {
 
 export type PluginCategory = 'api' | 'extension' | 'theme'
 
+export interface PluginSdkRuntime {
+  PluginCallError: typeof PluginCallError
+  createPluginCallError: CreatePluginCallError
+  createSongUrlResult: CreateSongUrlResult
+}
+
 export interface PluginContext {
   pluginId: string
   platformId: string
@@ -102,6 +126,7 @@ export interface PluginContext {
   secrets: PluginStorage
   http: RestrictedHttpClient
   logger: PluginLogger
+  sdk: PluginSdkRuntime
 }
 
 export interface PluginArtist {

@@ -141,6 +141,9 @@ describe('plugin standard model normalization', () => {
   })
 
   it('accepts legacy string song-url results and standard URL objects', () => {
+    expect(normalizePluginSongUrlResult('https://example.test/c.mp3')).toBe(
+      'https://example.test/c.mp3'
+    )
     expect(normalizePluginSongUrlResult({ url: 'https://example.test/a.mp3' })).toBe(
       'https://example.test/a.mp3'
     )

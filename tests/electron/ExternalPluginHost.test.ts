@@ -193,6 +193,7 @@ describe('ExternalPluginHost plugin call errors', () => {
       code: 'AUTH_REQUIRED',
       retryable: false,
       userMessage: '请先登录',
+      stack: 'PluginCallError: Auth required\n    at plugin.getSongUrl (plugin.mjs:1:1)',
       details: {
         method: 'library.getLikedSongs'
       }
@@ -208,6 +209,9 @@ describe('ExternalPluginHost plugin call errors', () => {
         method: 'library.getLikedSongs'
       }
     })
+    expect(error.stack).toBe(
+      'PluginCallError: Auth required\n    at plugin.getSongUrl (plugin.mjs:1:1)'
+    )
   })
 })
 

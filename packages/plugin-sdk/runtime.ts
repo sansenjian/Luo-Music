@@ -1,4 +1,53 @@
-import type { PluginContext, PluginLogger, PluginStorage, RestrictedHttpClient } from './types'
+import type {
+  CreateSongUrlResultOptions,
+  PluginContext,
+  PluginLogger,
+  PluginStorage,
+  PluginCallErrorPayload,
+  RestrictedHttpClient,
+  StandardSongUrl
+} from './types'
+import { PluginCallError } from './types'
+
+export function createSongUrlResult(
+  url: string | null | undefined,
+  options: CreateSongUrlResultOptions = {}
+): StandardSongUrl {
+  if (!url) return { url: null }
+
+  return {
+    url,
+    ...(options.mediaId !== undefined && options.mediaId !== null
+      ? { mediaId: options.mediaId }
+      : {}),
+    ...(options.expiresAt !== undefined ? { expiresAt: options.expiresAt } : {}),
+    ...(options.level ? { level: options.level } : {}),
+    ...(options.bitrate !== undefined ? { bitrate: options.bitrate } : {})
+  }
+}
+
+export function createPluginCallError(
+  codeOrPayload: string | PluginCallErrorPayload,
+  message?: string,
+  options: Omit<PluginCallErrorPayload, 'code' | 'message'> = {}
+): PluginCallError {
+  const payload =
+    typeof codeOrPayload === 'string'
+      ? {
+          code: codeOrPayload,
+          message: message ?? 'Plugin call failed',
+          ...options
+        }
+      : codeOrPayload
+
+  return new PluginCallError(payload)
+}
+
+export const pluginSdkRuntime = Object.freeze({
+  PluginCallError,
+  createPluginCallError,
+  createSongUrlResult
+})
 
 class InMemoryPluginStorage implements PluginStorage {
   private readonly values = new Map<string, unknown>()
@@ -82,6 +131,7 @@ export function createPluginContext(
     storage: options.storage ?? new InMemoryPluginStorage(`plugin:${pluginId}:storage`),
     secrets: options.secrets ?? new InMemoryPluginStorage(`plugin:${pluginId}:secrets`),
     http: options.http ?? createUnsupportedHttpClient(platformId),
-    logger: options.logger ?? createConsolePluginLogger(platformId)
+    logger: options.logger ?? createConsolePluginLogger(platformId),
+    sdk: pluginSdkRuntime
   }
 }

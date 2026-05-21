@@ -8,17 +8,6 @@ const DEMO_AUDIO_URL = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-
 const DEFAULT_MAX_RESULTS = 10
 const MAX_RESULTS_LIMIT = 50
 
-class PluginCallError extends Error {
-  constructor(code, message, options = {}) {
-    super(message)
-    this.name = 'PluginCallError'
-    this.code = code
-    this.retryable = Boolean(options.retryable)
-    this.userMessage = options.userMessage
-    this.details = options.details
-  }
-}
-
 let searchCount = 0
 
 function normalizePositiveInteger(value, fallback) {
@@ -48,6 +37,7 @@ function createDemoSong(ctx, id, name, index = 0) {
 
 export default {
   async create(ctx) {
+    const { createPluginCallError, createSongUrlResult } = ctx.sdk
     ctx.logger.info('Demo plugin initialized', {
       platformId: ctx.platformId,
       settings: ctx.settings
@@ -72,7 +62,7 @@ export default {
         const keyword = typeof input.keyword === 'string' ? input.keyword.trim() : ''
 
         if (!keyword) {
-          throw new PluginCallError('PARSE_ERROR', 'Demo search keyword is required', {
+          throw createPluginCallError('PARSE_ERROR', 'Demo search keyword is required', {
             retryable: false,
             userMessage: '请输入搜索关键词'
           })
@@ -99,12 +89,11 @@ export default {
       async getSongUrl(input) {
         ctx.logger.info('Demo getSongUrl', { id: input.id })
 
-        return {
-          url: DEMO_AUDIO_URL,
+        return createSongUrlResult(DEMO_AUDIO_URL, {
           mediaId: input.id,
           level: 'standard',
           bitrate: 128000
-        }
+        })
       },
 
       async getSongDetail(input) {
@@ -134,10 +123,14 @@ export default {
       },
 
       async getPlaylistDetail() {
-        throw new PluginCallError('UNSUPPORTED_OPERATION', 'Demo playlist detail is not supported', {
-          retryable: false,
-          userMessage: 'Demo 插件不支持歌单详情'
-        })
+        throw createPluginCallError(
+          'UNSUPPORTED_OPERATION',
+          'Demo playlist detail is not supported',
+          {
+            retryable: false,
+            userMessage: 'Demo 插件不支持歌单详情'
+          }
+        )
       },
 
       async dispose() {

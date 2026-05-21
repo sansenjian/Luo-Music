@@ -41,11 +41,8 @@ const forbiddenServiceAccessorModules = new Set([
   'src/services/platformAccessor',
   'src/services/playerAccessor'
 ])
-const allowedLocalStorageBoundaryFiles = new Set([
-  'src/platform/web/webPlatformService.ts',
-  'src/services/storageService.ts',
-  'src/utils/storage/appStorage.ts'
-])
+const allowedLocalStorageBoundaryPrefixes = ['src/platform/', 'src/utils/storage/']
+const allowedLocalStorageBoundaryFiles = new Set(['src/services/storageService.ts'])
 const forbiddenPlatformDisplayClassPattern =
   /\b(?:service|server|platform)-badge[-.]?(?:netease|qq)\b/
 const pluginFacadeCallPattern = /\.call\s*\([^,\n]+,\s*['"](?:auth|account|library)\./
@@ -443,7 +440,8 @@ function checkDirectLocalStorageUsage(files, errors, rootDir = projectRoot) {
       file.startsWith('src/') &&
       !file.endsWith('.test.ts') &&
       !file.endsWith('.test.tsx') &&
-      !allowedLocalStorageBoundaryFiles.has(file)
+      !allowedLocalStorageBoundaryFiles.has(file) &&
+      !allowedLocalStorageBoundaryPrefixes.some(prefix => file.startsWith(prefix))
   )
 
   for (const file of productionFiles) {

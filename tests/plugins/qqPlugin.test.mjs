@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import qqPlugin from '../../plugins/third-party/qq/index.mjs'
+import { pluginSdkRuntime } from '../../packages/plugin-sdk/runtime'
 
 function createLogger() {
   return {
@@ -34,7 +35,8 @@ async function createAdapter(httpGet, secrets = {}) {
       remove: vi.fn(),
       clear: vi.fn()
     },
-    logger: createLogger()
+    logger: createLogger(),
+    sdk: pluginSdkRuntime
   }
 
   return {

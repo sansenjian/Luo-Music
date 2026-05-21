@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import neteasePlugin from '../../plugins/third-party/netease/index.mjs'
+import { pluginSdkRuntime } from '../../packages/plugin-sdk/runtime'
 
 function createLogger() {
   return {
@@ -27,7 +28,8 @@ async function createAdapter(httpGet, secrets = {}) {
       set: vi.fn(),
       remove: vi.fn()
     },
-    logger: createLogger()
+    logger: createLogger(),
+    sdk: pluginSdkRuntime
   }
 
   return {

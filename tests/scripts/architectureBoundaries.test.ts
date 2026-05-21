@@ -1,6 +1,6 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -50,6 +50,7 @@ describe('architecture boundary checks', () => {
   })
 
   async function writeTestFile(file: string, source: string) {
+    await mkdir(dirname(join(tempDir, file)), { recursive: true })
     await writeFile(join(tempDir, file), source, 'utf8')
   }
 
@@ -274,6 +275,10 @@ describe('architecture boundary checks', () => {
       'src/services/storageService.ts',
       'export const storage = window.localStorage\n'
     )
+    await writeTestFile(
+      'src/utils/storage/migration.ts',
+      'const value = localStorage.getItem("x")\n'
+    )
 
     const errors: string[] = []
     checkDirectLocalStorageUsage(
@@ -281,7 +286,8 @@ describe('architecture boundary checks', () => {
         'src/components/LegacyToggle.vue',
         'src/composables/useLegacyFlag.ts',
         'src/platform/web/webPlatformService.ts',
-        'src/services/storageService.ts'
+        'src/services/storageService.ts',
+        'src/utils/storage/migration.ts'
       ],
       errors,
       tempDir

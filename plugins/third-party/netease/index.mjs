@@ -20,37 +20,12 @@ const AUDIO_BITRATE_MAP = {
   hires: 999000
 }
 
-class PluginCallError extends Error {
-  constructor(code, message, options = {}) {
-    super(message)
-    this.name = 'PluginCallError'
-    this.code = code
-    this.retryable = Boolean(options.retryable)
-    this.userMessage = options.userMessage
-    this.details = options.details
-  }
-}
-
 function getBitrate(level, fallback = 128000) {
   return AUDIO_BITRATE_MAP[level] ?? fallback
 }
 
 function normalizeAudioLevel(value) {
   return Object.prototype.hasOwnProperty.call(AUDIO_BITRATE_MAP, value) ? value : 'standard'
-}
-
-function createSongUrlResult(url, options = {}) {
-  if (!url) return { url: null }
-
-  return {
-    url,
-    ...(options.mediaId !== undefined && options.mediaId !== null
-      ? { mediaId: options.mediaId }
-      : {}),
-    ...(options.expiresAt !== undefined ? { expiresAt: options.expiresAt } : {}),
-    ...(options.level ? { level: options.level } : {}),
-    ...(options.bitrate !== undefined ? { bitrate: options.bitrate } : {})
-  }
 }
 
 function collectPayloads(response) {
@@ -211,6 +186,7 @@ function createPage(limit, offset, itemCount, total) {
 
 export default {
   async create(ctx) {
+    const { createPluginCallError, createSongUrlResult } = ctx.sdk
     const apiBase = (ctx.settings.apiBase || 'http://127.0.0.1:14532').replace(/\/+$/, '')
     const verbose = Boolean(ctx.settings.verboseLog)
 
@@ -280,7 +256,7 @@ export default {
     async function requireAuthCookie() {
       const cookie = await getAuthCookie()
       if (!cookie) {
-        throw new PluginCallError('AUTH_REQUIRED', 'Netease account is not authenticated', {
+        throw createPluginCallError('AUTH_REQUIRED', 'Netease account is not authenticated', {
           retryable: false,
           userMessage: '请先登录网易云音乐账号'
         })
@@ -296,7 +272,7 @@ export default {
       const cookie = await requireAuthCookie()
       const userId = await resolveCurrentUserId(cookie)
       if (userId === null) {
-        throw new PluginCallError('PARSE_ERROR', 'Unable to resolve Netease user id', {
+        throw createPluginCallError('PARSE_ERROR', 'Unable to resolve Netease user id', {
           retryable: true,
           userMessage: '无法读取网易云账号信息，请稍后重试'
         })
