@@ -24,6 +24,10 @@ function getBitrate(level, fallback = 128000) {
   return AUDIO_BITRATE_MAP[level] ?? fallback
 }
 
+function normalizeAudioLevel(value) {
+  return Object.prototype.hasOwnProperty.call(AUDIO_BITRATE_MAP, value) ? value : 'standard'
+}
+
 function collectPayloads(response) {
   if (!response || typeof response !== 'object') return []
 
@@ -182,6 +186,7 @@ function createPage(limit, offset, itemCount, total) {
 
 export default {
   async create(ctx) {
+    const { createPluginCallError, createSongUrlResult } = ctx.sdk
     const apiBase = (ctx.settings.apiBase || 'http://127.0.0.1:14532').replace(/\/+$/, '')
     const verbose = Boolean(ctx.settings.verboseLog)
 
@@ -251,7 +256,10 @@ export default {
     async function requireAuthCookie() {
       const cookie = await getAuthCookie()
       if (!cookie) {
-        throw new Error('Netease account is not authenticated')
+        throw createPluginCallError('AUTH_REQUIRED', 'Netease account is not authenticated', {
+          retryable: false,
+          userMessage: '请先登录网易云音乐账号'
+        })
       }
       return cookie
     }
@@ -264,7 +272,10 @@ export default {
       const cookie = await requireAuthCookie()
       const userId = await resolveCurrentUserId(cookie)
       if (userId === null) {
-        throw new Error('Unable to resolve Netease user id')
+        throw createPluginCallError('PARSE_ERROR', 'Unable to resolve Netease user id', {
+          retryable: true,
+          userMessage: '无法读取网易云账号信息，请稍后重试'
+        })
       }
       return userId
     }
@@ -291,11 +302,11 @@ export default {
       },
 
       async getSongUrl({ id, options }) {
-        const level =
-          (typeof options === 'string' ? options : options?.level) ||
-          ctx.settings.audioLevel ||
-          'standard'
+        const requestedLevel =
+          (typeof options === 'string' ? options : options?.level) || ctx.settings.audioLevel
+        const level = normalizeAudioLevel(requestedLevel)
         const cookie = await getAuthCookie()
+        const mediaId = options && typeof options === 'object' ? options.mediaId : undefined
 
         try {
           const v1Data = await apiGet('/song/url/v1', {
@@ -307,7 +318,14 @@ export default {
             timestamp: Date.now()
           })
           const v1Url = Array.isArray(v1Data?.data) ? v1Data.data[0]?.url : null
-          if (v1Url) return v1Url
+          if (v1Url) {
+            const item = v1Data.data[0]
+            return createSongUrlResult(v1Url, {
+              mediaId: item?.id ?? mediaId ?? id,
+              level: item?.level || level,
+              bitrate: item?.br ?? getBitrate(level)
+            })
+          }
         } catch {
           // 回退到旧接口
         }
@@ -321,7 +339,12 @@ export default {
         })
 
         const urls = Array.isArray(legacyData?.data) ? legacyData.data : []
-        return urls[0]?.url ?? null
+        const item = urls[0]
+        return createSongUrlResult(item?.url, {
+          mediaId: item?.id ?? mediaId ?? id,
+          level,
+          bitrate: item?.br ?? getBitrate(level)
+        })
       },
 
       async getSongDetail({ id }) {

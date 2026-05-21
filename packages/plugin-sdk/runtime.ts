@@ -1,4 +1,12 @@
 import type { PluginContext, PluginLogger, PluginStorage, RestrictedHttpClient } from './types'
+import { pluginSdkRuntime } from './runtime-shared.mjs'
+export {
+  PluginCallError,
+  createPluginCallError,
+  createPluginSdkRuntime,
+  createSongUrlResult,
+  pluginSdkRuntime
+} from './runtime-shared.mjs'
 
 class InMemoryPluginStorage implements PluginStorage {
   private readonly values = new Map<string, unknown>()
@@ -82,6 +90,7 @@ export function createPluginContext(
     storage: options.storage ?? new InMemoryPluginStorage(`plugin:${pluginId}:storage`),
     secrets: options.secrets ?? new InMemoryPluginStorage(`plugin:${pluginId}:secrets`),
     http: options.http ?? createUnsupportedHttpClient(platformId),
-    logger: options.logger ?? createConsolePluginLogger(platformId)
+    logger: options.logger ?? createConsolePluginLogger(platformId),
+    sdk: pluginSdkRuntime
   }
 }

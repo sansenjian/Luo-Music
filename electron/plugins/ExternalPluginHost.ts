@@ -163,7 +163,7 @@ export class ExternalPluginHost {
         if (message.type === 'call-result') {
           pendingCall.resolve(message.result)
         } else {
-          pendingCall.reject(new Error(message.error?.message ?? 'Plugin call failed'))
+          pendingCall.reject(this.createPluginCallError(message.error))
         }
         return
       }
@@ -517,5 +517,38 @@ export class ExternalPluginHost {
       address: errorWithCause.address,
       port: errorWithCause.port
     }
+  }
+
+  private createPluginCallError(error: unknown): Error {
+    const errorRecord =
+      error && typeof error === 'object' && !Array.isArray(error)
+        ? (error as Record<string, unknown>)
+        : {}
+    const message =
+      typeof errorRecord.message === 'string' ? errorRecord.message : 'Plugin call failed'
+    const wrapped = new Error(message)
+    wrapped.name = typeof errorRecord.name === 'string' ? errorRecord.name : 'PluginCallError'
+
+    if (typeof errorRecord.stack === 'string') {
+      wrapped.stack = errorRecord.stack
+    }
+
+    if (typeof errorRecord.code === 'string') {
+      ;(wrapped as Error & { code?: string }).code = errorRecord.code
+    }
+
+    if (typeof errorRecord.retryable === 'boolean') {
+      ;(wrapped as Error & { retryable?: boolean }).retryable = errorRecord.retryable
+    }
+
+    if (typeof errorRecord.userMessage === 'string') {
+      ;(wrapped as Error & { userMessage?: string }).userMessage = errorRecord.userMessage
+    }
+
+    if (errorRecord.details && typeof errorRecord.details === 'object') {
+      ;(wrapped as Error & { details?: unknown }).details = errorRecord.details
+    }
+
+    return wrapped
   }
 }

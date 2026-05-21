@@ -1,6 +1,6 @@
 # 下一步优化路线图
 
-更新时间：2026-05-20
+更新时间：2026-05-21
 
 这份路线图承接当前服务层 / DI 收口和插件系统增强工作，用于记录下一轮真正值得推进的内容。
 
@@ -22,8 +22,8 @@
 
 建议动作：
 
-- 将 `PluginCallError`、`PluginPlayerHook` SDK 化。
-- 为插件入站转换补充 fixtures，覆盖歌曲、歌词、歌单、账号资料、喜欢歌曲、用户歌单和歌单歌曲。
+- 继续维护已 SDK 化的 `PluginCallError`、`StandardSongUrl`、`PluginPlayerHook` 和基础 `contributionsV2` 合同。
+- 继续为插件入站转换补充 fixtures，覆盖歌曲、歌词、歌单、账号资料、喜欢歌曲、用户歌单和歌单歌曲。
 - 新增或补强测试，确保业务层收到的已经是框架内部模型，平台私有字段只进入 `extra` 或边界层。
 
 完成标准：
@@ -59,8 +59,8 @@
 建议动作：
 
 - 继续维护 Netease API 旧请求路径检查，阻止新增模块直接依赖 `@/utils/http`。
-- 增加 `localStorage` 直接访问白名单检查，仅允许平台、存储或迁移边界使用。
-- 增加插件调用边界检查：组件、store、composable 默认走 `services.plugins().auth/account/library` facade，不直接拼 `pluginService.call(platformId, 'account.xxx')`。
+- 维护 `localStorage` 直接访问白名单检查，仅允许平台、存储或迁移边界使用。
+- 维护插件调用边界检查：组件、store、composable 默认走 `services.plugins().auth/account/library` facade，不直接拼 `pluginService.call(platformId, 'account.xxx')`。
 - 继续阻止业务层直接拼接服务 URL 或重新定义服务端口默认值。
 
 完成标准：

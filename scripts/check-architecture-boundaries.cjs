@@ -41,9 +41,12 @@ const forbiddenServiceAccessorModules = new Set([
   'src/services/platformAccessor',
   'src/services/playerAccessor'
 ])
+const allowedLocalStorageBoundaryPrefixes = ['src/platform/', 'src/utils/storage/']
+const allowedLocalStorageBoundaryFiles = new Set(['src/services/storageService.ts'])
 const forbiddenPlatformDisplayClassPattern =
   /\b(?:service|server|platform)-badge[-.]?(?:netease|qq)\b/
 const pluginFacadeCallPattern = /\.call\s*\([^,\n]+,\s*['"](?:auth|account|library)\./
+const directLocalStoragePattern = /\b(?:window\.)?localStorage\s*(?:\.|\[)/
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue'])
 const importPattern =
   /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
@@ -431,6 +434,30 @@ function checkPluginFacadeUsage(files, errors, rootDir = projectRoot) {
   }
 }
 
+function checkDirectLocalStorageUsage(files, errors, rootDir = projectRoot) {
+  const productionFiles = files.filter(
+    file =>
+      file.startsWith('src/') &&
+      !file.endsWith('.test.ts') &&
+      !file.endsWith('.test.tsx') &&
+      !allowedLocalStorageBoundaryFiles.has(file) &&
+      !allowedLocalStorageBoundaryPrefixes.some(prefix => file.startsWith(prefix))
+  )
+
+  for (const file of productionFiles) {
+    const lines = fs.readFileSync(path.join(rootDir, file), 'utf8').split(/\r?\n/)
+
+    for (let index = 0; index < lines.length; index++) {
+      const code = lines[index].replace(/\/\/.*$/, '')
+      if (directLocalStoragePattern.test(code)) {
+        errors.push(
+          `${file}:${index + 1}: use services.storage() or a platform/storage boundary instead of direct localStorage access`
+        )
+      }
+    }
+  }
+}
+
 function runArchitectureBoundaryChecks() {
   const files = listProjectSourceFiles()
   const errors = []
@@ -446,6 +473,7 @@ function runArchitectureBoundaryChecks() {
   checkTopLevelServiceAccess(files, errors)
   checkPlatformDisplayClassHardcoding(files, errors)
   checkPluginFacadeUsage(files, errors)
+  checkDirectLocalStorageUsage(files, errors)
 
   return errors
 }
@@ -474,6 +502,7 @@ if (require.main === module) {
     checkPlatformDisplayClassHardcoding,
     checkPluginFacadeUsage,
     checkPluginAuthFacadeUsage: checkPluginFacadeUsage,
+    checkDirectLocalStorageUsage,
     checkRendererHttpConstants,
     checkTopLevelServiceAccess,
     extractImports,

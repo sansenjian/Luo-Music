@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import qqPlugin from '../../plugins/third-party/qq/index.mjs'
+import { pluginSdkRuntime } from '../../packages/plugin-sdk/runtime'
 
 function createLogger() {
   return {
@@ -34,7 +35,8 @@ async function createAdapter(httpGet, secrets = {}) {
       remove: vi.fn(),
       clear: vi.fn()
     },
-    logger: createLogger()
+    logger: createLogger(),
+    sdk: pluginSdkRuntime
   }
 
   return {
@@ -133,9 +135,114 @@ describe('QQ external plugin', () => {
       })
     const { adapter } = await createAdapter(httpGet)
 
-    await expect(adapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toBe(
-      'https://dl.stream.qqmusic.qq.com/test.mp3'
-    )
+    await expect(adapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toEqual({
+      url: 'https://dl.stream.qqmusic.qq.com/test.mp3',
+      mediaId: '00400jk23JDWwJ',
+      level: 'unknown'
+    })
+  })
+
+  it('returns a standard empty song-url object when no QQ playable URL is available', async () => {
+    const httpGet = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: {
+          code: 0,
+          track_info: {
+            mid: '002NWZkm4a6W1h',
+            strMediaMid: '00400jk23JDWwJ'
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        response: {
+          code: 0,
+          playUrl: {}
+        }
+      })
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(adapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toEqual({
+      url: null
+    })
+  })
+
+  it('returns an empty song-url object for malformed QQ play-url responses', async () => {
+    const httpGet = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: {
+          code: 1
+        }
+      })
+      .mockResolvedValueOnce({
+        response: undefined
+      })
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(adapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toEqual({
+      url: null
+    })
+
+    const failedPlayUrlHttpGet = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: {
+          code: 0,
+          track_info: {
+            mid: '002NWZkm4a6W1h',
+            strMediaMid: '00400jk23JDWwJ'
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        response: {
+          code: 1
+        }
+      })
+    const { adapter: failedPlayUrlAdapter } = await createAdapter(failedPlayUrlHttpGet)
+
+    await expect(failedPlayUrlAdapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toEqual({
+      url: null
+    })
+  })
+
+  it('falls back to the song id when QQ detail lacks a media id', async () => {
+    const httpGet = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: {
+          code: 0,
+          track_info: {
+            mid: '002NWZkm4a6W1h'
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        response: {
+          code: 0,
+          url: 'https://dl.stream.qqmusic.qq.com/no-media-id.mp3'
+        }
+      })
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(adapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toEqual({
+      url: 'https://dl.stream.qqmusic.qq.com/no-media-id.mp3',
+      mediaId: '002NWZkm4a6W1h',
+      level: 'unknown'
+    })
+  })
+
+  it('throws a standard unsupported-operation error for playlist details', async () => {
+    const httpGet = vi.fn()
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(adapter.getPlaylistDetail()).rejects.toMatchObject({
+      name: 'PluginCallError',
+      code: 'UNSUPPORTED_OPERATION',
+      retryable: false,
+      userMessage: 'QQ 音乐插件暂不支持歌单详情'
+    })
   })
 
   it('imports a standardized cookie session into plugin secrets', async () => {

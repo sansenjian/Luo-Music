@@ -58,31 +58,41 @@ export interface PluginCallErrorPayload {
   details?: Record<string, unknown>
 }
 
-export class PluginCallError extends Error {
+export type PluginCallErrorInstance = Error & {
   readonly code: string
   readonly retryable: boolean
   readonly userMessage?: string
   readonly details?: Record<string, unknown>
 
-  constructor(payload: PluginCallErrorPayload) {
-    super(payload.message)
-    this.name = 'PluginCallError'
-    this.code = payload.code
-    this.retryable = payload.retryable ?? false
-    this.userMessage = payload.userMessage
-    this.details = payload.details
-  }
-
-  toJSON(): PluginCallErrorPayload {
-    return {
-      code: this.code,
-      message: this.message,
-      retryable: this.retryable,
-      userMessage: this.userMessage,
-      details: this.details
-    }
-  }
+  toJSON(): PluginCallErrorPayload
 }
+
+export interface PluginCallErrorConstructor {
+  new (payload: PluginCallErrorPayload): PluginCallErrorInstance
+  new (
+    codeOrPayload: string | PluginCallErrorPayload,
+    message?: string,
+    options?: Omit<PluginCallErrorPayload, 'code' | 'message'>
+  ): PluginCallErrorInstance
+}
+
+export type CreatePluginCallError = (
+  codeOrPayload: string | PluginCallErrorPayload,
+  message?: string,
+  options?: Omit<PluginCallErrorPayload, 'code' | 'message'>
+) => PluginCallErrorInstance
+
+export interface CreateSongUrlResultOptions {
+  mediaId?: string | number
+  expiresAt?: number
+  level?: StandardSongUrlLevel
+  bitrate?: number
+}
+
+export type CreateSongUrlResult = (
+  url: string | null | undefined,
+  options?: CreateSongUrlResultOptions
+) => StandardSongUrl
 
 export interface PluginPermissionDeclaration {
   network?: {
@@ -94,6 +104,12 @@ export interface PluginPermissionDeclaration {
 
 export type PluginCategory = 'api' | 'extension' | 'theme'
 
+export interface PluginSdkRuntime {
+  PluginCallError: PluginCallErrorConstructor
+  createPluginCallError: CreatePluginCallError
+  createSongUrlResult: CreateSongUrlResult
+}
+
 export interface PluginContext {
   pluginId: string
   platformId: string
@@ -102,6 +118,7 @@ export interface PluginContext {
   secrets: PluginStorage
   http: RestrictedHttpClient
   logger: PluginLogger
+  sdk: PluginSdkRuntime
 }
 
 export interface PluginArtist {
@@ -181,9 +198,21 @@ export interface StandardPlaylistPage {
 }
 
 export interface SongUrlOptions {
-  level?: 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires'
+  level?: StandardSongUrlQuality
   br?: number
   mediaId?: string
+}
+
+export type StandardSongUrlQuality = 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires'
+
+export type StandardSongUrlLevel = StandardSongUrlQuality | 'unknown'
+
+export interface StandardSongUrl {
+  url: string | null
+  mediaId?: string | number
+  expiresAt?: number
+  level?: StandardSongUrlLevel
+  bitrate?: number
 }
 
 export interface SearchInput {
@@ -282,6 +311,10 @@ export interface StandardImportedAuthSession {
 export type PluginPlayerHookName =
   | 'beforePlay'
   | 'afterPlay'
+  | 'beforeResolveUrl'
+  | 'onUrlExpired'
+  | 'onPlayError'
+  | 'afterTrackChanged'
   | 'beforeSongUrlRefresh'
   | 'afterSongUrlRefresh'
   | 'playbackError'
@@ -295,9 +328,11 @@ export interface PluginPlayerHookContext {
 }
 
 export interface PluginPlayerHookResult {
+  allow?: boolean
   handled?: boolean
   message?: string
   song?: PluginSong
+  replacementUrl?: StandardSongUrl
   extra?: Record<string, unknown>
 }
 
@@ -311,7 +346,45 @@ export interface PluginPlayerHookContribution {
   description?: string
 }
 
-export type PluginContribution = PluginPlayerHookContribution
+export interface PluginSettingsContribution {
+  type: 'settings'
+  settings: PluginSettingDefinition[]
+}
+
+export interface PluginAuthContribution {
+  type: 'auth'
+  preferredMode?: StandardLoginMode
+  modes: StandardLoginMode[]
+}
+
+export interface PluginCommandContribution {
+  type: 'command'
+  command: string
+  title: string
+  description?: string
+}
+
+export interface PluginMenuContribution {
+  type: 'menu'
+  command: string
+  title?: string
+  location?: string
+}
+
+export interface PluginPanelContribution {
+  type: 'panel'
+  panelId: string
+  title: string
+  schema?: Record<string, unknown>
+}
+
+export type PluginContribution =
+  | PluginSettingsContribution
+  | PluginAuthContribution
+  | PluginCommandContribution
+  | PluginMenuContribution
+  | PluginPanelContribution
+  | PluginPlayerHookContribution
 
 export interface PluginAuthCapability {
   login?: boolean
@@ -331,6 +404,28 @@ export interface PluginLibraryCapability {
   likedSongs?: boolean
   playlists?: boolean
   playlistTracks?: boolean
+}
+
+export interface PluginCapabilityMap {
+  music?: {
+    search?: boolean
+    songUrl?: boolean
+    songDetail?: boolean
+    lyric?: boolean
+    playlistDetail?: boolean
+    urlRefresh?: boolean
+  }
+  auth?: PluginAuthCapability
+  account?: PluginAccountCapability
+  library?: PluginLibraryCapability
+  commands?: boolean
+  ui?: boolean
+  player?: boolean
+  storage?: boolean
+  network?: {
+    domains: string[]
+  }
+  secrets?: boolean
 }
 
 export type PluginMethodName =
@@ -378,6 +473,7 @@ export interface PluginManifest {
   source: 'core' | 'builtin' | 'external'
   runtime: 'local' | 'external-host'
   capabilities: MusicPluginCapabilities
+  capabilitiesV2?: PluginCapabilityMap
   requiresServices?: string[]
   permissions?: PluginPermissionDeclaration
   contributions?: {
@@ -389,7 +485,7 @@ export interface PluginManifest {
 
 export interface MusicPluginInstance {
   search?(input: SearchInput): Promise<SearchResult>
-  getSongUrl?(input: SongUrlInput): Promise<string | null>
+  getSongUrl?(input: SongUrlInput): Promise<string | null | StandardSongUrl>
   getSongDetail?(input: SongDetailInput): Promise<PluginSong | null>
   getLyric?(input: LyricInput): Promise<LyricResult>
   getPlaylistDetail?(input: PlaylistDetailInput): Promise<PlaylistDetail | null>

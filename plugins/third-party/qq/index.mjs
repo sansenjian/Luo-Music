@@ -133,6 +133,7 @@ function resolveSearchPayload(value) {
 
 export default {
   async create(ctx) {
+    const { createPluginCallError, createSongUrlResult } = ctx.sdk
     const apiBase = (ctx.settings.apiBase || 'http://127.0.0.1:3200').replace(/\/+$/, '')
     const verbose = Boolean(ctx.settings.verboseLog)
 
@@ -242,14 +243,14 @@ export default {
 
         if (!data) {
           ctx.logger.warn('getSongUrl failed', { id, mediaId })
-          return null
+          return createSongUrlResult(null)
         }
 
         const url = resolvePlayableUrl(data, id)
         if (!url) {
           ctx.logger.warn('getSongUrl empty playUrl', { id, mediaId })
         }
-        return url
+        return createSongUrlResult(url, { mediaId, level: 'unknown' })
       },
 
       async getSongDetail({ id }) {
@@ -270,7 +271,14 @@ export default {
       },
 
       async getPlaylistDetail() {
-        return null
+        throw createPluginCallError(
+          'UNSUPPORTED_OPERATION',
+          'QQ playlist detail is not supported',
+          {
+            retryable: false,
+            userMessage: 'QQ 音乐插件暂不支持歌单详情'
+          }
+        )
       },
 
       async 'account.getProfile'() {

@@ -1,6 +1,6 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -11,10 +11,12 @@ const {
   checkLocalLibraryNativeTestBoundaries,
   checkNeteaseApiRequestImports,
   checkPlatformDisplayClassHardcoding,
+  checkDirectLocalStorageUsage,
   checkPluginAuthFacadeUsage,
   checkRendererHttpConstants,
   checkTopLevelServiceAccess
 } = require('../../scripts/check-architecture-boundaries.cjs') as {
+  checkDirectLocalStorageUsage: (files: string[], errors: string[], rootDir?: string) => void
   checkLegacyServiceAccessorImports: (files: string[], errors: string[], rootDir?: string) => void
   checkLocalLibraryNativeTestBoundaries: (
     files: string[],
@@ -38,6 +40,7 @@ describe('architecture boundary checks', () => {
     await mkdir(join(tempDir, 'src', 'components'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'composables'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'constants'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'platform', 'web'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'services'), { recursive: true })
     await mkdir(join(tempDir, 'src', 'store'), { recursive: true })
   })
@@ -47,6 +50,7 @@ describe('architecture boundary checks', () => {
   })
 
   async function writeTestFile(file: string, source: string) {
+    await mkdir(dirname(join(tempDir, file)), { recursive: true })
     await writeFile(join(tempDir, file), source, 'utf8')
   }
 
@@ -253,6 +257,48 @@ describe('architecture boundary checks', () => {
       ),
       expect.stringContaining(
         'src/components/UserLibrary.vue:2: use services.plugins().auth/account/library methods'
+      )
+    ])
+  })
+
+  it('keeps direct localStorage access inside platform and storage boundaries', async () => {
+    await writeTestFile('src/components/LegacyToggle.vue', 'localStorage.setItem("x", "1")\n')
+    await writeTestFile(
+      'src/composables/useLegacyFlag.ts',
+      'const value = window.localStorage.getItem("x")\n'
+    )
+    await writeTestFile(
+      'src/platform/web/webPlatformService.ts',
+      'const value = localStorage.getItem("x")\n'
+    )
+    await writeTestFile(
+      'src/services/storageService.ts',
+      'export const storage = window.localStorage\n'
+    )
+    await writeTestFile(
+      'src/utils/storage/migration.ts',
+      'const value = localStorage.getItem("x")\n'
+    )
+
+    const errors: string[] = []
+    checkDirectLocalStorageUsage(
+      [
+        'src/components/LegacyToggle.vue',
+        'src/composables/useLegacyFlag.ts',
+        'src/platform/web/webPlatformService.ts',
+        'src/services/storageService.ts',
+        'src/utils/storage/migration.ts'
+      ],
+      errors,
+      tempDir
+    )
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/components/LegacyToggle.vue:1: use services.storage() or a platform/storage boundary'
+      ),
+      expect.stringContaining(
+        'src/composables/useLegacyFlag.ts:1: use services.storage() or a platform/storage boundary'
       )
     ])
   })
