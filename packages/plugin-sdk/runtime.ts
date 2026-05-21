@@ -43,11 +43,15 @@ export function createPluginCallError(
   return new PluginCallError(payload)
 }
 
-export const pluginSdkRuntime = Object.freeze({
-  PluginCallError,
-  createPluginCallError,
-  createSongUrlResult
-})
+export function createPluginSdkRuntime() {
+  return Object.freeze({
+    PluginCallError,
+    createPluginCallError,
+    createSongUrlResult
+  })
+}
+
+export const pluginSdkRuntime = createPluginSdkRuntime()
 
 class InMemoryPluginStorage implements PluginStorage {
   private readonly values = new Map<string, unknown>()

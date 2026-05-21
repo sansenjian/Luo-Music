@@ -54,6 +54,14 @@ function createSongUrlResult(url, options = {}) {
   };
 }
 
+function createPluginSdkRuntime() {
+  return Object.freeze({
+    PluginCallError,
+    createPluginCallError,
+    createSongUrlResult,
+  });
+}
+
 function serializeError(error) {
   if (error instanceof Error) {
     return {
@@ -126,11 +134,7 @@ const pluginContext = {
     warn: createLogger("warn"),
     error: createLogger("error"),
   },
-  sdk: Object.freeze({
-    PluginCallError,
-    createPluginCallError,
-    createSongUrlResult,
-  }),
+  sdk: createPluginSdkRuntime(),
 };
 
 let pluginInstancePromise = null;

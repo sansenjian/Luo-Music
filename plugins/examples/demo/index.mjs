@@ -48,6 +48,13 @@ export default {
       searchCount = storedCount
     }
 
+    async function resetSearchCount() {
+      searchCount = 0
+      await ctx.storage.set('searchCount', searchCount)
+      ctx.logger.info('Demo search count reset')
+      return { count: searchCount }
+    }
+
     return {
       async search(input) {
         searchCount += 1
@@ -131,6 +138,12 @@ export default {
             userMessage: 'Demo 插件不支持歌单详情'
           }
         )
+      },
+
+      'demo.resetSearchCount': resetSearchCount,
+
+      async 'command.demo.resetSearchCount'() {
+        return resetSearchCount()
       },
 
       async dispose() {

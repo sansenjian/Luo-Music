@@ -158,5 +158,7 @@ describe('plugin standard model normalization', () => {
     ).toBe('https://example.test/b.mp3')
     expect(normalizePluginSongUrlResult({ url: '' })).toBeNull()
     expect(normalizePluginSongUrlResult({ url: null })).toBeNull()
+    expect(normalizePluginSongUrlResult({ mediaId: 'x' })).toBeNull()
+    expect(normalizePluginSongUrlResult({ url: 123 as never })).toBeNull()
   })
 })

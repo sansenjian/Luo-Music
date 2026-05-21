@@ -167,6 +167,72 @@ describe('QQ external plugin', () => {
     })
   })
 
+  it('returns an empty song-url object for malformed QQ play-url responses', async () => {
+    const httpGet = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: {
+          code: 1
+        }
+      })
+      .mockResolvedValueOnce({
+        response: undefined
+      })
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(adapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toEqual({
+      url: null
+    })
+
+    const failedPlayUrlHttpGet = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: {
+          code: 0,
+          track_info: {
+            mid: '002NWZkm4a6W1h',
+            strMediaMid: '00400jk23JDWwJ'
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        response: {
+          code: 1
+        }
+      })
+    const { adapter: failedPlayUrlAdapter } = await createAdapter(failedPlayUrlHttpGet)
+
+    await expect(failedPlayUrlAdapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toEqual({
+      url: null
+    })
+  })
+
+  it('falls back to the song id when QQ detail lacks a media id', async () => {
+    const httpGet = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: {
+          code: 0,
+          track_info: {
+            mid: '002NWZkm4a6W1h'
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        response: {
+          code: 0,
+          url: 'https://dl.stream.qqmusic.qq.com/no-media-id.mp3'
+        }
+      })
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(adapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toEqual({
+      url: 'https://dl.stream.qqmusic.qq.com/no-media-id.mp3',
+      mediaId: '002NWZkm4a6W1h',
+      level: 'unknown'
+    })
+  })
+
   it('throws a standard unsupported-operation error for playlist details', async () => {
     const httpGet = vi.fn()
     const { adapter } = await createAdapter(httpGet)
