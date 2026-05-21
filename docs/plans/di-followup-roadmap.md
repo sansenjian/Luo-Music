@@ -166,10 +166,7 @@
 - 新增静态检查，阻止 API / store / composable 模块顶层固化 `services.xxx()` 返回值
 - 新增静态检查，阻止 Netease API 模块直接依赖 `@/utils/http`
 - 新增静态检查，阻止 renderer HTTP 常量重新定义服务端口默认值
-
-后续可选方向：
-
-- 增加对 `localStorage` 直接访问的白名单检查，仅允许边界模块使用
+- 新增静态检查，阻止业务层直接访问 `localStorage`，仅允许平台和存储边界使用
 
 完成标准：
 

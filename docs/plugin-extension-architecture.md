@@ -716,7 +716,7 @@ export interface PluginManifestV2Extensions {
 - 补充 `StandardAuthState`、`StandardLoginChallenge` 和 `auth.*` 能力草案。
 - [x] 补充 `PluginSecretStore` / `ctx.secrets` 最小类型。
 - [x] `RestrictedHttpClient` 已支持 `headers` 和 `timeoutMs`，供插件携带自身凭据发起受控请求。
-- [ ] `PluginCallError`、`PluginPlayerHook` 仍待 SDK 化。
+- [x] `PluginCallError`、`StandardSongUrl`、`PluginPlayerHook` 和基础 `contributionsV2` 类型已 SDK 化；运行时仍按 v1 能力逐步接入。
 
 ### 阶段二: 入站适配层
 

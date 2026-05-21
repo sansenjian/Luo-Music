@@ -41,6 +41,49 @@ describe('plugin standard model normalization', () => {
     expect(song?.artists[0]).toEqual({ id: 'song-1-artist-0', name: 'Artist' })
   })
 
+  it('preserves framework fields and keeps platform-specific data under extra', () => {
+    const song = normalizePluginSong(
+      {
+        id: 1001,
+        name: 'Standard Song',
+        artists: [{ id: 'artist-1', name: 'Artist' }],
+        album: { id: 'album-1', name: 'Album', picUrl: 'cover.jpg' },
+        duration: 180000,
+        mvid: 'mv-1',
+        platform: 'raw-platform',
+        originalId: 'raw-1001',
+        url: 'https://media.example.test/song.mp3',
+        mediaId: 'media-1',
+        unavailable: true,
+        errorMessage: 'region limited',
+        extra: {
+          qqSongmid: '003',
+          neteasePrivilege: { fee: 1 }
+        }
+      },
+      'third-party'
+    )
+
+    expect(song).toEqual({
+      id: 1001,
+      name: 'Standard Song',
+      artists: [{ id: 'artist-1', name: 'Artist' }],
+      album: { id: 'album-1', name: 'Album', picUrl: 'cover.jpg' },
+      duration: 180000,
+      mvid: 'mv-1',
+      platform: 'third-party',
+      originalId: 'raw-1001',
+      url: 'https://media.example.test/song.mp3',
+      mediaId: 'media-1',
+      unavailable: true,
+      errorMessage: 'region limited',
+      extra: {
+        qqSongmid: '003',
+        neteasePrivilege: { fee: 1 }
+      }
+    })
+  })
+
   it('drops invalid songs and degrades invalid duration to zero', () => {
     expect(normalizePluginSong({ id: false }, 'qq')).toBeNull()
 
@@ -65,24 +108,52 @@ describe('plugin standard model normalization', () => {
       {
         id: 'playlist-1',
         name: 'Playlist',
+        coverImgUrl: 'cover.png',
+        description: 'A playlist',
+        trackCount: 1.2,
         tracks: [{ id: 'song-1', duration: 1, album: {}, artists: [] }, { id: undefined }]
       },
       'demo'
     )
 
+    expect(playlist).toMatchObject({
+      id: 'playlist-1',
+      name: 'Playlist',
+      coverImgUrl: 'cover.png',
+      description: 'A playlist',
+      trackCount: 1
+    })
     expect(playlist?.tracks).toHaveLength(1)
     expect(playlist?.tracks[0].platform).toBe('demo')
   })
 
-  it('supports legacy rlyric and object song-url results', () => {
+  it('normalizes lyric objects with standard defaults and legacy rlyric support', () => {
     expect(normalizePluginLyricResult({ lrc: 'a', tlyric: 'b', rlyric: 'c' })).toEqual({
       lrc: 'a',
       tlyric: 'b',
       romalrc: 'c'
     })
+    expect(normalizePluginLyricResult({ lrc: 123, tlyric: null, romalrc: undefined })).toEqual({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+  })
+
+  it('accepts legacy string song-url results and standard URL objects', () => {
     expect(normalizePluginSongUrlResult({ url: 'https://example.test/a.mp3' })).toBe(
       'https://example.test/a.mp3'
     )
+    expect(
+      normalizePluginSongUrlResult({
+        url: 'https://example.test/b.mp3',
+        mediaId: 'media-2',
+        expiresAt: 0,
+        level: 'lossless',
+        bitrate: 999000
+      })
+    ).toBe('https://example.test/b.mp3')
     expect(normalizePluginSongUrlResult({ url: '' })).toBeNull()
+    expect(normalizePluginSongUrlResult({ url: null })).toBeNull()
   })
 })

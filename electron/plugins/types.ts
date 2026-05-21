@@ -3,6 +3,7 @@ import type {
   MusicPluginCapabilities,
   PluginCategory,
   PluginContribution,
+  PluginManifest,
   PluginMethodName,
   PluginPermissionDeclaration,
   PluginSettingDefinition,
@@ -28,6 +29,7 @@ export interface ExternalPluginManifest {
   runtime: 'external-host'
   entry: ExternalPluginEntry
   capabilities: MusicPluginCapabilities
+  capabilitiesV2?: PluginManifest['capabilitiesV2']
   requiresServices?: string[]
   permissions?: PluginPermissionDeclaration
   contributions?: {
@@ -114,12 +116,57 @@ const pluginPlayerHookContributionSchema = z.object({
   hook: z.enum([
     'beforePlay',
     'afterPlay',
+    'beforeResolveUrl',
+    'onUrlExpired',
+    'onPlayError',
+    'afterTrackChanged',
     'beforeSongUrlRefresh',
     'afterSongUrlRefresh',
     'playbackError'
   ]),
   description: z.string().optional()
 })
+
+const pluginSettingsContributionSchema = z.object({
+  type: z.literal('settings'),
+  settings: z.array(pluginSettingDefinitionSchema)
+})
+
+const pluginAuthContributionSchema = z.object({
+  type: z.literal('auth'),
+  preferredMode: z.enum(['qr', 'browser', 'form']).optional(),
+  modes: z.array(z.enum(['qr', 'browser', 'form']))
+})
+
+const pluginCommandContributionSchema = z.object({
+  type: z.literal('command'),
+  command: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().optional()
+})
+
+const pluginMenuContributionSchema = z.object({
+  type: z.literal('menu'),
+  command: z.string().min(1),
+  title: z.string().min(1).optional(),
+  location: z.string().min(1).optional()
+})
+
+const pluginPanelContributionSchema = z.object({
+  type: z.literal('panel'),
+  panelId: z.string().min(1),
+  title: z.string().min(1),
+  schema: z.record(z.string(), z.unknown()).optional()
+})
+
+const pluginContributionSchema = z.discriminatedUnion('type', [
+  pluginSettingsContributionSchema,
+  pluginAuthContributionSchema,
+  pluginCommandContributionSchema,
+  pluginMenuContributionSchema,
+  pluginPanelContributionSchema,
+  pluginPlayerHookContributionSchema
+])
 
 const pluginCapabilitiesSchema = z.object({
   search: z.boolean(),
@@ -155,6 +202,32 @@ const pluginCapabilitiesSchema = z.object({
     .optional()
 })
 
+const pluginCapabilityMapSchema = z.object({
+  music: z
+    .object({
+      search: z.boolean().optional(),
+      songUrl: z.boolean().optional(),
+      songDetail: z.boolean().optional(),
+      lyric: z.boolean().optional(),
+      playlistDetail: z.boolean().optional(),
+      urlRefresh: z.boolean().optional()
+    })
+    .optional(),
+  auth: pluginCapabilitiesSchema.shape.auth,
+  account: pluginCapabilitiesSchema.shape.account,
+  library: pluginCapabilitiesSchema.shape.library,
+  commands: z.boolean().optional(),
+  ui: z.boolean().optional(),
+  player: z.boolean().optional(),
+  storage: z.boolean().optional(),
+  network: z
+    .object({
+      domains: z.array(z.string().min(1))
+    })
+    .optional(),
+  secrets: z.boolean().optional()
+})
+
 const pluginPermissionsSchema = z
   .object({
     network: z
@@ -185,6 +258,7 @@ export const ExternalPluginManifestSchema = z.object({
     module: z.enum(['esm', 'cjs']).default('esm')
   }),
   capabilities: pluginCapabilitiesSchema,
+  capabilitiesV2: pluginCapabilityMapSchema.optional(),
   requiresServices: z.array(z.string().min(1)).optional(),
   permissions: pluginPermissionsSchema,
   contributions: z
@@ -193,7 +267,7 @@ export const ExternalPluginManifestSchema = z.object({
       themeResources: z.array(pluginThemeResourceSchema).optional()
     })
     .optional(),
-  contributionsV2: z.array(pluginPlayerHookContributionSchema).optional()
+  contributionsV2: z.array(pluginContributionSchema).optional()
 })
 
 export function createPlatformDescriptorFromExternalPlugin(

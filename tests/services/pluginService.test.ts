@@ -901,6 +901,28 @@ describe('createPluginService', () => {
     })
   })
 
+  it('rejects malformed account profiles at the plugin facade boundary', async () => {
+    const bridge = createBridge()
+    bridge.call
+      .mockResolvedValueOnce({
+        id: 'user-1',
+        nickname: '',
+        rawCookie: 'secret'
+      })
+      .mockResolvedValueOnce({
+        id: { nested: true },
+        nickname: 'Plugin User'
+      })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.account.getProfile('plugin-x')).resolves.toBeNull()
+    await expect(service.account.getProfile('plugin-x')).resolves.toBeNull()
+  })
+
   it('normalizes plugin library pages through the library facade', async () => {
     const bridge = createBridge()
     bridge.call
@@ -1027,6 +1049,111 @@ describe('createPluginService', () => {
       id: 'playlist-1',
       limit: 5,
       offset: 5
+    })
+  })
+
+  it('keeps plugin library payloads on framework models and filters invalid entries', async () => {
+    const bridge = createBridge()
+    bridge.call
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'liked-1',
+            name: 'Liked Song',
+            artists: [{ id: 'artist-1', name: 'Artist' }],
+            album: { id: 'album-1', name: 'Album', picUrl: 'cover.png' },
+            duration: 180000,
+            originalId: 'raw-liked-1',
+            mvid: 0,
+            rawPlatformField: 'ignored',
+            extra: {
+              sourceTraceId: 'trace-1'
+            }
+          },
+          {
+            id: true,
+            name: 'Invalid Song'
+          }
+        ],
+        page: { limit: 20.6, offset: 1.4, total: 2 }
+      })
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'playlist-1',
+            name: 'Playlist 1',
+            coverImgUrl: 'playlist.png',
+            description: 'desc',
+            trackCount: 12.8,
+            subscribed: true,
+            creator: {
+              id: 'creator-1',
+              nickname: 'Creator',
+              rawProfile: 'ignored'
+            },
+            extra: {
+              source: 'plugin'
+            },
+            rawPlaylistField: 'ignored'
+          },
+          {
+            id: 'playlist-2',
+            name: ''
+          }
+        ],
+        page: { limit: 10, offset: 0, hasMore: false }
+      })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(
+      service.library.getLikedSongs('plugin-x', { limit: 20.6, offset: 1.4 })
+    ).resolves.toEqual({
+      list: [
+        expect.objectContaining({
+          id: 'liked-1',
+          name: 'Liked Song',
+          platform: 'plugin-x',
+          originalId: 'raw-liked-1',
+          extra: {
+            sourceTraceId: 'trace-1'
+          }
+        })
+      ],
+      page: {
+        limit: 21,
+        offset: 1,
+        total: 2,
+        hasMore: false
+      }
+    })
+
+    await expect(service.library.getPlaylists('plugin-x', { limit: 10 })).resolves.toEqual({
+      list: [
+        {
+          id: 'playlist-1',
+          name: 'Playlist 1',
+          coverImgUrl: 'playlist.png',
+          description: 'desc',
+          trackCount: 13,
+          subscribed: true,
+          creator: {
+            id: 'creator-1',
+            nickname: 'Creator'
+          },
+          extra: {
+            source: 'plugin'
+          }
+        }
+      ],
+      page: {
+        limit: 10,
+        offset: 0,
+        hasMore: false
+      }
     })
   })
 
