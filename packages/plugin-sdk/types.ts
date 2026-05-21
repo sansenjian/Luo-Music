@@ -58,11 +58,29 @@ export interface PluginCallErrorPayload {
   details?: Record<string, unknown>
 }
 
+export type PluginCallErrorInstance = Error & {
+  readonly code: string
+  readonly retryable: boolean
+  readonly userMessage?: string
+  readonly details?: Record<string, unknown>
+
+  toJSON(): PluginCallErrorPayload
+}
+
+export interface PluginCallErrorConstructor {
+  new (payload: PluginCallErrorPayload): PluginCallErrorInstance
+  new (
+    codeOrPayload: string | PluginCallErrorPayload,
+    message?: string,
+    options?: Omit<PluginCallErrorPayload, 'code' | 'message'>
+  ): PluginCallErrorInstance
+}
+
 export type CreatePluginCallError = (
   codeOrPayload: string | PluginCallErrorPayload,
   message?: string,
   options?: Omit<PluginCallErrorPayload, 'code' | 'message'>
-) => PluginCallError
+) => PluginCallErrorInstance
 
 export interface CreateSongUrlResultOptions {
   mediaId?: string | number
@@ -76,32 +94,6 @@ export type CreateSongUrlResult = (
   options?: CreateSongUrlResultOptions
 ) => StandardSongUrl
 
-export class PluginCallError extends Error {
-  readonly code: string
-  readonly retryable: boolean
-  readonly userMessage?: string
-  readonly details?: Record<string, unknown>
-
-  constructor(payload: PluginCallErrorPayload) {
-    super(payload.message)
-    this.name = 'PluginCallError'
-    this.code = payload.code
-    this.retryable = payload.retryable ?? false
-    this.userMessage = payload.userMessage
-    this.details = payload.details
-  }
-
-  toJSON(): PluginCallErrorPayload {
-    return {
-      code: this.code,
-      message: this.message,
-      retryable: this.retryable,
-      userMessage: this.userMessage,
-      details: this.details
-    }
-  }
-}
-
 export interface PluginPermissionDeclaration {
   network?: {
     domains: string[]
@@ -113,7 +105,7 @@ export interface PluginPermissionDeclaration {
 export type PluginCategory = 'api' | 'extension' | 'theme'
 
 export interface PluginSdkRuntime {
-  PluginCallError: typeof PluginCallError
+  PluginCallError: PluginCallErrorConstructor
   createPluginCallError: CreatePluginCallError
   createSongUrlResult: CreateSongUrlResult
 }

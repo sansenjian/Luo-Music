@@ -1,57 +1,12 @@
-import type {
-  CreateSongUrlResultOptions,
-  PluginContext,
-  PluginLogger,
-  PluginStorage,
-  PluginCallErrorPayload,
-  RestrictedHttpClient,
-  StandardSongUrl
-} from './types'
-import { PluginCallError } from './types'
-
-export function createSongUrlResult(
-  url: string | null | undefined,
-  options: CreateSongUrlResultOptions = {}
-): StandardSongUrl {
-  if (!url) return { url: null }
-
-  return {
-    url,
-    ...(options.mediaId !== undefined && options.mediaId !== null
-      ? { mediaId: options.mediaId }
-      : {}),
-    ...(options.expiresAt !== undefined ? { expiresAt: options.expiresAt } : {}),
-    ...(options.level ? { level: options.level } : {}),
-    ...(options.bitrate !== undefined ? { bitrate: options.bitrate } : {})
-  }
-}
-
-export function createPluginCallError(
-  codeOrPayload: string | PluginCallErrorPayload,
-  message?: string,
-  options: Omit<PluginCallErrorPayload, 'code' | 'message'> = {}
-): PluginCallError {
-  const payload =
-    typeof codeOrPayload === 'string'
-      ? {
-          code: codeOrPayload,
-          message: message ?? 'Plugin call failed',
-          ...options
-        }
-      : codeOrPayload
-
-  return new PluginCallError(payload)
-}
-
-export function createPluginSdkRuntime() {
-  return Object.freeze({
-    PluginCallError,
-    createPluginCallError,
-    createSongUrlResult
-  })
-}
-
-export const pluginSdkRuntime = createPluginSdkRuntime()
+import type { PluginContext, PluginLogger, PluginStorage, RestrictedHttpClient } from './types'
+import { pluginSdkRuntime } from './runtime-shared.mjs'
+export {
+  PluginCallError,
+  createPluginCallError,
+  createPluginSdkRuntime,
+  createSongUrlResult,
+  pluginSdkRuntime
+} from './runtime-shared.mjs'
 
 class InMemoryPluginStorage implements PluginStorage {
   private readonly values = new Map<string, unknown>()
