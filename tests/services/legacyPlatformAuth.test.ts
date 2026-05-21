@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import {
   configureLegacyPlatformAuthDeps,
+  clearPlatformAuthSessions,
   clearLegacyPlatformSession,
   logoutLegacyPlatform,
   resetLegacyPlatformAuthDeps
@@ -85,5 +86,31 @@ describe('legacyPlatformAuth', () => {
 
     expect(userStore.isLoggedIn).toBe(false)
     expect(userStore.isPlatformAuthenticated('netease')).toBe(false)
+  })
+
+  it('clears local and plugin auth state for all provided platforms', async () => {
+    const userStore = useUserStore()
+    userStore.login({ nickname: 'Tester', userId: 42 }, 'MUSIC_U=legacy')
+    userStore.setQQCookie('qq-cookie')
+    userStore.setPlatformAuthState({
+      platform: 'kugou',
+      status: 'authenticated'
+    })
+    pluginLogoutMock.mockImplementation(platformId =>
+      Promise.resolve({
+        platform: platformId,
+        status: 'anonymous'
+      })
+    )
+
+    await clearPlatformAuthSessions(['netease', 'qq', 'kugou', 'kugou', ''])
+
+    expect(userStore.isLoggedIn).toBe(false)
+    expect(userStore.qqCookie).toBe('')
+    expect(userStore.platformAuthList.every(state => state.status === 'anonymous')).toBe(true)
+    expect(pluginLogoutMock).toHaveBeenCalledTimes(3)
+    expect(pluginLogoutMock).toHaveBeenCalledWith('netease')
+    expect(pluginLogoutMock).toHaveBeenCalledWith('qq')
+    expect(pluginLogoutMock).toHaveBeenCalledWith('kugou')
   })
 })

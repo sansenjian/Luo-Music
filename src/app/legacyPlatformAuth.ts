@@ -39,7 +39,17 @@ function syncLegacyPlatformLogout(platformId: LegacyPlatformId, pinia?: Pinia): 
   userStore.clearPlatformAuthState(platformId)
 }
 
-async function clearPluginAuthState(platformId: LegacyPlatformId, pinia?: Pinia): Promise<void> {
+function normalizePlatformIds(platformIds: Iterable<string>): string[] {
+  return Array.from(
+    new Set(
+      Array.from(platformIds)
+        .map(platformId => platformId.trim())
+        .filter(Boolean)
+    )
+  )
+}
+
+async function clearPluginAuthState(platformId: string, pinia?: Pinia): Promise<void> {
   try {
     const state = await legacyPlatformAuthDeps.getPluginService().auth.logout(platformId)
     useUserStore(pinia).setPlatformAuthState(state, platformId)
@@ -59,4 +69,18 @@ export async function logoutLegacyPlatform(
 export function clearLegacyPlatformSession(platformId: LegacyPlatformId, pinia?: Pinia): void {
   syncLegacyPlatformLogout(platformId, pinia)
   void clearPluginAuthState(platformId, pinia)
+}
+
+export async function clearPlatformAuthSessions(
+  platformIds: Iterable<string>,
+  pinia?: Pinia
+): Promise<void> {
+  const userStore = useUserStore(pinia)
+  userStore.logout()
+  userStore.logoutQQ()
+  userStore.clearAllPlatformAuthStates()
+
+  await Promise.all(
+    normalizePlatformIds(platformIds).map(platformId => clearPluginAuthState(platformId, pinia))
+  )
 }

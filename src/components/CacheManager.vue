@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { clearPlatformAuthSessions } from '@/app/legacyPlatformAuth'
 import { services } from '@/services'
 import { getPlatformDisplayInfo } from '@/platform/music/display'
 import { useUserStore } from '@/store/userStore'
 
 const platformService = services.platform()
+const musicService = services.music()
 const userStore = useUserStore()
 const cacheSize = ref({ httpCache: 0, httpCacheFormatted: '0 B' })
 const loading = ref(false)
@@ -123,10 +125,17 @@ async function clearAllCache() {
   }
 }
 
-function clearAccountCache() {
-  userStore.logout()
-  userStore.logoutQQ()
-  userStore.clearAllPlatformAuthStates()
+function getAccountCachePlatformIds(): string[] {
+  return Array.from(
+    new Set([
+      ...userStore.platformAuthList.map(state => state.platform),
+      ...musicService.getLoginCapablePlatformDescriptors().map(platform => platform.id)
+    ])
+  )
+}
+
+async function clearAccountCache() {
+  await clearPlatformAuthSessions(getAccountCachePlatformIds())
   notify('账号缓存已清理', 'success')
 }
 
