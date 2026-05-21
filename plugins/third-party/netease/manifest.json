@@ -44,6 +44,44 @@
       "playlistTracks": true
     }
   },
+  "capabilitiesV2": {
+    "music": {
+      "search": true,
+      "songUrl": true,
+      "songDetail": true,
+      "lyric": true,
+      "playlistDetail": true,
+      "urlRefresh": true
+    },
+    "auth": {
+      "login": true,
+      "logout": true,
+      "refresh": true,
+      "profile": true,
+      "importSession": true,
+      "preferredMode": "qr",
+      "modes": ["qr"]
+    },
+    "account": {
+      "profile": true
+    },
+    "library": {
+      "likedSongs": true,
+      "playlists": true,
+      "playlistTracks": true
+    },
+    "storage": true,
+    "network": {
+      "domains": [
+        "localhost",
+        "127.0.0.1",
+        "music.163.com",
+        "interface.music.163.com",
+        "interface3.music.163.com"
+      ]
+    },
+    "secrets": true
+  },
   "permissions": {
     "network": {
       "domains": [
@@ -85,5 +123,42 @@
         "default": false
       }
     ]
-  }
+  },
+  "contributionsV2": [
+    {
+      "type": "settings",
+      "settings": [
+        {
+          "key": "apiBase",
+          "type": "text",
+          "label": "API 服务地址",
+          "default": "http://127.0.0.1:14532"
+        },
+        {
+          "key": "audioLevel",
+          "type": "select",
+          "label": "默认音质",
+          "default": "standard",
+          "options": [
+            { "value": "standard", "label": "标准" },
+            { "value": "higher", "label": "较高" },
+            { "value": "exhigh", "label": "极高" },
+            { "value": "lossless", "label": "无损" },
+            { "value": "hires", "label": "Hi-Res" }
+          ]
+        },
+        {
+          "key": "verboseLog",
+          "type": "boolean",
+          "label": "详细日志",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "auth",
+      "preferredMode": "qr",
+      "modes": ["qr"]
+    }
+  ]
 }

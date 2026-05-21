@@ -1,162 +1,148 @@
 /**
  * Luo-Music Demo Plugin
  *
- * 完整的第三方插件示例，演示：
- * - search: 搜索歌曲
- * - getSongUrl: 获取播放地址 (模拟)
- * - getSongDetail: 获取歌曲详情 (模拟)
- * - getLyric: 获取歌词 (模拟)
- * - settings: 用户可配置项 (最大结果数、详细日志)
- * - storage: 持久化存储 (搜索计数)
- * - logger: 结构化日志输出
- * - dispose: 资源清理
+ * A small, installable plugin template that returns framework standard models.
  */
 
-let searchCount = 0;
+const DEMO_AUDIO_URL = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+const DEFAULT_MAX_RESULTS = 10
+const MAX_RESULTS_LIMIT = 50
+
+class PluginCallError extends Error {
+  constructor(code, message, options = {}) {
+    super(message)
+    this.name = 'PluginCallError'
+    this.code = code
+    this.retryable = Boolean(options.retryable)
+    this.userMessage = options.userMessage
+    this.details = options.details
+  }
+}
+
+let searchCount = 0
+
+function normalizePositiveInteger(value, fallback) {
+  const numberValue = Number(value)
+  return Number.isFinite(numberValue) && numberValue > 0 ? Math.round(numberValue) : fallback
+}
+
+function createDemoSong(ctx, id, name, index = 0) {
+  return {
+    id,
+    name,
+    artists: [{ id: 'demo-artist', name: 'Demo Artist' }],
+    album: {
+      id: 'demo-album',
+      name: 'Demo Album',
+      picUrl: ''
+    },
+    duration: 180000 + index * 10000,
+    mvid: 0,
+    platform: ctx.platformId,
+    originalId: id,
+    extra: {
+      template: true
+    }
+  }
+}
 
 export default {
   async create(ctx) {
-    ctx.logger.info("Demo plugin initialized", {
+    ctx.logger.info('Demo plugin initialized', {
       platformId: ctx.platformId,
-      settings: ctx.settings,
-    });
+      settings: ctx.settings
+    })
 
-    // 从 storage 恢复上次的搜索计数
-    const storedCount = await ctx.storage.get("searchCount");
-    if (typeof storedCount === "number") {
-      searchCount = storedCount;
+    const storedCount = await ctx.storage.get('searchCount')
+    if (typeof storedCount === 'number' && Number.isFinite(storedCount)) {
+      searchCount = storedCount
     }
 
     return {
-      /**
-       * 搜索歌曲
-       *
-       * @param {Object} input
-       * @param {string} input.keyword - 搜索关键词
-       * @param {number} input.limit   - 每页条数
-       * @param {number} input.page    - 页码 (从 1 开始)
-       * @returns {Promise<{ list: Array, total: number }>}
-       */
       async search(input) {
-        searchCount++;
-        await ctx.storage.set("searchCount", searchCount);
+        searchCount += 1
+        await ctx.storage.set('searchCount', searchCount)
 
-        const limit = Math.min(Number(ctx.settings.maxResults ?? input.limit ?? 10), 50);
-        const verbose = Boolean(ctx.settings.verbose);
+        const configuredLimit = normalizePositiveInteger(
+          ctx.settings.maxResults,
+          normalizePositiveInteger(input.limit, DEFAULT_MAX_RESULTS)
+        )
+        const limit = Math.min(configuredLimit, MAX_RESULTS_LIMIT)
+        const page = normalizePositiveInteger(input.page, 1)
+        const keyword = typeof input.keyword === 'string' ? input.keyword.trim() : ''
 
-        if (verbose) {
-          ctx.logger.debug("Searching...", {
-            keyword: input.keyword,
+        if (!keyword) {
+          throw new PluginCallError('PARSE_ERROR', 'Demo search keyword is required', {
+            retryable: false,
+            userMessage: '请输入搜索关键词'
+          })
+        }
+
+        if (ctx.settings.verbose) {
+          ctx.logger.debug('Searching demo catalog', {
+            keyword,
             limit,
-            page: input.page,
-          });
+            page
+          })
         }
 
-        ctx.logger.info(`Demo search #${searchCount}: "${input.keyword}"`);
-
-        const results = [];
-        for (let i = 0; i < limit; i++) {
-          results.push({
-            id: `demo-${input.page}-${i}`,
-            name: `[Demo] "${input.keyword}" 结果 ${i + 1}`,
-            artists: [{ id: "demo-artist", name: "Demo Artist" }],
-            album: {
-              id: `demo-album-${input.page}`,
-              name: "Demo Album",
-              picUrl: "",
-            },
-            duration: 180000 + i * 10000,
-            mvid: 0,
-            platform: ctx.platformId,
-            originalId: `demo-${input.page}-${i}`,
-          });
-        }
-
-        return { list: results, total: results.length * 3 };
-      },
-
-      /**
-       * 获取播放地址
-       *
-       * Demo 插件返回一个公共领域音频文件作为模拟。
-       *
-       * @param {Object} input
-       * @param {string|number} input.id - 歌曲 ID
-       * @returns {Promise<string|null>}
-       */
-      async getSongUrl(input) {
-        ctx.logger.info("Demo getSongUrl", { id: input.id });
-
-        // 返回一个示例音频 URL (公共领域)
-        return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-      },
-
-      /**
-       * 获取歌曲详情
-       *
-       * @param {Object} input
-       * @param {string|number} input.id - 歌曲 ID
-       * @returns {Promise<Object|null>}
-       */
-      async getSongDetail(input) {
-        ctx.logger.info("Demo getSongDetail", { id: input.id });
+        const results = Array.from({ length: limit }, (_, index) =>
+          createDemoSong(ctx, `demo-${page}-${index}`, `[Demo] "${keyword}" 结果 ${index + 1}`, index)
+        )
 
         return {
-          id: input.id,
-          name: `[Demo] Song ${input.id}`,
-          artists: [{ id: "demo-artist", name: "Demo Artist" }],
-          album: { id: "demo-album", name: "Demo Album", picUrl: "" },
-          duration: 180000,
-          mvid: 0,
-          platform: ctx.platformId,
-          originalId: input.id,
-        };
+          list: results,
+          total: results.length * 3
+        }
       },
 
-      /**
-       * 获取歌词
-       *
-       * Demo 插件返回模拟的 LRC 格式歌词。
-       *
-       * @param {Object} input
-       * @param {string|number} input.id - 歌曲 ID
-       * @returns {Promise<{ lrc: string, tlyric: string, romalrc: string }>}
-       */
+      async getSongUrl(input) {
+        ctx.logger.info('Demo getSongUrl', { id: input.id })
+
+        return {
+          url: DEMO_AUDIO_URL,
+          mediaId: input.id,
+          level: 'standard',
+          bitrate: 128000
+        }
+      },
+
+      async getSongDetail(input) {
+        ctx.logger.info('Demo getSongDetail', { id: input.id })
+
+        return createDemoSong(ctx, input.id, `[Demo] Song ${input.id}`)
+      },
+
       async getLyric(input) {
-        ctx.logger.info("Demo getLyric", { id: input.id });
+        ctx.logger.info('Demo getLyric', { id: input.id })
 
         return {
           lrc: [
-            "[00:00.00]Demo Plugin - 示例歌词",
-            "[00:05.00]这是一首由 Demo 插件生成的示例歌曲",
-            "[00:10.00]歌词内容仅用于演示插件接口",
-            "[00:15.00]实际使用时请替换为真实歌词获取逻辑",
-          ].join("\n"),
+            '[00:00.00]Demo Plugin - 示例歌词',
+            '[00:05.00]这是一首由 Demo 插件生成的示例歌曲',
+            '[00:10.00]歌词内容仅用于演示插件接口',
+            '[00:15.00]实际使用时请替换为真实歌词获取逻辑'
+          ].join('\n'),
           tlyric: [
-            "[00:00.00]Demo Plugin - Example Lyrics",
-            "[00:05.00]This is a demo song generated by the Demo plugin",
-            "[00:10.00]Lyrics are only for demonstrating the plugin interface",
-            "[00:15.00]Replace with real lyric fetching logic in production",
-          ].join("\n"),
-          romalrc: "",
-        };
+            '[00:00.00]Demo Plugin - Example Lyrics',
+            '[00:05.00]This is a demo song generated by the Demo plugin',
+            '[00:10.00]Lyrics are only for demonstrating the plugin interface',
+            '[00:15.00]Replace with real lyric fetching logic in production'
+          ].join('\n'),
+          romalrc: ''
+        }
       },
 
-      /**
-       * 获取歌单详情
-       *
-       * Demo 插件不支持此功能。
-       */
       async getPlaylistDetail() {
-        return null;
+        throw new PluginCallError('UNSUPPORTED_OPERATION', 'Demo playlist detail is not supported', {
+          retryable: false,
+          userMessage: 'Demo 插件不支持歌单详情'
+        })
       },
 
-      /**
-       * 清理资源
-       */
       async dispose() {
-        ctx.logger.info("Demo plugin disposed", { searchCount });
-      },
-    };
-  },
-};
+        ctx.logger.info('Demo plugin disposed', { searchCount })
+      }
+    }
+  }
+}

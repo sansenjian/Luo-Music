@@ -7,6 +7,17 @@
 
 import { normalizeSong } from './normalize.mjs'
 
+class PluginCallError extends Error {
+  constructor(code, message, options = {}) {
+    super(message)
+    this.name = 'PluginCallError'
+    this.code = code
+    this.retryable = Boolean(options.retryable)
+    this.userMessage = options.userMessage
+    this.details = options.details
+  }
+}
+
 function normalizeLyricText(value) {
   if (typeof value === 'string') return value
   if (value && typeof value === 'object') {
@@ -33,6 +44,16 @@ function resolvePlayableUrl(playData, songId) {
   if (typeof value.url === 'string' && value.url.length > 0) return value.url
 
   return null
+}
+
+function createSongUrlResult(url, options = {}) {
+  if (!url) return { url: null }
+
+  return {
+    url,
+    ...(options.mediaId ? { mediaId: options.mediaId } : {}),
+    level: 'unknown'
+  }
 }
 
 function isRecord(value) {
@@ -242,14 +263,14 @@ export default {
 
         if (!data) {
           ctx.logger.warn('getSongUrl failed', { id, mediaId })
-          return null
+          return createSongUrlResult(null)
         }
 
         const url = resolvePlayableUrl(data, id)
         if (!url) {
           ctx.logger.warn('getSongUrl empty playUrl', { id, mediaId })
         }
-        return url
+        return createSongUrlResult(url, { mediaId })
       },
 
       async getSongDetail({ id }) {
@@ -270,7 +291,10 @@ export default {
       },
 
       async getPlaylistDetail() {
-        return null
+        throw new PluginCallError('UNSUPPORTED_OPERATION', 'QQ playlist detail is not supported', {
+          retryable: false,
+          userMessage: 'QQ 音乐插件暂不支持歌单详情'
+        })
       },
 
       async 'account.getProfile'() {

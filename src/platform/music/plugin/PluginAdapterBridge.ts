@@ -7,7 +7,8 @@ import type {
   PluginContext,
   SearchInput,
   SongDetailInput,
-  SongUrlInput
+  SongUrlInput,
+  StandardSongUrl
 } from '@plugin-sdk'
 import type { PlatformBooleanCapability, PlatformCapabilities } from '@shared/types/platform'
 import {
@@ -59,7 +60,7 @@ export class PluginAdapterBridge extends MusicPlatformAdapter {
   async getSongUrl(id: string | number, options?: SongUrlOptions | string): Promise<string | null> {
     const handler = this.requireHandler('getSongUrl', 'songUrl') as (
       input: SongUrlInput
-    ) => Promise<string | null>
+    ) => Promise<string | null | StandardSongUrl>
 
     return normalizePluginSongUrlResult(await handler({ id, options }))
   }

@@ -39,6 +39,40 @@
       "profile": true
     }
   },
+  "capabilitiesV2": {
+    "music": {
+      "search": true,
+      "songUrl": true,
+      "songDetail": true,
+      "lyric": true,
+      "playlistDetail": false,
+      "urlRefresh": false
+    },
+    "auth": {
+      "login": true,
+      "logout": true,
+      "refresh": true,
+      "profile": true,
+      "importSession": true,
+      "preferredMode": "qr",
+      "modes": ["qr"]
+    },
+    "account": {
+      "profile": true
+    },
+    "storage": true,
+    "network": {
+      "domains": [
+        "localhost",
+        "127.0.0.1",
+        "y.gtimg.cn",
+        "c.y.qq.com",
+        "u.y.qq.com",
+        "shc.y.qq.com"
+      ]
+    },
+    "secrets": true
+  },
   "permissions": {
     "network": {
       "domains": [
@@ -68,5 +102,29 @@
         "default": false
       }
     ]
-  }
+  },
+  "contributionsV2": [
+    {
+      "type": "settings",
+      "settings": [
+        {
+          "key": "apiBase",
+          "type": "text",
+          "label": "API 服务地址",
+          "default": "http://127.0.0.1:3200"
+        },
+        {
+          "key": "verboseLog",
+          "type": "boolean",
+          "label": "详细日志",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "auth",
+      "preferredMode": "qr",
+      "modes": ["qr"]
+    }
+  ]
 }

@@ -13,6 +13,13 @@ function serializeError(error) {
       message: error.message,
       stack: error.stack,
       name: error.name,
+      code: typeof error.code === "string" ? error.code : undefined,
+      retryable: typeof error.retryable === "boolean" ? error.retryable : undefined,
+      userMessage: typeof error.userMessage === "string" ? error.userMessage : undefined,
+      details:
+        error.details && typeof error.details === "object" && !Array.isArray(error.details)
+          ? error.details
+          : undefined,
     };
   }
 

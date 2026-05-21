@@ -133,9 +133,48 @@ describe('QQ external plugin', () => {
       })
     const { adapter } = await createAdapter(httpGet)
 
-    await expect(adapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toBe(
-      'https://dl.stream.qqmusic.qq.com/test.mp3'
-    )
+    await expect(adapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toEqual({
+      url: 'https://dl.stream.qqmusic.qq.com/test.mp3',
+      mediaId: '00400jk23JDWwJ',
+      level: 'unknown'
+    })
+  })
+
+  it('returns a standard empty song-url object when no QQ playable URL is available', async () => {
+    const httpGet = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: {
+          code: 0,
+          track_info: {
+            mid: '002NWZkm4a6W1h',
+            strMediaMid: '00400jk23JDWwJ'
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        response: {
+          code: 0,
+          playUrl: {}
+        }
+      })
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(adapter.getSongUrl({ id: '002NWZkm4a6W1h' })).resolves.toEqual({
+      url: null
+    })
+  })
+
+  it('throws a standard unsupported-operation error for playlist details', async () => {
+    const httpGet = vi.fn()
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(adapter.getPlaylistDetail()).rejects.toMatchObject({
+      name: 'PluginCallError',
+      code: 'UNSUPPORTED_OPERATION',
+      retryable: false,
+      userMessage: 'QQ 音乐插件暂不支持歌单详情'
+    })
   })
 
   it('imports a standardized cookie session into plugin secrets', async () => {

@@ -31,6 +31,7 @@ import { ExternalPluginHost } from '../../electron/plugins/ExternalPluginHost'
 
 type ExternalPluginHostInternals = {
   runtimes: Map<string, { worker: { postMessage: (message: unknown) => void } }>
+  createPluginCallError(error: unknown): Error
   handleHttpRequest(
     registration: ExternalPluginRegistration,
     method: 'GET' | 'POST',
@@ -177,6 +178,36 @@ describe('ExternalPluginHost HTTP proxy', () => {
       Cookie: 'MUSIC_U=abc'
     })
     expect(init.signal).toBeInstanceOf(AbortSignal)
+  })
+})
+
+describe('ExternalPluginHost plugin call errors', () => {
+  it('preserves standard plugin error fields from worker call failures', () => {
+    const host = new ExternalPluginHost({
+      stateStore: {} as never
+    }) as unknown as ExternalPluginHostInternals
+
+    const error = host.createPluginCallError({
+      name: 'PluginCallError',
+      message: 'Auth required',
+      code: 'AUTH_REQUIRED',
+      retryable: false,
+      userMessage: '请先登录',
+      details: {
+        method: 'library.getLikedSongs'
+      }
+    })
+
+    expect(error).toMatchObject({
+      name: 'PluginCallError',
+      message: 'Auth required',
+      code: 'AUTH_REQUIRED',
+      retryable: false,
+      userMessage: '请先登录',
+      details: {
+        method: 'library.getLikedSongs'
+      }
+    })
   })
 })
 

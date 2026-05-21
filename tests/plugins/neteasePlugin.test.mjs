@@ -43,9 +43,12 @@ describe('Netease external plugin', () => {
     })
     const { adapter } = await createAdapter(httpGet)
 
-    await expect(adapter.getSongUrl({ id: '1969519579' })).resolves.toBe(
-      'http://m702.music.126.net/song.mp3'
-    )
+    await expect(adapter.getSongUrl({ id: '1969519579' })).resolves.toEqual({
+      url: 'http://m702.music.126.net/song.mp3',
+      mediaId: '1969519579',
+      level: 'standard',
+      bitrate: 128000
+    })
 
     const requestedUrl = new URL(httpGet.mock.calls[0][0])
     expect(requestedUrl.pathname).toBe('/song/url/v1')
@@ -64,9 +67,12 @@ describe('Netease external plugin', () => {
       cookie: 'MUSIC_U=member-session; __csrf=csrf-token'
     })
 
-    await expect(adapter.getSongUrl({ id: '33894312' })).resolves.toBe(
-      'http://m702.music.126.net/vip-song.mp3'
-    )
+    await expect(adapter.getSongUrl({ id: '33894312' })).resolves.toEqual({
+      url: 'http://m702.music.126.net/vip-song.mp3',
+      mediaId: '33894312',
+      level: 'standard',
+      bitrate: 128000
+    })
 
     const requestedUrl = new URL(httpGet.mock.calls[0][0])
     expect(requestedUrl.pathname).toBe('/song/url/v1')
@@ -87,9 +93,12 @@ describe('Netease external plugin', () => {
       })
     const { adapter } = await createAdapter(httpGet)
 
-    await expect(adapter.getSongUrl({ id: '1969519579', options: 'higher' })).resolves.toBe(
-      'http://m802.music.126.net/fallback.mp3'
-    )
+    await expect(adapter.getSongUrl({ id: '1969519579', options: 'higher' })).resolves.toEqual({
+      url: 'http://m802.music.126.net/fallback.mp3',
+      mediaId: '1969519579',
+      level: 'higher',
+      bitrate: 192000
+    })
 
     const requestedUrl = new URL(httpGet.mock.calls[1][0])
     expect(requestedUrl.pathname).toBe('/song/url')
@@ -112,15 +121,47 @@ describe('Netease external plugin', () => {
       cookie: 'MUSIC_U=member-session; __csrf=csrf-token'
     })
 
-    await expect(adapter.getSongUrl({ id: '33894312', options: 'exhigh' })).resolves.toBe(
-      'http://m802.music.126.net/vip-fallback.mp3'
-    )
+    await expect(adapter.getSongUrl({ id: '33894312', options: 'exhigh' })).resolves.toEqual({
+      url: 'http://m802.music.126.net/vip-fallback.mp3',
+      mediaId: '33894312',
+      level: 'exhigh',
+      bitrate: 320000
+    })
 
     const requestedUrl = new URL(httpGet.mock.calls[1][0])
     expect(requestedUrl.pathname).toBe('/song/url')
     expect(requestedUrl.searchParams.get('cookie')).toBe(
       'MUSIC_U=member-session; __csrf=csrf-token'
     )
+  })
+
+  it('normalizes song URL object metadata from v1 responses', async () => {
+    const httpGet = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 1969519579,
+          url: 'https://m801.music.126.net/lossless.flac',
+          level: 'lossless',
+          br: 999000
+        }
+      ]
+    })
+    const { adapter } = await createAdapter(httpGet)
+
+    await expect(
+      adapter.getSongUrl({
+        id: '1969519579',
+        options: {
+          level: 'lossless',
+          mediaId: 'media-1'
+        }
+      })
+    ).resolves.toEqual({
+      url: 'https://m801.music.126.net/lossless.flac',
+      mediaId: 1969519579,
+      level: 'lossless',
+      bitrate: 999000
+    })
   })
 
   it('imports a standardized cookie session into plugin secrets', async () => {
