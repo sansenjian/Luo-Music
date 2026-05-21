@@ -40,6 +40,20 @@ export type PluginMethodName =
   | 'getSongDetail'
   | 'getLyric'
   | 'getPlaylistDetail'
+  | 'account.getProfile'
+  | 'library.getLikedSongs'
+  | 'library.getPlaylists'
+  | 'library.getPlaylistTracks'
+  | 'auth.getState'
+  | 'auth.startLogin'
+  | 'auth.pollLogin'
+  | 'auth.submitLogin'
+  | 'auth.cancelLogin'
+  | 'auth.importSession'
+  | 'auth.refresh'
+  | 'auth.logout'
+
+export type ApiPlatform = SongPlatform
 
 export type ServiceStatus = 'running' | 'stopped' | 'error'
 
@@ -379,7 +393,7 @@ type InvokeChannelsDefinition = MergeChannels<
         {
           keyword: string
           type?: string
-          platform?: 'netease' | 'qq'
+          platform?: ApiPlatform
           page?: number
           limit?: number
         }
@@ -388,42 +402,42 @@ type InvokeChannelsDefinition = MergeChannels<
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_SONG_URL,
-      [{ id: string | number; platform?: 'netease' | 'qq'; quality?: number; mediaId?: string }],
+      [{ id: string | number; platform?: ApiPlatform; quality?: number; mediaId?: string }],
       { url?: string; error?: string }
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_LYRIC,
-      [{ id: string | number; platform?: 'netease' | 'qq' }],
+      [{ id: string | number; platform?: ApiPlatform }],
       { lyric?: string; translated?: string; romalrc?: string; error?: string }
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_SONG_DETAIL,
-      [{ id: string | number; platform?: 'netease' | 'qq' }],
+      [{ id: string | number; platform?: ApiPlatform }],
       unknown
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_PLAYLIST_DETAIL,
-      [{ id: string | number; platform?: 'netease' | 'qq' }],
+      [{ id: string | number; platform?: ApiPlatform }],
       unknown
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_ARTIST_DETAIL,
-      [{ id: string | number; platform?: 'netease' | 'qq' }],
+      [{ id: string | number; platform?: ApiPlatform }],
       unknown
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_ALBUM_DETAIL,
-      [{ id: string | number; platform?: 'netease' | 'qq' }],
+      [{ id: string | number; platform?: ApiPlatform }],
       unknown
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_RECOMMENDED_PLAYLISTS,
-      [{ platform?: 'netease' | 'qq'; limit?: number }],
+      [{ platform?: ApiPlatform; limit?: number }],
       unknown
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_CHART,
-      [{ platform?: 'netease' | 'qq'; id?: string }],
+      [{ platform?: ApiPlatform; id?: string }],
       unknown
     > &
     // 播放器控制

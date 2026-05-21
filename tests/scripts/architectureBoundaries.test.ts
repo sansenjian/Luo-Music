@@ -6,14 +6,27 @@ import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
-const { checkLocalLibraryNativeTestBoundaries } =
-  require('../../scripts/check-architecture-boundaries.cjs') as {
-    checkLocalLibraryNativeTestBoundaries: (
-      files: string[],
-      errors: string[],
-      rootDir?: string
-    ) => void
-  }
+const {
+  checkLegacyServiceAccessorImports,
+  checkLocalLibraryNativeTestBoundaries,
+  checkNeteaseApiRequestImports,
+  checkPlatformDisplayClassHardcoding,
+  checkPluginAuthFacadeUsage,
+  checkRendererHttpConstants,
+  checkTopLevelServiceAccess
+} = require('../../scripts/check-architecture-boundaries.cjs') as {
+  checkLegacyServiceAccessorImports: (files: string[], errors: string[], rootDir?: string) => void
+  checkLocalLibraryNativeTestBoundaries: (
+    files: string[],
+    errors: string[],
+    rootDir?: string
+  ) => void
+  checkNeteaseApiRequestImports: (files: string[], errors: string[], rootDir?: string) => void
+  checkPlatformDisplayClassHardcoding: (files: string[], errors: string[], rootDir?: string) => void
+  checkPluginAuthFacadeUsage: (files: string[], errors: string[], rootDir?: string) => void
+  checkRendererHttpConstants: (errors: string[], rootDir?: string) => void
+  checkTopLevelServiceAccess: (files: string[], errors: string[], rootDir?: string) => void
+}
 
 describe('architecture boundary checks', () => {
   let tempDir: string
@@ -21,6 +34,12 @@ describe('architecture boundary checks', () => {
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'luo-architecture-boundaries-'))
     await mkdir(join(tempDir, 'tests', 'electron'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'api'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'components'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'composables'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'constants'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'services'), { recursive: true })
+    await mkdir(join(tempDir, 'src', 'store'), { recursive: true })
   })
 
   afterEach(async () => {
@@ -63,6 +82,177 @@ describe('architecture boundary checks', () => {
     expect(errors).toEqual([
       expect.stringContaining(
         `${pureTest}: pure local-library tests must not import native SQLite boundary`
+      )
+    ])
+  })
+
+  it('blocks direct Netease request imports in API modules', async () => {
+    await writeTestFile('src/api/search.ts', "import request from '@/utils/http'\n")
+    await writeTestFile('src/api/album.ts', "import request from '@/utils/http/index'\n")
+    await writeTestFile('src/api/song.ts', "import request from '../utils/http'\n")
+    await writeTestFile('src/api/netease.ts', "import request from '@/utils/http'\n")
+    await writeTestFile('src/api/qqmusic.ts', "import request from '@/utils/http'\n")
+
+    const errors: string[] = []
+
+    checkNeteaseApiRequestImports(
+      [
+        'src/api/search.ts',
+        'src/api/album.ts',
+        'src/api/song.ts',
+        'src/api/netease.ts',
+        'src/api/qqmusic.ts'
+      ],
+      errors,
+      tempDir
+    )
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/api/search.ts: Netease API modules should use src/api/shared/neteaseServiceRequest.ts'
+      ),
+      expect.stringContaining(
+        'src/api/album.ts: Netease API modules should use src/api/shared/neteaseServiceRequest.ts'
+      ),
+      expect.stringContaining(
+        'src/api/song.ts: Netease API modules should use src/api/shared/neteaseServiceRequest.ts'
+      ),
+      expect.stringContaining(
+        'src/api/netease.ts: Netease API modules should use src/api/shared/neteaseServiceRequest.ts'
+      )
+    ])
+  })
+
+  it('keeps service port defaults out of renderer HTTP constants', async () => {
+    await writeTestFile(
+      'src/constants/http.ts',
+      'export const NETEASE_API_PORT = 14532\nexport const QQ_API_PORT = 3200\n'
+    )
+
+    const errors: string[] = []
+    checkRendererHttpConstants(errors, tempDir)
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/constants/http.ts: service port defaults belong in packages/shared/protocol/cache.ts'
+      )
+    ])
+  })
+
+  it('blocks legacy service accessor imports in production code', async () => {
+    await writeTestFile(
+      'src/composables/useLegacyPlatform.ts',
+      "import { getPlatformAccessor } from '@/services/platformAccessor'\n"
+    )
+    await writeTestFile(
+      'src/store/playerLegacy.ts',
+      "import { getPlayerAccessor } from '../services/playerAccessor'\n"
+    )
+
+    const errors: string[] = []
+    checkLegacyServiceAccessorImports(
+      ['src/composables/useLegacyPlatform.ts', 'src/store/playerLegacy.ts'],
+      errors,
+      tempDir
+    )
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/composables/useLegacyPlatform.ts: use services.platform()/services.player() instead of legacy accessor'
+      ),
+      expect.stringContaining(
+        'src/store/playerLegacy.ts: use services.platform()/services.player() instead of legacy accessor'
+      )
+    ])
+  })
+
+  it('blocks module-top services access in API, store, and composable modules', async () => {
+    await writeTestFile(
+      'src/api/example.ts',
+      "import { services } from '@/services'\nconst api = services.api()\nexport const config: unknown = services.config()\n"
+    )
+    await writeTestFile(
+      'src/store/exampleStore.ts',
+      "import { services } from '@/services'\nexport function createStoreDeps() {\n  const api = services.api()\n  return { api }\n}\n"
+    )
+
+    const errors: string[] = []
+    checkTopLevelServiceAccess(['src/api/example.ts', 'src/store/exampleStore.ts'], errors, tempDir)
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/api/example.ts:2: avoid caching services.xxx() at module top level'
+      ),
+      expect.stringContaining(
+        'src/api/example.ts:3: avoid caching services.xxx() at module top level'
+      )
+    ])
+  })
+
+  it('blocks platform-specific badge classes in production display code', async () => {
+    await writeTestFile(
+      'src/components/PlatformBadge.vue',
+      '<template><span class="service-badge service-badge-qq">QQ</span></template>\n'
+    )
+
+    const errors: string[] = []
+    checkPlatformDisplayClassHardcoding(['src/components/PlatformBadge.vue'], errors, tempDir)
+
+    expect(errors).toEqual([
+      expect.stringContaining('src/components/PlatformBadge.vue:1: use getPlatformDisplayInfo()')
+    ])
+  })
+
+  it('blocks direct plugin auth call strings outside the plugin service facade', async () => {
+    await writeTestFile(
+      'src/components/PluginLogin.vue',
+      "const state = await pluginService.call(platformId, 'auth.pollLogin', { challengeId })\n"
+    )
+    await writeTestFile(
+      'src/services/pluginService.ts',
+      "const state = await bridge.call(platformId, 'auth.pollLogin', { challengeId })\n"
+    )
+
+    const errors: string[] = []
+    checkPluginAuthFacadeUsage(
+      ['src/components/PluginLogin.vue', 'src/services/pluginService.ts'],
+      errors,
+      tempDir
+    )
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/components/PluginLogin.vue:1: use services.plugins().auth/account/library methods'
+      )
+    ])
+  })
+
+  it('blocks direct plugin account and library call strings outside the plugin service facade', async () => {
+    await writeTestFile(
+      'src/components/UserLibrary.vue',
+      [
+        "await pluginService.call(platformId, 'account.getProfile', {})",
+        "await pluginService.call(platformId, 'library.getLikedSongs', {})"
+      ].join('\n')
+    )
+    await writeTestFile(
+      'src/services/pluginService.ts',
+      "await bridge.call(platformId, 'library.getLikedSongs', {})\n"
+    )
+
+    const errors: string[] = []
+    checkPluginAuthFacadeUsage(
+      ['src/components/UserLibrary.vue', 'src/services/pluginService.ts'],
+      errors,
+      tempDir
+    )
+
+    expect(errors).toEqual([
+      expect.stringContaining(
+        'src/components/UserLibrary.vue:1: use services.plugins().auth/account/library methods'
+      ),
+      expect.stringContaining(
+        'src/components/UserLibrary.vue:2: use services.plugins().auth/account/library methods'
       )
     ])
   })

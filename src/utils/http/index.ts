@@ -35,8 +35,7 @@ import {
   HTTP_COOKIE_CACHE_TTL,
   HTTP_DEFAULT_RETRY_COUNT,
   HTTP_DEFAULT_RETRY_DELAY,
-  HTTP_DEFAULT_TIMEOUT,
-  DEV_API_SERVER
+  HTTP_DEFAULT_TIMEOUT
 } from '@/constants/http'
 import type { ILogger } from '@/services/loggerService'
 import type { ErrorService } from '@/services/errorService'
@@ -101,7 +100,7 @@ function getErrorService(): ErrorServiceLike {
 
 const getBaseURL = () => {
   if (isElectronRenderer() && import.meta.env.PROD) {
-    return DEV_API_SERVER
+    return services.config().getServiceBaseUrl('netease')
   }
   return '/api'
 }

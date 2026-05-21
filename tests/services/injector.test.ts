@@ -50,6 +50,10 @@ class MockConfigService {
   getPort(_name: string): number {
     return 3000
   }
+
+  getServiceBaseUrl(_name: string, port: number = 3000): string {
+    return `http://127.0.0.1:${port}`
+  }
 }
 
 class NoDepService {
@@ -192,5 +196,6 @@ describe('global injector helpers', () => {
 
     expect(instance).toBeInstanceOf(ConfiguredService)
     expect(instance.config.getPort('qq')).toBe(3000)
+    expect(instance.config.getServiceBaseUrl('qq')).toBe('http://127.0.0.1:3000')
   })
 })

@@ -136,8 +136,21 @@ const pluginCapabilitiesSchema = z.object({
       logout: z.boolean().optional(),
       refresh: z.boolean().optional(),
       profile: z.boolean().optional(),
+      importSession: z.boolean().optional(),
       preferredMode: z.enum(['qr', 'browser', 'form']).optional(),
       modes: z.array(z.enum(['qr', 'browser', 'form'])).optional()
+    })
+    .optional(),
+  account: z
+    .object({
+      profile: z.boolean().optional()
+    })
+    .optional(),
+  library: z
+    .object({
+      likedSongs: z.boolean().optional(),
+      playlists: z.boolean().optional(),
+      playlistTracks: z.boolean().optional()
     })
     .optional()
 })

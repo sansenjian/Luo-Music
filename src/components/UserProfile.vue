@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { useUserStore } from '@/store/userStore'
 import { logout } from '@/api/user'
+import { logoutLegacyPlatform } from '@/app/legacyPlatformAuth'
+import { useUserStore } from '@/store/userStore'
 
 const userStore = useUserStore()
 
@@ -10,7 +11,7 @@ async function handleLogout(): Promise<void> {
   } catch (error) {
     console.error('退出登录失败:', error)
   } finally {
-    userStore.logout()
+    await logoutLegacyPlatform('netease')
   }
 }
 </script>

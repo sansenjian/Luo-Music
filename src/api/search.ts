@@ -1,4 +1,4 @@
-import request from '@/utils/http'
+import { neteaseRequest } from '@/api/shared/neteaseServiceRequest'
 
 /**
  * 搜索
@@ -8,15 +8,11 @@ import request from '@/utils/http'
  * @param {number} offset - 偏移量
  */
 export function search(keywords: string, type: number = 1, limit: number = 30, offset: number = 0) {
-  return request({
-    url: '/cloudsearch',
-    method: 'get',
-    params: {
-      keywords,
-      type,
-      limit,
-      offset
-    }
+  return neteaseRequest('/cloudsearch', {
+    keywords,
+    type,
+    limit,
+    offset
   })
 }
 
@@ -25,19 +21,12 @@ export function search(keywords: string, type: number = 1, limit: number = 30, o
  * @param {string} keywords - 搜索关键词
  */
 export function searchSuggest(keywords: string) {
-  return request({
-    url: '/search/suggest',
-    method: 'get',
-    params: { keywords }
-  })
+  return neteaseRequest('/search/suggest', { keywords })
 }
 
 /**
  * 热搜列表
  */
 export function getHotSearch() {
-  return request({
-    url: '/search/hot/detail',
-    method: 'get'
-  })
+  return neteaseRequest('/search/hot/detail')
 }

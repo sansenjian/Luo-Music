@@ -34,6 +34,8 @@ type PluginHttpRequestOptions = {
   timeoutMs?: number
 }
 
+type PluginHostCapability = 'storage' | 'secrets'
+
 export interface ExternalPluginHostDeps {
   stateStore?: PluginStateStore
   fetchImpl?: typeof fetch
@@ -178,6 +180,9 @@ export class ExternalPluginHost {
       }
 
       if (message.type === 'storage:get') {
+        if (!this.ensurePermission(registration, 'storage', message.requestId, worker)) {
+          return
+        }
         worker.postMessage({
           type: 'response',
           requestId: message.requestId,
@@ -188,6 +193,9 @@ export class ExternalPluginHost {
       }
 
       if (message.type === 'storage:set') {
+        if (!this.ensurePermission(registration, 'storage', message.requestId, worker)) {
+          return
+        }
         this.stateStore.setStorageValue(
           registration.manifest.id,
           message.payload.key,
@@ -203,6 +211,9 @@ export class ExternalPluginHost {
       }
 
       if (message.type === 'storage:remove') {
+        if (!this.ensurePermission(registration, 'storage', message.requestId, worker)) {
+          return
+        }
         this.stateStore.removeStorageValue(registration.manifest.id, message.payload.key)
         worker.postMessage({
           type: 'response',
@@ -214,6 +225,9 @@ export class ExternalPluginHost {
       }
 
       if (message.type === 'storage:clear') {
+        if (!this.ensurePermission(registration, 'storage', message.requestId, worker)) {
+          return
+        }
         this.stateStore.clearStorage(registration.manifest.id)
         worker.postMessage({
           type: 'response',
@@ -225,6 +239,9 @@ export class ExternalPluginHost {
       }
 
       if (message.type === 'secrets:get') {
+        if (!this.ensurePermission(registration, 'secrets', message.requestId, worker)) {
+          return
+        }
         worker.postMessage({
           type: 'response',
           requestId: message.requestId,
@@ -235,6 +252,9 @@ export class ExternalPluginHost {
       }
 
       if (message.type === 'secrets:set') {
+        if (!this.ensurePermission(registration, 'secrets', message.requestId, worker)) {
+          return
+        }
         this.stateStore.setSecretValue(
           registration.manifest.id,
           message.payload.key,
@@ -250,6 +270,9 @@ export class ExternalPluginHost {
       }
 
       if (message.type === 'secrets:remove') {
+        if (!this.ensurePermission(registration, 'secrets', message.requestId, worker)) {
+          return
+        }
         this.stateStore.removeSecretValue(registration.manifest.id, message.payload.key)
         worker.postMessage({
           type: 'response',
@@ -261,6 +284,9 @@ export class ExternalPluginHost {
       }
 
       if (message.type === 'secrets:clear') {
+        if (!this.ensurePermission(registration, 'secrets', message.requestId, worker)) {
+          return
+        }
         this.stateStore.clearSecrets(registration.manifest.id)
         worker.postMessage({
           type: 'response',
@@ -404,6 +430,29 @@ export class ExternalPluginHost {
     }
 
     return Object.keys(headers).length > 0 ? headers : undefined
+  }
+
+  private ensurePermission(
+    registration: ExternalPluginRegistration,
+    capability: PluginHostCapability,
+    requestId: string,
+    worker?: Pick<Worker, 'postMessage'>
+  ): boolean {
+    if (registration.manifest.permissions?.[capability] === true) {
+      return true
+    }
+
+    const runtime = this.runtimes.get(registration.manifest.platformId)
+    const targetWorker = worker ?? runtime?.worker
+    targetWorker?.postMessage({
+      type: 'response',
+      requestId,
+      ok: false,
+      error: {
+        message: `Plugin ${capability} access denied: missing permissions.${capability}`
+      }
+    })
+    return false
   }
 
   private isAllowedDomain(hostname: string, allowedDomains: string[]): boolean {

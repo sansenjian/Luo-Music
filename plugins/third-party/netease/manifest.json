@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "com.luomusic.plugin.netease",
   "name": "Netease Music",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "description": "网易云音乐第三方插件，提供搜索、播放、歌词、歌单等完整功能。需要搭配 NeteaseCloudMusicApi 服务端。",
   "author": "Luo-Music",
   "category": "api",
@@ -31,8 +31,17 @@
       "logout": true,
       "refresh": true,
       "profile": true,
+      "importSession": true,
       "preferredMode": "qr",
       "modes": ["qr"]
+    },
+    "account": {
+      "profile": true
+    },
+    "library": {
+      "likedSongs": true,
+      "playlists": true,
+      "playlistTracks": true
     }
   },
   "permissions": {

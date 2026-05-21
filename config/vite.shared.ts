@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import type { PluginOption } from 'vite'
+import { NETEASE_API_PORT, QQ_API_PORT } from '../packages/shared/protocol/cache.ts'
 
 export type AppRuntime = 'web' | 'electron'
 
@@ -107,7 +108,7 @@ export function createSharedDevProxy(
   options: { withQqTimeout?: boolean } = {}
 ): Record<string, ProxyEntry> {
   const qqProxy: ProxyEntry = {
-    target: 'http://localhost:3200',
+    target: `http://localhost:${QQ_API_PORT}`,
     changeOrigin: true,
     secure: false,
     rewrite: (path: string) => path.replace(/^\/qq-api/, '')
@@ -120,7 +121,7 @@ export function createSharedDevProxy(
 
   return {
     '/api': {
-      target: 'http://localhost:14532',
+      target: `http://localhost:${NETEASE_API_PORT}`,
       changeOrigin: true,
       rewrite: (path: string) => path.replace(/^\/api/, '')
     },

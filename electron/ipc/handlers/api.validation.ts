@@ -1,5 +1,5 @@
 import logger from '../../logger'
-import type { MusicPlatform } from './api.contract'
+import type { BuiltInApiPlatform, MusicPlatform } from './api.contract'
 
 const ALLOWED_SERVICES: readonly string[] = ['netease', 'qq'] as const
 
@@ -9,7 +9,8 @@ const PARAM_VALIDATORS = {
   page: (v: unknown): boolean => typeof v === 'number' && v > 0 && v <= 100,
   limit: (v: unknown): boolean => typeof v === 'number' && v > 0 && v <= 100,
   quality: (v: unknown): boolean => typeof v === 'number' && v > 0,
-  platform: (v: unknown): boolean => v === undefined || v === 'netease' || v === 'qq',
+  platform: (v: unknown): boolean =>
+    v === undefined || (typeof v === 'string' && v.trim().length > 0),
   type: (v: unknown): boolean => v === undefined || typeof v === 'string'
 } as const
 
@@ -17,7 +18,12 @@ const PARAM_VALIDATORS = {
 const DANGEROUS_PATTERNS = /[<>:"|?*\x00-\x1f]|\.\./
 
 export function resolvePlatform(platform?: string): MusicPlatform {
-  return platform === 'qq' ? 'qq' : 'netease'
+  const normalizedPlatform = platform?.trim()
+  return normalizedPlatform && normalizedPlatform.length > 0 ? normalizedPlatform : 'netease'
+}
+
+export function isBuiltInApiPlatform(platform: MusicPlatform): platform is BuiltInApiPlatform {
+  return platform === 'netease' || platform === 'qq'
 }
 
 export function normalizeEndpoint(endpoint: string): string {

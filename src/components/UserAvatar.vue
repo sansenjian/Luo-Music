@@ -4,7 +4,10 @@ import { useRouter } from 'vue-router'
 
 import { logout } from '@/api/user'
 import { qqMusicApi } from '@/api/qqmusic'
+import { clearLegacyPlatformSession, logoutLegacyPlatform } from '@/app/legacyPlatformAuth'
+import type { StandardImportedAuthSession } from '@plugin-sdk'
 import type { PlatformDescriptor } from '@shared/types/platform'
+import { resolvePlatformLoginRoute } from '@/platform/music/loginRouting'
 import { services } from '@/services'
 import { useUserStore } from '@/store/userStore'
 import LoginModal from './LoginModal.vue'
@@ -43,8 +46,8 @@ const dropdownStyle = ref<CSSProperties>({})
 const activePluginLoginPlatform = ref<PlatformDescriptor | null>(null)
 let shouldRestoreTriggerFocus = true
 let unsubscribePluginPlatforms: (() => void) | null = null
+const legacySessionImportAttempts = new Set<string>()
 
-const isQQMusicLoggedIn = computed(() => userStore.isQQMusicLoggedIn)
 const loginPlatforms = computed(() => musicService.getLoginCapablePlatformDescriptors())
 const visibleLoginPlatforms = computed(() =>
   loginPlatforms.value.filter(platform => !isPlatformRepresentedByHeader(platform.id))
@@ -65,7 +68,7 @@ const showPluginLoginModal = computed({
 
 async function checkQQMusicLoginStatus(): Promise<void> {
   if (!userStore.qqCookie) {
-    userStore.logoutQQ()
+    clearLegacyPlatformSession('qq')
     return
   }
 
@@ -78,10 +81,10 @@ async function checkQQMusicLoginStatus(): Promise<void> {
       return
     }
 
-    userStore.logoutQQ()
+    clearLegacyPlatformSession('qq')
   } catch (error) {
     logger.warn('Failed to refresh QQ Music login state', error)
-    userStore.logoutQQ()
+    clearLegacyPlatformSession('qq')
   }
 }
 
@@ -91,7 +94,7 @@ async function handleLogout(): Promise<void> {
   } catch (error) {
     logger.warn('Netease logout request failed, clearing local session', error)
   } finally {
-    userStore.logout()
+    await logoutLegacyPlatform('netease')
     closeDropdown({ restoreFocus: false })
   }
 }
@@ -127,17 +130,18 @@ function openPlatformLogin(platform: PlatformDescriptor): void {
     return
   }
 
-  if (platform.id === 'netease') {
+  const route = resolvePlatformLoginRoute(platform)
+
+  if (route.kind === 'plugin') {
+    openPluginLogin(route.platform)
+    return
+  }
+
+  if (route.platformId === 'netease') {
     openLogin()
-    return
-  }
-
-  if (platform.id === 'qq') {
+  } else {
     openQQLogin()
-    return
   }
-
-  openPluginLogin(platform)
 }
 
 function openPlatformCenter(platformId: string): void {
@@ -149,19 +153,11 @@ function openPlatformCenter(platformId: string): void {
 }
 
 function isPlatformLoggedIn(platformId: string): boolean {
-  if (platformId === 'netease') {
-    return userStore.isLoggedIn
-  }
-
-  if (platformId === 'qq') {
-    return isQQMusicLoggedIn.value
-  }
-
-  return false
+  return userStore.isPlatformAuthenticated(platformId)
 }
 
 function isPlatformRepresentedByHeader(platformId: string): boolean {
-  return platformId === 'netease' && userStore.isLoggedIn
+  return platformId === 'netease' && userStore.isPlatformAuthenticated('netease')
 }
 
 function getPlatformLoginTitle(platform: PlatformDescriptor): string {
@@ -257,11 +253,130 @@ function handleDocumentKeydown(event: KeyboardEvent): void {
 }
 
 function handleQQLoginSuccess(): void {
+  userStore.syncQQSession()
+  legacySessionImportAttempts.delete('qq')
+  void importLegacyPlatformSession('qq')
   openDropdown()
 }
 
-function handlePluginLoginSuccess(): void {
+function handleNeteaseLoginModalClose(): void {
+  showLoginModal.value = false
+
+  if (!userStore.cookie) {
+    return
+  }
+
+  legacySessionImportAttempts.delete('netease')
+  void importLegacyPlatformSession('netease')
+}
+
+function handlePluginLoginSuccess(state: unknown): void {
+  userStore.setPlatformAuthState(state, activePluginLoginPlatform.value?.id ?? 'unknown')
   openDropdown()
+}
+
+function shouldRefreshPluginAuthState(platform: PlatformDescriptor): boolean {
+  return platform.capabilities.auth?.login === true
+}
+
+function createLegacyImportedSession(platformId: string): StandardImportedAuthSession | null {
+  if (platformId === 'netease') {
+    const cookie = userStore.cookie.trim()
+    if (!cookie) {
+      return null
+    }
+
+    return {
+      credential: {
+        type: 'cookie',
+        value: cookie
+      },
+      ...(userStore.userInfo
+        ? {
+            account: {
+              id: userStore.userInfo.userId ?? userStore.userInfo.nickname ?? 'netease',
+              nickname: userStore.userInfo.nickname ?? userStore.userInfo.name ?? 'Netease',
+              ...(userStore.userInfo.avatarUrl ? { avatarUrl: userStore.userInfo.avatarUrl } : {})
+            }
+          }
+        : {})
+    }
+  }
+
+  if (platformId === 'qq') {
+    const cookie = userStore.qqCookie.trim()
+    if (!cookie) {
+      return null
+    }
+
+    return {
+      credential: {
+        type: 'cookie',
+        value: cookie
+      }
+    }
+  }
+
+  return null
+}
+
+async function importLegacyPlatformSession(platformId: string): Promise<boolean> {
+  const session = createLegacyImportedSession(platformId)
+  if (!session || legacySessionImportAttempts.has(platformId)) {
+    return false
+  }
+
+  legacySessionImportAttempts.add(platformId)
+
+  try {
+    const state = await pluginService.auth.importSession(platformId, session)
+    userStore.setPlatformAuthState(state, platformId)
+    const isAuthenticated = state.status === 'authenticated'
+    if (!isAuthenticated) {
+      legacySessionImportAttempts.delete(platformId)
+    }
+    return isAuthenticated
+  } catch (error) {
+    legacySessionImportAttempts.delete(platformId)
+    logger.warn(`Failed to import legacy ${platformId} login session`, error)
+    return false
+  }
+}
+
+async function refreshLoginPlatformAuthState(platform: PlatformDescriptor): Promise<void> {
+  if (!shouldRefreshPluginAuthState(platform)) {
+    return
+  }
+
+  const state = await pluginService.auth.getState(platform.id)
+
+  if (
+    state.status === 'anonymous' &&
+    platform.capabilities.auth?.importSession === true &&
+    (await importLegacyPlatformSession(platform.id))
+  ) {
+    return
+  }
+
+  userStore.setPlatformAuthState(state, platform.id)
+}
+
+async function refreshLoginPlatformAuthStateSafely(platform: PlatformDescriptor): Promise<void> {
+  try {
+    await refreshLoginPlatformAuthState(platform)
+  } catch (error) {
+    logger.warn(`Failed to refresh ${platform.id} login state`, error)
+  }
+}
+
+async function refreshLoginPlatformAuthStates(platforms = loginPlatforms.value): Promise<void> {
+  if (!platformService.isElectron()) {
+    return
+  }
+
+  await Promise.all(
+    platforms.filter(shouldRefreshPluginAuthState).map(refreshLoginPlatformAuthStateSafely)
+  )
 }
 
 async function refreshPluginPlatforms(): Promise<void> {
@@ -270,17 +385,24 @@ async function refreshPluginPlatforms(): Promise<void> {
   }
 
   try {
-    await pluginService.refreshPlatformDescriptors()
+    const platforms = await pluginService.refreshPlatformDescriptors()
+    await refreshLoginPlatformAuthStates(platforms)
   } catch (error) {
     logger.warn('Failed to refresh plugin login platforms', error)
   }
 }
 
+async function bootstrapLoginPlatformStates(): Promise<void> {
+  await checkQQMusicLoginStatus()
+  await refreshPluginPlatforms()
+}
+
 onMounted(() => {
   if (platformService.isElectron()) {
-    void checkQQMusicLoginStatus()
-    void refreshPluginPlatforms()
-    unsubscribePluginPlatforms = pluginService.onPlatformsChanged(() => {})
+    void bootstrapLoginPlatformStates()
+    unsubscribePluginPlatforms = pluginService.onPlatformsChanged(platforms => {
+      void refreshLoginPlatformAuthStates(platforms)
+    })
   }
 
   document.addEventListener('pointerdown', handleDocumentPointerDown)
@@ -357,7 +479,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
       </div>
     </Transition>
 
-    <LoginModal v-if="showLoginModal" @close="showLoginModal = false" />
+    <LoginModal v-if="showLoginModal" @close="handleNeteaseLoginModalClose" />
     <QQLoginModal v-model="showQQLoginModal" @login-success="handleQQLoginSuccess" />
     <PluginLoginModal
       v-if="activePluginLoginPlatform"

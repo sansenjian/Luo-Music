@@ -5,7 +5,12 @@
  * 需要搭配 NeteaseCloudMusicApi 服务端。
  */
 
-import { normalizeSong, normalizePlaylist } from './normalize.mjs'
+import {
+  normalizeNeteaseImageUrl,
+  normalizeSong,
+  normalizePlaylist,
+  normalizePlaylistSummary
+} from './normalize.mjs'
 
 const AUDIO_BITRATE_MAP = {
   standard: 128000,
@@ -115,11 +120,63 @@ function normalizeAccountProfile(profile) {
   return {
     id,
     nickname: String(nickname),
-    avatarUrl: typeof profile.avatarUrl === 'string' ? profile.avatarUrl : undefined,
+    avatarUrl:
+      typeof profile.avatarUrl === 'string'
+        ? normalizeNeteaseImageUrl(profile.avatarUrl)
+        : undefined,
     homepageUrl:
       profile.userId !== undefined && profile.userId !== null
         ? `https://music.163.com/#/user/home?id=${profile.userId}`
         : undefined
+  }
+}
+
+function normalizeImportedSession(input) {
+  const session = input && typeof input === 'object' ? input.session : null
+  if (!session || typeof session !== 'object') return null
+
+  const credential =
+    session.credential && typeof session.credential === 'object' ? session.credential : null
+  const credentialType = credential?.type
+  const credentialValue = normalizeStringValue(credential?.value).trim()
+  if (credentialType !== 'cookie' || !credentialValue) return null
+
+  return {
+    cookie: credentialValue,
+    account: normalizeAccountProfile(session.account),
+    expiresAt: normalizeNumberLikeValue(session.expiresAt) ?? undefined
+  }
+}
+
+function normalizePageInput(input, defaults = {}) {
+  const limit =
+    typeof input?.limit === 'number' && Number.isFinite(input.limit) && input.limit > 0
+      ? Math.max(1, Math.round(input.limit))
+      : defaults.limit || 50
+  const offset =
+    typeof input?.offset === 'number' && Number.isFinite(input.offset) && input.offset > 0
+      ? Math.round(input.offset)
+      : 0
+
+  return {
+    limit,
+    offset,
+    userId: input?.userId ?? defaults.userId
+  }
+}
+
+function createPage(limit, offset, itemCount, total) {
+  const normalizedTotal =
+    typeof total === 'number' && Number.isFinite(total) && total >= 0
+      ? Math.round(total)
+      : undefined
+
+  return {
+    limit,
+    offset,
+    ...(normalizedTotal !== undefined ? { total: normalizedTotal } : {}),
+    hasMore:
+      normalizedTotal !== undefined ? offset + itemCount < normalizedTotal : itemCount >= limit
   }
 }
 
@@ -181,6 +238,35 @@ export default {
       }
 
       return normalizeAccountProfile(profile)
+    }
+
+    async function resolveCurrentUserId(cookie) {
+      const accountRes = await apiGet('/user/account', {
+        cookie,
+        timestamp: Date.now()
+      })
+      return extractUserId(accountRes)
+    }
+
+    async function requireAuthCookie() {
+      const cookie = await getAuthCookie()
+      if (!cookie) {
+        throw new Error('Netease account is not authenticated')
+      }
+      return cookie
+    }
+
+    async function resolveLibraryUserId(input) {
+      if (input?.userId !== undefined && input.userId !== null && input.userId !== '') {
+        return input.userId
+      }
+
+      const cookie = await requireAuthCookie()
+      const userId = await resolveCurrentUserId(cookie)
+      if (userId === null) {
+        throw new Error('Unable to resolve Netease user id')
+      }
+      return userId
     }
 
     return {
@@ -275,6 +361,99 @@ export default {
         if (!data?.playlist?.id) return null
 
         return normalizePlaylist(data.playlist, ctx.platformId)
+      },
+
+      async 'account.getProfile'({ userId } = {}) {
+        const cookie = await requireAuthCookie()
+        if (userId !== undefined && userId !== null && userId !== '') {
+          const detailRes = await apiGet('/user/detail', {
+            uid: userId,
+            cookie,
+            timestamp: Date.now()
+          })
+          return normalizeAccountProfile(extractUserProfile(detailRes))
+        }
+
+        return fetchAccountProfile(cookie)
+      },
+
+      async 'library.getLikedSongs'(input = {}) {
+        const cookie = await requireAuthCookie()
+        const { limit, offset, userId } = normalizePageInput(input, { limit: 50 })
+        const resolvedUserId = userId ?? (await resolveLibraryUserId({ userId }))
+        const likeList = await apiGet('/likelist', {
+          uid: resolvedUserId,
+          cookie,
+          timestamp: Date.now()
+        })
+        const ids = Array.isArray(likeList?.ids) ? likeList.ids : []
+        const pageIds = ids.slice(offset, offset + limit)
+
+        if (pageIds.length === 0) {
+          return {
+            list: [],
+            page: createPage(limit, offset, 0, ids.length)
+          }
+        }
+
+        const detail = await apiGet('/song/detail', {
+          ids: pageIds.join(','),
+          timestamp: Date.now()
+        })
+        const songs = Array.isArray(detail?.songs) ? detail.songs : []
+        const songMap = new Map(songs.map(song => [song.id, normalizeSong(song, ctx.platformId)]))
+
+        return {
+          list: pageIds.map(id => songMap.get(id)).filter(Boolean),
+          page: createPage(limit, offset, pageIds.length, ids.length)
+        }
+      },
+
+      async 'library.getPlaylists'(input = {}) {
+        const cookie = await requireAuthCookie()
+        const { limit, offset, userId } = normalizePageInput(input, { limit: 50 })
+        const resolvedUserId = userId ?? (await resolveLibraryUserId({ userId }))
+        const data = await apiGet('/user/playlist', {
+          uid: resolvedUserId,
+          cookie,
+          timestamp: Date.now()
+        })
+        const playlists = Array.isArray(data?.playlist) ? data.playlist : []
+        const pagePlaylists = playlists.slice(offset, offset + limit)
+
+        return {
+          list: pagePlaylists.map(normalizePlaylistSummary),
+          page: createPage(limit, offset, pagePlaylists.length, playlists.length)
+        }
+      },
+
+      async 'library.getPlaylistTracks'({ id, limit = 50, offset = 0 } = {}) {
+        const page = normalizePageInput({ limit, offset }, { limit: 50 })
+
+        if (id === undefined || id === null || id === '') {
+          return {
+            list: [],
+            page: createPage(page.limit, page.offset, 0)
+          }
+        }
+
+        const data = await apiGet('/playlist/track/all', {
+          id,
+          limit: page.limit,
+          offset: page.offset,
+          timestamp: Date.now()
+        })
+        const songs = Array.isArray(data?.songs) ? data.songs : []
+
+        return {
+          list: songs.map(song => normalizeSong(song, ctx.platformId)),
+          page: createPage(
+            page.limit,
+            page.offset,
+            songs.length,
+            normalizeNumberLikeValue(data?.total)
+          )
+        }
       },
 
       'auth.getState': getAuthState,
@@ -380,6 +559,44 @@ export default {
 
       async 'auth.cancelLogin'() {
         return null
+      },
+
+      async 'auth.importSession'(input) {
+        const session = normalizeImportedSession(input)
+        if (!session) {
+          return {
+            platform: ctx.platformId,
+            status: 'error',
+            message: '导入的登录会话无效'
+          }
+        }
+
+        await ctx.secrets.set('cookie', session.cookie)
+
+        let account = session.account
+        if (!account) {
+          try {
+            account = await fetchAccountProfile(session.cookie)
+          } catch (error) {
+            ctx.logger.warn('Failed to fetch Netease account profile during session import', {
+              error
+            })
+          }
+        }
+
+        if (account) {
+          await ctx.secrets.set('account', account)
+        } else {
+          await ctx.secrets.remove('account')
+        }
+
+        return {
+          platform: ctx.platformId,
+          status: 'authenticated',
+          ...(account ? { account } : {}),
+          ...(session.expiresAt !== undefined ? { expiresAt: session.expiresAt } : {}),
+          message: '登录会话已导入'
+        }
       },
 
       async 'auth.refresh'() {

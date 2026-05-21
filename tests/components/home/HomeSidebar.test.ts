@@ -19,6 +19,10 @@ vi.mock('@/api/album', () => ({
 }))
 
 import HomeSidebar from '@/features/home/components/HomeSidebar.vue'
+import {
+  replaceRuntimePlatformDescriptors,
+  resetRuntimePlatformDescriptors
+} from '@/platform/music/descriptors'
 import { useLocalPlaylistStore } from '@/store/localPlaylistStore'
 import { useUserStore } from '@/store/userStore'
 import { createMockSong } from '../../utils/test-utils'
@@ -26,6 +30,7 @@ import { createMockSong } from '../../utils/test-utils'
 describe('HomeSidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetRuntimePlatformDescriptors()
     getUserPlaylistMock.mockResolvedValue({
       playlist: [
         {
@@ -72,8 +77,8 @@ describe('HomeSidebar', () => {
     expect(wrapper.text()).toContain('我的歌单')
     expect(wrapper.text()).toContain('收藏歌单')
     expect(wrapper.text()).toContain('登录信息')
-    expect(wrapper.text()).toContain('网易云')
-    expect(wrapper.text()).toContain('QQ音乐')
+    expect(wrapper.text()).toContain('Netease')
+    expect(wrapper.text()).toContain('QQ')
     expect(wrapper.text()).toContain('未登录')
     expect(wrapper.text()).toContain('登录后查看歌单')
     expect(sidebarLabels).not.toContain('歌曲')
@@ -382,10 +387,46 @@ describe('HomeSidebar', () => {
     const avatarImage = wrapper.get('.sidebar-user-avatar-image')
 
     expect(wrapper.text()).toContain('Tester')
-    expect(wrapper.text()).toContain('网易云')
-    expect(wrapper.text()).toContain('QQ音乐')
+    expect(wrapper.text()).toContain('Netease')
+    expect(wrapper.text()).toContain('QQ')
     expect(wrapper.text()).toContain('已登录')
     expect(wrapper.text()).not.toContain('未登录')
     expect(avatarImage.attributes('src')).toBe('https://example.com/avatar.png')
+  })
+
+  it('shows plugin auth state in the login info footer', () => {
+    replaceRuntimePlatformDescriptors([
+      {
+        id: 'kugou',
+        displayName: 'Kugou Music',
+        source: 'external',
+        runtime: 'external-host',
+        enabled: true,
+        capabilities: {
+          search: true,
+          songUrl: true,
+          songDetail: true,
+          lyric: true,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: true,
+          supportsUrlRefreshOnFailure: false
+        }
+      }
+    ])
+    const userStore = useUserStore()
+    userStore.setPlatformAuthState({
+      platform: 'kugou',
+      status: 'authenticated',
+      account: {
+        id: 'plugin-user',
+        nickname: 'Plugin User'
+      }
+    })
+
+    const wrapper = mount(HomeSidebar)
+
+    expect(wrapper.text()).toContain('Kugou Music')
+    expect(wrapper.text()).toContain('已登录')
   })
 })

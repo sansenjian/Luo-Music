@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import type { StandardAuthState, StandardLoginChallenge, StandardLoginMode } from '@plugin-sdk'
+import type { StandardLoginChallenge, StandardLoginMode } from '@plugin-sdk'
+import type { PlatformAuthState } from '@/platform/music/authState'
 import { services } from '@/services'
 import { useToastStore } from '@/store/toastStore'
 
@@ -16,7 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'login-success': [state: StandardAuthState]
+  'login-success': [state: PlatformAuthState]
 }>()
 
 const logger = services.logger().createLogger('pluginLoginModal')
@@ -40,87 +41,6 @@ const isUnsupportedChallenge = computed(
   () => Boolean(challenge.value) && !['qr', 'browser', 'none'].includes(challenge.value!.type)
 )
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value))
-}
-
-function normalizeString(value: unknown): string {
-  return typeof value === 'string' ? value : ''
-}
-
-function normalizeNumber(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
-}
-
-function normalizeBoolean(value: unknown): boolean | undefined {
-  return typeof value === 'boolean' ? value : undefined
-}
-
-function normalizeLoginMode(value: unknown): StandardLoginChallenge['type'] {
-  return value === 'qr' || value === 'browser' || value === 'form' || value === 'none'
-    ? value
-    : 'none'
-}
-
-function normalizeChallenge(value: unknown): StandardLoginChallenge {
-  if (!isRecord(value)) {
-    throw new Error('Invalid login challenge')
-  }
-
-  const challengeId = normalizeString(value.challengeId)
-  if (!challengeId) {
-    throw new Error('Login challenge missing challengeId')
-  }
-
-  return {
-    challengeId,
-    type: normalizeLoginMode(value.type),
-    title: normalizeString(value.title) || undefined,
-    statusText: normalizeString(value.statusText) || undefined,
-    qrImageUrl: normalizeString(value.qrImageUrl) || undefined,
-    authorizeUrl: normalizeString(value.authorizeUrl) || undefined,
-    expiresAt: normalizeNumber(value.expiresAt),
-    pollIntervalMs: normalizeNumber(value.pollIntervalMs),
-    canRefresh: normalizeBoolean(value.canRefresh),
-    cancelable: normalizeBoolean(value.cancelable),
-    helpUrl: normalizeString(value.helpUrl) || undefined
-  }
-}
-
-function normalizeAuthState(value: unknown): StandardAuthState {
-  if (!isRecord(value)) {
-    return {
-      platform: props.platformId,
-      status: 'pending'
-    }
-  }
-
-  const rawStatus = value.status
-  const statusValue =
-    rawStatus === 'anonymous' ||
-    rawStatus === 'pending' ||
-    rawStatus === 'authenticated' ||
-    rawStatus === 'expired' ||
-    rawStatus === 'error'
-      ? rawStatus
-      : 'pending'
-
-  return {
-    platform: normalizeString(value.platform) || props.platformId,
-    status: statusValue,
-    account: isRecord(value.account)
-      ? {
-          id: normalizeString(value.account.id) || String(value.account.id ?? ''),
-          nickname: normalizeString(value.account.nickname) || props.platformName,
-          avatarUrl: normalizeString(value.account.avatarUrl) || undefined,
-          homepageUrl: normalizeString(value.account.homepageUrl) || undefined
-        }
-      : undefined,
-    expiresAt: normalizeNumber(value.expiresAt),
-    message: normalizeString(value.message) || undefined
-  }
-}
-
 function clearCloseTimer(): void {
   if (closeTimer) {
     clearTimeout(closeTimer)
@@ -140,12 +60,12 @@ function isAttemptCurrent(attemptId: number): boolean {
 }
 
 function cancelChallenge(currentChallenge: StandardLoginChallenge): void {
-  if (!currentChallenge.cancelable) {
+  if (currentChallenge.cancelable === false) {
     return
   }
 
-  void pluginService
-    .call(props.platformId, 'auth.cancelLogin', { challengeId: currentChallenge.challengeId })
+  void pluginService.auth
+    .cancelLogin(props.platformId, currentChallenge.challengeId)
     .catch(error => {
       logger.warn('Failed to cancel plugin login challenge', error)
     })
@@ -173,11 +93,7 @@ async function pollLogin(attemptId: number): Promise<void> {
   isPolling = true
 
   try {
-    const state = normalizeAuthState(
-      await pluginService.call(props.platformId, 'auth.pollLogin', {
-        challengeId: challenge.value.challengeId
-      })
-    )
+    const state = await pluginService.auth.pollLogin(props.platformId, challenge.value.challengeId)
 
     if (!isAttemptCurrent(attemptId)) {
       return
@@ -248,11 +164,9 @@ async function startLogin(): Promise<void> {
   statusText.value = '正在加载登录信息...'
 
   try {
-    const nextChallenge = normalizeChallenge(
-      await pluginService.call(props.platformId, 'auth.startLogin', {
-        mode: props.preferredMode
-      })
-    )
+    const nextChallenge = await pluginService.auth.startLogin(props.platformId, {
+      mode: props.preferredMode
+    })
 
     if (!isAttemptCurrent(attemptId)) {
       return
@@ -275,8 +189,23 @@ async function startLogin(): Promise<void> {
     }
 
     if (nextChallenge.type === 'none') {
+      const state = await pluginService.auth.refresh(props.platformId)
+      if (!isAttemptCurrent(attemptId)) {
+        return
+      }
+
+      if (state.status !== 'authenticated') {
+        status.value =
+          state.status === 'pending' ? 'waiting' : state.status === 'expired' ? 'expired' : 'error'
+        statusText.value = state.message || nextChallenge.statusText || '登录状态未完成'
+        return
+      }
+
       status.value = 'success'
-      statusText.value = nextChallenge.statusText || '已完成登录'
+      statusText.value = state.message || nextChallenge.statusText || '已完成登录'
+      toastStore.success(`${props.platformName} 登录成功`)
+      emit('login-success', state)
+      emit('update:modelValue', false)
       return
     }
 

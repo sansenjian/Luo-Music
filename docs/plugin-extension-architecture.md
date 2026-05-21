@@ -231,6 +231,49 @@ export interface StandardLoginField {
 - `password` 和 `otp` 字段值是敏感输入，只能在一次 `submitLogin()` 调用中传递给插件，不允许进入日志、诊断记录、普通 storage 或 renderer 持久化状态。
 - 多个平台可以同时处于 `authenticated`。默认搜索 / 播放平台属于用户偏好设置，不放入 `StandardAuthState`，避免把“当前选择”误写成平台会话属性。
 
+### 3.8 账号与资料库标准模型
+
+账号资料、喜欢歌曲、用户歌单和歌单歌曲属于通用资料库能力，不属于某个具体音乐平台的专属接口。插件应该返回框架内部可直接消费的标准模型；宿主的归一化只做保护性兜底，不作为插件返回原始响应的长期入口。
+
+```ts
+export interface StandardPlaylistSummary {
+  id: string | number
+  name: string
+  coverImgUrl?: string
+  description?: string
+  trackCount?: number
+  subscribed?: boolean
+  creator?: StandardAccountProfile
+  extra?: Record<string, unknown>
+}
+
+export interface StandardPageInfo {
+  limit: number
+  offset: number
+  total?: number
+  hasMore: boolean
+}
+
+export interface StandardSongPage {
+  list: PluginSong[]
+  page: StandardPageInfo
+}
+
+export interface StandardPlaylistPage {
+  list: StandardPlaylistSummary[]
+  page: StandardPageInfo
+}
+```
+
+方法名:
+
+- `account.getProfile`
+- `library.getLikedSongs`
+- `library.getPlaylists`
+- `library.getPlaylistTracks`
+
+业务层必须通过 `services.plugins().account` / `services.plugins().library` facade 调用这些能力。`src/services/pluginService.ts` 是允许直接使用插件方法名字符串的边界；组件、composable 和 store 不应直接调用 `pluginService.call(platformId, 'account.xxx' | 'library.xxx')`。
+
 ## 4. 歌词统一流转
 
 歌词是最容易出现平台差异的能力，应作为内部标准模型的第一批落地点。
@@ -269,11 +312,12 @@ export interface StandardLoginField {
 ```text
 用户点击某个平台登录
   -> getLoginCapablePlatformDescriptors() 发现可登录平台
-  -> services.plugins().call(platformId, 'auth.startLogin')
+  -> services.plugins().auth.startLogin(platformId)
   -> 插件调用平台登录接口
   -> 返回 StandardLoginChallenge
   -> 宿主展示统一登录容器
-  -> services.plugins().call(platformId, 'auth.pollLogin' / 'auth.submitLogin')
+  -> services.plugins().auth.pollLogin(platformId, challengeId)
+     或 services.plugins().auth.submitLogin(platformId, challengeId, values)
   -> 插件保存 Cookie / token 到 ctx.secrets
   -> 返回 StandardAuthState
   -> 宿主更新平台登录摘要和 UI
@@ -283,7 +327,10 @@ export interface StandardLoginField {
 
 - 登录入口像搜索源一样由平台描述符驱动。启用的插件只要声明 `capabilities.auth.login = true`，就会自动出现在头像菜单的登录选项中；新增一个支持登录的平台 API 插件，不需要再改 `UserAvatar.vue` 的固定菜单。
 - `getLoginCapablePlatformDescriptors()` / `getLoginPlatformOptions()` 是登录入口对应的发现 API，规则与 `getSearchablePlatformDescriptors()` / `getSearchPlatformOptions()` 保持一致。
-- `PluginLoginModal.vue` 作为通用插件登录容器，支持 `auth.startLogin`、`auth.pollLogin` 和关闭时的 `auth.cancelLogin`。网易云 / QQ 插件已提供 `auth.*` handler；头像菜单暂时仍把它们路由到专属弹窗作为兼容适配，避免迁移中断现有 `userStore.cookie` / `userStore.qqCookie` 登录链路。
+- `services.plugins().auth` 已作为宿主认证 facade 落地，负责调用插件 `auth.getState` / `auth.startLogin` / `auth.pollLogin` / `auth.submitLogin` / `auth.cancelLogin` / `auth.importSession` / `auth.refresh` / `auth.logout` 并把登录态归一化为宿主内部 `PlatformAuthState`。业务 UI 只消费 facade 返回的标准挑战和状态摘要，不直接解析插件返回值或平台 Cookie。
+- `auth.importSession` 是过渡期的窄迁移入口，用于把宿主旧登录链路中已经存在的标准会话凭据交还给插件处理。宿主传入 `StandardImportedAuthSession`，插件自行决定如何验证、刷新账号摘要并写入自己的 `ctx.secrets`；renderer 不暴露通用 secrets 读写能力。
+- `PluginLoginModal.vue` 作为通用插件登录容器，支持 `auth.startLogin`、`auth.pollLogin` 和关闭时的 `auth.cancelLogin`。网易云 / QQ 插件已提供 `auth.*` handler；头像菜单暂时仍把它们路由到专属弹窗作为兼容适配，并在插件状态匿名且声明 `capabilities.auth.importSession = true` 时把 `userStore.cookie` / `userStore.qqCookie` 转换为标准导入会话。
+- 头像菜单的登录入口必须通过 `resolvePlatformLoginRoute()` 选择通用插件登录或 legacy 登录桥。平台特例只能留在这个路由策略里，组件层不要继续散落 `platform.id === 'netease'` / `platform.id === 'qq'` 判断。
 - 内置第三方插件 manifest 增加 `auth` 能力时必须 bump 插件版本，确保 `ensureBundledPlugins()` 能自动刷新已安装插件。过渡期内，已安装但尚未刷新 manifest 的网易云 / QQ 插件仍通过兼容桥显示登录入口，避免用户看到“暂无可登录平台”。
 
 建议的认证方法:
@@ -295,8 +342,19 @@ export type PluginAuthMethodName =
   | 'auth.pollLogin'
   | 'auth.submitLogin'
   | 'auth.cancelLogin'
+  | 'auth.importSession'
   | 'auth.refresh'
   | 'auth.logout'
+
+export interface StandardImportedAuthSession {
+  credential: {
+    type: 'cookie' | 'token' | 'opaque'
+    value: string
+  }
+  account?: StandardAccountProfile
+  expiresAt?: number
+  extra?: Record<string, unknown>
+}
 
 export interface PluginAuthFacade {
   getState(platformId: string): Promise<StandardAuthState>
@@ -311,6 +369,10 @@ export interface PluginAuthFacade {
     values: Record<string, string>
   ): Promise<StandardAuthState>
   cancelLogin(platformId: string, challengeId: string): Promise<void>
+  importSession(
+    platformId: string,
+    session: StandardImportedAuthSession
+  ): Promise<StandardAuthState>
   refresh(platformId: string): Promise<StandardAuthState>
   logout(platformId: string): Promise<StandardAuthState>
 }
@@ -625,7 +687,7 @@ export interface PluginPlayerFacade {
 - 现有 `userStore.cookie` / `userStore.qqCookie` 迁移到插件 `ctx.secrets` 后，仅保留一次性迁移读取，不作为长期兼容入口。
 - 入站边界先同时接受旧 `PluginSong` 和新 `StandardSong`，业务层逐步收敛到只接收标准模型。不要在旧插件仍存在时一次性删除兼容转换。
 - 旧接口和旧字段先标记 `@deprecated`，并在诊断日志中统计调用量。只有确认旧路径使用量足够低后，才能进入删除阶段。
-- `LoginModal.vue`、`QQLoginModal.vue` 在统一登录容器完成前保留为适配层，不直接删除。
+- `LoginModal.vue`、`QQLoginModal.vue` 在统一登录容器完成前保留为适配层，不直接删除；组件入口必须经过 `resolvePlatformLoginRoute()`，避免新增散落的平台判断。
 - 新字段通过可选 `capabilitiesV2` 和 `contributionsV2` 增量加入。
 
 推荐 manifest 扩展:
@@ -666,15 +728,18 @@ export interface PluginManifestV2Extensions {
 
 ### 阶段三: 登录插件化
 
-- [x] SDK 和外部插件调用链已接受 `auth.*` 方法名；`PluginAuthFacade` 仍待服务层封装。
+- [x] SDK 和外部插件调用链已接受 `auth.*` 方法名；宿主服务层已提供完整 `PluginAuthFacade`，组件通过 `services.plugins().auth` 访问认证能力。
 - [x] 登录入口已像搜索源一样从已启用平台描述符自适应生成；`capabilities.auth.login = true` 的平台会自动出现在头像菜单。
 - [x] 已新增通用 `PluginLoginModal.vue`，支持二维码 / 浏览器 challenge 的最小统一容器和关闭时取消 challenge。
-- [~] 网易云、QQ 音乐插件侧已提供 `auth.*` 登录请求、轮询和 Cookie 托管；宿主旧登录组件仍保留一段兼容期。
+- [x] `userStore` 已增加通用 `PlatformAuthState` 摘要缓存，头像菜单、缓存管理和侧边栏登录摘要不再直接依赖 QQ / 网易云专属展示状态。
+- [x] 登录入口路由已收口到 `resolvePlatformLoginRoute()`；非 legacy 登录平台默认进入 `PluginLoginModal.vue`，网易云 / QQ 暂时经 legacy 登录桥保留旧 cookie 写入链路。
+- [x] SDK 和服务层已提供 `account` / `library` facade；网易云插件已输出标准 profile、liked songs、playlists、playlist tracks，QQ 插件已输出标准 profile。
+- [~] 网易云、QQ 音乐插件侧已提供 `auth.*` 登录请求、轮询、Cookie 托管和标准旧会话导入；宿主旧登录组件仍保留一段兼容期。
 - 将平台专属登录弹窗完全收口为统一登录容器，具体二维码、授权 URL、表单字段由插件返回。
 - [x] 新增 `PluginSecretStore` / `ctx.secrets`，并通过 Worker 代理给外部插件。
 - [x] `storage` / `secrets` 命名空间按 `pluginId` 隔离，避免同平台替代插件互相覆盖。
 - [x] manifest 权限和平台描述已支持 `permissions.secrets`。
-- 提供一次性迁移，把 `userStore.cookie` / `userStore.qqCookie` 导入对应插件 secrets；迁移后旧字段只读读取一段时间，不再写入。
+- [x] 提供 `auth.importSession` 一次性迁移，把 `userStore.cookie` / `userStore.qqCookie` 以 `StandardImportedAuthSession` 导入对应插件，由插件写入自身 secrets；迁移后旧字段只读读取一段时间，不再作为长期兼容入口。
 - [x] 宿主/Worker 调用链已支持 `auth.cancelLogin` 方法名；通用插件登录窗口关闭时会主动取消 challenge，网易云 / QQ 兼容弹窗仍走现有本地轮询清理。
 - 播放、歌单、收藏等能力遇到登录失效时，通过标准状态驱动宿主提示。
 
@@ -700,7 +765,7 @@ export interface PluginManifestV2Extensions {
 
 - [x] 插件禁用 / 卸载会停止外部 Worker，终止 pending 调用。
 - [x] 插件卸载时删除 `plugin:<pluginId>:storage` 和 `plugin:<pluginId>:secrets` 所在状态记录。
-- 插件升级时保留 storage / secrets，但 manifest 降权时必须清理不再被授权的能力数据。
+- [x] 插件升级时保留已授权的 storage / secrets；manifest 降权移除 `permissions.storage` / `permissions.secrets` 时会清理不再被授权的持久化数据，Worker 运行期也会拒绝未声明权限的访问。
 - 熔断后保留诊断摘要，但不能保留原始 Cookie、token、密码、验证码或完整请求头。
 
 ## 10. 实现约束
@@ -711,7 +776,7 @@ export interface PluginManifestV2Extensions {
 - `src/api/` 不新增平台专属登录流程；平台登录、会话刷新和凭据解析属于插件。
 - `src/platform/` 负责运行时差异收口。
 - `src/store/` 只保存共享状态和展示摘要，不承载插件协议解析或平台会话凭据。
-- Cookie / token / refresh token 等敏感凭据只能进入 `ctx.secrets`，不能进入 `ctx.storage`、`userStore`、日志或 renderer IPC payload。
+- Cookie / token / refresh token 等敏感凭据只能进入 `ctx.secrets`。过渡期内，已存在于旧登录链路的 `userStore.cookie` / `userStore.qqCookie` 只能通过 `auth.importSession` 交还给对应插件，不能再扩散到 `ctx.storage`、日志或新的业务 IPC payload。
 - 第三方插件网络访问只能经过 `ctx.http`，外部插件沙箱不得暴露原生网络 API。
 - 第三方 UI 插件 v1 只允许声明式贡献，不允许任意代码直接进入 renderer。
 - 插件 SDK 类型必须保持稳定，避免把内部实现细节暴露给插件作者。

@@ -152,6 +152,34 @@ export interface PlaylistDetail {
   tracks: PluginSong[]
 }
 
+export interface StandardPlaylistSummary {
+  id: string | number
+  name: string
+  coverImgUrl?: string
+  description?: string
+  trackCount?: number
+  subscribed?: boolean
+  creator?: StandardAccountProfile
+  extra?: Record<string, unknown>
+}
+
+export interface StandardPageInfo {
+  limit: number
+  offset: number
+  total?: number
+  hasMore: boolean
+}
+
+export interface StandardSongPage {
+  list: PluginSong[]
+  page: StandardPageInfo
+}
+
+export interface StandardPlaylistPage {
+  list: StandardPlaylistSummary[]
+  page: StandardPageInfo
+}
+
 export interface SongUrlOptions {
   level?: 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires'
   br?: number
@@ -179,6 +207,22 @@ export interface LyricInput {
 
 export interface PlaylistDetailInput {
   id: string | number
+}
+
+export interface AccountProfileInput {
+  userId?: string | number
+}
+
+export interface LibraryPageInput {
+  userId?: string | number
+  limit?: number
+  offset?: number
+}
+
+export interface PlaylistTracksInput {
+  id: string | number
+  limit?: number
+  offset?: number
 }
 
 export type StandardLoginMode = 'qr' | 'browser' | 'form'
@@ -221,6 +265,20 @@ export interface StandardLoginChallenge {
   fields?: StandardLoginField[]
 }
 
+export type StandardAuthSessionCredentialType = 'cookie' | 'token' | 'opaque'
+
+export interface StandardAuthSessionCredential {
+  type: StandardAuthSessionCredentialType
+  value: string
+}
+
+export interface StandardImportedAuthSession {
+  credential: StandardAuthSessionCredential
+  account?: StandardAccountProfile
+  expiresAt?: number
+  extra?: Record<string, unknown>
+}
+
 export type PluginPlayerHookName =
   | 'beforePlay'
   | 'afterPlay'
@@ -260,8 +318,19 @@ export interface PluginAuthCapability {
   logout?: boolean
   refresh?: boolean
   profile?: boolean
+  importSession?: boolean
   preferredMode?: StandardLoginMode
   modes?: StandardLoginMode[]
+}
+
+export interface PluginAccountCapability {
+  profile?: boolean
+}
+
+export interface PluginLibraryCapability {
+  likedSongs?: boolean
+  playlists?: boolean
+  playlistTracks?: boolean
 }
 
 export type PluginMethodName =
@@ -270,11 +339,16 @@ export type PluginMethodName =
   | 'getSongDetail'
   | 'getLyric'
   | 'getPlaylistDetail'
+  | 'account.getProfile'
+  | 'library.getLikedSongs'
+  | 'library.getPlaylists'
+  | 'library.getPlaylistTracks'
   | 'auth.getState'
   | 'auth.startLogin'
   | 'auth.pollLogin'
   | 'auth.submitLogin'
   | 'auth.cancelLogin'
+  | 'auth.importSession'
   | 'auth.refresh'
   | 'auth.logout'
 
@@ -288,6 +362,8 @@ export interface MusicPluginCapabilities {
   supportsLyricFetch: boolean
   supportsUrlRefreshOnFailure: boolean
   auth?: PluginAuthCapability
+  account?: PluginAccountCapability
+  library?: PluginLibraryCapability
 }
 
 export interface PluginManifest {
@@ -317,6 +393,8 @@ export interface MusicPluginInstance {
   getSongDetail?(input: SongDetailInput): Promise<PluginSong | null>
   getLyric?(input: LyricInput): Promise<LyricResult>
   getPlaylistDetail?(input: PlaylistDetailInput): Promise<PlaylistDetail | null>
+  [method: `account.${string}`]: ((input?: unknown) => Promise<unknown> | unknown) | undefined
+  [method: `library.${string}`]: ((input?: unknown) => Promise<unknown> | unknown) | undefined
   [method: `auth.${string}`]: ((input?: unknown) => Promise<unknown> | unknown) | undefined
   dispose?(): Promise<void> | void
 }

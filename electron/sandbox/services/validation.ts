@@ -1,3 +1,5 @@
+import type { ApiPlatform } from '@shared/contracts/ipc'
+
 /**
  * 参数验证工具
  *
@@ -71,8 +73,8 @@ export function isValidUrl(url: string): boolean {
 /**
  * 验证音乐平台
  */
-export function isValidPlatform(platform: string): platform is 'netease' | 'qq' {
-  return platform === 'netease' || platform === 'qq'
+export function isValidPlatform(platform: string): platform is ApiPlatform {
+  return platform.trim().length > 0
 }
 
 /**

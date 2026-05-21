@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 
 import { checkQRStatus, getQRCode, getQRKey } from '@/api/user'
+import { clearLegacyPlatformSession } from '@/app/legacyPlatformAuth'
 import { useNeteaseLoginProfile } from '@/composables/useNeteaseLoginProfile'
 import {
   extractQrCookie,
@@ -211,7 +212,7 @@ async function handleLoginSuccess(cookie: string, attemptId: number): Promise<vo
     }
 
     logger.error('Failed to load Netease user profile after login', error)
-    userStore.logout()
+    clearLegacyPlatformSession('netease')
     status.value = 'error'
     statusText.value = '登录成功，但获取账号信息失败，请重试'
     toastStore.error('获取账号信息失败，请重试')

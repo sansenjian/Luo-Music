@@ -1,6 +1,6 @@
 import { DEFAULT_AUDIO_BITRATE } from '@shared/contracts/audio'
 import { getNeteaseSearchType } from '@shared/contracts/netease'
-import type { MusicPlatform } from './api.contract'
+import type { BuiltInApiPlatform } from './api.contract'
 
 function mapQualityToBitrate(quality?: number): number {
   if (typeof quality === 'number' && Number.isFinite(quality) && quality > 0) {
@@ -11,7 +11,7 @@ function mapQualityToBitrate(quality?: number): number {
 }
 
 export function extractSongUrl(
-  platform: MusicPlatform,
+  platform: BuiltInApiPlatform,
   id: string | number,
   response: unknown
 ): { url: string } {
@@ -46,7 +46,7 @@ export function extractSongUrl(
   return { url: typeof url === 'string' ? url : '' }
 }
 
-export function normalizeLyricResponse(platform: MusicPlatform, response: unknown) {
+export function normalizeLyricResponse(platform: BuiltInApiPlatform, response: unknown) {
   if (!response || typeof response !== 'object') {
     return { lyric: '', translated: '', romalrc: '' }
   }
@@ -115,7 +115,7 @@ export function normalizeLyricResponse(platform: MusicPlatform, response: unknow
 }
 
 export function getSearchTarget(
-  platform: MusicPlatform,
+  platform: BuiltInApiPlatform,
   keyword: string,
   type?: string,
   page = 1,

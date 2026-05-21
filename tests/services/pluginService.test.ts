@@ -616,6 +616,437 @@ describe('createPluginService', () => {
     expect(result).toBe('result')
   })
 
+  it('reads and normalizes plugin auth state through the bridge', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      platform: 'plugin-x',
+      status: 'authenticated',
+      account: {
+        id: 'user-1',
+        nickname: 'Plugin User'
+      },
+      message: 'ok'
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getAuthState('plugin-x')
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'auth.getState', {})
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated',
+        account: expect.objectContaining({
+          id: 'user-1',
+          nickname: 'Plugin User'
+        }),
+        message: 'ok',
+        updatedAt: expect.any(Number)
+      })
+    )
+  })
+
+  it('returns anonymous plugin auth state when the bridge is unavailable', async () => {
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => false
+    })
+
+    const result = await service.getAuthState('plugin-x')
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'anonymous',
+        message: '未登录',
+        updatedAt: expect.any(Number)
+      })
+    )
+  })
+
+  it('returns anonymous auth state for first-party plugins without bridge calls', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getAuthState('builtin.smtc')
+
+    expect(bridge.call).not.toHaveBeenCalled()
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'builtin.smtc',
+        status: 'anonymous'
+      })
+    )
+  })
+
+  it('returns error auth state when the plugin auth state call fails', async () => {
+    const bridge = createBridge()
+    bridge.call.mockRejectedValueOnce(new Error('missing method'))
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getAuthState('plugin-x')
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'error',
+        message: '登录状态读取失败',
+        updatedAt: expect.any(Number)
+      })
+    )
+  })
+
+  it('starts plugin login through the auth facade and normalizes challenges', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      challengeId: 'challenge-1',
+      type: 'qr',
+      title: 'Plugin Login',
+      statusText: 'scan',
+      qrImageUrl: 'https://example.com/qr.png',
+      pollIntervalMs: 500
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.auth.startLogin('plugin-x', { mode: 'qr' })
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'auth.startLogin', { mode: 'qr' })
+    expect(result).toEqual({
+      challengeId: 'challenge-1',
+      type: 'qr',
+      title: 'Plugin Login',
+      statusText: 'scan',
+      qrImageUrl: 'https://example.com/qr.png',
+      pollIntervalMs: 500
+    })
+  })
+
+  it('rejects plugin login challenges with missing types', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      challengeId: 'challenge-1'
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.auth.startLogin('plugin-x')).rejects.toThrow(
+      'Login challenge missing or invalid type'
+    )
+  })
+
+  it('polls, submits, refreshes, logs out, and cancels plugin auth through the auth facade', async () => {
+    const bridge = createBridge()
+    bridge.call
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'pending',
+        message: 'waiting'
+      })
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'authenticated',
+        account: {
+          id: 'user-1',
+          nickname: 'Plugin User'
+        }
+      })
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'authenticated'
+      })
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'anonymous'
+      })
+      .mockResolvedValueOnce(undefined)
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.auth.pollLogin('plugin-x', 'challenge-1')).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'pending',
+        message: 'waiting'
+      })
+    )
+    await expect(
+      service.auth.submitLogin('plugin-x', 'challenge-1', { username: 'u' })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated'
+      })
+    )
+    await expect(service.auth.refresh('plugin-x')).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated'
+      })
+    )
+    await expect(service.auth.logout('plugin-x')).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'anonymous'
+      })
+    )
+    await expect(service.auth.cancelLogin('plugin-x', 'challenge-1')).resolves.toBeUndefined()
+
+    expect(bridge.call).toHaveBeenNthCalledWith(1, 'plugin-x', 'auth.pollLogin', {
+      challengeId: 'challenge-1'
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(2, 'plugin-x', 'auth.submitLogin', {
+      challengeId: 'challenge-1',
+      values: { username: 'u' }
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(3, 'plugin-x', 'auth.refresh', {})
+    expect(bridge.call).toHaveBeenNthCalledWith(4, 'plugin-x', 'auth.logout', {})
+    expect(bridge.call).toHaveBeenNthCalledWith(5, 'plugin-x', 'auth.cancelLogin', {
+      challengeId: 'challenge-1'
+    })
+  })
+
+  it('imports a standardized auth session through the auth facade', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      platform: 'plugin-x',
+      status: 'authenticated',
+      account: {
+        id: 'user-1',
+        nickname: 'Plugin User'
+      },
+      message: '登录会话已导入'
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const session = {
+      credential: {
+        type: 'cookie' as const,
+        value: 'SESSION=legacy'
+      },
+      account: {
+        id: 'user-1',
+        nickname: 'Plugin User'
+      }
+    }
+
+    await expect(service.auth.importSession('plugin-x', session)).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated',
+        account: expect.objectContaining({
+          id: 'user-1',
+          nickname: 'Plugin User'
+        })
+      })
+    )
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'auth.importSession', { session })
+  })
+
+  it('reads a standard account profile through the account facade', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      id: 'user-1',
+      nickname: 'Plugin User',
+      avatarUrl: 'https://example.test/avatar.png',
+      homepageUrl: 'https://example.test/user/user-1',
+      extra: {
+        level: 9
+      }
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.account.getProfile('plugin-x', 'user-1')).resolves.toEqual({
+      id: 'user-1',
+      nickname: 'Plugin User',
+      avatarUrl: 'https://example.test/avatar.png',
+      homepageUrl: 'https://example.test/user/user-1',
+      extra: {
+        level: 9
+      }
+    })
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'account.getProfile', {
+      userId: 'user-1'
+    })
+  })
+
+  it('normalizes plugin library pages through the library facade', async () => {
+    const bridge = createBridge()
+    bridge.call
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'song-1',
+            name: 'Song 1',
+            artists: [{ id: 'artist-1', name: 'Artist 1' }],
+            album: { id: 'album-1', name: 'Album 1', picUrl: 'cover.png' },
+            duration: 180000,
+            mvid: 0,
+            originalId: 'song-1'
+          },
+          {
+            id: false
+          }
+        ],
+        page: { limit: 2, offset: 4, total: 7 }
+      })
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'playlist-1',
+            name: 'Playlist 1',
+            coverImgUrl: 'playlist.png',
+            trackCount: 12,
+            subscribed: true,
+            creator: {
+              id: 'user-1',
+              nickname: 'Plugin User'
+            }
+          },
+          {
+            id: null,
+            name: 'Invalid'
+          }
+        ],
+        page: { limit: 10, offset: 0, hasMore: false }
+      })
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'song-2',
+            name: 'Song 2',
+            artists: [],
+            album: { id: 'album-2', name: 'Album 2', picUrl: '' },
+            duration: 200000,
+            mvid: 0,
+            originalId: 'song-2'
+          }
+        ]
+      })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(
+      service.library.getLikedSongs('plugin-x', { userId: 'user-1', limit: 2, offset: 4 })
+    ).resolves.toEqual({
+      list: [
+        expect.objectContaining({
+          id: 'song-1',
+          name: 'Song 1',
+          platform: 'plugin-x'
+        })
+      ],
+      page: {
+        limit: 2,
+        offset: 4,
+        total: 7,
+        hasMore: true
+      }
+    })
+    await expect(service.library.getPlaylists('plugin-x', { limit: 10 })).resolves.toEqual({
+      list: [
+        {
+          id: 'playlist-1',
+          name: 'Playlist 1',
+          coverImgUrl: 'playlist.png',
+          trackCount: 12,
+          subscribed: true,
+          creator: {
+            id: 'user-1',
+            nickname: 'Plugin User'
+          }
+        }
+      ],
+      page: {
+        limit: 10,
+        offset: 0,
+        hasMore: false
+      }
+    })
+    await expect(
+      service.library.getPlaylistTracks('plugin-x', 'playlist-1', { limit: 5, offset: 5 })
+    ).resolves.toEqual({
+      list: [
+        expect.objectContaining({
+          id: 'song-2',
+          name: 'Song 2',
+          platform: 'plugin-x'
+        })
+      ],
+      page: {
+        limit: 5,
+        offset: 5,
+        hasMore: false
+      }
+    })
+
+    expect(bridge.call).toHaveBeenNthCalledWith(1, 'plugin-x', 'library.getLikedSongs', {
+      userId: 'user-1',
+      limit: 2,
+      offset: 4
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(2, 'plugin-x', 'library.getPlaylists', {
+      limit: 10,
+      offset: 0
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(3, 'plugin-x', 'library.getPlaylistTracks', {
+      id: 'playlist-1',
+      limit: 5,
+      offset: 5
+    })
+  })
+
+  it('clamps small positive decimal library limits to one', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({ list: [] })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await service.library.getPlaylists('plugin-x', { limit: 0.4 })
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'library.getPlaylists', {
+      limit: 1,
+      offset: 0
+    })
+  })
+
   // -----------------------------------------------------------------------
   // 12. onPlatformsChanged returns noop in non-Electron, subscribes in Electron
   // -----------------------------------------------------------------------

@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } fr
 
 import HomeEmptyState from './home/HomeEmptyState.vue'
 import { uiMessages } from '@/messages/ui'
+import { getPlatformDisplayInfo, type PlatformDisplayInfo } from '@/platform/music/display'
 import { usePlayerStore } from '@/store/playerStore.ts'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
 import type { Song } from '@/platform/music/interface'
@@ -26,8 +27,8 @@ type PlaylistItem = {
   artistText: string
   cover: string
   duration: number
-  isQQ: boolean
   name: string
+  platform: PlatformDisplayInfo
 }
 
 function createPlaylistItemFingerprint(song: Song): string {
@@ -49,8 +50,8 @@ function normalizePlaylistItem(song: Song): PlaylistItem {
       : '',
     cover: song.album?.picUrl || '',
     duration: Math.floor(song.duration / 1000),
-    isQQ: song.platform === 'qq',
-    name: song.name
+    name: song.name,
+    platform: getPlatformDisplayInfo(song.platform)
   }
 }
 
@@ -271,8 +272,12 @@ onUnmounted(() => {
           <div class="list-info">
             <div class="list-title">
               {{ song.name }}
-              <span class="server-badge" :class="song.isQQ ? 'qq' : 'netease'">
-                {{ song.isQQ ? 'QQ' : 'Netease' }}
+              <span
+                class="server-badge"
+                :class="song.platform.className"
+                :title="song.platform.displayName"
+              >
+                {{ song.platform.badgeText }}
               </span>
             </div>
             <div class="list-artist">{{ song.artistText }}</div>
@@ -433,24 +438,9 @@ onUnmounted(() => {
   border-radius: 2px;
   text-transform: uppercase;
   flex-shrink: 0;
-}
-
-.server-badge.netease {
-  background: #e60026;
-  color: white;
-}
-
-.server-badge.qq {
-  background: #31c27c;
-  color: white;
-}
-
-.list-item.active .server-badge.netease {
-  background: #ff4d6a;
-}
-
-.list-item.active .server-badge.qq {
-  background: #5dd99a;
+  color: var(--accent);
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .list-artist {

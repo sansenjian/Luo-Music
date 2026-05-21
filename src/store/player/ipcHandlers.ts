@@ -1,5 +1,5 @@
 import { Disposable, DisposableStore, type IDisposable } from '@/base/common/lifecycle/disposable'
-import type { Song } from '@shared/types/schemas'
+import type { Song, SongPlatform } from '@shared/types/schemas'
 import type { PlayMode } from '@shared/player/playMode'
 
 import type { PlayerState } from './playerState'
@@ -14,7 +14,7 @@ export interface IpcHandlersDeps {
   playPrev: () => void
   playNext: () => void
   playSong: (song: Song, playlist?: Song[]) => void
-  playSongById: (id: string | number, platform?: 'netease' | 'qq') => Promise<void> | void
+  playSongById: (id: string | number, platform?: SongPlatform) => Promise<void> | void
   addToNext: (song: Song) => void
   removeFromPlaylist: (index: number) => void
   clearPlaylist: () => void
@@ -137,7 +137,7 @@ export class IpcEventHandler implements IDisposable {
 
       const command = direction as
         | { type: 'play-song'; song: Song; playlist?: Song[] }
-        | { type: 'play-song-by-id'; id: string | number; platform?: 'netease' | 'qq' }
+        | { type: 'play-song-by-id'; id: string | number; platform?: SongPlatform }
         | { type: 'add-to-next'; song: Song }
         | { type: 'remove-from-playlist'; index: number }
         | { type: 'clear-playlist' }

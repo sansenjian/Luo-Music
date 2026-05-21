@@ -33,6 +33,17 @@ const allowedLocalLibraryNativeTests = new Set([
   'tests/electron/localLibrary.service.test.ts'
 ])
 const forbiddenLocalLibraryPureTestRuntimeImports = new Set(['better-sqlite3', 'node:sqlite'])
+const allowedApiHttpRequestFiles = new Set([
+  'src/api/qqmusic.ts',
+  'src/api/shared/neteaseServiceRequest.ts'
+])
+const forbiddenServiceAccessorModules = new Set([
+  'src/services/platformAccessor',
+  'src/services/playerAccessor'
+])
+const forbiddenPlatformDisplayClassPattern =
+  /\b(?:service|server|platform)-badge[-.]?(?:netease|qq)\b/
+const pluginFacadeCallPattern = /\.call\s*\([^,\n]+,\s*['"](?:auth|account|library)\./
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue'])
 const importPattern =
   /\bimport\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
@@ -201,6 +212,30 @@ function checkRootApiImports(files, errors) {
   }
 }
 
+function checkNeteaseApiRequestImports(files, errors, rootDir = projectRoot) {
+  const apiFiles = files.filter(file => file.startsWith('src/api/'))
+
+  for (const file of apiFiles) {
+    if (allowedApiHttpRequestFiles.has(file)) {
+      continue
+    }
+
+    for (const specifier of extractImports(file, rootDir)) {
+      const resolved = resolveProjectPath(file, specifier)
+      const resolvedWithoutExtension = resolved ? stripSourceExtension(resolved) : null
+      const importsNeteaseRequestEntry =
+        resolvedWithoutExtension === 'src/utils/http' ||
+        resolvedWithoutExtension === 'src/utils/http/index'
+
+      if (importsNeteaseRequestEntry) {
+        errors.push(
+          `${file}: Netease API modules should use src/api/shared/neteaseServiceRequest.ts instead of importing "@/utils/http" directly`
+        )
+      }
+    }
+  }
+}
+
 function getFeatureRoot(file) {
   const match = file.match(/^src\/features\/([^/]+)\//)
   return match ? `src/features/${match[1]}` : null
@@ -272,6 +307,130 @@ function checkSharedImports(files, errors) {
   }
 }
 
+function checkRendererHttpConstants(errors, rootDir = projectRoot) {
+  const file = 'src/constants/http.ts'
+  const sourcePath = path.join(rootDir, file)
+  if (!fs.existsSync(sourcePath)) {
+    return
+  }
+
+  const source = fs.readFileSync(sourcePath, 'utf8')
+  if (/\bexport\s+const\s+(?:NETEASE_API_PORT|QQ_API_PORT)\b/.test(source)) {
+    errors.push(
+      `${file}: service port defaults belong in packages/shared/protocol/cache.ts, not renderer HTTP constants`
+    )
+  }
+}
+
+function checkLegacyServiceAccessorImports(files, errors, rootDir = projectRoot) {
+  const productionFiles = files.filter(
+    file =>
+      (file.startsWith('src/') ||
+        file.startsWith('electron/') ||
+        file.startsWith('packages/') ||
+        file.startsWith('server/')) &&
+      !file.endsWith('.test.ts') &&
+      !file.endsWith('.test.tsx')
+  )
+
+  for (const file of productionFiles) {
+    for (const specifier of extractImports(file, rootDir)) {
+      const resolved = resolveProjectPath(file, specifier)
+      const resolvedWithoutExtension = resolved ? stripSourceExtension(resolved) : null
+
+      if (
+        resolvedWithoutExtension &&
+        forbiddenServiceAccessorModules.has(resolvedWithoutExtension)
+      ) {
+        errors.push(
+          `${file}: use services.platform()/services.player() instead of legacy accessor "${specifier}"`
+        )
+      }
+    }
+  }
+}
+
+function checkTopLevelServiceAccess(files, errors, rootDir = projectRoot) {
+  const monitoredFiles = files.filter(
+    file =>
+      (file.startsWith('src/api/') ||
+        file.startsWith('src/store/') ||
+        file.startsWith('src/composables/')) &&
+      !file.endsWith('.test.ts') &&
+      !file.endsWith('.test.tsx')
+  )
+
+  for (const file of monitoredFiles) {
+    const source = fs.readFileSync(path.join(rootDir, file), 'utf8')
+    let braceDepth = 0
+    const lines = source.split(/\r?\n/)
+
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index]
+      const depthBeforeLine = braceDepth
+
+      if (
+        depthBeforeLine === 0 &&
+        /^\s*(?:export\s+)?(?:const|let|var)\s+\w+(?:\s*:\s*[^=]+)?\s*=\s*services\.\w+\(/.test(
+          line
+        )
+      ) {
+        errors.push(
+          `${file}:${index + 1}: avoid caching services.xxx() at module top level; resolve inside a function or deps factory`
+        )
+      }
+
+      for (const char of line.replace(/\/\/.*$/, '')) {
+        if (char === '{') {
+          braceDepth++
+        } else if (char === '}') {
+          braceDepth = Math.max(0, braceDepth - 1)
+        }
+      }
+    }
+  }
+}
+
+function checkPlatformDisplayClassHardcoding(files, errors, rootDir = projectRoot) {
+  const productionFiles = files.filter(
+    file => file.startsWith('src/') && !file.endsWith('.test.ts') && !file.endsWith('.test.tsx')
+  )
+
+  for (const file of productionFiles) {
+    const lines = fs.readFileSync(path.join(rootDir, file), 'utf8').split(/\r?\n/)
+
+    for (let index = 0; index < lines.length; index++) {
+      if (forbiddenPlatformDisplayClassPattern.test(lines[index])) {
+        errors.push(
+          `${file}:${index + 1}: use getPlatformDisplayInfo() for platform display classes instead of hardcoding built-in platform badge classes`
+        )
+      }
+    }
+  }
+}
+
+function checkPluginFacadeUsage(files, errors, rootDir = projectRoot) {
+  const productionFiles = files.filter(
+    file =>
+      file.startsWith('src/') &&
+      !file.endsWith('.test.ts') &&
+      !file.endsWith('.test.tsx') &&
+      file !== 'src/services/pluginService.ts'
+  )
+
+  for (const file of productionFiles) {
+    const lines = fs.readFileSync(path.join(rootDir, file), 'utf8').split(/\r?\n/)
+
+    for (let index = 0; index < lines.length; index++) {
+      if (pluginFacadeCallPattern.test(lines[index])) {
+        errors.push(
+          `${file}:${index + 1}: use services.plugins().auth/account/library methods instead of direct plugin facade call strings`
+        )
+      }
+    }
+  }
+}
+
 function runArchitectureBoundaryChecks() {
   const files = listProjectSourceFiles()
   const errors = []
@@ -279,8 +438,14 @@ function runArchitectureBoundaryChecks() {
   checkElectronImports(files, errors)
   checkLocalLibraryNativeTestBoundaries(files, errors)
   checkRootApiImports(files, errors)
+  checkNeteaseApiRequestImports(files, errors)
   checkFeaturePublicApi(files, errors)
   checkSharedImports(files, errors)
+  checkRendererHttpConstants(errors)
+  checkLegacyServiceAccessorImports(files, errors)
+  checkTopLevelServiceAccess(files, errors)
+  checkPlatformDisplayClassHardcoding(files, errors)
+  checkPluginFacadeUsage(files, errors)
 
   return errors
 }
@@ -304,6 +469,13 @@ if (require.main === module) {
 } else {
   module.exports = {
     checkLocalLibraryNativeTestBoundaries,
+    checkLegacyServiceAccessorImports,
+    checkNeteaseApiRequestImports,
+    checkPlatformDisplayClassHardcoding,
+    checkPluginFacadeUsage,
+    checkPluginAuthFacadeUsage: checkPluginFacadeUsage,
+    checkRendererHttpConstants,
+    checkTopLevelServiceAccess,
     extractImports,
     resolveProjectPath,
     runArchitectureBoundaryChecks
