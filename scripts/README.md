@@ -11,6 +11,8 @@ scripts/
 │   ├── clean.cjs       # 统一清理入口
 │   ├── clean-targets.cjs # 定向清理构建产物（Windows 优化）
 │   ├── run-target.cjs  # build / make / package 调度入口
+│   ├── package-third-party-plugins.cjs # 生成第三方插件安装 zip
+│   ├── check-artifact-budgets.cjs # 检查打包产物体积预算
 │   └── finalize-portable-output.cjs # 收敛单文件便携版输出，只保留 .exe
 │
 ├── dev/                # 开发环境脚本
@@ -105,9 +107,22 @@ node scripts/build/clean.cjs dist build/service
 - `electron-bundle-no-clean`: 不清理，直接构建 Electron bundle
 - `electron`: 生成 Electron 安装包
 - `electron-portable`: 生成单文件便携版
+- `electron-all`: 准备一次 Electron bundle，并行生成安装包和 portable
 - `package`: 生成 Electron package
 - `make`: 生成 Electron 安装包
 - `make-fast`: 快速 make 模式
+
+`electron`、`electron-portable`、`package` 和 `make-fast` 会在 Electron bundle 准备阶段并行生成 `out/third-party-plugins/*.zip`，插件页可使用这些 zip 重新安装内置平台插件。
+
+`electron-all` 用于完整打包：共享一次 bundle 和插件 zip，然后并行执行 Forge make 与 electron-builder portable，完成后运行产物体积预算检查。
+
+#### check-artifact-budgets.cjs
+
+检查 `build/`、`out/make/`、`out/portable/` 和 `out/third-party-plugins/` 等打包产物的大小。默认只输出 warning；传入 `--strict` 或设置 `LUO_ARTIFACT_BUDGET_STRICT=1` 时，超限或缺失产物会让脚本失败。
+
+#### package-third-party-plugins.cjs
+
+将 `plugins/third-party/` 下的每个插件目录打包为稳定 zip 输出。脚本会校验 manifest、入口文件和输出目录边界，默认只写入 `out/third-party-plugins/`。
 
 #### finalize-portable-output.cjs
 

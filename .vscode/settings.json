@@ -63,19 +63,6 @@
   "vue.complete.casing.tag": "kebab-case",
   "vue.formatting.initialIndent": false,
   "vetur.validation.template": false,
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact",
-    "vue",
-    "vue-html",
-    "typescript",
-    "typescriptreact"
-  ],
-  "eslint.workingDirectories": [{ "mode": "auto" }],
-  "eslint.options": {
-    "cache": true
-  },
-  "eslint.run": "onSave",
   "oxc.enable": true,
   "oxc.configPath": "vite.config.ts",
   "[vue]": {

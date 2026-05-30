@@ -7,10 +7,17 @@ import type { LoggerService } from '@/services/loggerService'
 import type { MusicService } from '@/services/musicService'
 import type { PlatformService } from '@/services/platformService'
 import { storageAdapter } from '@/services/storageService'
-import type { LocalLibraryTrack } from '@shared/types/localLibrary'
+import type { LocalLibraryPage, LocalLibraryTrack } from '@shared/types/localLibrary'
 import { handleApiError } from '@/utils/error/legacy'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
 import { createLatestRequestController } from '@/utils/http/requestScope'
+import {
+  isUnknownLocalArtist,
+  normalizeDisplayText,
+  resolveLocalTrackAlbum,
+  resolveLocalTrackArtist,
+  resolveLocalTrackName
+} from '@/utils/localLibrary/display'
 import { usePlayerStore } from './playerStore'
 import { usePlaylistStore } from './playlistStore'
 
@@ -118,22 +125,44 @@ function resolveSearchPlatformId(
   return searchPlatformOptions[0]?.value ?? musicService.getDefaultSearchPlatformId()
 }
 
+function hasMeaningfulSongArtists(song: Song): boolean {
+  return song.artists.some(artist => {
+    const artistName = normalizeDisplayText(artist.name)
+    return artistName.length > 0 && !isUnknownLocalArtist(artistName)
+  })
+}
+
 function localTrackToSearchResult(track: LocalLibraryTrack): SearchResultItem {
+  const fallbackName = resolveLocalTrackName(track)
+  const fallbackArtist = resolveLocalTrackArtist(track)
+  const fallbackAlbum = resolveLocalTrackAlbum(track)
+  const song: Song = {
+    ...track.song,
+    name: fallbackName,
+    artists: hasMeaningfulSongArtists(track.song)
+      ? track.song.artists
+      : [{ id: 0, name: fallbackArtist }],
+    album: {
+      ...track.song.album,
+      name: fallbackAlbum,
+      picUrl: track.song.album.picUrl || ''
+    }
+  }
   const item: SearchResultItem = {
     id: track.song.id,
-    name: track.song.name,
-    artist: track.song.artists.map(a => a.name).join(' / '),
-    album: track.song.album.name || '',
-    pic: track.song.album.picUrl || '',
-    cover: track.song.album.picUrl || '',
+    name: fallbackName,
+    artist: fallbackArtist,
+    album: fallbackAlbum,
+    pic: song.album.picUrl || '',
+    cover: song.album.picUrl || '',
     url: null,
     platform: 'local',
     duration: Math.floor(track.duration / 1000),
-    _song: track.song
+    _song: song
   }
 
-  if (track.song.extra) {
-    Object.assign(item, track.song.extra)
+  if (song.extra) {
+    Object.assign(item, song.extra)
   }
 
   return item
@@ -227,19 +256,46 @@ export function createSearchStore(deps: SearchStoreDeps = {}, options: SearchSto
 
         if (activeServer === 'local') {
           try {
-            const page = await task.guard(
-              platformService.getLocalLibraryTracks({ search: trimmedKeyword })
-            )
+            const localItems: SearchResultItem[] = []
+            let nextCursor: string | null = null
+            let total = 0
+            let pageCount = 0
 
-            const items = page.items.map(localTrackToSearchResult)
+            do {
+              const page: LocalLibraryPage<LocalLibraryTrack> = await task.guard(
+                platformService.getLocalLibraryTracks({
+                  search: trimmedKeyword,
+                  limit: SEARCH_PAGE_SIZE,
+                  cursor: nextCursor
+                })
+              )
+              const nextItems = page.items.map(localTrackToSearchResult)
+              localItems.push(...nextItems)
+              total = page.total
+              nextCursor = page.nextCursor
+              pageCount += 1
+
+              task.commit(() => {
+                results.value = [...localItems]
+                totalResults.value = total
+              })
+
+              if (pageCount >= MAX_SEARCH_PAGES && nextCursor) {
+                logger.warn('searchStore', 'Local search paging stopped at safety limit', {
+                  keyword: trimmedKeyword,
+                  loadedCount: localItems.length,
+                  total,
+                  pageLimit: MAX_SEARCH_PAGES
+                })
+                break
+              }
+            } while (nextCursor)
 
             task.commit(() => {
-              results.value = items
-              totalResults.value = page.total
               isLoading.value = false
             })
 
-            if (items.length === 0) {
+            if (localItems.length === 0) {
               error.value = '没有找到匹配的本地音乐'
             }
           } catch (err: unknown) {

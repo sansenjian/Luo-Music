@@ -10,8 +10,7 @@
 
 ```
 electron/ipc/
-├── IpcService.ts          # 核心 IPC 服务类
-├── types.ts               # 类型定义
+├── IpcService.ts          # 核心 IPC 服务类（含类型定义）
 ├── index.ts               # 统一导出
 ├── middleware/
 │   ├── error.ts           # 错误处理中间件
@@ -228,11 +227,7 @@ export function registerCacheHandlers(): void {
 
 ## 测试验证
 
-所有 307 个测试用例通过：
-
-- 28 个测试文件
-- 涵盖 IPC、播放器、用户数据存储、工具函数等
-- 构建 Electron 应用成功
+截至 2026-05-23，项目测试基线为 198 个测试文件、1522+ 个测试用例通过。
 
 ## 性能优势
 
@@ -254,8 +249,7 @@ export function registerCacheHandlers(): void {
 
 ## 相关文件
 
-- `electron/ipc/IpcService.ts` - 核心服务实现
-- `electron/ipc/types.ts` - 类型定义
+- `electron/ipc/IpcService.ts` - 核心服务实现（含类型定义）
 - `electron/ipc/handlers/*.ts` - 各领域处理器
 - `electron/ipc/middleware/*.ts` - 中间件实现
 - `electron/shared/protocol/channels.ts` - 通道常量定义
@@ -264,6 +258,6 @@ export function registerCacheHandlers(): void {
 ## 维护说明
 
 - 添加新的 IPC 通道时，首先在 `channels.ts` 中定义常量
-- 在 `types.ts` 中添加对应的类型定义
+- 在 `IpcService.ts` 中添加对应的类型定义
 - 在相应的 handler 文件中注册处理器
 - 确保通过 TypeScript 类型检查

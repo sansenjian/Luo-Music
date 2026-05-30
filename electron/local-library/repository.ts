@@ -295,6 +295,18 @@ export class LocalLibraryRepository {
         file_size = excluded.file_size,
         modified_at = excluded.modified_at,
         cover_hash = excluded.cover_hash
+      ON CONFLICT(file_path_key) DO UPDATE SET
+        id = excluded.id,
+        folder_id = excluded.folder_id,
+        file_path = excluded.file_path,
+        file_name = excluded.file_name,
+        title = excluded.title,
+        artist = excluded.artist,
+        album = excluded.album,
+        duration = excluded.duration,
+        file_size = excluded.file_size,
+        modified_at = excluded.modified_at,
+        cover_hash = excluded.cover_hash
     `)
 
     this.replaceTracksForFolderTransaction = this.db.transaction(

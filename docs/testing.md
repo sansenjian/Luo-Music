@@ -41,14 +41,19 @@ Vite+ 迁移期还提供质量检查入口：`npm run vp:lint`、`npm run vp:fmt
 ```text
 tests/
   api/
+  app/
   base/
   components/
   composables/
   constants/
   e2e/
   electron/
+  extensions/
+  fixtures/
+  helpers/
   mocks/
   platform/
+  plugins/
   scripts/
   services/
   store/
@@ -58,12 +63,11 @@ tests/
 
 ## 当前验证基线
 
-截至 `2026-05-12`，最近一次验证结果为：
+截至 `2026-05-23`，最近一次验证结果为：
 
-- `npm run test:run`：`180` 个测试文件通过，`1391` 个测试用例通过
+- `npm run test:run`：`198` 个测试文件通过，`1522` 个测试用例通过（1 个 fake timer 相关 flaky 测试已知）
 - `npm run test:native`：只覆盖真实 SQLite repository / service 集成测试
 - `npm run test:ci`：普通测试 + native 测试合并验证
-- 语句覆盖率 `67.18%`，分支覆盖率 `58.87%`，函数覆盖率 `64.10%`，行覆盖率 `67.67%`
 
 ## 什么时候必须补测试
 

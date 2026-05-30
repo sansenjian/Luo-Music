@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs'
+import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,6 +9,16 @@ vi.mock('electron', () => ({
     getPath: vi.fn(() => path.join(os.tmpdir(), 'luo-test-userdata'))
   }
 }))
+
+const require = createRequire(import.meta.url)
+const { createZipFromDirectory, packageThirdPartyPlugins } =
+  require('../../scripts/build/package-third-party-plugins.cjs') as {
+    createZipFromDirectory: (sourceDir: string, archivePath: string) => Promise<void>
+    packageThirdPartyPlugins: (options: {
+      sourceDir: string
+      outputDir: string
+    }) => Promise<Array<{ platformId: string; archivePath: string }>>
+  }
 
 const VALID_MANIFEST = {
   manifestVersion: 1,
@@ -282,6 +293,90 @@ describe('PluginInstaller', () => {
       )
     })
 
+    it('installs when given a zip package with manifest.json at the archive root', async () => {
+      const sourceDir = path.join(tempRoot, 'zip-plugin')
+      const archivePath = path.join(tempRoot, 'zip-plugin.zip')
+      await writePlugin(sourceDir)
+      await createZipFromDirectory(sourceDir, archivePath)
+
+      const installer = await createInstaller()
+      const result = await installer.installFromPath(archivePath)
+
+      expect(result.manifest.id).toBe('com.example.test')
+      expect(result.installPath).toBe(path.join(pluginsRoot, 'com.example.test', '1.0.0'))
+      const installedManifest = await fs.readFile(
+        path.join(result.installPath, 'manifest.json'),
+        'utf-8'
+      )
+      expect(JSON.parse(installedManifest)).toMatchObject({ id: 'com.example.test' })
+    })
+
+    it('installs when a zip package contains one top-level plugin directory', async () => {
+      const archiveRoot = path.join(tempRoot, 'archive-root')
+      const sourceDir = path.join(archiveRoot, 'nested-plugin')
+      const archivePath = path.join(tempRoot, 'nested-plugin.zip')
+      await writePlugin(sourceDir, {
+        ...VALID_MANIFEST,
+        id: 'com.example.nested',
+        name: 'Nested',
+        platformId: 'nested'
+      })
+      await createZipFromDirectory(archiveRoot, archivePath)
+
+      const installer = await createInstaller()
+      const result = await installer.installFromPath(archivePath)
+
+      expect(result.manifest.id).toBe('com.example.nested')
+      expect(result.installPath).toBe(path.join(pluginsRoot, 'com.example.nested', '1.0.0'))
+      await expect(fs.stat(path.join(result.installPath, 'index.mjs'))).resolves.toBeDefined()
+    })
+
+    it('installs generated zip archives for the real third-party plugins', async () => {
+      const sourceDir = path.resolve(process.cwd(), 'plugins', 'third-party')
+      await fs.mkdir(path.join(process.cwd(), 'out'), { recursive: true })
+      const outputDir = await fs.mkdtemp(
+        path.join(process.cwd(), 'out', 'generated-third-party-archives-')
+      )
+      const archives = await packageThirdPartyPlugins({ sourceDir, outputDir })
+
+      try {
+        const installer = await createInstaller()
+        const installedPlugins = []
+        for (const archive of archives) {
+          installedPlugins.push(await installer.installFromPath(archive.archivePath))
+        }
+
+        expect(installedPlugins.map(plugin => plugin.manifest.platformId).sort()).toEqual(
+          archives.map(archive => archive.platformId).sort()
+        )
+        expect(archives.map(archive => path.extname(archive.archivePath))).toEqual(
+          archives.map(() => '.zip')
+        )
+      } finally {
+        await fs.rm(outputDir, { recursive: true, force: true })
+      }
+    })
+
+    it('installs all zip packages from a directory path', async () => {
+      const sourceDir = path.resolve(process.cwd(), 'plugins', 'third-party')
+      await fs.mkdir(path.join(process.cwd(), 'out'), { recursive: true })
+      const outputDir = await fs.mkdtemp(
+        path.join(process.cwd(), 'out', 'generated-third-party-archives-')
+      )
+      const archives = await packageThirdPartyPlugins({ sourceDir, outputDir })
+
+      try {
+        const installer = await createInstaller()
+        const installedPlugins = await installer.installManyFromPath(outputDir)
+
+        expect(installedPlugins.map(plugin => plugin.manifest.platformId).sort()).toEqual(
+          archives.map(archive => archive.platformId).sort()
+        )
+      } finally {
+        await fs.rm(outputDir, { recursive: true, force: true })
+      }
+    })
+
     it('throws for a non-existent path', async () => {
       const installer = await createInstaller()
       await expect(installer.installFromPath('/non/existent/path/xyz')).rejects.toThrow(
@@ -423,7 +518,7 @@ describe('PluginInstaller', () => {
 
       const installer = await createInstaller()
       await expect(installer.installFromPath(randomFile)).rejects.toThrow(
-        'Only plugin directories or manifest.json paths are supported'
+        'Only plugin directories, manifest.json paths, or .zip plugin packages are supported'
       )
     })
 

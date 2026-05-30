@@ -70,7 +70,7 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
 
   async function install(): Promise<void> {
     if (!installPath.value.trim()) {
-      errorMessage.value = '请输入插件目录或 manifest.json 路径'
+      errorMessage.value = '请输入插件目录、manifest.json 或 zip 包路径'
       return
     }
 
@@ -87,14 +87,18 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
     }
   }
 
-  async function browseInstallPath(): Promise<void> {
+  async function browseInstallPath(mode: 'file' | 'directory' = 'file'): Promise<string | null> {
     try {
-      const selectedPath = await pluginService.pickInstallPath()
+      const selectedPath = await pluginService.pickInstallPath(mode)
       if (selectedPath) {
         installPath.value = selectedPath
+        return selectedPath
       }
+
+      return null
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : String(error)
+      return null
     }
   }
 

@@ -5,6 +5,10 @@ import HomeEmptyState from './home/HomeEmptyState.vue'
 import { uiMessages } from '@/messages/ui'
 import { getPlatformDisplayInfo, type PlatformDisplayInfo } from '@/platform/music/display'
 import { usePlayerStore } from '@/store/playerStore.ts'
+import {
+  resolveLocalSongName,
+  shouldPromoteArtistTextToLocalTitle
+} from '@/utils/localLibrary/display'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
 import type { Song } from '@/platform/music/interface'
 
@@ -43,14 +47,17 @@ function createPlaylistItemFingerprint(song: Song): string {
 }
 
 function normalizePlaylistItem(song: Song): PlaylistItem {
+  const artistText = Array.isArray(song.artists)
+    ? song.artists.map(artist => artist.name).join(' / ')
+    : ''
+  const name = resolveLocalSongName(song, artistText)
+
   return {
     id: song.id,
-    artistText: Array.isArray(song.artists)
-      ? song.artists.map(artist => artist.name).join(' / ')
-      : '',
+    artistText: shouldPromoteArtistTextToLocalTitle(song, name, artistText) ? '' : artistText,
     cover: song.album?.picUrl || '',
     duration: Math.floor(song.duration / 1000),
-    name: song.name,
+    name,
     platform: getPlatformDisplayInfo(song.platform)
   }
 }
@@ -271,7 +278,7 @@ onUnmounted(() => {
           </div>
           <div class="list-info">
             <div class="list-title">
-              {{ song.name }}
+              <span class="list-title-text">{{ song.name }}</span>
               <span
                 class="server-badge"
                 :class="song.platform.className"
@@ -314,7 +321,7 @@ onUnmounted(() => {
 
 .list-item {
   display: grid;
-  grid-template-columns: 50px 36px 1fr 50px;
+  grid-template-columns: 50px 36px minmax(0, 1fr) 50px;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
@@ -422,13 +429,19 @@ onUnmounted(() => {
 .list-title {
   font-size: 13px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   margin-bottom: 2px;
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+.list-title-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .server-badge {

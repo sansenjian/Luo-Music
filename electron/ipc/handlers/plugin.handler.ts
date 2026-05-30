@@ -16,12 +16,15 @@ export function registerPluginHandlers(pluginCatalog: PluginCatalog): void {
     }
   )
 
-  ipcService.registerInvoke(INVOKE_CHANNELS.PLUGIN_PICK_INSTALL_PATH, async () => {
+  ipcService.registerInvoke(INVOKE_CHANNELS.PLUGIN_PICK_INSTALL_PATH, async (mode = 'file') => {
     const focusedWindow = BrowserWindow.getFocusedWindow()
+    const isDirectoryMode = mode === 'directory'
     const dialogOptions: OpenDialogOptions = {
-      title: '选择插件目录或 manifest.json',
-      properties: ['openFile', 'openDirectory'],
-      filters: [{ name: 'Plugin Manifest', extensions: ['json'] }]
+      title: isDirectoryMode ? '选择插件目录或 zip 包目录' : '选择插件 manifest.json 或 zip 包',
+      properties: [isDirectoryMode ? 'openDirectory' : 'openFile'],
+      ...(isDirectoryMode
+        ? {}
+        : { filters: [{ name: 'Plugin Package or Manifest', extensions: ['zip', 'json'] }] })
     }
 
     const result = focusedWindow

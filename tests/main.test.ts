@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const setupServicesMock = vi.hoisted(() => vi.fn())
 const vueQueryInstallMock = vi.hoisted(() => vi.fn())
@@ -64,9 +64,13 @@ describe('main bootstrap', () => {
     document.cookie = 'sessionToken=alive'
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('does not clear existing cookies during bootstrap', async () => {
     await import('@/main.ts')
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(0)
 
     expect(document.cookie).toContain('sessionToken=alive')
     expect(setupServicesMock).toHaveBeenCalledTimes(1)

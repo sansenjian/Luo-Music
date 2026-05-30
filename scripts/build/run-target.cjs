@@ -1,4 +1,5 @@
 const { spawn, spawnSync } = require('node:child_process')
+const fs = require('node:fs')
 const path = require('node:path')
 
 const { cleanTargets } = require('./clean-targets.cjs')
@@ -52,6 +53,10 @@ function runNode(scriptPath, args = []) {
   run(process.execPath, [scriptPath, ...args], { shell: false })
 }
 
+function runNodeAsync(scriptPath, args = []) {
+  return runAsync(process.execPath, [scriptPath, ...args], { shell: false })
+}
+
 function getNpmRunner() {
   if (process.env.npm_execpath) {
     return {
@@ -92,11 +97,47 @@ function runWithEnv(envEntries, commandArgs) {
 }
 
 function runWithEnvAsync(envEntries, commandArgs) {
-  return runAsync(process.execPath, ['scripts/run-with-env.cjs', ...envEntries, '--', ...commandArgs])
+  return runAsync(process.execPath, [
+    'scripts/run-with-env.cjs',
+    ...envEntries,
+    '--',
+    ...commandArgs
+  ])
 }
 
 function clean(targets, options = {}) {
   cleanTargets(targets, options)
+}
+
+function toBuildTargetPath(absolutePath) {
+  return path.relative(projectRoot, absolutePath).replace(/\\/g, '/')
+}
+
+function getElectronBundleCleanTargets() {
+  const targets = ['build/assets', 'build/electron']
+  const buildDir = path.join(projectRoot, 'build')
+  const preservedBuildEntries = new Set(['runtime', 'service'])
+
+  if (fs.existsSync(buildDir)) {
+    for (const entry of fs.readdirSync(buildDir, { withFileTypes: true })) {
+      if (!preservedBuildEntries.has(entry.name)) {
+        targets.push(toBuildTargetPath(path.join(buildDir, entry.name)))
+      }
+    }
+  }
+
+  return [...new Set(targets)]
+}
+
+function packageThirdPartyPlugins() {
+  return runNodeAsync('scripts/build/package-third-party-plugins.cjs')
+}
+
+function checkArtifactBudgets(profiles) {
+  return runNodeAsync(
+    'scripts/build/check-artifact-budgets.cjs',
+    profiles.flatMap(profile => ['--profile', profile])
+  )
 }
 
 function formatDuration(ms) {
@@ -137,86 +178,180 @@ async function runParallel(label, tasks) {
   console.log(`[run-target] ${label}: completed in ${formatDuration(Date.now() - startedAt)}`)
 }
 
-const workflows = {
-  async build() {
-    clean(['build'])
-    npmRun('guard:configs')
-    await runParallel('build', {
-      'rebuild:native': () => npmRunAsync('rebuild:native'),
-      'electron-vite:build': () => npmRunAsync('electron-vite:build')
-    })
-  },
+async function runStep(label, task) {
+  const startedAt = Date.now()
+  console.log(`[run-target] ${label}: starting`)
 
-  async web() {
-    clean(['dist', 'build/service'])
-    npmRun('guard:configs')
-    await runParallel('web', {
-      'build:server': () => npmRunAsync('build:server'),
-      'vp build': () =>
-        runWithEnvAsync(
-          ['APP_RUNTIME=web'],
-          [
-            ...getNpmCommandParts(),
-            'run',
-            'vp',
-            '--',
-            'build',
-            '--config',
-            '.config/vite.config.ts',
-            '--mode',
-            'web'
-          ]
-        )
-    })
-  },
-
-  async 'electron-bundle'() {
-    clean(['build'], { force: true })
-    await workflows['electron-bundle-no-clean']()
-  },
-
-  async 'electron-bundle-no-clean'() {
-    npmRun('guard:configs')
-    await runParallel('electron-bundle', {
-      'rebuild:native': () => npmRunAsync('rebuild:native'),
-      'build:qq-runtime': () => npmRunAsync('build:qq-runtime'),
-      'build:server': () => npmRunAsync('build:server'),
-      'electron-vite:build': () => npmRunAsync('electron-vite:build')
-    })
-  },
-
-  async electron() {
-    clean(['out/LUO Music-win32-x64', 'out/make'], { force: true })
-    await workflows['electron-bundle']()
-    npmRun('electron-forge', ['--', 'make'])
-  },
-
-  async 'electron-portable'() {
-    clean(['out/portable'], { force: true })
-    await workflows['electron-bundle']()
-    npmRun('electron-builder', ['--', '--config', 'electron/builder.portable.cjs', '--publish', 'never'])
-    runNode('scripts/build/finalize-portable-output.cjs', ['out/portable'])
-  },
-
-  async package() {
-    clean(['out/LUO Music-win32-x64'], { force: true })
-    await workflows['electron-bundle']()
-    npmRun('electron-forge', ['--', 'package'])
-  },
-
-  async make() {
-    await workflows.electron()
-  },
-
-  async 'make-fast'() {
-    clean(['out/LUO Music-win32-x64', 'out/make'], { force: true })
-    await workflows['electron-bundle']()
-    await runWithEnvAsync(
-      ['LUO_FAST_MAKE=1'],
-      [...getNpmCommandParts(), 'run', 'electron-forge', '--', 'make']
-    )
+  try {
+    await task()
+  } catch (error) {
+    console.log(`[run-target] ${label}: failed after ${formatDuration(Date.now() - startedAt)}`)
+    throw error
   }
+
+  console.log(`[run-target] ${label}: completed in ${formatDuration(Date.now() - startedAt)}`)
 }
+
+function createWorkflows(overrides = {}) {
+  const deps = {
+    clean,
+    checkArtifactBudgets,
+    getElectronBundleCleanTargets,
+    getNpmCommandParts,
+    npmRun,
+    npmRunAsync,
+    packageThirdPartyPlugins,
+    runNode,
+    runNodeAsync,
+    runParallel,
+    runStep,
+    runWithEnvAsync,
+    ...overrides
+  }
+
+  const workflows = {
+    async build() {
+      await deps.runStep('build:clean', () => deps.clean(['build']))
+      await deps.runStep('build:guard:configs', () => deps.npmRun('guard:configs'))
+      await deps.runParallel('build', {
+        'rebuild:native': () => deps.npmRunAsync('rebuild:native'),
+        'electron-vite:build': () => deps.npmRunAsync('electron-vite:build')
+      })
+    },
+
+    async web() {
+      await deps.runStep('web:clean', () => deps.clean(['dist', 'build/service']))
+      await deps.runStep('web:guard:configs', () => deps.npmRun('guard:configs'))
+      await deps.runParallel('web', {
+        'build:server': () => deps.npmRunAsync('build:server'),
+        'vp build': () =>
+          deps.runWithEnvAsync(
+            ['APP_RUNTIME=web'],
+            [
+              ...deps.getNpmCommandParts(),
+              'run',
+              'vp',
+              '--',
+              'build',
+              '--config',
+              '.config/vite.config.ts',
+              '--mode',
+              'web'
+            ]
+          )
+      })
+    },
+
+    async 'electron-bundle'() {
+      await deps.runStep('electron-bundle:clean', () =>
+        deps.clean(deps.getElectronBundleCleanTargets(), { force: true })
+      )
+      await workflows['electron-bundle-no-clean']()
+    },
+
+    async 'electron-bundle-no-clean'() {
+      await deps.runStep('electron-bundle:guard:configs', () => deps.npmRun('guard:configs'))
+      await deps.runParallel('electron-bundle', {
+        'rebuild:native': () => deps.npmRunAsync('rebuild:native'),
+        'build:qq-runtime': () => deps.npmRunAsync('build:qq-runtime'),
+        'build:server': () => deps.npmRunAsync('build:server'),
+        'electron-vite:build': () => deps.npmRunAsync('electron-vite:build')
+      })
+    },
+
+    async electron() {
+      await deps.runStep('electron:clean', () =>
+        deps.clean(['out/LUO Music-win32-x64', 'out/make'], { force: true })
+      )
+      await buildElectronArtifacts('electron')
+      await deps.runStep('electron:make', () => deps.npmRun('electron-forge', ['--', 'make']))
+      await checkPackagingBudgets('electron', ['bundle', 'plugins', 'electron'])
+    },
+
+    async 'electron-portable'() {
+      await deps.runStep('electron-portable:clean', () =>
+        deps.clean(['out/portable'], { force: true })
+      )
+      await buildElectronArtifacts('electron-portable')
+      await deps.runStep('electron-portable:build', () =>
+        deps.npmRun('electron-builder', [
+          '--',
+          '--config',
+          'electron/builder.portable.cjs',
+          '--publish',
+          'never'
+        ])
+      )
+      await deps.runStep('electron-portable:finalize', () =>
+        deps.runNode('scripts/build/finalize-portable-output.cjs', ['out/portable'])
+      )
+      await checkPackagingBudgets('electron-portable', ['bundle', 'plugins', 'portable'])
+    },
+
+    async package() {
+      await deps.runStep('package:clean', () =>
+        deps.clean(['out/LUO Music-win32-x64'], { force: true })
+      )
+      await buildElectronArtifacts('package')
+      await deps.runStep('package:forge', () => deps.npmRun('electron-forge', ['--', 'package']))
+      await checkPackagingBudgets('package', ['bundle', 'plugins', 'package'])
+    },
+
+    async make() {
+      await workflows.electron()
+    },
+
+    async 'electron-all'() {
+      await deps.runStep('electron-all:clean', () =>
+        deps.clean(['out/LUO Music-win32-x64', 'out/make', 'out/portable'], { force: true })
+      )
+      await buildElectronArtifacts('electron-all')
+      await deps.runParallel('electron-all:package', {
+        'electron-forge:make': () => deps.npmRunAsync('electron-forge', ['--', 'make']),
+        'electron-builder:portable': async () => {
+          await deps.npmRunAsync('electron-builder', [
+            '--',
+            '--config',
+            'electron/builder.portable.cjs',
+            '--publish',
+            'never'
+          ])
+          await deps.runNodeAsync('scripts/build/finalize-portable-output.cjs', ['out/portable'])
+        }
+      })
+      await checkPackagingBudgets('electron-all', ['bundle', 'plugins', 'electron', 'portable'])
+    },
+
+    async 'make-fast'() {
+      await deps.runStep('make-fast:clean', () =>
+        deps.clean(['out/LUO Music-win32-x64', 'out/make'], { force: true })
+      )
+      await buildElectronArtifacts('make-fast')
+      await deps.runStep('make-fast:make', () =>
+        deps.runWithEnvAsync(
+          ['LUO_FAST_MAKE=1'],
+          [...deps.getNpmCommandParts(), 'run', 'electron-forge', '--', 'make']
+        )
+      )
+      await checkPackagingBudgets('make-fast', ['bundle', 'plugins', 'electron'])
+    }
+  }
+
+  function checkPackagingBudgets(label, profiles) {
+    return deps.runStep(`${label}:artifact-budgets`, () => deps.checkArtifactBudgets(profiles))
+  }
+
+  function buildElectronArtifacts(label) {
+    return deps.runParallel(`${label}:prepare`, {
+      'electron-bundle': () => workflows['electron-bundle'](),
+      'package-third-party-plugins': () => deps.packageThirdPartyPlugins()
+    })
+  }
+
+  return workflows
+}
+
+const workflows = createWorkflows()
 
 async function main() {
   const target = process.argv[2]
@@ -238,7 +373,11 @@ if (require.main === module) {
 }
 
 module.exports = {
+  checkArtifactBudgets,
+  createWorkflows,
   formatDuration,
+  getElectronBundleCleanTargets,
   runParallel,
+  runStep,
   workflows
 }

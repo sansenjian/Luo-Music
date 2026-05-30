@@ -28,7 +28,6 @@
 | Vue.volar                      | Vue 3 语言支持            |
 | vscode-typescript-vue-plugin   | Vue 中的 TypeScript 支持  |
 | oxc.oxc-vscode                 | Oxlint / OXC 集成         |
-| vs code-eslint                 | ESLint 备用规则支持       |
 | vscode-tailwindcss             | Tailwind CSS 支持         |
 | markdown-preview-github-styles | GitHub 风格 Markdown 预览 |
 | vscode-typescript-next         | 最新版 TypeScript 支持    |
@@ -74,7 +73,7 @@
 
 - 保存时通过 OXC 扩展执行可自动修复项
 - Oxfmt 提供主线 CLI 格式化和检查脚本
-- ESLint 配置保留为备用检查入口
+- `npm run lint` 统一走 Vite+ / Oxlint，不再保留原生 ESLint 入口
 
 **Git 设置**：
 
@@ -218,21 +217,9 @@ git commit
 
 ### 建议优化（长期）
 
-1. **功能模块化**：考虑按功能领域组织代码
+1. **API 类型安全**：使用 Zod 或类似工具进行 API 响应验证
 
-   ```
-   src/features/
-   ├── player/
-   ├── search/
-   ├── playlist/
-   └── user/
-   ```
-
-2. **依赖注入**：引入自动依赖注入工具
-
-3. **API 类型安全**：使用 Zod 或类似工具进行 API 响应验证
-
-4. **性能监控**：添加更详细的性能指标收集
+2. **性能监控**：添加更详细的性能指标收集
 
 ## 📊 配置对比
 

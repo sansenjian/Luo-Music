@@ -17,7 +17,6 @@ module.exports = {
   files: [
     "build/**/*",
     "public/**/*",
-    "plugins/third-party/**/*",
     "!**/.config/**/*",
     "!config/**/*",
     "!docs/**/*",

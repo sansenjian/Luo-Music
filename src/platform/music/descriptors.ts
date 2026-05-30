@@ -6,7 +6,6 @@ import type {
   PlatformDescriptor,
   PlatformOption
 } from '@shared/types/platform'
-import { usesLegacyLoginBridge } from './loginRouting'
 
 export type {
   PlatformBooleanCapability,
@@ -137,15 +136,9 @@ export function getSearchablePlatformDescriptors(): PlatformDescriptor[] {
 }
 
 export function getLoginCapablePlatformDescriptors(): PlatformDescriptor[] {
-  return getEnabledPlatformDescriptors().filter(descriptor => {
-    if (descriptor.capabilities.auth?.login === true) {
-      return true
-    }
-
-    // Compatibility bridge for already-installed first-party platform plugins whose
-    // manifest has not been refreshed to the auth-capability schema yet.
-    return usesLegacyLoginBridge(descriptor.id)
-  })
+  return getEnabledPlatformDescriptors().filter(
+    descriptor => descriptor.capabilities.auth?.login === true
+  )
 }
 
 export function getPlatformCapabilities(platformId: string): PlatformCapabilities {

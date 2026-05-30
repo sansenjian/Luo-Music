@@ -6,6 +6,7 @@ import { usePluginManager } from '@/composables/usePluginManager'
 import { uiMessages } from '@/messages/ui'
 
 import PluginCategoryTabs from './PluginCategoryTabs.vue'
+import PluginInstallConfirmModal from './PluginInstallConfirmModal.vue'
 import PluginInstallToolbar from './PluginInstallToolbar.vue'
 import PluginPlatformCard from './PluginPlatformCard.vue'
 import { getPluginCategory } from './pluginManager.helpers'
@@ -60,7 +61,9 @@ const pluginCategoryTabs: PluginCategoryTab[] = [
 ]
 
 const activeCategory = ref<PluginCategory>('api')
+const showInstallConfirm = ref(false)
 const canInstall = computed(() => installPath.value.trim().length > 0 && !isInstalling.value)
+const installConfirmPath = computed(() => installPath.value.trim())
 const categoryCounts = computed<Record<PluginCategory, number>>(() => ({
   api: countPlatformsByCategory('api'),
   extension: countPlatformsByCategory('extension'),
@@ -101,6 +104,33 @@ function isEditingSettings(platformId: string): boolean {
   return editingSettingsPlatformId.value === platformId
 }
 
+function requestInstallConfirmation(): void {
+  if (!canInstall.value) {
+    return
+  }
+
+  showInstallConfirm.value = true
+}
+
+async function browseAndConfirmInstallPath(mode: 'file' | 'directory'): Promise<void> {
+  const selectedPath = await browseInstallPath(mode)
+  if (!selectedPath || !canInstall.value) {
+    return
+  }
+
+  showInstallConfirm.value = true
+}
+
+async function confirmInstall(): Promise<void> {
+  if (!canInstall.value) {
+    showInstallConfirm.value = false
+    return
+  }
+
+  showInstallConfirm.value = false
+  await install()
+}
+
 function updateSettingValue(key: string, value: unknown): void {
   editingSettingsValues[key] = value
 }
@@ -114,9 +144,17 @@ function updateSettingValue(key: string, value: unknown): void {
       :can-install="canInstall"
       :is-installing="isInstalling"
       :is-loading="isLoading"
-      @browse-install-path="browseInstallPath"
-      @install="install"
+      @browse-install-path="browseAndConfirmInstallPath"
+      @request-install="requestInstallConfirmation"
       @refresh="refresh"
+    />
+
+    <PluginInstallConfirmModal
+      v-if="isElectron"
+      v-model="showInstallConfirm"
+      :install-path="installConfirmPath"
+      :is-installing="isInstalling"
+      @confirm="confirmInstall"
     />
 
     <div v-if="errorMessage" class="plugin-alert plugin-alert-error">

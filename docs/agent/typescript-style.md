@@ -27,6 +27,7 @@
 
 - 导入顺序：框架 / 第三方 -> 内部模块与类型 -> 相对路径与样式
 - `src/*` 模块优先用 `@/` 别名，不要继续写 `../../src/*`
+- `packages/shared/*` 模块通过 `@shared/` 别名导入（如 `@shared/types/platform`），渲染进程和 Electron 侧统一使用
 - 类型导入优先使用 `import type`
 - 文本文件统一 UTF-8（无 BOM）
 
