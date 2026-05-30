@@ -203,7 +203,9 @@ function createBridge() {
     installFromPath: vi.fn<(p: string) => Promise<PlatformDescriptor[]>>(() =>
       Promise.resolve([pluginDescriptor])
     ),
-    pickInstallPath: vi.fn<() => Promise<string | null>>(() => Promise.resolve('/path/to/plugin')),
+    pickInstallPath: vi.fn<(mode?: 'file' | 'directory') => Promise<string | null>>(() =>
+      Promise.resolve('/path/to/plugin')
+    ),
     setEnabled: vi.fn<(id: string, e: boolean) => Promise<PlatformDescriptor[]>>(() =>
       Promise.resolve([pluginDescriptor])
     ),
@@ -361,7 +363,21 @@ describe('createPluginService', () => {
 
     const result = await service.pickInstallPath()
 
-    expect(bridge.pickInstallPath).toHaveBeenCalledOnce()
+    expect(bridge.pickInstallPath).toHaveBeenCalledWith('file')
+    expect(result).toBe('/path/to/plugin')
+  })
+
+  it('passes directory mode through to bridge.pickInstallPath in Electron mode', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.pickInstallPath('directory')
+
+    expect(bridge.pickInstallPath).toHaveBeenCalledWith('directory')
     expect(result).toBe('/path/to/plugin')
   })
 

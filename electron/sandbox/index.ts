@@ -281,7 +281,7 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
     plugins: {
       list: () => pluginProxy.list(),
       installFromPath: pluginPath => pluginProxy.installFromPath(pluginPath),
-      pickInstallPath: () => pluginProxy.pickInstallPath(),
+      pickInstallPath: mode => pluginProxy.pickInstallPath(mode),
       setEnabled: (platformId, enabled) => pluginProxy.setEnabled(platformId, enabled),
       uninstall: platformId => pluginProxy.uninstall(platformId),
       getSettings: platformId => pluginProxy.getSettings(platformId),

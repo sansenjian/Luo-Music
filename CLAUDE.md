@@ -37,8 +37,12 @@ The codebase uses a dual-abstraction pattern for cross-platform support:
 **Music Platforms** (`src/platform/music/`):
 
 - `interface.ts` - Base `MusicPlatformAdapter` class defining `search`, `getSongUrl`, `getLyric`, `getPlaylistDetail`
-- `netease.ts` / `qq.ts` - Platform-specific implementations
-- `index.ts` - `getMusicAdapter(platform)` factory function
+- `descriptors.ts` - Platform descriptors (id, display name, runtime, capabilities, enabled state)
+- `loginRouting.ts` - Legacy login bridge routing and primary profile resolution
+- `plugin/BuiltInAdapterLoader.ts` - Loads built-in platform adapters (NetEase, QQ)
+- `plugin/ExternalAdapterProxy.ts` - Proxies external plugin-provided adapters
+- `plugin/PluginAdapterBridge.ts` - Bridges plugin SDK adapters into the MusicPlatformAdapter interface
+- `index.ts` - `getMusicAdapter(platformId)` factory resolving local vs. external adapter runtime
 
 **Runtime Platforms** (`src/platform/`):
 
@@ -51,26 +55,49 @@ Use `import platform from '@/platform'` for legacy compatibility or `getPlatform
 
 ### Player Architecture
 
-The player is modularized under `src/utils/player/`:
+The player is split across two locations:
+
+**Player engine** — `src/utils/player/` (framework-agnostic audio logic):
 
 ```
 player/
 ├── core/
-│   ├── playerCore.ts      # Audio element wrapper, events, playback
+│   ├── playerCore.ts        # Audio element wrapper, events, playback
 │   ├── playbackController.ts  # Play mode logic, next/prev/seek
-│   ├── playlistManager.ts # Queue manipulation, shuffle
-│   └── lyric.ts           # LRC parsing, time-synced lookup
+│   └── playlistManager.ts   # Queue manipulation, shuffle
 ├── modules/
 │   └── playbackErrorHandler.ts  # Auto-skip failed tracks
 ├── constants/
-│   ├── playMode.ts        # PLAY_MODE enum
-│   ├── volume.ts          # VOLUME defaults
-│   └── timeInterval.ts    # SKIP_CONFIG
-└── helpers/
-    └── timeFormatter.ts   # formatTime utility
+│   ├── index.ts             # PLAY_MODE enum
+│   ├── volume.ts            # VOLUME defaults
+│   └── timeInterval.ts      # SKIP_CONFIG
+├── helpers/
+│   ├── timeFormatter.ts     # formatTime utility
+│   └── shuffleHelper.ts     # Shuffle algorithm
+├── audioManager.ts          # Audio context management
+├── lyric-parser.ts          # LRC parsing, time-synced lookup
+├── lyric-display.ts         # Lyric display state
+└── mediaProxy.ts            # MediaSession proxy layer
 ```
 
-`playerStore.ts` orchestrates these modules - avoid adding business logic directly to the store.
+**Player store** — `src/store/player/` (Pinia state, persistence, IPC):
+
+```
+player/
+├── playerState.ts           # Core reactive state
+├── playbackActions.ts       # Play/pause/next/prev/seek actions
+├── audioEvents.ts           # Audio element event handlers
+├── lyricSync.ts             # Lyric synchronization with playback
+├── ipcHandlers.ts           # IPC event registration
+├── playerPersistence.ts     # localStorage persistence
+├── playerSnapshot.ts        # State snapshot for IPC/sync
+├── playerStoreDeps.ts       # Dependency injection config
+├── songPrefetcher.ts        # Next-song URL prefetch
+├── runtime.ts               # Runtime initialization
+└── index.ts                 # Re-exports
+```
+
+`playerStore.ts` imports from `src/store/player/` — avoid adding business logic directly to the store index.
 
 ### API Layer
 
@@ -121,15 +148,15 @@ Path utilities are centralized in `electron/utils/paths.ts` - never use `__dirna
 
 ### Adding a new music platform
 
-1. Create `src/platform/music/newplatform.ts` extending `MusicPlatformAdapter`
-2. Add platform ID to `src/platform/music/index.ts` factory
-3. Create `src/api/newplatform.ts` for endpoint functions
-4. Update `searchStore.ts` to include platform option
+1. Register a platform descriptor in `src/platform/music/descriptors.ts`
+2. Implement the adapter via a plugin (built-in or external) following `MusicPlatformAdapter` in `src/platform/music/interface.ts`
+3. Built-in adapters are loaded by `BuiltInAdapterLoader`; external adapters go through `ExternalAdapterProxy`
+4. Create API endpoints in `src/api/` for the platform if needed
 
 ### Adding IPC between main/renderer
 
-1. Define channel in `electron/shared/protocol/channels.ts`
-2. Add type mapping in `electron/ipc/types.ts`
+1. Define channel in `packages/shared/protocol/channels.ts`
+2. Add type mapping in `electron/ipc/IpcService.ts`
 3. Register handler in `electron/ipc/handlers/` directory
 4. Expose via `electron/sandbox/index.ts` using `contextBridge.exposeInMainWorld`
 

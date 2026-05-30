@@ -2,7 +2,7 @@ import { defineConfig } from 'vite-plus'
 import type { UserConfig } from 'vite-plus'
 
 const lintConfig = {
-  plugins: ['eslint', 'oxc', 'typescript', 'unicorn', 'vue', 'vitest'],
+  plugins: ['oxc', 'typescript', 'unicorn', 'vue', 'vitest'],
   categories: {
     correctness: 'warn'
   },

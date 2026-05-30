@@ -41,10 +41,10 @@ function createIgnorePatterns(paths: readonly string[]): RegExp[] {
 
 const packagingIgnorePatterns = [
   ...createIgnorePatterns(packagingWorkspaceArtifactsToRemove),
-  /^\/(?:api|coverage|dist|docs|electron|playwright-report|server|src|test|test-results|tests)(?:$|\/)/,
+  /^\/(?:api|coverage|dist|docs|electron|playwright-report|plugins|server|src|test|test-results|tests)(?:$|\/)/,
   /^\/build\/runtime(?:$|\/)/,
   /^\/\.env(?:\.[^/]+)?$/,
-  /^\/(?:AGENTS\.md|CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|LICENSE|README\.md|eslint\.config\.js|index\.html)$/,
+  /^\/(?:AGENTS\.md|CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|LICENSE|README\.md|index\.html)$/,
   /^\/(?:\.editorconfig|\.gitignore|\.gitmessage|\.npmignore|\.npmrc|\.projectstructure)$/,
   /^\/\.config(?:$|\/)/,
   /^\/config(?:$|\/)/,

@@ -8,7 +8,6 @@
 
 - **Vue 3.5+** - Composition API
 - **Pinia 3.0+** - 状态管理
-- **Naive UI 2.43+** - UI 组件库
 - **Anime.js 4.0+** - 动画效果
 
 ---
@@ -552,6 +551,78 @@ import PageTransition from '@/components/PageTransition.vue'
 
 ---
 
+## 📁 组件子目录
+
+部分组件已按领域拆分为子目录，每个子目录内聚相关文件：
+
+### settings/
+
+设置面板与插件管理相关组件。
+
+**文件位置**: `src/components/settings/`
+
+| 文件                                 | 说明             |
+| ------------------------------------ | ---------------- |
+| `AppSettingsContent.vue`             | 设置面板主容器   |
+| `AppSettingsSectionShell.vue`        | 设置分区外壳     |
+| `AppAppearanceSettingsSection.vue`   | 外观设置分区     |
+| `AppDesktopLyricSettingsSection.vue` | 桌面歌词设置分区 |
+| `AppExperimentalSettingsSection.vue` | 实验功能设置分区 |
+| `AppPlaybackSettingsSection.vue`     | 播放设置分区     |
+| `PluginCategoryTabs.vue`             | 插件分类标签     |
+| `PluginInstallToolbar.vue`           | 插件安装工具栏   |
+| `PluginManagerSection.vue`           | 插件管理分区     |
+| `PluginPlatformCard.vue`             | 插件平台卡片     |
+| `PluginSettingsForm.vue`             | 插件设置表单     |
+| `pluginManager.helpers.ts`           | 插件管理辅助函数 |
+| `pluginManager.types.ts`             | 插件管理类型定义 |
+
+### media/
+
+媒体展示相关组件，跨 views 复用。
+
+**文件位置**: `src/components/media/`
+
+| 文件                     | 说明         |
+| ------------------------ | ------------ |
+| `AlbumDetailPanel.vue`   | 专辑详情面板 |
+| `FavoriteAlbumsView.vue` | 收藏专辑视图 |
+| `SongDetailList.vue`     | 歌曲详情列表 |
+
+### user-avatar/
+
+用户头像区域组件（UserAvatar.vue 拆分）。
+
+**文件位置**: `src/components/user-avatar/`
+
+| 文件                    | 说明         |
+| ----------------------- | ------------ |
+| `UserAvatarTrigger.vue` | 头像触发按钮 |
+| `UserProfileCard.vue`   | 用户信息卡片 |
+| `PlatformLoginCard.vue` | 平台登录卡片 |
+
+### window/
+
+窗口装饰与控制组件。
+
+**文件位置**: `src/components/window/`
+
+| 文件                    | 说明                              |
+| ----------------------- | --------------------------------- |
+| `WindowResizeFrame.vue` | 窗口缩放边框（Electron 无框模式） |
+
+### home/
+
+首页通用占位组件（区别于 `src/features/home/components/` 的业务组件）。
+
+**文件位置**: `src/components/home/`
+
+| 文件                 | 说明           |
+| -------------------- | -------------- |
+| `HomeEmptyState.vue` | 首页空状态占位 |
+
+---
+
 ## 🎨 组件设计原则
 
 ### 1. 单一职责
@@ -651,7 +722,6 @@ const handleUpdate = newData => {
 - [Vue 3 组件指南](https://vuejs.org/guide/essentials/component-basics.html)
 - [Composition API](https://vuejs.org/guide/extras/composition-api-faq.html)
 - [Pinia 文档](https://pinia.vuejs.org/)
-- [Naive UI 组件库](https://www.naiveui.com/)
 
 ---
 

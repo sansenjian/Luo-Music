@@ -92,22 +92,27 @@ export class PluginCatalog {
     pluginPath: string,
     options?: { enabledByDefault?: boolean }
   ): Promise<PluginMutationResponse> {
-    const installedPlugin = await this.installer.installFromPath(pluginPath)
+    const installedPlugins = await this.installer.installManyFromPath(pluginPath)
     this.scanCacheExpiry = 0
-    let state = this.stateStore.ensureState(installedPlugin.manifest, installedPlugin.installPath)
+    let lastInstalledPlatformId: string | undefined
 
-    if (options?.enabledByDefault && !state.enabled) {
-      state = this.stateStore.setEnabled(installedPlugin.manifest.id, true)
+    for (const installedPlugin of installedPlugins) {
+      let state = this.stateStore.ensureState(installedPlugin.manifest, installedPlugin.installPath)
+
+      if (options?.enabledByDefault && !state.enabled) {
+        state = this.stateStore.setEnabled(installedPlugin.manifest.id, true)
+      }
+
+      this.stateStore.setChecksum(installedPlugin.manifest.id, installedPlugin.checksum)
+
+      this.externalPlugins.set(installedPlugin.manifest.platformId, {
+        ...installedPlugin,
+        state: this.stateStore.get(installedPlugin.manifest.id) ?? state
+      })
+      lastInstalledPlatformId = installedPlugin.manifest.platformId
     }
 
-    this.stateStore.setChecksum(installedPlugin.manifest.id, installedPlugin.checksum)
-
-    this.externalPlugins.set(installedPlugin.manifest.platformId, {
-      ...installedPlugin,
-      state: this.stateStore.get(installedPlugin.manifest.id) ?? state
-    })
-
-    return this.notifyMutation(installedPlugin.manifest.platformId)
+    return this.notifyMutation(installedPlugins.length === 1 ? lastInstalledPlatformId : undefined)
   }
 
   async setEnabled(platformId: string, enabled: boolean): Promise<PluginMutationResponse> {

@@ -8,8 +8,9 @@
 | ----------------- | -------------------------------------------------- | --------------------------------------------- |
 | Web               | `npm run build:web`                                | `dist/`                                       |
 | Electron bundle   | `npm run build` 或 `npm run build:electron:bundle` | `build/`、`build/electron/`、`build/service/` |
-| Electron 安装包   | `npm run build:electron`                           | `out/make/`                                   |
-| Electron portable | `npm run build:electron:portable`                  | `out/portable/`                               |
+| Electron 安装包   | `npm run build:electron`                           | `out/make/`、`out/third-party-plugins/`       |
+| Electron portable | `npm run build:electron:portable`                  | `out/portable/`、`out/third-party-plugins/`   |
+| Electron 完整打包 | `npm run build:electron:all`                       | `out/make/`、`out/portable/`、插件 zip        |
 | Server            | `npm run build:server`                             | `build/service/index.cjs`                     |
 | Docs              | `npm run docs:build`                               | `docs/.vitepress/dist/`                       |
 
@@ -45,10 +46,11 @@ npm run build:electron
 流程：
 
 1. 清理安装包输出目录
-2. 通过 `build:electron:bundle` 清理并重建 `build/`
+2. 通过 `build:electron:bundle` 清理并重建 Electron renderer / main / preload 相关产物
 3. 构建 QQ runtime
 4. 构建 server 与本地 `electron-vite:build`
-5. 使用 Electron Forge 产出安装包
+5. 将 `plugins/third-party/` 下的插件逐个打成 zip 到 `out/third-party-plugins/`
+6. 使用 Electron Forge 产出安装包
 
 Electron bundle 暂不切换到 `vp build`：主进程、preload、Forge 和 native rebuild 仍依赖 Electron 专属构建链路。项目通过 `npm run electron-vite:build` 调用本地 `electron-vite` CLI，避免依赖全局 PATH。
 
@@ -67,6 +69,18 @@ npm run build:electron:portable
 ```
 
 在 Electron bundle 基础上，调用 `electron/builder.portable.cjs` 生成单文件便携版。
+
+第三方插件不会打进应用包内。`package`、`make`、`build:electron` 和 `build:electron:portable` 会额外生成 `out/third-party-plugins/*.zip`，播放器插件页可通过这些 zip 包重新安装对应插件。
+
+### 完整打包
+
+```bash
+npm run build:electron:all
+```
+
+完整打包目标会只准备一次 Electron bundle 和第三方插件 zip，然后并行执行 Electron Forge 安装包与 electron-builder portable 产物。适合发布前一次性生成全部桌面端产物，避免分别运行 `build:electron` 和 `build:electron:portable` 时重复构建 renderer/main/preload/server/runtime。
+
+打包完成后会执行产物体积预算检查。默认模式只输出 warning；发布流水线可设置 `LUO_ARTIFACT_BUDGET_STRICT=1` 或直接调用 `node scripts/build/check-artifact-budgets.cjs --strict ...` 将超限或缺失产物升级为失败。
 
 ### 文档站
 
@@ -92,6 +106,8 @@ build/
 out/
   make/
   portable/
+  third-party-plugins/
+    <platform-id>-<version>.zip
 ```
 
 ## 提交前建议

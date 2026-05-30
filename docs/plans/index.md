@@ -14,12 +14,13 @@
 
 ## 后续优化
 
-| 优先级 | 文档                                                         | 当前状态                                                   | 下一步                                   |
-| ------ | ------------------------------------------------------------ | ---------------------------------------------------------- | ---------------------------------------- |
-| P2     | [桌面歌词优化](/plans/desktop-lyric-optimization)            | 已有 snapshot、sequence 和 debug 能力，仍保留部分 fallback | 继续收敛为单一主数据源                   |
-| P2     | [DI 后续路线图](/plans/di-followup-roadmap)                  | DI 主路线已完成，后续只做有收益的扩面                      | 继续迁移 `ApiService` 接入面和补自动检查 |
-| P2     | [打包瘦身计划](/plans/packaging-slimming-plan)               | 配置已做过一轮瘦身                                         | 重新打包后复核 `app.asar` 内容和体积     |
-| P3     | [项目结构归属审计](/plans/project-structure-ownership-audit) | P0-A 审计记录                                              | 作为 feature 迁移参考，按需更新          |
+| 优先级 | 文档                                                         | 当前状态                                                   | 下一步                                           |
+| ------ | ------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------ |
+| P2     | [桌面歌词优化](/plans/desktop-lyric-optimization)            | 已有 snapshot、sequence 和 debug 能力，仍保留部分 fallback | 继续收敛为单一主数据源                           |
+| P2     | [DI 后续路线图](/plans/di-followup-roadmap)                  | DI 主路线已完成，后续只做有收益的扩面                      | 继续迁移 `ApiService` 接入面和补自动检查         |
+| P2     | [前端结构收口计划](/plans/frontend-structure-plan)           | composables/、components/、views/、features/ 边界梳理      | 先执行 P1 composables 分桶，再做 P2 组件归属迁移 |
+| P2     | [打包瘦身计划](/plans/packaging-slimming-plan)               | 配置已做过一轮瘦身                                         | 重新打包后复核 `app.asar` 内容和体积             |
+| P3     | [项目结构归属审计](/plans/project-structure-ownership-audit) | P0-A 审计记录                                              | 作为 feature 迁移参考，按需更新                  |
 
 ## 暂缓路线
 

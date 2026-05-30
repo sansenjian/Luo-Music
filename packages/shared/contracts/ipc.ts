@@ -354,7 +354,11 @@ type InvokeChannelsDefinition = MergeChannels<
       [pluginPath: string],
       { platforms: PlatformDescriptor[] }
     > &
-    DefineInvokeChannel<typeof INVOKE_CHANNELS.PLUGIN_PICK_INSTALL_PATH, [], string | null> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.PLUGIN_PICK_INSTALL_PATH,
+      [mode?: 'file' | 'directory'],
+      string | null
+    > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.PLUGIN_SET_ENABLED,
       [platformId: string, enabled: boolean],

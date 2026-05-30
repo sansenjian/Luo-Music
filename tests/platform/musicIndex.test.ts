@@ -220,11 +220,13 @@ describe('platform music index', () => {
     ])
     expect(resolvePlatformLoginRoute(getPlatformDescriptor('netease')!)).toEqual({
       kind: 'legacy',
-      platformId: 'netease'
+      platformId: 'netease',
+      bridge: 'netease-login-modal'
     })
     expect(resolvePlatformLoginRoute(getPlatformDescriptor('qq')!)).toEqual({
       kind: 'legacy',
-      platformId: 'qq'
+      platformId: 'qq',
+      bridge: 'qq-login-modal'
     })
     expect(getAvailablePlatforms()).toEqual([
       { id: 'local', name: '本地音乐' },
@@ -233,7 +235,7 @@ describe('platform music index', () => {
     ])
   })
 
-  it('keeps legacy first-party login platforms discoverable before manifest auth refresh', async () => {
+  it('requires auth.login capability before platforms are listed as login options', async () => {
     const { getLoginPlatformOptions, replaceRuntimePlatformDescriptors } =
       await import('@/platform/music')
 
@@ -274,7 +276,7 @@ describe('platform music index', () => {
       }
     ])
 
-    expect(getLoginPlatformOptions()).toEqual([{ value: 'netease', label: 'Netease Music' }])
+    expect(getLoginPlatformOptions()).toEqual([])
   })
 
   it('routes non-legacy login-capable platforms to the generic plugin login container', async () => {
@@ -311,6 +313,23 @@ describe('platform music index', () => {
       kind: 'plugin',
       platform
     })
+  })
+
+  it('centralizes legacy login bridge routing and primary profile platform metadata', async () => {
+    const {
+      getLegacyLoginBridgePlatformId,
+      getPrimaryProfilePlatformId,
+      isPlatformRepresentedByPrimaryProfile,
+      resolveLegacyLoginBridge
+    } = await import('@/platform/music')
+
+    expect(resolveLegacyLoginBridge('netease')).toBe('netease-login-modal')
+    expect(resolveLegacyLoginBridge('qq')).toBe('qq-login-modal')
+    expect(getLegacyLoginBridgePlatformId('netease-login-modal')).toBe('netease')
+    expect(getLegacyLoginBridgePlatformId('qq-login-modal')).toBe('qq')
+    expect(getPrimaryProfilePlatformId()).toBe('netease')
+    expect(isPlatformRepresentedByPrimaryProfile('netease')).toBe(true)
+    expect(isPlatformRepresentedByPrimaryProfile('qq')).toBe(false)
   })
 
   it('reuses the lazily created logger across repeated invalid lookups', async () => {

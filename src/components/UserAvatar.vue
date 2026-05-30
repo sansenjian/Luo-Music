@@ -3,30 +3,22 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch, type CSSPropert
 import { useRouter } from 'vue-router'
 
 import { logout } from '@/api/user'
-import { qqMusicApi } from '@/api/qqmusic'
-import { clearLegacyPlatformSession, logoutLegacyPlatform } from '@/app/legacyPlatformAuth'
-import type { StandardImportedAuthSession } from '@plugin-sdk'
+import { createLegacyImportedSession, logoutLegacyPlatform } from '@/app/legacyPlatformAuth'
 import type { PlatformDescriptor } from '@shared/types/platform'
-import { resolvePlatformLoginRoute } from '@/platform/music/loginRouting'
+import {
+  getPrimaryProfilePlatformId,
+  isPlatformRepresentedByPrimaryProfile,
+  resolvePlatformLoginRoute,
+  type LegacyLoginBridge
+} from '@/platform/music/loginRouting'
 import { services } from '@/services'
 import { useUserStore } from '@/store/userStore'
-import LoginModal from './LoginModal.vue'
-import PluginLoginModal from './PluginLoginModal.vue'
-import QQLoginModal from './QQLoginModal.vue'
+import LoginModal from '@/components/LoginModal.vue'
+import PluginLoginModal from '@/components/PluginLoginModal.vue'
+import QQLoginModal from '@/components/QQLoginModal.vue'
 import PlatformLoginCard from './user-avatar/PlatformLoginCard.vue'
 import UserAvatarTrigger from './user-avatar/UserAvatarTrigger.vue'
 import UserProfileCard from './user-avatar/UserProfileCard.vue'
-
-type QQLoginStatusResponse = {
-  data?: {
-    cookie?: string
-  }
-  body?: {
-    data?: {
-      cookie?: string
-    }
-  }
-}
 
 const router = useRouter()
 const logger = services.logger().createLogger('userAvatar')
@@ -66,35 +58,13 @@ const showPluginLoginModal = computed({
   }
 })
 
-async function checkQQMusicLoginStatus(): Promise<void> {
-  if (!userStore.qqCookie) {
-    clearLegacyPlatformSession('qq')
-    return
-  }
-
-  try {
-    const res = (await qqMusicApi.checkQQMusicLogin()) as QQLoginStatusResponse
-    const cookie = res?.data?.cookie || res?.body?.data?.cookie || ''
-
-    if (cookie) {
-      userStore.syncQQSession()
-      return
-    }
-
-    clearLegacyPlatformSession('qq')
-  } catch (error) {
-    logger.warn('Failed to refresh QQ Music login state', error)
-    clearLegacyPlatformSession('qq')
-  }
-}
-
 async function handleLogout(): Promise<void> {
   try {
     await logout()
   } catch (error) {
-    logger.warn('Netease logout request failed, clearing local session', error)
+    logger.warn('Primary platform logout request failed, clearing local session', error)
   } finally {
-    await logoutLegacyPlatform('netease')
+    await logoutLegacyPlatform(getPrimaryProfilePlatformId())
     closeDropdown({ restoreFocus: false })
   }
 }
@@ -124,6 +94,17 @@ function openPluginLogin(platform: PlatformDescriptor): void {
   closeDropdown({ restoreFocus: false })
 }
 
+function openLegacyLoginBridge(bridge: LegacyLoginBridge): void {
+  switch (bridge) {
+    case 'netease-login-modal':
+      openLogin()
+      break
+    case 'qq-login-modal':
+      openQQLogin()
+      break
+  }
+}
+
 function openPlatformLogin(platform: PlatformDescriptor): void {
   if (isPlatformLoggedIn(platform.id)) {
     openPlatformCenter(platform.id)
@@ -137,11 +118,7 @@ function openPlatformLogin(platform: PlatformDescriptor): void {
     return
   }
 
-  if (route.platformId === 'netease') {
-    openLogin()
-  } else {
-    openQQLogin()
-  }
+  openLegacyLoginBridge(route.bridge)
 }
 
 function openPlatformCenter(platformId: string): void {
@@ -157,7 +134,10 @@ function isPlatformLoggedIn(platformId: string): boolean {
 }
 
 function isPlatformRepresentedByHeader(platformId: string): boolean {
-  return platformId === 'netease' && userStore.isPlatformAuthenticated('netease')
+  return (
+    isPlatformRepresentedByPrimaryProfile(platformId) &&
+    userStore.isPlatformAuthenticated(platformId)
+  )
 }
 
 function getPlatformLoginTitle(platform: PlatformDescriptor): string {
@@ -279,47 +259,6 @@ function shouldRefreshPluginAuthState(platform: PlatformDescriptor): boolean {
   return platform.capabilities.auth?.login === true
 }
 
-function createLegacyImportedSession(platformId: string): StandardImportedAuthSession | null {
-  if (platformId === 'netease') {
-    const cookie = userStore.cookie.trim()
-    if (!cookie) {
-      return null
-    }
-
-    return {
-      credential: {
-        type: 'cookie',
-        value: cookie
-      },
-      ...(userStore.userInfo
-        ? {
-            account: {
-              id: userStore.userInfo.userId ?? userStore.userInfo.nickname ?? 'netease',
-              nickname: userStore.userInfo.nickname ?? userStore.userInfo.name ?? 'Netease',
-              ...(userStore.userInfo.avatarUrl ? { avatarUrl: userStore.userInfo.avatarUrl } : {})
-            }
-          }
-        : {})
-    }
-  }
-
-  if (platformId === 'qq') {
-    const cookie = userStore.qqCookie.trim()
-    if (!cookie) {
-      return null
-    }
-
-    return {
-      credential: {
-        type: 'cookie',
-        value: cookie
-      }
-    }
-  }
-
-  return null
-}
-
 async function importLegacyPlatformSession(platformId: string): Promise<boolean> {
   const session = createLegacyImportedSession(platformId)
   if (!session || legacySessionImportAttempts.has(platformId)) {
@@ -393,7 +332,6 @@ async function refreshPluginPlatforms(): Promise<void> {
 }
 
 async function bootstrapLoginPlatformStates(): Promise<void> {
-  await checkQQMusicLoginStatus()
   await refreshPluginPlatforms()
 }
 
@@ -456,7 +394,7 @@ watch(showDropdown, async (isOpen, wasOpen) => {
           :nickname="userStore.nickname"
           :avatar-url="userStore.avatarUrl"
           :user-id="userStore.userId"
-          @open="openPlatformCenter('netease')"
+          @open="openPlatformCenter(getPrimaryProfilePlatformId())"
           @logout="handleLogout"
         />
 

@@ -118,6 +118,7 @@ describe('forge.config packagerConfig.ignore', () => {
     expect(matchesIgnore('/.env')).toBe(true)
     expect(matchesIgnore('/.env.sentry-build-plugin')).toBe(true)
     expect(matchesIgnore('/docs/build.md')).toBe(true)
+    expect(matchesIgnore('/plugins/third-party/netease/manifest.json')).toBe(true)
     expect(matchesIgnore('/src/main.ts')).toBe(true)
     expect(matchesIgnore('/build/runtime/qq-api-server.cjs')).toBe(true)
     expect(matchesIgnore('/build/assets/index.js.map')).toBe(true)

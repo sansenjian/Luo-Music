@@ -22,8 +22,8 @@ export class PluginProxy {
     return result.platforms
   }
 
-  async pickInstallPath(): Promise<string | null> {
-    return this.ipcProxy.invoke<string | null>(INVOKE_CHANNELS.PLUGIN_PICK_INSTALL_PATH)
+  async pickInstallPath(mode: 'file' | 'directory' = 'file'): Promise<string | null> {
+    return this.ipcProxy.invoke<string | null>(INVOKE_CHANNELS.PLUGIN_PICK_INSTALL_PATH, mode)
   }
 
   async setEnabled(platformId: string, enabled: boolean): Promise<PlatformDescriptor[]> {

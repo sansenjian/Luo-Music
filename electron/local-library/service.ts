@@ -188,6 +188,15 @@ export class LocalLibraryService {
         return this.getState()
       }
 
+      if (this.hasOverlappingFolder(resolvedPath)) {
+        this.setStatus(
+          this.createIdleStatus({
+            message: '该文件夹与已有本地音乐文件夹重叠'
+          })
+        )
+        return this.getState()
+      }
+
       const nextFolder: PersistedFolder = {
         id: createFolderId(resolvedPath),
         path: resolvedPath,
@@ -447,7 +456,7 @@ export class LocalLibraryService {
           return this.getState()
         }
 
-        this.repository.replaceFolderTracks(folder.id, folderTracks)
+        this.repository.replaceFolderTracks(folder.id, dedupeTracksByFilePath(folderTracks))
         this.repository.updateFolderLastScannedAt(folder.id, Date.now())
         this.patchStatus({
           discoveredTracks: this.repository.getTrackCount()
@@ -516,8 +525,10 @@ export class LocalLibraryService {
     let scannedFiles = 0
 
     try {
+      const upsertPaths = dedupeFilePaths([...pending.upsert])
+      const removePaths = dedupeFilePaths([...pending.remove])
       const upsertedTracks: LocalLibraryTrack[] = []
-      for (const filePath of pending.upsert) {
+      for (const filePath of upsertPaths) {
         if (this.disposed) {
           return this.getState()
         }
@@ -539,7 +550,7 @@ export class LocalLibraryService {
       }
 
       this.repository.upsertTracks(upsertedTracks)
-      this.repository.deleteTracksByFilePaths([...pending.remove])
+      this.repository.deleteTracksByFilePaths(removePaths)
       this.repository.updateFolderLastScannedAt(folder.id, Date.now())
       await this.cleanupUnusedCovers()
       if (this.disposed) {
@@ -601,6 +612,14 @@ export class LocalLibraryService {
 
   private emitUpdated(): void {
     this.eventHub.emitUpdated(this.getState())
+  }
+
+  private hasOverlappingFolder(folderPath: string): boolean {
+    const folderPathKey = createFolderOverlapKey(folderPath)
+
+    return this.repository
+      .listFolders()
+      .some(folder => areFolderPathsOverlapping(folderPathKey, createFolderOverlapKey(folder.path)))
   }
 
   private async cleanupUnusedCovers(): Promise<void> {
@@ -733,4 +752,40 @@ export async function disposeLocalLibraryService(): Promise<void> {
   const service = localLibraryServiceInstance
   localLibraryServiceInstance = null
   await service.dispose()
+}
+
+function dedupeTracksByFilePath(tracks: LocalLibraryTrack[]): LocalLibraryTrack[] {
+  const dedupedTracks = new Map<string, LocalLibraryTrack>()
+
+  for (const track of tracks) {
+    dedupedTracks.set(createFileOverlapKey(track.filePath), track)
+  }
+
+  return [...dedupedTracks.values()]
+}
+
+function dedupeFilePaths(filePaths: string[]): string[] {
+  return [
+    ...new Map(filePaths.map(filePath => [createFileOverlapKey(filePath), filePath])).values()
+  ]
+}
+
+function areFolderPathsOverlapping(leftFolderPathKey: string, rightFolderPathKey: string): boolean {
+  return (
+    leftFolderPathKey === rightFolderPathKey ||
+    leftFolderPathKey.startsWith(`${rightFolderPathKey}/`) ||
+    rightFolderPathKey.startsWith(`${leftFolderPathKey}/`)
+  )
+}
+
+function createFolderOverlapKey(folderPath: string): string {
+  return normalizePathForOverlap(normalizeFolderPath(folderPath))
+}
+
+function createFileOverlapKey(filePath: string): string {
+  return normalizePathForOverlap(normalizeFilePath(filePath))
+}
+
+function normalizePathForOverlap(targetPath: string): string {
+  return targetPath.replace(/\\/g, '/').replace(/\/+$/u, '').toLocaleLowerCase()
 }

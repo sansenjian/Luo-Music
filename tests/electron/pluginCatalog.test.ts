@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockListPlatforms = vi.fn()
 const mockInstallFromPath = vi.fn()
+const mockInstallManyFromPath = vi.fn()
 const mockUninstall = vi.fn()
 
 vi.mock('../../electron/plugins/PluginInstaller', () => ({
   PluginInstaller: class {
     scanInstalledPlugins = mockListPlatforms
     installFromPath = mockInstallFromPath
+    installManyFromPath = mockInstallManyFromPath
     uninstall = mockUninstall
   }
 }))
@@ -107,6 +109,9 @@ describe('electron/plugins/PluginCatalog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockListPlatforms.mockResolvedValue([])
+    mockInstallManyFromPath.mockImplementation(async (pluginPath: string) => [
+      await mockInstallFromPath(pluginPath)
+    ])
     catalog = new PluginCatalog()
   })
 
@@ -190,9 +195,49 @@ describe('electron/plugins/PluginCatalog', () => {
 
       const result = await catalog.installFromPath('/path/to/kugou')
 
-      expect(mockInstallFromPath).toHaveBeenCalledWith('/path/to/kugou')
+      expect(mockInstallManyFromPath).toHaveBeenCalledWith('/path/to/kugou')
       expect(mockEnsureState).toHaveBeenCalled()
       expect(result.platforms).toBeDefined()
+      expect(listener).toHaveBeenCalled()
+    })
+
+    it('installs multiple plugins from one path and returns a refreshed platform list', async () => {
+      const first = makeRegistration('kugou')
+      const second = makeRegistration('kuwo')
+      mockInstallManyFromPath.mockResolvedValue([
+        {
+          manifest: first.manifest,
+          installPath: first.installPath,
+          entryPath: first.entryPath,
+          checksum: first.checksum
+        },
+        {
+          manifest: second.manifest,
+          installPath: second.installPath,
+          entryPath: second.entryPath,
+          checksum: second.checksum
+        }
+      ])
+      mockListPlatforms.mockResolvedValue([first, second])
+      mockEnsureState
+        .mockReturnValueOnce(first.state)
+        .mockReturnValueOnce(second.state)
+        .mockReturnValue(first.state)
+
+      const listener = vi.fn()
+      catalog.onDidChange(listener)
+
+      const result = await catalog.installFromPath('/path/to/plugin-zips')
+
+      expect(mockInstallManyFromPath).toHaveBeenCalledWith('/path/to/plugin-zips')
+      expect(mockEnsureState).toHaveBeenCalledWith(first.manifest, first.installPath)
+      expect(mockEnsureState).toHaveBeenCalledWith(second.manifest, second.installPath)
+      expect(mockSetChecksum).toHaveBeenCalledWith(first.manifest.id, first.checksum)
+      expect(mockSetChecksum).toHaveBeenCalledWith(second.manifest.id, second.checksum)
+      expect(result.platforms.map(platform => platform.id)).toEqual(
+        expect.arrayContaining(['kugou', 'kuwo'])
+      )
+      expect(result.platform).toBeUndefined()
       expect(listener).toHaveBeenCalled()
     })
   })
