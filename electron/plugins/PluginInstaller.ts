@@ -95,7 +95,7 @@ export class PluginInstaller {
       const preparedInstalls = await Promise.all(
         resolvedSources.map(resolvedSource => this.prepareInstall(resolvedSource.sourceDirectory))
       )
-      this.assertUniquePreparedPluginIds(preparedInstalls)
+      this.assertUniquePreparedPlugins(preparedInstalls)
 
       const installedPlugins: InstalledPluginLocation[] = []
       for (const preparedInstall of preparedInstalls) {
@@ -216,15 +216,22 @@ export class PluginInstaller {
     }
   }
 
-  private assertUniquePreparedPluginIds(preparedInstalls: PreparedPluginInstall[]): void {
+  private assertUniquePreparedPlugins(preparedInstalls: PreparedPluginInstall[]): void {
     const pluginIds = new Set<string>()
+    const platformIds = new Set<string>()
 
     for (const preparedInstall of preparedInstalls) {
       if (pluginIds.has(preparedInstall.manifest.id)) {
         throw new Error(`Duplicate plugin id in batch install: ${preparedInstall.manifest.id}`)
       }
+      if (platformIds.has(preparedInstall.manifest.platformId)) {
+        throw new Error(
+          `Duplicate plugin platform id in batch install: ${preparedInstall.manifest.platformId}`
+        )
+      }
 
       pluginIds.add(preparedInstall.manifest.id)
+      platformIds.add(preparedInstall.manifest.platformId)
     }
   }
 

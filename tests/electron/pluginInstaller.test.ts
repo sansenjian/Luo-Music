@@ -397,6 +397,37 @@ describe('PluginInstaller', () => {
       })
     })
 
+    it('rejects duplicate platform ids in a zip package directory before installing', async () => {
+      const packageDir = path.join(tempRoot, 'duplicate-platform-zips')
+      const firstSourceDir = path.join(tempRoot, 'duplicate-platform-first')
+      const secondSourceDir = path.join(tempRoot, 'duplicate-platform-second')
+      await fs.mkdir(packageDir, { recursive: true })
+      await writePlugin(firstSourceDir, {
+        ...VALID_MANIFEST,
+        id: 'com.example.platform.first',
+        platformId: 'same-platform'
+      })
+      await writePlugin(secondSourceDir, {
+        ...VALID_MANIFEST,
+        id: 'com.example.platform.second',
+        platformId: 'same-platform'
+      })
+      await createZipFromDirectory(firstSourceDir, path.join(packageDir, 'first.zip'))
+      await createZipFromDirectory(secondSourceDir, path.join(packageDir, 'second.zip'))
+
+      const installer = await createInstaller()
+
+      await expect(installer.installManyFromPath(packageDir)).rejects.toThrow(
+        'Duplicate plugin platform id in batch install: same-platform'
+      )
+      await expect(
+        fs.stat(path.join(pluginsRoot, 'com.example.platform.first'))
+      ).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(
+        fs.stat(path.join(pluginsRoot, 'com.example.platform.second'))
+      ).rejects.toMatchObject({ code: 'ENOENT' })
+    })
+
     it('validates every zip package in a directory before installing any plugin', async () => {
       const packageDir = path.join(tempRoot, 'mixed-zips')
       const validSourceDir = path.join(tempRoot, 'valid-batch-plugin')

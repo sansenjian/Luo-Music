@@ -60,7 +60,7 @@ describe('package scripts for forge workflows', () => {
     )
   })
 
-  it.each(['dev:server', 'dev:electron', 'build:web', 'preview'])(
+  it.each(['dev:server', 'dev:electron', 'build:web', 'build:electron:all', 'preview'])(
     'does not require an untracked .config/.env file before running %s',
     scriptName => {
       expect(packageJson.scripts?.[scriptName]).not.toContain('--env-file .config/.env')
@@ -76,10 +76,7 @@ describe('package scripts for forge workflows', () => {
       'node scripts/build/run-target.cjs electron-bundle-no-clean'
     ],
     ['build:electron', 'node scripts/build/run-target.cjs electron'],
-    [
-      'build:electron:all',
-      'node --env-file .config/.env scripts/build/run-target.cjs electron-all'
-    ],
+    ['build:electron:all', 'node scripts/build/run-target.cjs electron-all'],
     ['build:electron:portable', 'node scripts/build/run-target.cjs electron-portable'],
     ['package', 'node scripts/build/run-target.cjs package'],
     ['make', 'node scripts/build/run-target.cjs make'],

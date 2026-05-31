@@ -20,7 +20,7 @@
     "build:electron:bundle": "node scripts/build/run-target.cjs electron-bundle",
     "build:electron:bundle:no-clean": "node scripts/build/run-target.cjs electron-bundle-no-clean",
     "build:electron": "node scripts/build/run-target.cjs electron",
-    "build:electron:all": "node --env-file .config/.env scripts/build/run-target.cjs electron-all",
+    "build:electron:all": "node scripts/build/run-target.cjs electron-all",
     "build:electron:portable": "node scripts/build/run-target.cjs electron-portable",
     "build:electron:fast": "npm run make:fast",
     "build:server": "npm run tsdown -- server/index.ts --no-config --format cjs --out-dir build/service --clean --target node22 --tsconfig tsconfig.node.json --no-report --no-cjs-default",
