@@ -53,6 +53,7 @@ describe('electron-builder portable config', () => {
       expect.arrayContaining([
         'build/**/*',
         'public/**/*',
+        'plugins/third-party/**/*',
         '!**/.config/**/*',
         '!config/**/*',
         '!docs/**/*',
@@ -61,7 +62,6 @@ describe('electron-builder portable config', () => {
         '!**/*.map'
       ])
     )
-    expect(portableConfig.files).not.toEqual(expect.arrayContaining(['plugins/third-party/**/*']))
     expect(portableConfig.extraResources).toEqual(
       expect.arrayContaining([
         {
