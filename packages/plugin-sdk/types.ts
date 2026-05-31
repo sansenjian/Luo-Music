@@ -446,6 +446,7 @@ export type PluginMethodName =
   | 'auth.importSession'
   | 'auth.refresh'
   | 'auth.logout'
+  | `player.${PluginPlayerHookName}`
 
 export interface MusicPluginCapabilities {
   search: boolean
@@ -483,7 +484,7 @@ export interface PluginManifest {
   contributionsV2?: PluginContribution[]
 }
 
-export interface MusicPluginInstance {
+export type MusicPluginInstance = {
   search?(input: SearchInput): Promise<SearchResult>
   getSongUrl?(input: SongUrlInput): Promise<string | null | StandardSongUrl>
   getSongDetail?(input: SongDetailInput): Promise<PluginSong | null>
@@ -493,6 +494,8 @@ export interface MusicPluginInstance {
   [method: `library.${string}`]: ((input?: unknown) => Promise<unknown> | unknown) | undefined
   [method: `auth.${string}`]: ((input?: unknown) => Promise<unknown> | unknown) | undefined
   dispose?(): Promise<void> | void
+} & {
+  [K in `player.${PluginPlayerHookName}`]?: PluginPlayerHook
 }
 
 export interface MusicPluginDefinition {

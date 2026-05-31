@@ -1,5 +1,7 @@
 # SMTC 第一方拓展插件规划
 
+> 相关实施计划见 [native-smtc-implementation-plan.md](../plans/native-smtc-implementation-plan.md)
+
 ## Summary
 
 在 Electron 桌面端增加基于 navigator.mediaSession 的 Windows SMTC 支持，并作为 `builtin.smtc` 第一方拓展插件在插件管理页显示。开关默认关闭，仅在 Electron 的插件管理页「拓展」分类显示。实现必须解决 3 个关键点：启停时立即同步状态、本地封面异步竞态、独立持久化。

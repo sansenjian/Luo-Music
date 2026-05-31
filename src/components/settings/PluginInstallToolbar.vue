@@ -10,8 +10,8 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'browse-install-path': []
-  install: []
+  'browse-install-path': [mode: 'file' | 'directory']
+  'request-install': []
   refresh: []
 }>()
 </script>
@@ -42,15 +42,22 @@ const emit = defineEmits<{
       <button
         class="plugin-pill plugin-pill-secondary"
         type="button"
-        @click="emit('browse-install-path')"
+        @click="emit('browse-install-path', 'file')"
       >
-        {{ uiMessages.settings.actions.browsePluginPath }}
+        {{ uiMessages.settings.actions.browsePluginPackage }}
+      </button>
+      <button
+        class="plugin-pill plugin-pill-secondary"
+        type="button"
+        @click="emit('browse-install-path', 'directory')"
+      >
+        {{ uiMessages.settings.actions.browsePluginFolder }}
       </button>
       <button
         class="plugin-pill plugin-pill-primary"
         type="button"
         :disabled="!canInstall"
-        @click="emit('install')"
+        @click="emit('request-install')"
       >
         {{
           isInstalling

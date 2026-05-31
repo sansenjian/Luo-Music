@@ -22,7 +22,6 @@ const packagingWorkspaceArtifactsToRemove = [
   ".codex_tmp",
   ".codex-tmp",
   ".codex",
-  ".eslintcache",
   ".github",
   ".husky",
   ".idea",

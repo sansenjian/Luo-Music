@@ -331,7 +331,7 @@ export interface StandardPlaylistPage {
 - `auth.importSession` 是过渡期的窄迁移入口，用于把宿主旧登录链路中已经存在的标准会话凭据交还给插件处理。宿主传入 `StandardImportedAuthSession`，插件自行决定如何验证、刷新账号摘要并写入自己的 `ctx.secrets`；renderer 不暴露通用 secrets 读写能力。
 - `PluginLoginModal.vue` 作为通用插件登录容器，支持 `auth.startLogin`、`auth.pollLogin` 和关闭时的 `auth.cancelLogin`。网易云 / QQ 插件已提供 `auth.*` handler；头像菜单暂时仍把它们路由到专属弹窗作为兼容适配，并在插件状态匿名且声明 `capabilities.auth.importSession = true` 时把 `userStore.cookie` / `userStore.qqCookie` 转换为标准导入会话。
 - 头像菜单的登录入口必须通过 `resolvePlatformLoginRoute()` 选择通用插件登录或 legacy 登录桥。平台特例只能留在这个路由策略里，组件层不要继续散落 `platform.id === 'netease'` / `platform.id === 'qq'` 判断。
-- 内置第三方插件 manifest 增加 `auth` 能力时必须 bump 插件版本，确保 `ensureBundledPlugins()` 能自动刷新已安装插件。过渡期内，已安装但尚未刷新 manifest 的网易云 / QQ 插件仍通过兼容桥显示登录入口，避免用户看到“暂无可登录平台”。
+- 内置第三方插件 manifest 增加 `auth` 能力时必须 bump 插件版本，确保 `ensureBundledPlugins()` 能自动刷新已安装插件。登录入口不再为缺失 `auth.login` 的旧 manifest 提供兜底；发现缺失能力时应修复插件安装/刷新链路，而不是在 renderer 继续扩散 legacy 特例。
 
 建议的认证方法:
 

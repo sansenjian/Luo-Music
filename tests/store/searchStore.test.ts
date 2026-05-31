@@ -6,6 +6,7 @@ import { setupServices, services } from '@/services'
 import type { Song } from '@/platform/music/interface'
 import { usePlayerStore } from '@/store/playerStore'
 import { createSearchStore, searchResultItemToSong, useSearchStore } from '@/store/searchStore'
+import type { LocalLibraryTrack } from '@shared/types/localLibrary'
 
 import { createDeferred } from '../helpers/deferred'
 
@@ -21,6 +22,32 @@ function createSearchSong(id: string | number, overrides: Partial<Song> = {}): S
     originalId: id,
     ...overrides
   }
+}
+
+function createLocalLibraryTrack(id: string, overrides: Partial<LocalLibraryTrack> = {}) {
+  const song = createSearchSong(id, {
+    platform: 'local',
+    originalId: id,
+    extra: {
+      localSource: true
+    }
+  })
+
+  return {
+    id,
+    folderId: 'folder-1',
+    filePath: `D:\\Music\\${id}.mp3`,
+    fileName: `${id}.mp3`,
+    title: song.name,
+    artist: song.artists.map(artist => artist.name).join(' / '),
+    album: song.album.name,
+    duration: song.duration,
+    fileSize: 1024,
+    modifiedAt: 1,
+    coverHash: null,
+    song,
+    ...overrides
+  } satisfies LocalLibraryTrack
 }
 
 const handleApiErrorMock = vi.hoisted(() =>
@@ -244,6 +271,207 @@ describe('searchStore', () => {
     expect(adapterMock.search).toHaveBeenNthCalledWith(2, 'netease', 'unknown-total', 50, 2)
     expect(store.results).toHaveLength(51)
     expect(store.results.at(-1)?.id).toBe('song-51')
+  })
+
+  it('loads all local search result pages', async () => {
+    const getLocalLibraryTracks = vi
+      .fn()
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 50 }, (_, index) =>
+          createLocalLibraryTrack(`local-${index + 1}`)
+        ),
+        nextCursor: '50',
+        total: 51,
+        limit: 50
+      })
+      .mockResolvedValueOnce({
+        items: [createLocalLibraryTrack('local-51')],
+        nextCursor: null,
+        total: 51,
+        limit: 50
+      })
+    const useLocalSearchStore = createSearchStore(
+      {
+        musicService: {
+          getDefaultSearchPlatformId: vi.fn(() => 'local'),
+          getSearchPlatformOptions: vi.fn(() => [{ value: 'local', label: '本地音乐' }]),
+          search: vi.fn()
+        },
+        platformService: {
+          getLocalLibraryTracks
+        } as never
+      },
+      { storeId: 'search-store-local-paging' }
+    )
+
+    const store = useLocalSearchStore()
+
+    await store.search('local')
+
+    expect(getLocalLibraryTracks).toHaveBeenNthCalledWith(1, {
+      search: 'local',
+      limit: 50,
+      cursor: null
+    })
+    expect(getLocalLibraryTracks).toHaveBeenNthCalledWith(2, {
+      search: 'local',
+      limit: 50,
+      cursor: '50'
+    })
+    expect(store.results).toHaveLength(51)
+    expect(store.results[0].platform).toBe('local')
+    expect(store.results.at(-1)?.id).toBe('local-51')
+    expect(store.totalResults).toBe(51)
+    expect(store.isLoading).toBe(false)
+  })
+
+  it('uses local track metadata when the persisted local song name is blank', async () => {
+    const getLocalLibraryTracks = vi.fn().mockResolvedValueOnce({
+      items: [
+        createLocalLibraryTrack('local-blank-name', {
+          fileName: 'Project.mp3',
+          title: 'Project',
+          artist: 'Composer',
+          album: 'Local Album',
+          song: createSearchSong('local-blank-name', {
+            name: '   ',
+            artists: [],
+            album: { id: 'album-1', name: '', picUrl: '' },
+            platform: 'local',
+            originalId: 'local-blank-name',
+            extra: {
+              localSource: true
+            }
+          })
+        })
+      ],
+      nextCursor: null,
+      total: 1,
+      limit: 50
+    })
+    const useLocalSearchStore = createSearchStore(
+      {
+        musicService: {
+          getDefaultSearchPlatformId: vi.fn(() => 'local'),
+          getSearchPlatformOptions: vi.fn(() => [{ value: 'local', label: '本地音乐' }]),
+          search: vi.fn()
+        },
+        platformService: {
+          getLocalLibraryTracks
+        } as never
+      },
+      { storeId: 'search-store-local-name-fallback' }
+    )
+
+    const store = useLocalSearchStore()
+
+    await store.search('project')
+
+    expect(store.results[0]).toMatchObject({
+      name: 'Project',
+      artist: 'Composer',
+      album: 'Local Album'
+    })
+    expect(store.results[0]._song).toMatchObject({
+      name: 'Project',
+      artists: [{ name: 'Composer' }],
+      album: { name: 'Local Album' }
+    })
+  })
+
+  it('uses the local file name when local title metadata is an unknown placeholder', async () => {
+    const getLocalLibraryTracks = vi.fn().mockResolvedValueOnce({
+      items: [
+        createLocalLibraryTrack('local-unknown-name', {
+          fileName: '5.mp3',
+          title: '未知歌曲',
+          artist: '未知艺术家',
+          song: createSearchSong('local-unknown-name', {
+            name: '未知歌曲',
+            artists: [{ id: 'unknown', name: '未知艺术家' }],
+            platform: 'local',
+            originalId: 'local-unknown-name',
+            extra: {
+              localSource: true,
+              localFilePath: 'D:\\Music\\5.mp3'
+            }
+          })
+        })
+      ],
+      nextCursor: null,
+      total: 1,
+      limit: 50
+    })
+    const useLocalSearchStore = createSearchStore(
+      {
+        musicService: {
+          getDefaultSearchPlatformId: vi.fn(() => 'local'),
+          getSearchPlatformOptions: vi.fn(() => [{ value: 'local', label: '本地音乐' }]),
+          search: vi.fn()
+        },
+        platformService: {
+          getLocalLibraryTracks
+        } as never
+      },
+      { storeId: 'search-store-local-placeholder-fallback' }
+    )
+
+    const store = useLocalSearchStore()
+
+    await store.search('5')
+
+    expect(store.results[0]).toMatchObject({
+      name: '5',
+      artist: '未知艺术家'
+    })
+    expect(store.results[0]._song).toMatchObject({
+      name: '5'
+    })
+  })
+
+  it('preserves structured local song artists for playable search results', async () => {
+    const artists = [
+      { id: 'local-artist:composer', name: 'Composer' },
+      { id: 'local-artist:arranger', name: 'Arranger' }
+    ]
+    const getLocalLibraryTracks = vi.fn().mockResolvedValueOnce({
+      items: [
+        createLocalLibraryTrack('local-structured-artists', {
+          artist: 'Composer / Arranger',
+          song: createSearchSong('local-structured-artists', {
+            artists,
+            platform: 'local',
+            originalId: 'local-structured-artists',
+            extra: {
+              localSource: true
+            }
+          })
+        })
+      ],
+      nextCursor: null,
+      total: 1,
+      limit: 50
+    })
+    const useLocalSearchStore = createSearchStore(
+      {
+        musicService: {
+          getDefaultSearchPlatformId: vi.fn(() => 'local'),
+          getSearchPlatformOptions: vi.fn(() => [{ value: 'local', label: '本地音乐' }]),
+          search: vi.fn()
+        },
+        platformService: {
+          getLocalLibraryTracks
+        } as never
+      },
+      { storeId: 'search-store-local-structured-artists' }
+    )
+
+    const store = useLocalSearchStore()
+
+    await store.search('composer')
+
+    expect(store.results[0].artist).toBe('Composer / Arranger')
+    expect(store.results[0]._song?.artists).toEqual(artists)
   })
 
   it('stops paging at a safety limit when total stays unknown and pages stay full', async () => {

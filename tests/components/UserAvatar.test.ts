@@ -14,7 +14,6 @@ import type { PlatformDescriptor } from '@shared/types/platform'
 
 const pushMock = vi.hoisted(() => vi.fn())
 const logoutMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
-const checkQQMusicLoginMock = vi.hoisted(() => vi.fn().mockResolvedValue({ data: { cookie: '' } }))
 const warnMock = vi.hoisted(() => vi.fn())
 const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => false)
@@ -40,17 +39,6 @@ vi.mock('vue-router', () => ({
 vi.mock('@/api/user', () => ({
   logout: logoutMock
 }))
-
-vi.mock('@/api/qqmusic', async importOriginal => {
-  const actual = await importOriginal<typeof import('@/api/qqmusic')>()
-  return {
-    ...actual,
-    qqMusicApi: {
-      ...actual.qqMusicApi,
-      checkQQMusicLogin: checkQQMusicLoginMock
-    }
-  }
-})
 
 vi.mock('@/services', async importOriginal => {
   const actual = await importOriginal<typeof import('@/services')>()
@@ -93,7 +81,6 @@ describe('UserAvatar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     platformServiceMock.isElectron.mockReturnValue(true)
-    checkQQMusicLoginMock.mockResolvedValue({ data: { cookie: '' } })
     pluginServiceMock.refreshPlatformDescriptors.mockResolvedValue([])
     pluginServiceMock.auth.getState.mockResolvedValue({
       platform: 'kugou',
@@ -430,7 +417,7 @@ describe('UserAvatar', () => {
     expect(wrapper.find('.dropdown').exists()).toBe(false)
   })
 
-  it('keeps legacy Netease and QQ login entries visible before installed manifests refresh', async () => {
+  it('requires auth-capable manifests before showing legacy plugin login entries', async () => {
     replaceRuntimePlatformDescriptors([
       {
         id: 'netease',
@@ -473,10 +460,10 @@ describe('UserAvatar', () => {
     await wrapper.find('.user-trigger').trigger('click')
     await nextTick()
 
-    expect(wrapper.findAll('.platform-login-title').map(title => title.text())).toEqual([
-      'Netease Music 未登录',
-      'QQ Music 未登录'
-    ])
+    expect(wrapper.findAll('.platform-login-title').map(title => title.text())).toEqual(['未登录'])
+    expect(wrapper.text()).toContain('暂无可登录平台')
+    expect(wrapper.text()).not.toContain('Netease Music')
+    expect(wrapper.text()).not.toContain('QQ Music')
   })
 
   it('refreshes plugin auth state and opens a plugin user center from a logged-in plugin row', async () => {
@@ -705,7 +692,7 @@ describe('UserAvatar', () => {
     expect(userStore.getPlatformAuthState('netease').status).toBe('authenticated')
   })
 
-  it('imports legacy QQ cookie after login status validation succeeds', async () => {
+  it('imports legacy QQ cookie into plugin auth secrets when plugin state is anonymous', async () => {
     const qqDescriptor = {
       id: 'qq',
       displayName: 'QQ Music',
@@ -729,7 +716,6 @@ describe('UserAvatar', () => {
         }
       }
     }
-    checkQQMusicLoginMock.mockResolvedValue({ data: { cookie: 'qq-cookie' } })
     pluginServiceMock.refreshPlatformDescriptors.mockResolvedValue([qqDescriptor])
     pluginServiceMock.auth.getState.mockResolvedValue({
       platform: 'qq',

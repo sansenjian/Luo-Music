@@ -152,6 +152,28 @@ describe('LocalLibraryService', () => {
     repository.close()
   })
 
+  it('skips nested folders that would rescan files from an existing local library folder', async () => {
+    const tempDir = await createTempPath('local-library-service-overlap')
+    const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))
+    const folderPath = join(tempDir, 'Music')
+    const nestedFolderPath = join(folderPath, 'Nested')
+    await mkdir(nestedFolderPath, { recursive: true })
+    await writeFile(join(nestedFolderPath, 'Nested Song.mp3'), '')
+
+    const service = new LocalLibraryService(repository, {
+      get: <T>() => undefined as T
+    })
+
+    await service.addFolder(folderPath)
+    const nextState = await service.addFolder(nestedFolderPath)
+
+    expect(nextState.folders).toHaveLength(1)
+    expect(nextState.folders[0]?.path).toBe(folderPath)
+    expect(nextState.status.message).toBe('该文件夹与已有本地音乐文件夹重叠')
+
+    repository.close()
+  })
+
   it('prefers parsed metadata over filename fallbacks when metadata is available', async () => {
     const tempDir = await createTempPath('local-library-service-metadata')
     const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))

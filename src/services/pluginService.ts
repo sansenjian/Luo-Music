@@ -53,7 +53,7 @@ const firstPartyPluginCapabilities = {
 export type PluginBridge = {
   list(): Promise<PlatformDescriptor[]>
   installFromPath(pluginPath: string): Promise<PlatformDescriptor[]>
-  pickInstallPath(): Promise<string | null>
+  pickInstallPath(mode?: 'file' | 'directory'): Promise<string | null>
   setEnabled(platformId: string, enabled: boolean): Promise<PlatformDescriptor[]>
   uninstall(platformId: string): Promise<PlatformDescriptor[]>
   getSettings(platformId: string): Promise<Record<string, unknown>>
@@ -110,7 +110,7 @@ export type PluginService = {
   listPlatforms(): Promise<PlatformDescriptor[]>
   refreshPlatformDescriptors(): Promise<PlatformDescriptor[]>
   installFromPath(pluginPath: string): Promise<PlatformDescriptor[]>
-  pickInstallPath(): Promise<string | null>
+  pickInstallPath(mode?: 'file' | 'directory'): Promise<string | null>
   setEnabled(platformId: string, enabled: boolean): Promise<PlatformDescriptor[]>
   uninstall(platformId: string): Promise<PlatformDescriptor[]>
   getSettings(platformId: string): Promise<Record<string, unknown>>
@@ -542,13 +542,13 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
     return syncPlatformDescriptors(await bridge.installFromPath(pluginPath))
   }
 
-  async function pickInstallPath(): Promise<string | null> {
+  async function pickInstallPath(mode: 'file' | 'directory' = 'file'): Promise<string | null> {
     const bridge = getPluginBridge()
     if (!isElectron() || !bridge) {
       throw new Error('Plugin installation is only available in Electron')
     }
 
-    return bridge.pickInstallPath()
+    return bridge.pickInstallPath(mode)
   }
 
   async function setEnabled(platformId: string, enabled: boolean): Promise<PlatformDescriptor[]> {

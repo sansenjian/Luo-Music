@@ -117,7 +117,7 @@ export interface PlayerServiceAPI {
 export interface PluginServiceAPI {
   list(): Promise<PlatformDescriptor[]>
   installFromPath(pluginPath: string): Promise<PlatformDescriptor[]>
-  pickInstallPath(): Promise<string | null>
+  pickInstallPath(mode?: 'file' | 'directory'): Promise<string | null>
   setEnabled(platformId: string, enabled: boolean): Promise<PlatformDescriptor[]>
   uninstall(platformId: string): Promise<PlatformDescriptor[]>
   getSettings(platformId: string): Promise<Record<string, unknown>>

@@ -118,6 +118,7 @@ describe('forge.config packagerConfig.ignore', () => {
     expect(matchesIgnore('/.env')).toBe(true)
     expect(matchesIgnore('/.env.sentry-build-plugin')).toBe(true)
     expect(matchesIgnore('/docs/build.md')).toBe(true)
+    expect(matchesIgnore('/plugins/examples/demo/manifest.json')).toBe(true)
     expect(matchesIgnore('/src/main.ts')).toBe(true)
     expect(matchesIgnore('/build/runtime/qq-api-server.cjs')).toBe(true)
     expect(matchesIgnore('/build/assets/index.js.map')).toBe(true)
@@ -147,6 +148,8 @@ describe('forge.config packagerConfig.ignore', () => {
     expect(matchesIgnore('/build/index.html')).toBe(false)
     expect(matchesIgnore('/build/electron/main.cjs')).toBe(false)
     expect(matchesIgnore('/public/tray.ico')).toBe(false)
+    expect(matchesIgnore('/plugins/third-party/netease/manifest.json')).toBe(false)
+    expect(matchesIgnore('/plugins/third-party/qq/index.mjs')).toBe(false)
     expect(matchesIgnore('/node_modules/pkg/dist/index.js')).toBe(false)
   })
 

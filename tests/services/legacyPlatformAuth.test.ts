@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import {
   configureLegacyPlatformAuthDeps,
+  createLegacyImportedSession,
   clearPlatformAuthSessions,
   clearLegacyPlatformSession,
   logoutLegacyPlatform,
@@ -86,6 +87,38 @@ describe('legacyPlatformAuth', () => {
 
     expect(userStore.isLoggedIn).toBe(false)
     expect(userStore.isPlatformAuthenticated('netease')).toBe(false)
+  })
+
+  it('builds standard imported sessions from legacy Netease and QQ cookies', () => {
+    const userStore = useUserStore()
+    userStore.login(
+      {
+        nickname: 'Tester',
+        avatarUrl: 'https://example.com/avatar.png',
+        userId: 42
+      },
+      '  MUSIC_U=legacy  '
+    )
+    userStore.setQQCookie('  qq-cookie  ')
+
+    expect(createLegacyImportedSession('netease')).toEqual({
+      credential: {
+        type: 'cookie',
+        value: 'MUSIC_U=legacy'
+      },
+      account: {
+        id: 42,
+        nickname: 'Tester',
+        avatarUrl: 'https://example.com/avatar.png'
+      }
+    })
+    expect(createLegacyImportedSession('qq')).toEqual({
+      credential: {
+        type: 'cookie',
+        value: 'qq-cookie'
+      }
+    })
+    expect(createLegacyImportedSession('kugou')).toBeNull()
   })
 
   it('clears local and plugin auth state for all provided platforms', async () => {

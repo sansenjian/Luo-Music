@@ -97,6 +97,67 @@ describe('Playlist.vue', () => {
     expect(items[0].find('.list-artist').text()).toBe('')
   })
 
+  it('falls back to the local file name when a local playlist song has a blank title', () => {
+    const store = usePlayerStore()
+    store.songList = [
+      createMockSong({
+        id: 'local-blank-name',
+        name: '   ',
+        platform: 'local',
+        extra: {
+          localSource: true,
+          localFilePath: 'D:\\Music\\Project.mp3'
+        }
+      })
+    ]
+
+    const wrapper = mount(Playlist)
+
+    expect(wrapper.find('.list-title-text').text()).toBe('Project')
+    expect(wrapper.find('.server-badge.platform-local').text()).toBe('LOCAL')
+  })
+
+  it('falls back to the local file name when a local playlist song has an unknown placeholder title', () => {
+    const store = usePlayerStore()
+    store.songList = [
+      createMockSong({
+        id: 'local-unknown-title',
+        name: '未知歌曲',
+        platform: 'local',
+        artists: [{ id: 'unknown', name: '未知艺术家' }],
+        extra: {
+          localSource: true,
+          localFilePath: 'D:\\Music\\5.mp3'
+        }
+      })
+    ]
+
+    const wrapper = mount(Playlist)
+
+    expect(wrapper.find('.list-title-text').text()).toBe('5')
+    expect(wrapper.find('.list-artist').text()).toBe('未知艺术家')
+  })
+
+  it('promotes local artist text to the title row when the local song title is blank', () => {
+    const store = usePlayerStore()
+    store.songList = [
+      createMockSong({
+        id: 'local-artist-only',
+        name: '   ',
+        platform: 'local',
+        artists: [{ id: 'artist-1', name: 'カンフー少女' }],
+        extra: {
+          localSource: true
+        }
+      })
+    ]
+
+    const wrapper = mount(Playlist)
+
+    expect(wrapper.find('.list-title-text').text()).toBe('カンフー少女')
+    expect(wrapper.find('.list-artist').text()).toBe('')
+  })
+
   it('re-normalizes playlist items when song objects mutate in place', async () => {
     const store = usePlayerStore()
     store.songList = [
@@ -121,6 +182,33 @@ describe('Playlist.vue', () => {
     expect(wrapper.find('.list-title').text()).toContain('Song 1 Updated')
     expect(wrapper.find('.list-artist').text()).toBe('Artist 2')
     expect(wrapper.find('img').attributes('src')).toBe('cover-2.jpg')
+  })
+
+  it('re-normalizes playlist items when local file display fields mutate in place', async () => {
+    const store = usePlayerStore()
+    store.songList = [
+      createMockSong({
+        id: 'local-updated-path',
+        name: '未知歌曲',
+        platform: 'local',
+        artists: [{ id: 'unknown', name: '未知艺术家' }],
+        extra: {
+          localSource: true,
+          localFilePath: 'D:\\Music\\Old.mp3'
+        }
+      })
+    ]
+    const wrapper = mount(Playlist)
+
+    expect(wrapper.find('.list-title-text').text()).toBe('Old')
+
+    store.songList[0].extra = {
+      ...store.songList[0].extra,
+      localFilePath: 'D:\\Music\\New.mp3'
+    }
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('.list-title-text').text()).toBe('New')
   })
 
   it('highlights current playing song', () => {
