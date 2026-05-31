@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -186,6 +186,49 @@ describe('package-third-party-plugins script', () => {
     }
   })
 
+  it('does not include symlinked files in plugin archives', async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), 'luo-music-symlink-plugin-package-'))
+    const sourceDir = join(tempRoot, 'source')
+    const archivePath = join(tempRoot, 'symlink.zip')
+
+    try {
+      await writePlugin(
+        sourceDir,
+        createManifest({
+          id: 'com.example.symlink',
+          name: 'Symlink',
+          version: '1.0.0',
+          platformId: 'symlink'
+        })
+      )
+      const outsideFile = join(tempRoot, 'outside.txt')
+      await writeFile(outsideFile, 'outside', 'utf-8')
+      try {
+        await symlink(outsideFile, join(sourceDir, 'outside-link.txt'))
+      } catch (error) {
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          (error.code === 'EPERM' || error.code === 'EACCES')
+        ) {
+          return
+        }
+        throw error
+      }
+
+      await createZipFromDirectory(sourceDir, archivePath)
+
+      const extractedDir = join(tempRoot, 'extracted')
+      await extractZip(archivePath, { dir: extractedDir })
+      await expect(readFile(join(extractedDir, 'outside-link.txt'), 'utf-8')).rejects.toMatchObject(
+        { code: 'ENOENT' }
+      )
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
   it('creates byte-stable archives when source contents are unchanged', async () => {
     const tempRoot = await mkdtemp(join(tmpdir(), 'luo-music-reproducible-plugin-package-'))
     const sourceDir = join(tempRoot, 'source')
@@ -368,6 +411,39 @@ describe('package-third-party-plugins script', () => {
     ).rejects.toThrow(
       'Plugin package output directory must not be inside the plugin source directory'
     )
+  })
+
+  it('rejects symlinked output directories that escape the build output root', async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), 'luo-music-symlink-output-'))
+    const outRoot = join(process.cwd(), 'out')
+    const outputLink = join(outRoot, `luo-music-output-link-${Date.now()}`)
+
+    try {
+      await mkdir(outRoot, { recursive: true })
+      try {
+        await symlink(tempRoot, outputLink, 'junction')
+      } catch (error) {
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          (error.code === 'EPERM' || error.code === 'EACCES')
+        ) {
+          return
+        }
+        throw error
+      }
+
+      await expect(
+        packageThirdPartyPlugins({
+          sourceDir: 'plugins/third-party',
+          outputDir: outputLink
+        })
+      ).rejects.toThrow('Plugin package output directory must stay inside')
+    } finally {
+      await rm(outputLink, { recursive: true, force: true })
+      await rm(tempRoot, { recursive: true, force: true })
+    }
   })
 
   it('fails when the source directory has no plugin directories', async () => {

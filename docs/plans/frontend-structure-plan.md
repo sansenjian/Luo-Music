@@ -28,7 +28,7 @@
 
 ### 分桶方案
 
-```
+```text
 src/composables/
 ├── player/
 │   ├── usePlayerViewModel.ts
@@ -171,7 +171,7 @@ src/composables/
 
 编写简短的边界规则文档，放在 `docs/architecture/` 下：
 
-```
+```text
 core/   — 框架级基础设施，不依赖 Vue/React，可被 Electron 主进程和 renderer 共同引用
 utils/  — 渲染进程专用工具，可以依赖 Vue、Pinia、浏览器 API
 ```

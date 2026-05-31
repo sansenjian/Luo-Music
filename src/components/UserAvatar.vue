@@ -64,8 +64,13 @@ async function handleLogout(): Promise<void> {
   } catch (error) {
     logger.warn('Primary platform logout request failed, clearing local session', error)
   } finally {
-    await logoutLegacyPlatform(getPrimaryProfilePlatformId())
-    closeDropdown({ restoreFocus: false })
+    try {
+      await logoutLegacyPlatform(getPrimaryProfilePlatformId())
+    } catch (error) {
+      logger.warn('Legacy platform logout request failed, clearing local session', error)
+    } finally {
+      closeDropdown({ restoreFocus: false })
+    }
   }
 }
 

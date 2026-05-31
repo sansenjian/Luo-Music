@@ -68,15 +68,23 @@ describe('run-target build workflows', () => {
   })
 
   it.each(['electron', 'package', 'electron-portable', 'make-fast'])(
-    'prepares %s by packaging third-party plugins in parallel with the Electron bundle',
+    'prepares %s by cleaning before packaging third-party plugins in parallel with the Electron bundle',
     async target => {
       const { events, workflows } = createWorkflowHarness()
 
       await workflows[target]()
 
+      const prepareCleanIndex = events.findIndex(
+        event => event.name === 'step' && event.label === `${target}:electron-bundle-clean`
+      )
       const prepareEvent = events.find(
         event => event.name === 'parallel' && event.label === `${target}:prepare`
       )
+      const prepareIndex = events.findIndex(
+        event => event.name === 'parallel' && event.label === `${target}:prepare`
+      )
+      expect(prepareCleanIndex).toBeGreaterThanOrEqual(0)
+      expect(prepareIndex).toBeGreaterThan(prepareCleanIndex)
       expect(prepareEvent?.tasks).toEqual(['electron-bundle', 'package-third-party-plugins'])
 
       const bundleParallelIndex = events.findIndex(
@@ -121,6 +129,13 @@ describe('run-target build workflows', () => {
         tasks: ['electron-bundle', 'package-third-party-plugins']
       }
     ])
+    const prepareCleanIndex = events.findIndex(
+      event => event.name === 'step' && event.label === 'electron-all:electron-bundle-clean'
+    )
+    const prepareIndex = events.findIndex(
+      event => event.name === 'parallel' && event.label === 'electron-all:prepare'
+    )
+    expect(prepareIndex).toBeGreaterThan(prepareCleanIndex)
 
     const packageEvent = events.find(
       event => event.name === 'parallel' && event.label === 'electron-all:package'

@@ -236,8 +236,12 @@ describe('platform music index', () => {
   })
 
   it('requires auth.login capability before platforms are listed as login options', async () => {
-    const { getLoginPlatformOptions, replaceRuntimePlatformDescriptors } =
-      await import('@/platform/music')
+    const {
+      getLoginPlatformOptions,
+      getPlatformDescriptor,
+      resolvePlatformLoginRoute,
+      replaceRuntimePlatformDescriptors
+    } = await import('@/platform/music')
 
     replaceRuntimePlatformDescriptors([
       {
@@ -277,6 +281,9 @@ describe('platform music index', () => {
     ])
 
     expect(getLoginPlatformOptions()).toEqual([])
+    expect(() => resolvePlatformLoginRoute(getPlatformDescriptor('netease')!)).toThrow(
+      'Platform does not support login: netease'
+    )
   })
 
   it('routes non-legacy login-capable platforms to the generic plugin login container', async () => {

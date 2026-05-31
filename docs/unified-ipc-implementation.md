@@ -24,9 +24,9 @@ electron/ipc/
 │   └── lyric.handler.ts   # 桌面歌词处理器
 ├── utils/
 │   └── gatewayCache.ts    # 网关缓存工具
-└── shared/protocol/
-    └── channels.ts        # IPC 通道常量定义
 ```
+
+通道常量统一定义在 `packages/shared/protocol/channels.ts`，`electron/ipc/IpcService.ts` 只负责类型映射与注册入口。
 
 ### 通道分类
 
@@ -144,11 +144,11 @@ const RETRY_CONFIG = {
 
 ```typescript
 // 获取缓存大小
-const cacheSize = await ipcRenderer.invoke('cache:get-size')
+const cacheSize = await window.electronAPI.getCacheSize()
 console.log(cacheSize) // { httpCache: 1024, httpCacheFormatted: '1 KB' }
 
 // API 请求（带缓存）
-const result = await ipcRenderer.invoke('api:request', {
+const result = await services.api.request({
   service: 'qq',
   endpoint: 'search',
   params: { keyword: '周杰伦' }
@@ -159,23 +159,25 @@ const result = await ipcRenderer.invoke('api:request', {
 
 ```typescript
 // 最小化窗口
-ipcRenderer.send('minimize-window')
+await platform.window.minimize()
 
 // 播放器状态变化
-ipcRenderer.send('music-playing-check', true)
+await platform.music.setPlaying(true)
 ```
 
 ### 渲染进程接收 Receive 消息
 
 ```typescript
-ipcRenderer.on('music-playing-control', (_, payload) => {
+window.electronAPI.onMusicControl(payload => {
   // 处理播放控制
 })
 
-ipcRenderer.on('lyric-time-update', (event, data) => {
+platform.events.onLyricTimeUpdate(data => {
   // 更新歌词显示
 })
 ```
+
+渲染进程不要直接导入 `ipcRenderer`；优先使用 preload 暴露的桥接 API，或走 `src/platform` / `services` 封装。
 
 ### 主进程注册处理器
 
@@ -252,12 +254,12 @@ export function registerCacheHandlers(): void {
 - `electron/ipc/IpcService.ts` - 核心服务实现（含类型定义）
 - `electron/ipc/handlers/*.ts` - 各领域处理器
 - `electron/ipc/middleware/*.ts` - 中间件实现
-- `electron/shared/protocol/channels.ts` - 通道常量定义
+- `packages/shared/protocol/channels.ts` - 通道常量定义
 - `electron/main/index.ts` - 主进程入口（已集成）
 
 ## 维护说明
 
-- 添加新的 IPC 通道时，首先在 `channels.ts` 中定义常量
+- 添加新的 IPC 通道时，首先在 `packages/shared/protocol/channels.ts` 中定义常量
 - 在 `IpcService.ts` 中添加对应的类型定义
 - 在相应的 handler 文件中注册处理器
 - 确保通过 TypeScript 类型检查

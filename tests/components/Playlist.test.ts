@@ -184,6 +184,33 @@ describe('Playlist.vue', () => {
     expect(wrapper.find('img').attributes('src')).toBe('cover-2.jpg')
   })
 
+  it('re-normalizes playlist items when local file display fields mutate in place', async () => {
+    const store = usePlayerStore()
+    store.songList = [
+      createMockSong({
+        id: 'local-updated-path',
+        name: '未知歌曲',
+        platform: 'local',
+        artists: [{ id: 'unknown', name: '未知艺术家' }],
+        extra: {
+          localSource: true,
+          localFilePath: 'D:\\Music\\Old.mp3'
+        }
+      })
+    ]
+    const wrapper = mount(Playlist)
+
+    expect(wrapper.find('.list-title-text').text()).toBe('Old')
+
+    store.songList[0].extra = {
+      ...store.songList[0].extra,
+      localFilePath: 'D:\\Music\\New.mp3'
+    }
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('.list-title-text').text()).toBe('New')
+  })
+
   it('highlights current playing song', () => {
     const store = usePlayerStore()
     store.songList = [

@@ -787,5 +787,6 @@ function createFileOverlapKey(filePath: string): string {
 }
 
 function normalizePathForOverlap(targetPath: string): string {
-  return targetPath.replace(/\\/g, '/').replace(/\/+$/u, '').toLocaleLowerCase()
+  const normalizedPath = targetPath.replace(/\\/g, '/').replace(/\/+$/u, '')
+  return (normalizedPath || '/').toLowerCase()
 }

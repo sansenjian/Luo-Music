@@ -44,6 +44,10 @@ export function isPlatformRepresentedByPrimaryProfile(platformId: string): boole
 }
 
 export function resolvePlatformLoginRoute(platform: PlatformDescriptor): PlatformLoginRoute {
+  if (platform.capabilities.auth?.login !== true) {
+    throw new Error(`Platform does not support login: ${platform.id}`)
+  }
+
   if (usesLegacyLoginBridge(platform.id)) {
     return {
       kind: 'legacy',

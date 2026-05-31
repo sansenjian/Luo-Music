@@ -59,7 +59,7 @@ The player is split across two locations:
 
 **Player engine** — `src/utils/player/` (framework-agnostic audio logic):
 
-```
+```text
 player/
 ├── core/
 │   ├── playerCore.ts        # Audio element wrapper, events, playback
@@ -82,7 +82,7 @@ player/
 
 **Player store** — `src/store/player/` (Pinia state, persistence, IPC):
 
-```
+```text
 player/
 ├── playerState.ts           # Core reactive state
 ├── playbackActions.ts       # Play/pause/next/prev/seek actions

@@ -79,6 +79,11 @@ describe('PluginManagerSection.vue', () => {
   })
 
   it('opens the confirmation modal immediately after browsing a plugin path', async () => {
+    pluginManager.installPath.value = ''
+    pluginManager.browseInstallPath.mockImplementationOnce(async () => {
+      pluginManager.installPath.value = 'C:\\plugins\\demo.zip'
+      return 'C:\\plugins\\demo.zip'
+    })
     const wrapper = await mountSection()
 
     await getWrapperButtonByText(wrapper, '选择 zip').trigger('click')

@@ -75,6 +75,19 @@ describe('local library display helpers', () => {
     expect(resolveLocalSongName(song)).toBe('5')
   })
 
+  it('falls through when the local file path does not contain a usable file name', () => {
+    const song = createLocalSong({
+      name: '未知歌曲',
+      artists: [{ id: 'unknown', name: '未知艺术家' }],
+      extra: {
+        localSource: true,
+        localFilePath: 'D:\\Music\\'
+      }
+    })
+
+    expect(resolveLocalSongName(song)).toBe('未知歌曲')
+  })
+
   it('promotes local artist text only when it becomes the title fallback', () => {
     const song = createLocalSong({
       name: '',

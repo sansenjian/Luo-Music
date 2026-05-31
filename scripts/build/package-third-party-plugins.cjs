@@ -108,10 +108,20 @@ function assertZipSize(value, label) {
 }
 
 function assertSafeOutputDirectory(outputDir, sourceDir) {
-  const resolvedOutputDir = path.resolve(outputDir)
-  const resolvedSourceDir = path.resolve(sourceDir)
+  const canonicalOutputRoot = fsSync.existsSync(OUTPUT_ROOT)
+    ? fsSync.realpathSync(OUTPUT_ROOT)
+    : path.resolve(OUTPUT_ROOT)
+  const resolvedOutputDir = fsSync.existsSync(outputDir)
+    ? fsSync.realpathSync(outputDir)
+    : path.resolve(outputDir)
+  const resolvedSourceDir = fsSync.existsSync(sourceDir)
+    ? fsSync.realpathSync(sourceDir)
+    : path.resolve(sourceDir)
 
-  if (!isPathInside(OUTPUT_ROOT, resolvedOutputDir) || resolvedOutputDir === OUTPUT_ROOT) {
+  if (
+    !isPathInside(canonicalOutputRoot, resolvedOutputDir) ||
+    resolvedOutputDir === canonicalOutputRoot
+  ) {
     throw new Error(`Plugin package output directory must stay inside ${OUTPUT_ROOT}`)
   }
 
@@ -131,8 +141,12 @@ async function collectFiles(sourceDir, currentDir = sourceDir) {
   const files = []
 
   for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    if (entry.isSymbolicLink()) {
+      continue
+    }
+
     const absolutePath = path.join(currentDir, entry.name)
-    const stat = await fs.stat(absolutePath)
+    const stat = await fs.lstat(absolutePath)
 
     if (stat.isDirectory()) {
       files.push(...(await collectFiles(sourceDir, absolutePath)))

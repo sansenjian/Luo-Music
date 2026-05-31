@@ -377,6 +377,51 @@ describe('PluginInstaller', () => {
       }
     })
 
+    it('rejects duplicate plugin ids in a zip package directory before installing', async () => {
+      const packageDir = path.join(tempRoot, 'duplicate-zips')
+      const firstSourceDir = path.join(tempRoot, 'duplicate-first')
+      const secondSourceDir = path.join(tempRoot, 'duplicate-second')
+      await fs.mkdir(packageDir, { recursive: true })
+      await writePlugin(firstSourceDir, VALID_MANIFEST)
+      await writePlugin(secondSourceDir, { ...VALID_MANIFEST, version: '2.0.0' })
+      await createZipFromDirectory(firstSourceDir, path.join(packageDir, 'first.zip'))
+      await createZipFromDirectory(secondSourceDir, path.join(packageDir, 'second.zip'))
+
+      const installer = await createInstaller()
+
+      await expect(installer.installManyFromPath(packageDir)).rejects.toThrow(
+        'Duplicate plugin id in batch install: com.example.test'
+      )
+      await expect(fs.stat(path.join(pluginsRoot, 'com.example.test'))).rejects.toMatchObject({
+        code: 'ENOENT'
+      })
+    })
+
+    it('validates every zip package in a directory before installing any plugin', async () => {
+      const packageDir = path.join(tempRoot, 'mixed-zips')
+      const validSourceDir = path.join(tempRoot, 'valid-batch-plugin')
+      const invalidSourceDir = path.join(tempRoot, 'invalid-batch-plugin')
+      await fs.mkdir(packageDir, { recursive: true })
+      await writePlugin(validSourceDir, VALID_MANIFEST)
+      await fs.mkdir(invalidSourceDir, { recursive: true })
+      await fs.writeFile(
+        path.join(invalidSourceDir, 'manifest.json'),
+        JSON.stringify({ id: 'missing-fields' }),
+        'utf-8'
+      )
+      await createZipFromDirectory(validSourceDir, path.join(packageDir, 'valid.zip'))
+      await createZipFromDirectory(invalidSourceDir, path.join(packageDir, 'invalid.zip'))
+
+      const installer = await createInstaller()
+
+      await expect(installer.installManyFromPath(packageDir)).rejects.toThrow(
+        'Invalid plugin manifest'
+      )
+      await expect(fs.stat(path.join(pluginsRoot, 'com.example.test'))).rejects.toMatchObject({
+        code: 'ENOENT'
+      })
+    })
+
     it('throws for a non-existent path', async () => {
       const installer = await createInstaller()
       await expect(installer.installFromPath('/non/existent/path/xyz')).rejects.toThrow(
@@ -552,6 +597,34 @@ describe('PluginInstaller', () => {
 
       const pluginRootContents = await fs.readdir(path.join(pluginsRoot, 'com.example.test'))
       expect(pluginRootContents).toEqual(['2.0.0'])
+    })
+
+    it('preserves an existing plugin when a replacement package is invalid', async () => {
+      const sourceDirV1 = path.join(tempRoot, 'preserve-plugin-v1')
+      await writePlugin(sourceDirV1, VALID_MANIFEST, 'index.mjs', '// v1')
+
+      const sourceDirV2 = path.join(tempRoot, 'preserve-plugin-v2')
+      await fs.mkdir(sourceDirV2, { recursive: true })
+      await fs.writeFile(
+        path.join(sourceDirV2, 'manifest.json'),
+        JSON.stringify({
+          ...VALID_MANIFEST,
+          version: '2.0.0',
+          entry: { main: 'missing.mjs', module: 'esm' }
+        }),
+        'utf-8'
+      )
+
+      const installer = await createInstaller()
+      const result1 = await installer.installFromPath(sourceDirV1)
+
+      await expect(installer.installFromPath(sourceDirV2)).rejects.toThrow(
+        'Plugin entry not found: missing.mjs'
+      )
+      await expect(fs.readFile(result1.entryPath, 'utf-8')).resolves.toBe('// v1')
+      await expect(
+        fs.stat(path.join(pluginsRoot, 'com.example.test', '1.0.0'))
+      ).resolves.toBeDefined()
     })
   })
 

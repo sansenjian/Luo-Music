@@ -188,6 +188,7 @@ describe('electron/plugins/PluginCatalog', () => {
         entryPath: reg.entryPath,
         checksum: reg.checksum
       })
+      mockListPlatforms.mockResolvedValue([reg])
       mockEnsureState.mockReturnValue(reg.state)
 
       const listener = vi.fn()
@@ -198,6 +199,11 @@ describe('electron/plugins/PluginCatalog', () => {
       expect(mockInstallManyFromPath).toHaveBeenCalledWith('/path/to/kugou')
       expect(mockEnsureState).toHaveBeenCalled()
       expect(result.platforms).toBeDefined()
+      expect(result.platform).toMatchObject({
+        id: 'kugou',
+        displayName: 'Plugin kugou',
+        version: '1.0.0'
+      })
       expect(listener).toHaveBeenCalled()
     })
 

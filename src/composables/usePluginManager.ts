@@ -88,10 +88,13 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
   }
 
   async function browseInstallPath(mode: 'file' | 'directory' = 'file'): Promise<string | null> {
+    errorMessage.value = null
+
     try {
       const selectedPath = await pluginService.pickInstallPath(mode)
       if (selectedPath) {
         installPath.value = selectedPath
+        errorMessage.value = null
         return selectedPath
       }
 

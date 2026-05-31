@@ -42,6 +42,8 @@ function createPlaylistItemFingerprint(song: Song): string {
     duration: song.duration,
     platform: song.platform,
     cover: song.album?.picUrl || '',
+    localSource: song.extra?.localSource || '',
+    localFilePath: song.extra?.localFilePath || '',
     artists: Array.isArray(song.artists) ? song.artists.map(artist => artist.name) : []
   })
 }

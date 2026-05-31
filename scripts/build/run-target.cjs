@@ -341,9 +341,12 @@ function createWorkflows(overrides = {}) {
     return deps.runStep(`${label}:artifact-budgets`, () => deps.checkArtifactBudgets(profiles))
   }
 
-  function buildElectronArtifacts(label) {
+  async function buildElectronArtifacts(label) {
+    await deps.runStep(`${label}:electron-bundle-clean`, () =>
+      deps.clean(deps.getElectronBundleCleanTargets(), { force: true })
+    )
     return deps.runParallel(`${label}:prepare`, {
-      'electron-bundle': () => workflows['electron-bundle'](),
+      'electron-bundle': () => workflows['electron-bundle-no-clean'](),
       'package-third-party-plugins': () => deps.packageThirdPartyPlugins()
     })
   }

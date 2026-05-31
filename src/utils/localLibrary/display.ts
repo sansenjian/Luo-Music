@@ -71,7 +71,10 @@ export function resolveLocalSongName(song: Song, artistText = ''): string {
 
   const localFilePath = normalizeDisplayText(song.extra?.localFilePath)
   if (localFilePath) {
-    return stripFileExtension(getFileNameFromPath(localFilePath))
+    const parsedName = stripFileExtension(getFileNameFromPath(localFilePath)).trim()
+    if (parsedName) {
+      return parsedName
+    }
   }
 
   const normalizedArtistText = normalizeDisplayText(artistText)

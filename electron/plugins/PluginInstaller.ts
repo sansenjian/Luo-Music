@@ -27,6 +27,14 @@ interface ResolvedPluginSource {
   cleanup?: () => Promise<void>
 }
 
+interface PreparedPluginInstall {
+  manifest: ExternalPluginManifest
+  sourceDirectory: string
+  pluginRoot: string
+  installPath: string
+  entryPath: string
+}
+
 const SAFE_PATH_SEGMENT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/
 const MAX_THEME_CSS_TEXT_LENGTH = 100_000
 
@@ -77,12 +85,27 @@ export class PluginInstaller {
       return [await this.installFromPath(sourcePath)]
     }
 
-    const installedPlugins: InstalledPluginLocation[] = []
-    for (const zipPackagePath of zipPackagePaths) {
-      installedPlugins.push(await this.installFromPath(zipPackagePath))
-    }
+    const resolvedSources: ResolvedPluginSource[] = []
 
-    return installedPlugins
+    try {
+      for (const zipPackagePath of zipPackagePaths) {
+        resolvedSources.push(await this.resolveSource(zipPackagePath))
+      }
+
+      const preparedInstalls = await Promise.all(
+        resolvedSources.map(resolvedSource => this.prepareInstall(resolvedSource.sourceDirectory))
+      )
+      this.assertUniquePreparedPluginIds(preparedInstalls)
+
+      const installedPlugins: InstalledPluginLocation[] = []
+      for (const preparedInstall of preparedInstalls) {
+        installedPlugins.push(await this.commitPreparedInstall(preparedInstall))
+      }
+
+      return installedPlugins
+    } finally {
+      await Promise.all(resolvedSources.map(source => source.cleanup?.().catch(() => {})))
+    }
   }
 
   async installFromPath(inputPath: string): Promise<InstalledPluginLocation> {
@@ -90,33 +113,9 @@ export class PluginInstaller {
     const resolvedSource = await this.resolveSource(sourcePath)
 
     try {
-      const sourceDirectory = resolvedSource.sourceDirectory
-      const manifest = await this.readManifest(sourceDirectory)
-      const sourceEntryPath = resolveContainedPath(
-        sourceDirectory,
-        manifest.entry.main,
-        'Plugin entry'
+      return await this.commitPreparedInstall(
+        await this.prepareInstall(resolvedSource.sourceDirectory)
       )
-
-      await this.assertFileExists(sourceEntryPath, `Plugin entry not found: ${manifest.entry.main}`)
-
-      const pluginRoot = path.join(this.pluginsRoot, manifest.id)
-      const installPath = path.join(pluginRoot, manifest.version)
-      const entryPath = resolveContainedPath(installPath, manifest.entry.main, 'Plugin entry')
-
-      await fs.mkdir(this.pluginsRoot, { recursive: true })
-      await fs.rm(pluginRoot, { recursive: true, force: true })
-      await fs.mkdir(pluginRoot, { recursive: true })
-      await fs.cp(sourceDirectory, installPath, { recursive: true })
-
-      const checksum = await this.computeFileChecksum(entryPath)
-
-      return {
-        manifest,
-        installPath,
-        entryPath,
-        checksum
-      }
     } finally {
       await resolvedSource.cleanup?.().catch(() => {})
     }
@@ -192,6 +191,110 @@ export class PluginInstaller {
     }
 
     return zipPackagePaths
+  }
+
+  private async prepareInstall(sourceDirectory: string): Promise<PreparedPluginInstall> {
+    const manifest = await this.readManifest(sourceDirectory)
+    const sourceEntryPath = resolveContainedPath(
+      sourceDirectory,
+      manifest.entry.main,
+      'Plugin entry'
+    )
+
+    await this.assertFileExists(sourceEntryPath, `Plugin entry not found: ${manifest.entry.main}`)
+
+    const pluginRoot = path.join(this.pluginsRoot, manifest.id)
+    const installPath = path.join(pluginRoot, manifest.version)
+    const entryPath = resolveContainedPath(installPath, manifest.entry.main, 'Plugin entry')
+
+    return {
+      manifest,
+      sourceDirectory,
+      pluginRoot,
+      installPath,
+      entryPath
+    }
+  }
+
+  private assertUniquePreparedPluginIds(preparedInstalls: PreparedPluginInstall[]): void {
+    const pluginIds = new Set<string>()
+
+    for (const preparedInstall of preparedInstalls) {
+      if (pluginIds.has(preparedInstall.manifest.id)) {
+        throw new Error(`Duplicate plugin id in batch install: ${preparedInstall.manifest.id}`)
+      }
+
+      pluginIds.add(preparedInstall.manifest.id)
+    }
+  }
+
+  private async commitPreparedInstall(
+    preparedInstall: PreparedPluginInstall
+  ): Promise<InstalledPluginLocation> {
+    await fs.mkdir(this.pluginsRoot, { recursive: true })
+
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    const stagingRoot = path.join(
+      this.pluginsRoot,
+      `.staging-${preparedInstall.manifest.id}-${uniqueSuffix}`
+    )
+    const backupRoot = path.join(
+      this.pluginsRoot,
+      `.backup-${preparedInstall.manifest.id}-${uniqueSuffix}`
+    )
+    const stagingInstallPath = path.join(stagingRoot, preparedInstall.manifest.version)
+    const stagingEntryPath = resolveContainedPath(
+      stagingInstallPath,
+      preparedInstall.manifest.entry.main,
+      'Plugin entry'
+    )
+    let hasBackup = false
+    let promotedStaging = false
+
+    try {
+      await fs.rm(stagingRoot, { recursive: true, force: true })
+      await fs.rm(backupRoot, { recursive: true, force: true })
+      await fs.cp(preparedInstall.sourceDirectory, stagingInstallPath, { recursive: true })
+      await this.assertFileExists(
+        stagingEntryPath,
+        `Plugin entry not found: ${preparedInstall.manifest.entry.main}`
+      )
+      const checksum = await this.computeFileChecksum(stagingEntryPath)
+
+      const existingPluginRoot = await fs.stat(preparedInstall.pluginRoot).catch(() => null)
+      if (existingPluginRoot) {
+        await fs.rename(preparedInstall.pluginRoot, backupRoot)
+        hasBackup = true
+      }
+
+      await fs.rename(stagingRoot, preparedInstall.pluginRoot)
+      promotedStaging = true
+      if (hasBackup) {
+        await fs.rm(backupRoot, { recursive: true, force: true })
+        hasBackup = false
+      }
+
+      return {
+        manifest: preparedInstall.manifest,
+        installPath: preparedInstall.installPath,
+        entryPath: preparedInstall.entryPath,
+        checksum
+      }
+    } catch (error) {
+      if (promotedStaging) {
+        await fs.rm(preparedInstall.pluginRoot, { recursive: true, force: true }).catch(() => {})
+      }
+      if (hasBackup) {
+        await fs.rename(backupRoot, preparedInstall.pluginRoot).catch(() => {})
+        hasBackup = false
+      }
+      throw error
+    } finally {
+      await fs.rm(stagingRoot, { recursive: true, force: true }).catch(() => {})
+      if (hasBackup) {
+        await fs.rm(backupRoot, { recursive: true, force: true }).catch(() => {})
+      }
+    }
   }
 
   private async resolveSource(sourcePath: string): Promise<ResolvedPluginSource> {
