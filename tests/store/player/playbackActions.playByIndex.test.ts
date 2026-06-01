@@ -25,4 +25,27 @@ describe('playbackActions playSongByIndex', () => {
     })
     expect(playSongByIndex).toHaveBeenCalledWith(0, state.songList[0])
   })
+
+  it('keeps same-song progress changes committed during startup playback', async () => {
+    const { actions, state, onStateChange, playSongByIndex } = createSubject()
+    const song = createMockSong({ url: 'https://song.test/1.mp3' })
+    state.songList = [song]
+    state.currentSong = song
+    state.currentIndex = 0
+    state.progress = 177
+    state.duration = 180
+    playSongByIndex.mockImplementationOnce(async () => {
+      state.progress = 0
+    })
+
+    await actions.playSongByIndex(0)
+
+    expect(onStateChange).toHaveBeenCalledWith({
+      currentIndex: 0,
+      currentSong: song,
+      currentLyricIndex: -1,
+      progress: 0,
+      duration: 180
+    })
+  })
 })

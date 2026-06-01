@@ -109,7 +109,9 @@ async function collectFileSizes(absolutePath, displayPath) {
 
   const entries = await fs.readdir(absolutePath, { withFileTypes: true })
   const nested = await Promise.all(
-    entries.map(entry => collectFileSizes(path.join(absolutePath, entry.name), `${displayPath}/${entry.name}`))
+    entries.map(entry =>
+      collectFileSizes(path.join(absolutePath, entry.name), `${displayPath}/${entry.name}`)
+    )
   )
 
   return nested.flatMap(result => result ?? [])

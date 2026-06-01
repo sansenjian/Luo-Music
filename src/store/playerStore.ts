@@ -711,7 +711,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           if (shouldResumeRestoredProgress) {
             if (restoredResumeProgress > 0) {
               try {
-                audioManager.seek(restoredResumeProgress)
+                this.seek(restoredResumeProgress)
               } catch (seekError) {
                 console.warn(
                   '[playerStore] Failed to restore playback progress; starting from beginning',
@@ -721,8 +721,10 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
                 this.playing = true
                 return
               }
+            } else {
+              this.progress = 0
+              this.applyResolvedLyricIndex(0)
             }
-            this.progress = restoredResumeProgress
           }
           this.playing = true
         } catch (error) {

@@ -107,6 +107,53 @@ describe('check-artifact-budgets script', () => {
     }
   })
 
+  it('treats missing per-file artifact directory as non-existent and over budget', async () => {
+    const tempRoot = join(tmpdir(), `luo-music-per-file-missing-dir-${process.pid}`)
+
+    try {
+      const results = await checkArtifactBudgets({
+        budgets: [{ path: 'out/make', maxBytes: 1024, perFile: true }],
+        rootDir: tempRoot
+      })
+
+      expect(results).toEqual([
+        expect.objectContaining({
+          path: 'out/make',
+          perFile: true,
+          exists: false,
+          withinBudget: false
+        })
+      ])
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('treats empty per-file artifact directory as zero-size and within budget', async () => {
+    const tempRoot = join(tmpdir(), `luo-music-per-file-empty-dir-${process.pid}`)
+
+    try {
+      await mkdir(join(tempRoot, 'out', 'make'), { recursive: true })
+
+      const results = await checkArtifactBudgets({
+        budgets: [{ path: 'out/make', maxBytes: 1024, perFile: true }],
+        rootDir: tempRoot
+      })
+
+      expect(results).toEqual([
+        expect.objectContaining({
+          path: 'out/make',
+          perFile: true,
+          exists: true,
+          size: 0,
+          withinBudget: true
+        })
+      ])
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
   it('checks per-file artifact budgets without summing sibling installers', async () => {
     const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     const tempRoot = join(tmpdir(), `luo-music-per-file-budget-${process.pid}`)

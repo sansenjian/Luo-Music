@@ -121,4 +121,60 @@ describe('player persistence storage', () => {
     expect(persisted.volume).toBe(0.4)
     expect(persisted.progress).toBe(10)
   })
+
+  it('keeps throttled progress pending and retries when delayed persistence fails', () => {
+    const backingStorage = createMemoryStorage()
+    let failNextWrite = false
+    const flakyStorage = {
+      get length(): number {
+        return backingStorage.length
+      },
+      clear: vi.fn(() => backingStorage.clear()),
+      getItem: vi.fn((key: string) => backingStorage.getItem(key)),
+      key: vi.fn((index: number) => backingStorage.key(index)),
+      removeItem: vi.fn((key: string) => backingStorage.removeItem(key)),
+      setItem: vi.fn((key: string, value: string) => {
+        if (failNextWrite) {
+          failNextWrite = false
+          throw new Error('persist failed')
+        }
+
+        backingStorage.setItem(key, value)
+      })
+    } as Storage
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const storage = createPlayerPersistStorage(flakyStorage, { progressThrottleMs: 1000 })
+    const baseState = {
+      volume: 0.7,
+      playMode: 0,
+      lyricType: ['original', 'trans'],
+      isPlayerDocked: true,
+      songList: [createMockSong({ id: 1, name: 'Song 1' })],
+      currentIndex: 0,
+      progress: 0,
+      duration: 180
+    }
+
+    try {
+      storage.setItem('player', JSON.stringify(baseState))
+      vi.setSystemTime(1_100)
+      storage.setItem('player', JSON.stringify({ ...baseState, progress: 10 }))
+      failNextWrite = true
+
+      vi.advanceTimersByTime(900)
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[playerPersistence] Failed to persist throttled player state',
+        expect.any(Error)
+      )
+      expect(readPlayerState(backingStorage).progress).toBe(0)
+      expect(JSON.parse(storage.getItem('player') ?? '{}').progress).toBe(10)
+
+      vi.advanceTimersByTime(1000)
+
+      expect(readPlayerState(backingStorage).progress).toBe(10)
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
 })

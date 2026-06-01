@@ -172,13 +172,36 @@ export function createPlayerPersistStorage(
   const pendingValues = new Map<string, string>()
   const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
-  function writeNow(key: string, value: string): void {
-    clearTimer(pendingTimers.get(key) ?? null)
-    pendingTimers.delete(key)
-    pendingValues.delete(key)
+  function persistValue(key: string, value: string): void {
     storage.setItem(key, value)
     lastPersistedValues.set(key, value)
     lastPersistedTimes.set(key, Date.now())
+  }
+
+  function writeNow(key: string, value: string): void {
+    persistValue(key, value)
+    clearTimer(pendingTimers.get(key) ?? null)
+    pendingTimers.delete(key)
+    pendingValues.delete(key)
+  }
+
+  function flushPendingWrite(key: string): void {
+    const pendingValue = pendingValues.get(key)
+    if (pendingValue === undefined) {
+      pendingTimers.delete(key)
+      return
+    }
+
+    try {
+      persistValue(key, pendingValue)
+      pendingValues.delete(key)
+      pendingTimers.delete(key)
+    } catch (error) {
+      console.warn('[playerPersistence] Failed to persist throttled player state', error)
+      const retryTimer = setTimeout(() => flushPendingWrite(key), progressThrottleMs)
+      unrefTimer(retryTimer)
+      pendingTimers.set(key, retryTimer)
+    }
   }
 
   function scheduleWrite(key: string, value: string, delay: number): void {
@@ -188,12 +211,7 @@ export function createPlayerPersistStorage(
       return
     }
 
-    const timer = setTimeout(() => {
-      const pendingValue = pendingValues.get(key)
-      if (pendingValue !== undefined) {
-        writeNow(key, pendingValue)
-      }
-    }, delay)
+    const timer = setTimeout(() => flushPendingWrite(key), delay)
 
     unrefTimer(timer)
     pendingTimers.set(key, timer)

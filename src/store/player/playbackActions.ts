@@ -260,12 +260,16 @@ export class PlaybackActions {
       return
     }
 
+    const committedState = this.deps.getState()
+
     this.deps.onStateChange({
       currentIndex: index,
       currentSong: nextSong,
-      currentLyricIndex: isSwitchingSong ? -1 : state.currentLyricIndex,
-      progress: isSwitchingSong ? 0 : state.progress,
-      duration: isSwitchingSong ? this.resolveInitialDurationSeconds(nextSong) : state.duration
+      currentLyricIndex: isSwitchingSong ? -1 : committedState.currentLyricIndex,
+      progress: isSwitchingSong ? 0 : committedState.progress,
+      duration: isSwitchingSong
+        ? this.resolveInitialDurationSeconds(nextSong)
+        : committedState.duration
     })
 
     if (isSwitchingSong) {
