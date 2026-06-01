@@ -203,8 +203,8 @@ describe('playerStore', () => {
       expect(store.currentSong?.unavailable).toBeUndefined()
       expect(store.currentSong?.errorMessage).toBeUndefined()
       expect(store.playing).toBe(false)
-      expect(store.progress).toBe(0)
-      expect(store.duration).toBe(0)
+      expect(store.progress).toBe(88)
+      expect(store.duration).toBe(120)
       expect(store.initialized).toBe(false)
       expect(store.ipcInitialized).toBe(false)
     })
@@ -221,6 +221,32 @@ describe('playerStore', () => {
 
       expect(store.currentIndex).toBe(0)
       expect(store.currentSong).toStrictEqual(store.songList[0])
+    })
+
+    it('clamps restored progress to the restored duration', () => {
+      const store = usePlayerStore()
+      store.songList = [createMockSong({ id: 1, name: 'Song 1', duration: 180000 })]
+      store.currentIndex = 0
+      store.progress = 240
+      store.duration = 180
+
+      restorePersistedPlayerState(store.$state)
+
+      expect(store.duration).toBe(180)
+      expect(store.progress).toBe(180)
+    })
+
+    it('uses the current song metadata duration when persisted duration is absent', () => {
+      const store = usePlayerStore()
+      store.songList = [createMockSong({ id: 1, name: 'Song 1', duration: 210000 })]
+      store.currentIndex = 0
+      store.progress = 42
+      store.duration = 0
+
+      restorePersistedPlayerState(store.$state)
+
+      expect(store.duration).toBe(210)
+      expect(store.progress).toBe(42)
     })
 
     it('addSong appends a song', () => {
@@ -337,6 +363,76 @@ describe('playerStore', () => {
       await Promise.resolve()
 
       expect(playSongWithDetailsSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('seeks to restored progress when starting the restored song after launch', async () => {
+      const { store, audioManager } = createInjectedPlayerStore()
+      const restoredSong = createMockSong({
+        id: 1,
+        name: 'Restored Song',
+        url: 'http://test.com/1.mp3'
+      })
+      store.songList = [restoredSong]
+      store.currentIndex = 0
+      store.currentSong = restoredSong
+      store.progress = 42
+      store.duration = 180
+
+      await store.playSongByIndex(0)
+
+      expect(audioManager.play).toHaveBeenCalledWith('http://test.com/1.mp3')
+      expect(audioManager.seek).toHaveBeenCalledWith(42)
+      expect(store.progress).toBe(42)
+      expect(store.playing).toBe(true)
+    })
+
+    it('starts from the beginning when restored progress is near the end', async () => {
+      const { store, audioManager } = createInjectedPlayerStore()
+      const restoredSong = createMockSong({
+        id: 1,
+        name: 'Almost Finished Song',
+        url: 'http://test.com/1.mp3'
+      })
+      store.songList = [restoredSong]
+      store.currentIndex = 0
+      store.currentSong = restoredSong
+      store.progress = 177
+      store.duration = 180
+
+      await store.playSongByIndex(0)
+
+      expect(audioManager.seek).not.toHaveBeenCalled()
+      expect(store.progress).toBe(0)
+      expect(store.playing).toBe(true)
+    })
+
+    it('keeps playback alive when restoring progress cannot seek', async () => {
+      const { store, audioManager } = createInjectedPlayerStore()
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const restoredSong = createMockSong({
+        id: 1,
+        name: 'Seek Fallback Song',
+        url: 'http://test.com/1.mp3'
+      })
+      store.songList = [restoredSong]
+      store.currentIndex = 0
+      store.currentSong = restoredSong
+      store.progress = 42
+      store.duration = 180
+      audioManager.seek.mockImplementationOnce(() => {
+        throw new Error('seek failed')
+      })
+
+      try {
+        await expect(store.playSongByIndex(0)).resolves.toBeUndefined()
+      } finally {
+        warnSpy.mockRestore()
+      }
+
+      expect(audioManager.play).toHaveBeenCalledWith('http://test.com/1.mp3')
+      expect(audioManager.seek).toHaveBeenCalledWith(42)
+      expect(store.progress).toBe(0)
+      expect(store.playing).toBe(true)
     })
 
     it('falls back to the next track when single-loop replay fails at song end', async () => {

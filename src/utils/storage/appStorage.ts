@@ -1,33 +1,15 @@
-import type { WebLyricAppearance } from '@shared/types/player'
-
-import { PLAY_MODE } from '@shared/player/playMode'
 import {
-  DEFAULT_WEB_LYRIC_APPEARANCE,
-  sanitizeWebLyricAppearance
-} from '@/utils/player/webLyricAppearance'
+  createDefaultPersistedPlayerState,
+  sanitizePersistedPlayerState,
+  type PersistedPlayerState
+} from '@/utils/player/persistedPlayerState'
 
 export const PLAYER_STORAGE_KEY = 'player'
 export const PLAYER_DOCKED_PREFERENCE_KEY = 'playerDockedUserToggled'
 export const LEGACY_COMPACT_MODE_PREFERENCE_KEY = 'compactModeUserToggled'
 
-export type PersistedPlayerState = {
-  volume: number
-  playMode: number
-  lyricType: string[]
-  webLyricAppearance: WebLyricAppearance
-  isPlayerDocked: boolean
-  isCompact?: boolean
-}
-
-const DEFAULT_PLAYER_STATE: PersistedPlayerState = {
-  volume: 0.7,
-  playMode: PLAY_MODE.SEQUENTIAL,
-  lyricType: ['original', 'trans'],
-  webLyricAppearance: { ...DEFAULT_WEB_LYRIC_APPEARANCE },
-  isPlayerDocked: true
-}
-
-const VALID_LYRIC_TYPES = new Set(['original', 'trans', 'roma'])
+export type { PersistedPlayerState }
+export { sanitizePersistedPlayerState }
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem' | 'clear' | 'key'> & {
   readonly length: number
@@ -67,51 +49,6 @@ export const persistentStorage: StorageLike = {
   }
 }
 
-function sanitizeVolume(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
-    ? value
-    : DEFAULT_PLAYER_STATE.volume
-}
-
-function sanitizePlayMode(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isInteger(value)) {
-    return DEFAULT_PLAYER_STATE.playMode
-  }
-  return value >= 0 && value <= 3 ? value : DEFAULT_PLAYER_STATE.playMode
-}
-
-function sanitizeLyricType(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [...DEFAULT_PLAYER_STATE.lyricType]
-  }
-
-  const sanitized = value.filter(item => typeof item === 'string' && VALID_LYRIC_TYPES.has(item))
-
-  return sanitized.length > 0 ? [...new Set(sanitized)] : [...DEFAULT_PLAYER_STATE.lyricType]
-}
-
-function sanitizeIsPlayerDocked(value: unknown): boolean {
-  return typeof value === 'boolean' ? value : DEFAULT_PLAYER_STATE.isPlayerDocked
-}
-
-export function sanitizePersistedPlayerState(value: unknown): PersistedPlayerState {
-  if (typeof value !== 'object' || value === null) {
-    return { ...DEFAULT_PLAYER_STATE }
-  }
-
-  const record = value as Partial<PersistedPlayerState>
-
-  return {
-    volume: sanitizeVolume(record.volume as unknown),
-    playMode: sanitizePlayMode(record.playMode as unknown),
-    lyricType: sanitizeLyricType(record.lyricType as unknown),
-    webLyricAppearance: sanitizeWebLyricAppearance(record.webLyricAppearance),
-    isPlayerDocked: sanitizeIsPlayerDocked(
-      record.isPlayerDocked ?? (record as { isCompact?: unknown }).isCompact
-    )
-  }
-}
-
 export function normalizePersistedPlayerState(): void {
   const playerState = persistentStorage.getItem(PLAYER_STORAGE_KEY)
   if (!playerState) {
@@ -123,7 +60,10 @@ export function normalizePersistedPlayerState(): void {
     const sanitized = sanitizePersistedPlayerState(parsed)
     persistentStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify(sanitized))
   } catch (error) {
-    persistentStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify(DEFAULT_PLAYER_STATE))
+    persistentStorage.setItem(
+      PLAYER_STORAGE_KEY,
+      JSON.stringify(createDefaultPersistedPlayerState())
+    )
     console.error('Failed to parse player state, reset to defaults:', error)
   }
 }

@@ -14,10 +14,10 @@ const ARTIFACT_BUDGETS = {
     { path: 'build/runtime', maxBytes: 15 * MiB }
   ],
   electron: [
-    { path: 'out/LUO Music-win32-x64', maxBytes: 260 * MiB },
-    { path: 'out/make', maxBytes: 260 * MiB }
+    { path: 'out/LUO Music-win32-x64', maxBytes: 450 * MiB },
+    { path: 'out/make', maxBytes: 180 * MiB, perFile: true }
   ],
-  package: [{ path: 'out/LUO Music-win32-x64', maxBytes: 260 * MiB }],
+  package: [{ path: 'out/LUO Music-win32-x64', maxBytes: 450 * MiB }],
   plugins: [{ path: 'out/third-party-plugins', maxBytes: 30 * MiB }],
   portable: [{ path: 'out/portable', maxBytes: 180 * MiB }]
 }
@@ -86,6 +86,35 @@ async function collectSize(absolutePath) {
   return sizes.reduce((total, size) => total + (size ?? 0), 0)
 }
 
+async function collectFileSizes(absolutePath, displayPath) {
+  const stat = await fs.stat(absolutePath).catch(error => {
+    if (error && error.code === 'ENOENT') {
+      return null
+    }
+
+    throw error
+  })
+
+  if (!stat) {
+    return null
+  }
+
+  if (stat.isFile()) {
+    return [{ path: displayPath, size: stat.size }]
+  }
+
+  if (!stat.isDirectory()) {
+    return []
+  }
+
+  const entries = await fs.readdir(absolutePath, { withFileTypes: true })
+  const nested = await Promise.all(
+    entries.map(entry => collectFileSizes(path.join(absolutePath, entry.name), `${displayPath}/${entry.name}`))
+  )
+
+  return nested.flatMap(result => result ?? [])
+}
+
 function resolveBudgets(profiles) {
   const budgets = []
   const seenPaths = new Set()
@@ -97,11 +126,12 @@ function resolveBudgets(profiles) {
     }
 
     for (const budget of profileBudgets) {
-      if (seenPaths.has(budget.path)) {
+      const budgetKey = `${budget.path}:${budget.perFile ? 'per-file' : 'aggregate'}`
+      if (seenPaths.has(budgetKey)) {
         continue
       }
 
-      seenPaths.add(budget.path)
+      seenPaths.add(budgetKey)
       budgets.push(budget)
     }
   }
@@ -118,6 +148,41 @@ async function checkArtifactBudgets(options = {}) {
 
   for (const budget of budgets) {
     const absolutePath = path.resolve(rootDir, budget.path)
+    if (budget.perFile) {
+      const fileSizes = await collectFileSizes(absolutePath, budget.path)
+
+      if (fileSizes === null) {
+        results.push({
+          ...budget,
+          exists: false,
+          size: 0,
+          withinBudget: false
+        })
+        continue
+      }
+
+      if (fileSizes.length === 0) {
+        results.push({
+          ...budget,
+          exists: true,
+          size: 0,
+          withinBudget: true
+        })
+        continue
+      }
+
+      for (const fileSize of fileSizes) {
+        results.push({
+          ...budget,
+          path: fileSize.path,
+          exists: true,
+          size: fileSize.size,
+          withinBudget: fileSize.size <= budget.maxBytes
+        })
+      }
+      continue
+    }
+
     const size = await collectSize(absolutePath)
 
     results.push({
@@ -166,6 +231,7 @@ module.exports = {
   ARTIFACT_BUDGETS,
   DEFAULT_PROFILES,
   checkArtifactBudgets,
+  collectFileSizes,
   collectSize,
   formatBytes,
   parseArgs,

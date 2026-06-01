@@ -71,10 +71,6 @@ export function useHomeShell(deps: HomeShellDeps = {}) {
       playerStore.isPlayerDocked = true
       storageService.setItem(PLAYER_DOCKED_PREFERENCE_KEY, 'true')
     }
-
-    if (isElectron.value && !playerStore.ipcInitialized) {
-      playerStore.setupIpcListeners()
-    }
   })
 
   return {

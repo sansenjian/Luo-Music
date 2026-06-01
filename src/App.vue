@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import WindowResizeFrame from './components/window/WindowResizeFrame.vue'
@@ -8,11 +8,13 @@ import { useProjectUi } from './composables/useProjectUi'
 import { useWindowChromeState } from './composables/useWindowChromeState'
 import { DESKTOP_LYRIC_ROUTE_PATH, useSmtcExtension } from './extensions/smtc/useSmtcExtension'
 import { services } from './services'
+import { usePlayerStore } from './store/playerStore'
 import { PLAYER_STORAGE_KEY, sanitizePersistedPlayerState } from './utils/storage/appStorage'
 
 const platformService = services.platform()
 const storageService = services.storage()
 const isElectron = platformService.isElectron()
+let playerStore: ReturnType<typeof usePlayerStore> | null = null
 const showAnalytics = ref(false)
 const route = useRoute()
 const Analytics = defineAsyncComponent(() =>
@@ -48,6 +50,18 @@ if (isElectron) {
     storageService.setJSON(PLAYER_STORAGE_KEY, sanitizePersistedPlayerState(null))
     console.error('Failed to parse player state, reset to defaults')
   }
+
+  playerStore = usePlayerStore()
+
+  watch(
+    showClientWindowChrome,
+    shouldSyncPlayerState => {
+      if (shouldSyncPlayerState && playerStore && !playerStore.ipcInitialized) {
+        playerStore.setupIpcListeners()
+      }
+    },
+    { immediate: true }
+  )
 }
 
 onMounted(() => {
