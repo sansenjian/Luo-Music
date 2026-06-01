@@ -1,4 +1,4 @@
-import { nextTick, reactive, ref } from 'vue'
+import { nextTick, reactive, ref, type Ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
@@ -12,6 +12,7 @@ import { mountComposable } from '../../helpers/mountComposable'
 function mountSmtcExtension(options: {
   isElectron?: boolean
   smtcEnabled?: boolean
+  smtcNativeStatus?: Ref<{ backend: string; enabled: boolean }>
   routePath?: string
   locationHash?: string
 }) {
@@ -25,7 +26,7 @@ function mountSmtcExtension(options: {
   const { wrapper } = mountComposable(() =>
     useSmtcExtension({
       route,
-      experimentalFeatures: { smtcEnabled },
+      experimentalFeatures: { smtcEnabled, smtcNativeStatus: options.smtcNativeStatus },
       platformService: { isElectron: () => options.isElectron ?? true },
       systemMediaSessionController,
       getLocationHash: () => options.locationHash ?? '#/',
@@ -97,6 +98,25 @@ describe('useSmtcExtension', () => {
     route.path = DESKTOP_LYRIC_ROUTE_PATH
     await nextTick()
     expect(mediaSessionDeps.enabled?.()).toBe(false)
+  })
+
+  it('lets the native backend own SMTC when it is active or starting', () => {
+    const smtcNativeStatus = ref({ enabled: true, backend: 'native' })
+    const { registerMediaSession } = mountSmtcExtension({
+      smtcEnabled: true,
+      smtcNativeStatus,
+      routePath: '/',
+      locationHash: '#/'
+    })
+
+    const mediaSessionDeps = getRegisteredMediaSessionDeps(registerMediaSession)
+    expect(mediaSessionDeps.enabled?.()).toBe(false)
+
+    smtcNativeStatus.value = { enabled: true, backend: 'disabled' }
+    expect(mediaSessionDeps.enabled?.()).toBe(false)
+
+    smtcNativeStatus.value = { enabled: true, backend: 'chromium' }
+    expect(mediaSessionDeps.enabled?.()).toBe(true)
   })
 
   it('does not register SMTC media session outside Electron', () => {

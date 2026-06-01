@@ -110,6 +110,14 @@ vi.mock('../../electron/DownloadManager', () => ({
   }
 }))
 
+vi.mock('../../electron/main/app', () => ({
+  getWindowsShellIdentity: vi.fn(() => ({
+    appUserModelId: 'com.sansenjian.luo-music',
+    displayName: 'LUO Music',
+    iconPath: '/public/tray.ico'
+  }))
+}))
+
 vi.mock('../../electron/utils/paths', () => ({
   MAIN_DIST: '/main',
   RENDERER_DIST: '/renderer',
@@ -176,6 +184,17 @@ describe('electron/WindowManager', () => {
       appIconIndex: 0,
       relaunchCommand: process.execPath,
       relaunchDisplayName: 'LUO Music'
+    })
+  })
+
+  it('uses the registered app icon for the main window', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window?.options).toMatchObject({
+      icon: '/public/tray.ico'
     })
   })
 

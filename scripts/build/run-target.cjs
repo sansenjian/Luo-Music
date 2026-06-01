@@ -253,6 +253,13 @@ function createWorkflows(overrides = {}) {
       await deps.runStep('electron-bundle:guard:configs', () => deps.npmRun('guard:configs'))
       await deps.runParallel('electron-bundle', {
         'rebuild:native': () => deps.npmRunAsync('rebuild:native'),
+        'build:smtc-helper': () =>
+          deps.npmRunAsync('build:smtc-helper', [
+            '--',
+            '--release',
+            '--copy-resource',
+            '--required'
+          ]),
         'build:qq-runtime': () => deps.npmRunAsync('build:qq-runtime'),
         'build:server': () => deps.npmRunAsync('build:server'),
         'electron-vite:build': () => deps.npmRunAsync('electron-vite:build')

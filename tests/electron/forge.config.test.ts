@@ -154,12 +154,17 @@ describe('forge.config packagerConfig.ignore', () => {
   })
 
   it('copies required runtime scripts via extraResource instead of app.asar', () => {
-    expect(getExtraResources()).toEqual([
-      'build/service',
-      'build/runtime/qq-api-server.cjs',
-      'scripts/runtime/qq-search-fallback.cjs',
-      'scripts/runtime/netease-api-server.cjs'
-    ])
+    expect(getExtraResources()).toEqual(
+      expect.arrayContaining([
+        'build/service',
+        'build/native',
+        'public/tray.ico',
+        'build/runtime/qq-api-server.cjs',
+        'scripts/runtime/qq-search-fallback.cjs',
+        'scripts/runtime/netease-api-server.cjs'
+      ])
+    )
+    expect(getExtraResources()).toHaveLength(6)
   })
 })
 

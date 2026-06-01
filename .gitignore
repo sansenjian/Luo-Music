@@ -185,6 +185,7 @@ inspection-results/
 # Cache directories
 .electron_cache/
 .vite_cache/
+native/**/target/
 
 # Qodana
 .qodana/

@@ -11,6 +11,7 @@ scripts/
 │   ├── clean.cjs       # 统一清理入口
 │   ├── clean-targets.cjs # 定向清理构建产物（Windows 优化）
 │   ├── run-target.cjs  # build / make / package 调度入口
+│   ├── build-smtc-helper.cjs # 构建 Windows SMTC Rust helper
 │   ├── package-third-party-plugins.cjs # 生成第三方插件安装 zip
 │   ├── check-artifact-budgets.cjs # 检查打包产物体积预算
 │   └── finalize-portable-output.cjs # 收敛单文件便携版输出，只保留 .exe
@@ -123,6 +124,10 @@ node scripts/build/clean.cjs dist build/service
 #### package-third-party-plugins.cjs
 
 将 `plugins/third-party/` 下的每个插件目录打包为稳定 zip 输出。脚本会校验 manifest、入口文件和输出目录边界，默认只写入 `out/third-party-plugins/`。
+
+#### build-smtc-helper.cjs
+
+构建 `native/smtc-helper` Rust helper。开发入口默认构建 debug helper；Electron 打包流程使用 `--release --copy-resource --required` 生成 release helper 并复制到 `build/native/smtc-helper.exe`，随后由 Forge / electron-builder 作为 `resources/native/smtc-helper.exe` 打进安装包。
 
 #### finalize-portable-output.cjs
 

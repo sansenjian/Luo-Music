@@ -70,6 +70,7 @@ export const INVOKE_CHANNELS = {
 
   // 第一方拓展运行时
   SMTC_SET_ENABLED: 'smtc:set-enabled',
+  SMTC_GET_STATUS: 'smtc:get-status',
 
   // API 服务
   API_SEARCH: 'api:search',
@@ -178,6 +179,9 @@ export const RECEIVE_CHANNELS = {
   PLAYER_LYRIC_UPDATE: 'player:lyric-update',
   PLAYER_DESKTOP_LYRIC_STATE: 'player:desktop-lyric-state',
   PLAYER_PLAY_ERROR: 'player:play-error',
+
+  // 第一方拓展状态
+  SMTC_STATUS_CHANGED: 'smtc:status-changed',
 
   // 配置变化
   CONFIG_CHANGED: 'config:changed',

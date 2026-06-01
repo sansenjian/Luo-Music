@@ -70,6 +70,16 @@ describe('electron-builder portable config', () => {
           filter: ['**/*']
         },
         {
+          from: 'build/native',
+          to: 'native',
+          filter: ['smtc-helper.exe']
+        },
+        {
+          from: 'public/tray.ico',
+          to: '.',
+          filter: ['tray.ico']
+        },
+        {
           from: 'build/runtime/qq-api-server.cjs',
           to: '.',
           filter: ['qq-api-server.cjs']

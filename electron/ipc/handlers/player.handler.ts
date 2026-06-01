@@ -2,10 +2,10 @@ import { INVOKE_CHANNELS, RECEIVE_CHANNELS, SEND_CHANNELS } from '@shared/protoc
 import { ipcService } from '../IpcService'
 import type { ServiceManager } from '../../ServiceManager'
 import type { WindowManager } from '../../WindowManager'
+import logger from '../../logger'
 import { isLocalLibrarySongId } from '@shared/types/localLibrary'
 import { SongSchema, type Song } from '@shared/types/schemas'
 import { LyricParser } from '@shared/player/lyric'
-import { PLAY_MODE } from '@shared/player/playMode'
 import type {
   DesktopLyricSnapshot,
   PlayMode,
@@ -14,6 +14,11 @@ import type {
   PlayerStateSnapshot,
   PlayerStateSyncPayload
 } from '@shared/contracts/ipc'
+import type { SmtcNativeService } from '../../main/smtcNativeService'
+import {
+  getCurrentPlayerStateSnapshot,
+  updateCurrentPlayerStateSnapshot
+} from '../../main/playerStateSnapshot'
 import { normalizeLyricResponse } from './api.normalizers'
 import { isBuiltInApiPlatform, resolvePlatform } from './api.validation'
 
@@ -21,27 +26,6 @@ import { isBuiltInApiPlatform, resolvePlatform } from './api.validation'
 
 /** 状态广播节流阈值（毫秒）- 避免高频 IPC 通信 */
 const STATE_BROADCAST_THROTTLE_MS = 16 // 约 60fps
-
-const DEFAULT_PLAYER_STATE: PlayerStateSnapshot = {
-  isPlaying: false,
-  isLoading: false,
-  progress: 0,
-  duration: 0,
-  volume: 1,
-  isMuted: false,
-  playMode: PLAY_MODE.SEQUENTIAL,
-  playlist: [],
-  currentIndex: -1,
-  currentSong: null,
-  lyricSong: null,
-  currentLyricIndex: -1,
-  showLyric: true,
-  showPlaylist: false,
-  isPlayerDocked: false,
-  lyricType: ['original', 'trans'],
-  lyrics: [],
-  desktopLyricSequence: 0
-}
 
 // ========== 状态广播管理器 ==========
 
@@ -160,32 +144,6 @@ function getStateBroadcastManager(): StateBroadcastManager {
 export function flushStateBroadcasts(): void {
   if (stateBroadcastManager) {
     stateBroadcastManager.flush()
-  }
-}
-
-/**
- * Produce a complete PlayerStateSnapshot by merging an optional sync payload onto the previous state.
- *
- * @param snapshot - Optional sync payload to merge; omitted `playlist` and `lyrics` preserve
- * the previous arrays so lightweight playback ticks do not clear cached state.
- * @param previousState - Previous full player state used for fields omitted from lightweight sync.
- * @returns The normalized PlayerStateSnapshot with all required fields populated.
- */
-function normalizePlayerState(
-  snapshot: PlayerStateSyncPayload | undefined,
-  previousState: PlayerStateSnapshot = DEFAULT_PLAYER_STATE
-): PlayerStateSnapshot {
-  return {
-    ...DEFAULT_PLAYER_STATE,
-    ...previousState,
-    ...snapshot,
-    playlist: Array.isArray(snapshot?.playlist) ? snapshot.playlist : previousState.playlist,
-    currentSong: snapshot?.currentSong ?? null,
-    lyricSong: snapshot?.lyricSong ?? null,
-    lyrics: Array.isArray(snapshot?.lyrics) ? snapshot.lyrics : previousState.lyrics,
-    lyricType: Array.isArray(snapshot?.lyricType) ? snapshot.lyricType : ['original', 'trans'],
-    desktopLyricSequence:
-      typeof snapshot?.desktopLyricSequence === 'number' ? snapshot.desktopLyricSequence : 0
   }
 }
 
@@ -315,9 +273,10 @@ async function fetchLyricsForSong(
  */
 export function registerPlayerHandlers(
   windowManager: WindowManager,
-  serviceManager: Pick<ServiceManager, 'handleRequest'>
+  serviceManager: Pick<ServiceManager, 'handleRequest'>,
+  smtcNativeService?: Pick<SmtcNativeService, 'syncPlayerState'>
 ): void {
-  let playerState = { ...DEFAULT_PLAYER_STATE }
+  let playerState = getCurrentPlayerStateSnapshot()
 
   ipcService.registerInvoke(INVOKE_CHANNELS.PLAYER_PLAY, async () => {
     windowManager.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL, 'play')
@@ -438,7 +397,12 @@ export function registerPlayerHandlers(
 
   ipcService.registerSend(SEND_CHANNELS.PLAYER_SYNC_STATE, (snapshot: PlayerStateSyncPayload) => {
     const previousState = playerState
-    playerState = normalizePlayerState(snapshot, previousState)
+    playerState = updateCurrentPlayerStateSnapshot(snapshot, previousState)
+    try {
+      smtcNativeService?.syncPlayerState(playerState)
+    } catch (error) {
+      logger.warn('[Player] Failed to sync state to native SMTC', error)
+    }
 
     const stateManager = getStateBroadcastManager()
 
