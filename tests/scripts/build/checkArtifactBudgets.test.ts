@@ -6,27 +6,41 @@ import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 const require = createRequire(import.meta.url)
-const { checkArtifactBudgets, collectSize, formatBytes, parseArgs, resolveBudgets } =
-  require('../../../scripts/build/check-artifact-budgets.cjs') as {
-    checkArtifactBudgets: (options?: {
-      budgets?: Array<{ path: string; maxBytes: number }>
-      profiles?: string[]
-      rootDir?: string
-      strict?: boolean
-    }) => Promise<
-      Array<{
-        exists: boolean
-        maxBytes: number
-        path: string
-        size: number
-        withinBudget: boolean
-      }>
-    >
-    collectSize: (absolutePath: string) => Promise<number | null>
-    formatBytes: (value: number) => string
-    parseArgs: (argv: string[]) => { profiles: string[]; strict: boolean }
-    resolveBudgets: (profiles: string[]) => Array<{ path: string; maxBytes: number }>
-  }
+const {
+  checkArtifactBudgets,
+  collectFileSizes,
+  collectSize,
+  formatBytes,
+  parseArgs,
+  resolveBudgets
+} = require('../../../scripts/build/check-artifact-budgets.cjs') as {
+  checkArtifactBudgets: (options?: {
+    budgets?: Array<{ path: string; maxBytes: number; perFile?: boolean }>
+    profiles?: string[]
+    rootDir?: string
+    strict?: boolean
+  }) => Promise<
+    Array<{
+      exists: boolean
+      maxBytes: number
+      path: string
+      size: number
+      withinBudget: boolean
+    }>
+  >
+  collectFileSizes: (
+    absolutePath: string,
+    displayPath: string
+  ) => Promise<Array<{ path: string; size: number }> | null>
+  collectSize: (absolutePath: string) => Promise<number | null>
+  formatBytes: (value: number) => string
+  parseArgs: (argv: string[]) => { profiles: string[]; strict: boolean }
+  resolveBudgets: (profiles: string[]) => Array<{
+    path: string
+    maxBytes: number
+    perFile?: boolean
+  }>
+}
 
 describe('check-artifact-budgets script', () => {
   it('parses budget profiles and strict mode', () => {
@@ -43,6 +57,22 @@ describe('check-artifact-budgets script', () => {
     expect(paths).toContain('build')
   })
 
+  it('uses realistic Electron package budgets', () => {
+    expect(resolveBudgets(['electron'])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'out/LUO Music-win32-x64',
+          maxBytes: 450 * 1024 * 1024
+        }),
+        expect.objectContaining({
+          path: 'out/make',
+          maxBytes: 180 * 1024 * 1024,
+          perFile: true
+        })
+      ])
+    )
+  })
+
   it('collects nested artifact sizes', async () => {
     const tempRoot = join(tmpdir(), `luo-music-artifact-budget-${process.pid}`)
 
@@ -53,6 +83,108 @@ describe('check-artifact-budgets script', () => {
 
       expect(await collectSize(tempRoot)).toBe(768)
     } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('collects individual file sizes for per-file artifact budgets', async () => {
+    const tempRoot = join(tmpdir(), `luo-music-artifact-file-budget-${process.pid}`)
+
+    try {
+      await mkdir(join(tempRoot, 'out', 'make', 'zip'), { recursive: true })
+      await mkdir(join(tempRoot, 'out', 'make', 'squirrel'), { recursive: true })
+      await writeFile(join(tempRoot, 'out', 'make', 'zip', 'app.zip'), Buffer.alloc(512))
+      await writeFile(join(tempRoot, 'out', 'make', 'squirrel', 'setup.exe'), Buffer.alloc(256))
+
+      expect(await collectFileSizes(join(tempRoot, 'out', 'make'), 'out/make')).toEqual(
+        expect.arrayContaining([
+          { path: 'out/make/zip/app.zip', size: 512 },
+          { path: 'out/make/squirrel/setup.exe', size: 256 }
+        ])
+      )
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('treats missing per-file artifact directory as non-existent and over budget', async () => {
+    const tempRoot = join(tmpdir(), `luo-music-per-file-missing-dir-${process.pid}`)
+
+    try {
+      const results = await checkArtifactBudgets({
+        budgets: [{ path: 'out/make', maxBytes: 1024, perFile: true }],
+        rootDir: tempRoot
+      })
+
+      expect(results).toEqual([
+        expect.objectContaining({
+          path: 'out/make',
+          perFile: true,
+          exists: false,
+          withinBudget: false
+        })
+      ])
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('treats empty per-file artifact directory as zero-size and within budget', async () => {
+    const tempRoot = join(tmpdir(), `luo-music-per-file-empty-dir-${process.pid}`)
+
+    try {
+      await mkdir(join(tempRoot, 'out', 'make'), { recursive: true })
+
+      const results = await checkArtifactBudgets({
+        budgets: [{ path: 'out/make', maxBytes: 1024, perFile: true }],
+        rootDir: tempRoot
+      })
+
+      expect(results).toEqual([
+        expect.objectContaining({
+          path: 'out/make',
+          perFile: true,
+          exists: true,
+          size: 0,
+          withinBudget: true
+        })
+      ])
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('checks per-file artifact budgets without summing sibling installers', async () => {
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const tempRoot = join(tmpdir(), `luo-music-per-file-budget-${process.pid}`)
+
+    try {
+      await mkdir(join(tempRoot, 'out', 'make'), { recursive: true })
+      await writeFile(join(tempRoot, 'out', 'make', 'one.zip'), Buffer.alloc(900))
+      await writeFile(join(tempRoot, 'out', 'make', 'two.exe'), Buffer.alloc(900))
+
+      const results = await checkArtifactBudgets({
+        budgets: [{ path: 'out/make', maxBytes: 1024, perFile: true }],
+        rootDir: tempRoot,
+        strict: true
+      })
+
+      expect(results).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: 'out/make/one.zip',
+            size: 900,
+            withinBudget: true
+          }),
+          expect.objectContaining({
+            path: 'out/make/two.exe',
+            size: 900,
+            withinBudget: true
+          })
+        ])
+      )
+    } finally {
+      consoleLogSpy.mockRestore()
       await rm(tempRoot, { recursive: true, force: true })
     }
   })

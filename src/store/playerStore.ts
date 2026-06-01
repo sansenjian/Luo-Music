@@ -34,6 +34,7 @@ import { useRecentPlayStore } from '@/store/recentPlayStore'
 import type { SongPlatform } from '@shared/types/schemas'
 import type { WebLyricAppearance } from '@shared/types/player'
 import {
+  createPlayerPersistStorage,
   normalizeHydratedPlayerState,
   normalizeLyricTypes,
   toPlayMode,
@@ -53,9 +54,26 @@ export type { PlayerStoreActions, PlayerStoreDeps } from '@/store/player/playerS
 export { restorePersistedPlayerState } from '@/store/player/playerPersistence'
 
 const PLAYER_STATE_SYNC_INTERVAL_MS = 500
+const RESTORED_PROGRESS_END_THRESHOLD_SECONDS = 5
 
 function isSameSong(left: Song, right: Song): boolean {
   return isSameSongIdentity(left, right)
+}
+
+function resolveStartupResumeProgress(progress: number, duration: number): number {
+  if (!Number.isFinite(progress) || progress <= 0) {
+    return 0
+  }
+
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return progress
+  }
+
+  if (progress >= Math.max(0, duration - RESTORED_PROGRESS_END_THRESHOLD_SECONDS)) {
+    return 0
+  }
+
+  return Math.min(progress, duration)
 }
 
 function isCurrentAudioSourceSong(song: Song | null, currentAudioSrc: string): boolean {
@@ -96,6 +114,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
   const getStorageService = resolvedDeps.getStorageService
   const getPlatformService = resolvedDeps.getPlatformAccessor
   const audioManager = resolvedDeps.audioManager
+  const persistStorage = createPlayerPersistStorage(storageAdapter)
 
   function reportPlayerStoreError(
     error: unknown,
@@ -652,9 +671,15 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           return
         }
 
+        const wasInitialized = this.initialized
         this.initAudio()
 
         const targetSong = song ?? this.songList[index]
+        const shouldResumeRestoredProgress =
+          !wasInitialized && Boolean(this.currentSong) && isSameSong(this.currentSong!, targetSong)
+        const restoredResumeProgress = shouldResumeRestoredProgress
+          ? resolveStartupResumeProgress(this.progress, this.duration)
+          : 0
 
         if (!targetSong.url) {
           const error = new Error('No URL for song')
@@ -683,6 +708,24 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
             getPlatformService().isElectron()
           )
           await audioManager.play(playbackUrl)
+          if (shouldResumeRestoredProgress) {
+            if (restoredResumeProgress > 0) {
+              try {
+                this.seek(restoredResumeProgress)
+              } catch (seekError) {
+                console.warn(
+                  '[playerStore] Failed to restore playback progress; starting from beginning',
+                  seekError
+                )
+                this.progress = 0
+                this.playing = true
+                return
+              }
+            } else {
+              this.progress = 0
+              this.applyResolvedLyricIndex(0)
+            }
+          }
           this.playing = true
         } catch (error) {
           reportPlayerStoreError(error, 'playSongByIndex', 'Playback failed')
@@ -863,7 +906,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
     },
 
     persist: {
-      storage: storageAdapter,
+      storage: persistStorage,
       pick: [
         'volume',
         'playMode',
@@ -871,10 +914,12 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         'webLyricAppearance',
         'isPlayerDocked',
         'songList',
-        'currentIndex'
+        'currentIndex',
+        'progress',
+        'duration'
       ],
       beforeHydrate: (_context: unknown) => {
-        const rawPlayerState = storageAdapter.getItem(storeId)
+        const rawPlayerState = persistStorage.getItem(storeId)
 
         if (!rawPlayerState) {
           console.log('Restoring player state...')
@@ -889,7 +934,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           ) {
             parsed.isPlayerDocked = parsed.isCompact
             delete parsed.isCompact
-            storageAdapter.setItem(storeId, JSON.stringify(parsed))
+            persistStorage.setItem(storeId, JSON.stringify(parsed))
           }
         } catch {
           // Ignore invalid persisted JSON here; existing hydration recovery handles it later.

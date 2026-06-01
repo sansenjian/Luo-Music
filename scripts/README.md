@@ -119,7 +119,7 @@ node scripts/build/clean.cjs dist build/service
 
 #### check-artifact-budgets.cjs
 
-检查 `build/`、`out/make/`、`out/portable/` 和 `out/third-party-plugins/` 等打包产物的大小。默认只输出 warning；传入 `--strict` 或设置 `LUO_ARTIFACT_BUDGET_STRICT=1` 时，超限或缺失产物会让脚本失败。
+检查 `build/`、`out/portable/` 和 `out/third-party-plugins/` 等打包产物的大小；Electron 安装包目录 `out/make/` 按单个 zip / setup / nupkg 文件分别检查，避免把多个分发包总和误判为单包超限。默认只输出 warning；传入 `--strict` 或设置 `LUO_ARTIFACT_BUDGET_STRICT=1` 时，超限或缺失产物会让脚本失败。
 
 #### package-third-party-plugins.cjs
 
