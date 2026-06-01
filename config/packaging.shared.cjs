@@ -4,6 +4,8 @@ const asarUnpackPattern = "**/node_modules/better-sqlite3/build/Release/*.node";
 
 const runtimeExtraResources = {
   service: "build/service",
+  smtcHelper: "build/native",
+  windowsAppIcon: "public/tray.ico",
   qqRuntime: "build/runtime/qq-api-server.cjs",
   qqSearchFallback: "scripts/runtime/qq-search-fallback.cjs",
   neteaseApiServer: "scripts/runtime/netease-api-server.cjs",
@@ -11,6 +13,8 @@ const runtimeExtraResources = {
 
 const packagingExtraResources = [
   runtimeExtraResources.service,
+  runtimeExtraResources.smtcHelper,
+  runtimeExtraResources.windowsAppIcon,
   runtimeExtraResources.qqRuntime,
   runtimeExtraResources.qqSearchFallback,
   runtimeExtraResources.neteaseApiServer,
@@ -67,6 +71,16 @@ const electronBuilderExtraResources = [
     from: runtimeExtraResources.service,
     to: "service",
     filter: ["**/*"],
+  },
+  {
+    from: runtimeExtraResources.smtcHelper,
+    to: "native",
+    filter: ["smtc-helper.exe"],
+  },
+  {
+    from: runtimeExtraResources.windowsAppIcon,
+    to: ".",
+    filter: ["tray.ico"],
   },
   {
     from: runtimeExtraResources.qqRuntime,

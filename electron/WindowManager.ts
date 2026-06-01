@@ -10,7 +10,7 @@ import path from 'node:path'
 
 import { downloadManager } from './DownloadManager'
 import logger from './logger'
-import { getWindowsShellIdentity } from './main/app'
+import { getWindowsShellIdentity, type WindowsShellIdentity } from './main/app'
 import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 import { MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
 const StoreModule = require('electron-store') as {
@@ -98,6 +98,8 @@ export class WindowManager {
     const devServerUrl = process.env.VITE_DEV_SERVER_URL
     const indexPath = path.join(RENDERER_DIST, 'index.html')
     const loadTarget = devServerUrl ?? indexPath
+    const shellIdentity = getWindowsShellIdentity()
+    const windowIconPath = shellIdentity?.iconPath ?? path.join(VITE_PUBLIC, WINDOWS_APP_ICON_FILE)
     logger.info('[WindowManager] Creating main window', {
       width,
       height,
@@ -120,7 +122,7 @@ export class WindowManager {
           }
         : {}),
       titleBarStyle: 'hidden',
-      icon: path.join(VITE_PUBLIC, 'electron-vite.svg'),
+      icon: windowIconPath,
       show: false,
       transparent: false,
       backgroundColor: '#101014',
@@ -137,7 +139,7 @@ export class WindowManager {
     })
     this.win = win
     const webContents = win.webContents
-    this.applyWindowsAppDetails(win)
+    this.applyWindowsAppDetails(win, shellIdentity)
 
     let hasRecoveredRenderer = false
     let hasShownWindow = false
@@ -354,8 +356,10 @@ export class WindowManager {
     })
   }
 
-  private applyWindowsAppDetails(win: BrowserWindowType): void {
-    const shellIdentity = getWindowsShellIdentity()
+  private applyWindowsAppDetails(
+    win: BrowserWindowType,
+    shellIdentity: WindowsShellIdentity | null = getWindowsShellIdentity()
+  ): void {
     if (!shellIdentity) {
       return
     }
@@ -363,7 +367,7 @@ export class WindowManager {
     try {
       win.setAppDetails({
         appId: shellIdentity.appUserModelId,
-        appIconPath: path.join(VITE_PUBLIC, WINDOWS_APP_ICON_FILE),
+        appIconPath: shellIdentity.iconPath ?? path.join(VITE_PUBLIC, WINDOWS_APP_ICON_FILE),
         appIconIndex: 0,
         relaunchCommand: process.execPath,
         relaunchDisplayName: shellIdentity.displayName

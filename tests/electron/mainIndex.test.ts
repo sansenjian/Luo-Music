@@ -71,6 +71,8 @@ vi.mock('electron', () => ({
     commandLine: {
       appendSwitch: vi.fn()
     },
+    getAppPath: vi.fn(() => 'D:\\app'),
+    isPackaged: false,
     relaunch: vi.fn(),
     exit: vi.fn()
   }
@@ -171,6 +173,11 @@ vi.mock('../../electron/main/app', () => ({
   setupDevUserData: setupDevUserDataMock,
   setupWindowsShellIntegration: setupWindowsShellIntegrationMock,
   setupErrorHandlers: setupErrorHandlersMock,
+  getWindowsShellIdentity: vi.fn(() => ({
+    appUserModelId: 'com.sansenjian.luo-music',
+    displayName: 'LUO Music',
+    iconPath: 'D:\\app\\public\\tray.ico'
+  })),
   registerAppLifecycle: registerAppLifecycleMock.mockImplementation(callbacks => {
     lifecycleCallbacks = callbacks
   })

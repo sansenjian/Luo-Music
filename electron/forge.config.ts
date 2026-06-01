@@ -41,7 +41,7 @@ function createIgnorePatterns(paths: readonly string[]): RegExp[] {
 
 const packagingIgnorePatterns = [
   ...createIgnorePatterns(packagingWorkspaceArtifactsToRemove),
-  /^\/(?:api|coverage|dist|docs|electron|playwright-report|server|src|test|test-results|tests)(?:$|\/)/,
+  /^\/(?:api|coverage|dist|docs|electron|native|playwright-report|server|src|test|test-results|tests)(?:$|\/)/,
   /^\/plugins\/(?!third-party(?:$|\/))/,
   /^\/build\/runtime(?:$|\/)/,
   /^\/\.env(?:\.[^/]+)?$/,

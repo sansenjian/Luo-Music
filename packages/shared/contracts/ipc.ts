@@ -10,6 +10,7 @@
 
 import type { INVOKE_CHANNELS, RECEIVE_CHANNELS, SEND_CHANNELS } from '../protocol/channels'
 import type { CacheClearOptions, CacheClearResult } from '../protocol/cache'
+import type { SmtcNativeStatus } from '../smtc/protocol'
 import type { LogEntry } from './log'
 import type { AppConfig, ConfigChangeEvent } from './config'
 import type {
@@ -388,8 +389,9 @@ type InvokeChannelsDefinition = MergeChannels<
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.SMTC_SET_ENABLED,
       [enabled: boolean],
-      { restartRequired: boolean }
+      SmtcNativeStatus
     > &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.SMTC_GET_STATUS, [], SmtcNativeStatus> &
     // API 服务
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_SEARCH,
@@ -566,6 +568,7 @@ type ReceiveChannelsDefinition = MergeChannels<
       typeof RECEIVE_CHANNELS.PLAYER_PLAY_ERROR,
       { error: string; song: Song | null }
     > &
+    DefineReceiveChannel<typeof RECEIVE_CHANNELS.SMTC_STATUS_CHANGED, SmtcNativeStatus> &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.CONFIG_CHANGED, ConfigChangeEvent> &
     DefineReceiveChannel<
       typeof RECEIVE_CHANNELS.PLUGIN_CHANGED,
