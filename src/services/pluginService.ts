@@ -724,7 +724,7 @@ function isFirstPartyPlugin(platformId: string): boolean {
   return firstPartyPluginIds.has(platformId)
 }
 
-function setFirstPartyPluginEnabled(platformId: string, enabled: boolean): boolean {
+async function setFirstPartyPluginEnabled(platformId: string, enabled: boolean): Promise<boolean> {
   const { setSMTCEnabled, setCoverSwipeEnabled } = useExperimentalFeatures()
   const { setAudioOutputEnabled } = useAudioOutputPlugin()
   const { setThemeResourcePackEnabled } = useThemeResourcePacks()
@@ -737,7 +737,7 @@ function setFirstPartyPluginEnabled(platformId: string, enabled: boolean): boole
       setCoverSwipeEnabled(enabled)
       return true
     case FIRST_PARTY_AUDIO_OUTPUT_PLUGIN_ID:
-      setAudioOutputEnabled(enabled)
+      await setAudioOutputEnabled(enabled)
       return true
     case BUILTIN_BRAND_THEME_PLUGIN_ID:
       setThemeResourcePackEnabled(BUILTIN_BRAND_THEME_PLUGIN_ID, enabled)
@@ -764,12 +764,12 @@ function getFirstPartyPluginSettings(platformId: string): Record<string, unknown
 function updateFirstPartyPluginSettings(
   platformId: string,
   settings: Record<string, unknown>
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   if (platformId === FIRST_PARTY_AUDIO_OUTPUT_PLUGIN_ID) {
     return useAudioOutputPlugin().updateAudioOutputSettings(settings)
   }
 
-  return {}
+  return Promise.resolve({})
 }
 
 export function createPluginService(deps: PluginServiceDeps = {}): PluginService {
@@ -833,7 +833,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   }
 
   async function setEnabled(platformId: string, enabled: boolean): Promise<PlatformDescriptor[]> {
-    if (setFirstPartyPluginEnabled(platformId, enabled)) {
+    if (await setFirstPartyPluginEnabled(platformId, enabled)) {
       return refreshPlatformDescriptors()
     }
 

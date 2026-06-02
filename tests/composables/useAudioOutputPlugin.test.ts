@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AudioOutputStatus } from '@shared/audioOutput/protocol'
 
 function createStorageServiceMock(initialEntries: Record<string, unknown> = {}) {
   const store = new Map(
@@ -102,6 +103,56 @@ describe('useAudioOutputPlugin', () => {
     })
   })
 
+  it('keeps the latest enabled status when an earlier status request resolves later', async () => {
+    const { useAudioOutputPlugin } = await import('@/composables/useAudioOutputPlugin')
+    const { storageService } = createStorageServiceMock()
+    let resolveInitialStatus: ((status: AudioOutputStatus) => void) | undefined
+    const audioOutputMainBridge = {
+      getStatus: vi.fn(
+        () =>
+          new Promise<AudioOutputStatus>(resolve => {
+            resolveInitialStatus = resolve
+          })
+      ),
+      setEnabled: vi.fn().mockResolvedValue({
+        enabled: true,
+        backend: 'native',
+        backendAvailable: true,
+        requestedMode: 'shared',
+        activeMode: 'shared',
+        helperRunning: true,
+        devices: []
+      }),
+      updateSettings: vi.fn()
+    }
+
+    const { audioOutputStatus, setAudioOutputEnabled } = useAudioOutputPlugin({
+      storageService,
+      audioOutputMainBridge
+    })
+
+    await expect(setAudioOutputEnabled(true)).resolves.toMatchObject({
+      enabled: true,
+      backend: 'native',
+      helperRunning: true
+    })
+
+    resolveInitialStatus?.({
+      enabled: false,
+      backend: 'disabled',
+      backendAvailable: false,
+      requestedMode: 'shared',
+      devices: []
+    })
+    await Promise.resolve()
+
+    expect(audioOutputStatus.value).toMatchObject({
+      enabled: true,
+      backend: 'native',
+      helperRunning: true
+    })
+  })
+
   it('persists sanitized settings and syncs updates', async () => {
     const { useAudioOutputPlugin } = await import('@/composables/useAudioOutputPlugin')
     const { store, storageService } = createStorageServiceMock()
@@ -121,7 +172,7 @@ describe('useAudioOutputPlugin', () => {
       audioOutputMainBridge
     })
 
-    const settings = updateAudioOutputSettings({
+    const settings = await updateAudioOutputSettings({
       mode: 'voicemeeter',
       sharedDeviceId: ' chromium-voice ',
       bufferFrames: '64'

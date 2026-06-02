@@ -55,6 +55,7 @@ const sharedOutputDevices = ref<AudioOutputSharedDevice[]>([])
 let isAudioOutputInitialized = false
 let isAudioOutputStatusListenerRegistered = false
 let isSharedOutputDeviceListenerRegistered = false
+let audioOutputStatusRequestId = 0
 
 function getDefaultAudioOutputMainBridge(): AudioOutputMainBridge | null {
   if (typeof window === 'undefined') {
@@ -163,6 +164,12 @@ function createSyncFailedStatus(state: AudioOutputState, error: unknown): AudioO
   return createUnavailableStatus(state, error instanceof Error ? error.message : String(error))
 }
 
+function setAudioOutputStatusIfCurrent(status: AudioOutputStatus, requestId: number): void {
+  if (requestId === audioOutputStatusRequestId) {
+    audioOutputStatus.value = status
+  }
+}
+
 export function useAudioOutputPlugin(deps: AudioOutputPluginDeps = {}) {
   const storageService = deps.storageService ?? services.storage()
   const audioOutputMainBridge =
@@ -184,8 +191,8 @@ export function useAudioOutputPlugin(deps: AudioOutputPluginDeps = {}) {
       storageService.getJSON<unknown>(AUDIO_OUTPUT_STORAGE_KEY)
     )
     isAudioOutputInitialized = true
-    syncAudioOutputStatusFromMain()
-    syncAudioOutputEnabledToMain(audioOutputState.value.enabled)
+    void syncAudioOutputStatusFromMain()
+    void syncAudioOutputEnabledToMain(audioOutputState.value.enabled)
   }
 
   if (!isSharedOutputDeviceListenerRegistered && mediaDevices?.addEventListener) {
@@ -203,20 +210,24 @@ export function useAudioOutputPlugin(deps: AudioOutputPluginDeps = {}) {
     storageService.setJSON(AUDIO_OUTPUT_STORAGE_KEY, audioOutputState.value)
   }
 
-  function syncAudioOutputStatusFromMain(): void {
+  async function syncAudioOutputStatusFromMain(): Promise<AudioOutputStatus> {
+    const requestId = ++audioOutputStatusRequestId
+
     if (!audioOutputMainBridge?.getStatus) {
-      return
+      return audioOutputStatus.value
     }
 
-    void Promise.resolve(audioOutputMainBridge.getStatus())
-      .then(status => {
-        if (isAudioOutputStatus(status)) {
-          audioOutputStatus.value = status
-        }
-      })
-      .catch(error => {
-        console.warn('[AudioOutput] Failed to fetch native audio output status', error)
-      })
+    try {
+      const status = await Promise.resolve(audioOutputMainBridge.getStatus())
+      if (isAudioOutputStatus(status)) {
+        setAudioOutputStatusIfCurrent(status, requestId)
+        return status
+      }
+    } catch (error) {
+      console.warn('[AudioOutput] Failed to fetch native audio output status', error)
+    }
+
+    return audioOutputStatus.value
   }
 
   async function refreshSharedOutputDevices(): Promise<AudioOutputSharedDevice[]> {
@@ -236,67 +247,87 @@ export function useAudioOutputPlugin(deps: AudioOutputPluginDeps = {}) {
     }
   }
 
-  function syncAudioOutputEnabledToMain(enabled: boolean): void {
+  async function syncAudioOutputEnabledToMain(enabled: boolean): Promise<AudioOutputStatus> {
+    const requestId = ++audioOutputStatusRequestId
     const nextState = {
       enabled,
       settings: audioOutputState.value.settings
     }
 
     if (!audioOutputMainBridge) {
-      audioOutputStatus.value = createUnavailableStatus(
+      const status = createUnavailableStatus(
         nextState,
         'Native audio output service is unavailable in this runtime.'
       )
-      return
+      setAudioOutputStatusIfCurrent(status, requestId)
+      return status
     }
 
-    audioOutputStatus.value = createUnavailableStatus(
+    const pendingStatus = createUnavailableStatus(
       nextState,
       enabled ? 'Native audio output backend is starting.' : 'Native audio output is disabled.'
     )
+    setAudioOutputStatusIfCurrent(pendingStatus, requestId)
 
-    void Promise.resolve(audioOutputMainBridge.setEnabled(enabled, nextState.settings))
-      .then(status => {
-        if (isAudioOutputStatus(status)) {
-          audioOutputStatus.value = status
-        }
-      })
-      .catch(error => {
-        audioOutputStatus.value = createSyncFailedStatus(nextState, error)
-        console.warn('[AudioOutput] Failed to sync native audio output state', error)
-      })
+    try {
+      const status = await Promise.resolve(
+        audioOutputMainBridge.setEnabled(enabled, nextState.settings)
+      )
+      if (isAudioOutputStatus(status)) {
+        setAudioOutputStatusIfCurrent(status, requestId)
+        return status
+      }
+    } catch (error) {
+      const status = createSyncFailedStatus(nextState, error)
+      setAudioOutputStatusIfCurrent(status, requestId)
+      console.warn('[AudioOutput] Failed to sync native audio output state', error)
+      return status
+    }
+
+    return pendingStatus
   }
 
-  function syncAudioOutputSettingsToMain(settings: AudioOutputSettings): void {
+  async function syncAudioOutputSettingsToMain(
+    settings: AudioOutputSettings
+  ): Promise<AudioOutputStatus> {
+    const requestId = ++audioOutputStatusRequestId
+
     if (!audioOutputMainBridge) {
-      audioOutputStatus.value = createUnavailableStatus(
+      const status = createUnavailableStatus(
         audioOutputState.value,
         'Native audio output service is unavailable in this runtime.'
       )
-      return
+      setAudioOutputStatusIfCurrent(status, requestId)
+      return status
     }
 
-    void Promise.resolve(audioOutputMainBridge.updateSettings(settings))
-      .then(status => {
-        if (isAudioOutputStatus(status)) {
-          audioOutputStatus.value = status
-        }
-      })
-      .catch(error => {
-        audioOutputStatus.value = createSyncFailedStatus(audioOutputState.value, error)
-        console.warn('[AudioOutput] Failed to sync native audio output settings', error)
-      })
+    try {
+      const status = await Promise.resolve(audioOutputMainBridge.updateSettings(settings))
+      if (isAudioOutputStatus(status)) {
+        setAudioOutputStatusIfCurrent(status, requestId)
+        return status
+      }
+    } catch (error) {
+      const status = createSyncFailedStatus(audioOutputState.value, error)
+      setAudioOutputStatusIfCurrent(status, requestId)
+      console.warn('[AudioOutput] Failed to sync native audio output settings', error)
+      return status
+    }
+
+    return audioOutputStatus.value
   }
 
-  function setAudioOutputEnabled(next: boolean): void {
+  function setAudioOutputEnabled(next: boolean): Promise<AudioOutputStatus> {
     persist({
       ...audioOutputState.value,
       enabled: next
     })
-    syncAudioOutputEnabledToMain(next)
+    return syncAudioOutputEnabledToMain(next)
   }
 
-  function updateAudioOutputSettings(nextSettings: Record<string, unknown>): AudioOutputSettings {
+  async function updateAudioOutputSettings(
+    nextSettings: Record<string, unknown>
+  ): Promise<AudioOutputSettings> {
     const settings = sanitizeAudioOutputSettings({
       ...audioOutputState.value.settings,
       ...nextSettings
@@ -306,7 +337,7 @@ export function useAudioOutputPlugin(deps: AudioOutputPluginDeps = {}) {
       ...audioOutputState.value,
       settings
     })
-    syncAudioOutputSettingsToMain(settings)
+    await syncAudioOutputSettingsToMain(settings)
     return settings
   }
 

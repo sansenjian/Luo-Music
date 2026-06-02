@@ -57,7 +57,7 @@ const audioOutputPluginMock = vi.hoisted(() => {
     audioOutputStatus,
     sharedOutputDevices,
     refreshSharedOutputDevices: vi.fn(() => Promise.resolve(sharedOutputDevices.value)),
-    setAudioOutputEnabled: vi.fn((next: boolean) => {
+    setAudioOutputEnabled: vi.fn(async (next: boolean) => {
       audioOutputEnabled.value = next
       audioOutputStatus.value = {
         enabled: next,
@@ -67,8 +67,9 @@ const audioOutputPluginMock = vi.hoisted(() => {
         devices: [],
         ...(next ? { reason: 'Native audio output backend is not bundled yet.' } : {})
       }
+      return audioOutputStatus.value
     }),
-    updateAudioOutputSettings: vi.fn((nextSettings: Record<string, unknown>) => {
+    updateAudioOutputSettings: vi.fn(async (nextSettings: Record<string, unknown>) => {
       const nextBufferFrames =
         typeof nextSettings.bufferFrames === 'string'
           ? Number.parseInt(nextSettings.bufferFrames, 10)
@@ -601,6 +602,57 @@ describe('createPluginService', () => {
       audioOutputEnabled: true,
       audioOutputStatus: 'error'
     })
+  })
+
+  it('waits for native audio output status before refreshing first-party descriptors', async () => {
+    let resolveAudioOutputSync: (() => void) | undefined
+    audioOutputPluginMock.setAudioOutputEnabled.mockImplementationOnce(
+      async (next: boolean): Promise<AudioOutputStatus> => {
+        audioOutputPluginMock.audioOutputEnabled.value = next
+        await new Promise<void>(resolve => {
+          resolveAudioOutputSync = resolve
+        })
+        audioOutputPluginMock.audioOutputStatus.value = {
+          enabled: next,
+          backend: 'native',
+          backendAvailable: true,
+          requestedMode: 'shared',
+          activeMode: 'shared',
+          helperRunning: true,
+          devices: []
+        }
+        return audioOutputPluginMock.audioOutputStatus.value
+      }
+    )
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await vi.waitFor(() => expect(bridge.list).toHaveBeenCalled())
+    bridge.list.mockClear()
+    const resultPromise = service.setEnabled('builtin.audio-output', true)
+    await Promise.resolve()
+
+    expect(bridge.list).not.toHaveBeenCalled()
+
+    resolveAudioOutputSync?.()
+    const result = await resultPromise
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(bridge.list).toHaveBeenCalledOnce()
+    expect(audioOutputDescriptor).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        status: 'ready',
+        runtimeDetails: expect.arrayContaining([
+          { label: '实际输出', value: '共享模式', tone: 'success' },
+          { label: '原生 helper', value: '运行中', tone: 'success' }
+        ])
+      })
+    )
   })
 
   it('exposes native audio output devices as selectable first-party settings', async () => {
