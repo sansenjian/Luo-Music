@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AudioOutputStatus } from '@shared/audioOutput/protocol'
+import { isReactive } from 'vue'
+import { INVOKE_CHANNELS } from '@shared/protocol/channels'
+import type { AudioOutputSettings, AudioOutputStatus } from '@shared/audioOutput/protocol'
 
 function createStorageServiceMock(initialEntries: Record<string, unknown> = {}) {
   const store = new Map(
@@ -20,10 +22,16 @@ function createStorageServiceMock(initialEntries: Record<string, unknown> = {}) 
   }
 }
 
+function expectCloneableSettings(value: unknown): asserts value is AudioOutputSettings {
+  expect(isReactive(value)).toBe(false)
+  expect(() => structuredClone(value)).not.toThrow()
+}
+
 describe('useAudioOutputPlugin', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    Reflect.deleteProperty(window, 'services')
   })
 
   it('defaults native audio output to disabled', async () => {
@@ -92,6 +100,7 @@ describe('useAudioOutputPlugin', () => {
         deviceId: 'dac'
       })
     )
+    expectCloneableSettings(audioOutputMainBridge.setEnabled.mock.calls[0]?.[1])
 
     await Promise.resolve()
 
@@ -189,6 +198,7 @@ describe('useAudioOutputPlugin', () => {
         bufferFrames: 128
       })
     )
+    expectCloneableSettings(audioOutputMainBridge.updateSettings.mock.calls[0]?.[0])
     expect(JSON.parse(store.get('audioOutput') ?? 'null')).toMatchObject({
       enabled: false,
       settings: {
@@ -196,6 +206,76 @@ describe('useAudioOutputPlugin', () => {
         sharedDeviceId: 'chromium-voice',
         bufferFrames: 128
       }
+    })
+  })
+
+  it('passes cloneable settings through the default Electron bridge', async () => {
+    const { useAudioOutputPlugin } = await import('@/composables/useAudioOutputPlugin')
+    const { storageService } = createStorageServiceMock({
+      audioOutput: {
+        enabled: true,
+        settings: {
+          mode: 'exclusive',
+          sharedDeviceId: ' chromium-usb ',
+          deviceId: ' dac ',
+          bufferFrames: 512,
+          fallbackToShared: true,
+          diagnosticsEnabled: false
+        }
+      }
+    })
+    const invoke = vi.fn(async (channel: string, ...args: unknown[]) => {
+      if (channel === INVOKE_CHANNELS.AUDIO_OUTPUT_SET_ENABLED) {
+        expectCloneableSettings(args[1])
+        return {
+          enabled: args[0] === true,
+          backend: 'unavailable',
+          backendAvailable: false,
+          requestedMode: args[1].mode,
+          deviceId: args[1].deviceId,
+          devices: []
+        } satisfies AudioOutputStatus
+      }
+
+      return {
+        enabled: false,
+        backend: 'disabled',
+        backendAvailable: false,
+        requestedMode: 'shared',
+        devices: []
+      } satisfies AudioOutputStatus
+    })
+
+    Object.defineProperty(window, 'services', {
+      configurable: true,
+      writable: true,
+      value: {
+        invoke,
+        on: vi.fn()
+      }
+    })
+
+    const { audioOutputStatus } = useAudioOutputPlugin({
+      storageService,
+      mediaDevices: null
+    })
+
+    await vi.waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(
+        INVOKE_CHANNELS.AUDIO_OUTPUT_SET_ENABLED,
+        true,
+        expect.objectContaining({
+          mode: 'exclusive',
+          sharedDeviceId: 'chromium-usb',
+          deviceId: 'dac'
+        })
+      )
+    )
+    expect(audioOutputStatus.value).toMatchObject({
+      enabled: true,
+      backend: 'unavailable',
+      requestedMode: 'exclusive',
+      deviceId: 'dac'
     })
   })
 
