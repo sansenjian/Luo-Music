@@ -72,7 +72,7 @@ describe('electron-builder portable config', () => {
         {
           from: 'build/native',
           to: 'native',
-          filter: ['smtc-helper.exe']
+          filter: ['smtc-helper.exe', 'audio-output-helper.exe']
         },
         {
           from: 'public/tray.ico',

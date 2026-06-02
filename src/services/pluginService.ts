@@ -7,6 +7,7 @@ import {
   type PlatformAuthState
 } from '@/platform/music/authState'
 import type {
+  PluginSettingDefinition,
   StandardAccountProfile,
   StandardImportedAuthSession,
   StandardLoginChallenge,
@@ -28,16 +29,67 @@ import {
   type ProjectThemeResourcePack
 } from '@/ui/projectUi'
 import { useThemeResourcePacks } from '@/composables/useThemeResourcePacks'
+import { useAudioOutputPlugin } from '@/composables/useAudioOutputPlugin'
+import type { AudioOutputSharedDevice } from '@/composables/useAudioOutputPlugin'
+import type { AudioOutputSettings, AudioOutputStatus } from '@shared/audioOutput/protocol'
 
 const FIRST_PARTY_SMTC_PLUGIN_ID = 'builtin.smtc'
 const FIRST_PARTY_COVER_SWIPE_PLUGIN_ID = 'builtin.cover-swipe'
+const FIRST_PARTY_AUDIO_OUTPUT_PLUGIN_ID = 'builtin.audio-output'
 const DEFAULT_LIBRARY_PAGE_LIMIT = 50
 
 const firstPartyPluginIds = new Set([
   FIRST_PARTY_SMTC_PLUGIN_ID,
   FIRST_PARTY_COVER_SWIPE_PLUGIN_ID,
+  FIRST_PARTY_AUDIO_OUTPUT_PLUGIN_ID,
   BUILTIN_BRAND_THEME_PLUGIN_ID
 ])
+
+const baseAudioOutputSettingsSchema: PluginSettingDefinition[] = [
+  {
+    key: 'mode',
+    type: 'select',
+    label: '输出模式',
+    default: 'shared',
+    options: [
+      { value: 'shared', label: '共享模式' },
+      { value: 'exclusive', label: '真独占模式' },
+      { value: 'voicemeeter', label: '类独占模式（Voicemeeter）' }
+    ]
+  },
+  {
+    key: 'sharedDeviceId',
+    type: 'select',
+    label: 'Chromium / 回退输出设备',
+    default: '',
+    options: [{ value: '', label: '系统默认输出设备' }]
+  },
+  {
+    key: 'deviceId',
+    type: 'select',
+    label: '原生输出设备',
+    default: '',
+    options: [{ value: '', label: '原生默认输出设备' }]
+  },
+  {
+    key: 'bufferFrames',
+    type: 'text',
+    label: 'Buffer frames',
+    default: 960
+  },
+  {
+    key: 'fallbackToShared',
+    type: 'boolean',
+    label: '独占失败时回退共享模式',
+    default: true
+  },
+  {
+    key: 'diagnosticsEnabled',
+    type: 'boolean',
+    label: '启用诊断日志',
+    default: false
+  }
+]
 
 const firstPartyPluginCapabilities = {
   search: false,
@@ -391,6 +443,11 @@ function createFirstPartyPluginDescriptor(input: {
   version: string
   category: FirstPartyPluginCategory
   enabled: boolean
+  status?: PlatformDescriptor['status']
+  lastError?: string
+  settingsSchema?: PlatformDescriptor['settingsSchema']
+  runtimeDetails?: PlatformDescriptor['runtimeDetails']
+  runtimeState?: PlatformDescriptor['runtimeState']
   themeResources?: PlatformDescriptor['themeResources']
 }): PlatformDescriptor {
   return {
@@ -402,10 +459,175 @@ function createFirstPartyPluginDescriptor(input: {
     runtime: 'local',
     category: input.category,
     enabled: input.enabled,
-    status: input.enabled ? 'ready' : 'disabled',
+    status: input.status ?? (input.enabled ? 'ready' : 'disabled'),
     capabilities: { ...firstPartyPluginCapabilities },
+    ...(input.lastError ? { lastError: input.lastError } : {}),
+    ...(input.settingsSchema ? { settingsSchema: input.settingsSchema } : {}),
+    ...(input.runtimeDetails ? { runtimeDetails: input.runtimeDetails } : {}),
+    ...(input.runtimeState ? { runtimeState: input.runtimeState } : {}),
     ...(input.themeResources ? { themeResources: input.themeResources } : {})
   }
+}
+
+function getAudioOutputModeLabel(mode: AudioOutputStatus['requestedMode']): string {
+  switch (mode) {
+    case 'shared':
+      return '共享模式'
+    case 'exclusive':
+      return '真独占模式'
+    case 'voicemeeter':
+      return '类独占模式'
+  }
+}
+
+function resolveSharedOutputDeviceLabel(
+  deviceId: string,
+  sharedOutputDevices: readonly AudioOutputSharedDevice[]
+): string {
+  if (!deviceId) {
+    return '系统默认输出设备'
+  }
+
+  return sharedOutputDevices.find(device => device.id === deviceId)?.label ?? deviceId
+}
+
+function resolveNativeOutputDeviceLabel(
+  status: AudioOutputStatus,
+  settings: AudioOutputSettings
+): string {
+  const deviceId = status.deviceId ?? settings.deviceId
+  if (!deviceId) {
+    return '原生默认输出设备'
+  }
+
+  return status.devices.find(device => device.id === deviceId)?.name ?? deviceId
+}
+
+function createAudioOutputRuntimeDetails(
+  status: AudioOutputStatus,
+  settings: AudioOutputSettings,
+  sharedOutputDevices: readonly AudioOutputSharedDevice[]
+): PlatformDescriptor['runtimeDetails'] {
+  const actualOutputValue =
+    status.backend === 'disabled'
+      ? '已停用'
+      : status.activeMode
+        ? getAudioOutputModeLabel(status.activeMode)
+        : status.backend === 'native'
+          ? '等待原生后端'
+          : '不可用'
+  const activeOutputTone =
+    status.backend === 'disabled'
+      ? 'neutral'
+      : status.backend !== 'native'
+        ? 'danger'
+        : status.activeMode && status.activeMode !== status.requestedMode
+          ? 'warning'
+          : 'success'
+
+  return [
+    {
+      label: '请求模式',
+      value: getAudioOutputModeLabel(status.requestedMode),
+      tone: status.enabled ? 'neutral' : 'warning'
+    },
+    {
+      label: '实际输出',
+      value:
+        status.activeMode && status.activeMode !== status.requestedMode
+          ? `${actualOutputValue}（已回退）`
+          : actualOutputValue,
+      tone: activeOutputTone
+    },
+    {
+      label: 'Chromium / 回退设备',
+      value: resolveSharedOutputDeviceLabel(settings.sharedDeviceId, sharedOutputDevices)
+    },
+    {
+      label: '原生设备',
+      value: resolveNativeOutputDeviceLabel(status, settings)
+    },
+    {
+      label: '原生 helper',
+      value: status.helperRunning ? '运行中' : '未运行',
+      tone: status.helperRunning ? 'success' : status.enabled ? 'warning' : 'neutral'
+    },
+    ...(status.reason
+      ? [
+          {
+            label: '说明',
+            value: status.reason,
+            tone: status.backend === 'native' ? 'warning' : 'danger'
+          } satisfies NonNullable<PlatformDescriptor['runtimeDetails']>[number]
+        ]
+      : [])
+  ]
+}
+
+function resolveAudioOutputDescriptorStatus(status: AudioOutputStatus): {
+  pluginStatus: PlatformDescriptor['status']
+  lastError?: string
+} {
+  if (!status.enabled) {
+    return { pluginStatus: 'disabled' }
+  }
+
+  if (status.backend === 'native') {
+    return { pluginStatus: 'ready' }
+  }
+
+  return {
+    pluginStatus: 'error',
+    lastError: status.reason ?? '原生音频输出后端暂不可用。'
+  }
+}
+
+function createAudioOutputSettingsSchema(
+  status: AudioOutputStatus,
+  settings: AudioOutputSettings,
+  sharedOutputDevices: readonly AudioOutputSharedDevice[]
+): PluginSettingDefinition[] {
+  return baseAudioOutputSettingsSchema.map(definition => {
+    if (definition.key === 'sharedDeviceId') {
+      const sharedDeviceOptions = sharedOutputDevices.map(device => ({
+        value: device.id,
+        label: device.label
+      }))
+      const knownSharedDeviceIds = new Set(sharedDeviceOptions.map(option => option.value))
+      const selectedSharedDeviceOption =
+        settings.sharedDeviceId && !knownSharedDeviceIds.has(settings.sharedDeviceId)
+          ? [{ value: settings.sharedDeviceId, label: `当前选择：${settings.sharedDeviceId}` }]
+          : []
+
+      return {
+        ...definition,
+        options: [
+          { value: '', label: '系统默认输出设备' },
+          ...selectedSharedDeviceOption,
+          ...sharedDeviceOptions
+        ]
+      }
+    }
+
+    if (definition.key !== 'deviceId') {
+      return definition
+    }
+
+    const deviceOptions = status.devices.map(device => ({
+      value: device.id,
+      label: device.isDefault ? `${device.name}（默认）` : device.name
+    }))
+    const knownDeviceIds = new Set(deviceOptions.map(option => option.value))
+    const selectedDeviceOption =
+      settings.deviceId && !knownDeviceIds.has(settings.deviceId)
+        ? [{ value: settings.deviceId, label: `当前选择：${settings.deviceId}` }]
+        : []
+
+    return {
+      ...definition,
+      options: [{ value: '', label: '原生默认输出设备' }, ...selectedDeviceOption, ...deviceOptions]
+    }
+  })
 }
 
 function createFirstPartyPluginDescriptors(isElectron: boolean): PlatformDescriptor[] {
@@ -429,6 +651,9 @@ function createFirstPartyPluginDescriptors(isElectron: boolean): PlatformDescrip
   )
 
   if (isElectron) {
+    const { audioOutputEnabled, audioOutputSettings, audioOutputStatus, sharedOutputDevices } =
+      useAudioOutputPlugin()
+    const { pluginStatus, lastError } = resolveAudioOutputDescriptorStatus(audioOutputStatus.value)
     descriptors.unshift(
       createFirstPartyPluginDescriptor({
         id: FIRST_PARTY_SMTC_PLUGIN_ID,
@@ -437,6 +662,29 @@ function createFirstPartyPluginDescriptors(isElectron: boolean): PlatformDescrip
         version: '1.0.0',
         category: 'extension',
         enabled: smtcEnabled.value
+      }),
+      createFirstPartyPluginDescriptor({
+        id: FIRST_PARTY_AUDIO_OUTPUT_PLUGIN_ID,
+        displayName: '原生音频输出',
+        description: '接管桌面端音频输出，提供共享、独占和 Voicemeeter 模式的设置入口。',
+        version: '0.1.0',
+        category: 'extension',
+        enabled: audioOutputEnabled.value,
+        status: pluginStatus,
+        lastError,
+        settingsSchema: createAudioOutputSettingsSchema(
+          audioOutputStatus.value,
+          audioOutputSettings.value,
+          sharedOutputDevices.value
+        ),
+        runtimeDetails: createAudioOutputRuntimeDetails(
+          audioOutputStatus.value,
+          audioOutputSettings.value,
+          sharedOutputDevices.value
+        ),
+        runtimeState: {
+          testToneRunning: Boolean(audioOutputStatus.value.testToneRunning)
+        }
       })
     )
   }
@@ -478,6 +726,7 @@ function isFirstPartyPlugin(platformId: string): boolean {
 
 function setFirstPartyPluginEnabled(platformId: string, enabled: boolean): boolean {
   const { setSMTCEnabled, setCoverSwipeEnabled } = useExperimentalFeatures()
+  const { setAudioOutputEnabled } = useAudioOutputPlugin()
   const { setThemeResourcePackEnabled } = useThemeResourcePacks()
 
   switch (platformId) {
@@ -486,6 +735,9 @@ function setFirstPartyPluginEnabled(platformId: string, enabled: boolean): boole
       return true
     case FIRST_PARTY_COVER_SWIPE_PLUGIN_ID:
       setCoverSwipeEnabled(enabled)
+      return true
+    case FIRST_PARTY_AUDIO_OUTPUT_PLUGIN_ID:
+      setAudioOutputEnabled(enabled)
       return true
     case BUILTIN_BRAND_THEME_PLUGIN_ID:
       setThemeResourcePackEnabled(BUILTIN_BRAND_THEME_PLUGIN_ID, enabled)
@@ -501,6 +753,25 @@ function setFirstPartyPluginEnabled(platformId: string, enabled: boolean): boole
   }
 }
 
+function getFirstPartyPluginSettings(platformId: string): Record<string, unknown> {
+  if (platformId === FIRST_PARTY_AUDIO_OUTPUT_PLUGIN_ID) {
+    return { ...useAudioOutputPlugin().audioOutputSettings.value }
+  }
+
+  return {}
+}
+
+function updateFirstPartyPluginSettings(
+  platformId: string,
+  settings: Record<string, unknown>
+): Record<string, unknown> {
+  if (platformId === FIRST_PARTY_AUDIO_OUTPUT_PLUGIN_ID) {
+    return useAudioOutputPlugin().updateAudioOutputSettings(settings)
+  }
+
+  return {}
+}
+
 export function createPluginService(deps: PluginServiceDeps = {}): PluginService {
   const isElectron =
     deps.isElectron ?? (() => typeof window !== 'undefined' && Boolean(window.electronAPI))
@@ -508,6 +779,14 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
 
   const listBuiltinPlatforms = () =>
     mergeFirstPartyPluginDescriptors(getPlatformDescriptors(), isElectron())
+
+  async function refreshFirstPartyPluginRuntimeState(): Promise<void> {
+    if (!isElectron()) {
+      return
+    }
+
+    await useAudioOutputPlugin().refreshSharedOutputDevices()
+  }
 
   function syncPlatformDescriptors(platforms: PlatformDescriptor[]): PlatformDescriptor[] {
     const nextPlatforms = mergeFirstPartyPluginDescriptors(platforms, isElectron())
@@ -517,6 +796,8 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   }
 
   async function listPlatforms(): Promise<PlatformDescriptor[]> {
+    await refreshFirstPartyPluginRuntimeState()
+
     if (!isElectron()) {
       return listBuiltinPlatforms()
     }
@@ -579,7 +860,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
 
   async function getSettings(platformId: string): Promise<Record<string, unknown>> {
     if (isFirstPartyPlugin(platformId)) {
-      return {}
+      return getFirstPartyPluginSettings(platformId)
     }
 
     const bridge = getPluginBridge()
@@ -595,7 +876,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
     settings: Record<string, unknown>
   ): Promise<Record<string, unknown>> {
     if (isFirstPartyPlugin(platformId)) {
-      return {}
+      return updateFirstPartyPluginSettings(platformId, settings)
     }
 
     const bridge = getPluginBridge()

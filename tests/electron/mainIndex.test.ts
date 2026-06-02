@@ -49,6 +49,7 @@ const registerLogHandlersMock = vi.hoisted(() => vi.fn())
 const registerLocalLibraryHandlersMock = vi.hoisted(() => vi.fn())
 const registerPluginHandlersMock = vi.hoisted(() => vi.fn())
 const registerSmtcHandlersMock = vi.hoisted(() => vi.fn())
+const registerAudioOutputHandlersMock = vi.hoisted(() => vi.fn())
 const electronStoreGetMock = vi.hoisted(() =>
   vi.fn((key: string, defaultValue?: unknown) => defaultValue)
 )
@@ -165,7 +166,8 @@ vi.mock('../../electron/ipc/index', () => ({
   registerLogHandlers: registerLogHandlersMock,
   registerLocalLibraryHandlers: registerLocalLibraryHandlersMock,
   registerPluginHandlers: registerPluginHandlersMock,
-  registerSmtcHandlers: registerSmtcHandlersMock
+  registerSmtcHandlers: registerSmtcHandlersMock,
+  registerAudioOutputHandlers: registerAudioOutputHandlersMock
 }))
 
 vi.mock('../../electron/main/app', () => ({
@@ -274,6 +276,7 @@ describe('electron/main/index', () => {
     expect(createTrayMock).toHaveBeenCalledTimes(1)
     expect(registerShortcutsMock).toHaveBeenCalledTimes(1)
     expect(registerSmtcHandlersMock).toHaveBeenCalledTimes(1)
+    expect(registerAudioOutputHandlersMock).toHaveBeenCalledTimes(1)
     expect(initializeServicesMock.mock.invocationCallOrder[0]).toBeLessThan(
       createWindowMock.mock.invocationCallOrder[0]
     )

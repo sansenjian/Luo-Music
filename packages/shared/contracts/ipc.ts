@@ -11,6 +11,13 @@
 import type { INVOKE_CHANNELS, RECEIVE_CHANNELS, SEND_CHANNELS } from '../protocol/channels'
 import type { CacheClearOptions, CacheClearResult } from '../protocol/cache'
 import type { SmtcNativeStatus } from '../smtc/protocol'
+import type {
+  AudioOutputPlayFilePayload,
+  AudioOutputPlaybackVolumePayload,
+  AudioOutputSettings,
+  AudioOutputStatus,
+  AudioOutputTestTonePayload
+} from '../audioOutput/protocol'
 import type { LogEntry } from './log'
 import type { AppConfig, ConfigChangeEvent } from './config'
 import type {
@@ -392,6 +399,39 @@ type InvokeChannelsDefinition = MergeChannels<
       SmtcNativeStatus
     > &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.SMTC_GET_STATUS, [], SmtcNativeStatus> &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.AUDIO_OUTPUT_GET_STATUS, [], AudioOutputStatus> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_SET_ENABLED,
+      [enabled: boolean, settings: AudioOutputSettings],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_UPDATE_SETTINGS,
+      [settings: AudioOutputSettings],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_PLAY_TEST_TONE,
+      [payload?: AudioOutputTestTonePayload],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_PLAY_FILE,
+      [payload: AudioOutputPlayFilePayload],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.AUDIO_OUTPUT_PAUSE_PLAYBACK, [], AudioOutputStatus> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_RESUME_PLAYBACK,
+      [],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.AUDIO_OUTPUT_STOP_PLAYBACK, [], AudioOutputStatus> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_SET_PLAYBACK_VOLUME,
+      [payload: AudioOutputPlaybackVolumePayload],
+      AudioOutputStatus
+    > &
     // API 服务
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_SEARCH,
@@ -569,6 +609,7 @@ type ReceiveChannelsDefinition = MergeChannels<
       { error: string; song: Song | null }
     > &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.SMTC_STATUS_CHANGED, SmtcNativeStatus> &
+    DefineReceiveChannel<typeof RECEIVE_CHANNELS.AUDIO_OUTPUT_STATUS_CHANGED, AudioOutputStatus> &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.CONFIG_CHANGED, ConfigChangeEvent> &
     DefineReceiveChannel<
       typeof RECEIVE_CHANNELS.PLUGIN_CHANGED,

@@ -6,6 +6,31 @@
 
 推荐第一版做成 Windows Electron only 的第一方拓展插件，插件 ID 暂定 `builtin.audio-output`。它在插件管理页作为 `extension` 显示，但实现权限归宿主所有：renderer 只显示设置和状态，preload / IPC 传递控制命令，main 进程管理 native addon、设备枚举、音频会话和 Voicemeeter 控制。
 
+## 当前分支实现边界
+
+当前 `feature/native-audio-output-plugin` 分支先落地插件管理、IPC 协议、Electron main service、构建打包入口、Rust helper 原型，以及第一条真实播放链路。这个阶段的目标是让用户能在插件页启用音频输出插件、选择模式、选择设备，并在 Windows Electron 下让本地可解码音频文件进入 Rust helper 播放。
+
+已实现范围：
+
+- `builtin.audio-output` 第一方插件描述、开关和设置项。
+- renderer 侧设置持久化、IPC 桥接和状态订阅。
+- main 进程 `AudioOutputService` 启动 Rust helper，并同步 `initialize` / `configure` / `status` / `playback` 事件。
+- Rust `audio-output-helper` 通过 `cpal` 枚举 Windows 输出设备，并返回 shared / exclusive / Voicemeeter 的诚实状态。
+- 插件卡片提供“测试输出”动作，可通过 Rust helper 在当前原生设备上播放短测试音：shared 模式走 CPAL shared stream，exclusive 模式会尝试 WASAPI Exclusive 初始化并播放测试音，失败时按用户配置回退 shared 或返回 unavailable。
+- 播放器在 Electron + 本地音乐库可解码音频文件场景下，会优先调用 Rust helper 播放真实歌曲；支持开始、暂停、恢复、停止、音量同步、播放结束事件，以及 native 失败后回退 Chromium 播放。
+- Rust helper 通过 Symphonia 解码本地 `.wav` / `.flac` / `.mp3` / `.aac` / `.m4a` / `.ogg` 文件，其中 `.m4a` 当前按 AAC/MP4 路线支持，`.ogg` 当前按 Vorbis 路线支持。shared 播放链路走 CPAL shared output；exclusive 播放链路走直接 WASAPI Exclusive；两条链路都会按设备默认格式做基础声道映射和采样率步进。
+- Electron 开发、构建和打包脚本包含 `audio-output-helper.exe`。
+
+仍未实现范围：
+
+- 在线音源、`.ape`、`.opus`，以及 Symphonia 当前不能解码的本地文件仍走 renderer 中的 `HTMLAudioElement` 和 Chromium 播放链路。
+- 当前 native 播放只覆盖本地文件；还没有把在线歌曲 URL、远程鉴权、Range 请求或流式 PCM 管线接入 Rust helper。
+- `cpal` 0.16 的 WASAPI backend 当前只负责 shared stream；exclusive 测试音和本地可解码文件播放使用 helper 内的直接 WASAPI 调用。
+- 选择独占模式时，本地可解码文件会尝试进入 WASAPI Exclusive。若设备或格式初始化失败，并且用户开启了自动回退，会回到 shared 播放；其他音源仍不应在 UI 或文档中表述为已支持真独占播放。
+- Voicemeeter 模式目前只保留协议和状态位置，尚未接入 Remote API DLL 或 VBAN-TEXT。
+
+因此，这条分支应被视为“第一方插件壳层 + Rust helper 原型 + 设备/状态协议 + 本地可解码文件 shared / exclusive 播放”的实现，不是完整 native 播放输出管线。后续要真正让用户选择共享或独占播放所有歌曲，还需要补在线音源、流式 PCM 管线和更完整的格式协商 / 设备恢复能力。
+
 ## 需要修正的点
 
 | 原设想                                   | 修正建议                                                                                                                                                                                      |
@@ -75,8 +100,8 @@ WASAPI / Voicemeeter / Physical device
 
 推荐顺序：
 
-1. Phase 0 先做本地 WAV/FLAC/MP3 原型，验证 miniaudio device、ring buffer、WASAPI shared/exclusive。
-2. Phase 1 只把“本地音乐库 + 可直接解码格式”纳入第一版插件。
+1. Phase 0 先做设备枚举、测试音、本地 WAV 原型，验证 Rust helper、CPAL shared output、WASAPI exclusive 播放和打包链路。
+2. Phase 1 只把“本地音乐库 + 可直接解码格式”纳入第一版插件；当前分支已扩展到 Symphonia 可解码的本地常见格式。
 3. Phase 2 再决定是否让在线音源进入 native 管线，或继续由 Chromium 播放。
 
 ## Native Addon 接口
@@ -120,6 +145,69 @@ export interface NativeAudio {
 ```
 
 PCM 写入不要设计成频繁 `write(ArrayBuffer)` IPC。真正实现时应使用 native 层可消费的 ring buffer，JS 侧只负责填充或通知。
+
+## Rust / TypeScript 分工
+
+建议采用“TypeScript 管理壳层，Rust 实现原生后端”的路线，而不是只用 TypeScript 实现音频输出。
+
+TypeScript / Electron 侧负责：
+
+- 第一方插件 `builtin.audio-output` 的开关、设置页、状态展示和错误提示。
+- preload / IPC / main process 的控制命令转发。
+- 配置持久化、fallback 策略、诊断信息展示。
+- 与现有播放器状态、插件管理页、窗口生命周期保持一致。
+
+Rust 侧负责：
+
+- 设备枚举、WASAPI Shared / Exclusive 初始化和关闭。
+- 输出格式协商、buffer 管理、低延迟调度和 underrun 诊断。
+- 设备断开、格式不匹配、独占失败等结构化错误。
+- 测试音输出、后续 PCM ring buffer 消费和真实播放管线。
+
+只用 TypeScript 基本只能复用 Chromium 的 `HTMLAudioElement` / WebAudio / `setSinkId` 能力，适合做普通输出设备选择，但无法真正覆盖 WASAPI Exclusive、bit-perfect 目标模式、低延迟 native buffer 和平台级设备事件。因此，TypeScript 不应承担原生音频后端职责。
+
+本项目已经有 Rust SMTC helper 的接入经验，音频输出可以延续类似方向：先用 TS 完成插件管理和 IPC 合同，再新增 Rust `audio-output-helper` 或 native addon 完成实际输出能力。真正进入 PCM 播放管线后，需要评估 helper 进程、N-API addon、shared memory / ring buffer 等方案的实时性和打包成本。
+
+### 直接结论
+
+- 原生音频输出后端优先用 Rust，不建议只靠 TypeScript 实现。
+- TypeScript 只负责插件壳层、设置页、IPC、状态展示和配置持久化。
+- Rust 可以承担跨端共享核心，但 Android 和 iOS 仍然需要各自的原生音频后端。
+- 如果后续要做移动端原生输出，推荐保持 `Rust shared core + 平台 backend` 的结构，而不是把平台差异都塞进一份通用实现里。
+
+## 跨端可行性
+
+Rust 可以作为 Android / iOS / Windows 共用的音频核心，但平台音频驱动层不能完全复用同一份实现。推荐把跨端边界设计为“共享 Rust core + 平台 backend”：
+
+直接结论：Rust 适合做跨端原生音频的公共核心，但不能指望一份实现同时覆盖 Android 和 iOS 的全部系统音频接入细节。移动端仍然需要各自的原生后端，分别对接 Android 的 AAudio / Oboe / OpenSL ES，以及 iOS 的 CoreAudio / AudioUnit / AVAudioEngine。
+
+```text
+Rust shared core
+  - AudioOutputService
+  - ring buffer
+  - format negotiation
+  - diagnostics
+  - backend trait
+
+Platform backend
+  - Windows: WASAPI
+  - Android: AAudio / Oboe / OpenSL ES
+  - iOS: CoreAudio / AudioUnit / AVAudioEngine
+```
+
+可复用的部分：
+
+- 状态机、错误模型、配置 schema、诊断事件。
+- buffer / ring buffer、格式转换、测试音和后续 DSP。
+- 播放控制协议与上层应用的状态同步约定。
+
+需要分平台实现的部分：
+
+- Windows：WASAPI Shared / Exclusive、设备枚举和 session 管理。
+- Android：通过 NDK / JNI / Oboe 或 AAudio 接入系统音频。
+- iOS：通过 C ABI / Swift / Objective-C 接 CoreAudio、AudioUnit 或 AVAudioEngine，并处理 `AVAudioSession`。
+
+因此当前桌面端应优先落地 Windows Rust 后端，同时在 Rust 内部提前抽象 `AudioBackend` trait，避免把 WASAPI 逻辑写死到业务层。后续如果出现 Android / iOS 客户端，再在同一套 core 之下补移动端 backend。
 
 ## 真独占模式
 
@@ -196,11 +284,19 @@ LUO Music native/shared output
     ○ 真独占模式
     ○ 类独占模式
 
-  输出设备
+  原生输出设备
     [设备下拉]
+    用于本地可解码文件走 Rust helper 的 shared / exclusive 播放链路。
+
+  Chromium / 回退输出设备
+    [设备下拉]
+    用于在线音源、不支持 native 解码的音源，以及 native 播放失败后回退到 HTMLAudioElement 的输出设备。
 
   当前输出
-    模式：WASAPI Shared / WASAPI Exclusive / Voicemeeter
+    请求模式：共享模式 / 真独占模式 / 类独占模式
+    实际原生模式：WASAPI Shared / WASAPI Exclusive / Voicemeeter / 不可用
+    原生设备：系统默认 / 设备名
+    Chromium / 回退设备：系统默认 / 设备名
     格式：44100 Hz / 2ch / f32
     延迟：buffer 估算值
 
@@ -223,33 +319,34 @@ LUO Music native/shared output
 
 ### Phase 0：技术验证
 
-- 建立最小 N-API addon。
-- 引入 miniaudio，固定 WASAPI backend。
-- 枚举设备，输出测试音。
-- 验证 shared/exclusive 初始化、失败码、设备断开事件。
-- 验证 native addon 打包、asar unpack、签名和 Electron runtime 加载。
+- 建立 Rust `audio-output-helper`。
+- 通过 CPAL 枚举设备，输出 shared 测试音。
+- 通过直接 WASAPI 调用验证 exclusive 初始化和测试音。
+- 验证本地可解码文件可进入 shared 和 exclusive native 播放链路。
+- 验证 helper 打包、asar unpack、签名和 Electron runtime 加载。
 
 成功标准：
 
-- `npm run dev:electron` 能加载 addon。
+- `npm run dev:electron` 能加载 helper。
 - shared 输出测试音。
 - exclusive 成功时同一设备被占用。
 - exclusive 失败时能返回结构化错误。
+- 本地可解码文件播放可走 native helper，shared / exclusive 均能返回播放状态，失败时回退 Chromium。
 
 ### Phase 1：共享模式插件
 
 - 新增 `builtin.audio-output` 第一方插件描述。
 - 新增 AudioOutputService、IPC 和设置页。
 - 支持共享模式设备选择。
-- 只接入本地可直接解码音源，保留现有 `PlayerCore` fallback。
+- 只接入本地可解码音源，保留现有 `PlayerCore` fallback。
 - 增加诊断日志和用户可见状态。
 
 ### Phase 2：真独占模式
 
-- 增加格式协商和 fallback policy。
+- 扩展格式协商和 fallback policy。
 - 显示实际输出格式。
 - 增加 underrun、deviceLost、formatRejected 事件。
-- 增加本地音乐库测试音源和人工 QA 流程。
+- 增加本地音乐库人工 QA 流程和更多采样率 / 声道组合。
 
 ### Phase 3：Voicemeeter 模式
 
@@ -271,6 +368,8 @@ LUO Music native/shared output
 - native addon 加载失败 fallback。
 - 设备枚举数据结构。
 - shared / exclusive init 参数校验。
+- 本地可解码文件 play / pause / resume / stop / volume IPC 参数校验。
+- 播放器只在 Electron + 本地可解码文件时启用 native，其他音源保留 Chromium。
 - 独占失败错误码映射。
 - Voicemeeter 未安装状态。
 - 插件开关持久化和 Electron only 显示。

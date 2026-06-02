@@ -1,8 +1,11 @@
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import type { PlatformDescriptor } from '@shared/types/platform'
 import { services } from '@/services'
+import { useAudioOutputPlugin } from '@/composables/useAudioOutputPlugin'
 import type { PluginService } from '@/services/pluginService'
 import type { PlatformService } from '@/services/platformService'
+
+const AUDIO_OUTPUT_PLUGIN_ID = 'builtin.audio-output'
 
 type PluginSettingDefinition = {
   key: string
@@ -42,8 +45,11 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
   const editingSettingsPlatformId = ref<string | null>(null)
   const editingSettingsValues = reactive<Record<string, unknown>>({})
   const isSavingSettings = ref(false)
+  const audioOutputPlugin = useAudioOutputPlugin()
+  const { playAudioOutputTestTone } = audioOutputPlugin
 
   let unsubscribe: (() => void) | null = null
+  let runtimeRefreshRequestId = 0
 
   function setBusy(platformId: string, busy: boolean): void {
     const next = new Set(busyPlatformIds.value)
@@ -65,6 +71,23 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
       errorMessage.value = error instanceof Error ? error.message : String(error)
     } finally {
       isLoading.value = false
+    }
+  }
+
+  async function refreshRuntimePlatformDescriptors(): Promise<void> {
+    if (!isElectron.value) {
+      return
+    }
+
+    const requestId = ++runtimeRefreshRequestId
+
+    try {
+      const nextPlatforms = await pluginService.refreshPlatformDescriptors()
+      if (requestId === runtimeRefreshRequestId) {
+        platforms.value = nextPlatforms
+      }
+    } catch (error) {
+      console.warn('[PluginManager] Failed to refresh runtime platform descriptors', error)
     }
   }
 
@@ -148,6 +171,14 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
     unsubscribe = null
   })
 
+  watch(
+    audioOutputPlugin.audioOutputStatus,
+    () => {
+      void refreshRuntimePlatformDescriptors()
+    },
+    { deep: true }
+  )
+
   function getSettingsSchema(platform: PlatformDescriptor): PluginSettingDefinition[] {
     return platform.settingsSchema ?? []
   }
@@ -204,6 +235,24 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
     }
   }
 
+  async function testAudioOutput(platform: PlatformDescriptor): Promise<void> {
+    if (platform.id !== AUDIO_OUTPUT_PLUGIN_ID) {
+      return
+    }
+
+    setBusy(platform.id, true)
+    errorMessage.value = null
+
+    try {
+      await playAudioOutputTestTone()
+      platforms.value = await pluginService.refreshPlatformDescriptors()
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : String(error)
+    } finally {
+      setBusy(platform.id, false)
+    }
+  }
+
   return {
     installPath,
     platforms,
@@ -227,6 +276,7 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
     hasEditableSettings,
     startEditingSettings,
     cancelEditingSettings,
-    saveSettings
+    saveSettings,
+    testAudioOutput
   }
 }

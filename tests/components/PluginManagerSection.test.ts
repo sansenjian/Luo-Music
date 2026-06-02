@@ -26,6 +26,7 @@ type PluginManagerTestState = {
   startEditingSettings: ReturnType<typeof vi.fn<(platform: unknown) => void>>
   cancelEditingSettings: ReturnType<typeof vi.fn<() => void>>
   saveSettings: ReturnType<typeof vi.fn<() => Promise<void>>>
+  testAudioOutput: ReturnType<typeof vi.fn<(platform: unknown) => Promise<void>>>
 }
 
 const pluginManagerMock = vi.hoisted((): { current: PluginManagerTestState | null } => ({
@@ -118,6 +119,36 @@ describe('PluginManagerSection.vue', () => {
     expect(document.body.querySelector('.plugin-install-modal')).toBeNull()
   })
 
+  it('routes the first-party audio output test action from its plugin card', async () => {
+    const audioOutputPlatform = {
+      id: 'builtin.audio-output',
+      displayName: '原生音频输出',
+      source: 'builtin',
+      runtime: 'local',
+      category: 'extension',
+      enabled: true,
+      status: 'ready',
+      capabilities: {
+        search: false,
+        songUrl: false,
+        songDetail: false,
+        lyric: false,
+        playlistDetail: false,
+        needsHydration: false,
+        supportsLyricFetch: false,
+        supportsUrlRefreshOnFailure: false
+      }
+    }
+    pluginManager.managedPlatforms.value = [audioOutputPlatform]
+    pluginManager.hasPlatforms.value = true
+    const wrapper = await mountSection()
+
+    await flushPromises()
+    await getWrapperButtonByText(wrapper, '测试输出').trigger('click')
+
+    expect(pluginManager.testAudioOutput).toHaveBeenCalledWith(audioOutputPlatform)
+  })
+
   async function mountSection(): Promise<VueWrapper> {
     const { default: PluginManagerSection } =
       await import('@/components/settings/PluginManagerSection.vue')
@@ -159,7 +190,8 @@ function createPluginManagerState(): PluginManagerTestState {
     hasEditableSettings: vi.fn<(platform: unknown) => boolean>(() => false),
     startEditingSettings: vi.fn<(platform: unknown) => void>(),
     cancelEditingSettings: vi.fn<() => void>(),
-    saveSettings: vi.fn<() => Promise<void>>(() => Promise.resolve())
+    saveSettings: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+    testAudioOutput: vi.fn<(platform: unknown) => Promise<void>>(() => Promise.resolve())
   }
 }
 

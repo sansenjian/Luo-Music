@@ -35,7 +35,8 @@ import {
   registerLogHandlers,
   registerLocalLibraryHandlers,
   registerPluginHandlers,
-  registerSmtcHandlers
+  registerSmtcHandlers,
+  registerAudioOutputHandlers
 } from '../ipc/index'
 
 import {
@@ -54,6 +55,7 @@ import {
 } from './shortcuts'
 import { configureSmtcCommandLine } from './smtc'
 import { SmtcNativeService, type SmtcNativePlayerCommand } from './smtcNativeService'
+import { AudioOutputService } from './audioOutputService'
 import { DEFAULT_SHORTCUTS } from '../../src/config/shortcuts'
 import { NETEASE_API_PORT, QQ_API_PORT } from '@shared/protocol/cache'
 import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
@@ -81,6 +83,7 @@ const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
 
 let pluginCatalog: PluginCatalog | null = null
 let smtcNativeService: SmtcNativeService | null = null
+let audioOutputService: AudioOutputService | null = null
 const mainStartedAt = Date.now()
 
 function formatDuration(ms: number): string {
@@ -233,6 +236,15 @@ function initializeIpcService(currentPluginCatalog: PluginCatalog): void {
     },
     resourcesPath: process.resourcesPath
   })
+  audioOutputService = new AudioOutputService({
+    appPath: app.getAppPath(),
+    isPackaged: app.isPackaged,
+    logger,
+    onStatusChange: status => {
+      ipcService.broadcast(RECEIVE_CHANNELS.AUDIO_OUTPUT_STATUS_CHANGED, status)
+    },
+    resourcesPath: process.resourcesPath
+  })
 
   registerPlayerHandlers(windowManager, serviceManager, smtcNativeService)
   registerServiceHandlers(serviceManager)
@@ -242,6 +254,7 @@ function initializeIpcService(currentPluginCatalog: PluginCatalog): void {
   registerLocalLibraryHandlers(windowManager)
   registerPluginHandlers(currentPluginCatalog)
   registerSmtcHandlers(smtcNativeService)
+  registerAudioOutputHandlers(audioOutputService)
 
   ipcService.initialize()
 
@@ -313,6 +326,7 @@ function main(): void {
       destroyTray()
       downloadManager.dispose()
       smtcNativeService?.dispose()
+      audioOutputService?.dispose()
       await disposeLocalLibraryService()
       disposePerformanceMonitor()
       ipcService.dispose()

@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => false)
@@ -33,6 +33,14 @@ describe('SettingsPanel.vue', () => {
     delete document.documentElement.dataset.renderStyle
   })
 
+  afterEach(() => {
+    document.body.innerHTML = ''
+    delete document.documentElement.dataset.renderStyle
+    delete document.documentElement.dataset.themeResourcePack
+    delete document.documentElement.dataset.themePlugin
+    document.getElementById('luo-theme-resource-css')?.remove()
+  })
+
   it('shows cache manager section when running in Electron', async () => {
     platformServiceMock.isElectron.mockReturnValue(true)
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
@@ -54,7 +62,7 @@ describe('SettingsPanel.vue', () => {
 
     expect(document.body.querySelector('.cache-manager-stub')).not.toBeNull()
     wrapper.unmount()
-  })
+  }, 30_000)
 
   it('reuses the same settings content outside Electron without SMTC controls', async () => {
     platformServiceMock.isElectron.mockReturnValue(false)

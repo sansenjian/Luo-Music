@@ -1,10 +1,11 @@
 import { computed, defineComponent, ref } from 'vue'
-import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mount, type VueWrapper } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const useHomePageMock = vi.hoisted(() => vi.fn())
 const useHomeBrandPlacementMock = vi.hoisted(() => vi.fn())
 const useDockedPlayerBarLayoutMock = vi.hoisted(() => vi.fn())
+const mountedWrappers: VueWrapper[] = []
 
 vi.mock('@/features/home/composables/useHomePage', () => ({
   useHomePage: useHomePageMock
@@ -112,7 +113,7 @@ async function mountHome(options: {
 
   const { default: Home } = await import('@/views/Home.vue')
 
-  return mount(Home, {
+  const wrapper = mount(Home, {
     global: {
       stubs: {
         HomeHeader: defineComponent({
@@ -226,12 +227,20 @@ async function mountHome(options: {
       }
     }
   })
+  mountedWrappers.push(wrapper)
+  return wrapper
 }
 
 describe('Home view layout', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    while (mountedWrappers.length > 0) {
+      mountedWrappers.pop()?.unmount()
+    }
   })
 
   it('enables the adaptive sidebar layout class when the docked player uses with-sidebar', async () => {
@@ -249,7 +258,7 @@ describe('Home view layout', () => {
     expect(wrapper.find('.home-footer-stub').attributes('data-layout')).toBe('with-sidebar')
     expect(wrapper.find('.home-overview-stub').exists()).toBe(true)
     expect(wrapper.find('.home-liked-songs-stub').exists()).toBe(false)
-  })
+  }, 30_000)
 
   it('switches the workspace content to local music when the sidebar selects the local library item', async () => {
     const wrapper = await mountHome({

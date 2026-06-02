@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { PluginSettingDefinition } from '@plugin-sdk'
 import type { PlatformDescriptor } from '@shared/types/platform'
 
@@ -7,7 +8,9 @@ import { uiMessages } from '@/messages/ui'
 import { capabilityLabel, sourceLabel, statusClass, statusLabel } from './pluginManager.helpers'
 import PluginSettingsForm from './PluginSettingsForm.vue'
 
-defineProps<{
+const AUDIO_OUTPUT_PLUGIN_ID = 'builtin.audio-output'
+
+const props = defineProps<{
   platform: PlatformDescriptor
   isBusy: boolean
   hasEditableSettings: boolean
@@ -24,7 +27,16 @@ const emit = defineEmits<{
   'save-settings': []
   'cancel-editing-settings': []
   'update-setting': [key: string, value: unknown]
+  'test-audio-output': [platform: PlatformDescriptor]
 }>()
+
+const isAudioOutputPlugin = computed(() => props.platform.id === AUDIO_OUTPUT_PLUGIN_ID)
+const isAudioOutputTestToneRunning = computed(() =>
+  Boolean(props.platform.runtimeState?.testToneRunning)
+)
+const canTestAudioOutput = computed(
+  () => isAudioOutputPlugin.value && props.platform.enabled && !props.isEditingSettings
+)
 </script>
 
 <template>
@@ -92,6 +104,18 @@ const emit = defineEmits<{
       </span>
     </div>
 
+    <dl v-if="platform.runtimeDetails?.length" class="plugin-runtime-details">
+      <div
+        v-for="detail in platform.runtimeDetails"
+        :key="`${detail.label}:${detail.value}`"
+        class="plugin-runtime-detail"
+        :class="`plugin-runtime-detail-${detail.tone ?? 'neutral'}`"
+      >
+        <dt>{{ detail.label }}</dt>
+        <dd>{{ detail.value }}</dd>
+      </div>
+    </dl>
+
     <div v-if="platform.status === 'circuit-tripped'" class="plugin-alert plugin-alert-warn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
         <path
@@ -140,6 +164,20 @@ const emit = defineEmits<{
           />
         </svg>
         设置
+      </button>
+      <button
+        v-if="canTestAudioOutput"
+        type="button"
+        class="plugin-pill plugin-pill-ghost"
+        :disabled="isBusy || isAudioOutputTestToneRunning"
+        @click="emit('test-audio-output', platform)"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+          <path d="M15.54 8.46a5 5 0 010 7.07" />
+          <path d="M19.07 4.93a10 10 0 010 14.14" />
+        </svg>
+        {{ isAudioOutputTestToneRunning ? '测试中...' : '测试输出' }}
       </button>
       <button
         v-if="platform.source === 'external'"
@@ -365,6 +403,47 @@ const emit = defineEmits<{
 .plugin-perm-chip svg {
   width: 12px;
   height: 12px;
+}
+
+.plugin-runtime-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--ui-border-subtle);
+}
+
+.plugin-runtime-detail {
+  min-width: 0;
+}
+
+.plugin-runtime-detail dt {
+  margin: 0 0 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gray);
+}
+
+.plugin-runtime-detail dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--black);
+  overflow-wrap: anywhere;
+}
+
+.plugin-runtime-detail-success dd {
+  color: #16a34a;
+}
+
+.plugin-runtime-detail-warning dd {
+  color: #b07000;
+}
+
+.plugin-runtime-detail-danger dd {
+  color: #d03050;
 }
 
 .plugin-alert {

@@ -8,7 +8,7 @@
 | ----------------- | -------------------------------------------------- | --------------------------------------------- |
 | Web               | `npm run build:web`                                | `dist/`                                       |
 | Electron bundle   | `npm run build` 或 `npm run build:electron:bundle` | `build/`、`build/electron/`、`build/service/` |
-| Electron 安装包   | `npm run build:electron`                           | `out/make/`、`out/third-party-plugins/`       |
+| Electron 分发包   | `npm run build:electron`                           | `out/make/`、`out/third-party-plugins/`       |
 | Electron portable | `npm run build:electron:portable`                  | `out/portable/`、`out/third-party-plugins/`   |
 | Electron 完整打包 | `npm run build:electron:all`                       | `out/make/`、`out/portable/`、插件 zip        |
 | Server            | `npm run build:server`                             | `build/service/index.cjs`                     |
@@ -50,15 +50,17 @@ npm run build:electron
 3. 构建 QQ runtime
 4. 构建 server 与本地 `electron-vite:build`
 5. 将 `plugins/third-party/` 下的插件逐个打成 zip 到 `out/third-party-plugins/`
-6. 使用 Electron Forge 产出安装包
+6. 使用 Electron Forge 产出 Windows zip 分发包
 
 Electron bundle 暂不切换到 `vp build`：主进程、preload、Forge 和 native rebuild 仍依赖 Electron 专属构建链路。项目通过 `npm run electron-vite:build` 调用本地 `electron-vite` CLI，避免依赖全局 PATH。
 
 Electron 打包职责保持拆分：
 
-- Electron Forge 是主安装包打包器，负责 `npm run build:electron`、`npm run make` 和 Squirrel / zip 输出。
+- Electron Forge 是主分发包打包器，负责 `npm run build:electron`、`npm run make` 和 zip 输出。
 - electron-builder 只服务 portable 单文件构建，由 `npm run build:electron:portable` 调用 `electron/builder.portable.cjs`。
 - 两条链路共享 `config/packaging.shared.cjs`，但不要在 Forge 和 electron-builder 之间复制专属配置。
+
+Windows Squirrel maker 仍保留为显式 opt-in：设置 `LUO_ENABLE_SQUIRREL_MAKE=1` 后再运行 Forge make。当前 Electron 41 的 Windows 主程序约 223 MiB，会触发 `electron-winstaller` 内置 NuGet 2.8 / Squirrel.Windows SharpCompress 对大 exe 的兼容问题，因此默认发布链路使用 zip 与 portable 产物。
 
 生产包瘦身规则也集中在 `config/packaging.shared.cjs`：打包时会排除工作区缓存、检查结果、dev-only 工具链，以及仅构建期使用的根层 Sentry browser/replay 相关包；Electron 主进程仍通过 `@sentry/electron` 在有 DSN 时动态初始化。
 

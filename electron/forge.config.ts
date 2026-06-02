@@ -14,6 +14,7 @@ type PackagingSharedConfig = {
   packagingExtraResources: string[]
   packagingIgnoredNodeModulePaths: string[]
   packagingNodeModulesToRemoveAfterPrune: string[]
+  packagingTempDir: string
   packagingWorkspaceArtifactsToRemove: string[]
   productName: string
 }
@@ -22,9 +23,11 @@ const require = createRequire(import.meta.url)
 const packagingShared = require('../config/packaging.shared.cjs') as PackagingSharedConfig
 
 const FAST_MAKE_MODE = process.env.LUO_FAST_MAKE === '1'
+const ENABLE_SQUIRREL_MAKE = process.env.LUO_ENABLE_SQUIRREL_MAKE === '1'
 const packagingLocalesToKeep = new Set(['en-US.pak', 'zh-CN.pak'] as const)
 type PackagerHookDone = (error?: Error | null) => void
 const packagingExtraResources = packagingShared.packagingExtraResources
+const packagingTempDir = packagingShared.packagingTempDir
 export const packagingWorkspaceArtifactsToRemove =
   packagingShared.packagingWorkspaceArtifactsToRemove
 export const packagingNodeModulesToRemoveAfterPrune =
@@ -56,14 +59,16 @@ const packagingIgnorePatterns = [
   /^\/node_modules\/(?:.*\/)?(?:\.github|\.vscode|coverage|docs?|example|examples|test|tests|__tests__)(?:$|\/)/
 ] as const
 
-const makers = FAST_MAKE_MODE
-  ? [new MakerZIP({}, ['darwin', 'linux', 'win32'])]
-  : [
-      new MakerSquirrel({
-        name: 'LUO_Music'
-      }),
-      new MakerZIP({}, ['darwin', 'linux', 'win32'])
-    ]
+const zipMaker = new MakerZIP({}, ['darwin', 'linux', 'win32'])
+const makers =
+  ENABLE_SQUIRREL_MAKE && !FAST_MAKE_MODE
+    ? [
+        new MakerSquirrel({
+          name: 'LUO_Music'
+        }),
+        zipMaker
+      ]
+    : [zipMaker]
 
 async function pruneElectronLocales(buildPath: string): Promise<void> {
   const localesDir = join(buildPath, 'locales')
@@ -108,6 +113,7 @@ const config: ForgeConfig = {
     executableName: packagingShared.productName,
     appBundleId: packagingShared.appId,
     prune: true,
+    tmpdir: packagingTempDir,
     asar: {
       unpack: packagingShared.asarUnpackPattern
     },

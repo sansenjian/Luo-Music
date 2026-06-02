@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { PluginSettingDefinition } from '@plugin-sdk'
 
 import { uiMessages } from '@/messages/ui'
+
+const AUDIO_OUTPUT_PLUGIN_ID = 'builtin.audio-output'
 
 const props = defineProps<{
   platformId: string
@@ -15,6 +18,40 @@ const emit = defineEmits<{
   cancel: []
   'update-setting': [key: string, value: unknown]
 }>()
+
+const visibleSettingsSchema = computed(() =>
+  props.settingsSchema.filter(setting => isSettingVisible(setting.key))
+)
+
+function getAudioOutputMode(): string {
+  const mode = props.settingValues.mode
+  return typeof mode === 'string' ? mode : 'shared'
+}
+
+function isSettingVisible(key: string): boolean {
+  if (props.platformId !== AUDIO_OUTPUT_PLUGIN_ID) {
+    return true
+  }
+
+  const mode = getAudioOutputMode()
+
+  switch (key) {
+    case 'mode':
+      return true
+    case 'sharedDeviceId':
+      return true
+    case 'deviceId':
+      return mode === 'shared' || mode === 'exclusive'
+    case 'bufferFrames':
+      return mode === 'exclusive' || mode === 'voicemeeter'
+    case 'diagnosticsEnabled':
+      return true
+    case 'fallbackToShared':
+      return mode === 'exclusive'
+    default:
+      return true
+  }
+}
 
 function settingInputId(key: string): string {
   return `plugin-setting-${props.platformId}-${key}`
@@ -39,7 +76,7 @@ function handleTextInput(key: string, event: Event): void {
 
 <template>
   <div class="plugin-settings">
-    <div v-for="setting in settingsSchema" :key="setting.key" class="plugin-setting-row">
+    <div v-for="setting in visibleSettingsSchema" :key="setting.key" class="plugin-setting-row">
       <label :for="settingInputId(setting.key)">{{ setting.label }}</label>
 
       <label v-if="setting.type === 'boolean'" class="plugin-toggle">
@@ -243,6 +280,10 @@ function handleTextInput(key: string, event: Event): void {
 
   .plugin-setting-text {
     flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .plugin-setting-select {
     width: 100%;
   }
 }

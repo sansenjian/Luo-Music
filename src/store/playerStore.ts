@@ -114,7 +114,11 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
   const getStorageService = resolvedDeps.getStorageService
   const getPlatformService = resolvedDeps.getPlatformAccessor
   const audioManager = resolvedDeps.audioManager
+  const nativeAudioOutputPlayback = resolvedDeps.nativeAudioOutputPlayback
   const persistStorage = createPlayerPersistStorage(storageAdapter)
+  let isNativeAudioOutputActive = false
+  let unsubscribeNativeAudioOutputEnded: (() => void) | null = null
+  let unsubscribeNativeAudioOutputError: (() => void) | null = null
 
   function reportPlayerStoreError(
     error: unknown,
@@ -137,6 +141,120 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
     options: PlayerStateSnapshotOptions = {}
   ): void {
     sendPlayerStateSnapshot(store, getPlatformService(), audioManager, options)
+  }
+
+  async function fallbackToChromiumPlayback(
+    store: PlayerStoreInstance,
+    song: Song,
+    startSeconds = store.progress
+  ): Promise<void> {
+    isNativeAudioOutputActive = false
+    await nativeAudioOutputPlayback.stop()
+
+    const playbackUrl = resolvePlaybackMediaUrl(String(song.url), getPlatformService().isElectron())
+    await audioManager.play(playbackUrl)
+
+    if (Number.isFinite(startSeconds) && startSeconds > 0) {
+      audioManager.seek(startSeconds)
+    }
+
+    store.playing = true
+    store.notifyPlayingState(true)
+    notifyPlayerStateSnapshot(store)
+  }
+
+  function ensureNativeAudioOutputListeners(store: PlayerStoreInstance): void {
+    if (unsubscribeNativeAudioOutputEnded) {
+      return
+    }
+
+    unsubscribeNativeAudioOutputEnded = nativeAudioOutputPlayback.onEnded(() => {
+      if (!isNativeAudioOutputActive) {
+        return
+      }
+
+      isNativeAudioOutputActive = false
+      if (
+        store.playMode === PLAY_MODE.SINGLE_LOOP &&
+        store.currentIndex >= 0 &&
+        store.currentSong
+      ) {
+        void store.playSongByIndex(store.currentIndex, store.currentSong).catch(error => {
+          handlePlaybackActionFailure(
+            store,
+            error,
+            'nativeAudioOutputEnded.singleLoop',
+            'Failed to replay the current native audio output song after it ended'
+          )
+          store.playNext()
+        })
+        return
+      }
+
+      store.playNext()
+    })
+
+    unsubscribeNativeAudioOutputError = nativeAudioOutputPlayback.onError(() => {
+      if (!isNativeAudioOutputActive || !store.currentSong?.url) {
+        return
+      }
+
+      const failedNativeSong = store.currentSong
+      void fallbackToChromiumPlayback(store, failedNativeSong).catch(error => {
+        handlePlaybackActionFailure(
+          store,
+          error,
+          'nativeAudioOutputError.fallback',
+          'Failed to fall back to Chromium playback after native audio output failed'
+        )
+      })
+    })
+  }
+
+  async function stopNativeAudioOutputPlayback(): Promise<void> {
+    if (!isNativeAudioOutputActive) {
+      return
+    }
+
+    isNativeAudioOutputActive = false
+    await nativeAudioOutputPlayback.stop()
+  }
+
+  async function tryNativeAudioOutputPlayback(
+    store: PlayerStoreInstance,
+    song: Song,
+    startSeconds: number
+  ): Promise<boolean> {
+    const request = {
+      song,
+      startSeconds,
+      volume: store.volume
+    }
+
+    if (!getPlatformService().isElectron() || !nativeAudioOutputPlayback.canPlay(request)) {
+      return false
+    }
+
+    const didStart = await nativeAudioOutputPlayback.play(request)
+    if (!didStart) {
+      isNativeAudioOutputActive = false
+      return false
+    }
+
+    isNativeAudioOutputActive = true
+    audioManager.pause()
+    store.progress = startSeconds > 0 ? startSeconds : 0
+    store.applyResolvedLyricIndex(store.progress)
+
+    if (
+      (!Number.isFinite(store.duration) || store.duration <= 0) &&
+      Number.isFinite(song.duration) &&
+      song.duration > 0
+    ) {
+      store.duration = song.duration / 1000
+    }
+
+    return true
   }
 
   function handlePlaybackActionFailure(
@@ -361,6 +479,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.initialized = true
         runtime.setLyricEngine(new LyricEngine())
         runtime.setCurrentLyricLineProvider(() => getCurrentLyricLine(store))
+        ensureNativeAudioOutputListeners(store)
 
         audioManager.setVolume(this.volume)
 
@@ -488,6 +607,19 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
             }
 
             if (!store.playing) {
+              if (isNativeAudioOutputActive) {
+                store.playing = true
+                store.notifyPlayingState(true)
+                return nativeAudioOutputPlayback.resume().catch(error => {
+                  reportPlayerStoreError(
+                    error,
+                    'setupIpcListeners.play.native',
+                    'Failed to resume native audio output playback'
+                  )
+                  throw error
+                })
+              }
+
               return audioManager.play().catch(error => {
                 if (!(error instanceof Error) || error.name !== 'AbortError') {
                   reportPlayerStoreError(
@@ -502,6 +634,19 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           },
           pause: () => {
             if (store.initialized && store.playing) {
+              if (isNativeAudioOutputActive) {
+                store.playing = false
+                store.notifyPlayingState(false)
+                void nativeAudioOutputPlayback.pause().catch(error => {
+                  reportPlayerStoreError(
+                    error,
+                    'setupIpcListeners.pause.native',
+                    'Failed to pause native audio output playback'
+                  )
+                })
+                return
+              }
+
               audioManager.pause()
             }
           },
@@ -703,6 +848,14 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.trackSwitching = true
 
         try {
+          const nativeStartSeconds = shouldResumeRestoredProgress ? restoredResumeProgress : 0
+          if (await tryNativeAudioOutputPlayback(this, targetSong, nativeStartSeconds)) {
+            this.playing = true
+            this.notifyPlayingState(true)
+            return
+          }
+
+          await stopNativeAudioOutputPlayback()
           const playbackUrl = resolvePlaybackMediaUrl(
             String(targetSong.url),
             getPlatformService().isElectron()
@@ -758,6 +911,34 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
               )
             })
           }
+          return
+        }
+
+        if (isNativeAudioOutputActive) {
+          if (this.playing) {
+            this.playing = false
+            this.notifyPlayingState(false)
+            void nativeAudioOutputPlayback.pause().catch(error => {
+              handlePlaybackActionFailure(
+                store,
+                error,
+                'togglePlay.native.pause',
+                'Failed to pause native audio output playback'
+              )
+            })
+            return
+          }
+
+          this.playing = true
+          this.notifyPlayingState(true)
+          void nativeAudioOutputPlayback.resume().catch(error => {
+            handlePlaybackActionFailure(
+              store,
+              error,
+              'togglePlay.native.resume',
+              'Failed to resume native audio output playback'
+            )
+          })
           return
         }
 
@@ -819,6 +1000,15 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       setVolume(vol: number): void {
         this.volume = Math.max(0, Math.min(1, vol))
         audioManager.setVolume(this.volume)
+        if (isNativeAudioOutputActive) {
+          void nativeAudioOutputPlayback.setVolume(this.volume).catch(error => {
+            reportPlayerStoreError(
+              error,
+              'setVolume.native',
+              'Failed to sync native audio output volume'
+            )
+          })
+        }
       },
 
       toggleMute(): void {
@@ -898,6 +1088,17 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.progress = 0
         this.duration = 0
         this.initialized = false
+        unsubscribeNativeAudioOutputEnded?.()
+        unsubscribeNativeAudioOutputEnded = null
+        unsubscribeNativeAudioOutputError?.()
+        unsubscribeNativeAudioOutputError = null
+        void stopNativeAudioOutputPlayback().catch(error => {
+          reportPlayerStoreError(
+            error,
+            'clearPlaylist.native',
+            'Failed to stop native audio output playback'
+          )
+        })
 
         notifyPlayerStateSnapshot(store)
         notifyLyricTimeUpdate(store, getPlatformService(), 0, 'reset')

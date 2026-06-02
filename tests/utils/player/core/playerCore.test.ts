@@ -5,7 +5,7 @@ import { VOLUME } from '@/utils/player/constants/volume'
 
 type MockAudioElement = Omit<
   HTMLAudioElement,
-  'readyState' | 'paused' | 'ended' | 'duration' | 'buffered'
+  'readyState' | 'paused' | 'ended' | 'duration' | 'buffered' | 'sinkId' | 'setSinkId'
 > & {
   readyState: number
   paused: boolean
@@ -14,6 +14,8 @@ type MockAudioElement = Omit<
   buffered: TimeRanges
   disableRemotePlayback: boolean
   controlsList: Pick<DOMTokenList, 'contains'>
+  sinkId: string
+  setSinkId?: (sinkId: string) => Promise<void>
   trigger: (event: string, payload: Event) => void
 }
 
@@ -408,6 +410,40 @@ describe('PlayerCore', () => {
       expect(audio.disableRemotePlayback).toBe(false)
       expect(audio.getAttribute('disableremoteplayback')).toBeNull()
       expect(audio.controlsList.contains('noremoteplayback')).toBe(false)
+    })
+  })
+
+  describe('output device selection', () => {
+    it('sets Chromium audio output device through setSinkId', async () => {
+      const { audio } = getInternals(player)
+      const setSinkIdSpy = vi.spyOn(audio, 'setSinkId')
+
+      await player.setOutputDevice(' usb-dac ')
+
+      expect(setSinkIdSpy).toHaveBeenCalledWith('usb-dac')
+      expect(player.getOutputDeviceId()).toBe('usb-dac')
+    })
+
+    it('skips setSinkId when the requested output device is already active', async () => {
+      const { audio } = getInternals(player)
+      audio.sinkId = 'usb-dac'
+      const setSinkIdSpy = vi.spyOn(audio, 'setSinkId')
+
+      await player.setOutputDevice(' usb-dac ')
+
+      expect(setSinkIdSpy).not.toHaveBeenCalled()
+    })
+
+    it('throws when Chromium output device selection is unsupported', async () => {
+      const { audio } = getInternals(player)
+      Object.defineProperty(audio, 'setSinkId', {
+        configurable: true,
+        value: undefined
+      })
+
+      await expect(player.setOutputDevice('usb-dac')).rejects.toThrow(
+        'Audio output device selection is not supported in this runtime.'
+      )
     })
   })
 

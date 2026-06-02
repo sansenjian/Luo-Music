@@ -106,16 +106,18 @@ node scripts/build/clean.cjs dist build/service
 - `web`: Web 构建
 - `electron-bundle`: 清理并构建 Electron bundle
 - `electron-bundle-no-clean`: 不清理，直接构建 Electron bundle
-- `electron`: 生成 Electron 安装包
+- `electron`: 生成 Electron 分发包
 - `electron-portable`: 生成单文件便携版
 - `electron-all`: 准备一次 Electron bundle，并行生成安装包和 portable
 - `package`: 生成 Electron package
-- `make`: 生成 Electron 安装包
+- `make`: 生成 Electron 分发包
 - `make-fast`: 快速 make 模式
 
 `electron`、`electron-portable`、`package` 和 `make-fast` 会在 Electron bundle 准备阶段并行生成 `out/third-party-plugins/*.zip`，插件页可使用这些 zip 重新安装内置平台插件。
 
 `electron-all` 用于完整打包：共享一次 bundle 和插件 zip，然后并行执行 Forge make 与 electron-builder portable，完成后运行产物体积预算检查。
+
+Forge make 默认生成 zip 分发包。Windows Squirrel maker 保留为显式 opt-in，可设置 `LUO_ENABLE_SQUIRREL_MAKE=1` 后再运行 Forge make；当前 Electron 41 主程序体积会触发 `electron-winstaller` 内置 NuGet 2.8 / Squirrel.Windows SharpCompress 对大 exe 的兼容问题，因此默认发布链路不再启用 Squirrel。
 
 #### check-artifact-budgets.cjs
 

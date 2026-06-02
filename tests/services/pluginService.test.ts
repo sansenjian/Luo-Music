@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PlatformDescriptor } from '@shared/types/platform'
+import type { AudioOutputSettings, AudioOutputStatus } from '@shared/audioOutput/protocol'
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -21,6 +22,69 @@ const experimentalFeaturesMock = vi.hoisted(() => {
     }),
     setCoverSwipeEnabled: vi.fn((next: boolean) => {
       coverSwipeEnabled.value = next
+    })
+  }
+})
+const audioOutputPluginMock = vi.hoisted(() => {
+  const defaultSettings = {
+    mode: 'shared',
+    sharedDeviceId: '',
+    deviceId: '',
+    bufferFrames: 960,
+    fallbackToShared: true,
+    diagnosticsEnabled: false
+  } satisfies AudioOutputSettings
+  const audioOutputEnabled = { value: false }
+  const audioOutputSettings: { value: AudioOutputSettings } = {
+    value: { ...defaultSettings }
+  }
+  const sharedOutputDevices = {
+    value: [] as Array<{ id: string; label: string }>
+  }
+  const audioOutputStatus: { value: AudioOutputStatus } = {
+    value: {
+      enabled: false,
+      backend: 'disabled',
+      backendAvailable: false,
+      requestedMode: 'shared',
+      devices: []
+    }
+  }
+
+  return {
+    audioOutputEnabled,
+    audioOutputSettings,
+    audioOutputStatus,
+    sharedOutputDevices,
+    refreshSharedOutputDevices: vi.fn(() => Promise.resolve(sharedOutputDevices.value)),
+    setAudioOutputEnabled: vi.fn((next: boolean) => {
+      audioOutputEnabled.value = next
+      audioOutputStatus.value = {
+        enabled: next,
+        backend: next ? 'unavailable' : 'disabled',
+        backendAvailable: false,
+        requestedMode: audioOutputSettings.value.mode,
+        devices: [],
+        ...(next ? { reason: 'Native audio output backend is not bundled yet.' } : {})
+      }
+    }),
+    updateAudioOutputSettings: vi.fn((nextSettings: Record<string, unknown>) => {
+      const nextBufferFrames =
+        typeof nextSettings.bufferFrames === 'string'
+          ? Number.parseInt(nextSettings.bufferFrames, 10)
+          : typeof nextSettings.bufferFrames === 'number'
+            ? nextSettings.bufferFrames
+            : audioOutputSettings.value.bufferFrames
+      audioOutputSettings.value = {
+        ...audioOutputSettings.value,
+        ...nextSettings,
+        bufferFrames: nextBufferFrames
+      }
+      audioOutputStatus.value = {
+        ...audioOutputStatus.value,
+        requestedMode: audioOutputSettings.value.mode
+      }
+      return audioOutputSettings.value
     })
   }
 })
@@ -64,6 +128,10 @@ vi.mock('@/platform/music/descriptors', () => ({
 
 vi.mock('@/composables/useExperimentalFeatures', () => ({
   useExperimentalFeatures: () => experimentalFeaturesMock
+}))
+
+vi.mock('@/composables/useAudioOutputPlugin', () => ({
+  useAudioOutputPlugin: () => audioOutputPluginMock
 }))
 
 vi.mock('@/composables/useProjectUi', () => ({
@@ -137,8 +205,11 @@ function expectFirstPartyExtensionDescriptors(
   platforms: PlatformDescriptor[],
   options: {
     smtc?: boolean
+    audioOutput?: boolean
     coverSwipeEnabled?: boolean
     smtcEnabled?: boolean
+    audioOutputEnabled?: boolean
+    audioOutputStatus?: PlatformDescriptor['status']
     brandThemeResourceEnabled?: boolean
   } = {}
 ): void {
@@ -191,6 +262,53 @@ function expectFirstPartyExtensionDescriptors(
         }
 
   expect(smtcDescriptorSummary).toEqual(expectedSmtcDescriptor)
+
+  const audioOutputDescriptor = platforms.find(platform => platform.id === 'builtin.audio-output')
+  const audioOutputDescriptorSummary = audioOutputDescriptor
+    ? {
+        id: audioOutputDescriptor.id,
+        displayName: audioOutputDescriptor.displayName,
+        source: audioOutputDescriptor.source,
+        runtime: audioOutputDescriptor.runtime,
+        category: audioOutputDescriptor.category,
+        enabled: audioOutputDescriptor.enabled,
+        status: audioOutputDescriptor.status,
+        settingsSchema: audioOutputDescriptor.settingsSchema
+      }
+    : undefined
+  const audioOutputSettingsSchemaMatcher = expect.arrayContaining([
+    expect.objectContaining({ key: 'mode', type: 'select' }),
+    expect.objectContaining({
+      key: 'sharedDeviceId',
+      type: 'select',
+      options: expect.arrayContaining([
+        expect.objectContaining({ value: '', label: '系统默认输出设备' })
+      ])
+    }),
+    expect.objectContaining({
+      key: 'deviceId',
+      type: 'select',
+      options: expect.arrayContaining([
+        expect.objectContaining({ value: '', label: '原生默认输出设备' })
+      ])
+    }),
+    expect.objectContaining({ key: 'fallbackToShared', type: 'boolean' })
+  ])
+  const expectedAudioOutputDescriptor =
+    (options.audioOutput ?? options.smtc !== false) === false
+      ? undefined
+      : {
+          id: 'builtin.audio-output',
+          displayName: '原生音频输出',
+          source: 'builtin',
+          runtime: 'local',
+          category: 'extension',
+          enabled: options.audioOutputEnabled ?? false,
+          status: options.audioOutputStatus ?? (options.audioOutputEnabled ? 'error' : 'disabled'),
+          settingsSchema: audioOutputSettingsSchemaMatcher
+        }
+
+  expect(audioOutputDescriptorSummary).toEqual(expectedAudioOutputDescriptor)
 }
 
 function expectExternalPluginDescriptor(platforms: PlatformDescriptor[]): void {
@@ -232,6 +350,23 @@ describe('createPluginService', () => {
     vi.clearAllMocks()
     experimentalFeaturesMock.smtcEnabled.value = false
     experimentalFeaturesMock.coverSwipeEnabled.value = false
+    audioOutputPluginMock.audioOutputEnabled.value = false
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'shared',
+      sharedDeviceId: '',
+      deviceId: '',
+      bufferFrames: 960,
+      fallbackToShared: true,
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.sharedOutputDevices.value = []
+    audioOutputPluginMock.audioOutputStatus.value = {
+      enabled: false,
+      backend: 'disabled',
+      backendAvailable: false,
+      requestedMode: 'shared',
+      devices: []
+    }
     themeResourcePacksMock.enabledThemeResourcePackIds.value = []
     renderStyleMock.renderStyle.value = 'classic'
     mockGetPlatformDescriptors.mockReturnValue(builtinDescriptors)
@@ -446,6 +581,200 @@ describe('createPluginService', () => {
     expectFirstPartyExtensionDescriptors(result, { smtcEnabled: true })
   })
 
+  it('toggles the first-party native audio output extension without delegating to the bridge', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await vi.waitFor(() => expect(bridge.list).toHaveBeenCalled())
+    bridge.setEnabled.mockClear()
+
+    const result = await service.setEnabled('builtin.audio-output', true)
+
+    expect(audioOutputPluginMock.setAudioOutputEnabled).toHaveBeenCalledWith(true)
+    expect(bridge.setEnabled).not.toHaveBeenCalled()
+    expectExternalPluginDescriptor(result)
+    expectFirstPartyExtensionDescriptors(result, {
+      audioOutputEnabled: true,
+      audioOutputStatus: 'error'
+    })
+  })
+
+  it('exposes native audio output devices as selectable first-party settings', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'exclusive',
+      sharedDeviceId: '',
+      deviceId: '1:USB DAC',
+      bufferFrames: 512,
+      fallbackToShared: true,
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.audioOutputStatus.value = {
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'shared',
+      deviceId: '1:USB DAC',
+      devices: [
+        {
+          id: '0:Speakers',
+          name: 'Speakers',
+          isDefault: true,
+          backend: 'wasapi'
+        },
+        {
+          id: '1:USB DAC',
+          name: 'USB DAC',
+          isDefault: false,
+          backend: 'wasapi'
+        }
+      ],
+      reason: 'WASAPI exclusive initialization is pending; using shared fallback.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+    const deviceSetting = audioOutputDescriptor?.settingsSchema?.find(
+      setting => setting.key === 'deviceId'
+    )
+
+    expect(deviceSetting).toEqual(
+      expect.objectContaining({
+        type: 'select',
+        options: [
+          { value: '', label: '原生默认输出设备' },
+          { value: '0:Speakers', label: 'Speakers（默认）' },
+          { value: '1:USB DAC', label: 'USB DAC' }
+        ]
+      })
+    )
+  })
+
+  it('exposes requested and actual native audio output modes as runtime details', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'exclusive',
+      sharedDeviceId: 'chromium-usb',
+      deviceId: '1:USB DAC',
+      bufferFrames: 512,
+      fallbackToShared: true,
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.sharedOutputDevices.value = [{ id: 'chromium-usb', label: 'USB DAC' }]
+    audioOutputPluginMock.audioOutputStatus.value = {
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'shared',
+      deviceId: '1:USB DAC',
+      helperRunning: true,
+      devices: [
+        {
+          id: '1:USB DAC',
+          name: 'USB DAC',
+          isDefault: false,
+          backend: 'wasapi'
+        }
+      ],
+      reason: 'WASAPI exclusive initialization is pending; using shared fallback.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeDetails).toEqual(
+      expect.arrayContaining([
+        { label: '请求模式', value: '真独占模式', tone: 'neutral' },
+        { label: '实际输出', value: '共享模式（已回退）', tone: 'warning' },
+        { label: 'Chromium / 回退设备', value: 'USB DAC' },
+        { label: '原生设备', value: 'USB DAC' },
+        { label: '原生 helper', value: '运行中', tone: 'success' },
+        {
+          label: '说明',
+          value: 'WASAPI exclusive initialization is pending; using shared fallback.',
+          tone: 'warning'
+        }
+      ])
+    )
+  })
+
+  it('exposes native audio output test tone running state for plugin actions', async () => {
+    audioOutputPluginMock.audioOutputStatus.value = {
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'shared',
+      activeMode: 'shared',
+      helperRunning: true,
+      testToneRunning: true,
+      devices: []
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeState).toEqual({
+      testToneRunning: true
+    })
+  })
+
+  it('exposes Chromium fallback output devices as selectable first-party settings', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'shared',
+      sharedDeviceId: 'chromium-usb',
+      deviceId: '',
+      bufferFrames: 960,
+      fallbackToShared: true,
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.sharedOutputDevices.value = [
+      { id: 'chromium-speakers', label: 'Speakers' },
+      { id: 'chromium-usb', label: 'USB DAC' }
+    ]
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+    const sharedDeviceSetting = audioOutputDescriptor?.settingsSchema?.find(
+      setting => setting.key === 'sharedDeviceId'
+    )
+
+    expect(audioOutputPluginMock.refreshSharedOutputDevices).toHaveBeenCalled()
+    expect(sharedDeviceSetting).toEqual(
+      expect.objectContaining({
+        type: 'select',
+        options: [
+          { value: '', label: '系统默认输出设备' },
+          { value: 'chromium-speakers', label: 'Speakers' },
+          { value: 'chromium-usb', label: 'USB DAC' }
+        ]
+      })
+    )
+  })
+
   it('toggles the first-party cover swipe extension outside Electron', async () => {
     const { createPluginService } = await import('@/services/pluginService')
     const service = createPluginService({
@@ -567,6 +896,35 @@ describe('createPluginService', () => {
     expect(result).toEqual({ key: 'value' })
   })
 
+  it('returns first-party native audio output settings without the plugin bridge', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'exclusive',
+      sharedDeviceId: 'chromium-usb',
+      deviceId: 'dac-1',
+      bufferFrames: 512,
+      fallbackToShared: false,
+      diagnosticsEnabled: true
+    }
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getSettings('builtin.audio-output')
+
+    expect(bridge.getSettings).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      mode: 'exclusive',
+      sharedDeviceId: 'chromium-usb',
+      deviceId: 'dac-1',
+      bufferFrames: 512,
+      fallbackToShared: false,
+      diagnosticsEnabled: true
+    })
+  })
+
   // -----------------------------------------------------------------------
   // 10. updateSettings throws in non-Electron, refreshes descriptors after
   // -----------------------------------------------------------------------
@@ -601,6 +959,30 @@ describe('createPluginService', () => {
     expect(bridge.list).toHaveBeenCalled()
     expect(mockReplaceRuntimePlatformDescriptors).toHaveBeenCalled()
     expect(result).toEqual(updatedSettings)
+  })
+
+  it('updates first-party native audio output settings without the plugin bridge', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.updateSettings('builtin.audio-output', {
+      mode: 'voicemeeter',
+      bufferFrames: '512'
+    })
+
+    expect(audioOutputPluginMock.updateAudioOutputSettings).toHaveBeenCalledWith({
+      mode: 'voicemeeter',
+      bufferFrames: '512'
+    })
+    expect(bridge.updateSettings).not.toHaveBeenCalled()
+    expect(result).toMatchObject({
+      mode: 'voicemeeter',
+      bufferFrames: 512
+    })
   })
 
   // -----------------------------------------------------------------------

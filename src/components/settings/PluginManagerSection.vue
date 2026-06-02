@@ -33,7 +33,8 @@ const {
   hasEditableSettings,
   startEditingSettings,
   cancelEditingSettings,
-  saveSettings
+  saveSettings,
+  testAudioOutput
 } = usePluginManager()
 
 const pluginCategoryTabs: PluginCategoryTab[] = [
@@ -195,6 +196,7 @@ function updateSettingValue(key: string, value: unknown): void {
         @save-settings="saveSettings"
         @cancel-editing-settings="cancelEditingSettings"
         @update-setting="updateSettingValue"
+        @test-audio-output="testAudioOutput"
       />
     </div>
 

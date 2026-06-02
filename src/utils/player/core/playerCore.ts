@@ -52,6 +52,11 @@ type SystemMediaSessionAudioElement = HTMLAudioElement & {
   controlsList?: Pick<DOMTokenList, 'add' | 'remove'>
 }
 
+type OutputDeviceAudioElement = HTMLAudioElement & {
+  sinkId?: string
+  setSinkId?: (sinkId: string) => Promise<void>
+}
+
 export class PlayerCore {
   private audio: HTMLAudioElement
   private audioContext: AudioContext | null = null
@@ -482,6 +487,33 @@ export class PlayerCore {
 
     this._systemMediaSessionEnabled = enabled
     this._syncSystemMediaSessionExposure()
+  }
+
+  public async setOutputDevice(deviceId: string): Promise<void> {
+    if (this._checkDestroyed()) {
+      return
+    }
+
+    const audio = this.audio as OutputDeviceAudioElement
+    const normalizedDeviceId = deviceId.trim()
+
+    if (audio.sinkId === normalizedDeviceId) {
+      return
+    }
+
+    if (typeof audio.setSinkId !== 'function') {
+      throw new Error('Audio output device selection is not supported in this runtime.')
+    }
+
+    await audio.setSinkId(normalizedDeviceId)
+  }
+
+  public getOutputDeviceId(): string {
+    if (this._isDestroyed) {
+      return ''
+    }
+
+    return (this.audio as OutputDeviceAudioElement).sinkId ?? ''
   }
 
   // Visualization Data

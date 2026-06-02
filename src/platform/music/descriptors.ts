@@ -92,7 +92,11 @@ function cloneDescriptor(descriptor: PlatformDescriptor): PlatformDescriptor {
     ...(descriptor.settingsSchema ? { settingsSchema: [...descriptor.settingsSchema] } : {}),
     ...(descriptor.themeResources
       ? { themeResources: descriptor.themeResources.map(cloneThemeResource) }
-      : {})
+      : {}),
+    ...(descriptor.runtimeDetails
+      ? { runtimeDetails: descriptor.runtimeDetails.map(detail => ({ ...detail })) }
+      : {}),
+    ...(descriptor.runtimeState ? { runtimeState: { ...descriptor.runtimeState } } : {})
   }
 }
 
