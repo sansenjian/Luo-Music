@@ -41,7 +41,7 @@ describe('playbackErrorHandler', () => {
       shouldRetry: true,
       url: 'https://song.test/retry.mp3'
     })
-    expect(state.songList[0].url).toBeUndefined()
+    expect(state.songList[0].url).toBe('https://song.test/retry.mp3')
   })
 
   it('marks songs unavailable when retrying audio playback fails', async () => {

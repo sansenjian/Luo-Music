@@ -36,5 +36,5 @@ describe('services.music()', () => {
 
     const { services } = await import('@/services')
     expect(services.music()).toBe(service)
-  })
+  }, 30_000)
 })

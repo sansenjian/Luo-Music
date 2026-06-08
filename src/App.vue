@@ -6,6 +6,7 @@ import WindowResizeFrame from './components/window/WindowResizeFrame.vue'
 import { useCommandContext } from './composables/useCommandContext'
 import { useProjectUi } from './composables/useProjectUi'
 import { useWindowChromeState } from './composables/useWindowChromeState'
+import { useAudioOutputPlaybackSync } from '@/extensions/audioOutput/useAudioOutputPlaybackSync'
 import { DESKTOP_LYRIC_ROUTE_PATH, useSmtcExtension } from './extensions/smtc/useSmtcExtension'
 import { services } from './services'
 import { usePlayerStore } from './store/playerStore'
@@ -29,6 +30,7 @@ const { isWindowFullScreen, isWindowMaximized, isWindowRounded } =
 
 useCommandContext()
 useSmtcExtension()
+useAudioOutputPlaybackSync()
 const { ensureAvailableRenderStyle } = useProjectUi()
 ensureAvailableRenderStyle()
 

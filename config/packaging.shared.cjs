@@ -1,6 +1,10 @@
+const path = require("node:path");
+
+const projectRoot = path.resolve(__dirname, "..");
 const appId = "com.sansenjian.luo-music";
 const productName = "LUO Music";
 const asarUnpackPattern = "**/node_modules/better-sqlite3/build/Release/*.node";
+const packagingTempDir = path.resolve(projectRoot, "..", ".luo-music-electron-packager-tmp");
 
 const runtimeExtraResources = {
   service: "build/service",
@@ -75,7 +79,7 @@ const electronBuilderExtraResources = [
   {
     from: runtimeExtraResources.smtcHelper,
     to: "native",
-    filter: ["smtc-helper.exe"],
+    filter: ["smtc-helper.exe", "audio-output-helper.exe", "audio-output-helper"],
   },
   {
     from: runtimeExtraResources.windowsAppIcon,
@@ -106,6 +110,7 @@ module.exports = {
   packagingExtraResources,
   packagingIgnoredNodeModulePaths,
   packagingNodeModulesToRemoveAfterPrune,
+  packagingTempDir,
   packagingWorkspaceArtifactsToRemove,
   productName,
   runtimeExtraResources,

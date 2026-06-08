@@ -11,6 +11,7 @@ const routeState = vi.hoisted(() => ({
 }))
 
 const useSmtcExtensionMock = vi.hoisted(() => vi.fn())
+const useAudioOutputPlaybackSyncMock = vi.hoisted(() => vi.fn())
 const storageGetJSONMock = vi.hoisted(() => vi.fn<(key: string) => unknown | null>(() => null))
 const storageGetItemMock = vi.hoisted(() => vi.fn<(key: string) => string | null>(() => null))
 const storageSetJSONMock = vi.hoisted(() => vi.fn<(key: string, value: unknown) => void>())
@@ -37,6 +38,10 @@ vi.mock('@/composables/useCommandContext', () => ({
 vi.mock('@/extensions/smtc/useSmtcExtension', () => ({
   DESKTOP_LYRIC_ROUTE_PATH: '/desktop-lyric',
   useSmtcExtension: useSmtcExtensionMock
+}))
+
+vi.mock('@/extensions/audioOutput/useAudioOutputPlaybackSync', () => ({
+  useAudioOutputPlaybackSync: useAudioOutputPlaybackSyncMock
 }))
 
 vi.mock('@/composables/useProjectUi', () => ({
@@ -92,6 +97,12 @@ describe('App extension wiring', () => {
     mountApp()
 
     expect(useSmtcExtensionMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('starts first-party audio output playback sync during app setup', () => {
+    mountApp()
+
+    expect(useAudioOutputPlaybackSyncMock).toHaveBeenCalledTimes(1)
   })
 
   it('syncs the restored player snapshot from the primary Electron window setup', () => {

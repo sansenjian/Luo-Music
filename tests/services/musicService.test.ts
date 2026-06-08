@@ -139,6 +139,24 @@ describe('musicService', () => {
       expect(result).toBe('https://example.com/song.mp3')
     })
 
+    it('should preserve standard song-url objects returned by the adapter', async () => {
+      mockAdapter.getSongUrl.mockResolvedValue({
+        url: 'https://example.com/song.mp3',
+        headers: {
+          cookie: 'MUSIC_U=token'
+        }
+      })
+
+      const result = await musicService.getSongUrl('netease', '123')
+
+      expect(result).toEqual({
+        url: 'https://example.com/song.mp3',
+        headers: {
+          cookie: 'MUSIC_U=token'
+        }
+      })
+    })
+
     it('should pass options to adapter', async () => {
       mockAdapter.getSongUrl.mockResolvedValue('https://example.com/song.mp3')
 

@@ -5,6 +5,10 @@ import type { MusicService } from '@/services/musicService'
 import type { PlatformService } from '@/services/platformService'
 import type { StorageService } from '@/services/storageService'
 import { playerCore as defaultAudioManager } from '@/utils/player/core/playerCore'
+import {
+  getDefaultNativeAudioOutputPlaybackController,
+  type NativeAudioOutputPlaybackController
+} from './nativeAudioOutputPlayback'
 import type { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
 import type { LyricLine } from '@shared/player/lyric'
 import type { WebLyricAppearance } from '@shared/types/player'
@@ -28,8 +32,9 @@ export type PlayerStoreActions = {
   replaceQueue: (songs: Song[]) => void
   replaceQueueAndPlay: (songs: Song[], index: number) => Promise<void>
   addSong: (song: Song) => void
-  playSongByIndex: (index: number, song?: Song) => Promise<void>
+  playSongByIndex: (index: number, song?: Song, startSeconds?: number) => Promise<void>
   playSongWithDetails: (index: number, autoSkip?: boolean) => Promise<void>
+  restartPlaybackForAudioOutputChange: () => Promise<void>
   togglePlay: () => void
   getRandomIndex: (excludeCurrent?: boolean) => number
   playPrev: () => void
@@ -69,6 +74,7 @@ export type PlayerStoreAudioManager = Pick<
   typeof defaultAudioManager,
   'getMuted' | 'pause' | 'play' | 'seek' | 'setMuted' | 'setVolume' | 'toggle'
 > & {
+  releaseSource?: () => void | Promise<void>
   src?: string
 }
 
@@ -77,6 +83,7 @@ export type PlayerStoreDeps = {
   getStorageService?: () => PlayerStoreStorageService
   getPlatformAccessor?: () => PlayerStorePlatformService
   audioManager?: PlayerStoreAudioManager
+  nativeAudioOutputPlayback?: NativeAudioOutputPlaybackController
 }
 
 function getDefaultPlayerStoreDeps(): Required<PlayerStoreDeps> {
@@ -84,7 +91,8 @@ function getDefaultPlayerStoreDeps(): Required<PlayerStoreDeps> {
     getMusicService: () => services.music(),
     getStorageService: () => services.storage(),
     getPlatformAccessor: () => services.platform(),
-    audioManager: defaultAudioManager
+    audioManager: defaultAudioManager,
+    nativeAudioOutputPlayback: getDefaultNativeAudioOutputPlaybackController()
   }
 }
 
@@ -95,6 +103,8 @@ export function resolvePlayerStoreDeps(deps: PlayerStoreDeps): Required<PlayerSt
     getMusicService: deps.getMusicService ?? defaultDeps.getMusicService,
     getStorageService: deps.getStorageService ?? defaultDeps.getStorageService,
     getPlatformAccessor: deps.getPlatformAccessor ?? defaultDeps.getPlatformAccessor,
-    audioManager: deps.audioManager ?? defaultDeps.audioManager
+    audioManager: deps.audioManager ?? defaultDeps.audioManager,
+    nativeAudioOutputPlayback:
+      deps.nativeAudioOutputPlayback ?? defaultDeps.nativeAudioOutputPlayback
   }
 }

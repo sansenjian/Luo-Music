@@ -24,7 +24,7 @@ import { songPrefetcher } from '@/store/player/songPrefetcher'
 import { PLAY_MODE } from '@shared/player/playMode'
 import { LyricEngine, type LyricLine } from '@shared/player/lyric'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
-import { resolvePlaybackMediaUrl } from '@/utils/player/mediaProxy'
+import { resolveLocalLibraryPlaybackUrl, resolvePlaybackMediaUrl } from '@/utils/player/mediaProxy'
 import { PlaybackErrorHandler } from '@/utils/player/modules/playbackErrorHandler'
 import {
   DEFAULT_WEB_LYRIC_APPEARANCE,
@@ -49,12 +49,26 @@ import {
   type PlayerStoreDeps,
   type PlayerStoreInstance
 } from '@/store/player/playerStoreDeps'
+import type { AudioOutputStatus } from '@shared/audioOutput/protocol'
+import {
+  createNativeAudioOutputPlaybackError,
+  isNativeAudioOutputRequiredError,
+  isNativeAudioOutputRetryablePlaybackError,
+  NativeAudioOutputRequiredError,
+  type NativeAudioOutputPlaybackError,
+  type NativeAudioOutputPlaybackRequest
+} from '@/store/player/nativeAudioOutputPlayback'
+import { createNativeAudioOutputOwnership } from '@/store/player/nativeAudioOutputOwnership'
+import { setSongNativeAudioOutputRequestHeaders } from '@/utils/player/songUrlResult'
 
 export type { PlayerStoreActions, PlayerStoreDeps } from '@/store/player/playerStoreDeps'
 export { restorePersistedPlayerState } from '@/store/player/playerPersistence'
 
 const PLAYER_STATE_SYNC_INTERVAL_MS = 500
 const RESTORED_PROGRESS_END_THRESHOLD_SECONDS = 5
+const NATIVE_AUDIO_OUTPUT_PROGRESS_INTERVAL_MS = 250
+const NATIVE_AUDIO_OUTPUT_SETTINGS_CHANGED_REASON =
+  'Native audio output playback stopped because output settings changed.'
 
 function isSameSong(left: Song, right: Song): boolean {
   return isSameSongIdentity(left, right)
@@ -114,7 +128,17 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
   const getStorageService = resolvedDeps.getStorageService
   const getPlatformService = resolvedDeps.getPlatformAccessor
   const audioManager = resolvedDeps.audioManager
+  const nativeAudioOutputPlayback = resolvedDeps.nativeAudioOutputPlayback
   const persistStorage = createPlayerPersistStorage(storageAdapter)
+  const nativeAudioOutputOwnership = createNativeAudioOutputOwnership()
+  let nativeAudioOutputSeekGeneration = 0
+  let nativeAudioOutputProgressTimer: ReturnType<typeof setInterval> | null = null
+  let nativeAudioOutputProgressAnchorSeconds = 0
+  let nativeAudioOutputProgressAnchorMs: number | null = null
+  let playbackStartGeneration = 0
+  let unsubscribeNativeAudioOutputEnded: (() => void) | null = null
+  let unsubscribeNativeAudioOutputError: (() => void) | null = null
+  let unsubscribeNativeAudioOutputStatus: (() => void) | null = null
 
   function reportPlayerStoreError(
     error: unknown,
@@ -137,6 +161,760 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
     options: PlayerStateSnapshotOptions = {}
   ): void {
     sendPlayerStateSnapshot(store, getPlatformService(), audioManager, options)
+  }
+
+  function resolveNativeAudioOutputProgress(): number {
+    const elapsedSeconds =
+      nativeAudioOutputProgressAnchorMs !== null
+        ? (Date.now() - nativeAudioOutputProgressAnchorMs) / 1000
+        : 0
+    return nativeAudioOutputProgressAnchorSeconds + Math.max(0, elapsedSeconds)
+  }
+
+  function applyNativeAudioOutputProgress(
+    store: PlayerStoreInstance,
+    cause: 'interval' | 'seek' | 'play-state' = 'interval'
+  ): void {
+    if (!nativeAudioOutputOwnership.active) {
+      return
+    }
+
+    const duration = Number.isFinite(store.duration) && store.duration > 0 ? store.duration : 0
+    const nextProgress = duration
+      ? Math.min(resolveNativeAudioOutputProgress(), duration)
+      : resolveNativeAudioOutputProgress()
+
+    store.progress = nextProgress
+    const lyricChanged = store.applyResolvedLyricIndex(nextProgress)
+    notifyLyricTimeUpdate(
+      store,
+      getPlatformService(),
+      nextProgress,
+      lyricChanged ? 'lyric-change' : cause
+    )
+  }
+
+  function isNativeAudioOutputPlaybackClaimed(): boolean {
+    return nativeAudioOutputOwnership.isClaimed()
+  }
+
+  function stopNativeAudioOutputProgressClock(): void {
+    if (!nativeAudioOutputProgressTimer) {
+      return
+    }
+
+    clearInterval(nativeAudioOutputProgressTimer)
+    nativeAudioOutputProgressTimer = null
+  }
+
+  function startNativeAudioOutputProgressClock(
+    store: PlayerStoreInstance,
+    startSeconds = store.progress
+  ): void {
+    nativeAudioOutputProgressAnchorSeconds =
+      Number.isFinite(startSeconds) && startSeconds > 0 ? startSeconds : 0
+    nativeAudioOutputProgressAnchorMs = Date.now()
+    stopNativeAudioOutputProgressClock()
+
+    if (!store.playing) {
+      return
+    }
+
+    nativeAudioOutputProgressTimer = setInterval(() => {
+      applyNativeAudioOutputProgress(store)
+    }, NATIVE_AUDIO_OUTPUT_PROGRESS_INTERVAL_MS)
+
+    if (
+      typeof nativeAudioOutputProgressTimer === 'object' &&
+      nativeAudioOutputProgressTimer !== null &&
+      'unref' in nativeAudioOutputProgressTimer &&
+      typeof nativeAudioOutputProgressTimer.unref === 'function'
+    ) {
+      nativeAudioOutputProgressTimer.unref()
+    }
+  }
+
+  function resetNativeAudioOutputRuntimeState(): void {
+    nativeAudioOutputOwnership.resetRuntimeState()
+  }
+
+  async function releaseChromiumPlaybackSource(): Promise<void> {
+    if (typeof audioManager.releaseSource === 'function') {
+      await audioManager.releaseSource()
+      return
+    }
+
+    audioManager.pause()
+    await Promise.resolve()
+  }
+
+  function suspendNativeAudioOutputProgressClock(
+    startSeconds = nativeAudioOutputProgressAnchorSeconds
+  ): void {
+    nativeAudioOutputProgressAnchorSeconds =
+      Number.isFinite(startSeconds) && startSeconds > 0 ? startSeconds : 0
+    nativeAudioOutputProgressAnchorMs = null
+    nativeAudioOutputOwnership.suspendProgressClock()
+    stopNativeAudioOutputProgressClock()
+  }
+
+  function syncNativeAudioOutputProgressFromStatus(
+    store: PlayerStoreInstance,
+    status: AudioOutputStatus
+  ): void {
+    if (!nativeAudioOutputOwnership.isClaimed()) {
+      return
+    }
+
+    const state = status.nativePlaybackState
+    const positionSeconds = status.nativePlaybackPositionSeconds
+    const hasPosition =
+      typeof positionSeconds === 'number' &&
+      Number.isFinite(positionSeconds) &&
+      positionSeconds >= 0
+    if (hasPosition) {
+      const now = Date.now()
+      nativeAudioOutputProgressAnchorSeconds = positionSeconds
+      nativeAudioOutputProgressAnchorMs = state === 'playing' && store.playing ? now : null
+      store.progress = positionSeconds
+      const lyricChanged = store.applyResolvedLyricIndex(positionSeconds)
+      const shouldSyncLyricTime =
+        lyricChanged ||
+        now - nativeAudioOutputOwnership.lastLyricSyncMs >= NATIVE_AUDIO_OUTPUT_PROGRESS_INTERVAL_MS
+      if (shouldSyncLyricTime) {
+        nativeAudioOutputOwnership.lastLyricSyncMs = now
+        notifyLyricTimeUpdate(
+          store,
+          getPlatformService(),
+          positionSeconds,
+          lyricChanged ? 'lyric-change' : 'interval'
+        )
+      }
+    }
+
+    if (state === 'playing') {
+      nativeAudioOutputOwnership.active = true
+      if (nativeAudioOutputOwnership.pendingPlaybackIntent === false) {
+        nativeAudioOutputOwnership.markPausedDuringPendingStart()
+        suspendNativeAudioOutputProgressClock(
+          hasPosition ? positionSeconds : nativeAudioOutputProgressAnchorSeconds
+        )
+        store.playing = false
+        store.notifyPlayingState(false)
+        notifyPlayerStateSnapshot(store)
+        void nativeAudioOutputPlayback.pause().catch(error => {
+          reportPlayerStoreError(
+            error,
+            'syncNativeAudioOutputProgressFromStatus.pausePendingStart',
+            'Failed to pause native audio output after helper started while pending playback was paused'
+          )
+        })
+        nativeAudioOutputOwnership.lastState = state ?? nativeAudioOutputOwnership.lastState
+        return
+      }
+
+      nativeAudioOutputOwnership.markHelperPlaying()
+      if (store.playing && !nativeAudioOutputProgressTimer) {
+        startNativeAudioOutputProgressClock(
+          store,
+          hasPosition ? positionSeconds : nativeAudioOutputProgressAnchorSeconds
+        )
+      }
+    } else if (state === 'paused') {
+      suspendNativeAudioOutputProgressClock(
+        hasPosition ? positionSeconds : nativeAudioOutputProgressAnchorSeconds
+      )
+    } else if (state === 'starting') {
+      if (!nativeAudioOutputOwnership.wasPlayingFromHelper) {
+        suspendNativeAudioOutputProgressClock(
+          hasPosition ? positionSeconds : nativeAudioOutputProgressAnchorSeconds
+        )
+      }
+    } else if (state === 'error' || state === 'stopped' || state === 'ended') {
+      if (
+        state === 'stopped' &&
+        !hasPosition &&
+        nativeAudioOutputOwnership.active &&
+        status.reason === NATIVE_AUDIO_OUTPUT_SETTINGS_CHANGED_REASON
+      ) {
+        applyNativeAudioOutputProgress(store)
+      }
+      nativeAudioOutputOwnership.pendingStart = false
+      stopNativeAudioOutputProgressClock()
+      if (state === 'error') {
+        if (nativeAudioOutputOwnership.lastState !== 'error') {
+          handleNativeAudioOutputRuntimeError(store, createNativeAudioOutputPlaybackError(status))
+        }
+      } else if (state === 'stopped' && nativeAudioOutputOwnership.active) {
+        nativeAudioOutputOwnership.release()
+        resetNativeAudioOutputRuntimeState()
+        if (status.reason === NATIVE_AUDIO_OUTPUT_SETTINGS_CHANGED_REASON) {
+          return
+        }
+
+        store.playing = false
+        store.notifyPlayingState(false)
+        notifyPlayerStateSnapshot(store)
+      }
+    }
+
+    nativeAudioOutputOwnership.lastState = state ?? nativeAudioOutputOwnership.lastState
+  }
+
+  function pauseNativeAudioOutputProgressClock(store: PlayerStoreInstance): void {
+    if (!nativeAudioOutputOwnership.active) {
+      return
+    }
+
+    applyNativeAudioOutputProgress(store, 'play-state')
+    nativeAudioOutputProgressAnchorSeconds = store.progress
+    nativeAudioOutputProgressAnchorMs = null
+    stopNativeAudioOutputProgressClock()
+  }
+
+  function resumeNativeAudioOutputProgressClock(store: PlayerStoreInstance): void {
+    if (!nativeAudioOutputOwnership.active) {
+      return
+    }
+
+    startNativeAudioOutputProgressClock(store, store.progress)
+    notifyLyricTimeUpdate(store, getPlatformService(), store.progress, 'play-state')
+  }
+
+  async function fallbackToChromiumPlayback(
+    store: PlayerStoreInstance,
+    song: Song,
+    startSeconds = store.progress,
+    options: { playing?: boolean } = {}
+  ): Promise<void> {
+    const shouldPlay = options.playing ?? true
+
+    nativeAudioOutputOwnership.release()
+    resetNativeAudioOutputRuntimeState()
+    stopNativeAudioOutputProgressClock()
+    await nativeAudioOutputPlayback.stop()
+
+    const playbackUrl = resolvePlaybackMediaUrl(String(song.url), getPlatformService().isElectron())
+    await audioManager.play(playbackUrl)
+
+    if (Number.isFinite(startSeconds) && startSeconds > 0) {
+      audioManager.seek(startSeconds)
+    }
+
+    if (!shouldPlay) {
+      audioManager.pause()
+    }
+
+    store.playing = shouldPlay
+    store.notifyPlayingState(shouldPlay)
+    notifyPlayerStateSnapshot(store)
+  }
+
+  function createNativePlaybackRequiredError(reason: string, cause?: unknown): Error {
+    return new NativeAudioOutputRequiredError(
+      appendNativePlaybackFailureReason(reason, cause),
+      cause
+    )
+  }
+
+  function appendNativePlaybackFailureReason(message: string, cause?: unknown): string {
+    if (!(cause instanceof Error) || !cause.message.trim() || cause.message === message) {
+      return message
+    }
+
+    return `${message}原因：${cause.message}`
+  }
+
+  function shouldKeepPlaybackOnNativeFailure(
+    request: NativeAudioOutputPlaybackRequest,
+    reason: string,
+    cause?: unknown
+  ): Error | null {
+    if (!nativeAudioOutputPlayback.requiresNativePlayback(request)) {
+      return null
+    }
+
+    return createNativePlaybackRequiredError(reason, cause)
+  }
+
+  function clearNativeAudioOutputPlaybackUrl(store: PlayerStoreInstance, song: Song): void {
+    songPrefetcher.invalidateSong(song)
+    song.url = ''
+    setSongNativeAudioOutputRequestHeaders(song, undefined)
+
+    if (
+      store.currentIndex >= 0 &&
+      store.currentIndex < store.songList.length &&
+      isSameSong(store.songList[store.currentIndex], song)
+    ) {
+      store.songList[store.currentIndex].url = ''
+      setSongNativeAudioOutputRequestHeaders(store.songList[store.currentIndex], undefined)
+    }
+  }
+
+  function handleNativeAudioOutputRuntimeError(
+    store: PlayerStoreInstance,
+    error?: NativeAudioOutputPlaybackError
+  ): void {
+    if (!nativeAudioOutputOwnership.active || !store.currentSong?.url) {
+      return
+    }
+
+    stopNativeAudioOutputProgressClock()
+    const failedNativeSong = store.currentSong
+    if (isNativeAudioOutputRetryablePlaybackError(error) && store.currentIndex >= 0) {
+      nativeAudioOutputOwnership.release()
+      resetNativeAudioOutputRuntimeState()
+      const retryIndex = store.currentIndex
+      const retryProgress = store.progress
+      clearNativeAudioOutputPlaybackUrl(store, failedNativeSong)
+      void store
+        .playSongWithDetails(retryIndex)
+        .then(() => {
+          if (
+            retryProgress > 0 &&
+            store.currentIndex === retryIndex &&
+            store.currentSong &&
+            isSameSong(store.currentSong, failedNativeSong)
+          ) {
+            store.seek(retryProgress)
+          }
+        })
+        .catch(retryError => {
+          handlePlaybackActionFailure(
+            store,
+            retryError,
+            'nativeAudioOutputError.retryFreshUrl',
+            'Failed to refresh playback URL after native audio output authorization expired'
+          )
+        })
+      return
+    }
+
+    const request = {
+      song: failedNativeSong,
+      startSeconds: store.progress,
+      volume: store.volume
+    }
+    if (nativeAudioOutputPlayback.requiresNativePlayback(request)) {
+      nativeAudioOutputOwnership.release()
+      resetNativeAudioOutputRuntimeState()
+      void nativeAudioOutputPlayback.stop().catch(stopError => {
+        reportPlayerStoreError(
+          stopError,
+          'nativeAudioOutputError.required.stop',
+          'Failed to stop native audio output after required playback failed'
+        )
+      })
+      handlePlaybackActionFailure(
+        store,
+        createNativePlaybackRequiredError('原生独占输出播放失败，已阻止回退到 Chromium。', error),
+        'nativeAudioOutputError.required',
+        '原生独占输出播放失败'
+      )
+      return
+    }
+
+    void fallbackToChromiumPlayback(store, failedNativeSong).catch(error => {
+      handlePlaybackActionFailure(
+        store,
+        error,
+        'nativeAudioOutputError.fallback',
+        'Failed to fall back to Chromium playback after native audio output failed'
+      )
+    })
+  }
+
+  function ensureNativeAudioOutputListeners(store: PlayerStoreInstance): void {
+    if (unsubscribeNativeAudioOutputEnded) {
+      return
+    }
+
+    unsubscribeNativeAudioOutputEnded = nativeAudioOutputPlayback.onEnded(() => {
+      if (!nativeAudioOutputOwnership.active) {
+        return
+      }
+
+      nativeAudioOutputOwnership.release()
+      stopNativeAudioOutputProgressClock()
+      if (
+        store.playMode === PLAY_MODE.SINGLE_LOOP &&
+        store.currentIndex >= 0 &&
+        store.currentSong
+      ) {
+        void store.playSongByIndex(store.currentIndex, store.currentSong).catch(error => {
+          handlePlaybackActionFailure(
+            store,
+            error,
+            'nativeAudioOutputEnded.singleLoop',
+            'Failed to replay the current native audio output song after it ended'
+          )
+          store.playNext()
+        })
+        return
+      }
+
+      store.playNext()
+    })
+
+    unsubscribeNativeAudioOutputError = nativeAudioOutputPlayback.onError(error => {
+      handleNativeAudioOutputRuntimeError(store, error)
+    })
+
+    unsubscribeNativeAudioOutputStatus =
+      nativeAudioOutputPlayback.onStatus?.(status => {
+        syncNativeAudioOutputProgressFromStatus(store, status)
+      }) ?? null
+  }
+
+  async function stopNativeAudioOutputPlayback(force = false): Promise<void> {
+    if (!force && !isNativeAudioOutputPlaybackClaimed()) {
+      return
+    }
+
+    nativeAudioOutputSeekGeneration += 1
+    nativeAudioOutputOwnership.release()
+    resetNativeAudioOutputRuntimeState()
+    stopNativeAudioOutputProgressClock()
+    await nativeAudioOutputPlayback.stop()
+  }
+
+  async function tryNativeAudioOutputPlayback(
+    store: PlayerStoreInstance,
+    song: Song,
+    startSeconds: number,
+    isPlaybackCurrent: () => boolean = () => true
+  ): Promise<boolean> {
+    const request = {
+      song,
+      startSeconds,
+      volume: store.volume
+    }
+
+    if (!getPlatformService().isElectron()) {
+      return false
+    }
+
+    const requiredPlaybackError = shouldKeepPlaybackOnNativeFailure(
+      request,
+      '当前音源不能由原生独占输出播放，已阻止回退到 Chromium。'
+    )
+
+    if (!nativeAudioOutputPlayback.canPlay(request)) {
+      if (requiredPlaybackError) {
+        await releaseChromiumPlaybackSource()
+        await stopNativeAudioOutputPlayback()
+        throw requiredPlaybackError
+      }
+
+      return false
+    }
+
+    nativeAudioOutputOwnership.beginPendingStart(true)
+    await releaseChromiumPlaybackSource()
+
+    let didStart: boolean
+    try {
+      didStart = await nativeAudioOutputPlayback.play(request)
+    } catch (error) {
+      if (!isPlaybackCurrent()) {
+        return false
+      }
+
+      await stopNativeAudioOutputPlayback(true).catch(stopError => {
+        reportPlayerStoreError(
+          stopError,
+          'tryNativeAudioOutputPlayback.stopAfterFailure',
+          'Failed to stop native audio output after startup failure'
+        )
+      })
+
+      if (isNativeAudioOutputRetryablePlaybackError(error)) {
+        throw error
+      }
+
+      if (requiredPlaybackError) {
+        throw createNativePlaybackRequiredError(
+          '原生独占输出启动失败，已阻止回退到 Chromium。',
+          error
+        )
+      }
+
+      console.warn(
+        '[playerStore] Native audio output failed to start; falling back to Chromium',
+        error
+      )
+      nativeAudioOutputOwnership.release()
+      resetNativeAudioOutputRuntimeState()
+      return false
+    }
+
+    if (!isPlaybackCurrent()) {
+      return false
+    }
+
+    if (!didStart) {
+      await stopNativeAudioOutputPlayback(true).catch(stopError => {
+        reportPlayerStoreError(
+          stopError,
+          'tryNativeAudioOutputPlayback.stopAfterNotStarted',
+          'Failed to stop native audio output after startup returned not-started'
+        )
+      })
+      if (requiredPlaybackError) {
+        throw createNativePlaybackRequiredError('原生独占输出未能开始播放，已阻止回退到 Chromium。')
+      }
+      return false
+    }
+
+    nativeAudioOutputOwnership.markStarting()
+    const { shouldPlayAfterStart, shouldPauseAfterStart, shouldResumeAfterPendingPause } =
+      nativeAudioOutputOwnership.consumePendingIntent()
+    store.progress = startSeconds > 0 ? startSeconds : 0
+    store.applyResolvedLyricIndex(store.progress)
+    suspendNativeAudioOutputProgressClock(store.progress)
+
+    if (
+      (!Number.isFinite(store.duration) || store.duration <= 0) &&
+      Number.isFinite(song.duration) &&
+      song.duration > 0
+    ) {
+      store.duration = song.duration / 1000
+    }
+
+    if (!shouldPlayAfterStart) {
+      store.playing = false
+      if (shouldPauseAfterStart) {
+        await nativeAudioOutputPlayback.pause().catch(error => {
+          reportPlayerStoreError(
+            error,
+            'tryNativeAudioOutputPlayback.pauseAfterPendingStart',
+            'Failed to pause native audio output after pending playback was paused'
+          )
+        })
+      }
+      store.notifyPlayingState(false)
+      notifyPlayerStateSnapshot(store)
+      return true
+    }
+
+    if (shouldResumeAfterPendingPause) {
+      await nativeAudioOutputPlayback.resume().catch(error => {
+        reportPlayerStoreError(
+          error,
+          'tryNativeAudioOutputPlayback.resumeAfterPendingStartPause',
+          'Failed to resume native audio output after pending playback was played again'
+        )
+      })
+    }
+
+    store.playing = true
+    store.notifyPlayingState(true)
+    return true
+  }
+
+  function seekNativeAudioOutputPlayback(store: PlayerStoreInstance, time: number): boolean {
+    if (!nativeAudioOutputOwnership.active) {
+      return false
+    }
+
+    const song = store.currentSong
+    if (!song) {
+      return false
+    }
+
+    const request = {
+      song,
+      startSeconds: time,
+      volume: store.volume
+    }
+    const shouldKeepPlaying = store.playing
+    const seekGeneration = ++nativeAudioOutputSeekGeneration
+    const isCurrentNativeSeek = (): boolean =>
+      nativeAudioOutputSeekGeneration === seekGeneration &&
+      nativeAudioOutputOwnership.active &&
+      Boolean(store.currentSong) &&
+      isSameSong(store.currentSong!, song)
+    const requiredPlaybackError = shouldKeepPlaybackOnNativeFailure(
+      request,
+      '原生独占输出不能在当前音源上跳转，已阻止回退到 Chromium。'
+    )
+
+    if (!getPlatformService().isElectron() || !nativeAudioOutputPlayback.canPlay(request)) {
+      if (requiredPlaybackError) {
+        nativeAudioOutputOwnership.release()
+        resetNativeAudioOutputRuntimeState()
+        stopNativeAudioOutputProgressClock()
+        void releaseChromiumPlaybackSource()
+        void nativeAudioOutputPlayback.stop().catch(error => {
+          reportPlayerStoreError(
+            error,
+            'seek.native.required.stop',
+            'Failed to stop native audio output after required seek became unavailable'
+          )
+        })
+        handlePlaybackActionFailure(
+          store,
+          requiredPlaybackError,
+          'seek.native.required',
+          'Native audio output cannot seek on the selected output mode'
+        )
+        return true
+      }
+
+      if (song.url) {
+        void fallbackToChromiumPlayback(store, song, time, {
+          playing: shouldKeepPlaying
+        }).catch(error => {
+          handlePlaybackActionFailure(
+            store,
+            error,
+            'seek.native.fallback',
+            'Failed to fall back to Chromium playback during native audio output seek'
+          )
+        })
+      }
+      return true
+    }
+
+    nativeAudioOutputOwnership.beginSeekStart()
+    suspendNativeAudioOutputProgressClock(time)
+    void nativeAudioOutputPlayback
+      .play(request)
+      .then(async didStart => {
+        if (!isCurrentNativeSeek()) {
+          return
+        }
+
+        if (!didStart) {
+          if (requiredPlaybackError) {
+            await stopNativeAudioOutputPlayback(true).catch(stopError => {
+              reportPlayerStoreError(
+                stopError,
+                'seek.native.required.stopAfterNotStarted',
+                'Failed to stop native audio output after required seek did not restart'
+              )
+            })
+            handlePlaybackActionFailure(
+              store,
+              requiredPlaybackError,
+              'seek.native.required',
+              'Native audio output did not restart after seek while exclusive playback is required'
+            )
+            return
+          }
+
+          if (!song.url) {
+            await stopNativeAudioOutputPlayback(true).catch(stopError => {
+              reportPlayerStoreError(
+                stopError,
+                'seek.native.stopAfterNotStarted',
+                'Failed to stop native audio output after seek did not restart'
+              )
+            })
+            return
+          }
+
+          await fallbackToChromiumPlayback(store, song, time, {
+            playing: shouldKeepPlaying
+          })
+          return
+        }
+
+        if (!shouldKeepPlaying) {
+          await nativeAudioOutputPlayback.pause()
+          pauseNativeAudioOutputProgressClock(store)
+        }
+      })
+      .catch(error => {
+        console.warn('[playerStore] Native audio output seek failed', error)
+        if (!isCurrentNativeSeek()) {
+          return
+        }
+
+        if (isNativeAudioOutputRetryablePlaybackError(error) && store.currentIndex >= 0) {
+          const retryIndex = store.currentIndex
+          clearNativeAudioOutputPlaybackUrl(store, song)
+          void stopNativeAudioOutputPlayback(true)
+            .catch(stopError => {
+              reportPlayerStoreError(
+                stopError,
+                'seek.native.retryFreshUrl.stopAfterFailure',
+                'Failed to stop native audio output before refreshing a failed seek URL'
+              )
+            })
+            .then(() => store.playSongWithDetails(retryIndex))
+            .then(() => {
+              if (
+                store.currentIndex !== retryIndex ||
+                !store.currentSong ||
+                !isSameSong(store.currentSong, song)
+              ) {
+                return
+              }
+
+              store.playing = shouldKeepPlaying
+              store.notifyPlayingState(shouldKeepPlaying)
+              store.seek(time)
+            })
+            .catch(retryError => {
+              handlePlaybackActionFailure(
+                store,
+                retryError,
+                'seek.native.retryFreshUrl',
+                'Failed to refresh playback URL after native audio output seek authorization expired'
+              )
+            })
+          return
+        }
+
+        if (!song.url) {
+          void stopNativeAudioOutputPlayback(true).catch(stopError => {
+            reportPlayerStoreError(
+              stopError,
+              'seek.native.stopAfterFailure',
+              'Failed to stop native audio output after seek failed'
+            )
+          })
+          return
+        }
+
+        if (requiredPlaybackError) {
+          void stopNativeAudioOutputPlayback(true)
+            .catch(stopError => {
+              reportPlayerStoreError(
+                stopError,
+                'seek.native.required.stopAfterFailure',
+                'Failed to stop native audio output after required seek failed'
+              )
+            })
+            .then(() => {
+              handlePlaybackActionFailure(
+                store,
+                createNativePlaybackRequiredError(
+                  '原生独占输出跳转失败，已阻止回退到 Chromium。',
+                  error
+                ),
+                'seek.native.required',
+                'Native audio output seek failed while exclusive playback is required'
+              )
+            })
+          return
+        }
+
+        void fallbackToChromiumPlayback(store, song, time, {
+          playing: shouldKeepPlaying
+        }).catch(fallbackError => {
+          handlePlaybackActionFailure(
+            store,
+            fallbackError,
+            'seek.native.fallback',
+            'Failed to fall back to Chromium playback after native audio output seek failed'
+          )
+        })
+      })
+
+    return true
   }
 
   function handlePlaybackActionFailure(
@@ -340,7 +1118,9 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       seek(time: number): void {
         const store = this as unknown as PlayerStoreInstance
 
-        audioManager.seek(time)
+        if (!seekNativeAudioOutputPlayback(store, time)) {
+          audioManager.seek(time)
+        }
         this.progress = time
         this.applyResolvedLyricIndex(time)
         notifyLyricTimeUpdate(store, getPlatformService(), time, 'seek')
@@ -361,6 +1141,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.initialized = true
         runtime.setLyricEngine(new LyricEngine())
         runtime.setCurrentLyricLineProvider(() => getCurrentLyricLine(store))
+        ensureNativeAudioOutputListeners(store)
 
         audioManager.setVolume(this.volume)
 
@@ -368,6 +1149,10 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           this.$state,
           {
             onTimeUpdate: (time: number) => {
+              if (isNativeAudioOutputPlaybackClaimed()) {
+                return
+              }
+
               this.progress = time
               if (this.updateLyricIndex(time)) {
                 notifyLyricTimeUpdate(store, getPlatformService(), time, 'lyric-change')
@@ -416,21 +1201,29 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
               }
             },
             onEnded: () => {
+              if (isNativeAudioOutputPlaybackClaimed()) {
+                return
+              }
+
               this.handleSongEnd()
             },
             onPlay: () => {
+              if (isNativeAudioOutputPlaybackClaimed()) {
+                return
+              }
+
               this.playing = true
               this.notifyPlayingState(true)
             },
             onPause: () => {
-              if (this.trackSwitching) {
+              if (this.trackSwitching || isNativeAudioOutputPlaybackClaimed()) {
                 return
               }
               this.playing = false
               this.notifyPlayingState(false)
             },
             onError: (error: unknown) => {
-              if (this.trackSwitching) {
+              if (this.trackSwitching || isNativeAudioOutputPlaybackClaimed()) {
                 return
               }
 
@@ -488,6 +1281,33 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
             }
 
             if (!store.playing) {
+              if (nativeAudioOutputOwnership.pendingStart) {
+                nativeAudioOutputOwnership.pendingPlaybackIntent = true
+                store.playing = true
+                store.notifyPlayingState(true)
+                notifyPlayerStateSnapshot(store)
+                return
+              }
+
+              if (nativeAudioOutputOwnership.active) {
+                store.playing = true
+                store.notifyPlayingState(true)
+                if (
+                  nativeAudioOutputOwnership.wasPlayingFromHelper &&
+                  !nativeAudioOutputOwnership.progressClockSuspended
+                ) {
+                  resumeNativeAudioOutputProgressClock(store)
+                }
+                return nativeAudioOutputPlayback.resume().catch(error => {
+                  reportPlayerStoreError(
+                    error,
+                    'setupIpcListeners.play.native',
+                    'Failed to resume native audio output playback'
+                  )
+                  throw error
+                })
+              }
+
               return audioManager.play().catch(error => {
                 if (!(error instanceof Error) || error.name !== 'AbortError') {
                   reportPlayerStoreError(
@@ -501,9 +1321,38 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
             }
           },
           pause: () => {
-            if (store.initialized && store.playing) {
-              audioManager.pause()
+            if (!store.initialized) {
+              return
             }
+
+            if (nativeAudioOutputOwnership.pendingStart) {
+              nativeAudioOutputOwnership.pendingPlaybackIntent = false
+              store.playing = false
+              store.notifyPlayingState(false)
+              suspendNativeAudioOutputProgressClock(store.progress)
+              notifyPlayerStateSnapshot(store)
+              return
+            }
+
+            if (!store.playing) {
+              return
+            }
+
+            if (nativeAudioOutputOwnership.active) {
+              store.playing = false
+              store.notifyPlayingState(false)
+              pauseNativeAudioOutputProgressClock(store)
+              void nativeAudioOutputPlayback.pause().catch(error => {
+                reportPlayerStoreError(
+                  error,
+                  'setupIpcListeners.pause.native',
+                  'Failed to pause native audio output playback'
+                )
+              })
+              return
+            }
+
+            audioManager.pause()
           },
           playPrev: () => store.playPrev(),
           playNext: () => store.playNext(),
@@ -555,7 +1404,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       },
 
       async handleAudioError(error: unknown): Promise<void> {
-        if (this.trackSwitching) {
+        if (this.trackSwitching || isNativeAudioOutputPlaybackClaimed()) {
           return
         }
 
@@ -666,20 +1515,36 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         notifyPlayerStateSnapshot(this as unknown as PlayerStoreInstance)
       },
 
-      async playSongByIndex(index: number, song?: Song): Promise<void> {
+      async playSongByIndex(index: number, song?: Song, startSeconds?: number): Promise<void> {
         if (index < 0 || index >= this.songList.length) {
           return
         }
 
+        const playbackGeneration = ++playbackStartGeneration
+        const isCurrentPlaybackStart = (): boolean => playbackGeneration === playbackStartGeneration
         const wasInitialized = this.initialized
         this.initAudio()
+        const hasExplicitStartSeconds =
+          typeof startSeconds === 'number' && Number.isFinite(startSeconds) && startSeconds >= 0
+        const explicitStartSeconds = hasExplicitStartSeconds ? Math.max(0, startSeconds) : 0
 
         const targetSong = song ?? this.songList[index]
+        const localPlaybackUrl = resolveLocalLibraryPlaybackUrl(targetSong)
+        if (!targetSong.url && localPlaybackUrl) {
+          targetSong.url = localPlaybackUrl
+        }
+
         const shouldResumeRestoredProgress =
-          !wasInitialized && Boolean(this.currentSong) && isSameSong(this.currentSong!, targetSong)
+          !hasExplicitStartSeconds &&
+          !wasInitialized &&
+          Boolean(this.currentSong) &&
+          isSameSong(this.currentSong!, targetSong)
         const restoredResumeProgress = shouldResumeRestoredProgress
           ? resolveStartupResumeProgress(this.progress, this.duration)
           : 0
+        const playbackStartSeconds = hasExplicitStartSeconds
+          ? explicitStartSeconds
+          : restoredResumeProgress
 
         if (!targetSong.url) {
           const error = new Error('No URL for song')
@@ -703,15 +1568,34 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.trackSwitching = true
 
         try {
+          const nativeDidStart = await tryNativeAudioOutputPlayback(
+            this,
+            targetSong,
+            playbackStartSeconds,
+            isCurrentPlaybackStart
+          )
+          if (!isCurrentPlaybackStart()) {
+            return
+          }
+
+          if (nativeDidStart) {
+            return
+          }
+
+          await stopNativeAudioOutputPlayback(true)
           const playbackUrl = resolvePlaybackMediaUrl(
             String(targetSong.url),
             getPlatformService().isElectron()
           )
           await audioManager.play(playbackUrl)
-          if (shouldResumeRestoredProgress) {
-            if (restoredResumeProgress > 0) {
+          if (!isCurrentPlaybackStart()) {
+            return
+          }
+
+          if (playbackStartSeconds > 0 || shouldResumeRestoredProgress) {
+            if (playbackStartSeconds > 0) {
               try {
-                this.seek(restoredResumeProgress)
+                this.seek(playbackStartSeconds)
               } catch (seekError) {
                 console.warn(
                   '[playerStore] Failed to restore playback progress; starting from beginning',
@@ -728,11 +1612,21 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           }
           this.playing = true
         } catch (error) {
+          if (!isCurrentPlaybackStart()) {
+            return
+          }
+
+          if (isNativeAudioOutputRequiredError(error)) {
+            throw error
+          }
+
           reportPlayerStoreError(error, 'playSongByIndex', 'Playback failed')
           this.playing = false
           throw error
         } finally {
-          this.trackSwitching = false
+          if (isCurrentPlaybackStart()) {
+            this.trackSwitching = false
+          }
         }
       },
 
@@ -741,6 +1635,31 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
           index,
           autoSkip
         )
+      },
+
+      async restartPlaybackForAudioOutputChange(): Promise<void> {
+        const restartIndex = this.currentIndex
+        const restartSong = this.currentSong
+        const restartProgress =
+          Number.isFinite(this.progress) && this.progress > 0 ? this.progress : 0
+        const hasPendingPlayIntent =
+          nativeAudioOutputOwnership.pendingStart &&
+          nativeAudioOutputOwnership.pendingPlaybackIntent !== false
+
+        if (restartIndex < 0 || restartIndex >= this.songList.length || !restartSong) {
+          await stopNativeAudioOutputPlayback(true)
+          return
+        }
+
+        if (!this.playing && !hasPendingPlayIntent) {
+          await stopNativeAudioOutputPlayback(true)
+          this.playing = false
+          this.notifyPlayingState(false)
+          notifyPlayerStateSnapshot(this as unknown as PlayerStoreInstance)
+          return
+        }
+
+        await this.playSongByIndex(restartIndex, restartSong, restartProgress)
       },
 
       togglePlay(): void {
@@ -758,6 +1677,53 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
               )
             })
           }
+          return
+        }
+
+        if (nativeAudioOutputOwnership.pendingStart) {
+          const nextPlaying = !(nativeAudioOutputOwnership.pendingPlaybackIntent ?? true)
+          nativeAudioOutputOwnership.pendingPlaybackIntent = nextPlaying
+          this.playing = nextPlaying
+          this.notifyPlayingState(nextPlaying)
+          if (!nextPlaying) {
+            suspendNativeAudioOutputProgressClock(store.progress)
+          }
+          notifyPlayerStateSnapshot(store)
+          return
+        }
+
+        if (nativeAudioOutputOwnership.active) {
+          if (this.playing) {
+            this.playing = false
+            this.notifyPlayingState(false)
+            pauseNativeAudioOutputProgressClock(store)
+            void nativeAudioOutputPlayback.pause().catch(error => {
+              handlePlaybackActionFailure(
+                store,
+                error,
+                'togglePlay.native.pause',
+                'Failed to pause native audio output playback'
+              )
+            })
+            return
+          }
+
+          this.playing = true
+          this.notifyPlayingState(true)
+          if (
+            nativeAudioOutputOwnership.wasPlayingFromHelper &&
+            !nativeAudioOutputOwnership.progressClockSuspended
+          ) {
+            resumeNativeAudioOutputProgressClock(store)
+          }
+          void nativeAudioOutputPlayback.resume().catch(error => {
+            handlePlaybackActionFailure(
+              store,
+              error,
+              'togglePlay.native.resume',
+              'Failed to resume native audio output playback'
+            )
+          })
           return
         }
 
@@ -819,6 +1785,15 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       setVolume(vol: number): void {
         this.volume = Math.max(0, Math.min(1, vol))
         audioManager.setVolume(this.volume)
+        if (nativeAudioOutputOwnership.active) {
+          void nativeAudioOutputPlayback.setVolume(this.volume).catch(error => {
+            reportPlayerStoreError(
+              error,
+              'setVolume.native',
+              'Failed to sync native audio output volume'
+            )
+          })
+        }
       },
 
       toggleMute(): void {
@@ -898,6 +1873,19 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         this.progress = 0
         this.duration = 0
         this.initialized = false
+        unsubscribeNativeAudioOutputEnded?.()
+        unsubscribeNativeAudioOutputEnded = null
+        unsubscribeNativeAudioOutputError?.()
+        unsubscribeNativeAudioOutputError = null
+        unsubscribeNativeAudioOutputStatus?.()
+        unsubscribeNativeAudioOutputStatus = null
+        void stopNativeAudioOutputPlayback().catch(error => {
+          reportPlayerStoreError(
+            error,
+            'clearPlaylist.native',
+            'Failed to stop native audio output playback'
+          )
+        })
 
         notifyPlayerStateSnapshot(store)
         notifyLyricTimeUpdate(store, getPlatformService(), 0, 'reset')

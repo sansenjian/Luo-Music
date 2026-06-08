@@ -3,6 +3,7 @@ import type { Song } from '@shared/types/schemas'
 import { isLocalLibrarySong } from '@shared/types/localLibrary'
 import { resolveMediaId } from '@/utils/songIdentity'
 import type { MusicService } from '@/services/musicService'
+import { applySongUrlResultToSong } from '@/utils/player/songUrlResult'
 
 interface ErrorHandlerOptions {
   musicService: Pick<MusicService, 'getSongUrl'>
@@ -98,7 +99,10 @@ export class PlaybackErrorHandler implements ErrorHandler {
     const mediaId = resolveMediaId(song)
 
     try {
-      const url = await this.musicService.getSongUrl(platform, song.id, { mediaId })
+      const url = applySongUrlResultToSong(
+        song,
+        await this.musicService.getSongUrl(platform, song.id, { mediaId })
+      )
       if (url) {
         return { url }
       }

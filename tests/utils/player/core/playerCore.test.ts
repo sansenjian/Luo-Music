@@ -5,7 +5,7 @@ import { VOLUME } from '@/utils/player/constants/volume'
 
 type MockAudioElement = Omit<
   HTMLAudioElement,
-  'readyState' | 'paused' | 'ended' | 'duration' | 'buffered'
+  'readyState' | 'paused' | 'ended' | 'duration' | 'buffered' | 'sinkId' | 'setSinkId'
 > & {
   readyState: number
   paused: boolean
@@ -14,6 +14,8 @@ type MockAudioElement = Omit<
   buffered: TimeRanges
   disableRemotePlayback: boolean
   controlsList: Pick<DOMTokenList, 'contains'>
+  sinkId: string
+  setSinkId?: (sinkId: string) => Promise<void>
   trigger: (event: string, payload: Event) => void
 }
 
@@ -186,6 +188,66 @@ describe('PlayerCore', () => {
       player.pause()
       const { audio } = getInternals(player)
       expect(audio.paused).toBe(true)
+    })
+
+    it('should release the current audio source for native playback handoff', async () => {
+      vi.useFakeTimers()
+      try {
+        const { audio } = getInternals(player)
+        audio.src = 'luo-media://remote?url=https%3A%2F%2Fsong.test%2Fremote.flac'
+        audio.paused = false
+        audio.crossOrigin = 'anonymous'
+        audio.setAttribute('crossorigin', 'anonymous')
+        audio.load = vi.fn()
+
+        const releasePromise = player.releaseSource()
+        await Promise.resolve()
+
+        expect(audio.paused).toBe(true)
+        expect(audio.src).toBe('')
+        expect(audio.crossOrigin).toBeNull()
+        expect(audio.getAttribute('crossorigin')).toBeNull()
+        expect(audio.load).toHaveBeenCalledOnce()
+        expect(player.state).toBe(PlayerState.IDLE)
+        await vi.advanceTimersByTimeAsync(50)
+        await releasePromise
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should close visualization AudioContext during native playback handoff', async () => {
+      vi.useFakeTimers()
+      try {
+        const { audio } = getInternals(player)
+        audio.src = 'https://song.test/visualized.mp3'
+        player.getAnalyserData()
+        const audioContext = getInternals(player).audioContext
+        const closeSpy = vi.spyOn(audioContext!, 'close')
+
+        const releasePromise = player.releaseSource()
+        await vi.advanceTimersByTimeAsync(50)
+        await releasePromise
+
+        expect(closeSpy).toHaveBeenCalledOnce()
+        expect(getInternals(player).audioContext).toBeNull()
+        expect(getInternals(player).analyser).toBeNull()
+        expect(getInternals(player).gainNode).toBeNull()
+        expect(getInternals(player).source).toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should not delay native playback handoff when no Chromium source is loaded', async () => {
+      vi.useFakeTimers()
+      try {
+        const releasePromise = player.releaseSource()
+        await releasePromise
+        expect(player.state).toBe(PlayerState.IDLE)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('should toggle playback state', async () => {
@@ -408,6 +470,40 @@ describe('PlayerCore', () => {
       expect(audio.disableRemotePlayback).toBe(false)
       expect(audio.getAttribute('disableremoteplayback')).toBeNull()
       expect(audio.controlsList.contains('noremoteplayback')).toBe(false)
+    })
+  })
+
+  describe('output device selection', () => {
+    it('sets Chromium audio output device through setSinkId', async () => {
+      const { audio } = getInternals(player)
+      const setSinkIdSpy = vi.spyOn(audio, 'setSinkId')
+
+      await player.setOutputDevice(' usb-dac ')
+
+      expect(setSinkIdSpy).toHaveBeenCalledWith('usb-dac')
+      expect(player.getOutputDeviceId()).toBe('usb-dac')
+    })
+
+    it('skips setSinkId when the requested output device is already active', async () => {
+      const { audio } = getInternals(player)
+      audio.sinkId = 'usb-dac'
+      const setSinkIdSpy = vi.spyOn(audio, 'setSinkId')
+
+      await player.setOutputDevice(' usb-dac ')
+
+      expect(setSinkIdSpy).not.toHaveBeenCalled()
+    })
+
+    it('throws when Chromium output device selection is unsupported', async () => {
+      const { audio } = getInternals(player)
+      Object.defineProperty(audio, 'setSinkId', {
+        configurable: true,
+        value: undefined
+      })
+
+      await expect(player.setOutputDevice('usb-dac')).rejects.toThrow(
+        'Audio output device selection is not supported in this runtime.'
+      )
     })
   })
 

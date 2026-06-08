@@ -11,7 +11,8 @@ import type {
   PlaylistDetail,
   SearchResult,
   Song,
-  SongUrlOptions
+  SongUrlOptions,
+  SongUrlResult
 } from '@/platform/music/interface'
 import type {
   PlatformBooleanCapability,
@@ -32,7 +33,7 @@ export type MusicService = {
     platform: string,
     id: string | number,
     options?: SongUrlOptions | string
-  ): Promise<string | null>
+  ): Promise<SongUrlResult | null>
   getSongDetail(platform: string, id: string | number): Promise<Song | null>
   getLyric(platform: string, id: string | number): Promise<LyricResult>
   getPlaylistDetail(platform: string, id: string | number): Promise<PlaylistDetail | null>
@@ -98,7 +99,7 @@ export function createMusicService(deps: MusicServiceDeps = {}): MusicService {
       platform: string,
       id: string | number,
       options?: SongUrlOptions | string
-    ): Promise<string | null> {
+    ): Promise<SongUrlResult | null> {
       const adapter = await resolveAdapter(platform)
       return adapter.getSongUrl(id, options)
     },

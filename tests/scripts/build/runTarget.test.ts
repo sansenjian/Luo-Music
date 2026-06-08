@@ -17,6 +17,12 @@ type BuildEvent = {
   tasks?: string[]
 }
 
+const electronPackagingTempEnv = {
+  TEMP: 'D:\\luo-music-packaging-temp',
+  TMP: 'D:\\luo-music-packaging-temp',
+  TMPDIR: 'D:\\luo-music-packaging-temp'
+}
+
 function createWorkflowHarness() {
   const events: BuildEvent[] = []
   const record = (name: string, label: string, detail?: unknown) => {
@@ -25,10 +31,15 @@ function createWorkflowHarness() {
   const workflows = createWorkflows({
     clean: (targets: string[], options?: Record<string, unknown>) =>
       record('clean', targets.join(','), options),
+    getElectronPackagingTempEnv: () => electronPackagingTempEnv,
     getNpmCommandParts: () => ['npm'],
-    npmRun: (scriptName: string, args: string[] = []) => record('npmRun', scriptName, args),
-    npmRunAsync: async (scriptName: string, args: string[] = []) =>
-      record('npmRunAsync', scriptName, args),
+    npmRun: (scriptName: string, args: string[] = [], options?: Record<string, unknown>) =>
+      record('npmRun', scriptName, { args, options }),
+    npmRunAsync: async (
+      scriptName: string,
+      args: string[] = [],
+      options?: Record<string, unknown>
+    ) => record('npmRunAsync', scriptName, { args, options }),
     packageThirdPartyPlugins: async () => record('packageThirdPartyPlugins', 'default'),
     checkArtifactBudgets: async (profiles: string[]) =>
       record('checkArtifactBudgets', profiles.join(',')),
@@ -90,6 +101,19 @@ describe('run-target build workflows', () => {
       const bundleParallelIndex = events.findIndex(
         event => event.name === 'parallel' && event.label === 'electron-bundle'
       )
+      const bundleEvent = events.find(
+        event => event.name === 'parallel' && event.label === 'electron-bundle'
+      )
+      expect(bundleEvent?.tasks).toEqual(
+        expect.arrayContaining(['build:smtc-helper', 'build:audio-output-helper'])
+      )
+      expect(
+        events.find(
+          event => event.name === 'npmRunAsync' && event.label === 'build:audio-output-helper'
+        )?.detail
+      ).toMatchObject({
+        args: ['--', '--release', '--copy-resource', '--required']
+      })
       const pluginPackageIndex = events.findIndex(
         event => event.name === 'packageThirdPartyPlugins'
       )
@@ -112,6 +136,37 @@ describe('run-target build workflows', () => {
 
     expect(prepareIndex).toBeGreaterThanOrEqual(0)
     expect(forgeIndex).toBeGreaterThan(prepareIndex)
+  })
+
+  it('uses the packaging temp directory for Electron packaging commands', async () => {
+    const { events, workflows } = createWorkflowHarness()
+
+    await workflows.electron()
+    await workflows.package()
+    await workflows['electron-portable']()
+
+    expect(
+      events
+        .filter(
+          event =>
+            (event.name === 'npmRun' && event.label === 'electron-forge') ||
+            (event.name === 'npmRun' && event.label === 'electron-builder')
+        )
+        .map(event => event.detail)
+    ).toEqual([
+      {
+        args: ['--', 'make'],
+        options: { env: electronPackagingTempEnv }
+      },
+      {
+        args: ['--', 'package'],
+        options: { env: electronPackagingTempEnv }
+      },
+      {
+        args: ['--', '--config', 'electron/builder.portable.cjs', '--publish', 'never'],
+        options: { env: electronPackagingTempEnv }
+      }
+    ])
   })
 
   it('builds full Electron packaging outputs from a single shared prepare step', async () => {
@@ -141,6 +196,24 @@ describe('run-target build workflows', () => {
       event => event.name === 'parallel' && event.label === 'electron-all:package'
     )
     expect(packageEvent?.tasks).toEqual(['electron-forge:make', 'electron-builder:portable'])
+    expect(
+      events
+        .filter(
+          event =>
+            (event.name === 'npmRunAsync' && event.label === 'electron-forge') ||
+            (event.name === 'npmRunAsync' && event.label === 'electron-builder')
+        )
+        .map(event => event.detail)
+    ).toEqual([
+      {
+        args: ['--', 'make'],
+        options: { env: electronPackagingTempEnv }
+      },
+      {
+        args: ['--', '--config', 'electron/builder.portable.cjs', '--publish', 'never'],
+        options: { env: electronPackagingTempEnv }
+      }
+    ])
     const budgetEvent = events.find(
       event =>
         event.name === 'checkArtifactBudgets' && event.label === 'bundle,plugins,electron,portable'
@@ -163,6 +236,19 @@ describe('run-target build workflows', () => {
 
     expect(finalizeIndex).toBeGreaterThanOrEqual(0)
     expect(budgetIndex).toBeGreaterThan(finalizeIndex)
+  })
+
+  it('uses the packaging temp directory for fast make', async () => {
+    const { events, workflows } = createWorkflowHarness()
+
+    await workflows['make-fast']()
+
+    const makeFastEvent = events.find(
+      event => event.name === 'runWithEnvAsync' && event.label.startsWith('LUO_FAST_MAKE=1')
+    )
+    expect(makeFastEvent?.label).toContain(`TEMP=${electronPackagingTempEnv.TEMP}`)
+    expect(makeFastEvent?.label).toContain(`TMP=${electronPackagingTempEnv.TMP}`)
+    expect(makeFastEvent?.label).toContain(`TMPDIR=${electronPackagingTempEnv.TMPDIR}`)
   })
 
   it('logs and rethrows failures from timed serial steps', async () => {

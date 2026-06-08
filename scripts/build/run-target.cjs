@@ -5,6 +5,7 @@ const path = require('node:path')
 const { cleanTargets } = require('./clean-targets.cjs')
 
 const projectRoot = path.resolve(__dirname, '..', '..')
+const packagingShared = require(path.join(projectRoot, 'config', 'packaging.shared.cjs'))
 
 function run(command, args = [], options = {}) {
   const result = spawnSync(command, args, {
@@ -78,16 +79,18 @@ function getNpmCommandParts() {
   return [runner.command, ...runner.prefixArgs]
 }
 
-function npmRun(scriptName, args = []) {
+function npmRun(scriptName, args = [], options = {}) {
   const runner = getNpmRunner()
   run(runner.command, [...runner.prefixArgs, 'run', scriptName, ...args], {
+    env: options.env,
     shell: runner.shell
   })
 }
 
-function npmRunAsync(scriptName, args = []) {
+function npmRunAsync(scriptName, args = [], options = {}) {
   const runner = getNpmRunner()
   return runAsync(runner.command, [...runner.prefixArgs, 'run', scriptName, ...args], {
+    env: options.env,
     shell: runner.shell
   })
 }
@@ -107,6 +110,17 @@ function runWithEnvAsync(envEntries, commandArgs) {
 
 function clean(targets, options = {}) {
   cleanTargets(targets, options)
+}
+
+function getElectronPackagingTempEnv() {
+  const tempDir = packagingShared.packagingTempDir
+  fs.mkdirSync(tempDir, { recursive: true })
+
+  return {
+    TEMP: tempDir,
+    TMP: tempDir,
+    TMPDIR: tempDir
+  }
 }
 
 function toBuildTargetPath(absolutePath) {
@@ -197,6 +211,7 @@ function createWorkflows(overrides = {}) {
     clean,
     checkArtifactBudgets,
     getElectronBundleCleanTargets,
+    getElectronPackagingTempEnv,
     getNpmCommandParts,
     npmRun,
     npmRunAsync,
@@ -260,6 +275,13 @@ function createWorkflows(overrides = {}) {
             '--copy-resource',
             '--required'
           ]),
+        'build:audio-output-helper': () =>
+          deps.npmRunAsync('build:audio-output-helper', [
+            '--',
+            '--release',
+            '--copy-resource',
+            '--required'
+          ]),
         'build:qq-runtime': () => deps.npmRunAsync('build:qq-runtime'),
         'build:server': () => deps.npmRunAsync('build:server'),
         'electron-vite:build': () => deps.npmRunAsync('electron-vite:build')
@@ -271,7 +293,11 @@ function createWorkflows(overrides = {}) {
         deps.clean(['out/LUO Music-win32-x64', 'out/make'], { force: true })
       )
       await buildElectronArtifacts('electron')
-      await deps.runStep('electron:make', () => deps.npmRun('electron-forge', ['--', 'make']))
+      await deps.runStep('electron:make', () =>
+        deps.npmRun('electron-forge', ['--', 'make'], {
+          env: deps.getElectronPackagingTempEnv()
+        })
+      )
       await checkPackagingBudgets('electron', ['bundle', 'plugins', 'electron'])
     },
 
@@ -281,13 +307,13 @@ function createWorkflows(overrides = {}) {
       )
       await buildElectronArtifacts('electron-portable')
       await deps.runStep('electron-portable:build', () =>
-        deps.npmRun('electron-builder', [
-          '--',
-          '--config',
-          'electron/builder.portable.cjs',
-          '--publish',
-          'never'
-        ])
+        deps.npmRun(
+          'electron-builder',
+          ['--', '--config', 'electron/builder.portable.cjs', '--publish', 'never'],
+          {
+            env: deps.getElectronPackagingTempEnv()
+          }
+        )
       )
       await deps.runStep('electron-portable:finalize', () =>
         deps.runNode('scripts/build/finalize-portable-output.cjs', ['out/portable'])
@@ -300,7 +326,11 @@ function createWorkflows(overrides = {}) {
         deps.clean(['out/LUO Music-win32-x64'], { force: true })
       )
       await buildElectronArtifacts('package')
-      await deps.runStep('package:forge', () => deps.npmRun('electron-forge', ['--', 'package']))
+      await deps.runStep('package:forge', () =>
+        deps.npmRun('electron-forge', ['--', 'package'], {
+          env: deps.getElectronPackagingTempEnv()
+        })
+      )
       await checkPackagingBudgets('package', ['bundle', 'plugins', 'package'])
     },
 
@@ -314,15 +344,18 @@ function createWorkflows(overrides = {}) {
       )
       await buildElectronArtifacts('electron-all')
       await deps.runParallel('electron-all:package', {
-        'electron-forge:make': () => deps.npmRunAsync('electron-forge', ['--', 'make']),
+        'electron-forge:make': () =>
+          deps.npmRunAsync('electron-forge', ['--', 'make'], {
+            env: deps.getElectronPackagingTempEnv()
+          }),
         'electron-builder:portable': async () => {
-          await deps.npmRunAsync('electron-builder', [
-            '--',
-            '--config',
-            'electron/builder.portable.cjs',
-            '--publish',
-            'never'
-          ])
+          await deps.npmRunAsync(
+            'electron-builder',
+            ['--', '--config', 'electron/builder.portable.cjs', '--publish', 'never'],
+            {
+              env: deps.getElectronPackagingTempEnv()
+            }
+          )
           await deps.runNodeAsync('scripts/build/finalize-portable-output.cjs', ['out/portable'])
         }
       })
@@ -336,7 +369,7 @@ function createWorkflows(overrides = {}) {
       await buildElectronArtifacts('make-fast')
       await deps.runStep('make-fast:make', () =>
         deps.runWithEnvAsync(
-          ['LUO_FAST_MAKE=1'],
+          ['LUO_FAST_MAKE=1', ...toEnvEntries(deps.getElectronPackagingTempEnv())],
           [...deps.getNpmCommandParts(), 'run', 'electron-forge', '--', 'make']
         )
       )
@@ -359,6 +392,10 @@ function createWorkflows(overrides = {}) {
   }
 
   return workflows
+}
+
+function toEnvEntries(env) {
+  return Object.entries(env).map(([key, value]) => `${key}=${value}`)
 }
 
 const workflows = createWorkflows()
@@ -386,6 +423,7 @@ module.exports = {
   checkArtifactBudgets,
   createWorkflows,
   formatDuration,
+  getElectronPackagingTempEnv,
   getElectronBundleCleanTargets,
   runParallel,
   runStep,

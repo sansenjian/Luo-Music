@@ -186,6 +186,8 @@ inspection-results/
 .electron_cache/
 .vite_cache/
 native/**/target/
+native/**/target-codex-verify/
+.tmp-audio-output-*
 
 # Qodana
 .qodana/

@@ -1,5 +1,5 @@
-import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mount, type VueWrapper } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const platformServiceMock = vi.hoisted(() => ({
   isElectron: vi.fn(() => false)
@@ -11,6 +11,7 @@ const storageServiceMock = vi.hoisted(() => ({
   setItem: vi.fn(),
   setJSON: vi.fn()
 }))
+const mountedWrappers: VueWrapper[] = []
 
 vi.mock('@/services', async importOriginal => {
   const actual = await importOriginal<typeof import('@/services')>()
@@ -24,6 +25,12 @@ vi.mock('@/services', async importOriginal => {
   }
 })
 
+function mountTracked(...args: Parameters<typeof mount>): VueWrapper {
+  const wrapper = mount(...args)
+  mountedWrappers.push(wrapper)
+  return wrapper
+}
+
 describe('SettingsPanel.vue', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -33,11 +40,22 @@ describe('SettingsPanel.vue', () => {
     delete document.documentElement.dataset.renderStyle
   })
 
+  afterEach(() => {
+    while (mountedWrappers.length > 0) {
+      mountedWrappers.pop()?.unmount()
+    }
+    document.body.innerHTML = ''
+    delete document.documentElement.dataset.renderStyle
+    delete document.documentElement.dataset.themeResourcePack
+    delete document.documentElement.dataset.themePlugin
+    document.getElementById('luo-theme-resource-css')?.remove()
+  })
+
   it('shows cache manager section when running in Electron', async () => {
     platformServiceMock.isElectron.mockReturnValue(true)
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
-    const wrapper = mount(SettingsPanel, {
+    const wrapper = mountTracked(SettingsPanel, {
       attachTo: document.body,
       global: {
         stubs: {
@@ -53,14 +71,13 @@ describe('SettingsPanel.vue', () => {
     await wrapper.find('.settings-btn').trigger('click')
 
     expect(document.body.querySelector('.cache-manager-stub')).not.toBeNull()
-    wrapper.unmount()
-  })
+  }, 30_000)
 
   it('reuses the same settings content outside Electron without SMTC controls', async () => {
     platformServiceMock.isElectron.mockReturnValue(false)
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
-    const wrapper = mount(SettingsPanel, {
+    const wrapper = mountTracked(SettingsPanel, {
       attachTo: document.body,
       global: {
         stubs: {
@@ -76,7 +93,6 @@ describe('SettingsPanel.vue', () => {
     expect(document.body.querySelector('h2')?.textContent).toContain('设置')
     expect(document.body.querySelector('[aria-label="品牌标识位置"]')).not.toBeNull()
     expect(document.body.textContent).not.toContain('Windows SMTC')
-    wrapper.unmount()
   })
 
   it('does not show first-party extension toggles in app settings', async () => {
@@ -88,7 +104,7 @@ describe('SettingsPanel.vue', () => {
     )
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
-    const wrapper = mount(SettingsPanel, {
+    const wrapper = mountTracked(SettingsPanel, {
       attachTo: document.body,
       global: {
         stubs: {
@@ -106,14 +122,12 @@ describe('SettingsPanel.vue', () => {
     expect(
       document.body.querySelector('input[aria-label="进度条波形可视化（实验）"]')
     ).not.toBeNull()
-
-    wrapper.unmount()
   })
 
   it('persists the selected home brand placement', async () => {
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
-    const wrapper = mount(SettingsPanel, {
+    const wrapper = mountTracked(SettingsPanel, {
       attachTo: document.body,
       global: {
         stubs: {
@@ -140,14 +154,12 @@ describe('SettingsPanel.vue', () => {
 
     expect(storageServiceMock.setItem).toHaveBeenCalledWith('homeBrandPlacement', 'header')
     expect(headerOption?.classList.contains('active')).toBe(true)
-
-    wrapper.unmount()
   })
 
   it('shows only the classic render style until the brand theme is enabled', async () => {
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
-    const wrapper = mount(SettingsPanel, {
+    const wrapper = mountTracked(SettingsPanel, {
       attachTo: document.body,
       global: {
         stubs: {
@@ -165,8 +177,6 @@ describe('SettingsPanel.vue', () => {
     expect(options.map(option => option.textContent?.trim())).toEqual(['经典风格'])
     expect(document.body.textContent).not.toContain('品牌风格')
     expect(storageServiceMock.setItem).not.toHaveBeenCalledWith('renderStyle', 'brand')
-
-    wrapper.unmount()
   })
 
   it('shows the brand render style after enabling the brand theme resource pack', async () => {
@@ -175,7 +185,7 @@ describe('SettingsPanel.vue', () => {
     )
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
-    const wrapper = mount(SettingsPanel, {
+    const wrapper = mountTracked(SettingsPanel, {
       attachTo: document.body,
       global: {
         stubs: {
@@ -203,14 +213,12 @@ describe('SettingsPanel.vue', () => {
 
     expect(storageServiceMock.setItem).toHaveBeenCalledWith('renderStyle', 'brand')
     expect(document.documentElement.dataset.renderStyle).toBe('brand')
-
-    wrapper.unmount()
   })
 
   it('persists the selected docked player bar layout', async () => {
     const { default: SettingsPanel } = await import('@/components/SettingsPanel.vue')
 
-    const wrapper = mount(SettingsPanel, {
+    const wrapper = mountTracked(SettingsPanel, {
       attachTo: document.body,
       global: {
         stubs: {
@@ -237,7 +245,5 @@ describe('SettingsPanel.vue', () => {
 
     expect(storageServiceMock.setItem).toHaveBeenCalledWith('dockedPlayerBarLayout', 'with-sidebar')
     expect(withSidebarOption?.classList.contains('active')).toBe(true)
-
-    wrapper.unmount()
   })
 })

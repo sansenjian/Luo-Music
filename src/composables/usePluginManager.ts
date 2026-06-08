@@ -1,8 +1,12 @@
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import type { AudioOutputStatus } from '@shared/audioOutput/protocol'
 import type { PlatformDescriptor } from '@shared/types/platform'
 import { services } from '@/services'
+import { useAudioOutputPlugin } from '@/composables/useAudioOutputPlugin'
 import type { PluginService } from '@/services/pluginService'
 import type { PlatformService } from '@/services/platformService'
+
+const AUDIO_OUTPUT_PLUGIN_ID = 'builtin.audio-output'
 
 type PluginSettingDefinition = {
   key: string
@@ -15,6 +19,70 @@ type PluginSettingDefinition = {
 export type PluginManagerDeps = {
   pluginService?: PluginService
   platformService?: Pick<PlatformService, 'isElectron'>
+}
+
+function createAudioOutputDescriptorRefreshKey(status: AudioOutputStatus): string {
+  const settings = status.settings
+  return JSON.stringify({
+    enabled: status.enabled,
+    backend: status.backend,
+    backendAvailable: status.backendAvailable,
+    requestedMode: status.requestedMode,
+    activeMode: status.activeMode,
+    deviceId: status.deviceId,
+    devices: status.devices.map(device => [
+      device.id,
+      device.name,
+      device.isDefault,
+      device.backend
+    ]),
+    supportedModes: status.supportedModes ?? [],
+    helperRunning: Boolean(status.helperRunning),
+    testToneRunning: Boolean(status.testToneRunning),
+    nativePlaybackRunning: Boolean(status.nativePlaybackRunning),
+    nativePlaybackDownload: status.nativePlaybackDownload
+      ? {
+          state: status.nativePlaybackDownload.state,
+          totalBytes: status.nativePlaybackDownload.totalBytes,
+          rangeSupported: status.nativePlaybackDownload.rangeSupported,
+          strategy: status.nativePlaybackDownload.strategy
+        }
+      : null,
+    bitPerfect: status.bitPerfect ?? null,
+    voicemeeterRemote: status.voicemeeterRemote
+      ? {
+          available: status.voicemeeterRemote.available,
+          connected: status.voicemeeterRemote.connected,
+          routeApplied: status.voicemeeterRemote.routeApplied,
+          routeManaged: status.voicemeeterRemote.routeManaged,
+          routeBus: status.voicemeeterRemote.routeBus,
+          hardwareOutApplied: status.voicemeeterRemote.hardwareOutApplied,
+          hardwareOutBus: status.voicemeeterRemote.hardwareOutBus,
+          hardwareOutDriver: status.voicemeeterRemote.hardwareOutDriver,
+          hardwareOutDevice: status.voicemeeterRemote.hardwareOutDevice,
+          kind: status.voicemeeterRemote.kind,
+          version: status.voicemeeterRemote.version,
+          virtualInputStrip: status.voicemeeterRemote.virtualInputStrip,
+          reason: status.voicemeeterRemote.reason
+        }
+      : null,
+    reason: status.reason,
+    settings: settings
+      ? {
+          mode: settings.mode,
+          sharedDeviceId: settings.sharedDeviceId,
+          deviceId: settings.deviceId,
+          bufferFrames: settings.bufferFrames,
+          fallbackToShared: settings.fallbackToShared,
+          bitPerfectRequired: settings.bitPerfectRequired,
+          voicemeeterBus: settings.voicemeeterBus,
+          voicemeeterHardwareOutBus: settings.voicemeeterHardwareOutBus,
+          voicemeeterHardwareOutDriver: settings.voicemeeterHardwareOutDriver,
+          voicemeeterHardwareOutDevice: settings.voicemeeterHardwareOutDevice,
+          diagnosticsEnabled: settings.diagnosticsEnabled
+        }
+      : null
+  })
 }
 
 export function usePluginManager(deps: PluginManagerDeps = {}) {
@@ -42,8 +110,11 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
   const editingSettingsPlatformId = ref<string | null>(null)
   const editingSettingsValues = reactive<Record<string, unknown>>({})
   const isSavingSettings = ref(false)
+  const audioOutputPlugin = useAudioOutputPlugin()
+  const { playAudioOutputTestTone } = audioOutputPlugin
 
   let unsubscribe: (() => void) | null = null
+  let runtimeRefreshRequestId = 0
 
   function setBusy(platformId: string, busy: boolean): void {
     const next = new Set(busyPlatformIds.value)
@@ -65,6 +136,23 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
       errorMessage.value = error instanceof Error ? error.message : String(error)
     } finally {
       isLoading.value = false
+    }
+  }
+
+  async function refreshRuntimePlatformDescriptors(): Promise<void> {
+    if (!isElectron.value) {
+      return
+    }
+
+    const requestId = ++runtimeRefreshRequestId
+
+    try {
+      const nextPlatforms = await pluginService.refreshPlatformDescriptors()
+      if (requestId === runtimeRefreshRequestId) {
+        platforms.value = nextPlatforms
+      }
+    } catch (error) {
+      console.warn('[PluginManager] Failed to refresh runtime platform descriptors', error)
     }
   }
 
@@ -148,6 +236,13 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
     unsubscribe = null
   })
 
+  watch(
+    () => createAudioOutputDescriptorRefreshKey(audioOutputPlugin.audioOutputStatus.value),
+    () => {
+      void refreshRuntimePlatformDescriptors()
+    }
+  )
+
   function getSettingsSchema(platform: PlatformDescriptor): PluginSettingDefinition[] {
     return platform.settingsSchema ?? []
   }
@@ -204,6 +299,28 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
     }
   }
 
+  async function testAudioOutput(platform: PlatformDescriptor): Promise<void> {
+    if (platform.id !== AUDIO_OUTPUT_PLUGIN_ID) {
+      return
+    }
+
+    setBusy(platform.id, true)
+    errorMessage.value = null
+
+    try {
+      const status = await playAudioOutputTestTone()
+      if (!status.enabled || status.backend !== 'native' || !status.backendAvailable) {
+        errorMessage.value = status.reason ?? '原生音频输出测试失败'
+        return
+      }
+      platforms.value = await pluginService.refreshPlatformDescriptors()
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : String(error)
+    } finally {
+      setBusy(platform.id, false)
+    }
+  }
+
   return {
     installPath,
     platforms,
@@ -227,6 +344,7 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
     hasEditableSettings,
     startEditingSettings,
     cancelEditingSettings,
-    saveSettings
+    saveSettings,
+    testAudioOutput
   }
 }

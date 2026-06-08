@@ -71,6 +71,16 @@ export const INVOKE_CHANNELS = {
   // 第一方拓展运行时
   SMTC_SET_ENABLED: 'smtc:set-enabled',
   SMTC_GET_STATUS: 'smtc:get-status',
+  AUDIO_OUTPUT_GET_STATUS: 'audio-output:get-status',
+  AUDIO_OUTPUT_SET_ENABLED: 'audio-output:set-enabled',
+  AUDIO_OUTPUT_UPDATE_SETTINGS: 'audio-output:update-settings',
+  AUDIO_OUTPUT_PLAY_TEST_TONE: 'audio-output:play-test-tone',
+  AUDIO_OUTPUT_PROBE_EXCLUSIVE_LOCK: 'audio-output:probe-exclusive-lock',
+  AUDIO_OUTPUT_PLAY_FILE: 'audio-output:play-file',
+  AUDIO_OUTPUT_PAUSE_PLAYBACK: 'audio-output:pause-playback',
+  AUDIO_OUTPUT_RESUME_PLAYBACK: 'audio-output:resume-playback',
+  AUDIO_OUTPUT_STOP_PLAYBACK: 'audio-output:stop-playback',
+  AUDIO_OUTPUT_SET_PLAYBACK_VOLUME: 'audio-output:set-playback-volume',
 
   // API 服务
   API_SEARCH: 'api:search',
@@ -182,6 +192,7 @@ export const RECEIVE_CHANNELS = {
 
   // 第一方拓展状态
   SMTC_STATUS_CHANGED: 'smtc:status-changed',
+  AUDIO_OUTPUT_STATUS_CHANGED: 'audio-output:status-changed',
 
   // 配置变化
   CONFIG_CHANGED: 'config:changed',
