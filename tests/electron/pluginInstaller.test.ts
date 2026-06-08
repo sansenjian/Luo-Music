@@ -630,6 +630,27 @@ describe('PluginInstaller', () => {
       expect(pluginRootContents).toEqual(['2.0.0'])
     })
 
+    it('serializes concurrent installs for the same plugin id', async () => {
+      const sourceDir = path.join(tempRoot, 'concurrent-plugin')
+      await writePlugin(sourceDir, VALID_MANIFEST, 'index.mjs', '// concurrent')
+
+      const installer = await createInstaller()
+      const [firstResult, secondResult] = await Promise.all([
+        installer.installFromPath(sourceDir),
+        installer.installFromPath(sourceDir)
+      ])
+
+      expect(firstResult.manifest.version).toBe('1.0.0')
+      expect(secondResult.manifest.version).toBe('1.0.0')
+
+      const installedPlugins = await installer.scanInstalledPlugins()
+      expect(installedPlugins).toHaveLength(1)
+      expect(installedPlugins[0].manifest.version).toBe('1.0.0')
+      await expect(fs.readFile(installedPlugins[0].entryPath, 'utf-8')).resolves.toBe(
+        '// concurrent'
+      )
+    })
+
     it('preserves an existing plugin when a replacement package is invalid', async () => {
       const sourceDirV1 = path.join(tempRoot, 'preserve-plugin-v1')
       await writePlugin(sourceDirV1, VALID_MANIFEST, 'index.mjs', '// v1')

@@ -5,8 +5,12 @@ import { getSongPlatformKey, isSameSongIdentity, resolveMediaId } from '@/utils/
 import { errorCenter } from '@/utils/error/center'
 import { Errors } from '@/utils/error/types'
 import { isCanceledRequestError } from '@/utils/http/cancelError'
+import { resolveLocalLibraryPlaybackUrl } from '@/utils/player/mediaProxy'
+import { getSongUrlValue } from '@/platform/music/interface'
+import { applySongUrlResultToSong } from '@/utils/player/songUrlResult'
 import { PLAY_MODE } from '@shared/player/playMode'
 import { LyricParser } from '@shared/player/lyric'
+import { isNativeAudioOutputRequiredError } from './nativeAudioOutputPlayback'
 
 import type { PlayerState } from './playerState'
 import { songPrefetcher } from './songPrefetcher'
@@ -25,7 +29,7 @@ function debugPlayback(message: string, data?: unknown): void {
 export interface PlaybackActionsDeps {
   getState: () => PlayerState
   onStateChange: (changes: Partial<PlayerState>) => void
-  playSongByIndex: (index: number, song?: Song) => Promise<void>
+  playSongByIndex: (index: number, song?: Song, startSeconds?: number) => Promise<void>
   setLyricsArray: (lyrics: import('@shared/player/lyric').LyricLine[]) => void
   onPlaybackCommitted?: (song: Song) => void
   musicService: Pick<
@@ -92,6 +96,10 @@ export class PlaybackActions {
   }
 
   private shouldHydrateSongForPlayback(_song: Song, platformKey: string): boolean {
+    if (isLocalLibrarySong(_song)) {
+      return false
+    }
+
     return this.deps.musicService.getPlatformCapabilities(platformKey).needsHydration
   }
 
@@ -141,7 +149,8 @@ export class PlaybackActions {
   private async refreshSongUrl(song: Song, platformKey: string): Promise<string | null> {
     debugPlayback('[Player] Refreshing URL for song', { songId: song.id })
     const mediaId = resolveMediaId(song)
-    const url = await this.deps.musicService.getSongUrl(platformKey, song.id, { mediaId })
+    const result = await this.deps.musicService.getSongUrl(platformKey, song.id, { mediaId })
+    const url = applySongUrlResultToSong(song, result)
     debugPlayback('[Player] Refreshed URL', {
       songId: song.id,
       ok: Boolean(url)
@@ -244,6 +253,11 @@ export class PlaybackActions {
     const sourceSong = state.songList[index]
     const nextSong = playbackSong ?? sourceSong
     const isSwitchingSong = !this.isSameSong(state.currentSong, nextSong)
+    const playbackUrl = resolveLocalLibraryPlaybackUrl(nextSong)
+
+    if (!nextSong.url && playbackUrl) {
+      nextSong.url = playbackUrl
+    }
 
     if (!nextSong.url) {
       console.error('No URL for song')
@@ -310,8 +324,9 @@ export class PlaybackActions {
     try {
       // Try to get prefetched data first — if URL is cached, skip fetch entirely
       const prefetchedData = songPrefetcher.getPrefetchedData(song)
-      const cachedUrl = song.url || prefetchedData?.url || null
-      const shouldFetchUrl = !cachedUrl
+      const localPlaybackUrl = resolveLocalLibraryPlaybackUrl(song)
+      const cachedUrl = song.url || prefetchedData?.url || localPlaybackUrl
+      const shouldFetchUrl = !cachedUrl && !isLocalLibrarySong(song)
       const shouldHydrate = this.shouldHydrateSongForPlayback(song, platformKey)
 
       // Parallel fetch: URL, detail, and lyrics
@@ -320,8 +335,8 @@ export class PlaybackActions {
       // If a prefetch is already in-flight, await it instead of launching
       // a duplicate request.  Otherwise start a fresh URL fetch.
       const fetchUrlPromise = shouldFetchUrl
-        ? songPrefetcher.awaitPrefetchedUrl(song).then(async url => {
-            if (url) return url
+        ? songPrefetcher.awaitPrefetchedUrlResult(song).then(async result => {
+            if (getSongUrlValue(result)) return result
             return musicService.getSongUrl(platformKey, song.id, { mediaId })
           })
         : Promise.resolve(cachedUrl)
@@ -341,11 +356,12 @@ export class PlaybackActions {
       // Wait for URL first (blocking for playback)
       let resolvedUrl: string | null = cachedUrl
       if (shouldFetchUrl) {
-        resolvedUrl = await fetchUrlPromise
+        const resolvedUrlResult = await fetchUrlPromise
         if (!this.isCurrentPlaybackRequest(playbackRequestId)) {
           return
         }
 
+        resolvedUrl = applySongUrlResultToSong(song, resolvedUrlResult)
         if (!resolvedUrl) {
           console.warn('Song URL unavailable:', song.id)
           const err = Errors.noCopyright(song.id)
@@ -354,7 +370,17 @@ export class PlaybackActions {
         }
       }
 
-      if (resolvedUrl) {
+      if (!resolvedUrl) {
+        throw new Error('Local audio file path is unavailable')
+      }
+
+      if (
+        prefetchedData?.urlResult &&
+        !song.url &&
+        getSongUrlValue(prefetchedData.urlResult) === resolvedUrl
+      ) {
+        applySongUrlResultToSong(song, prefetchedData.urlResult)
+      } else if (resolvedUrl) {
         song.url = resolvedUrl
       }
 
@@ -378,6 +404,10 @@ export class PlaybackActions {
         // Schedule prefetch for next songs after playback starts
         songPrefetcher.schedulePrefetch(state.songList, index)
       } catch (playbackError) {
+        if (isNativeAudioOutputRequiredError(playbackError)) {
+          throw playbackError
+        }
+
         const canRetryWithFreshUrl =
           this.deps.musicService.getPlatformCapabilities(platformKey).supportsUrlRefreshOnFailure &&
           Boolean(song.url)
@@ -457,6 +487,10 @@ export class PlaybackActions {
       }
 
       console.error('Playback failed:', error)
+
+      if (isNativeAudioOutputRequiredError(error)) {
+        throw error
+      }
 
       let errorHandler = this.deps.getErrorHandler()
       if (!errorHandler) {

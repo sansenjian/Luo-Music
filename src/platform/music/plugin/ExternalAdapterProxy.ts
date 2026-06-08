@@ -5,7 +5,8 @@ import {
   type PlaylistDetail,
   type SearchResult,
   type Song,
-  type SongUrlOptions
+  type SongUrlOptions,
+  type SongUrlResult
 } from '@/platform/music/interface'
 import {
   normalizePluginLyricResult,
@@ -58,7 +59,10 @@ export class ExternalAdapterProxy extends MusicPlatformAdapter {
     )
   }
 
-  async getSongUrl(id: string | number, options?: SongUrlOptions | string): Promise<string | null> {
+  async getSongUrl(
+    id: string | number,
+    options?: SongUrlOptions | string
+  ): Promise<SongUrlResult | null> {
     this.assertCapability('songUrl', 'getSongUrl')
     return normalizePluginSongUrlResult(await this.call<unknown>('getSongUrl', { id, options }))
   }

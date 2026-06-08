@@ -43,6 +43,48 @@ const audioOutputSettingsSchema: PluginSettingDefinition[] = [
     default: true
   },
   {
+    key: 'bitPerfectRequired',
+    type: 'boolean',
+    label: '强制 bit-perfect 候选输出',
+    default: false
+  },
+  {
+    key: 'voicemeeterBus',
+    type: 'select',
+    label: 'VoiceMeeter bus',
+    default: 'A1',
+    options: [
+      { value: 'A1', label: 'A1' },
+      { value: 'B1', label: 'B1' }
+    ]
+  },
+  {
+    key: 'voicemeeterHardwareOutBus',
+    type: 'select',
+    label: 'VoiceMeeter HARDWARE OUT',
+    default: 'A1',
+    options: [
+      { value: 'A1', label: 'A1' },
+      { value: 'A2', label: 'A2' }
+    ]
+  },
+  {
+    key: 'voicemeeterHardwareOutDriver',
+    type: 'select',
+    label: 'HARDWARE OUT 驱动',
+    default: 'wdm',
+    options: [
+      { value: 'wdm', label: 'WDM' },
+      { value: 'ks', label: 'KS' }
+    ]
+  },
+  {
+    key: 'voicemeeterHardwareOutDevice',
+    type: 'text',
+    label: 'HARDWARE OUT 设备名',
+    default: ''
+  },
+  {
     key: 'diagnosticsEnabled',
     type: 'boolean',
     label: '启用诊断日志',
@@ -61,6 +103,11 @@ function mountForm(options: { platformId?: string; mode?: string } = {}) {
         deviceId: '',
         bufferFrames: 960,
         fallbackToShared: true,
+        bitPerfectRequired: false,
+        voicemeeterBus: 'A1',
+        voicemeeterHardwareOutBus: 'A1',
+        voicemeeterHardwareOutDriver: 'wdm',
+        voicemeeterHardwareOutDevice: '',
         diagnosticsEnabled: false
       },
       isSaving: false
@@ -78,6 +125,8 @@ describe('PluginSettingsForm', () => {
     expect(wrapper.text()).toContain('启用诊断日志')
     expect(wrapper.text()).not.toContain('Buffer frames')
     expect(wrapper.text()).not.toContain('独占失败时回退共享模式')
+    expect(wrapper.text()).not.toContain('强制 bit-perfect 候选输出')
+    expect(wrapper.text()).not.toContain('VoiceMeeter bus')
   })
 
   it('switches audio-output settings to exclusive controls immediately', async () => {
@@ -90,6 +139,11 @@ describe('PluginSettingsForm', () => {
         deviceId: '',
         bufferFrames: 960,
         fallbackToShared: true,
+        bitPerfectRequired: true,
+        voicemeeterBus: 'A1',
+        voicemeeterHardwareOutBus: 'A1',
+        voicemeeterHardwareOutDriver: 'wdm',
+        voicemeeterHardwareOutDevice: '',
         diagnosticsEnabled: true
       }
     })
@@ -98,7 +152,27 @@ describe('PluginSettingsForm', () => {
     expect(wrapper.text()).toContain('原生输出设备')
     expect(wrapper.text()).toContain('Buffer frames')
     expect(wrapper.text()).toContain('独占失败时回退共享模式')
+    expect(wrapper.text()).toContain('强制 bit-perfect 候选输出')
     expect(wrapper.text()).toContain('启用诊断日志')
+    expect(wrapper.text()).not.toContain('VoiceMeeter bus')
+    expect(wrapper.text()).not.toContain('VoiceMeeter HARDWARE OUT')
+    expect(wrapper.text()).not.toContain('HARDWARE OUT 驱动')
+    expect(wrapper.text()).not.toContain('HARDWARE OUT 设备名')
+  })
+
+  it('shows Voicemeeter route and hardware out controls without exclusive-only options', () => {
+    const wrapper = mountForm({ mode: 'voicemeeter' })
+
+    expect(wrapper.text()).toContain('Chromium / 回退输出设备')
+    expect(wrapper.text()).toContain('原生输出设备')
+    expect(wrapper.text()).toContain('VoiceMeeter bus')
+    expect(wrapper.text()).toContain('VoiceMeeter HARDWARE OUT')
+    expect(wrapper.text()).toContain('HARDWARE OUT 驱动')
+    expect(wrapper.text()).toContain('HARDWARE OUT 设备名')
+    expect(wrapper.text()).toContain('启用诊断日志')
+    expect(wrapper.text()).not.toContain('Buffer frames')
+    expect(wrapper.text()).not.toContain('独占失败时回退共享模式')
+    expect(wrapper.text()).not.toContain('强制 bit-perfect 候选输出')
   })
 
   it('does not filter generic plugin settings by mode', () => {
@@ -107,5 +181,6 @@ describe('PluginSettingsForm', () => {
     expect(wrapper.text()).toContain('Chromium / 回退输出设备')
     expect(wrapper.text()).toContain('原生输出设备')
     expect(wrapper.text()).toContain('独占失败时回退共享模式')
+    expect(wrapper.text()).toContain('强制 bit-perfect 候选输出')
   })
 })

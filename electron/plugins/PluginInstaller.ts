@@ -49,6 +49,11 @@ function isPathInside(parentPath: string, childPath: string): boolean {
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
 }
 
+function isRecoverablePromoteRace(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code
+  return code === 'EPERM' || code === 'EEXIST' || code === 'ENOTEMPTY'
+}
+
 function resolveContainedPath(rootPath: string, relativePath: string, label: string): string {
   if (path.isAbsolute(relativePath)) {
     throw new Error(`${label} must be a relative path`)
@@ -66,6 +71,7 @@ function resolveContainedPath(rootPath: string, relativePath: string, label: str
 
 export class PluginInstaller {
   private readonly pluginsRoot: string
+  private readonly installLocks = new Map<string, Promise<InstalledPluginLocation>>()
 
   constructor(deps: PluginInstallerDeps = {}) {
     this.pluginsRoot = path.resolve(
@@ -238,6 +244,26 @@ export class PluginInstaller {
   private async commitPreparedInstall(
     preparedInstall: PreparedPluginInstall
   ): Promise<InstalledPluginLocation> {
+    const pluginId = preparedInstall.manifest.id
+    const previousInstall = this.installLocks.get(pluginId) ?? Promise.resolve()
+    const installPromise = previousInstall
+      .catch(() => undefined)
+      .then(() => this.commitPreparedInstallUnlocked(preparedInstall))
+
+    this.installLocks.set(pluginId, installPromise)
+
+    try {
+      return await installPromise
+    } finally {
+      if (this.installLocks.get(pluginId) === installPromise) {
+        this.installLocks.delete(pluginId)
+      }
+    }
+  }
+
+  private async commitPreparedInstallUnlocked(
+    preparedInstall: PreparedPluginInstall
+  ): Promise<InstalledPluginLocation> {
     await fs.mkdir(this.pluginsRoot, { recursive: true })
 
     const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -274,7 +300,22 @@ export class PluginInstaller {
         hasBackup = true
       }
 
-      await fs.rename(stagingRoot, preparedInstall.pluginRoot)
+      try {
+        await fs.rename(stagingRoot, preparedInstall.pluginRoot)
+      } catch (error) {
+        if (hasBackup || !isRecoverablePromoteRace(error)) {
+          throw error
+        }
+
+        const lateExistingPluginRoot = await fs.stat(preparedInstall.pluginRoot).catch(() => null)
+        if (!lateExistingPluginRoot) {
+          throw error
+        }
+
+        await fs.rename(preparedInstall.pluginRoot, backupRoot)
+        hasBackup = true
+        await fs.rename(stagingRoot, preparedInstall.pluginRoot)
+      }
       promotedStaging = true
       if (hasBackup) {
         await fs.rm(backupRoot, { recursive: true, force: true })

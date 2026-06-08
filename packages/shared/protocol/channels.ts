@@ -75,6 +75,7 @@ export const INVOKE_CHANNELS = {
   AUDIO_OUTPUT_SET_ENABLED: 'audio-output:set-enabled',
   AUDIO_OUTPUT_UPDATE_SETTINGS: 'audio-output:update-settings',
   AUDIO_OUTPUT_PLAY_TEST_TONE: 'audio-output:play-test-tone',
+  AUDIO_OUTPUT_PROBE_EXCLUSIVE_LOCK: 'audio-output:probe-exclusive-lock',
   AUDIO_OUTPUT_PLAY_FILE: 'audio-output:play-file',
   AUDIO_OUTPUT_PAUSE_PLAYBACK: 'audio-output:pause-playback',
   AUDIO_OUTPUT_RESUME_PLAYBACK: 'audio-output:resume-playback',

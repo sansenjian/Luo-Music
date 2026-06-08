@@ -6,7 +6,9 @@
  */
 
 import 'dotenv/config'
-import { BrowserWindow, app } from 'electron'
+import { join } from 'node:path'
+
+import { BrowserWindow, app, net } from 'electron'
 import { desktopLyricManager } from '../DesktopLyricManager'
 import { downloadManager } from '../DownloadManager'
 import { windowManager } from '../WindowManager'
@@ -238,6 +240,8 @@ function initializeIpcService(currentPluginCatalog: PluginCatalog): void {
   })
   audioOutputService = new AudioOutputService({
     appPath: app.getAppPath(),
+    cacheDir: join(app.getPath('userData'), 'audio-output-cache'),
+    electronNet: net,
     isPackaged: app.isPackaged,
     logger,
     onStatusChange: status => {
@@ -326,7 +330,7 @@ function main(): void {
       destroyTray()
       downloadManager.dispose()
       smtcNativeService?.dispose()
-      audioOutputService?.dispose()
+      await audioOutputService?.dispose()
       await disposeLocalLibraryService()
       disposePerformanceMonitor()
       ipcService.dispose()

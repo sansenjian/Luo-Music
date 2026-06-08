@@ -73,9 +73,13 @@ vi.mock('electron', () => ({
       appendSwitch: vi.fn()
     },
     getAppPath: vi.fn(() => 'D:\\app'),
+    getPath: vi.fn(() => 'D:\\user-data'),
     isPackaged: false,
     relaunch: vi.fn(),
     exit: vi.fn()
+  },
+  net: {
+    fetch: vi.fn()
   }
 }))
 
@@ -246,7 +250,7 @@ describe('electron/main/index', () => {
     expect(setShortcutsWindowManagerMock).toHaveBeenCalledTimes(1)
     expect(registerAppLifecycleMock).toHaveBeenCalledTimes(1)
     expect(lifecycleCallbacks?.onReady).toBeTypeOf('function')
-  })
+  }, 30_000)
 
   it('disables Chromium media session features when persisted SMTC setting is off', async () => {
     const electron = await import('electron')

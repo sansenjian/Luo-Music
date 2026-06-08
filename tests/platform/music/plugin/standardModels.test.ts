@@ -144,18 +144,36 @@ describe('plugin standard model normalization', () => {
     expect(normalizePluginSongUrlResult('https://example.test/c.mp3')).toBe(
       'https://example.test/c.mp3'
     )
-    expect(normalizePluginSongUrlResult({ url: 'https://example.test/a.mp3' })).toBe(
-      'https://example.test/a.mp3'
+    expect(normalizePluginSongUrlResult({ url: 'https://example.test/a.mp3' })).toEqual(
+      expect.objectContaining({
+        url: 'https://example.test/a.mp3'
+      })
     )
     expect(
       normalizePluginSongUrlResult({
         url: 'https://example.test/b.mp3',
+        headers: {
+          Cookie: ' MUSIC_U=token ',
+          Referer: 'https://music.example.test/',
+          Empty: '',
+          Invalid: 123
+        },
         mediaId: 'media-2',
         expiresAt: 0,
         level: 'lossless',
         bitrate: 999000
       })
-    ).toBe('https://example.test/b.mp3')
+    ).toEqual({
+      url: 'https://example.test/b.mp3',
+      headers: {
+        Cookie: 'MUSIC_U=token',
+        Referer: 'https://music.example.test/'
+      },
+      mediaId: 'media-2',
+      expiresAt: 0,
+      level: 'lossless',
+      bitrate: 999000
+    })
     expect(normalizePluginSongUrlResult({ url: '' })).toBeNull()
     expect(normalizePluginSongUrlResult({ url: null })).toBeNull()
     expect(normalizePluginSongUrlResult({ mediaId: 'x' })).toBeNull()

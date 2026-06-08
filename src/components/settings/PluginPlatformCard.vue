@@ -34,6 +34,24 @@ const isAudioOutputPlugin = computed(() => props.platform.id === AUDIO_OUTPUT_PL
 const isAudioOutputTestToneRunning = computed(() =>
   Boolean(props.platform.runtimeState?.testToneRunning)
 )
+const isAudioOutputNativePlaybackRunning = computed(() =>
+  Boolean(props.platform.runtimeState?.nativePlaybackRunning)
+)
+const isAudioOutputTestActionDisabled = computed(
+  () =>
+    props.isBusy || isAudioOutputTestToneRunning.value || isAudioOutputNativePlaybackRunning.value
+)
+const audioOutputTestActionLabel = computed(() => {
+  if (isAudioOutputTestToneRunning.value) {
+    return '测试中...'
+  }
+
+  if (isAudioOutputNativePlaybackRunning.value) {
+    return '播放中...'
+  }
+
+  return '测试输出'
+})
 const canTestAudioOutput = computed(
   () => isAudioOutputPlugin.value && props.platform.enabled && !props.isEditingSettings
 )
@@ -169,7 +187,7 @@ const canTestAudioOutput = computed(
         v-if="canTestAudioOutput"
         type="button"
         class="plugin-pill plugin-pill-ghost"
-        :disabled="isBusy || isAudioOutputTestToneRunning"
+        :disabled="isAudioOutputTestActionDisabled"
         @click="emit('test-audio-output', platform)"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
@@ -177,7 +195,7 @@ const canTestAudioOutput = computed(
           <path d="M15.54 8.46a5 5 0 010 7.07" />
           <path d="M19.07 4.93a10 10 0 010 14.14" />
         </svg>
-        {{ isAudioOutputTestToneRunning ? '测试中...' : '测试输出' }}
+        {{ audioOutputTestActionLabel }}
       </button>
       <button
         v-if="platform.source === 'external'"

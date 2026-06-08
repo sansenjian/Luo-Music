@@ -21,6 +21,7 @@ export interface PlatformRuntimeDetail {
 
 export interface PlatformRuntimeState {
   testToneRunning?: boolean
+  nativePlaybackRunning?: boolean
 }
 
 export interface PlatformDescriptor {

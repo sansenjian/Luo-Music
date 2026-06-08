@@ -32,8 +32,9 @@ export type PlayerStoreActions = {
   replaceQueue: (songs: Song[]) => void
   replaceQueueAndPlay: (songs: Song[], index: number) => Promise<void>
   addSong: (song: Song) => void
-  playSongByIndex: (index: number, song?: Song) => Promise<void>
+  playSongByIndex: (index: number, song?: Song, startSeconds?: number) => Promise<void>
   playSongWithDetails: (index: number, autoSkip?: boolean) => Promise<void>
+  restartPlaybackForAudioOutputChange: () => Promise<void>
   togglePlay: () => void
   getRandomIndex: (excludeCurrent?: boolean) => number
   playPrev: () => void
@@ -73,6 +74,7 @@ export type PlayerStoreAudioManager = Pick<
   typeof defaultAudioManager,
   'getMuted' | 'pause' | 'play' | 'seek' | 'setMuted' | 'setVolume' | 'toggle'
 > & {
+  releaseSource?: () => void | Promise<void>
   src?: string
 }
 

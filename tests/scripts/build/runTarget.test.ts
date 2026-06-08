@@ -101,6 +101,19 @@ describe('run-target build workflows', () => {
       const bundleParallelIndex = events.findIndex(
         event => event.name === 'parallel' && event.label === 'electron-bundle'
       )
+      const bundleEvent = events.find(
+        event => event.name === 'parallel' && event.label === 'electron-bundle'
+      )
+      expect(bundleEvent?.tasks).toEqual(
+        expect.arrayContaining(['build:smtc-helper', 'build:audio-output-helper'])
+      )
+      expect(
+        events.find(
+          event => event.name === 'npmRunAsync' && event.label === 'build:audio-output-helper'
+        )?.detail
+      ).toMatchObject({
+        args: ['--', '--release', '--copy-resource', '--required']
+      })
       const pluginPackageIndex = events.findIndex(
         event => event.name === 'packageThirdPartyPlugins'
       )

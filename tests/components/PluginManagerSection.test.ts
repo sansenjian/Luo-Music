@@ -149,6 +149,42 @@ describe('PluginManagerSection.vue', () => {
     expect(pluginManager.testAudioOutput).toHaveBeenCalledWith(audioOutputPlatform)
   })
 
+  it('keeps the audio output test action disabled while native playback is running', async () => {
+    pluginManager.managedPlatforms.value = [
+      {
+        id: 'builtin.audio-output',
+        displayName: '原生音频输出',
+        source: 'builtin',
+        runtime: 'local',
+        category: 'extension',
+        enabled: true,
+        status: 'ready',
+        capabilities: {
+          search: false,
+          songUrl: false,
+          songDetail: false,
+          lyric: false,
+          playlistDetail: false,
+          needsHydration: false,
+          supportsLyricFetch: false,
+          supportsUrlRefreshOnFailure: false
+        },
+        runtimeState: {
+          nativePlaybackRunning: true
+        }
+      }
+    ]
+    pluginManager.hasPlatforms.value = true
+    const wrapper = await mountSection()
+
+    await flushPromises()
+    const button = getWrapperButtonByText(wrapper, '播放中...')
+
+    expect(button.element.disabled).toBe(true)
+    await button.trigger('click')
+    expect(pluginManager.testAudioOutput).not.toHaveBeenCalled()
+  })
+
   async function mountSection(): Promise<VueWrapper> {
     const { default: PluginManagerSection } =
       await import('@/components/settings/PluginManagerSection.vue')

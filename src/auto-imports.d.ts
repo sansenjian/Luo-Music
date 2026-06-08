@@ -418,7 +418,7 @@ declare global {
   export type { AnimationFunctions } from './composables/useAnimations'
   import('./composables/useAnimations')
   // @ts-ignore
-  export type { AudioOutputPluginDeps } from './composables/useAudioOutputPlugin'
+  export type { AudioOutputSharedDevice, AudioOutputMediaDevices, AudioOutputPluginDeps } from './composables/useAudioOutputPlugin'
   import('./composables/useAudioOutputPlugin')
   // @ts-ignore
   export type { CommandContextDeps } from './composables/useCommandContext'

@@ -170,10 +170,63 @@ function cloneAudioOutputSettings(settings: AudioOutputSettings): AudioOutputSet
   return sanitizeAudioOutputSettings(settings)
 }
 
+const VOICEMEETER_DEVICE_PATTERN = /voice\s*meeter|voicemeeter/i
+
+function isVoicemeeterOutputDevice(
+  device: AudioOutputStatus['devices'][number] | undefined
+): boolean {
+  return Boolean(
+    device &&
+    (device.backend === 'voicemeeter' ||
+      VOICEMEETER_DEVICE_PATTERN.test(device.id) ||
+      VOICEMEETER_DEVICE_PATTERN.test(device.name))
+  )
+}
+
+function resolveVoicemeeterDeviceId(
+  settings: AudioOutputSettings,
+  status: AudioOutputStatus = audioOutputStatus.value
+): string {
+  const selectedDeviceId = settings.deviceId.trim()
+  if (selectedDeviceId) {
+    const selectedDevice = status.devices.find(device => device.id === selectedDeviceId)
+    if (
+      isVoicemeeterOutputDevice(selectedDevice) ||
+      (!selectedDevice && VOICEMEETER_DEVICE_PATTERN.test(selectedDeviceId))
+    ) {
+      return selectedDeviceId
+    }
+  }
+
+  return status.devices.find(isVoicemeeterOutputDevice)?.id ?? ''
+}
+
+function normalizeAudioOutputSettingsForMode(
+  settings: AudioOutputSettings,
+  status: AudioOutputStatus = audioOutputStatus.value
+): AudioOutputSettings {
+  const normalizedSettings = cloneAudioOutputSettings(settings)
+
+  if (normalizedSettings.mode !== 'exclusive') {
+    normalizedSettings.bitPerfectRequired = false
+  }
+
+  if (normalizedSettings.mode === 'voicemeeter') {
+    normalizedSettings.deviceId = resolveVoicemeeterDeviceId(normalizedSettings, status)
+  }
+
+  return normalizedSettings
+}
+
 function setAudioOutputStatusIfCurrent(status: AudioOutputStatus, requestId: number): void {
   if (requestId === audioOutputStatusRequestId) {
     audioOutputStatus.value = status
   }
+}
+
+function setAudioOutputStatusFromSubscription(status: AudioOutputStatus): void {
+  audioOutputStatusRequestId += 1
+  audioOutputStatus.value = status
 }
 
 export function useAudioOutputPlugin(deps: AudioOutputPluginDeps = {}) {
@@ -187,15 +240,19 @@ export function useAudioOutputPlugin(deps: AudioOutputPluginDeps = {}) {
 
   if (!isAudioOutputStatusListenerRegistered && audioOutputMainBridge?.subscribeStatus) {
     audioOutputMainBridge.subscribeStatus(status => {
-      audioOutputStatus.value = status
+      setAudioOutputStatusFromSubscription(status)
     })
     isAudioOutputStatusListenerRegistered = true
   }
 
   if (!isAudioOutputInitialized) {
-    audioOutputState.value = sanitizeAudioOutputState(
+    const restoredState = sanitizeAudioOutputState(
       storageService.getJSON<unknown>(AUDIO_OUTPUT_STORAGE_KEY)
     )
+    audioOutputState.value = {
+      enabled: restoredState.enabled,
+      settings: normalizeAudioOutputSettingsForMode(restoredState.settings)
+    }
     isAudioOutputInitialized = true
     void syncAudioOutputStatusFromMain()
     void syncAudioOutputEnabledToMain(audioOutputState.value.enabled)
@@ -328,10 +385,19 @@ export function useAudioOutputPlugin(deps: AudioOutputPluginDeps = {}) {
       )
       setAudioOutputStatusIfCurrent(status, requestId)
       console.warn('[AudioOutput] Failed to sync native audio output settings', error)
-      return status
+      throw error
     }
 
-    return audioOutputStatus.value
+    const error = new Error('Native audio output service did not return a settings status.')
+    const status = createSyncFailedStatus(
+      {
+        ...audioOutputState.value,
+        settings: sanitizedSettings
+      },
+      error
+    )
+    setAudioOutputStatusIfCurrent(status, requestId)
+    throw error
   }
 
   function setAudioOutputEnabled(next: boolean): Promise<AudioOutputStatus> {
@@ -345,10 +411,12 @@ export function useAudioOutputPlugin(deps: AudioOutputPluginDeps = {}) {
   async function updateAudioOutputSettings(
     nextSettings: Record<string, unknown>
   ): Promise<AudioOutputSettings> {
-    const settings = sanitizeAudioOutputSettings({
-      ...audioOutputState.value.settings,
-      ...nextSettings
-    })
+    const settings = normalizeAudioOutputSettingsForMode(
+      sanitizeAudioOutputSettings({
+        ...audioOutputState.value.settings,
+        ...nextSettings
+      })
+    )
 
     persist({
       ...audioOutputState.value,

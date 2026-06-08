@@ -1,5 +1,32 @@
+import { isLocalLibrarySong } from '@shared/types/localLibrary'
+import type { Song } from '@shared/types/schemas'
+
 const REMOTE_MEDIA_PROXY_SCHEME = 'luo-media'
+const LOCAL_MEDIA_PROXY_HOST = 'media'
 const REMOTE_MEDIA_PROXY_HOST = 'remote'
+
+export function createLocalMediaUrl(filePath: string): string {
+  return `${REMOTE_MEDIA_PROXY_SCHEME}://${LOCAL_MEDIA_PROXY_HOST}?path=${encodeURIComponent(
+    filePath
+  )}`
+}
+
+export function resolveLocalLibraryPlaybackUrl(song: Song): string | null {
+  if (!isLocalLibrarySong(song)) {
+    return null
+  }
+
+  if (song.url) {
+    return song.url
+  }
+
+  const localFilePath = (song.extra as Record<string, unknown> | undefined)?.localFilePath
+  if (typeof localFilePath !== 'string' || !localFilePath.trim()) {
+    return null
+  }
+
+  return createLocalMediaUrl(localFilePath.trim())
+}
 
 export function createRemoteMediaProxyUrl(sourceUrl: string): string {
   return `${REMOTE_MEDIA_PROXY_SCHEME}://${REMOTE_MEDIA_PROXY_HOST}?url=${encodeURIComponent(

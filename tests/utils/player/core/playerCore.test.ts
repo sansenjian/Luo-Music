@@ -190,6 +190,66 @@ describe('PlayerCore', () => {
       expect(audio.paused).toBe(true)
     })
 
+    it('should release the current audio source for native playback handoff', async () => {
+      vi.useFakeTimers()
+      try {
+        const { audio } = getInternals(player)
+        audio.src = 'luo-media://remote?url=https%3A%2F%2Fsong.test%2Fremote.flac'
+        audio.paused = false
+        audio.crossOrigin = 'anonymous'
+        audio.setAttribute('crossorigin', 'anonymous')
+        audio.load = vi.fn()
+
+        const releasePromise = player.releaseSource()
+        await Promise.resolve()
+
+        expect(audio.paused).toBe(true)
+        expect(audio.src).toBe('')
+        expect(audio.crossOrigin).toBeNull()
+        expect(audio.getAttribute('crossorigin')).toBeNull()
+        expect(audio.load).toHaveBeenCalledOnce()
+        expect(player.state).toBe(PlayerState.IDLE)
+        await vi.advanceTimersByTimeAsync(50)
+        await releasePromise
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should close visualization AudioContext during native playback handoff', async () => {
+      vi.useFakeTimers()
+      try {
+        const { audio } = getInternals(player)
+        audio.src = 'https://song.test/visualized.mp3'
+        player.getAnalyserData()
+        const audioContext = getInternals(player).audioContext
+        const closeSpy = vi.spyOn(audioContext!, 'close')
+
+        const releasePromise = player.releaseSource()
+        await vi.advanceTimersByTimeAsync(50)
+        await releasePromise
+
+        expect(closeSpy).toHaveBeenCalledOnce()
+        expect(getInternals(player).audioContext).toBeNull()
+        expect(getInternals(player).analyser).toBeNull()
+        expect(getInternals(player).gainNode).toBeNull()
+        expect(getInternals(player).source).toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should not delay native playback handoff when no Chromium source is loaded', async () => {
+      vi.useFakeTimers()
+      try {
+        const releasePromise = player.releaseSource()
+        await releasePromise
+        expect(player.state).toBe(PlayerState.IDLE)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it('should toggle playback state', async () => {
       const { audio } = getInternals(player)
       audio.paused = true

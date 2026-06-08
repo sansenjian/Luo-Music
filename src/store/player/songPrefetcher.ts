@@ -2,19 +2,29 @@ import type { Song } from '@shared/types/schemas'
 import { getSongPlatformKey, isSameSongIdentity, resolveMediaId } from '@/utils/songIdentity'
 import type { MusicService } from '@/services/musicService'
 import { isLocalLibrarySong } from '@shared/types/localLibrary'
+import {
+  getSongUrlHeaders,
+  getSongUrlValue,
+  type SongUrlHeaders,
+  type SongUrlResult
+} from '@/platform/music/interface'
+import { applySongUrlResultToSong } from '@/utils/player/songUrlResult'
 
 interface PrefetchedSongData {
   song: Song
   url: string | null
+  urlHeaders?: SongUrlHeaders
+  urlResult: SongUrlResult | null
   detail: Song | null
   timestamp: number
 }
 
 interface PrefetchEntry {
   data: Promise<PrefetchedSongData>
-  urlData: Promise<string | null>
+  urlData: Promise<SongUrlResult | null>
   detailData: Promise<Song | null>
   resolvedData: PrefetchedSongData | null
+  resolvedUrlResult: SongUrlResult | null | undefined
   resolvedUrl: string | null | undefined
   resolvedDetail: Song | null | undefined
   timestamp: number
@@ -76,6 +86,11 @@ class SongPrefetcher {
   }
 
   getPrefetchedUrl(song: Song): string | null {
+    const result = this.getPrefetchedUrlResult(song)
+    return getSongUrlValue(result)
+  }
+
+  getPrefetchedUrlResult(song: Song): SongUrlResult | null {
     const key = this.getCacheKey(song)
     const entry = this.cache.get(key)
 
@@ -83,7 +98,7 @@ class SongPrefetcher {
       return null
     }
 
-    return entry.resolvedUrl ?? entry.resolvedData?.url ?? null
+    return entry.resolvedUrlResult ?? entry.resolvedData?.urlResult ?? null
   }
 
   /**
@@ -93,6 +108,10 @@ class SongPrefetcher {
    * when the user plays a song that is already being prefetched.
    */
   async awaitPrefetchedUrl(song: Song): Promise<string | null> {
+    return getSongUrlValue(await this.awaitPrefetchedUrlResult(song))
+  }
+
+  async awaitPrefetchedUrlResult(song: Song): Promise<SongUrlResult | null> {
     const key = this.getCacheKey(song)
     const entry = this.cache.get(key)
 
@@ -101,12 +120,12 @@ class SongPrefetcher {
     }
 
     // Already resolved — return synchronously.
-    if (entry.resolvedUrl !== undefined) {
-      return entry.resolvedUrl
+    if (entry.resolvedUrlResult !== undefined) {
+      return entry.resolvedUrlResult
     }
 
-    if (entry.resolvedData?.url) {
-      return entry.resolvedData.url
+    if (entry.resolvedData?.urlResult) {
+      return entry.resolvedData.urlResult
     }
 
     // In flight — wait for URL only. Detail hydration may still be pending
@@ -164,22 +183,25 @@ class SongPrefetcher {
 
     const urlPromise = this.musicService
       .getSongUrl(platformKey, song.id, { mediaId })
-      .then(url => {
+      .then(result => {
+        const url = getSongUrlValue(result)
         const entry = this.cache.get(key)
         if (entry) {
+          entry.resolvedUrlResult = result ?? null
           entry.resolvedUrl = url ?? null
           entry.timestamp = Date.now()
         }
 
-        if (url && !song.url) {
-          song.url = url
+        if (url && (!song.url || song.url === url)) {
+          applySongUrlResultToSong(song, result)
         }
 
-        return url
+        return result
       })
       .catch(error => {
         const entry = this.cache.get(key)
         if (entry) {
+          entry.resolvedUrlResult = null
           entry.resolvedUrl = null
         }
         console.warn('[Prefetcher] Failed to prefetch song url:', song.id, error)
@@ -215,18 +237,24 @@ class SongPrefetcher {
         return null
       })
 
-    const prefetchPromise = Promise.all([urlPromise, detailPromise]).then(([url, detail]) => ({
-      song,
-      url,
-      detail,
-      timestamp: Date.now()
-    }))
+    const prefetchPromise = Promise.all([urlPromise, detailPromise]).then(([urlResult, detail]) => {
+      const urlHeaders = getSongUrlHeaders(urlResult)
+      return {
+        song,
+        url: getSongUrlValue(urlResult),
+        ...(urlHeaders ? { urlHeaders } : {}),
+        urlResult,
+        detail,
+        timestamp: Date.now()
+      }
+    })
 
     this.cache.set(key, {
       data: prefetchPromise,
       urlData: urlPromise,
       detailData: detailPromise,
       resolvedData: null,
+      resolvedUrlResult: undefined,
       resolvedUrl: undefined,
       resolvedDetail: undefined,
       timestamp: Date.now()

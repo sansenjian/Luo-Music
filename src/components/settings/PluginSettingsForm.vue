@@ -41,13 +41,20 @@ function isSettingVisible(key: string): boolean {
     case 'sharedDeviceId':
       return true
     case 'deviceId':
-      return mode === 'shared' || mode === 'exclusive'
+      return mode === 'shared' || mode === 'exclusive' || mode === 'voicemeeter'
     case 'bufferFrames':
-      return mode === 'exclusive' || mode === 'voicemeeter'
+      return mode === 'exclusive'
     case 'diagnosticsEnabled':
       return true
     case 'fallbackToShared':
       return mode === 'exclusive'
+    case 'bitPerfectRequired':
+      return mode === 'exclusive'
+    case 'voicemeeterBus':
+    case 'voicemeeterHardwareOutBus':
+    case 'voicemeeterHardwareOutDriver':
+    case 'voicemeeterHardwareOutDevice':
+      return mode === 'voicemeeter'
     default:
       return true
   }

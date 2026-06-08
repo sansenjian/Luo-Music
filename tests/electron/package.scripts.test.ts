@@ -22,8 +22,17 @@ describe('package scripts for forge workflows', () => {
   })
 
   it('runs Electron renderer dev through the local VP CLI', () => {
+    expect(packageJson.scripts?.['build:audio-output-helper']).toBe(
+      'node scripts/build/build-audio-output-helper.cjs'
+    )
+    expect(packageJson.scripts?.['dev:electron']).toContain(
+      'npm run build:smtc-helper && npm run build:audio-output-helper'
+    )
     expect(packageJson.scripts?.['dev:electron']).toContain(
       'APP_RUNTIME=electron -- npm run vp -- dev --config .config/vite.config.ts'
+    )
+    expect(packageJson.scripts?.['preview:electron']).toContain(
+      'npm run build:smtc-helper && npm run build:audio-output-helper'
     )
   })
 
@@ -49,6 +58,42 @@ describe('package scripts for forge workflows', () => {
     )
     expect(packageJson.scripts?.['test:native']).toBe(
       'node scripts/run-with-env.cjs LUO_TEST_INCLUDE_NATIVE=1 LUO_TEST_NATIVE_ONLY=1 -- node scripts/run-vitest-with-native-restore.cjs run -c .config/vitest.config.ts'
+    )
+    expect(packageJson.scripts?.['test:audio-output:exclusive']).toBe(
+      'node scripts/test-audio-output-exclusive-lock.cjs'
+    )
+    expect(packageJson.scripts?.['test:audio-output:bit-perfect']).toBe(
+      'node scripts/test-audio-output-bit-perfect-candidate.cjs'
+    )
+    expect(packageJson.scripts?.['test:audio-output:format-matrix']).toBe(
+      'node scripts/test-audio-output-format-matrix.cjs'
+    )
+    expect(packageJson.scripts?.['test:audio-output:format-matrix:ffmpeg-samples']).toBe(
+      'node scripts/test-audio-output-format-matrix-ffmpeg-samples.cjs'
+    )
+    expect(packageJson.scripts?.['test:audio-output:remote-refresh']).toBe(
+      'node scripts/test-audio-output-remote-refresh.cjs'
+    )
+    expect(packageJson.scripts?.['test:audio-output:voicemeeter-route']).toBe(
+      'node scripts/test-audio-output-voicemeeter-route.cjs'
+    )
+    expect(packageJson.scripts?.['test:audio-output:mode-switch']).toBe(
+      'node scripts/test-audio-output-mode-switch.cjs'
+    )
+    expect(packageJson.scripts?.['test:audio-output:loopback']).toBe(
+      'node scripts/verify-audio-output-loopback.cjs'
+    )
+    expect(packageJson.scripts?.['check:audio-output:verification-bundle']).toBe(
+      'node scripts/check-audio-output-verification-bundle.cjs'
+    )
+    expect(packageJson.scripts?.['check:audio-output:windows-proof']).toBe(
+      'node scripts/check-audio-output-windows-proof.cjs'
+    )
+    expect(packageJson.scripts?.['check:audio-output:helper-opus']).toBe(
+      'cargo check --manifest-path native/audio-output-helper/Cargo.toml --features opus'
+    )
+    expect(packageJson.scripts?.['test:audio-output:helper-opus']).toBe(
+      'cargo test --manifest-path native/audio-output-helper/Cargo.toml --features opus --no-run'
     )
     expect(packageJson.scripts?.['test:ci']).toBe('npm run test:run && npm run test:native')
     expect(packageJson.scripts?.['vitest']).toBe('node ./node_modules/vitest/vitest.mjs')

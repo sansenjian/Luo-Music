@@ -1,4 +1,5 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import type { AudioOutputStatus } from '@shared/audioOutput/protocol'
 import type { PlatformDescriptor } from '@shared/types/platform'
 import { services } from '@/services'
 import { useAudioOutputPlugin } from '@/composables/useAudioOutputPlugin'
@@ -18,6 +19,70 @@ type PluginSettingDefinition = {
 export type PluginManagerDeps = {
   pluginService?: PluginService
   platformService?: Pick<PlatformService, 'isElectron'>
+}
+
+function createAudioOutputDescriptorRefreshKey(status: AudioOutputStatus): string {
+  const settings = status.settings
+  return JSON.stringify({
+    enabled: status.enabled,
+    backend: status.backend,
+    backendAvailable: status.backendAvailable,
+    requestedMode: status.requestedMode,
+    activeMode: status.activeMode,
+    deviceId: status.deviceId,
+    devices: status.devices.map(device => [
+      device.id,
+      device.name,
+      device.isDefault,
+      device.backend
+    ]),
+    supportedModes: status.supportedModes ?? [],
+    helperRunning: Boolean(status.helperRunning),
+    testToneRunning: Boolean(status.testToneRunning),
+    nativePlaybackRunning: Boolean(status.nativePlaybackRunning),
+    nativePlaybackDownload: status.nativePlaybackDownload
+      ? {
+          state: status.nativePlaybackDownload.state,
+          totalBytes: status.nativePlaybackDownload.totalBytes,
+          rangeSupported: status.nativePlaybackDownload.rangeSupported,
+          strategy: status.nativePlaybackDownload.strategy
+        }
+      : null,
+    bitPerfect: status.bitPerfect ?? null,
+    voicemeeterRemote: status.voicemeeterRemote
+      ? {
+          available: status.voicemeeterRemote.available,
+          connected: status.voicemeeterRemote.connected,
+          routeApplied: status.voicemeeterRemote.routeApplied,
+          routeManaged: status.voicemeeterRemote.routeManaged,
+          routeBus: status.voicemeeterRemote.routeBus,
+          hardwareOutApplied: status.voicemeeterRemote.hardwareOutApplied,
+          hardwareOutBus: status.voicemeeterRemote.hardwareOutBus,
+          hardwareOutDriver: status.voicemeeterRemote.hardwareOutDriver,
+          hardwareOutDevice: status.voicemeeterRemote.hardwareOutDevice,
+          kind: status.voicemeeterRemote.kind,
+          version: status.voicemeeterRemote.version,
+          virtualInputStrip: status.voicemeeterRemote.virtualInputStrip,
+          reason: status.voicemeeterRemote.reason
+        }
+      : null,
+    reason: status.reason,
+    settings: settings
+      ? {
+          mode: settings.mode,
+          sharedDeviceId: settings.sharedDeviceId,
+          deviceId: settings.deviceId,
+          bufferFrames: settings.bufferFrames,
+          fallbackToShared: settings.fallbackToShared,
+          bitPerfectRequired: settings.bitPerfectRequired,
+          voicemeeterBus: settings.voicemeeterBus,
+          voicemeeterHardwareOutBus: settings.voicemeeterHardwareOutBus,
+          voicemeeterHardwareOutDriver: settings.voicemeeterHardwareOutDriver,
+          voicemeeterHardwareOutDevice: settings.voicemeeterHardwareOutDevice,
+          diagnosticsEnabled: settings.diagnosticsEnabled
+        }
+      : null
+  })
 }
 
 export function usePluginManager(deps: PluginManagerDeps = {}) {
@@ -172,11 +237,10 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
   })
 
   watch(
-    audioOutputPlugin.audioOutputStatus,
+    () => createAudioOutputDescriptorRefreshKey(audioOutputPlugin.audioOutputStatus.value),
     () => {
       void refreshRuntimePlatformDescriptors()
-    },
-    { deep: true }
+    }
   )
 
   function getSettingsSchema(platform: PlatformDescriptor): PluginSettingDefinition[] {
@@ -244,7 +308,11 @@ export function usePluginManager(deps: PluginManagerDeps = {}) {
     errorMessage.value = null
 
     try {
-      await playAudioOutputTestTone()
+      const status = await playAudioOutputTestTone()
+      if (!status.enabled || status.backend !== 'native' || !status.backendAvailable) {
+        errorMessage.value = status.reason ?? '原生音频输出测试失败'
+        return
+      }
       platforms.value = await pluginService.refreshPlatformDescriptors()
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : String(error)

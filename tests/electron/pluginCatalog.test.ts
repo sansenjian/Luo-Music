@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const mockListPlatforms = vi.fn()
 const mockInstallFromPath = vi.fn()
@@ -104,6 +107,7 @@ function makeRegistration(
 }
 
 describe('electron/plugins/PluginCatalog', () => {
+  const missingBundledPluginsDir = join(process.cwd(), '.missing-bundled-plugins-for-tests')
   let catalog: PluginCatalog
 
   beforeEach(() => {
@@ -112,7 +116,7 @@ describe('electron/plugins/PluginCatalog', () => {
     mockInstallManyFromPath.mockImplementation(async (pluginPath: string) => [
       await mockInstallFromPath(pluginPath)
     ])
-    catalog = new PluginCatalog()
+    catalog = new PluginCatalog({ bundledPluginsDir: missingBundledPluginsDir })
   })
 
   describe('listPlatforms', () => {
@@ -123,6 +127,63 @@ describe('electron/plugins/PluginCatalog', () => {
       expect(ids).toContain('local')
       expect(ids).not.toContain('netease')
       expect(ids).not.toContain('qq')
+    })
+
+    it('installs bundled plugins before returning the first platform list', async () => {
+      const tempRoot = join(tmpdir(), `luo-music-bundled-plugin-${process.pid}-${Date.now()}`)
+      const bundledRoot = join(tempRoot, 'third-party')
+      const bundledNeteaseDir = join(bundledRoot, 'netease')
+      const baseRegistration = makeRegistration('netease')
+      const neteaseRegistration = makeRegistration('netease', {
+        manifest: {
+          ...baseRegistration.manifest,
+          id: 'com.luomusic.plugin.netease',
+          name: 'Netease Music'
+        },
+        state: {
+          ...baseRegistration.state,
+          pluginId: 'com.luomusic.plugin.netease',
+          enabled: true
+        }
+      })
+
+      try {
+        await mkdir(bundledNeteaseDir, { recursive: true })
+        await writeFile(
+          join(bundledNeteaseDir, 'manifest.json'),
+          JSON.stringify({
+            id: neteaseRegistration.manifest.id,
+            platformId: neteaseRegistration.manifest.platformId,
+            version: neteaseRegistration.manifest.version
+          })
+        )
+        mockListPlatforms.mockResolvedValueOnce([]).mockResolvedValue([neteaseRegistration])
+        mockInstallFromPath.mockResolvedValue({
+          manifest: neteaseRegistration.manifest,
+          installPath: neteaseRegistration.installPath,
+          entryPath: neteaseRegistration.entryPath,
+          checksum: neteaseRegistration.checksum
+        })
+        mockEnsureState.mockReturnValue(neteaseRegistration.state)
+        catalog = new PluginCatalog({ bundledPluginsDir: bundledRoot })
+
+        const platforms = await catalog.listPlatforms()
+
+        expect(mockInstallManyFromPath).toHaveBeenCalledWith(bundledNeteaseDir)
+        expect(platforms).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: 'netease',
+              displayName: 'Netease Music',
+              source: 'external',
+              runtime: 'external-host',
+              enabled: true
+            })
+          ])
+        )
+      } finally {
+        await rm(tempRoot, { recursive: true, force: true })
+      }
     })
 
     it('includes external plugin descriptors', async () => {
@@ -350,6 +411,65 @@ describe('electron/plugins/PluginCatalog', () => {
   })
 
   describe('call', () => {
+    it('installs bundled plugins before direct cold-start calls', async () => {
+      const tempRoot = join(tmpdir(), `luo-music-bundled-plugin-call-${process.pid}-${Date.now()}`)
+      const bundledRoot = join(tempRoot, 'third-party')
+      const bundledNeteaseDir = join(bundledRoot, 'netease')
+      const baseRegistration = makeRegistration('netease')
+      const neteaseRegistration = makeRegistration('netease', {
+        manifest: {
+          ...baseRegistration.manifest,
+          id: 'com.luomusic.plugin.netease',
+          name: 'Netease Music'
+        },
+        state: {
+          ...baseRegistration.state,
+          pluginId: 'com.luomusic.plugin.netease',
+          enabled: true
+        }
+      })
+
+      try {
+        await mkdir(bundledNeteaseDir, { recursive: true })
+        await writeFile(
+          join(bundledNeteaseDir, 'manifest.json'),
+          JSON.stringify({
+            id: neteaseRegistration.manifest.id,
+            platformId: neteaseRegistration.manifest.platformId,
+            version: neteaseRegistration.manifest.version
+          })
+        )
+        mockListPlatforms.mockResolvedValueOnce([]).mockResolvedValue([neteaseRegistration])
+        mockInstallFromPath.mockResolvedValue({
+          manifest: neteaseRegistration.manifest,
+          installPath: neteaseRegistration.installPath,
+          entryPath: neteaseRegistration.entryPath,
+          checksum: neteaseRegistration.checksum
+        })
+        mockEnsureState.mockReturnValue(neteaseRegistration.state)
+        mockHostCall.mockResolvedValue({ list: [], total: 0 })
+        mockRecordCallSuccess.mockReturnValue({
+          ...neteaseRegistration.state,
+          lastError: undefined
+        })
+        catalog = new PluginCatalog({ bundledPluginsDir: bundledRoot })
+
+        await expect(catalog.call('netease', 'search', { keyword: 'test' })).resolves.toEqual({
+          list: [],
+          total: 0
+        })
+
+        expect(mockInstallManyFromPath).toHaveBeenCalledWith(bundledNeteaseDir)
+        expect(mockHostCall).toHaveBeenCalledWith(
+          expect.objectContaining({ manifest: neteaseRegistration.manifest }),
+          'search',
+          { keyword: 'test' }
+        )
+      } finally {
+        await rm(tempRoot, { recursive: true, force: true })
+      }
+    })
+
     it('delegates to host and records success on success', async () => {
       const reg = makeRegistration('kugou', {
         state: {

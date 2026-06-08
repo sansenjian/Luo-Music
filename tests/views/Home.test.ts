@@ -1,4 +1,4 @@
-import { computed, defineComponent, ref } from 'vue'
+import { computed, defineComponent, ref, type PropType } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -135,7 +135,7 @@ async function mountHome(options: {
           name: 'HomeSidebarStub',
           props: {
             activeItemId: {
-              type: [String, null] as any,
+              type: String as PropType<string | null>,
               required: false
             },
             collapsed: {

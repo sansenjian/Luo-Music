@@ -1,4 +1,11 @@
-import type { LyricResult, PlaylistDetail, SearchResult, Song } from '@/platform/music/interface'
+import type {
+  LyricResult,
+  PlaylistDetail,
+  SearchResult,
+  Song,
+  SongUrlHeaders,
+  SongUrlResult
+} from '@/platform/music/interface'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -21,6 +28,10 @@ function normalizeOptionalText(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined
 }
 
+function normalizeOptionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
 function normalizeDurationMs(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     return 0
@@ -31,6 +42,29 @@ function normalizeDurationMs(value: unknown): number {
 
 function normalizeStandardId(value: unknown, fallback: string | number): string | number {
   return isStandardId(value) ? value : fallback
+}
+
+function normalizeSongUrlHeaders(value: unknown): SongUrlHeaders | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  const headers: SongUrlHeaders = {}
+  for (const [rawName, rawValue] of Object.entries(value)) {
+    const name = rawName.trim()
+    if (!name || typeof rawValue !== 'string') {
+      continue
+    }
+
+    const headerValue = rawValue.trim()
+    if (!headerValue) {
+      continue
+    }
+
+    headers[name] = headerValue
+  }
+
+  return Object.keys(headers).length > 0 ? headers : undefined
 }
 
 function normalizeArtists(value: unknown, songId: string | number): Song['artists'] {
@@ -158,7 +192,7 @@ export function normalizePluginLyricResult(value: unknown): LyricResult {
   }
 }
 
-export function normalizePluginSongUrlResult(value: unknown): string | null {
+export function normalizePluginSongUrlResult(value: unknown): SongUrlResult | null {
   if (typeof value === 'string') {
     return value.length > 0 ? value : null
   }
@@ -168,7 +202,22 @@ export function normalizePluginSongUrlResult(value: unknown): string | null {
   }
 
   if (isRecord(value) && (typeof value.url === 'string' || value.url === null)) {
-    return value.url && value.url.length > 0 ? value.url : null
+    if (!value.url || value.url.length <= 0) {
+      return null
+    }
+
+    const headers = normalizeSongUrlHeaders(value.headers)
+    const expiresAt = normalizeOptionalNumber(value.expiresAt)
+    const level = normalizeOptionalText(value.level)
+    const bitrate = normalizeOptionalNumber(value.bitrate)
+    return {
+      url: value.url,
+      ...(headers ? { headers } : {}),
+      ...(isStandardId(value.mediaId) ? { mediaId: value.mediaId } : {}),
+      ...(expiresAt !== undefined ? { expiresAt } : {}),
+      ...(level !== undefined ? { level } : {}),
+      ...(bitrate !== undefined ? { bitrate } : {})
+    }
   }
 
   return null

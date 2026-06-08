@@ -416,6 +416,11 @@ type InvokeChannelsDefinition = MergeChannels<
       AudioOutputStatus
     > &
     DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_PROBE_EXCLUSIVE_LOCK,
+      [],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<
       typeof INVOKE_CHANNELS.AUDIO_OUTPUT_PLAY_FILE,
       [payload: AudioOutputPlayFilePayload],
       AudioOutputStatus

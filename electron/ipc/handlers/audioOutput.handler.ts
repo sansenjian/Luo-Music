@@ -20,12 +20,25 @@ type AudioOutputRuntime = Pick<
   | 'setEnabled'
   | 'updateSettings'
   | 'playTestTone'
+  | 'probeExclusiveLock'
   | 'playFile'
   | 'pausePlayback'
   | 'resumePlayback'
   | 'stopPlayback'
+  | 'stopPlaybackSettled'
   | 'setPlaybackVolume'
 >
+
+let audioOutputCommandQueue: Promise<void> = Promise.resolve()
+
+function enqueueAudioOutputCommand<T>(command: () => T | Promise<T>): Promise<T> {
+  const result = audioOutputCommandQueue.then(() => Promise.resolve(command()))
+  audioOutputCommandQueue = result.then(
+    () => undefined,
+    () => undefined
+  )
+  return result
+}
 
 function createUnavailableStatus(
   enabled: boolean,
@@ -35,6 +48,7 @@ function createUnavailableStatus(
     ...createDefaultAudioOutputStatus(),
     enabled,
     backend: enabled ? 'unavailable' : 'disabled',
+    settings: { ...settings },
     requestedMode: settings.mode,
     deviceId: settings.deviceId || undefined,
     reason: enabled ? 'Native audio output service is unavailable.' : undefined
@@ -50,10 +64,11 @@ export function registerAudioOutputHandlers(nativeService?: AudioOutputRuntime):
     INVOKE_CHANNELS.AUDIO_OUTPUT_SET_ENABLED,
     async (enabled: boolean, settings: AudioOutputSettings) => {
       const sanitizedSettings = sanitizeAudioOutputSettings(settings)
-      return (
-        nativeService?.setEnabled(enabled, sanitizedSettings) ??
-        createUnavailableStatus(enabled, sanitizedSettings)
-      )
+      if (!nativeService) {
+        return createUnavailableStatus(enabled, sanitizedSettings)
+      }
+
+      return enqueueAudioOutputCommand(() => nativeService.setEnabled(enabled, sanitizedSettings))
     }
   )
 
@@ -61,10 +76,11 @@ export function registerAudioOutputHandlers(nativeService?: AudioOutputRuntime):
     INVOKE_CHANNELS.AUDIO_OUTPUT_UPDATE_SETTINGS,
     async (settings: AudioOutputSettings) => {
       const sanitizedSettings = sanitizeAudioOutputSettings(settings)
-      return (
-        nativeService?.updateSettings(sanitizedSettings) ??
-        createUnavailableStatus(false, sanitizedSettings)
-      )
+      if (!nativeService) {
+        return createUnavailableStatus(false, sanitizedSettings)
+      }
+
+      return enqueueAudioOutputCommand(() => nativeService.updateSettings(sanitizedSettings))
     }
   )
 
@@ -72,7 +88,9 @@ export function registerAudioOutputHandlers(nativeService?: AudioOutputRuntime):
     INVOKE_CHANNELS.AUDIO_OUTPUT_PLAY_TEST_TONE,
     async (payload?: AudioOutputTestTonePayload) => {
       if (nativeService) {
-        return nativeService.playTestTone(sanitizeAudioOutputTestTonePayload(payload))
+        return enqueueAudioOutputCommand(() =>
+          nativeService.playTestTone(sanitizeAudioOutputTestTonePayload(payload))
+        )
       }
 
       return {
@@ -84,11 +102,21 @@ export function registerAudioOutputHandlers(nativeService?: AudioOutputRuntime):
     }
   )
 
+  ipcService.registerInvoke(INVOKE_CHANNELS.AUDIO_OUTPUT_PROBE_EXCLUSIVE_LOCK, async () => {
+    if (!nativeService) {
+      return createDefaultAudioOutputStatus()
+    }
+
+    return enqueueAudioOutputCommand(() => nativeService.probeExclusiveLock())
+  })
+
   ipcService.registerInvoke(
     INVOKE_CHANNELS.AUDIO_OUTPUT_PLAY_FILE,
     async (payload: AudioOutputPlayFilePayload) => {
       if (nativeService) {
-        return nativeService.playFile(sanitizeAudioOutputPlayFilePayload(payload))
+        return enqueueAudioOutputCommand(() =>
+          nativeService.playFile(sanitizeAudioOutputPlayFilePayload(payload))
+        )
       }
 
       return {
@@ -101,23 +129,38 @@ export function registerAudioOutputHandlers(nativeService?: AudioOutputRuntime):
   )
 
   ipcService.registerInvoke(INVOKE_CHANNELS.AUDIO_OUTPUT_PAUSE_PLAYBACK, async () => {
-    return nativeService?.pausePlayback() ?? createDefaultAudioOutputStatus()
+    if (!nativeService) {
+      return createDefaultAudioOutputStatus()
+    }
+
+    return enqueueAudioOutputCommand(() => nativeService.pausePlayback())
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.AUDIO_OUTPUT_RESUME_PLAYBACK, async () => {
-    return nativeService?.resumePlayback() ?? createDefaultAudioOutputStatus()
+    if (!nativeService) {
+      return createDefaultAudioOutputStatus()
+    }
+
+    return enqueueAudioOutputCommand(() => nativeService.resumePlayback())
   })
 
   ipcService.registerInvoke(INVOKE_CHANNELS.AUDIO_OUTPUT_STOP_PLAYBACK, async () => {
-    return nativeService?.stopPlayback() ?? createDefaultAudioOutputStatus()
+    if (!nativeService) {
+      return createDefaultAudioOutputStatus()
+    }
+
+    return enqueueAudioOutputCommand(() => nativeService.stopPlaybackSettled())
   })
 
   ipcService.registerInvoke(
     INVOKE_CHANNELS.AUDIO_OUTPUT_SET_PLAYBACK_VOLUME,
     async (payload: AudioOutputPlaybackVolumePayload) => {
-      return (
-        nativeService?.setPlaybackVolume(sanitizeAudioOutputPlaybackVolumePayload(payload)) ??
-        createDefaultAudioOutputStatus()
+      if (!nativeService) {
+        return createDefaultAudioOutputStatus()
+      }
+
+      return enqueueAudioOutputCommand(() =>
+        nativeService.setPlaybackVolume(sanitizeAudioOutputPlaybackVolumePayload(payload))
       )
     }
   )
