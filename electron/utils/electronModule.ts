@@ -5,10 +5,7 @@ type ElectronTestGlobal = typeof globalThis & {
 }
 
 export function getElectronModule(): ElectronModule {
-  const testMock =
-    process.env.VITEST === 'true'
-      ? (globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__
-      : undefined
+  const testMock = (globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__
 
   if (testMock) {
     return testMock as ElectronModule
