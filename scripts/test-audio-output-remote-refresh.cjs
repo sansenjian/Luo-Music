@@ -17,6 +17,8 @@ const freshUrlEnv = "LUO_AUDIO_OUTPUT_REMOTE_FRESH_URL";
 const freshHeadersEnv = "LUO_AUDIO_OUTPUT_REMOTE_FRESH_HEADERS";
 const nativePlaybackEnv = "LUO_AUDIO_OUTPUT_REMOTE_NATIVE_PLAYBACK";
 const nativePlaybackModeEnv = "LUO_AUDIO_OUTPUT_REMOTE_NATIVE_MODE";
+const nativePlaybackSkipHelperEnv =
+  "LUO_AUDIO_OUTPUT_REMOTE_NATIVE_SKIP_HELPER";
 const nativePlaybackStates = new Set(["starting", "playing", "ended"]);
 const projectRoot = path.resolve(__dirname, "..");
 const protocolVersion = 2;
@@ -493,8 +495,6 @@ async function verifyNativePlaybackFromFreshAudio(scenario, options = {}) {
     };
   }
 
-  const helperInfo = prepareAudioOutputHelper({ projectRoot });
-
   const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), "luo-remote-native-"));
   const extension = extensionForContentType(
     wholeFresh.contentType,
@@ -502,6 +502,26 @@ async function verifyNativePlaybackFromFreshAudio(scenario, options = {}) {
   );
   const cachePath = path.join(cacheDir, `fresh-audio${extension}`);
   fs.writeFileSync(cachePath, wholeFresh.bytes);
+
+  const nativeMode = normalizeNativePlaybackMode(
+    process.env[nativePlaybackModeEnv],
+  );
+
+  if (parseBooleanEnv(nativePlaybackSkipHelperEnv, false)) {
+    return {
+      attempted: true,
+      started: false,
+      cachePath,
+      extension,
+      bytesReceived: wholeFresh.bytesReceived,
+      bodySha256: wholeFresh.bodySha256,
+      contentType: wholeFresh.contentType,
+      requestedMode: nativeMode,
+      reason: `Native helper startup skipped by ${nativePlaybackSkipHelperEnv}.`,
+    };
+  }
+
+  const helperInfo = prepareAudioOutputHelper({ projectRoot });
 
   const helper = spawn(helperInfo.helperPath, [], {
     cwd: projectRoot,
@@ -511,9 +531,6 @@ async function verifyNativePlaybackFromFreshAudio(scenario, options = {}) {
   });
   const events = attachHelperEventParser(helper);
   const deviceId = process.env.LUO_AUDIO_OUTPUT_TEST_DEVICE_ID || "";
-  const nativeMode = normalizeNativePlaybackMode(
-    process.env[nativePlaybackModeEnv],
-  );
   const timeoutMs = parseIntegerEnv(
     "LUO_AUDIO_OUTPUT_REMOTE_NATIVE_TIMEOUT_MS",
     15_000,

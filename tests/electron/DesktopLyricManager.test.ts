@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 
@@ -78,6 +78,9 @@ function setInternals(manager: DesktopLyricManager, patch: Partial<ManagerIntern
 }
 
 type DesktopLyricManager = import('../../electron/DesktopLyricManager').DesktopLyricManager
+type ElectronTestGlobal = typeof globalThis & {
+  __LUO_ELECTRON_TEST_MOCK__?: ReturnType<typeof createElectronMock>
+}
 
 function createMockWindow(
   overrides: { isVisible?: boolean } = {}
@@ -94,13 +97,17 @@ function createMockWindow(
 describe('DesktopLyricManager', () => {
   beforeEach(() => {
     vi.resetModules()
-    vi.doMock('electron', createElectronMock)
+    ;(globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__ = createElectronMock()
     vi.clearAllMocks()
     browserWindowInstances.length = 0
     storeData.clear()
     process.env.NODE_ENV = originalNodeEnv
     delete process.env.VITE_DEV_SERVER_URL
     delete process.env.LUO_DESKTOP_LYRIC_DEBUG
+  })
+
+  afterEach(() => {
+    delete (globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__
   })
 
   it('replays the last cached lyric when an existing ready window is shown', async () => {

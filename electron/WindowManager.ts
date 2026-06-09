@@ -5,13 +5,13 @@ import type {
   Rectangle,
   WebContents as WebContentsType
 } from 'electron'
-import { BrowserWindow, nativeImage } from 'electron'
 import path from 'node:path'
 
 import { downloadManager } from './DownloadManager'
 import logger from './logger'
 import { getWindowsShellIdentity, type WindowsShellIdentity } from './main/app'
 import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
+import { getElectronModule } from './utils/electronModule'
 import { MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
 const StoreModule = require('electron-store') as {
   default?: new (options?: { projectName: string }) => {
@@ -92,6 +92,7 @@ export class WindowManager {
   }
 
   createWindow(): void {
+    const { BrowserWindow } = getElectronModule()
     const startedAt = Date.now()
     const width = this.lastSize ? this.lastSize.width : 1200
     const height = this.lastSize ? this.lastSize.height : 800
@@ -507,6 +508,7 @@ export class WindowManager {
       return
     }
 
+    const { nativeImage } = getElectronModule()
     const iconsPath = process.env.VITE_PUBLIC || path.join(__dirname, '../public')
     const buttons = [
       {

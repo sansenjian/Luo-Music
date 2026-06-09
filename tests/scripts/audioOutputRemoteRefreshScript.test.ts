@@ -78,6 +78,7 @@ describe('audio output remote refresh script', () => {
         LUO_AUDIO_OUTPUT_REMOTE_FRESH_HEADERS: '',
         LUO_AUDIO_OUTPUT_REMOTE_REFRESH_REPORT: reportPath,
         LUO_AUDIO_OUTPUT_REMOTE_NATIVE_PLAYBACK: '1',
+        LUO_AUDIO_OUTPUT_REMOTE_NATIVE_SKIP_HELPER: '1',
         LUO_AUDIO_OUTPUT_REMOTE_NATIVE_TIMEOUT_MS: '5000'
       },
       timeout: 60_000
@@ -182,6 +183,7 @@ describe('audio output remote refresh script', () => {
     expect(script).toContain('resolveReportPathFromEnv')
     expect(script).toContain('LUO_AUDIO_OUTPUT_REMOTE_NATIVE_PLAYBACK')
     expect(script).toContain('LUO_AUDIO_OUTPUT_REMOTE_NATIVE_MODE')
+    expect(script).toContain('LUO_AUDIO_OUTPUT_REMOTE_NATIVE_SKIP_HELPER')
     expect(script).toContain('requestedMode: nativeMode')
     expect(script).toContain('mode: nativeMode')
     expect(script).toContain('writeReportIfRequested')

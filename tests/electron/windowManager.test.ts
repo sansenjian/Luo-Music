@@ -128,13 +128,17 @@ vi.mock('../../electron/utils/paths', () => ({
   VITE_PUBLIC: '/public'
 }))
 
+type ElectronTestGlobal = typeof globalThis & {
+  __LUO_ELECTRON_TEST_MOCK__?: ReturnType<typeof createElectronMock>
+}
+
 describe('electron/WindowManager', () => {
   const platformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform')
 
   beforeEach(() => {
     vi.useFakeTimers()
     vi.resetModules()
-    vi.doMock('electron', createElectronMock)
+    ;(globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__ = createElectronMock()
     vi.clearAllMocks()
     browserWindowInstances.length = 0
     delete process.env.VITE_DEV_SERVER_URL
@@ -146,6 +150,7 @@ describe('electron/WindowManager', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    delete (globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__
     delete process.env.VITE_DEV_SERVER_URL
     if (platformDescriptor) {
       Object.defineProperty(process, 'platform', platformDescriptor)

@@ -5,10 +5,8 @@ import type { SongPlatform } from '@shared/types/schemas'
 import { DEFAULT_APP_CONFIG, type AppConfig } from '@shared/contracts/config'
 import { RECEIVE_CHANNELS, type ReceiveChannel } from '@shared/protocol/channels'
 
+import { getElectronModule } from './utils/electronModule'
 import { MAIN_DIST, RENDERER_DIST } from './utils/paths'
-
-const getElectron = (): typeof import('electron') =>
-  require('electron') as typeof import('electron')
 
 type ElectronStoreInstance = {
   get(key: string): unknown
@@ -219,7 +217,7 @@ export class DesktopLyricManager {
     this.isWindowReady = false
     this.isRendererReady = false
 
-    const { BrowserWindow, screen } = getElectron()
+    const { BrowserWindow, screen } = getElectronModule()
     const primaryDisplay = screen.getPrimaryDisplay()
     const { width, height } = primaryDisplay.workAreaSize
     const x = this.lastPosition ? this.lastPosition.x : Math.floor((width - 800) / 2)
