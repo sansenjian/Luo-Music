@@ -56,13 +56,12 @@ const MAX_AUDIO_SCAN_DEPTH = 10
 const MAX_AUDIO_FILE_COUNT = 10000
 const FULL_DURATION_PARSE_EXTENSIONS = new Set(['.ogg', '.opus'])
 
-const StoreModule = require('electron-store') as {
-  default?: new (options?: { projectName: string }) => LegacyStoreShape
-}
-
-const Store = StoreModule.default ?? (StoreModule as unknown as new () => LegacyStoreShape)
-
 export function createDefaultLegacyStore(): LegacyStoreShape {
+  const StoreModule = require('electron-store') as {
+    default?: new (options?: { projectName: string }) => LegacyStoreShape
+  }
+  const Store = StoreModule.default ?? (StoreModule as unknown as new () => LegacyStoreShape)
+
   return new Store({ projectName: 'luo-music' })
 }
 

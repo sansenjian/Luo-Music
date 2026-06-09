@@ -9,6 +9,7 @@ export class MockAudio {
   ended: boolean = false
   src: string = ''
   readyState: number = 0
+  sinkId: string = ''
   crossOrigin: string | null = null
   disableRemotePlayback: boolean = false
   muted: boolean = false
@@ -62,6 +63,11 @@ export class MockAudio {
 
   captureStream(): MediaStream {
     return {} as MediaStream
+  }
+
+  setSinkId(sinkId: string): Promise<void> {
+    this.sinkId = sinkId
+    return Promise.resolve()
   }
 
   addEventListener(event: string, handler: EventHandler): void {

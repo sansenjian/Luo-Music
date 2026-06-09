@@ -1,0 +1,48 @@
+[package]
+name = "audio-output-helper"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1"
+ape-decoder = "0.3.2"
+cpal = "0.16"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+symphonia = { version = "0.6", default-features = false, features = [
+  "aac",
+  "adpcm",
+  "aiff",
+  "alac",
+  "caf",
+  "flac",
+  "isomp4",
+  "mkv",
+  "mpa",
+  "mp3",
+  "opt-simd",
+  "ogg",
+  "pcm",
+  "vorbis",
+  "wav"
+] }
+symphonia-adapter-libopus = { version = "0.3.0", default-features = false, optional = true }
+
+[features]
+default = []
+opus = ["dep:symphonia-adapter-libopus"]
+opus-bundled = ["opus", "symphonia-adapter-libopus/bundled"]
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.54", features = [
+  "Win32_Devices_Properties",
+  "Win32_Foundation",
+  "Win32_Media_Audio",
+  "Win32_Media_KernelStreaming",
+  "Win32_Media_Multimedia",
+  "Win32_System_Com",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Variant",
+  "Win32_UI_Shell_PropertiesSystem"
+] }

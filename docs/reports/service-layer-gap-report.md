@@ -2,54 +2,62 @@
 
 ## 评估结论
 
-- 基础设施完成度：约 40%
-- 业务侧接入度：约 15–20%
+当前服务层已经从早期“最小 DI 试点”进入可持续收口阶段。`services.xxx()` 是默认服务入口，热点模块通过显式 `deps` 保持可测试性；后续重点不再是扩张 DI 机制，而是减少旧请求层、环境判断和配置常量的旁路入口。
 
 ## 已完成
 
-- 服务注册与最小 DI（`setupServices` / `services.*()`）
-- `LoggerService`、`ErrorService` 已在部分业务侧接入
-- `ConfigService` 抽象已建（未使用）
-- `PlatformService` 封装已建（少量使用）
+- 服务注册与最小 DI 已稳定使用：`setupServices` / `services.*()`。
+- 平台和播放器 accessor 兼容层已删除；`PlatformService` 已成为渲染侧平台判断的默认入口。
+- 热点模块已支持显式依赖注入，例如 `playerStore`、`useSearch` 和 `useHomePage`。
+- `ApiService` 已接入多条 Netease API 路径：
+  - `src/api/user.ts`
+  - `src/api/search.ts`
+  - `src/api/album.ts`
+  - `src/api/playlist.ts`
+  - `src/api/song.ts`
+- `src/api/netease.ts` 不再暴露 legacy `NeteaseAdapter(request)` 出口，Netease API 入口默认通过共享 helper 或 `services.api()`。
+- `ConfigService` 已提供 `getServiceBaseUrl()`，QQ 音乐 fallback URL 与 Electron 生产环境 Netease 默认 URL 都从配置服务读取。
+- `check:architecture` 已进入 `lint`，用于阻止部分结构边界回流。
 
-## 主要差距
+## 当前主要差距
 
-### 1. 业务侧仍直接依赖 platform
+### 1. Netease 旧请求入口需要防回流
 
-以下文件仍直接 `import platform` 或 `isElectron`：
+`src/api/netease.ts` 的 legacy adapter 出口已删除，主要 Netease API 文件已走 `src/api/shared/neteaseServiceRequest.ts`。后续重点是防止新增模块重新直接依赖 `@/utils/http`。
 
-- `src/views/Home.vue`
-- `src/components/CacheManager.vue`
-- `src/components/LyricFloat.vue`
-- `src/components/Player.vue`
-- `src/components/SettingsPanel.vue`
-- `src/components/UserAvatar.vue`
-- `src/store/playerStore.ts`
+建议：
 
-建议：统一改为 `services.platform()`，减少直接依赖。
+- 新增 Netease API 入口优先使用 `src/api/shared/neteaseServiceRequest.ts`。
+- 保持 `check:architecture` 中的 Netease 请求边界检查，发现新直连时优先改为共享 helper。
 
-### 2. ApiService 未接入
+### 2. 端口默认值已收口到共享协议边界
 
-目前仍大量通过 adapter/axios 直接调用，`services.api()` 未落地到业务侧。
+`DEV_API_SERVER` 和 `QQ_API_SERVER` 已删除，运行时 fallback URL 统一通过 `services.config().getServiceBaseUrl()` 获取。`NETEASE_API_PORT` 和 `QQ_API_PORT` 的默认值已收口到 `@shared/protocol/cache`，renderer 的 `ConfigService`、Vite 开发代理和 Electron 主进程共用同一份端口默认值。
 
-建议：先挑 1–2 个高频调用入口迁移，验证可行后再逐步扩展。
+建议：
 
-### 3. ConfigService 未落地
+- 服务端口和 fallback URL 优先从 `services.config()` 或边界层读取。
+- 新增业务模块不要直接拼接 `http://127.0.0.1:${port}`。
+- 共享协议常量继续放在 `@shared/protocol/cache`，避免 Electron、renderer 和构建配置各自复制端口值。
 
-端口/URL 配置仍散落（QQ/Netease）。
+### 3. 部分模块仍直接使用 runtime helper
 
-建议：使用 `ConfigService` 统一读取并替换硬编码。
+少量启动、Sentry、HTTP transport 和窗口 resize 代码仍直接使用 `isElectronRuntime()`。这些属于运行时边界或低层工具，不需要机械替换；业务组件和 composable 应继续走 `services.platform()` 或显式 deps。
 
-### 4. DI 仍为 Service Locator
+建议：
 
-目前属于“最小 DI”模式（service locator + override），还缺少：
+- 保留低层边界中的 runtime helper。
+- 业务层新增平台判断默认注入 `PlatformService`，不要直接 import runtime helper。
 
-- 作用域管理
-- 生命周期管理
-- 更严格的依赖注入规则
+### 4. DI 仍是 Service Locator 形态
 
-## 建议推进路径（最短）
+当前仍是“`services.xxx()` + 热点模块显式 deps”的务实形态，不是完整显式依赖图。
 
-1. 迁移所有 `platform` 直接依赖 → `services.platform()`
-2. 选 1–2 个 API 调用入口接入 `services.api()`
-3. 用 `ConfigService` 替换端口常量
+现阶段不建议引入完整 IoC 容器。只有当某个模块出现明显测试替身成本、环境判断扩散或生命周期管理问题时，再做局部服务化。
+
+## 建议推进路径
+
+1. 保持 Netease 旧请求路径自动检查，避免 legacy adapter 或直连 request 回流。
+2. 继续减少业务层直接读取端口，新增服务地址默认走 `ConfigService`。
+3. 按收益迁移旧 API 文件，不做一次性全仓请求层重写。
+4. 继续观察低层 runtime helper 的使用面，业务层新增平台判断默认走 `PlatformService`。

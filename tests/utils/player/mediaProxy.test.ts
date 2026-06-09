@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  createLocalMediaUrl,
   createRemoteMediaProxyUrl,
   isRemoteMediaProxyUrl,
   resolvePlaybackMediaUrl,
@@ -13,6 +14,12 @@ describe('mediaProxy', () => {
 
     expect(resolvePlaybackMediaUrl(sourceUrl, true)).toBe(createRemoteMediaProxyUrl(sourceUrl))
     expect(resolvePlaybackMediaUrl(sourceUrl, false)).toBe(sourceUrl)
+  })
+
+  it('creates local media URLs from absolute file paths', () => {
+    expect(createLocalMediaUrl('D:\\Music\\local song.mp3')).toBe(
+      'luo-media://media?path=D%3A%5CMusic%5Clocal%20song.mp3'
+    )
   })
 
   it('does not proxy non-http or already proxied media URLs', () => {

@@ -96,6 +96,7 @@ if (platformService.isElectron()) {
 - [`src/composables/useSearch.ts`](./../src/composables/useSearch.ts)
 - [`src/features/home/composables/useHomePage.ts`](./../src/features/home/composables/useHomePage.ts)
 - [`src/api/user.ts`](./../src/api/user.ts)
+- [`src/api/shared/neteaseServiceRequest.ts`](./../src/api/shared/neteaseServiceRequest.ts)
 
 推荐形式：
 
@@ -193,6 +194,26 @@ class DownloadJob {
 
 ## `ApiService` 与 `ConfigService` 的使用边界
 
+### 平台接口的通用格式原则
+
+服务层和请求层不是为 QQ 音乐或网易云音乐定制的。它们面向的是所有内置来源、第三方插件和未来来源都要遵守的框架内部通用格式。
+
+当前通用模型以 [`packages/shared/types/schemas.ts`](./../packages/shared/types/schemas.ts) 和 [`src/platform/music/interface.ts`](./../src/platform/music/interface.ts) 为准，包括：
+
+- `Song`
+- `SearchResult`
+- `LyricResult`
+- `PlaylistDetail`
+
+插件或平台适配器应在自己的边界内把外部接口返回值转换成这些通用模型，再交给框架内部使用。框架可以在 [`src/platform/music/plugin/standardModels.ts`](./../src/platform/music/plugin/standardModels.ts) 这类桥接层做保护性归一化，但它只是防御边界，不是鼓励业务层继续消费平台原始结构。
+
+因此：
+
+- `qq`、`netease` 只是当前内置来源和迁移样例，不是接口设计的中心。
+- 新增来源或插件不要把平台专属字段扩散到 store、组件或共享服务里。
+- 平台专属字段优先放入 `extra`，只有确认为框架通用能力后才提升为 `Song` 等通用模型字段。
+- 业务层接收的应是框架通用模型，而不是某个平台的原始响应。
+
 ### `ApiService`
 
 适用场景：
@@ -201,9 +222,13 @@ class DownloadJob {
 - 想统一 Electron/Web 请求入口
 - 想降低业务模块对底层 transport 的耦合
 
-当前试点：
+当前已接入：
 
 - [`src/api/user.ts`](./../src/api/user.ts)
+- [`src/api/search.ts`](./../src/api/search.ts)
+- [`src/api/album.ts`](./../src/api/album.ts)
+- [`src/api/playlist.ts`](./../src/api/playlist.ts)
+- [`src/api/song.ts`](./../src/api/song.ts)
 
 不适用场景：
 
@@ -218,14 +243,21 @@ class DownloadJob {
 - 环境模式
 - 可抽象为“应用配置”的地址或服务发现入口
 
-当前试点：
+当前已接入：
 
 - [`src/api/qqmusic.ts`](./../src/api/qqmusic.ts)
+- [`src/utils/http/index.ts`](./../src/utils/http/index.ts)
+
+推荐：
+
+- 通过 `services.config().getPort(name)` 读取服务端口。
+- 通过 `services.config().getServiceBaseUrl(name)` 读取本地服务 fallback URL。
+- 端口常量可以继续作为服务层默认值，但业务模块不要自己拼接服务地址。
 
 不推荐继续散落：
 
-- `QQ_API_SERVER`
-- `NETEASE_API_PORT`
+- 服务 URL 常量
+- `http://127.0.0.1:${port}` 形式的业务层 URL 拼接
 - 直接读 `import.meta.env` 后再在业务模块里拼装配置值
 
 ## 评审清单

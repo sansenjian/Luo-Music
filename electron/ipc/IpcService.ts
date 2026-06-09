@@ -20,6 +20,7 @@ import type {
   SendFunction,
   ReceiveCallback
 } from '@shared/contracts/ipc'
+import { shouldLogIpcDebug } from './ipcDebugLog'
 
 // ========== 配置类型 ==========
 
@@ -203,7 +204,9 @@ export class IpcService {
 
         // 性能监控：慢请求告警由 performanceMiddleware 统一处理
         // 这里仅记录 debug 日志，避免重复输出
-        logger.debug(`[IPC] ${channel} [${requestId}] completed in ${duration}ms`)
+        if (shouldLogIpcDebug(channel as string)) {
+          logger.debug(`[IPC] ${channel} [${requestId}] completed in ${duration}ms`)
+        }
 
         return result
       } catch (error) {
@@ -257,9 +260,7 @@ export class IpcService {
 
         handler(...(args as Parameters<SendFunction<T>>))
 
-        // 跳过高频事件的日志输出（如歌词更新）
-        const shouldLog = channel !== 'lyric-time-update'
-        if (shouldLog) {
+        if (shouldLogIpcDebug(channel as string)) {
           const duration = Date.now() - startTime
           logger.debug(`[IPC] ${channel} [${requestId}] handled in ${duration}ms`)
         }

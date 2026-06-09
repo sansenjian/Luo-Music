@@ -241,6 +241,42 @@ describe('electron/plugins/PluginStateStore', () => {
       expect(second.installPath).toBe('/plugins/test/2.0.0')
     })
 
+    it('preserves or clears persisted data based on current manifest permissions', () => {
+      const manifest = makeManifest({
+        permissions: {
+          storage: true,
+          secrets: true
+        }
+      })
+
+      store.ensureState(manifest, '/plugins/test/1.0.0')
+      store.setStorageValue('com.example.test', 'cached', { count: 1 })
+      store.setSecretValue('com.example.test', 'cookie', 'secret-cookie')
+
+      const preserved = store.ensureState(
+        makeManifest({
+          permissions: {
+            storage: true,
+            secrets: true
+          }
+        }),
+        '/plugins/test/1.0.1'
+      )
+
+      expect(preserved.storage).toEqual({ cached: { count: 1 } })
+      expect(preserved.secrets).toEqual({ cookie: 'secret-cookie' })
+
+      const downgraded = store.ensureState(
+        makeManifest({ permissions: undefined }),
+        '/plugins/test/1.0.2'
+      )
+
+      expect(downgraded.storage).toEqual({})
+      expect(downgraded.secrets).toEqual({})
+      expect(store.getStorageValue('com.example.test', 'cached')).toBeUndefined()
+      expect(store.getSecretValue('com.example.test', 'cookie')).toBeUndefined()
+    })
+
     it('keeps state namespaces separate for plugins sharing one platformId', () => {
       const first = makeManifest({
         id: 'com.example.netease-a',

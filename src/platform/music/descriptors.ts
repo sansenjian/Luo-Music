@@ -49,7 +49,6 @@ const staticPlatformDescriptors: Record<string, PlatformDescriptor> = {
 }
 
 const runtimePlatformDescriptors = shallowRef<Record<string, PlatformDescriptor>>({})
-const legacyLoginPlatformIds = new Set(['netease', 'qq'])
 
 function cloneCapabilities(capabilities: PlatformCapabilities): PlatformCapabilities {
   return {
@@ -61,7 +60,9 @@ function cloneCapabilities(capabilities: PlatformCapabilities): PlatformCapabili
             ...(capabilities.auth.modes ? { modes: [...capabilities.auth.modes] } : {})
           }
         }
-      : {})
+      : {}),
+    ...(capabilities.account ? { account: { ...capabilities.account } } : {}),
+    ...(capabilities.library ? { library: { ...capabilities.library } } : {})
   }
 }
 
@@ -91,7 +92,11 @@ function cloneDescriptor(descriptor: PlatformDescriptor): PlatformDescriptor {
     ...(descriptor.settingsSchema ? { settingsSchema: [...descriptor.settingsSchema] } : {}),
     ...(descriptor.themeResources
       ? { themeResources: descriptor.themeResources.map(cloneThemeResource) }
-      : {})
+      : {}),
+    ...(descriptor.runtimeDetails
+      ? { runtimeDetails: descriptor.runtimeDetails.map(detail => ({ ...detail })) }
+      : {}),
+    ...(descriptor.runtimeState ? { runtimeState: { ...descriptor.runtimeState } } : {})
   }
 }
 
@@ -135,15 +140,9 @@ export function getSearchablePlatformDescriptors(): PlatformDescriptor[] {
 }
 
 export function getLoginCapablePlatformDescriptors(): PlatformDescriptor[] {
-  return getEnabledPlatformDescriptors().filter(descriptor => {
-    if (descriptor.capabilities.auth?.login === true) {
-      return true
-    }
-
-    // Compatibility bridge for already-installed first-party platform plugins whose
-    // manifest has not been refreshed to the auth-capability schema yet.
-    return legacyLoginPlatformIds.has(descriptor.id)
-  })
+  return getEnabledPlatformDescriptors().filter(
+    descriptor => descriptor.capabilities.auth?.login === true
+  )
 }
 
 export function getPlatformCapabilities(platformId: string): PlatformCapabilities {

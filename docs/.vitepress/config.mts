@@ -3,10 +3,13 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'LUO Music',
   description: 'LUO Music 项目文档站，覆盖开发指南、架构设计、参考资料、方案计划与审查归档。',
+  // GitHub Pages serves this repo at https://sansenjian.github.io/Luo-Music/.
+  base: '/Luo-Music/',
   // VitePress 2 alpha currently depends on Vite 7.x; MPA avoids the failing SPA bundle path.
   mpa: true,
   rewrites: {
     'GETTING_STARTED.md': 'guide/getting-started.md',
+    'development-workflow.md': 'guide/development-workflow.md',
     'build.md': 'guide/build-and-release.md',
     'testing.md': 'guide/testing.md',
     'vscode-setup.md': 'guide/vscode-setup.md',
@@ -43,6 +46,7 @@ export default defineConfig({
           items: [
             { text: '总览', link: '/guide/' },
             { text: '快速开始', link: '/guide/getting-started' },
+            { text: '开发分支流程', link: '/guide/development-workflow' },
             { text: '构建与发布', link: '/guide/build-and-release' },
             { text: '测试指南', link: '/guide/testing' },
             { text: 'E2E 测试', link: '/guide/e2e-testing' },

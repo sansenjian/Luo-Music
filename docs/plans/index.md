@@ -7,18 +7,20 @@
 | 优先级 | 文档                                                                 | 当前状态                                                           | 下一步                                                                            |
 | ------ | -------------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
 | P0     | [Windows 原生 SMTC 实现计划](/plans/native-smtc-implementation-plan) | Chromium SMTC 已完成一轮稳定性修复；Rust helper 尚未实现           | 先做 helper PoC，再接入 `builtin.smtc` fallback                                   |
+| P0     | [下一步优化路线图](/plans/next-optimization-roadmap)                 | 汇总服务层 / DI 收口、插件系统增强和剩余风险                       | 先补插件 SDK 类型、入站模型 fixtures、登录兼容收口和边界自动检查                  |
 | P1     | [项目结构优化详细规划](/plans/project-structure-optimization-plan)   | shared、IPC、Home、UserCenter 已部分收敛                           | 继续拆 `UserAvatar` 后续逻辑、`electron/local-library/service.ts` 和 feature 边界 |
 | P1     | [插件体系拓展架构](/plugin-extension-architecture)                   | SDK、外部插件宿主、`ctx.secrets`、第一方 SMTC / cover-swipe 已落地 | 补 runtime hook 执行器、extension registry、桌面歌词 / 波形插件化                 |
 | P1     | [插件规范](/plugin-specification)                                    | 当前插件 API 和 manifest 规范                                      | 随 SDK 能力变化同步更新                                                           |
 
 ## 后续优化
 
-| 优先级 | 文档                                                         | 当前状态                                                   | 下一步                                   |
-| ------ | ------------------------------------------------------------ | ---------------------------------------------------------- | ---------------------------------------- |
-| P2     | [桌面歌词优化](/plans/desktop-lyric-optimization)            | 已有 snapshot、sequence 和 debug 能力，仍保留部分 fallback | 继续收敛为单一主数据源                   |
-| P2     | [DI 后续路线图](/plans/di-followup-roadmap)                  | DI 主路线已完成，后续只做有收益的扩面                      | 继续迁移 `ApiService` 接入面和补自动检查 |
-| P2     | [打包瘦身计划](/plans/packaging-slimming-plan)               | 配置已做过一轮瘦身                                         | 重新打包后复核 `app.asar` 内容和体积     |
-| P3     | [项目结构归属审计](/plans/project-structure-ownership-audit) | P0-A 审计记录                                              | 作为 feature 迁移参考，按需更新          |
+| 优先级 | 文档                                                         | 当前状态                                                   | 下一步                                           |
+| ------ | ------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------ |
+| P2     | [桌面歌词优化](/plans/desktop-lyric-optimization)            | 已有 snapshot、sequence 和 debug 能力，仍保留部分 fallback | 继续收敛为单一主数据源                           |
+| P2     | [DI 后续路线图](/plans/di-followup-roadmap)                  | DI 主路线已完成，后续只做有收益的扩面                      | 继续迁移 `ApiService` 接入面和补自动检查         |
+| P2     | [前端结构收口计划](/plans/frontend-structure-plan)           | composables/、components/、views/、features/ 边界梳理      | 先执行 P1 composables 分桶，再做 P2 组件归属迁移 |
+| P2     | [打包瘦身计划](/plans/packaging-slimming-plan)               | 配置已做过一轮瘦身                                         | 重新打包后复核 `app.asar` 内容和体积             |
+| P3     | [项目结构归属审计](/plans/project-structure-ownership-audit) | P0-A 审计记录                                              | 作为 feature 迁移参考，按需更新                  |
 
 ## 暂缓路线
 

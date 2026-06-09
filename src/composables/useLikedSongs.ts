@@ -50,6 +50,14 @@ interface RawLikedSong {
 
 const LIKED_SONGS_INITIAL_PAGE_SIZE = 100
 const LIKED_SONGS_PAGE_SIZE = 100
+const DEFAULT_LIKED_SONG_PLATFORM: Song['platform'] = 'netease'
+
+function resolveLikedSongPlatform(song: RawLikedSong): Song['platform'] {
+  const platform = song.platform?.trim()
+  const legacyServer = song.server?.trim()
+
+  return platform || legacyServer || DEFAULT_LIKED_SONG_PLATFORM
+}
 
 function normalizeLikedSong(song: RawLikedSong): Song | null {
   if (song.id === undefined || !song.name) {
@@ -77,12 +85,7 @@ function normalizeLikedSong(song: RawLikedSong): Song | null {
     },
     duration: song.duration ?? song.dt ?? 0,
     mvid: song.mvid ?? song.mv ?? 0,
-    platform:
-      song.platform === 'qq' || song.server === 'qq'
-        ? 'qq'
-        : song.platform === 'netease'
-          ? 'netease'
-          : 'netease',
+    platform: resolveLikedSongPlatform(song),
     originalId: song.originalId ?? song.id,
     ...(song.url ? { url: song.url } : {}),
     ...(song.mediaId !== undefined ? { mediaId: song.mediaId } : {}),

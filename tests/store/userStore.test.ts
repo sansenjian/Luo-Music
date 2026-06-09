@@ -29,6 +29,9 @@ describe('userStore', () => {
     expect(store.qqCookie).toBe('')
     expect(store.qqLoggedIn).toBe(false)
     expect(store.isQQMusicLoggedIn).toBe(false)
+    expect(store.platformAuthList.map(state => state.platform)).toEqual(['netease', 'qq'])
+    expect(store.isPlatformAuthenticated('netease')).toBe(false)
+    expect(store.isPlatformAuthenticated('qq')).toBe(false)
   })
 
   it('setUserInfo does not mark Netease as logged in without a cookie', () => {
@@ -50,6 +53,16 @@ describe('userStore', () => {
 
     store.setUserInfo({ nickname: 'Test User' })
     expect(store.isLoggedIn).toBe(true)
+    expect(store.isPlatformAuthenticated('netease')).toBe(true)
+    expect(store.getPlatformAuthState('netease')).toEqual(
+      expect.objectContaining({
+        platform: 'netease',
+        status: 'authenticated',
+        account: expect.objectContaining({
+          nickname: 'Test User'
+        })
+      })
+    )
     expect(clearCookieCache).toHaveBeenCalled()
     expect(clearCacheNamespaces).toHaveBeenCalledWith(['auth'])
   })
@@ -77,8 +90,10 @@ describe('userStore', () => {
     expect(store.userInfo).toBe(null)
     expect(store.cookie).toBe('')
     expect(store.isLoggedIn).toBe(false)
+    expect(store.isPlatformAuthenticated('netease')).toBe(false)
     expect(store.qqCookie).toBe('qq-cookie')
     expect(store.qqLoggedIn).toBe(true)
+    expect(store.isPlatformAuthenticated('qq')).toBe(true)
     expect(clearCookieCache).toHaveBeenCalled()
     expect(clearCacheNamespaces).toHaveBeenCalledWith(['auth'])
   })
@@ -91,6 +106,7 @@ describe('userStore', () => {
     expect(store.qqCookie).toBe('qq-cookie')
     expect(store.qqLoggedIn).toBe(true)
     expect(store.isQQMusicLoggedIn).toBe(true)
+    expect(store.isPlatformAuthenticated('qq')).toBe(true)
     expect(store.cookie).toBe('')
     expect(clearQQCookieCache).toHaveBeenCalled()
     expect(clearCacheNamespaces).toHaveBeenCalledWith(['auth'])
@@ -107,8 +123,52 @@ describe('userStore', () => {
     expect(store.isLoggedIn).toBe(true)
     expect(store.qqCookie).toBe('')
     expect(store.qqLoggedIn).toBe(false)
+    expect(store.isPlatformAuthenticated('netease')).toBe(true)
+    expect(store.isPlatformAuthenticated('qq')).toBe(false)
     expect(clearQQCookieCache).toHaveBeenCalled()
     expect(clearCacheNamespaces).toHaveBeenCalledWith(['auth'])
+  })
+
+  it('stores plugin auth states using the common platform model', () => {
+    const store = useUserStore()
+
+    store.setPlatformAuthState({
+      platform: 'kugou',
+      status: 'authenticated',
+      account: {
+        id: 'u-1',
+        nickname: 'Plugin User'
+      }
+    })
+
+    expect(store.isPlatformAuthenticated('kugou')).toBe(true)
+    expect(store.getPlatformAuthState('kugou')).toEqual(
+      expect.objectContaining({
+        platform: 'kugou',
+        status: 'authenticated',
+        account: {
+          id: 'u-1',
+          nickname: 'Plugin User',
+          avatarUrl: undefined,
+          homepageUrl: undefined,
+          extra: undefined
+        }
+      })
+    )
+    expect(store.getPlatformAuthStatusText('kugou')).toBe('已登录')
+  })
+
+  it('clears all platform auth states without dropping plugin platform entries', () => {
+    const store = useUserStore()
+
+    store.setPlatformAuthState({
+      platform: 'kugou',
+      status: 'authenticated'
+    })
+    store.clearAllPlatformAuthStates()
+
+    expect(store.platformAuthList.map(state => state.platform)).toEqual(['netease', 'qq', 'kugou'])
+    expect(store.isPlatformAuthenticated('kugou')).toBe(false)
   })
 
   describe('getters', () => {

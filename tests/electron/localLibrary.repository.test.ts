@@ -358,6 +358,88 @@ describe('LocalLibraryRepository', () => {
     repository.close()
   })
 
+  it('keeps one track when upserting duplicate file paths with different track ids', async () => {
+    const tempDir = await createTempPath('local-library-repository-dedupe-path')
+    const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))
+    const folderPath = join(tempDir, 'Music')
+    const folderId = createFolderId(folderPath)
+    const filePath = join(folderPath, 'Duplicate.mp3')
+
+    repository.upsertFolder({
+      id: folderId,
+      path: folderPath,
+      name: 'Music',
+      enabled: true,
+      createdAt: 1,
+      lastScannedAt: null
+    })
+    repository.upsertTracks([
+      {
+        id: 'local:first-id',
+        folderId,
+        filePath,
+        fileName: 'Duplicate.mp3',
+        title: 'First Title',
+        artist: 'Artist',
+        album: 'Album',
+        duration: 1000,
+        fileSize: 1,
+        modifiedAt: 1,
+        coverHash: null,
+        song: {
+          id: 'local:first-id',
+          name: 'First Title',
+          artists: [{ id: 'artist', name: 'Artist' }],
+          album: { id: 'album', name: 'Album', picUrl: '' },
+          duration: 1000,
+          mvid: 0,
+          platform: 'local',
+          originalId: 'local:first-id',
+          extra: {
+            localSource: true
+          }
+        }
+      },
+      {
+        id: 'local:second-id',
+        folderId,
+        filePath,
+        fileName: 'Duplicate.mp3',
+        title: 'Second Title',
+        artist: 'Artist',
+        album: 'Album',
+        duration: 2000,
+        fileSize: 1,
+        modifiedAt: 2,
+        coverHash: null,
+        song: {
+          id: 'local:second-id',
+          name: 'Second Title',
+          artists: [{ id: 'artist', name: 'Artist' }],
+          album: { id: 'album', name: 'Album', picUrl: '' },
+          duration: 2000,
+          mvid: 0,
+          platform: 'local',
+          originalId: 'local:second-id',
+          extra: {
+            localSource: true
+          }
+        }
+      }
+    ])
+
+    const tracks = repository.listTracks()
+
+    expect(tracks).toHaveLength(1)
+    expect(tracks[0]).toMatchObject({
+      id: 'local:second-id',
+      title: 'Second Title',
+      filePath
+    })
+
+    repository.close()
+  })
+
   it('migrates legacy databases before preparing cover hash queries', async () => {
     const tempDir = await createTempPath('local-library-repository-legacy')
     const databasePath = join(tempDir, 'library.db')

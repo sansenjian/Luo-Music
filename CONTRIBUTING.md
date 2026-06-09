@@ -1,8 +1,8 @@
 # 贡献指南
 
-感谢你对本项目的关注！以下是参与项目开发的指南。
+以下是参与项目开发的基本流程。
 
-## 🚀 快速开始
+## 快速开始
 
 ### 环境要求
 
@@ -29,7 +29,11 @@ npm run dev:web
 npm run dev:electron
 ```
 
-## 📋 开发流程
+## 分支策略
+
+分支职责、日常开发命令、PR 目标和 hotfix 同步规则见 [开发分支流程](./docs/development-workflow.md)。
+
+## 开发流程
 
 ### 1. Fork 项目
 
@@ -44,11 +48,7 @@ cd luo-music
 
 ### 3. 创建分支
 
-```bash
-git checkout -b feature/your-feature-name
-# 或
-git checkout -b fix/your-bug-fix
-```
+按 [开发分支流程](./docs/development-workflow.md) 从当前开发基线创建分支。
 
 ### 4. 开发和测试
 
@@ -77,9 +77,9 @@ git push origin feature/your-feature-name
 
 ### 7. 创建 Pull Request
 
-在 GitHub 上导航到你的 Fork，点击 "Compare & pull request"。
+在 GitHub 上导航到你的 Fork，点击 "Compare & pull request"。目标分支选择规则见 [开发分支流程](./docs/development-workflow.md)。
 
-## 🔧 代码规范
+## 代码规范
 
 ### Oxlint + Prettier / Oxfmt
 
@@ -107,7 +107,7 @@ npm run format:oxfmt
 - 组件名使用 PascalCase
 - Props 使用 camelCase 定义，模板中使用 kebab-case
 
-## 🧪 测试
+## 测试
 
 ```bash
 # 运行所有测试
@@ -116,14 +116,17 @@ npm run test
 # 运行测试（不监听）
 npm run test:run
 
-# 交互式测试 UI
-npm run test:ui
-
 # 生成覆盖率报告
 npm run test:coverage
 ```
 
-## 📁 项目结构
+涉及 `better-sqlite3` 的 native 测试使用：
+
+```bash
+npm run test:native
+```
+
+## 项目结构
 
 ```
 luo-music/
@@ -143,7 +146,7 @@ luo-music/
 └── docs/                  # 文档
 ```
 
-## 📝 提交规范
+## 提交规范
 
 我们遵循约定式提交规范：
 
@@ -161,7 +164,7 @@ luo-music/
 | `build`    | 构建系统变更               |
 | `revert`   | 回滚提交                   |
 
-## 🐛 报告问题
+## 报告问题
 
 请在 [Issues](https://github.com/sansenjian/Luo-Music/issues) 中报告问题，并提供：
 
@@ -171,7 +174,7 @@ luo-music/
 - 环境信息（OS、Node.js 版本等）
 - 截图（如适用）
 
-## 💡 功能建议
+## 功能建议
 
 欢迎在 Issues 中提出功能建议，请描述：
 
@@ -179,10 +182,6 @@ luo-music/
 - 期望的解决方案
 - 使用场景
 
-## 📄 许可证
+## 许可证
 
 本项目采用 PolyForm-Noncommercial-1.0.0 许可证。
-
-## 🙏 致谢
-
-感谢所有为项目做出贡献的开发者！

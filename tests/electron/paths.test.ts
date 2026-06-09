@@ -93,3 +93,72 @@ describe('electron/utils/paths', () => {
     expect(paths.getScriptPath('qq-api-server.cjs')).toBe('/mock/resources/qq-api-server.cjs')
   })
 })
+
+describe('electron/main/audioOutputNativePaths', () => {
+  const originalEnv = { ...process.env }
+
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    process.env = { ...originalEnv }
+  })
+
+  afterEach(() => {
+    process.env = { ...originalEnv }
+  })
+
+  it('maps helper filenames per platform', async () => {
+    const paths = await import('../../electron/main/audioOutputNativePaths')
+
+    expect(paths.getAudioOutputHelperFileName('win32')).toBe('audio-output-helper.exe')
+    expect(paths.getAudioOutputHelperFileName('darwin')).toBe('audio-output-helper')
+    expect(paths.getAudioOutputHelperFileName('linux')).toBe('audio-output-helper')
+  })
+
+  it('resolves the first existing helper candidate for a non-Windows desktop build', async () => {
+    const paths = await import('../../electron/main/audioOutputNativePaths')
+    const seen: string[] = []
+
+    const resolved = paths.resolveAudioOutputHelperPath({
+      appPath: '/mock/app',
+      exists: candidate => {
+        seen.push(candidate)
+        return candidate.endsWith('/build/native/audio-output-helper')
+      },
+      platform: 'linux',
+      resourcesPath: '/mock/resources'
+    })
+
+    expect(resolved).toBe('/mock/app/build/native/audio-output-helper')
+    expect(seen).toEqual([
+      '/mock/app/native/audio-output-helper/target/debug/audio-output-helper',
+      '/mock/app/build/native/audio-output-helper'
+    ])
+  })
+
+  it('resolves packaged helper paths per platform', async () => {
+    const paths = await import('../../electron/main/audioOutputNativePaths')
+
+    expect(
+      paths.resolveAudioOutputHelperPath({
+        appPath: '/mock/app',
+        exists: candidate => candidate === '/mock/resources/native/audio-output-helper.exe',
+        isPackaged: true,
+        platform: 'win32',
+        resourcesPath: '/mock/resources'
+      })
+    ).toBe('/mock/resources/native/audio-output-helper.exe')
+
+    for (const platform of ['darwin', 'linux'] as const) {
+      expect(
+        paths.resolveAudioOutputHelperPath({
+          appPath: '/mock/app',
+          exists: candidate => candidate === '/mock/resources/native/audio-output-helper',
+          isPackaged: true,
+          platform,
+          resourcesPath: '/mock/resources'
+        })
+      ).toBe('/mock/resources/native/audio-output-helper')
+    }
+  })
+})

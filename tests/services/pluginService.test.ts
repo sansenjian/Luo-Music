@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PlatformDescriptor } from '@shared/types/platform'
+import type { AudioOutputSettings, AudioOutputStatus } from '@shared/audioOutput/protocol'
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -21,6 +22,81 @@ const experimentalFeaturesMock = vi.hoisted(() => {
     }),
     setCoverSwipeEnabled: vi.fn((next: boolean) => {
       coverSwipeEnabled.value = next
+    })
+  }
+})
+const audioOutputPluginMock = vi.hoisted(() => {
+  const defaultSettings = {
+    mode: 'shared',
+    sharedDeviceId: '',
+    deviceId: '',
+    bufferFrames: 960,
+    fallbackToShared: true,
+    bitPerfectRequired: false,
+    voicemeeterBus: 'A1',
+    voicemeeterHardwareOutBus: 'A1',
+    voicemeeterHardwareOutDriver: 'wdm',
+    voicemeeterHardwareOutDevice: '',
+    diagnosticsEnabled: false
+  } satisfies AudioOutputSettings
+  const audioOutputEnabled = { value: false }
+  const audioOutputSettings: { value: AudioOutputSettings } = {
+    value: { ...defaultSettings }
+  }
+  const createAudioOutputStatus = (
+    overrides: Partial<AudioOutputStatus> = {}
+  ): AudioOutputStatus => ({
+    enabled: false,
+    backend: 'disabled',
+    backendAvailable: false,
+    settings: { ...audioOutputSettings.value },
+    requestedMode: audioOutputSettings.value.mode,
+    devices: [],
+    ...overrides
+  })
+  const sharedOutputDevices = {
+    value: [] as Array<{ id: string; label: string }>
+  }
+  const audioOutputStatus: { value: AudioOutputStatus } = {
+    value: createAudioOutputStatus()
+  }
+
+  return {
+    audioOutputEnabled,
+    audioOutputSettings,
+    audioOutputStatus,
+    sharedOutputDevices,
+    refreshSharedOutputDevices: vi.fn(() => Promise.resolve(sharedOutputDevices.value)),
+    setAudioOutputEnabled: vi.fn(async (next: boolean) => {
+      audioOutputEnabled.value = next
+      audioOutputStatus.value = createAudioOutputStatus({
+        enabled: next,
+        backend: next ? 'unavailable' : 'disabled',
+        backendAvailable: false,
+        requestedMode: audioOutputSettings.value.mode,
+        devices: [],
+        ...(next ? { reason: 'Native audio output backend is not bundled yet.' } : {})
+      })
+      return audioOutputStatus.value
+    }),
+    updateAudioOutputSettings: vi.fn(async (nextSettings: Record<string, unknown>) => {
+      const nextBufferFrames =
+        typeof nextSettings.bufferFrames === 'string'
+          ? Number.parseInt(nextSettings.bufferFrames, 10)
+          : typeof nextSettings.bufferFrames === 'number'
+            ? nextSettings.bufferFrames
+            : audioOutputSettings.value.bufferFrames
+      audioOutputSettings.value = {
+        ...audioOutputSettings.value,
+        ...nextSettings,
+        bufferFrames: nextBufferFrames
+      }
+      audioOutputStatus.value = {
+        ...audioOutputStatus.value,
+        settings: { ...audioOutputSettings.value },
+        requestedMode: audioOutputSettings.value.mode
+      }
+      return audioOutputSettings.value
     })
   }
 })
@@ -64,6 +140,10 @@ vi.mock('@/platform/music/descriptors', () => ({
 
 vi.mock('@/composables/useExperimentalFeatures', () => ({
   useExperimentalFeatures: () => experimentalFeaturesMock
+}))
+
+vi.mock('@/composables/useAudioOutputPlugin', () => ({
+  useAudioOutputPlugin: () => audioOutputPluginMock
 }))
 
 vi.mock('@/composables/useProjectUi', () => ({
@@ -137,8 +217,11 @@ function expectFirstPartyExtensionDescriptors(
   platforms: PlatformDescriptor[],
   options: {
     smtc?: boolean
+    audioOutput?: boolean
     coverSwipeEnabled?: boolean
     smtcEnabled?: boolean
+    audioOutputEnabled?: boolean
+    audioOutputStatus?: PlatformDescriptor['status']
     brandThemeResourceEnabled?: boolean
   } = {}
 ): void {
@@ -191,6 +274,73 @@ function expectFirstPartyExtensionDescriptors(
         }
 
   expect(smtcDescriptorSummary).toEqual(expectedSmtcDescriptor)
+
+  const audioOutputDescriptor = platforms.find(platform => platform.id === 'builtin.audio-output')
+  const audioOutputDescriptorSummary = audioOutputDescriptor
+    ? {
+        id: audioOutputDescriptor.id,
+        displayName: audioOutputDescriptor.displayName,
+        source: audioOutputDescriptor.source,
+        runtime: audioOutputDescriptor.runtime,
+        category: audioOutputDescriptor.category,
+        enabled: audioOutputDescriptor.enabled,
+        status: audioOutputDescriptor.status,
+        settingsSchema: audioOutputDescriptor.settingsSchema
+      }
+    : undefined
+  const audioOutputSettingsSchemaMatcher = expect.arrayContaining([
+    expect.objectContaining({ key: 'mode', type: 'select' }),
+    expect.objectContaining({
+      key: 'sharedDeviceId',
+      type: 'select',
+      options: expect.arrayContaining([
+        expect.objectContaining({ value: '', label: '系统默认输出设备' })
+      ])
+    }),
+    expect.objectContaining({
+      key: 'deviceId',
+      type: 'select',
+      options: expect.arrayContaining([
+        expect.objectContaining({ value: '', label: '原生默认输出设备' })
+      ])
+    }),
+    expect.objectContaining({ key: 'fallbackToShared', type: 'boolean' }),
+    expect.objectContaining({ key: 'bitPerfectRequired', type: 'boolean' }),
+    expect.objectContaining({
+      key: 'voicemeeterBus',
+      type: 'select',
+      options: expect.arrayContaining([expect.objectContaining({ value: 'A1', label: 'A1' })])
+    }),
+    expect.objectContaining({
+      key: 'voicemeeterHardwareOutBus',
+      type: 'select',
+      options: expect.arrayContaining([expect.objectContaining({ value: 'A1', label: 'A1' })])
+    }),
+    expect.objectContaining({
+      key: 'voicemeeterHardwareOutDriver',
+      type: 'select',
+      options: expect.arrayContaining([expect.objectContaining({ value: 'wdm', label: 'WDM' })])
+    }),
+    expect.objectContaining({
+      key: 'voicemeeterHardwareOutDevice',
+      type: 'text'
+    })
+  ])
+  const expectedAudioOutputDescriptor =
+    (options.audioOutput ?? options.smtc !== false) === false
+      ? undefined
+      : {
+          id: 'builtin.audio-output',
+          displayName: '原生音频输出',
+          source: 'builtin',
+          runtime: 'local',
+          category: 'extension',
+          enabled: options.audioOutputEnabled ?? false,
+          status: options.audioOutputStatus ?? (options.audioOutputEnabled ? 'error' : 'disabled'),
+          settingsSchema: audioOutputSettingsSchemaMatcher
+        }
+
+  expect(audioOutputDescriptorSummary).toEqual(expectedAudioOutputDescriptor)
 }
 
 function expectExternalPluginDescriptor(platforms: PlatformDescriptor[]): void {
@@ -203,7 +353,9 @@ function createBridge() {
     installFromPath: vi.fn<(p: string) => Promise<PlatformDescriptor[]>>(() =>
       Promise.resolve([pluginDescriptor])
     ),
-    pickInstallPath: vi.fn<() => Promise<string | null>>(() => Promise.resolve('/path/to/plugin')),
+    pickInstallPath: vi.fn<(mode?: 'file' | 'directory') => Promise<string | null>>(() =>
+      Promise.resolve('/path/to/plugin')
+    ),
     setEnabled: vi.fn<(id: string, e: boolean) => Promise<PlatformDescriptor[]>>(() =>
       Promise.resolve([pluginDescriptor])
     ),
@@ -230,6 +382,26 @@ describe('createPluginService', () => {
     vi.clearAllMocks()
     experimentalFeaturesMock.smtcEnabled.value = false
     experimentalFeaturesMock.coverSwipeEnabled.value = false
+    audioOutputPluginMock.audioOutputEnabled.value = false
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'shared',
+      sharedDeviceId: '',
+      deviceId: '',
+      bufferFrames: 960,
+      fallbackToShared: true,
+      bitPerfectRequired: false,
+      voicemeeterBus: 'A1',
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.sharedOutputDevices.value = []
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: false,
+      backend: 'disabled',
+      backendAvailable: false,
+      requestedMode: 'shared',
+      devices: []
+    }
     themeResourcePacksMock.enabledThemeResourcePackIds.value = []
     renderStyleMock.renderStyle.value = 'classic'
     mockGetPlatformDescriptors.mockReturnValue(builtinDescriptors)
@@ -361,7 +533,21 @@ describe('createPluginService', () => {
 
     const result = await service.pickInstallPath()
 
-    expect(bridge.pickInstallPath).toHaveBeenCalledOnce()
+    expect(bridge.pickInstallPath).toHaveBeenCalledWith('file')
+    expect(result).toBe('/path/to/plugin')
+  })
+
+  it('passes directory mode through to bridge.pickInstallPath in Electron mode', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.pickInstallPath('directory')
+
+    expect(bridge.pickInstallPath).toHaveBeenCalledWith('directory')
     expect(result).toBe('/path/to/plugin')
   })
 
@@ -428,6 +614,873 @@ describe('createPluginService', () => {
     expect(bridge.setEnabled).not.toHaveBeenCalled()
     expectExternalPluginDescriptor(result)
     expectFirstPartyExtensionDescriptors(result, { smtcEnabled: true })
+  })
+
+  it('toggles the first-party native audio output extension without delegating to the bridge', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await vi.waitFor(() => expect(bridge.list).toHaveBeenCalled())
+    bridge.setEnabled.mockClear()
+
+    const result = await service.setEnabled('builtin.audio-output', true)
+
+    expect(audioOutputPluginMock.setAudioOutputEnabled).toHaveBeenCalledWith(true)
+    expect(bridge.setEnabled).not.toHaveBeenCalled()
+    expectExternalPluginDescriptor(result)
+    expectFirstPartyExtensionDescriptors(result, {
+      audioOutputEnabled: true,
+      audioOutputStatus: 'error'
+    })
+  })
+
+  it('waits for native audio output status before refreshing first-party descriptors', async () => {
+    let resolveAudioOutputSync: (() => void) | undefined
+    audioOutputPluginMock.setAudioOutputEnabled.mockImplementationOnce(
+      async (next: boolean): Promise<AudioOutputStatus> => {
+        audioOutputPluginMock.audioOutputEnabled.value = next
+        await new Promise<void>(resolve => {
+          resolveAudioOutputSync = resolve
+        })
+        audioOutputPluginMock.audioOutputStatus.value = {
+          settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+          enabled: next,
+          backend: 'native',
+          backendAvailable: true,
+          requestedMode: 'shared',
+          activeMode: 'shared',
+          helperRunning: true,
+          devices: []
+        }
+        return audioOutputPluginMock.audioOutputStatus.value
+      }
+    )
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await vi.waitFor(() => expect(bridge.list).toHaveBeenCalled())
+    bridge.list.mockClear()
+    const resultPromise = service.setEnabled('builtin.audio-output', true)
+    await Promise.resolve()
+
+    expect(bridge.list).not.toHaveBeenCalled()
+
+    resolveAudioOutputSync?.()
+    const result = await resultPromise
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(bridge.list).toHaveBeenCalledOnce()
+    expect(audioOutputDescriptor).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        status: 'ready',
+        runtimeDetails: expect.arrayContaining([
+          { label: '实际输出', value: '共享模式', tone: 'success' },
+          { label: '原生 helper', value: '运行中', tone: 'success' }
+        ])
+      })
+    )
+  })
+
+  it('exposes native audio output devices as selectable first-party settings', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'exclusive',
+      sharedDeviceId: '',
+      deviceId: '1:USB DAC',
+      bufferFrames: 512,
+      fallbackToShared: true,
+      bitPerfectRequired: false,
+      voicemeeterBus: 'A1',
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'shared',
+      deviceId: '1:USB DAC',
+      devices: [
+        {
+          id: '0:Speakers',
+          name: 'Speakers',
+          isDefault: true,
+          backend: 'wasapi'
+        },
+        {
+          id: '1:USB DAC',
+          name: 'USB DAC',
+          isDefault: false,
+          backend: 'wasapi'
+        }
+      ],
+      reason: 'WASAPI exclusive initialization is pending; using shared fallback.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+    const deviceSetting = audioOutputDescriptor?.settingsSchema?.find(
+      setting => setting.key === 'deviceId'
+    )
+
+    expect(deviceSetting).toEqual(
+      expect.objectContaining({
+        type: 'select',
+        options: [
+          { value: '', label: '原生默认输出设备' },
+          { value: '0:Speakers', label: 'Speakers（默认）' },
+          { value: '1:USB DAC', label: 'USB DAC' }
+        ]
+      })
+    )
+  })
+
+  it('offers Voicemeeter mode as an audio output selection', async () => {
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+    const modeSetting = audioOutputDescriptor?.settingsSchema?.find(
+      setting => setting.key === 'mode'
+    )
+
+    expect(modeSetting?.options).toEqual([
+      { value: 'shared', label: '共享模式' },
+      { value: 'exclusive', label: '真独占模式' },
+      { value: 'voicemeeter', label: '类独占模式（Voicemeeter）' }
+    ])
+  })
+
+  it('filters Windows-only audio output modes when the helper reports shared-only support', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'exclusive',
+      sharedDeviceId: '',
+      deviceId: '',
+      bufferFrames: 512,
+      fallbackToShared: true,
+      bitPerfectRequired: false,
+      voicemeeterBus: 'A1',
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'shared',
+      supportedModes: ['shared'],
+      devices: [],
+      reason: 'WASAPI exclusive output is only available on Windows; using shared fallback.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+    const modeSetting = audioOutputDescriptor?.settingsSchema?.find(
+      setting => setting.key === 'mode'
+    )
+
+    expect(modeSetting?.options).toEqual([
+      { value: 'shared', label: '共享模式' },
+      { value: 'exclusive', label: '真独占模式（当前平台不可用）' }
+    ])
+  })
+
+  it('reports Voicemeeter mode as ready when the virtual input route is available', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'voicemeeter',
+      sharedDeviceId: '',
+      deviceId: '',
+      bufferFrames: 512,
+      fallbackToShared: true,
+      bitPerfectRequired: false,
+      voicemeeterBus: 'B1',
+      voicemeeterHardwareOutBus: 'A1',
+      voicemeeterHardwareOutDriver: 'wdm',
+      voicemeeterHardwareOutDevice: 'USB DAC',
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'voicemeeter',
+      activeMode: 'voicemeeter',
+      deviceId: '2:VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)',
+      devices: [
+        {
+          id: '2:VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)',
+          name: 'VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)',
+          isDefault: false,
+          backend: 'voicemeeter'
+        }
+      ],
+      voicemeeterRemote: {
+        available: true,
+        connected: true,
+        routeApplied: true,
+        routeManaged: true,
+        routeBus: 'B1',
+        hardwareOutApplied: true,
+        hardwareOutBus: 'A1',
+        hardwareOutDriver: 'wdm',
+        hardwareOutDevice: 'USB DAC',
+        kind: 'banana',
+        version: '1.2.3.4',
+        virtualInputStrip: 3,
+        reason:
+          'Voicemeeter Remote API connected and routed Strip[3].B1. HARDWARE OUT A1 WDM: USB DAC applied.'
+      },
+      reason: 'Voicemeeter virtual input route is available.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+    const modeSetting = audioOutputDescriptor?.settingsSchema?.find(
+      setting => setting.key === 'mode'
+    )
+
+    expect(modeSetting?.options).toEqual([
+      { value: 'shared', label: '共享模式' },
+      { value: 'exclusive', label: '真独占模式' },
+      { value: 'voicemeeter', label: '类独占模式（Voicemeeter）' }
+    ])
+    expect(audioOutputDescriptor).toEqual(
+      expect.objectContaining({
+        status: 'ready',
+        runtimeDetails: expect.arrayContaining([
+          { label: '请求模式', value: '类独占模式（Voicemeeter）', tone: 'neutral' },
+          { label: '实际输出', value: '类独占模式（Voicemeeter）', tone: 'success' },
+          {
+            label: '原生设备',
+            value: 'VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)'
+          },
+          { label: 'VoiceMeeter Remote API', value: '已连接', tone: 'success' },
+          { label: 'VoiceMeeter 类型', value: 'VoiceMeeter Banana 1.2.3.4', tone: 'neutral' },
+          { label: 'VoiceMeeter 输入', value: 'Strip[3]', tone: 'neutral' },
+          { label: 'VoiceMeeter 路由', value: 'B1 已应用', tone: 'success' },
+          { label: 'VoiceMeeter 路由恢复', value: '已记录', tone: 'success' },
+          { label: 'HARDWARE OUT', value: 'A1 WDM: USB DAC', tone: 'success' },
+          {
+            label: 'VoiceMeeter 说明',
+            value:
+              'VoiceMeeter Remote API 已连接，已路由 Strip[3] 到 B1；HARDWARE OUT A1 WDM: USB DAC 已应用。',
+            tone: 'success'
+          },
+          { label: '说明', value: 'VoiceMeeter 虚拟输入路由可用。', tone: 'success' }
+        ])
+      })
+    )
+  })
+
+  it('limits native device choices to Voicemeeter virtual inputs in Voicemeeter mode', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'voicemeeter',
+      sharedDeviceId: '',
+      deviceId: '2:Voicemeeter Input (VB-Audio Voicemeeter VAIO)',
+      bufferFrames: 512,
+      fallbackToShared: true,
+      bitPerfectRequired: false,
+      voicemeeterBus: 'A1',
+      voicemeeterHardwareOutBus: 'A1',
+      voicemeeterHardwareOutDriver: 'wdm',
+      voicemeeterHardwareOutDevice: '',
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'voicemeeter',
+      activeMode: 'voicemeeter',
+      deviceId: '2:Voicemeeter Input (VB-Audio Voicemeeter VAIO)',
+      devices: [
+        {
+          id: '0:Speakers',
+          name: 'Speakers',
+          isDefault: true,
+          backend: 'wasapi'
+        },
+        {
+          id: '1:USB DAC',
+          name: 'USB DAC',
+          isDefault: false,
+          backend: 'wasapi'
+        },
+        {
+          id: '2:Voicemeeter Input (VB-Audio Voicemeeter VAIO)',
+          name: 'Voicemeeter Input (VB-Audio Voicemeeter VAIO)',
+          isDefault: false,
+          backend: 'voicemeeter'
+        }
+      ],
+      voicemeeterRemote: {
+        available: true,
+        connected: true,
+        routeApplied: true,
+        routeManaged: true,
+        routeBus: 'A1'
+      },
+      reason: 'Voicemeeter virtual input route is available.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+    const deviceSetting = audioOutputDescriptor?.settingsSchema?.find(
+      setting => setting.key === 'deviceId'
+    )
+
+    expect(deviceSetting?.options).toEqual([
+      { value: '', label: '原生默认输出设备' },
+      {
+        value: '2:Voicemeeter Input (VB-Audio Voicemeeter VAIO)',
+        label: 'Voicemeeter Input (VB-Audio Voicemeeter VAIO)'
+      }
+    ])
+  })
+
+  it('exposes requested and actual native audio output modes as runtime details', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'exclusive',
+      sharedDeviceId: 'chromium-usb',
+      deviceId: '1:USB DAC',
+      bufferFrames: 512,
+      fallbackToShared: true,
+      bitPerfectRequired: false,
+      voicemeeterBus: 'A1',
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.sharedOutputDevices.value = [{ id: 'chromium-usb', label: 'USB DAC' }]
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'shared',
+      deviceId: '1:USB DAC',
+      helperRunning: true,
+      devices: [
+        {
+          id: '1:USB DAC',
+          name: 'USB DAC',
+          isDefault: false,
+          backend: 'wasapi'
+        }
+      ],
+      reason: 'WASAPI exclusive initialization is pending; using shared fallback.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeDetails).toEqual(
+      expect.arrayContaining([
+        { label: '请求模式', value: '真独占模式', tone: 'neutral' },
+        { label: '实际输出', value: '共享模式（已回退）', tone: 'warning' },
+        { label: 'Chromium / 回退设备', value: 'USB DAC' },
+        { label: '原生设备', value: 'USB DAC' },
+        { label: '原生 helper', value: '运行中', tone: 'success' },
+        {
+          label: '说明',
+          value: 'WASAPI 独占模式等待测试或本地播放，当前已回退到共享模式。',
+          tone: 'warning'
+        }
+      ])
+    )
+  })
+
+  it('reports exclusive mode without shared fallback as ready but pending actual output', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'exclusive',
+      sharedDeviceId: '',
+      deviceId: '1:USB DAC',
+      bufferFrames: 512,
+      fallbackToShared: false,
+      bitPerfectRequired: true,
+      voicemeeterBus: 'A1',
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      deviceId: '1:USB DAC',
+      helperRunning: true,
+      devices: [
+        {
+          id: '1:USB DAC',
+          name: 'USB DAC',
+          isDefault: false,
+          backend: 'wasapi'
+        }
+      ],
+      reason: 'WASAPI exclusive initialization is pending.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor).toEqual(
+      expect.objectContaining({
+        status: 'ready',
+        runtimeDetails: expect.arrayContaining([
+          { label: '请求模式', value: '真独占模式', tone: 'neutral' },
+          { label: '实际输出', value: '等待真独占测试/播放', tone: 'warning' },
+          {
+            label: '说明',
+            value: 'WASAPI 独占模式等待测试或本地播放。',
+            tone: 'warning'
+          }
+        ])
+      })
+    )
+  })
+
+  it('localizes successful native audio output probe reasons', async () => {
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'shared',
+      activeMode: 'shared',
+      helperRunning: true,
+      devices: [],
+      reason: 'Shared test tone completed.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeDetails).toEqual(
+      expect.arrayContaining([{ label: '说明', value: '共享模式测试音已完成。', tone: 'success' }])
+    )
+  })
+
+  it('keeps the WASAPI exclusive test tone error when shared fallback succeeds', async () => {
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'shared',
+      helperRunning: true,
+      devices: [],
+      reason:
+        'WASAPI exclusive test tone failed: Failed to initialize WASAPI exclusive output stream: AUDCLNT_E_DEVICE_IN_USE; shared fallback test tone completed.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeDetails).toEqual(
+      expect.arrayContaining([
+        {
+          label: '说明',
+          value:
+            'WASAPI 独占模式测试音失败，已完成共享模式回退测试：Failed to initialize WASAPI exclusive output stream: AUDCLNT_E_DEVICE_IN_USE',
+          tone: 'danger'
+        }
+      ])
+    )
+  })
+
+  it('keeps the exclusive test tone output format when it succeeds through PCM fallback', async () => {
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'exclusive',
+      helperRunning: true,
+      devices: [],
+      reason:
+        'WASAPI exclusive test tone completed. format=48000 Hz/2ch/24-bit pcm, buffer=2048 frames, source=PCM fallback from unsupported mix format (48000 Hz/2ch/24-bit pcm).'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeDetails).toEqual(
+      expect.arrayContaining([
+        {
+          label: '说明',
+          value:
+            'WASAPI 独占模式测试音已完成：format=48000 Hz/2ch/24-bit pcm, buffer=2048 frames, source=PCM fallback from unsupported mix format (48000 Hz/2ch/24-bit pcm).',
+          tone: 'success'
+        }
+      ])
+    )
+  })
+
+  it('localizes exclusive native playback reasons with the resolved WASAPI device', async () => {
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'exclusive',
+      helperRunning: true,
+      devices: [],
+      reason:
+        'WASAPI exclusive native file playback is running on device: 扬声器 (Realtek(R) Audio)'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeDetails).toEqual(
+      expect.arrayContaining([
+        {
+          label: '说明',
+          value: 'WASAPI 独占模式正在播放本地音频，设备：扬声器 (Realtek(R) Audio)',
+          tone: 'success'
+        }
+      ])
+    )
+  })
+
+  it('exposes bit-perfect diagnostics in native audio output runtime details', async () => {
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'exclusive',
+      helperRunning: true,
+      devices: [],
+      bitPerfect: {
+        status: 'candidate',
+        sourceFormat: {
+          sampleRate: 44100,
+          channels: 2,
+          sampleFormat: 'pcm',
+          bitDepth: 16,
+          source: 'WAV raw PCM passthrough'
+        },
+        outputFormat: {
+          sampleRate: 44100,
+          channels: 2,
+          sampleFormat: 'pcm',
+          bitDepth: 16,
+          source: 'WASAPI exclusive PCM fallback'
+        },
+        volume: 1,
+        reason:
+          'WASAPI exclusive output format matches source sample rate/channels/sample format and playback volume is unity; loopback or DAC verification is still required.'
+      },
+      reason:
+        'WASAPI exclusive native file playback is running on device: 扬声器 (Realtek(R) Audio)'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeDetails).toEqual(
+      expect.arrayContaining([
+        {
+          label: 'bit-perfect',
+          value: '候选（仍需 loopback / DAC 验证）',
+          tone: 'warning'
+        },
+        {
+          label: '源格式',
+          value: '44100 Hz / 2ch / 16-bit pcm · WAV raw PCM passthrough',
+          tone: 'neutral'
+        },
+        {
+          label: '输出格式',
+          value: '44100 Hz / 2ch / 16-bit pcm · WASAPI exclusive PCM fallback',
+          tone: 'neutral'
+        },
+        { label: '原生音量', value: '100%', tone: 'neutral' },
+        {
+          label: 'bit-perfect 说明',
+          value:
+            'WASAPI 独占输出格式与源采样率/声道/样本格式匹配，且播放音量为 100%；仍需 loopback 或 DAC 状态验证。',
+          tone: 'warning'
+        }
+      ])
+    )
+  })
+
+  it('explains native bit-perfect sample format mismatch in runtime details', async () => {
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'exclusive',
+      helperRunning: true,
+      devices: [],
+      bitPerfect: {
+        status: 'notCandidate',
+        sourceFormat: {
+          sampleRate: 44100,
+          channels: 2,
+          sampleFormat: 'decoded-f32',
+          bitDepth: 32
+        },
+        outputFormat: {
+          sampleRate: 44100,
+          channels: 2,
+          sampleFormat: 'pcm',
+          bitDepth: 24
+        },
+        volume: 1,
+        reason:
+          'Source sample format 32-bit decoded-f32 does not match output sample format 24-bit pcm; helper sample conversion would be required.'
+      }
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeDetails).toEqual(
+      expect.arrayContaining([
+        {
+          label: 'bit-perfect',
+          value: '非候选',
+          tone: 'neutral'
+        },
+        {
+          label: 'bit-perfect 说明',
+          value:
+            '源样本格式 32-bit decoded-f32 与输出样本格式 24-bit pcm 不一致，需要转换后才能输出。',
+          tone: 'neutral'
+        }
+      ])
+    )
+  })
+
+  it('exposes native remote playback download progress in runtime details', async () => {
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'exclusive',
+      helperRunning: true,
+      nativePlaybackRunning: true,
+      nativePlaybackSource: 'https://song.test/reference.flac',
+      nativePlaybackState: 'starting',
+      nativePlaybackDownload: {
+        state: 'downloading',
+        bytesReceived: 1536,
+        totalBytes: 4096,
+        rangeSupported: true,
+        strategy: 'range-chunk'
+      },
+      devices: [],
+      reason: 'Native audio output is caching remote media before playback.'
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeDetails).toEqual(
+      expect.arrayContaining([
+        {
+          label: '在线缓存',
+          value: '下载中 1.5 KiB / 4.0 KiB',
+          tone: 'warning'
+        },
+        {
+          label: '在线 Range',
+          value: '支持',
+          tone: 'success'
+        },
+        {
+          label: '在线策略',
+          value: 'Range 分段缓存',
+          tone: 'neutral'
+        }
+      ])
+    )
+  })
+
+  it('exposes native audio output test tone running state for plugin actions', async () => {
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'shared',
+      activeMode: 'shared',
+      helperRunning: true,
+      testToneRunning: true,
+      devices: []
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeState).toEqual({
+      testToneRunning: true,
+      nativePlaybackRunning: false
+    })
+  })
+
+  it('exposes native audio playback running state for plugin actions', async () => {
+    audioOutputPluginMock.audioOutputStatus.value = {
+      settings: { ...audioOutputPluginMock.audioOutputSettings.value },
+      enabled: true,
+      backend: 'native',
+      backendAvailable: true,
+      requestedMode: 'exclusive',
+      activeMode: 'exclusive',
+      helperRunning: true,
+      nativePlaybackRunning: true,
+      nativePlaybackState: 'playing',
+      devices: []
+    }
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+
+    expect(audioOutputDescriptor?.runtimeState).toEqual({
+      testToneRunning: false,
+      nativePlaybackRunning: true
+    })
+  })
+
+  it('exposes Chromium fallback output devices as selectable first-party settings', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'shared',
+      sharedDeviceId: 'chromium-usb',
+      deviceId: '',
+      bufferFrames: 960,
+      fallbackToShared: true,
+      bitPerfectRequired: false,
+      voicemeeterBus: 'A1',
+      diagnosticsEnabled: false
+    }
+    audioOutputPluginMock.sharedOutputDevices.value = [
+      { id: 'chromium-speakers', label: 'Speakers' },
+      { id: 'chromium-usb', label: 'USB DAC' }
+    ]
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => undefined
+    })
+
+    const result = await service.listPlatforms()
+    const audioOutputDescriptor = result.find(platform => platform.id === 'builtin.audio-output')
+    const sharedDeviceSetting = audioOutputDescriptor?.settingsSchema?.find(
+      setting => setting.key === 'sharedDeviceId'
+    )
+
+    expect(audioOutputPluginMock.refreshSharedOutputDevices).toHaveBeenCalled()
+    expect(sharedDeviceSetting).toEqual(
+      expect.objectContaining({
+        type: 'select',
+        options: [
+          { value: '', label: '系统默认输出设备' },
+          { value: 'chromium-speakers', label: 'Speakers' },
+          { value: 'chromium-usb', label: 'USB DAC' }
+        ]
+      })
+    )
   })
 
   it('toggles the first-party cover swipe extension outside Electron', async () => {
@@ -551,6 +1604,39 @@ describe('createPluginService', () => {
     expect(result).toEqual({ key: 'value' })
   })
 
+  it('returns first-party native audio output settings without the plugin bridge', async () => {
+    audioOutputPluginMock.audioOutputSettings.value = {
+      mode: 'exclusive',
+      sharedDeviceId: 'chromium-usb',
+      deviceId: 'dac-1',
+      bufferFrames: 512,
+      fallbackToShared: false,
+      bitPerfectRequired: true,
+      voicemeeterBus: 'A1',
+      diagnosticsEnabled: true
+    }
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getSettings('builtin.audio-output')
+
+    expect(bridge.getSettings).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      mode: 'exclusive',
+      sharedDeviceId: 'chromium-usb',
+      deviceId: 'dac-1',
+      bufferFrames: 512,
+      fallbackToShared: false,
+      bitPerfectRequired: true,
+      voicemeeterBus: 'A1',
+      diagnosticsEnabled: true
+    })
+  })
+
   // -----------------------------------------------------------------------
   // 10. updateSettings throws in non-Electron, refreshes descriptors after
   // -----------------------------------------------------------------------
@@ -587,6 +1673,30 @@ describe('createPluginService', () => {
     expect(result).toEqual(updatedSettings)
   })
 
+  it('updates first-party native audio output settings without the plugin bridge', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.updateSettings('builtin.audio-output', {
+      mode: 'voicemeeter',
+      bufferFrames: '512'
+    })
+
+    expect(audioOutputPluginMock.updateAudioOutputSettings).toHaveBeenCalledWith({
+      mode: 'voicemeeter',
+      bufferFrames: '512'
+    })
+    expect(bridge.updateSettings).not.toHaveBeenCalled()
+    expect(result).toMatchObject({
+      mode: 'voicemeeter',
+      bufferFrames: 512
+    })
+  })
+
   // -----------------------------------------------------------------------
   // 11. call throws in non-Electron, delegates in Electron
   // -----------------------------------------------------------------------
@@ -614,6 +1724,564 @@ describe('createPluginService', () => {
 
     expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'search', payload)
     expect(result).toBe('result')
+  })
+
+  it('reads and normalizes plugin auth state through the bridge', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      platform: 'plugin-x',
+      status: 'authenticated',
+      account: {
+        id: 'user-1',
+        nickname: 'Plugin User'
+      },
+      message: 'ok'
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getAuthState('plugin-x')
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'auth.getState', {})
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated',
+        account: expect.objectContaining({
+          id: 'user-1',
+          nickname: 'Plugin User'
+        }),
+        message: 'ok',
+        updatedAt: expect.any(Number)
+      })
+    )
+  })
+
+  it('returns anonymous plugin auth state when the bridge is unavailable', async () => {
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => false
+    })
+
+    const result = await service.getAuthState('plugin-x')
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'anonymous',
+        message: '未登录',
+        updatedAt: expect.any(Number)
+      })
+    )
+  })
+
+  it('returns anonymous auth state for first-party plugins without bridge calls', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getAuthState('builtin.smtc')
+
+    expect(bridge.call).not.toHaveBeenCalled()
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'builtin.smtc',
+        status: 'anonymous'
+      })
+    )
+  })
+
+  it('returns error auth state when the plugin auth state call fails', async () => {
+    const bridge = createBridge()
+    bridge.call.mockRejectedValueOnce(new Error('missing method'))
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.getAuthState('plugin-x')
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'error',
+        message: '登录状态读取失败',
+        updatedAt: expect.any(Number)
+      })
+    )
+  })
+
+  it('starts plugin login through the auth facade and normalizes challenges', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      challengeId: 'challenge-1',
+      type: 'qr',
+      title: 'Plugin Login',
+      statusText: 'scan',
+      qrImageUrl: 'https://example.com/qr.png',
+      pollIntervalMs: 500
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.auth.startLogin('plugin-x', { mode: 'qr' })
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'auth.startLogin', { mode: 'qr' })
+    expect(result).toEqual({
+      challengeId: 'challenge-1',
+      type: 'qr',
+      title: 'Plugin Login',
+      statusText: 'scan',
+      qrImageUrl: 'https://example.com/qr.png',
+      pollIntervalMs: 500
+    })
+  })
+
+  it('rejects plugin login challenges with missing types', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      challengeId: 'challenge-1'
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.auth.startLogin('plugin-x')).rejects.toThrow(
+      'Login challenge missing or invalid type'
+    )
+  })
+
+  it('polls, submits, refreshes, logs out, and cancels plugin auth through the auth facade', async () => {
+    const bridge = createBridge()
+    bridge.call
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'pending',
+        message: 'waiting'
+      })
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'authenticated',
+        account: {
+          id: 'user-1',
+          nickname: 'Plugin User'
+        }
+      })
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'authenticated'
+      })
+      .mockResolvedValueOnce({
+        platform: 'plugin-x',
+        status: 'anonymous'
+      })
+      .mockResolvedValueOnce(undefined)
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.auth.pollLogin('plugin-x', 'challenge-1')).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'pending',
+        message: 'waiting'
+      })
+    )
+    await expect(
+      service.auth.submitLogin('plugin-x', 'challenge-1', { username: 'u' })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated'
+      })
+    )
+    await expect(service.auth.refresh('plugin-x')).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated'
+      })
+    )
+    await expect(service.auth.logout('plugin-x')).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'anonymous'
+      })
+    )
+    await expect(service.auth.cancelLogin('plugin-x', 'challenge-1')).resolves.toBeUndefined()
+
+    expect(bridge.call).toHaveBeenNthCalledWith(1, 'plugin-x', 'auth.pollLogin', {
+      challengeId: 'challenge-1'
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(2, 'plugin-x', 'auth.submitLogin', {
+      challengeId: 'challenge-1',
+      values: { username: 'u' }
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(3, 'plugin-x', 'auth.refresh', {})
+    expect(bridge.call).toHaveBeenNthCalledWith(4, 'plugin-x', 'auth.logout', {})
+    expect(bridge.call).toHaveBeenNthCalledWith(5, 'plugin-x', 'auth.cancelLogin', {
+      challengeId: 'challenge-1'
+    })
+  })
+
+  it('imports a standardized auth session through the auth facade', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      platform: 'plugin-x',
+      status: 'authenticated',
+      account: {
+        id: 'user-1',
+        nickname: 'Plugin User'
+      },
+      message: '登录会话已导入'
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const session = {
+      credential: {
+        type: 'cookie' as const,
+        value: 'SESSION=legacy'
+      },
+      account: {
+        id: 'user-1',
+        nickname: 'Plugin User'
+      }
+    }
+
+    await expect(service.auth.importSession('plugin-x', session)).resolves.toEqual(
+      expect.objectContaining({
+        platform: 'plugin-x',
+        status: 'authenticated',
+        account: expect.objectContaining({
+          id: 'user-1',
+          nickname: 'Plugin User'
+        })
+      })
+    )
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'auth.importSession', { session })
+  })
+
+  it('reads a standard account profile through the account facade', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({
+      id: 'user-1',
+      nickname: 'Plugin User',
+      avatarUrl: 'https://example.test/avatar.png',
+      homepageUrl: 'https://example.test/user/user-1',
+      extra: {
+        level: 9
+      }
+    })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.account.getProfile('plugin-x', 'user-1')).resolves.toEqual({
+      id: 'user-1',
+      nickname: 'Plugin User',
+      avatarUrl: 'https://example.test/avatar.png',
+      homepageUrl: 'https://example.test/user/user-1',
+      extra: {
+        level: 9
+      }
+    })
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'account.getProfile', {
+      userId: 'user-1'
+    })
+  })
+
+  it('rejects malformed account profiles at the plugin facade boundary', async () => {
+    const bridge = createBridge()
+    bridge.call
+      .mockResolvedValueOnce({
+        id: 'user-1',
+        nickname: '',
+        rawCookie: 'secret'
+      })
+      .mockResolvedValueOnce({
+        id: { nested: true },
+        nickname: 'Plugin User'
+      })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(service.account.getProfile('plugin-x')).resolves.toBeNull()
+    await expect(service.account.getProfile('plugin-x')).resolves.toBeNull()
+  })
+
+  it('normalizes plugin library pages through the library facade', async () => {
+    const bridge = createBridge()
+    bridge.call
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'song-1',
+            name: 'Song 1',
+            artists: [{ id: 'artist-1', name: 'Artist 1' }],
+            album: { id: 'album-1', name: 'Album 1', picUrl: 'cover.png' },
+            duration: 180000,
+            mvid: 0,
+            originalId: 'song-1'
+          },
+          {
+            id: false
+          }
+        ],
+        page: { limit: 2, offset: 4, total: 7 }
+      })
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'playlist-1',
+            name: 'Playlist 1',
+            coverImgUrl: 'playlist.png',
+            trackCount: 12,
+            subscribed: true,
+            creator: {
+              id: 'user-1',
+              nickname: 'Plugin User'
+            }
+          },
+          {
+            id: null,
+            name: 'Invalid'
+          }
+        ],
+        page: { limit: 10, offset: 0, hasMore: false }
+      })
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'song-2',
+            name: 'Song 2',
+            artists: [],
+            album: { id: 'album-2', name: 'Album 2', picUrl: '' },
+            duration: 200000,
+            mvid: 0,
+            originalId: 'song-2'
+          }
+        ]
+      })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(
+      service.library.getLikedSongs('plugin-x', { userId: 'user-1', limit: 2, offset: 4 })
+    ).resolves.toEqual({
+      list: [
+        expect.objectContaining({
+          id: 'song-1',
+          name: 'Song 1',
+          platform: 'plugin-x'
+        })
+      ],
+      page: {
+        limit: 2,
+        offset: 4,
+        total: 7,
+        hasMore: true
+      }
+    })
+    await expect(service.library.getPlaylists('plugin-x', { limit: 10 })).resolves.toEqual({
+      list: [
+        {
+          id: 'playlist-1',
+          name: 'Playlist 1',
+          coverImgUrl: 'playlist.png',
+          trackCount: 12,
+          subscribed: true,
+          creator: {
+            id: 'user-1',
+            nickname: 'Plugin User'
+          }
+        }
+      ],
+      page: {
+        limit: 10,
+        offset: 0,
+        hasMore: false
+      }
+    })
+    await expect(
+      service.library.getPlaylistTracks('plugin-x', 'playlist-1', { limit: 5, offset: 5 })
+    ).resolves.toEqual({
+      list: [
+        expect.objectContaining({
+          id: 'song-2',
+          name: 'Song 2',
+          platform: 'plugin-x'
+        })
+      ],
+      page: {
+        limit: 5,
+        offset: 5,
+        hasMore: false
+      }
+    })
+
+    expect(bridge.call).toHaveBeenNthCalledWith(1, 'plugin-x', 'library.getLikedSongs', {
+      userId: 'user-1',
+      limit: 2,
+      offset: 4
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(2, 'plugin-x', 'library.getPlaylists', {
+      limit: 10,
+      offset: 0
+    })
+    expect(bridge.call).toHaveBeenNthCalledWith(3, 'plugin-x', 'library.getPlaylistTracks', {
+      id: 'playlist-1',
+      limit: 5,
+      offset: 5
+    })
+  })
+
+  it('keeps plugin library payloads on framework models and filters invalid entries', async () => {
+    const bridge = createBridge()
+    bridge.call
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'liked-1',
+            name: 'Liked Song',
+            artists: [{ id: 'artist-1', name: 'Artist' }],
+            album: { id: 'album-1', name: 'Album', picUrl: 'cover.png' },
+            duration: 180000,
+            originalId: 'raw-liked-1',
+            mvid: 0,
+            rawPlatformField: 'ignored',
+            extra: {
+              sourceTraceId: 'trace-1'
+            }
+          },
+          {
+            id: true,
+            name: 'Invalid Song'
+          }
+        ],
+        page: { limit: 20.6, offset: 1.4, total: 2 }
+      })
+      .mockResolvedValueOnce({
+        list: [
+          {
+            id: 'playlist-1',
+            name: 'Playlist 1',
+            coverImgUrl: 'playlist.png',
+            description: 'desc',
+            trackCount: 12.8,
+            subscribed: true,
+            creator: {
+              id: 'creator-1',
+              nickname: 'Creator',
+              rawProfile: 'ignored'
+            },
+            extra: {
+              source: 'plugin'
+            },
+            rawPlaylistField: 'ignored'
+          },
+          {
+            id: 'playlist-2',
+            name: ''
+          }
+        ],
+        page: { limit: 10, offset: 0, hasMore: false }
+      })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await expect(
+      service.library.getLikedSongs('plugin-x', { limit: 20.6, offset: 1.4 })
+    ).resolves.toEqual({
+      list: [
+        expect.objectContaining({
+          id: 'liked-1',
+          name: 'Liked Song',
+          platform: 'plugin-x',
+          originalId: 'raw-liked-1',
+          extra: {
+            sourceTraceId: 'trace-1'
+          }
+        })
+      ],
+      page: {
+        limit: 21,
+        offset: 1,
+        total: 2,
+        hasMore: false
+      }
+    })
+
+    await expect(service.library.getPlaylists('plugin-x', { limit: 10 })).resolves.toEqual({
+      list: [
+        {
+          id: 'playlist-1',
+          name: 'Playlist 1',
+          coverImgUrl: 'playlist.png',
+          description: 'desc',
+          trackCount: 13,
+          subscribed: true,
+          creator: {
+            id: 'creator-1',
+            nickname: 'Creator'
+          },
+          extra: {
+            source: 'plugin'
+          }
+        }
+      ],
+      page: {
+        limit: 10,
+        offset: 0,
+        hasMore: false
+      }
+    })
+  })
+
+  it('clamps small positive decimal library limits to one', async () => {
+    const bridge = createBridge()
+    bridge.call.mockResolvedValueOnce({ list: [] })
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    await service.library.getPlaylists('plugin-x', { limit: 0.4 })
+
+    expect(bridge.call).toHaveBeenCalledWith('plugin-x', 'library.getPlaylists', {
+      limit: 1,
+      offset: 0
+    })
   })
 
   // -----------------------------------------------------------------------

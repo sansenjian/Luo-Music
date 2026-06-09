@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { getPlatformDisplayInfo } from '@/platform/music/display'
 import { useUserStore } from '@/store/userStore'
 
 const props = withDefaults(
@@ -22,8 +23,19 @@ const userStore = useUserStore()
 const sidebarLoginTitle = computed(() => userStore.nickname.trim() || '登录信息')
 const sidebarLoginAvatarLabel = computed(() => sidebarLoginTitle.value.trim().charAt(0) || '登')
 const sidebarLoginAvatarUrl = computed(() => userStore.avatarUrl.trim())
-const neteaseLoginState = computed(() => (userStore.isLoggedIn ? '已登录' : '未登录'))
-const qqMusicLoginState = computed(() => (userStore.isQQMusicLoggedIn ? '已登录' : '未登录'))
+const loginServices = computed(() =>
+  userStore.platformAuthList.map(state => {
+    const displayInfo = getPlatformDisplayInfo(state.platform)
+
+    return {
+      id: state.platform,
+      className: displayInfo.className,
+      name: displayInfo.displayName,
+      state: userStore.getPlatformAuthStatusText(state.platform),
+      loggedIn: userStore.isPlatformAuthenticated(state.platform)
+    }
+  })
+)
 </script>
 
 <template>
@@ -46,13 +58,14 @@ const qqMusicLoginState = computed(() => (userStore.isQQMusicLoggedIn ? '已登�
       <div v-if="!props.collapsed" class="sidebar-user-copy">
         <strong>{{ sidebarLoginTitle }}</strong>
         <div class="sidebar-login-services">
-          <span class="service-badge service-badge-netease">
-            <span class="service-name">网易云</span>
-            <span class="service-state">{{ neteaseLoginState }}</span>
-          </span>
-          <span class="service-badge service-badge-qq">
-            <span class="service-name">QQ音乐</span>
-            <span class="service-state">{{ qqMusicLoginState }}</span>
+          <span
+            v-for="service in loginServices"
+            :key="service.id"
+            class="service-badge"
+            :class="[service.className, { 'is-logged-in': service.loggedIn }]"
+          >
+            <span class="service-name">{{ service.name }}</span>
+            <span class="service-state">{{ service.state }}</span>
           </span>
         </div>
       </div>
@@ -172,11 +185,11 @@ const qqMusicLoginState = computed(() => (userStore.isQQMusicLoggedIn ? '已登�
   transform: translateY(-50%);
 }
 
-.service-badge-netease::before {
-  background: #ef4444;
+.service-badge::before {
+  background: #94a3b8;
 }
 
-.service-badge-qq::before {
+.service-badge.is-logged-in::before {
   background: #22c55e;
 }
 

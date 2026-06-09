@@ -5,14 +5,24 @@ import path from 'node:path'
 
 const RESOLVED_PATH_CACHE_MAX_ENTRIES = 500
 
-function resolveCoverDirectoryPath(): string {
-  const electronModule = require('electron') as
-    | string
-    | {
-        app?: {
-          getPath(name: 'userData'): string
-        }
+type ElectronUserDataModule =
+  | string
+  | {
+      app?: {
+        getPath(name: 'userData'): string
       }
+    }
+
+function loadElectronUserDataModule(): ElectronUserDataModule | null {
+  try {
+    return require('electron') as ElectronUserDataModule
+  } catch {
+    return null
+  }
+}
+
+function resolveCoverDirectoryPath(): string {
+  const electronModule = loadElectronUserDataModule()
   const userDataPath =
     typeof electronModule === 'object' && electronModule !== null && 'app' in electronModule
       ? electronModule.app?.getPath('userData')

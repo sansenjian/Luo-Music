@@ -36,6 +36,9 @@ describe('configService / errorService / decorators', () => {
     )
     expect(service.getPort('qq')).toBe(3200)
     expect(service.getPort('netease')).toBe(14532)
+    expect(service.getServiceBaseUrl('qq')).toBe('http://127.0.0.1:3200')
+    expect(service.getServiceBaseUrl('netease')).toBe('http://127.0.0.1:14532')
+    expect(service.getServiceBaseUrl('qq', 4567)).toBe('http://127.0.0.1:4567')
   })
 
   it('proxies errorCenter through createErrorService', async () => {

@@ -109,4 +109,64 @@ describe('IpcService', () => {
       vi.useRealTimers()
     }
   })
+
+  it('keeps invoke debug logs for regular channels', async () => {
+    const [{ ipcService }, { loggerMiddleware }, { INVOKE_CHANNELS }] = await Promise.all([
+      import('../../electron/ipc/IpcService.ts'),
+      import('../../electron/ipc/middleware/logger.ts'),
+      import('@shared/protocol/channels')
+    ])
+
+    ipcService.use(loggerMiddleware)
+    ipcService.registerInvoke(INVOKE_CHANNELS.WINDOW_GET_SIZE, async () => ({
+      width: 1200,
+      height: 800
+    }))
+    ipcService.initialize()
+
+    const invokeWrapper = ipcMainHandleMock.mock.calls.find(
+      ([channel]) => channel === INVOKE_CHANNELS.WINDOW_GET_SIZE
+    )?.[1]
+
+    expect(invokeWrapper).toBeTypeOf('function')
+    await expect(invokeWrapper?.({} as never)).resolves.toEqual({ width: 1200, height: 800 })
+
+    const debugMessages = loggerMock.debug.mock.calls.map(([message]) => String(message))
+    expect(
+      debugMessages.some(message => message.includes(`[IPC] ${INVOKE_CHANNELS.WINDOW_GET_SIZE}`))
+    ).toBe(true)
+    expect(
+      debugMessages.some(
+        message =>
+          message.includes(`[IPC] ${INVOKE_CHANNELS.WINDOW_GET_SIZE}`) &&
+          message.includes('completed in')
+      )
+    ).toBe(true)
+  })
+
+  it('suppresses high-frequency plugin:list invoke debug logs', async () => {
+    const [{ ipcService }, { loggerMiddleware }, { INVOKE_CHANNELS }] = await Promise.all([
+      import('../../electron/ipc/IpcService.ts'),
+      import('../../electron/ipc/middleware/logger.ts'),
+      import('@shared/protocol/channels')
+    ])
+
+    ipcService.use(loggerMiddleware)
+    ipcService.registerInvoke(INVOKE_CHANNELS.PLUGIN_LIST, async () => ({ platforms: [] }))
+    ipcService.initialize()
+
+    const invokeWrapper = ipcMainHandleMock.mock.calls.find(
+      ([channel]) => channel === INVOKE_CHANNELS.PLUGIN_LIST
+    )?.[1]
+
+    expect(invokeWrapper).toBeTypeOf('function')
+    await invokeWrapper?.({} as never)
+    await invokeWrapper?.({} as never)
+    await invokeWrapper?.({} as never)
+
+    const debugMessages = loggerMock.debug.mock.calls.map(([message]) => String(message))
+    expect(
+      debugMessages.some(message => message.includes(`[IPC] ${INVOKE_CHANNELS.PLUGIN_LIST}`))
+    ).toBe(false)
+  })
 })

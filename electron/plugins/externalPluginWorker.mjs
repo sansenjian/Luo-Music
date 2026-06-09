@@ -1,4 +1,5 @@
 import { parentPort, workerData } from "node:worker_threads";
+import { createPluginSdkRuntime } from "./runtime-shared.mjs";
 
 if (!parentPort) {
   throw new Error("External plugin worker requires a parentPort");
@@ -13,6 +14,13 @@ function serializeError(error) {
       message: error.message,
       stack: error.stack,
       name: error.name,
+      code: typeof error.code === "string" ? error.code : undefined,
+      retryable: typeof error.retryable === "boolean" ? error.retryable : undefined,
+      userMessage: typeof error.userMessage === "string" ? error.userMessage : undefined,
+      details:
+        error.details && typeof error.details === "object" && !Array.isArray(error.details)
+          ? error.details
+          : undefined,
     };
   }
 
@@ -72,6 +80,7 @@ const pluginContext = {
     warn: createLogger("warn"),
     error: createLogger("error"),
   },
+  sdk: createPluginSdkRuntime(),
 };
 
 let pluginInstancePromise = null;

@@ -51,6 +51,7 @@ export { registerLogHandlers } from './handlers/log.handler'
 export { registerLocalLibraryHandlers } from './handlers/localLibrary.handler'
 export { registerPluginHandlers } from './handlers/plugin.handler'
 export { registerSmtcHandlers } from './handlers/smtc.handler'
+export { registerAudioOutputHandlers } from './handlers/audioOutput.handler'
 
 // 工具
 export {

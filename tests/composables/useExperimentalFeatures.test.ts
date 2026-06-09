@@ -75,6 +75,127 @@ describe('useExperimentalFeatures', () => {
     })
   })
 
+  it('stores the native SMTC status returned by the main process', async () => {
+    const { useExperimentalFeatures } = await import('@/composables/useExperimentalFeatures')
+    const { storageService } = createStorageServiceMock()
+    const smtcMainBridge = {
+      setEnabled: vi.fn().mockResolvedValue({
+        enabled: true,
+        backend: 'native',
+        nativeAvailable: true,
+        helperRunning: true,
+        restartRequired: false,
+        helperPath: 'D:\\app\\native\\smtc-helper.exe'
+      })
+    }
+
+    const { setSMTCEnabled, smtcNativeStatus } = useExperimentalFeatures({
+      storageService,
+      smtcMainBridge
+    })
+
+    setSMTCEnabled(true)
+    expect(smtcNativeStatus.value).toMatchObject({
+      enabled: true,
+      backend: 'disabled',
+      helperRunning: false
+    })
+
+    await Promise.resolve()
+
+    expect(smtcNativeStatus.value).toMatchObject({
+      enabled: true,
+      backend: 'native',
+      nativeAvailable: true,
+      helperRunning: true,
+      restartRequired: false
+    })
+  })
+
+  it('accepts native SMTC status delivered through the status listener', async () => {
+    const { useExperimentalFeatures } = await import('@/composables/useExperimentalFeatures')
+    const { storageService } = createStorageServiceMock()
+    const pushedStatus = {
+      enabled: true,
+      backend: 'native',
+      nativeAvailable: true,
+      helperRunning: true,
+      restartRequired: false
+    } as const
+    const statusListeners: Array<(status: typeof pushedStatus) => void> = []
+    const smtcMainBridge = {
+      setEnabled: vi.fn(),
+      subscribeStatus: vi.fn((listener: (status: typeof pushedStatus) => void) => {
+        statusListeners.push(listener)
+      })
+    }
+
+    const { setSMTCEnabled, smtcNativeStatus } = useExperimentalFeatures({
+      storageService,
+      smtcMainBridge
+    })
+
+    setSMTCEnabled(true)
+    expect(smtcMainBridge.setEnabled).toHaveBeenCalledWith(true)
+    expect(smtcNativeStatus.value).toMatchObject({
+      enabled: true,
+      backend: 'disabled',
+      helperRunning: false
+    })
+
+    const emitStatus = statusListeners[0]
+    expect(emitStatus).toBeTypeOf('function')
+    if (!emitStatus) {
+      throw new Error('Expected status listener to be registered')
+    }
+    emitStatus(pushedStatus)
+    await Promise.resolve()
+
+    expect(smtcNativeStatus.value).toMatchObject({
+      enabled: true,
+      backend: 'native',
+      helperRunning: true
+    })
+  })
+
+  it('seeds native SMTC status from the main process during initialization', async () => {
+    const { useExperimentalFeatures } = await import('@/composables/useExperimentalFeatures')
+    const { storageService } = createStorageServiceMock({
+      experimentalFeatures: { smtcEnabled: true, waveformEnabled: false, coverSwipeEnabled: false }
+    })
+    const smtcMainBridge = {
+      getStatus: vi.fn().mockResolvedValue({
+        enabled: true,
+        backend: 'native',
+        nativeAvailable: true,
+        helperRunning: true,
+        restartRequired: false
+      }),
+      setEnabled: vi.fn().mockResolvedValue({
+        enabled: true,
+        backend: 'native',
+        nativeAvailable: true,
+        helperRunning: true,
+        restartRequired: false
+      })
+    }
+
+    const { smtcNativeStatus } = useExperimentalFeatures({
+      storageService,
+      smtcMainBridge
+    })
+
+    await Promise.resolve()
+
+    expect(smtcMainBridge.getStatus).toHaveBeenCalledTimes(1)
+    expect(smtcNativeStatus.value).toMatchObject({
+      enabled: true,
+      backend: 'native',
+      nativeAvailable: true,
+      helperRunning: true
+    })
+  })
+
   it('does not overwrite other settings keys when persisting experiments', async () => {
     const { useExperimentalFeatures } = await import('@/composables/useExperimentalFeatures')
     const { store, storageService } = createStorageServiceMock({
@@ -86,7 +207,7 @@ describe('useExperimentalFeatures', () => {
       }
     })
 
-    const { setSMTCEnabled } = useExperimentalFeatures({ storageService })
+    const { setSMTCEnabled, smtcNativeStatus } = useExperimentalFeatures({ storageService })
 
     setSMTCEnabled(true)
 
@@ -95,6 +216,10 @@ describe('useExperimentalFeatures', () => {
       smtcEnabled: true,
       waveformEnabled: false,
       coverSwipeEnabled: false
+    })
+    expect(smtcNativeStatus.value).toMatchObject({
+      enabled: true,
+      backend: 'chromium'
     })
   })
 

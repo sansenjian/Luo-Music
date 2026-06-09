@@ -12,6 +12,7 @@ import {
 import { registerService, getService, resetServices } from '@/services/registry'
 import { LogLevel } from '@/services/loggerService'
 import { IApiService, ILoggerService, IConfigService } from '@/services/types'
+import type { ServiceName } from '@/services/configService'
 
 function createMockLoggerService() {
   return {
@@ -61,7 +62,8 @@ describe('performanceMonitor', () => {
           env: { mode: 'test', isDev: true, isProd: false },
           ports: { qq: 3200, netease: 14532 }
         }),
-        getPort: () => 3000
+        getPort: () => 3000,
+        getServiceBaseUrl: (_name: ServiceName, port = 3000) => `http://127.0.0.1:${port}`
       }))
 
       getService(IApiService)
@@ -148,7 +150,8 @@ describe('performanceMonitor', () => {
           env: { mode: 'test', isDev: true, isProd: false },
           ports: { qq: 3200, netease: 14532 }
         }),
-        getPort: () => 3000
+        getPort: () => 3000,
+        getServiceBaseUrl: (_name: ServiceName, port = 3000) => `http://127.0.0.1:${port}`
       }))
 
       getService(IApiService)

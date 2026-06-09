@@ -1,11 +1,20 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { PathLike } from 'node:fs'
 
 const setPathMock = vi.fn()
 const setAppUserModelIdMock = vi.fn()
 const setNameMock = vi.fn()
 let mockIsPackaged = false
 let mockProcessExecPath = 'C:/Program Files/LUO Music/LUO Music.exe'
-const existsSyncMock = vi.fn(() => false)
+const existsSyncMock = vi.fn((_path: PathLike) => false)
+
+type StartMenuShortcutPayload = {
+  appUserModelId: string
+  arguments: string
+  shortcutPath: string
+  targetPath: string
+  workingDirectory: string
+}
 
 vi.mock('electron', () => ({
   app: {
@@ -36,7 +45,17 @@ vi.mock('node:child_process', async importOriginal => {
   const actual = await importOriginal<typeof import('node:child_process')>()
   return {
     ...actual,
-    execFile: vi.fn((_cmd: string, _args: string[], cb: (error: null) => void) => cb(null))
+    execFile: vi.fn(
+      (
+        _cmd: string,
+        _args: string[],
+        optionsOrCallback: unknown,
+        maybeCallback?: (error: null) => void
+      ) => {
+        const callback = typeof optionsOrCallback === 'function' ? optionsOrCallback : maybeCallback
+        callback?.(null)
+      }
+    )
   }
 })
 
@@ -70,6 +89,16 @@ describe('electron/main/app', () => {
     existsSyncMock.mockReturnValue(false)
     mockIsPackaged = false
     mockProcessExecPath = 'C:/Program Files/LUO Music/LUO Music.exe'
+    originalAppData = process.env.APPDATA
+    process.env.APPDATA = 'C:\\Users\\test\\AppData\\Roaming'
+  })
+
+  afterEach(() => {
+    if (originalAppData === undefined) {
+      delete process.env.APPDATA
+    } else {
+      process.env.APPDATA = originalAppData
+    }
   })
 
   it('sets dev userData path when not packaged', () => {
@@ -151,10 +180,46 @@ describe('electron/main/app', () => {
 
     restorePlatform()
   })
+
+  it('registers a Start Menu shortcut with the AppUserModelId for Windows shell lookup', () => {
+    mockPlatform('win32', mockProcessExecPath)
+
+    appModule.setupWindowsShellIntegration()
+
+    const { payload, script } = readStartMenuShortcutPayload(childProcess)
+
+    expect(script).toContain('System.AppUserModel.ID')
+    expect(script).toContain('9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3')
+    expect(payload.shortcutPath).toMatch(/LUO Music\.lnk$/)
+    expect(payload.appUserModelId).toBe('com.sansenjian.luo-music')
+
+    restorePlatform()
+  })
+
+  it('points Squirrel Start Menu shortcuts at Update.exe for update-safe launches', () => {
+    mockIsPackaged = true
+    mockProcessExecPath = 'C:/Users/test/AppData/Local/LUO_Music/app-1.0.0/LUO Music.exe'
+    existsSyncMock.mockImplementation(candidate =>
+      String(candidate).replace(/\\/g, '/').endsWith('/LUO_Music/Update.exe')
+    )
+    mockPlatform('win32', mockProcessExecPath)
+
+    appModule.setupWindowsShellIntegration()
+
+    const { payload } = readStartMenuShortcutPayload(childProcess)
+
+    expect(payload.appUserModelId).toBe('com.squirrel.LUO_Music.LUO Music')
+    expect(payload.arguments).toBe('--processStart "LUO Music.exe"')
+    expect(payload.targetPath.replace(/\\/g, '/')).toMatch(/\/LUO_Music\/Update\.exe$/)
+    expect(payload.workingDirectory.replace(/\\/g, '/')).toMatch(/\/LUO_Music$/)
+
+    restorePlatform()
+  })
 })
 
 let _originalPlatform: string | undefined
 let _originalExecPath: string | undefined
+let originalAppData: string | undefined
 
 function mockPlatform(platform: string, execPath: string): void {
   _originalPlatform = process.platform
@@ -170,4 +235,27 @@ function restorePlatform(): void {
   if (_originalExecPath !== undefined) {
     Object.defineProperty(process, 'execPath', { value: _originalExecPath, configurable: true })
   }
+}
+
+function readStartMenuShortcutPayload(childProcess: typeof import('node:child_process')): {
+  payload: StartMenuShortcutPayload
+  script: string
+} {
+  const powershellCall = vi
+    .mocked(childProcess.execFile)
+    .mock.calls.find(([command]) => command === 'powershell.exe')
+  expect(powershellCall).toBeDefined()
+  expect(powershellCall?.[2]).toMatchObject({ windowsHide: true })
+
+  const args = powershellCall?.[1] as string[]
+  const encodedCommand = args.at(args.indexOf('-EncodedCommand') + 1)
+  expect(encodedCommand).toBeDefined()
+
+  const script = Buffer.from(encodedCommand ?? '', 'base64').toString('utf16le')
+  const payloadBase64 = script.match(/FromBase64String\('([^']+)'\)/)?.[1] ?? ''
+  const payload = JSON.parse(
+    Buffer.from(payloadBase64, 'base64').toString('utf8')
+  ) as StartMenuShortcutPayload
+
+  return { payload, script }
 }

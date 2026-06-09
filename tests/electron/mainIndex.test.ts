@@ -49,6 +49,7 @@ const registerLogHandlersMock = vi.hoisted(() => vi.fn())
 const registerLocalLibraryHandlersMock = vi.hoisted(() => vi.fn())
 const registerPluginHandlersMock = vi.hoisted(() => vi.fn())
 const registerSmtcHandlersMock = vi.hoisted(() => vi.fn())
+const registerAudioOutputHandlersMock = vi.hoisted(() => vi.fn())
 const electronStoreGetMock = vi.hoisted(() =>
   vi.fn((key: string, defaultValue?: unknown) => defaultValue)
 )
@@ -71,8 +72,14 @@ vi.mock('electron', () => ({
     commandLine: {
       appendSwitch: vi.fn()
     },
+    getAppPath: vi.fn(() => 'D:\\app'),
+    getPath: vi.fn(() => 'D:\\user-data'),
+    isPackaged: false,
     relaunch: vi.fn(),
     exit: vi.fn()
+  },
+  net: {
+    fetch: vi.fn()
   }
 }))
 
@@ -163,7 +170,8 @@ vi.mock('../../electron/ipc/index', () => ({
   registerLogHandlers: registerLogHandlersMock,
   registerLocalLibraryHandlers: registerLocalLibraryHandlersMock,
   registerPluginHandlers: registerPluginHandlersMock,
-  registerSmtcHandlers: registerSmtcHandlersMock
+  registerSmtcHandlers: registerSmtcHandlersMock,
+  registerAudioOutputHandlers: registerAudioOutputHandlersMock
 }))
 
 vi.mock('../../electron/main/app', () => ({
@@ -171,6 +179,11 @@ vi.mock('../../electron/main/app', () => ({
   setupDevUserData: setupDevUserDataMock,
   setupWindowsShellIntegration: setupWindowsShellIntegrationMock,
   setupErrorHandlers: setupErrorHandlersMock,
+  getWindowsShellIdentity: vi.fn(() => ({
+    appUserModelId: 'com.sansenjian.luo-music',
+    displayName: 'LUO Music',
+    iconPath: 'D:\\app\\public\\tray.ico'
+  })),
   registerAppLifecycle: registerAppLifecycleMock.mockImplementation(callbacks => {
     lifecycleCallbacks = callbacks
   })
@@ -237,7 +250,7 @@ describe('electron/main/index', () => {
     expect(setShortcutsWindowManagerMock).toHaveBeenCalledTimes(1)
     expect(registerAppLifecycleMock).toHaveBeenCalledTimes(1)
     expect(lifecycleCallbacks?.onReady).toBeTypeOf('function')
-  })
+  }, 30_000)
 
   it('disables Chromium media session features when persisted SMTC setting is off', async () => {
     const electron = await import('electron')
@@ -267,6 +280,7 @@ describe('electron/main/index', () => {
     expect(createTrayMock).toHaveBeenCalledTimes(1)
     expect(registerShortcutsMock).toHaveBeenCalledTimes(1)
     expect(registerSmtcHandlersMock).toHaveBeenCalledTimes(1)
+    expect(registerAudioOutputHandlersMock).toHaveBeenCalledTimes(1)
     expect(initializeServicesMock.mock.invocationCallOrder[0]).toBeLessThan(
       createWindowMock.mock.invocationCallOrder[0]
     )

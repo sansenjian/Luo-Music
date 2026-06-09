@@ -6,6 +6,7 @@ import {
   sanitizeExperimentalFeatures,
   type ExperimentalFeaturesState
 } from '@/extensions/experimentalFeatures'
+import { resolveSmtcHelperPath, type SmtcHelperPathOptions } from './smtcNativePaths'
 
 type ElectronStoreShape = {
   get: <T>(key: string, defaultValue?: T) => T
@@ -24,6 +25,10 @@ const SMTC_CHROMIUM_FEATURES = 'HardwareMediaKeyHandling,MediaSessionService'
 
 let smtcCommandLineEnabled = false
 
+type SmtcCommandLineOptions = SmtcHelperPathOptions & {
+  nativeHelperAvailable?: boolean
+}
+
 function readExperimentalFeatures(): ExperimentalFeaturesState {
   return sanitizeExperimentalFeatures(store.get<unknown>(EXPERIMENTAL_FEATURES_STORAGE_KEY))
 }
@@ -36,20 +41,41 @@ export function isSmtcCommandLineEnabled(): boolean {
   return smtcCommandLineEnabled
 }
 
-export function configureSmtcCommandLineForState(state: ExperimentalFeaturesState): boolean {
-  const enabled = state.smtcEnabled
-  smtcCommandLineEnabled = enabled
+export function shouldUseChromiumSmtc(
+  state: ExperimentalFeaturesState,
+  options: SmtcCommandLineOptions = {}
+): boolean {
+  if (!state.smtcEnabled) {
+    return false
+  }
+
+  const nativeHelperAvailable =
+    options.nativeHelperAvailable ?? Boolean(resolveSmtcHelperPath(options))
+
+  return !nativeHelperAvailable
+}
+
+export function configureSmtcCommandLineForState(
+  state: ExperimentalFeaturesState,
+  options: SmtcCommandLineOptions = {}
+): boolean {
+  const chromiumEnabled = shouldUseChromiumSmtc(state, options)
+  smtcCommandLineEnabled = chromiumEnabled
 
   app.commandLine.appendSwitch(
-    enabled ? 'enable-features' : 'disable-features',
+    chromiumEnabled ? 'enable-features' : 'disable-features',
     SMTC_CHROMIUM_FEATURES
   )
 
-  return enabled
+  return chromiumEnabled
 }
 
 export function configureSmtcCommandLine(): boolean {
-  return configureSmtcCommandLineForState(readExperimentalFeatures())
+  return configureSmtcCommandLineForState(readExperimentalFeatures(), {
+    appPath: app.getAppPath(),
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath
+  })
 }
 
 export function setSmtcEnabledFromRenderer(enabled: boolean): { restartRequired: boolean } {

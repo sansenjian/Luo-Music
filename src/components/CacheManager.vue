@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { clearPlatformAuthSessions } from '@/app/legacyPlatformAuth'
 import { services } from '@/services'
+import { getPlatformDisplayInfo } from '@/platform/music/display'
 import { useUserStore } from '@/store/userStore'
 
 const platformService = services.platform()
+const musicService = services.music()
 const userStore = useUserStore()
 const cacheSize = ref({ httpCache: 0, httpCacheFormatted: '0 B' })
 const loading = ref(false)
@@ -30,6 +33,14 @@ const cacheOptions = reactive<Record<CacheOptionKey, boolean>>({
 
 const allSelected = computed(() => cacheOptionKeys.every(k => cacheOptions[k]))
 const noneSelected = computed(() => cacheOptionKeys.every(k => !cacheOptions[k]))
+const accountCacheItems = computed(() =>
+  userStore.platformAuthList.map(state => ({
+    id: state.platform,
+    label: `${getPlatformDisplayInfo(state.platform).displayName} 账号`,
+    loggedIn: userStore.isPlatformAuthenticated(state.platform),
+    statusText: userStore.getPlatformAuthStatusText(state.platform)
+  }))
+)
 
 const cacheTypeLabels: Record<CacheOptionKey, string> = {
   cookies: 'Cookies（含登录状态）',
@@ -114,9 +125,17 @@ async function clearAllCache() {
   }
 }
 
-function clearAccountCache() {
-  userStore.logout()
-  userStore.logoutQQ()
+function getAccountCachePlatformIds(): string[] {
+  return Array.from(
+    new Set([
+      ...userStore.platformAuthList.map(state => state.platform),
+      ...musicService.getLoginCapablePlatformDescriptors().map(platform => platform.id)
+    ])
+  )
+}
+
+async function clearAccountCache() {
+  await clearPlatformAuthSessions(getAccountCachePlatformIds())
   notify('账号缓存已清理', 'success')
 }
 
@@ -153,16 +172,10 @@ function handleClearResult(result: {
         </button>
       </div>
       <div class="account-status">
-        <div class="account-item">
-          <span class="account-label">网易云账号</span>
-          <span :class="['account-badge', userStore.isLoggedIn ? 'logged-in' : 'logged-out']">
-            {{ userStore.isLoggedIn ? '已登录' : '未登录' }}
-          </span>
-        </div>
-        <div class="account-item">
-          <span class="account-label">QQ 音乐账号</span>
-          <span :class="['account-badge', userStore.qqLoggedIn ? 'logged-in' : 'logged-out']">
-            {{ userStore.qqLoggedIn ? '已登录' : '未登录' }}
+        <div v-for="account in accountCacheItems" :key="account.id" class="account-item">
+          <span class="account-label">{{ account.label }}</span>
+          <span :class="['account-badge', account.loggedIn ? 'logged-in' : 'logged-out']">
+            {{ account.statusText }}
           </span>
         </div>
       </div>

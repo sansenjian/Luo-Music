@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { songPrefetcher } from '@/store/player/songPrefetcher'
+import { NativeAudioOutputRequiredError } from '@/store/player/nativeAudioOutputPlayback'
 import { createDeferred } from '../../helpers/deferred'
 import { createMockSong, createQQSong } from '../../utils/test-utils'
 import {
@@ -48,6 +49,34 @@ describe('playbackActions playback resolution', () => {
       duration: 0
     })
     expect(onStateChange).toHaveBeenLastCalledWith({ loading: false })
+  })
+
+  it('stores native request headers from standard song-url results', async () => {
+    const { actions, state, playSongByIndex } = createSubject()
+    const song = createQQSong({ id: 'song-url-headers', mediaId: 'media-headers' })
+    state.songList = [song]
+    adapterMock.getSongUrl.mockResolvedValue({
+      url: 'https://song.test/auth-stream.mp3',
+      headers: {
+        cookie: 'MUSIC_U=token',
+        referer: 'https://music.example.test/'
+      }
+    })
+    adapterMock.getLyric.mockResolvedValue({
+      lrc: '',
+      tlyric: '',
+      romalrc: ''
+    })
+    lyricParseMock.mockReturnValue([])
+
+    await actions.playSongWithDetails(0)
+
+    expect(song.url).toBe('https://song.test/auth-stream.mp3')
+    expect(song.extra?.nativeAudioOutputRequestHeaders).toEqual({
+      cookie: 'MUSIC_U=token',
+      referer: 'https://music.example.test/'
+    })
+    expect(playSongByIndex).toHaveBeenCalledWith(0, song)
   })
 
   it('hydrates netease search-result songs before fetching the playback url', async () => {
@@ -215,7 +244,12 @@ describe('playbackActions playback resolution', () => {
     })
 
     songPrefetcher.setMusicService(adapterMock)
-    adapterMock.getSongUrl.mockResolvedValue('https://song.test/copied-prefetch.mp3')
+    adapterMock.getSongUrl.mockResolvedValue({
+      url: 'https://song.test/copied-prefetch.mp3',
+      headers: {
+        cookie: 'prefetch-token'
+      }
+    })
     adapterMock.getSongDetail.mockResolvedValue(null)
     adapterMock.getLyric.mockResolvedValue({
       lrc: '',
@@ -232,6 +266,9 @@ describe('playbackActions playback resolution', () => {
 
     expect(adapterMock.getSongUrl).not.toHaveBeenCalled()
     expect(playlistSong.url).toBe('https://song.test/copied-prefetch.mp3')
+    expect(playlistSong.extra?.nativeAudioOutputRequestHeaders).toEqual({
+      cookie: 'prefetch-token'
+    })
     expect(playSongByIndex).toHaveBeenCalledWith(0, playlistSong)
   })
 
@@ -247,7 +284,12 @@ describe('playbackActions playback resolution', () => {
     playSongByIndex
       .mockRejectedValueOnce(new Error('stale cached url'))
       .mockResolvedValueOnce(undefined)
-    adapterMock.getSongUrl.mockResolvedValue('https://song.test/fresh-retry.mp3')
+    adapterMock.getSongUrl.mockResolvedValue({
+      url: 'https://song.test/fresh-retry.mp3',
+      headers: {
+        cookie: 'MUSIC_U=fresh'
+      }
+    })
     adapterMock.getLyric.mockResolvedValue({
       lrc: '',
       tlyric: '',
@@ -261,6 +303,9 @@ describe('playbackActions playback resolution', () => {
       mediaId: undefined
     })
     expect(song.url).toBe('https://song.test/fresh-retry.mp3')
+    expect(song.extra?.nativeAudioOutputRequestHeaders).toEqual({
+      cookie: 'MUSIC_U=fresh'
+    })
     expect(playSongByIndex).toHaveBeenCalledTimes(2)
     expect(playSongByIndex).toHaveBeenNthCalledWith(1, 0, expect.anything())
     expect(playSongByIndex).toHaveBeenNthCalledWith(2, 0, expect.anything())
@@ -308,6 +353,28 @@ describe('playbackActions playback resolution', () => {
     expect(playSongByIndex).toHaveBeenCalledTimes(2)
     expect(playSongByIndex).toHaveBeenNthCalledWith(1, 0, expect.anything())
     expect(playSongByIndex).toHaveBeenNthCalledWith(2, 0, expect.anything())
+  })
+
+  it('does not refresh urls or auto-skip when required native output fails', async () => {
+    const { actions, state, playSongByIndex, errorHandler } = createSubject()
+    const song = createMockSong({
+      id: 'song-native-required',
+      platform: 'netease',
+      url: 'https://song.test/native-required.flac'
+    })
+    const outputError = new NativeAudioOutputRequiredError(
+      '原生独占输出启动失败，已阻止回退到 Chromium。'
+    )
+
+    state.songList = [song]
+    playSongByIndex.mockRejectedValueOnce(outputError)
+
+    await expect(actions.playSongWithDetails(0)).rejects.toThrow(outputError)
+
+    expect(adapterMock.getSongUrl).not.toHaveBeenCalled()
+    expect(playSongByIndex).toHaveBeenCalledTimes(1)
+    expect(errorHandler.markAsUnavailable).not.toHaveBeenCalled()
+    expect(errorHandler.playNextSkipUnavailable).not.toHaveBeenCalled()
   })
 
   it('keeps current lyrics when lyric loading is cancelled', async () => {

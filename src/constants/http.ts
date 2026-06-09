@@ -28,22 +28,6 @@ export const HTTP_DEFAULT_RETRY_COUNT = 1
 export const HTTP_DEFAULT_RETRY_DELAY = 1000
 
 /**
- * API 服务端口配置
- */
-export const NETEASE_API_PORT = 14532
-export const QQ_API_PORT = 3200
-
-/**
- * 开发环境 API 服务器地址
- */
-export const DEV_API_SERVER = `http://127.0.0.1:${NETEASE_API_PORT}`
-
-/**
- * QQ 音乐 API 服务器地址
- */
-export const QQ_API_SERVER = `http://127.0.0.1:${QQ_API_PORT}`
-
-/**
  * 请求头配置
  */
 export const HTTP_HEADERS = {

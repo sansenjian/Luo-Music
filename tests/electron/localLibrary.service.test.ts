@@ -19,6 +19,8 @@ async function createTempPath(name: string): Promise<string> {
 }
 
 afterEach(async () => {
+  vi.useRealTimers()
+
   while (createdPaths.length > 0) {
     const targetPath = createdPaths.pop()
     if (!targetPath) {
@@ -49,6 +51,10 @@ function createWatcherHarness() {
       }
     }
   }
+}
+
+function createNoopWatcherFactory() {
+  return () => createWatcherHarness().watcher as never
 }
 
 describe('LocalLibraryService', () => {
@@ -104,7 +110,12 @@ describe('LocalLibraryService', () => {
         }) as T
     }
 
-    const service = new LocalLibraryService(repository, legacyStore)
+    const service = new LocalLibraryService(
+      repository,
+      legacyStore,
+      undefined,
+      createNoopWatcherFactory()
+    )
     const state = service.getState()
 
     expect(state.folders).toHaveLength(1)
@@ -122,7 +133,7 @@ describe('LocalLibraryService', () => {
       title: 'Song'
     })
 
-    repository.close()
+    await service.dispose()
   })
 
   it('scans the filesystem and persists tracks through the repository', async () => {
@@ -133,9 +144,14 @@ describe('LocalLibraryService', () => {
     await writeFile(join(folderPath, 'Artist - First Song.mp3'), '')
     await writeFile(join(folderPath, 'Second Song.flac'), '')
 
-    const service = new LocalLibraryService(repository, {
-      get: <T>() => undefined as T
-    })
+    const service = new LocalLibraryService(
+      repository,
+      {
+        get: <T>() => undefined as T
+      },
+      undefined,
+      createNoopWatcherFactory()
+    )
 
     await service.addFolder(folderPath)
     const state = service.getState()
@@ -149,7 +165,34 @@ describe('LocalLibraryService', () => {
     expect(state.status.phase).toBe('idle')
     expect(state.status.discoveredTracks).toBe(2)
 
-    repository.close()
+    await service.dispose()
+  })
+
+  it('skips nested folders that would rescan files from an existing local library folder', async () => {
+    const tempDir = await createTempPath('local-library-service-overlap')
+    const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))
+    const folderPath = join(tempDir, 'Music')
+    const nestedFolderPath = join(folderPath, 'Nested')
+    await mkdir(nestedFolderPath, { recursive: true })
+    await writeFile(join(nestedFolderPath, 'Nested Song.mp3'), '')
+
+    const service = new LocalLibraryService(
+      repository,
+      {
+        get: <T>() => undefined as T
+      },
+      undefined,
+      createNoopWatcherFactory()
+    )
+
+    await service.addFolder(folderPath)
+    const nextState = await service.addFolder(nestedFolderPath)
+
+    expect(nextState.folders).toHaveLength(1)
+    expect(nextState.folders[0]?.path).toBe(folderPath)
+    expect(nextState.status.message).toBe('该文件夹与已有本地音乐文件夹重叠')
+
+    await service.dispose()
   })
 
   it('prefers parsed metadata over filename fallbacks when metadata is available', async () => {
@@ -170,7 +213,8 @@ describe('LocalLibraryService', () => {
         artist: filePath === trackPath ? 'Tag Artist' : null,
         album: filePath === trackPath ? 'Tag Album' : null,
         duration: filePath === trackPath ? 245000 : null
-      })
+      }),
+      createNoopWatcherFactory()
     )
 
     await service.addFolder(folderPath)
@@ -189,7 +233,7 @@ describe('LocalLibraryService', () => {
     })
     expect(trackPage.items[0].song.url).toContain('luo-media://media?path=')
 
-    repository.close()
+    await service.dispose()
   })
 
   it('reuses unchanged tracks during rescan and reparses only changed files', async () => {
@@ -220,7 +264,8 @@ describe('LocalLibraryService', () => {
       {
         get: <T>() => undefined as T
       },
-      metadataReader
+      metadataReader,
+      createNoopWatcherFactory()
     )
 
     await service.addFolder(folderPath)
@@ -247,7 +292,7 @@ describe('LocalLibraryService', () => {
     })
     expect((await service.getTracksPage()).items[0].song.url).toContain('luo-media://media?path=')
 
-    repository.close()
+    await service.dispose()
   })
 
   it('watches folders and debounces automatic rescans after local file changes', async () => {
@@ -302,7 +347,6 @@ describe('LocalLibraryService', () => {
     })
 
     await service.dispose()
-    vi.useRealTimers()
   })
 
   it('toggles folder enablement and exposes artist and album pages', async () => {
@@ -313,9 +357,14 @@ describe('LocalLibraryService', () => {
     await writeFile(join(folderPath, 'Artist A - First Song.mp3'), '')
     await writeFile(join(folderPath, 'Artist B - Second Song.mp3'), '')
 
-    const service = new LocalLibraryService(repository, {
-      get: <T>() => undefined as T
-    })
+    const service = new LocalLibraryService(
+      repository,
+      {
+        get: <T>() => undefined as T
+      },
+      undefined,
+      createNoopWatcherFactory()
+    )
 
     await service.addFolder(folderPath)
 
@@ -334,7 +383,7 @@ describe('LocalLibraryService', () => {
     await service.setFolderEnabled(folderId!, true)
     expect((await service.getTracksPage()).total).toBe(2)
 
-    repository.close()
+    await service.dispose()
   })
 
   it('repairs previously scanned ogg tracks with unknown duration when tracks are listed', async () => {
@@ -401,7 +450,7 @@ describe('LocalLibraryService', () => {
         get: <T>() => undefined as T
       },
       metadataReader,
-      undefined
+      createNoopWatcherFactory()
     )
 
     const firstPage = await service.getTracksPage()

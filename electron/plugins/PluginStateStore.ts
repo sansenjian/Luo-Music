@@ -68,6 +68,14 @@ function isPluginStateRecordMap(value: unknown): value is Record<string, PluginS
   return Boolean(value && typeof value === 'object' && !Array.isArray(value))
 }
 
+function shouldKeepStorage(manifest: ExternalPluginManifest): boolean {
+  return manifest.permissions?.storage === true
+}
+
+function shouldKeepSecrets(manifest: ExternalPluginManifest): boolean {
+  return manifest.permissions?.secrets === true
+}
+
 export class PluginStateStore {
   private readonly store: StoreLike
 
@@ -114,8 +122,8 @@ export class PluginStateStore {
       installPath,
       enabled: existing?.enabled ?? false,
       settings: settingsMigration.settings,
-      storage: { ...existing?.storage },
-      secrets: { ...existing?.secrets },
+      storage: shouldKeepStorage(manifest) ? { ...existing?.storage } : {},
+      secrets: shouldKeepSecrets(manifest) ? { ...existing?.secrets } : {},
       lastError: settingsMigration.migrated ? undefined : existing?.lastError,
       consecutiveFailures: settingsMigration.migrated ? 0 : (existing?.consecutiveFailures ?? 0),
       circuitTrippedAt: settingsMigration.migrated ? undefined : existing?.circuitTrippedAt,

@@ -6,7 +6,9 @@
  */
 
 import 'dotenv/config'
-import { BrowserWindow } from 'electron'
+import { join } from 'node:path'
+
+import { BrowserWindow, app, net } from 'electron'
 import { desktopLyricManager } from '../DesktopLyricManager'
 import { downloadManager } from '../DownloadManager'
 import { windowManager } from '../WindowManager'
@@ -35,7 +37,8 @@ import {
   registerLogHandlers,
   registerLocalLibraryHandlers,
   registerPluginHandlers,
-  registerSmtcHandlers
+  registerSmtcHandlers,
+  registerAudioOutputHandlers
 } from '../ipc/index'
 
 import {
@@ -43,7 +46,8 @@ import {
   setupDevUserData,
   setupWindowsShellIntegration,
   setupErrorHandlers,
-  registerAppLifecycle
+  registerAppLifecycle,
+  getWindowsShellIdentity
 } from './app'
 import { createTray, destroyTray, setWindowManager as setTrayWindowManager } from './tray'
 import {
@@ -52,8 +56,11 @@ import {
   setWindowManager as setShortcutsWindowManager
 } from './shortcuts'
 import { configureSmtcCommandLine } from './smtc'
+import { SmtcNativeService, type SmtcNativePlayerCommand } from './smtcNativeService'
+import { AudioOutputService } from './audioOutputService'
 import { DEFAULT_SHORTCUTS } from '../../src/config/shortcuts'
 import { NETEASE_API_PORT, QQ_API_PORT } from '@shared/protocol/cache'
+import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 
 console.log = logger.log.bind(logger)
 console.error = logger.error.bind(logger)
@@ -77,6 +84,8 @@ const DEFAULT_SERVICE_CONFIG: ServiceConfig = {
 }
 
 let pluginCatalog: PluginCatalog | null = null
+let smtcNativeService: SmtcNativeService | null = null
+let audioOutputService: AudioOutputService | null = null
 const mainStartedAt = Date.now()
 
 function formatDuration(ms: number): string {
@@ -216,18 +225,72 @@ function initializeIpcService(currentPluginCatalog: PluginCatalog): void {
   registerWindowHandlers(windowManager)
   registerCacheHandlers()
   registerConfigHandlers()
-  registerPlayerHandlers(windowManager, serviceManager)
+  const shellIdentity = getWindowsShellIdentity()
+  smtcNativeService = new SmtcNativeService({
+    appName: shellIdentity?.displayName,
+    appPath: app.getAppPath(),
+    appUserModelId: shellIdentity?.appUserModelId,
+    isPackaged: app.isPackaged,
+    logger,
+    onCommand: handleSmtcNativeCommand,
+    onStatusChange: status => {
+      ipcService.broadcast(RECEIVE_CHANNELS.SMTC_STATUS_CHANGED, status)
+    },
+    resourcesPath: process.resourcesPath
+  })
+  audioOutputService = new AudioOutputService({
+    appPath: app.getAppPath(),
+    cacheDir: join(app.getPath('userData'), 'audio-output-cache'),
+    electronNet: net,
+    isPackaged: app.isPackaged,
+    logger,
+    onStatusChange: status => {
+      ipcService.broadcast(RECEIVE_CHANNELS.AUDIO_OUTPUT_STATUS_CHANGED, status)
+    },
+    resourcesPath: process.resourcesPath
+  })
+
+  registerPlayerHandlers(windowManager, serviceManager, smtcNativeService)
   registerServiceHandlers(serviceManager)
   registerApiHandlers(serviceManager)
   registerLyricHandlers()
   registerLogHandlers()
   registerLocalLibraryHandlers(windowManager)
   registerPluginHandlers(currentPluginCatalog)
-  registerSmtcHandlers()
+  registerSmtcHandlers(smtcNativeService)
+  registerAudioOutputHandlers(audioOutputService)
 
   ipcService.initialize()
 
   logger.info('[IPC] Unified IPC service initialized')
+}
+
+function handleSmtcNativeCommand(command: SmtcNativePlayerCommand): void {
+  switch (command.type) {
+    case 'play':
+      windowManager.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL, 'play')
+      break
+    case 'pause':
+    case 'stop':
+      windowManager.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL, 'pause')
+      break
+    case 'nextTrack':
+      windowManager.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'next')
+      break
+    case 'previousTrack':
+      windowManager.send(RECEIVE_CHANNELS.MUSIC_SONG_CONTROL, 'prev')
+      break
+    case 'seek':
+      windowManager.send(RECEIVE_CHANNELS.MUSIC_PLAYING_CONTROL, {
+        type: 'seek',
+        time: command.positionSeconds
+      })
+      break
+    case 'toggleShuffle':
+    case 'toggleRepeat':
+      windowManager.send(RECEIVE_CHANNELS.MUSIC_PLAYMODE_CONTROL, 'toggle')
+      break
+  }
 }
 
 function main(): void {
@@ -266,6 +329,8 @@ function main(): void {
       desktopLyricManager.closeWindow()
       destroyTray()
       downloadManager.dispose()
+      smtcNativeService?.dispose()
+      await audioOutputService?.dispose()
       await disposeLocalLibraryService()
       disposePerformanceMonitor()
       ipcService.dispose()

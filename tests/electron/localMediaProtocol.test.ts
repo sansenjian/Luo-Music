@@ -125,6 +125,7 @@ describe('localMediaProtocol', () => {
     const init = netFetchMock.mock.calls[0]?.[1] as RequestInit
     const headers = init.headers as Headers
     expect(headers.get('range')).toBe('bytes=1-2')
+    expect(headers.get('accept-encoding')).toBe('identity')
     expect(headers.get('accept')).toBe('*/*')
     expect(headers.get('user-agent')).toContain('Chrome/')
     expect(headers.get('referer')).toBeNull()
@@ -133,6 +134,41 @@ describe('localMediaProtocol', () => {
     expect(response.headers.get('cross-origin-resource-policy')).toBe('cross-origin')
     expect(response.headers.get('content-range')).toBe('bytes 1-2/4')
     await expect(response.text()).resolves.toBe('on')
+  })
+
+  it('does not synthesize remote range support when the upstream omits it', async () => {
+    const protocolModule = await import('../../electron/local-library/protocol')
+    const netFetchMock = vi.fn().mockResolvedValue(
+      new Response('full', {
+        status: 200,
+        headers: {
+          'Content-Length': '4',
+          'Content-Type': 'audio/mpeg'
+        }
+      })
+    )
+
+    protocolModule.registerLocalMediaProtocol({
+      net: {
+        fetch: netFetchMock
+      },
+      protocol: {
+        handle: protocolHandleMock
+      }
+    })
+
+    const handler = protocolHandleMock.mock.calls[0]?.[1] as
+      | ((request: Request) => Promise<Response>)
+      | undefined
+    expect(handler).toBeTypeOf('function')
+
+    const response = await handler!(
+      new Request(protocolModule.createRemoteMediaUrl('https://music.example/song.mp3'))
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('accept-ranges')).toBeNull()
+    await expect(response.text()).resolves.toBe('full')
   })
 
   it('blocks remote media proxy requests to local network addresses', async () => {

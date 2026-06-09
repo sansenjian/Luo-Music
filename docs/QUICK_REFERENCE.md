@@ -2,6 +2,10 @@
 
 ## 高频命令
 
+### 分支
+
+分支职责、日常开发命令和 PR 目标见 [开发分支流程](/guide/development-workflow)。
+
 ### 开发
 
 ```bash

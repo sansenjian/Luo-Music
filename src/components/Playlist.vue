@@ -3,7 +3,12 @@ import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } fr
 
 import HomeEmptyState from './home/HomeEmptyState.vue'
 import { uiMessages } from '@/messages/ui'
+import { getPlatformDisplayInfo, type PlatformDisplayInfo } from '@/platform/music/display'
 import { usePlayerStore } from '@/store/playerStore.ts'
+import {
+  resolveLocalSongName,
+  shouldPromoteArtistTextToLocalTitle
+} from '@/utils/localLibrary/display'
 import { formatTime } from '@/utils/player/helpers/timeFormatter'
 import type { Song } from '@/platform/music/interface'
 
@@ -26,8 +31,8 @@ type PlaylistItem = {
   artistText: string
   cover: string
   duration: number
-  isQQ: boolean
   name: string
+  platform: PlatformDisplayInfo
 }
 
 function createPlaylistItemFingerprint(song: Song): string {
@@ -37,20 +42,25 @@ function createPlaylistItemFingerprint(song: Song): string {
     duration: song.duration,
     platform: song.platform,
     cover: song.album?.picUrl || '',
+    localSource: song.extra?.localSource || '',
+    localFilePath: song.extra?.localFilePath || '',
     artists: Array.isArray(song.artists) ? song.artists.map(artist => artist.name) : []
   })
 }
 
 function normalizePlaylistItem(song: Song): PlaylistItem {
+  const artistText = Array.isArray(song.artists)
+    ? song.artists.map(artist => artist.name).join(' / ')
+    : ''
+  const name = resolveLocalSongName(song, artistText)
+
   return {
     id: song.id,
-    artistText: Array.isArray(song.artists)
-      ? song.artists.map(artist => artist.name).join(' / ')
-      : '',
+    artistText: shouldPromoteArtistTextToLocalTitle(song, name, artistText) ? '' : artistText,
     cover: song.album?.picUrl || '',
     duration: Math.floor(song.duration / 1000),
-    isQQ: song.platform === 'qq',
-    name: song.name
+    name,
+    platform: getPlatformDisplayInfo(song.platform)
   }
 }
 
@@ -270,9 +280,13 @@ onUnmounted(() => {
           </div>
           <div class="list-info">
             <div class="list-title">
-              {{ song.name }}
-              <span class="server-badge" :class="song.isQQ ? 'qq' : 'netease'">
-                {{ song.isQQ ? 'QQ' : 'Netease' }}
+              <span class="list-title-text">{{ song.name }}</span>
+              <span
+                class="server-badge"
+                :class="song.platform.className"
+                :title="song.platform.displayName"
+              >
+                {{ song.platform.badgeText }}
               </span>
             </div>
             <div class="list-artist">{{ song.artistText }}</div>
@@ -309,7 +323,7 @@ onUnmounted(() => {
 
 .list-item {
   display: grid;
-  grid-template-columns: 50px 36px 1fr 50px;
+  grid-template-columns: 50px 36px minmax(0, 1fr) 50px;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
@@ -417,13 +431,19 @@ onUnmounted(() => {
 .list-title {
   font-size: 13px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   margin-bottom: 2px;
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+.list-title-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .server-badge {
@@ -433,24 +453,9 @@ onUnmounted(() => {
   border-radius: 2px;
   text-transform: uppercase;
   flex-shrink: 0;
-}
-
-.server-badge.netease {
-  background: #e60026;
-  color: white;
-}
-
-.server-badge.qq {
-  background: #31c27c;
-  color: white;
-}
-
-.list-item.active .server-badge.netease {
-  background: #ff4d6a;
-}
-
-.list-item.active .server-badge.qq {
-  background: #5dd99a;
+  color: var(--accent);
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .list-artist {

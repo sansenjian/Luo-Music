@@ -10,6 +10,14 @@
 
 import type { INVOKE_CHANNELS, RECEIVE_CHANNELS, SEND_CHANNELS } from '../protocol/channels'
 import type { CacheClearOptions, CacheClearResult } from '../protocol/cache'
+import type { SmtcNativeStatus } from '../smtc/protocol'
+import type {
+  AudioOutputPlayFilePayload,
+  AudioOutputPlaybackVolumePayload,
+  AudioOutputSettings,
+  AudioOutputStatus,
+  AudioOutputTestTonePayload
+} from '../audioOutput/protocol'
 import type { LogEntry } from './log'
 import type { AppConfig, ConfigChangeEvent } from './config'
 import type {
@@ -40,6 +48,20 @@ export type PluginMethodName =
   | 'getSongDetail'
   | 'getLyric'
   | 'getPlaylistDetail'
+  | 'account.getProfile'
+  | 'library.getLikedSongs'
+  | 'library.getPlaylists'
+  | 'library.getPlaylistTracks'
+  | 'auth.getState'
+  | 'auth.startLogin'
+  | 'auth.pollLogin'
+  | 'auth.submitLogin'
+  | 'auth.cancelLogin'
+  | 'auth.importSession'
+  | 'auth.refresh'
+  | 'auth.logout'
+
+export type ApiPlatform = SongPlatform
 
 export type ServiceStatus = 'running' | 'stopped' | 'error'
 
@@ -340,7 +362,11 @@ type InvokeChannelsDefinition = MergeChannels<
       [pluginPath: string],
       { platforms: PlatformDescriptor[] }
     > &
-    DefineInvokeChannel<typeof INVOKE_CHANNELS.PLUGIN_PICK_INSTALL_PATH, [], string | null> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.PLUGIN_PICK_INSTALL_PATH,
+      [mode?: 'file' | 'directory'],
+      string | null
+    > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.PLUGIN_SET_ENABLED,
       [platformId: string, enabled: boolean],
@@ -370,7 +396,46 @@ type InvokeChannelsDefinition = MergeChannels<
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.SMTC_SET_ENABLED,
       [enabled: boolean],
-      { restartRequired: boolean }
+      SmtcNativeStatus
+    > &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.SMTC_GET_STATUS, [], SmtcNativeStatus> &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.AUDIO_OUTPUT_GET_STATUS, [], AudioOutputStatus> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_SET_ENABLED,
+      [enabled: boolean, settings: AudioOutputSettings],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_UPDATE_SETTINGS,
+      [settings: AudioOutputSettings],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_PLAY_TEST_TONE,
+      [payload?: AudioOutputTestTonePayload],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_PROBE_EXCLUSIVE_LOCK,
+      [],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_PLAY_FILE,
+      [payload: AudioOutputPlayFilePayload],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.AUDIO_OUTPUT_PAUSE_PLAYBACK, [], AudioOutputStatus> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_RESUME_PLAYBACK,
+      [],
+      AudioOutputStatus
+    > &
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.AUDIO_OUTPUT_STOP_PLAYBACK, [], AudioOutputStatus> &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.AUDIO_OUTPUT_SET_PLAYBACK_VOLUME,
+      [payload: AudioOutputPlaybackVolumePayload],
+      AudioOutputStatus
     > &
     // API 服务
     DefineInvokeChannel<
@@ -379,7 +444,7 @@ type InvokeChannelsDefinition = MergeChannels<
         {
           keyword: string
           type?: string
-          platform?: 'netease' | 'qq'
+          platform?: ApiPlatform
           page?: number
           limit?: number
         }
@@ -388,42 +453,42 @@ type InvokeChannelsDefinition = MergeChannels<
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_SONG_URL,
-      [{ id: string | number; platform?: 'netease' | 'qq'; quality?: number; mediaId?: string }],
+      [{ id: string | number; platform?: ApiPlatform; quality?: number; mediaId?: string }],
       { url?: string; error?: string }
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_LYRIC,
-      [{ id: string | number; platform?: 'netease' | 'qq' }],
+      [{ id: string | number; platform?: ApiPlatform }],
       { lyric?: string; translated?: string; romalrc?: string; error?: string }
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_SONG_DETAIL,
-      [{ id: string | number; platform?: 'netease' | 'qq' }],
+      [{ id: string | number; platform?: ApiPlatform }],
       unknown
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_PLAYLIST_DETAIL,
-      [{ id: string | number; platform?: 'netease' | 'qq' }],
+      [{ id: string | number; platform?: ApiPlatform }],
       unknown
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_ARTIST_DETAIL,
-      [{ id: string | number; platform?: 'netease' | 'qq' }],
+      [{ id: string | number; platform?: ApiPlatform }],
       unknown
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_ALBUM_DETAIL,
-      [{ id: string | number; platform?: 'netease' | 'qq' }],
+      [{ id: string | number; platform?: ApiPlatform }],
       unknown
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_RECOMMENDED_PLAYLISTS,
-      [{ platform?: 'netease' | 'qq'; limit?: number }],
+      [{ platform?: ApiPlatform; limit?: number }],
       unknown
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.API_GET_CHART,
-      [{ platform?: 'netease' | 'qq'; id?: string }],
+      [{ platform?: ApiPlatform; id?: string }],
       unknown
     > &
     // 播放器控制
@@ -548,6 +613,8 @@ type ReceiveChannelsDefinition = MergeChannels<
       typeof RECEIVE_CHANNELS.PLAYER_PLAY_ERROR,
       { error: string; song: Song | null }
     > &
+    DefineReceiveChannel<typeof RECEIVE_CHANNELS.SMTC_STATUS_CHANGED, SmtcNativeStatus> &
+    DefineReceiveChannel<typeof RECEIVE_CHANNELS.AUDIO_OUTPUT_STATUS_CHANGED, AudioOutputStatus> &
     DefineReceiveChannel<typeof RECEIVE_CHANNELS.CONFIG_CHANGED, ConfigChangeEvent> &
     DefineReceiveChannel<
       typeof RECEIVE_CHANNELS.PLUGIN_CHANGED,

@@ -13,6 +13,17 @@ export interface PlatformPermissions {
   secrets?: boolean
 }
 
+export interface PlatformRuntimeDetail {
+  label: string
+  value: string
+  tone?: 'neutral' | 'success' | 'warning' | 'danger'
+}
+
+export interface PlatformRuntimeState {
+  testToneRunning?: boolean
+  nativePlaybackRunning?: boolean
+}
+
 export interface PlatformDescriptor {
   id: string
   displayName: string
@@ -30,6 +41,8 @@ export interface PlatformDescriptor {
   permissions?: PlatformPermissions
   settingsSchema?: PluginSettingDefinition[]
   themeResources?: PluginThemeResource[]
+  runtimeDetails?: PlatformRuntimeDetail[]
+  runtimeState?: PlatformRuntimeState
   consecutiveFailures?: number
   circuitTrippedAt?: number
 }

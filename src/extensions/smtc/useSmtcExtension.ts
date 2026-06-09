@@ -15,6 +15,9 @@ type RouteLike = {
 
 type SmtcFeatureState = {
   smtcEnabled: ComputedRef<boolean> | { readonly value: boolean }
+  smtcNativeStatus?:
+    | ComputedRef<{ backend: string; enabled: boolean }>
+    | { readonly value: { backend: string; enabled: boolean } }
 }
 
 type SystemMediaSessionController = NonNullable<MediaSessionDeps['systemMediaSessionController']>
@@ -58,8 +61,15 @@ export function useSmtcExtension(deps: SmtcExtensionDeps = {}): void {
 
   function isEnabled(): boolean {
     return (
-      experimentalFeatures.smtcEnabled.value && isSmtcPrimaryWindow(route.path, getLocationHash())
+      experimentalFeatures.smtcEnabled.value &&
+      isSmtcPrimaryWindow(route.path, getLocationHash()) &&
+      !isNativeBackendOwning()
     )
+  }
+
+  function isNativeBackendOwning(): boolean {
+    const nativeStatus = experimentalFeatures.smtcNativeStatus?.value
+    return Boolean(nativeStatus?.enabled && nativeStatus.backend !== 'chromium')
   }
 
   registerMediaSession({

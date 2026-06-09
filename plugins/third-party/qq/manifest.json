@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "com.luomusic.plugin.qq",
   "name": "QQ Music",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "QQ 音乐第三方插件，提供搜索、播放、歌词等功能。需要搭配 QQMusicApi 服务端。",
   "author": "Luo-Music",
   "category": "api",
@@ -31,9 +31,47 @@
       "logout": true,
       "refresh": true,
       "profile": true,
+      "importSession": true,
       "preferredMode": "qr",
       "modes": ["qr"]
+    },
+    "account": {
+      "profile": true
     }
+  },
+  "capabilitiesV2": {
+    "music": {
+      "search": true,
+      "songUrl": true,
+      "songDetail": true,
+      "lyric": true,
+      "playlistDetail": false,
+      "urlRefresh": false
+    },
+    "auth": {
+      "login": true,
+      "logout": true,
+      "refresh": true,
+      "profile": true,
+      "importSession": true,
+      "preferredMode": "qr",
+      "modes": ["qr"]
+    },
+    "account": {
+      "profile": true
+    },
+    "storage": true,
+    "network": {
+      "domains": [
+        "localhost",
+        "127.0.0.1",
+        "y.gtimg.cn",
+        "c.y.qq.com",
+        "u.y.qq.com",
+        "shc.y.qq.com"
+      ]
+    },
+    "secrets": true
   },
   "permissions": {
     "network": {
@@ -64,5 +102,29 @@
         "default": false
       }
     ]
-  }
+  },
+  "contributionsV2": [
+    {
+      "type": "settings",
+      "settings": [
+        {
+          "key": "apiBase",
+          "type": "text",
+          "label": "API 服务地址",
+          "default": "http://127.0.0.1:3200"
+        },
+        {
+          "key": "verboseLog",
+          "type": "boolean",
+          "label": "详细日志",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "auth",
+      "preferredMode": "qr",
+      "modes": ["qr"]
+    }
+  ]
 }

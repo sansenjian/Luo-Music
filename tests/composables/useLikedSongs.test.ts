@@ -173,4 +173,48 @@ describe('useLikedSongs', () => {
       originalId: 'song-1'
     })
   })
+
+  it('preserves custom platform ids from liked-song details', async () => {
+    getLikelistMock.mockResolvedValue({
+      ids: ['plugin-song']
+    })
+    getSongDetailMock.mockResolvedValue({
+      songs: [
+        {
+          id: 'plugin-song',
+          name: 'Plugin Song',
+          platform: 'kugou'
+        }
+      ]
+    })
+
+    const viewModel = mountUseLikedSongs()
+
+    await viewModel.loadLikedSongs(1)
+    await flushPromises()
+
+    expect(viewModel.likeSongs.value[0]?.platform).toBe('kugou')
+  })
+
+  it('keeps legacy server platform ids when platform is absent', async () => {
+    getLikelistMock.mockResolvedValue({
+      ids: ['server-song']
+    })
+    getSongDetailMock.mockResolvedValue({
+      songs: [
+        {
+          id: 'server-song',
+          name: 'Server Song',
+          server: 'kugou'
+        }
+      ]
+    })
+
+    const viewModel = mountUseLikedSongs()
+
+    await viewModel.loadLikedSongs(1)
+    await flushPromises()
+
+    expect(viewModel.likeSongs.value[0]?.platform).toBe('kugou')
+  })
 })

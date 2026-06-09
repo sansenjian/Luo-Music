@@ -49,6 +49,8 @@ export class PluginCatalog {
   private readonly circuitBreakerThreshold: number
   private scanCacheExpiry = 0
   private readonly scanCacheTtl: number
+  private bundledPluginsEnsured = false
+  private bundledPluginsPromise: Promise<void> | undefined
 
   constructor(
     deps: PluginCatalogDeps & { circuitBreakerThreshold?: number; scanCacheTtlMs?: number } = {}
@@ -62,8 +64,8 @@ export class PluginCatalog {
   }
 
   async initialize(): Promise<void> {
-    await this.refreshExternalPlugins()
     await this.ensureBundledPlugins()
+    await this.refreshExternalPlugins(true)
   }
 
   async dispose(): Promise<void> {
@@ -78,8 +80,13 @@ export class PluginCatalog {
   }
 
   async listPlatforms(): Promise<PlatformDescriptor[]> {
+    await this.ensureBundledPlugins()
     await this.refreshExternalPlugins()
 
+    return this.createPlatformDescriptors()
+  }
+
+  private createPlatformDescriptors(): PlatformDescriptor[] {
     return [
       createCorePlatformDescriptor(),
       ...Array.from(this.externalPlugins.values())
@@ -92,22 +99,42 @@ export class PluginCatalog {
     pluginPath: string,
     options?: { enabledByDefault?: boolean }
   ): Promise<PluginMutationResponse> {
-    const installedPlugin = await this.installer.installFromPath(pluginPath)
-    this.scanCacheExpiry = 0
-    let state = this.stateStore.ensureState(installedPlugin.manifest, installedPlugin.installPath)
+    const { installedCount, lastInstalledPlatformId } = await this.installExternalPluginsFromPath(
+      pluginPath,
+      options
+    )
 
-    if (options?.enabledByDefault && !state.enabled) {
-      state = this.stateStore.setEnabled(installedPlugin.manifest.id, true)
+    return this.notifyMutation(installedCount === 1 ? lastInstalledPlatformId : undefined)
+  }
+
+  private async installExternalPluginsFromPath(
+    pluginPath: string,
+    options?: { enabledByDefault?: boolean }
+  ): Promise<{ installedCount: number; lastInstalledPlatformId?: string }> {
+    const installedPlugins = await this.installer.installManyFromPath(pluginPath)
+    this.scanCacheExpiry = 0
+    let lastInstalledPlatformId: string | undefined
+
+    for (const installedPlugin of installedPlugins) {
+      let state = this.stateStore.ensureState(installedPlugin.manifest, installedPlugin.installPath)
+
+      if (options?.enabledByDefault && !state.enabled) {
+        state = this.stateStore.setEnabled(installedPlugin.manifest.id, true)
+      }
+
+      this.stateStore.setChecksum(installedPlugin.manifest.id, installedPlugin.checksum)
+
+      this.externalPlugins.set(installedPlugin.manifest.platformId, {
+        ...installedPlugin,
+        state: this.stateStore.get(installedPlugin.manifest.id) ?? state
+      })
+      lastInstalledPlatformId = installedPlugin.manifest.platformId
     }
 
-    this.stateStore.setChecksum(installedPlugin.manifest.id, installedPlugin.checksum)
-
-    this.externalPlugins.set(installedPlugin.manifest.platformId, {
-      ...installedPlugin,
-      state: this.stateStore.get(installedPlugin.manifest.id) ?? state
-    })
-
-    return this.notifyMutation(installedPlugin.manifest.platformId)
+    return {
+      installedCount: installedPlugins.length,
+      lastInstalledPlatformId
+    }
   }
 
   async setEnabled(platformId: string, enabled: boolean): Promise<PluginMutationResponse> {
@@ -243,6 +270,7 @@ export class PluginCatalog {
     platformId: string,
     force = false
   ): Promise<ExternalPluginRegistration> {
+    await this.ensureBundledPlugins()
     await this.refreshExternalPlugins(force)
     const registration = this.externalPlugins.get(platformId)
 
@@ -272,13 +300,34 @@ export class PluginCatalog {
   }
 
   private async ensureBundledPlugins(): Promise<void> {
+    if (this.bundledPluginsEnsured) {
+      return
+    }
+
+    if (this.bundledPluginsPromise) {
+      await this.bundledPluginsPromise
+      return
+    }
+
+    this.bundledPluginsPromise = this.doEnsureBundledPlugins().finally(() => {
+      this.bundledPluginsPromise = undefined
+    })
+    await this.bundledPluginsPromise
+  }
+
+  private async doEnsureBundledPlugins(): Promise<void> {
+    await this.refreshExternalPlugins(true)
+
     let dirEntries: string[]
     try {
       const { readdir } = await import('node:fs/promises')
       dirEntries = await readdir(this.bundledPluginsDir)
     } catch {
+      this.bundledPluginsEnsured = true
       return
     }
+
+    let changed = false
 
     for (const entry of dirEntries) {
       const pluginDir = path.join(this.bundledPluginsDir, entry)
@@ -302,10 +351,20 @@ export class PluginCatalog {
           continue
         }
 
-        await this.installFromPath(pluginDir, { enabledByDefault: true })
+        const { installedCount } = await this.installExternalPluginsFromPath(pluginDir, {
+          enabledByDefault: true
+        })
+        changed = changed || installedCount > 0
       } catch {
         // Skip invalid bundled plugins silently
       }
+    }
+
+    this.bundledPluginsEnsured = true
+
+    if (changed) {
+      await this.refreshExternalPlugins(true)
+      await this.notifyChanged(this.createPlatformDescriptors())
     }
   }
 

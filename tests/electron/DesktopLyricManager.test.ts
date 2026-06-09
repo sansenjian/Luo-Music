@@ -1,21 +1,50 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 
 const storeData = vi.hoisted(() => new Map<string, unknown>())
+const browserWindowInstances = vi.hoisted(() => [] as DesktopLyricBrowserWindowMock[])
 const originalNodeEnv = process.env.NODE_ENV
 
-vi.mock('electron-store', () => ({
-  default: class {
-    get(key: string): unknown {
-      return storeData.get(key)
-    }
+class DesktopLyricBrowserWindowMock {
+  public events: Record<string, (...args: unknown[]) => void> = {}
+  public webContents = { send: vi.fn() }
+  public isDestroyed = vi.fn(() => false)
+  public show = vi.fn()
+  public hide = vi.fn()
+  public close = vi.fn()
+  public isVisible = vi.fn(() => false)
+  public getPosition = vi.fn(() => [100, 200] as const)
+  public setPosition = vi.fn()
+  public setAlwaysOnTop = vi.fn()
+  public setVisibleOnAllWorkspaces = vi.fn()
+  public setIgnoreMouseEvents = vi.fn()
+  public loadURL = vi.fn(() => Promise.resolve())
+  public loadFile = vi.fn(() => Promise.resolve())
 
-    set(key: string, value: unknown): void {
-      storeData.set(key, value)
+  constructor() {
+    browserWindowInstances.push(this)
+  }
+
+  once(event: string, callback: (...args: unknown[]) => void): void {
+    this.events[`once:${event}`] = callback
+  }
+
+  on(event: string, callback: (...args: unknown[]) => void): void {
+    this.events[event] = callback
+  }
+}
+
+function createElectronMock() {
+  return {
+    BrowserWindow: DesktopLyricBrowserWindowMock,
+    screen: {
+      getPrimaryDisplay: vi.fn(() => ({
+        workAreaSize: { width: 1920, height: 1080 }
+      }))
     }
   }
-}))
+}
 
 type ManagerInternals = {
   win: {
@@ -35,6 +64,10 @@ function setInternals(manager: DesktopLyricManager, patch: Partial<ManagerIntern
 }
 
 type DesktopLyricManager = import('../../electron/DesktopLyricManager').DesktopLyricManager
+type ElectronTestGlobal = typeof globalThis & {
+  __LUO_ELECTRON_TEST_MOCK__?: ReturnType<typeof createElectronMock>
+  __LUO_ELECTRON_STORE_TEST_MOCK__?: unknown
+}
 
 function createMockWindow(
   overrides: { isVisible?: boolean } = {}
@@ -51,11 +84,27 @@ function createMockWindow(
 describe('DesktopLyricManager', () => {
   beforeEach(() => {
     vi.resetModules()
+    ;(globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__ = createElectronMock()
+    ;(globalThis as ElectronTestGlobal).__LUO_ELECTRON_STORE_TEST_MOCK__ = class {
+      get(key: string): unknown {
+        return storeData.get(key)
+      }
+
+      set(key: string, value: unknown): void {
+        storeData.set(key, value)
+      }
+    }
     vi.clearAllMocks()
+    browserWindowInstances.length = 0
     storeData.clear()
     process.env.NODE_ENV = originalNodeEnv
     delete process.env.VITE_DEV_SERVER_URL
     delete process.env.LUO_DESKTOP_LYRIC_DEBUG
+  })
+
+  afterEach(() => {
+    delete (globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__
+    delete (globalThis as ElectronTestGlobal).__LUO_ELECTRON_STORE_TEST_MOCK__
   })
 
   it('replays the last cached lyric when an existing ready window is shown', async () => {

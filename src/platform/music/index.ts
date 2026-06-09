@@ -6,6 +6,7 @@ import { builtInAdapterLoader } from './plugin/BuiltInAdapterLoader'
 import { externalAdapterProxyFactory } from './plugin/ExternalAdapterProxy'
 
 export * from './descriptors'
+export * from './loginRouting'
 
 type MusicPlatformLoggerFactory = () => ILogger
 

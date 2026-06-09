@@ -3,13 +3,20 @@ import { mkdtemp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-async function loadForgeModule(fastMakeMode?: string) {
+async function loadForgeModule(fastMakeMode?: string, enableSquirrelMake?: string) {
   const previousFastMakeMode = process.env.LUO_FAST_MAKE
+  const previousEnableSquirrelMake = process.env.LUO_ENABLE_SQUIRREL_MAKE
 
   if (fastMakeMode === undefined) {
     delete process.env.LUO_FAST_MAKE
   } else {
     process.env.LUO_FAST_MAKE = fastMakeMode
+  }
+
+  if (enableSquirrelMake === undefined) {
+    delete process.env.LUO_ENABLE_SQUIRREL_MAKE
+  } else {
+    process.env.LUO_ENABLE_SQUIRREL_MAKE = enableSquirrelMake
   }
 
   vi.resetModules()
@@ -22,11 +29,17 @@ async function loadForgeModule(fastMakeMode?: string) {
     } else {
       process.env.LUO_FAST_MAKE = previousFastMakeMode
     }
+
+    if (previousEnableSquirrelMake === undefined) {
+      delete process.env.LUO_ENABLE_SQUIRREL_MAKE
+    } else {
+      process.env.LUO_ENABLE_SQUIRREL_MAKE = previousEnableSquirrelMake
+    }
   }
 }
 
-async function loadForgeConfig(fastMakeMode?: string) {
-  return (await loadForgeModule(fastMakeMode)).default
+async function loadForgeConfig(fastMakeMode?: string, enableSquirrelMake?: string) {
+  return (await loadForgeModule(fastMakeMode, enableSquirrelMake)).default
 }
 
 let config: Awaited<ReturnType<typeof loadForgeConfig>>
@@ -118,6 +131,7 @@ describe('forge.config packagerConfig.ignore', () => {
     expect(matchesIgnore('/.env')).toBe(true)
     expect(matchesIgnore('/.env.sentry-build-plugin')).toBe(true)
     expect(matchesIgnore('/docs/build.md')).toBe(true)
+    expect(matchesIgnore('/plugins/examples/demo/manifest.json')).toBe(true)
     expect(matchesIgnore('/src/main.ts')).toBe(true)
     expect(matchesIgnore('/build/runtime/qq-api-server.cjs')).toBe(true)
     expect(matchesIgnore('/build/assets/index.js.map')).toBe(true)
@@ -147,16 +161,31 @@ describe('forge.config packagerConfig.ignore', () => {
     expect(matchesIgnore('/build/index.html')).toBe(false)
     expect(matchesIgnore('/build/electron/main.cjs')).toBe(false)
     expect(matchesIgnore('/public/tray.ico')).toBe(false)
+    expect(matchesIgnore('/plugins/third-party/netease/manifest.json')).toBe(false)
+    expect(matchesIgnore('/plugins/third-party/qq/index.mjs')).toBe(false)
     expect(matchesIgnore('/node_modules/pkg/dist/index.js')).toBe(false)
   })
 
   it('copies required runtime scripts via extraResource instead of app.asar', () => {
-    expect(getExtraResources()).toEqual([
-      'build/service',
-      'build/runtime/qq-api-server.cjs',
-      'scripts/runtime/qq-search-fallback.cjs',
-      'scripts/runtime/netease-api-server.cjs'
-    ])
+    expect(getExtraResources()).toEqual(
+      expect.arrayContaining([
+        'build/service',
+        'build/native',
+        'public/tray.ico',
+        'build/runtime/qq-api-server.cjs',
+        'scripts/runtime/qq-search-fallback.cjs',
+        'scripts/runtime/netease-api-server.cjs'
+      ])
+    )
+    expect(getExtraResources()).toHaveLength(6)
+  })
+
+  it('uses a project-local packager temp dir to keep Windows final moves on the same drive', () => {
+    expect(
+      String(config.packagerConfig?.tmpdir)
+        .replace(/\\/g, '/')
+        .endsWith('/.luo-music-electron-packager-tmp')
+    ).toBe(true)
   })
 })
 
@@ -268,5 +297,12 @@ describe('forge.config packaging hooks', () => {
       'linux',
       'win32'
     ])
+  })
+
+  it('keeps zip as the default Forge maker while Squirrel is opt-in', async () => {
+    expect(config.makers?.map(getMakerName)).toEqual(['zip'])
+
+    const squirrelConfig = await loadForgeConfig(undefined, '1')
+    expect(squirrelConfig.makers?.map(getMakerName)).toEqual(['squirrel', 'zip'])
   })
 })

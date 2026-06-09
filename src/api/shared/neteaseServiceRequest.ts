@@ -9,6 +9,7 @@ export type NeteaseServiceApiDeps = {
   getApiService?: () => NeteaseApiClient
   getTimestamp?: () => number
   getCookie?: () => string | null
+  onAuthExpired?: () => void
 }
 
 const defaultNeteaseServiceApiDeps: Required<NeteaseServiceApiDeps> = {
@@ -26,7 +27,8 @@ const defaultNeteaseServiceApiDeps: Required<NeteaseServiceApiDeps> = {
     } catch {
       return null
     }
-  }
+  },
+  onAuthExpired: () => clearNeteaseServiceCookieCache()
 }
 
 let neteaseServiceApiDeps: Required<NeteaseServiceApiDeps> = defaultNeteaseServiceApiDeps
@@ -86,6 +88,23 @@ export function withCachedCookie(params: Record<string, unknown> = {}): Record<s
   }
 }
 
+function getNeteaseBusinessCode(response: unknown): unknown {
+  if (!response || typeof response !== 'object') {
+    return undefined
+  }
+
+  const record = response as { code?: unknown; data?: unknown }
+  if (record.code !== undefined) {
+    return record.code
+  }
+
+  if (record.data && typeof record.data === 'object') {
+    return (record.data as { code?: unknown }).code
+  }
+
+  return undefined
+}
+
 export function neteaseRequest(
   endpoint: string,
   params: Record<string, unknown> = {}
@@ -93,4 +112,15 @@ export function neteaseRequest(
   return neteaseServiceApiDeps
     .getApiService()
     .request('netease', endpoint, withCachedCookie(params))
+    .then(response => {
+      if (getNeteaseBusinessCode(response) === 301) {
+        try {
+          neteaseServiceApiDeps.onAuthExpired()
+        } catch {
+          // Keep request adapters from failing when app-level cleanup throws.
+        }
+      }
+
+      return response
+    })
 }

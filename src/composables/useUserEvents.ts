@@ -27,7 +27,7 @@ export interface EventSong {
   album?: EventAlbum | null
   artists?: EventArtist[]
   duration?: number
-  platform?: 'netease' | 'qq'
+  platform?: Song['platform']
 }
 
 export interface EventItem {
@@ -192,7 +192,8 @@ function normalizeEventSong(songSource: Record<string, unknown> | null): EventSo
   const artists = toArtistList(songSource.artists ?? songSource.ar)
   const album = toAlbum(songSource.album ?? songSource.al)
   const duration = toNumber(songSource.duration ?? songSource.dt, 0)
-  const platform = songSource.platform === 'qq' ? 'qq' : 'netease'
+  const platform =
+    typeof songSource.platform === 'string' && songSource.platform ? songSource.platform : 'netease'
 
   if (id === undefined && !name) {
     return null

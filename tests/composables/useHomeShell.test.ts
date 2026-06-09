@@ -107,7 +107,7 @@ describe('useHomeShell', () => {
     expect(vm.activeTab).toBe('lyric')
   })
 
-  it('sets up ipc listeners on mount in Electron', async () => {
+  it('leaves player IPC listener setup to the app shell', async () => {
     platformServiceMock.isElectron.mockReturnValue(true)
 
     const playerStore = usePlayerStore()
@@ -118,7 +118,7 @@ describe('useHomeShell', () => {
     mountShell()
     await nextTick()
 
-    expect(setupIpcListeners).toHaveBeenCalledTimes(1)
+    expect(setupIpcListeners).not.toHaveBeenCalled()
   })
 
   it('enables the docked player mode before first paint on mobile without user preference', () => {

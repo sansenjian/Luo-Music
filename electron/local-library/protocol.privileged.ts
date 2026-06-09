@@ -19,8 +19,16 @@ export type ElectronPrivilegedProtocolModule = {
   }
 }
 
+function loadElectronProtocolModule(): ElectronPrivilegedProtocolModule | string | null {
+  try {
+    return require('electron') as ElectronPrivilegedProtocolModule | string
+  } catch {
+    return null
+  }
+}
+
 function getElectronProtocolModule(): ElectronPrivilegedProtocolModule {
-  const electronModule = require('electron') as ElectronPrivilegedProtocolModule | string
+  const electronModule = loadElectronProtocolModule()
   if (typeof electronModule !== 'object' || electronModule === null) {
     return {}
   }

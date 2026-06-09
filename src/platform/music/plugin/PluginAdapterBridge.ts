@@ -7,7 +7,8 @@ import type {
   PluginContext,
   SearchInput,
   SongDetailInput,
-  SongUrlInput
+  SongUrlInput,
+  StandardSongUrl
 } from '@plugin-sdk'
 import type { PlatformBooleanCapability, PlatformCapabilities } from '@shared/types/platform'
 import {
@@ -16,7 +17,8 @@ import {
   type PlaylistDetail,
   type SearchResult,
   type Song,
-  type SongUrlOptions
+  type SongUrlOptions,
+  type SongUrlResult
 } from '@/platform/music/interface'
 import {
   normalizePluginLyricResult,
@@ -56,10 +58,13 @@ export class PluginAdapterBridge extends MusicPlatformAdapter {
     return normalizePluginSearchResult(await handler({ keyword, limit, page }), this.platformId)
   }
 
-  async getSongUrl(id: string | number, options?: SongUrlOptions | string): Promise<string | null> {
+  async getSongUrl(
+    id: string | number,
+    options?: SongUrlOptions | string
+  ): Promise<SongUrlResult | null> {
     const handler = this.requireHandler('getSongUrl', 'songUrl') as (
       input: SongUrlInput
-    ) => Promise<string | null>
+    ) => Promise<string | null | StandardSongUrl>
 
     return normalizePluginSongUrlResult(await handler({ id, options }))
   }

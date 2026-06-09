@@ -49,8 +49,16 @@ export type ElectronLocalMediaProtocolModule = {
   }
 }
 
+function loadElectronProtocolModule(): ElectronLocalMediaProtocolModule | string | null {
+  try {
+    return require('electron') as ElectronLocalMediaProtocolModule | string
+  } catch {
+    return null
+  }
+}
+
 function getElectronProtocolModule(): ElectronLocalMediaProtocolModule {
-  const electronModule = require('electron') as ElectronLocalMediaProtocolModule | string
+  const electronModule = loadElectronProtocolModule()
   if (typeof electronModule !== 'object' || electronModule === null) {
     return {}
   }
@@ -87,6 +95,7 @@ export function buildRemoteMediaFetchInit(request: Request): RequestInit {
 
   if (range) {
     headers.set('Range', range)
+    headers.set('Accept-Encoding', 'identity')
   }
 
   headers.set('Accept', accept)
@@ -163,7 +172,7 @@ function appendRemoteMediaAccessHeaders(headers: Headers): Headers {
   return headers
 }
 
-function isBlockedRemoteMediaHostname(hostname: string): boolean {
+export function isBlockedRemoteMediaHostname(hostname: string): boolean {
   const normalizedHostname = hostname.toLocaleLowerCase()
 
   if (
@@ -358,10 +367,6 @@ async function createRemoteMediaResponse(
 
   if (!headers.has('content-type')) {
     headers.set('Content-Type', inferRemoteMediaContentType(sourceUrl))
-  }
-
-  if (!headers.has('accept-ranges')) {
-    headers.set('Accept-Ranges', 'bytes')
   }
 
   appendRemoteMediaAccessHeaders(headers)

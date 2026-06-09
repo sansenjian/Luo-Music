@@ -1,9 +1,15 @@
+const path = require("node:path");
+
+const projectRoot = path.resolve(__dirname, "..");
 const appId = "com.sansenjian.luo-music";
 const productName = "LUO Music";
 const asarUnpackPattern = "**/node_modules/better-sqlite3/build/Release/*.node";
+const packagingTempDir = path.resolve(projectRoot, "..", ".luo-music-electron-packager-tmp");
 
 const runtimeExtraResources = {
   service: "build/service",
+  smtcHelper: "build/native",
+  windowsAppIcon: "public/tray.ico",
   qqRuntime: "build/runtime/qq-api-server.cjs",
   qqSearchFallback: "scripts/runtime/qq-search-fallback.cjs",
   neteaseApiServer: "scripts/runtime/netease-api-server.cjs",
@@ -11,6 +17,8 @@ const runtimeExtraResources = {
 
 const packagingExtraResources = [
   runtimeExtraResources.service,
+  runtimeExtraResources.smtcHelper,
+  runtimeExtraResources.windowsAppIcon,
   runtimeExtraResources.qqRuntime,
   runtimeExtraResources.qqSearchFallback,
   runtimeExtraResources.neteaseApiServer,
@@ -22,7 +30,6 @@ const packagingWorkspaceArtifactsToRemove = [
   ".codex_tmp",
   ".codex-tmp",
   ".codex",
-  ".eslintcache",
   ".github",
   ".husky",
   ".idea",
@@ -70,6 +77,16 @@ const electronBuilderExtraResources = [
     filter: ["**/*"],
   },
   {
+    from: runtimeExtraResources.smtcHelper,
+    to: "native",
+    filter: ["smtc-helper.exe", "audio-output-helper.exe", "audio-output-helper"],
+  },
+  {
+    from: runtimeExtraResources.windowsAppIcon,
+    to: ".",
+    filter: ["tray.ico"],
+  },
+  {
     from: runtimeExtraResources.qqRuntime,
     to: ".",
     filter: ["qq-api-server.cjs"],
@@ -93,6 +110,7 @@ module.exports = {
   packagingExtraResources,
   packagingIgnoredNodeModulePaths,
   packagingNodeModulesToRemoveAfterPrune,
+  packagingTempDir,
   packagingWorkspaceArtifactsToRemove,
   productName,
   runtimeExtraResources,

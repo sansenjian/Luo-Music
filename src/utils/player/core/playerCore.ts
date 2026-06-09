@@ -3,6 +3,7 @@ import { isRemoteMediaProxyUrl } from '@/utils/player/mediaProxy'
 
 const isPlayerCoreDebugEnabled =
   import.meta.env.DEV && import.meta.env.VITE_PLAYER_CORE_DEBUG === '1'
+const MEDIA_SOURCE_RELEASE_SETTLE_MS = 50
 
 function debugPlayerCore(message: string, data?: unknown): void {
   if (!isPlayerCoreDebugEnabled) {
@@ -50,6 +51,11 @@ type SafeCallback = (data: unknown) => void
 type SystemMediaSessionAudioElement = HTMLAudioElement & {
   disableRemotePlayback?: boolean
   controlsList?: Pick<DOMTokenList, 'add' | 'remove'>
+}
+
+type OutputDeviceAudioElement = HTMLAudioElement & {
+  sinkId?: string
+  setSinkId?: (sinkId: string) => Promise<void>
 }
 
 export class PlayerCore {
@@ -123,6 +129,20 @@ export class PlayerCore {
     this.source = null
     this.analyser = null
     this.gainNode = null
+  }
+
+  private async _releaseAudioContext(): Promise<void> {
+    const audioContext = this.audioContext
+    this.audioContext = null
+    this._resetVisualizationGraph()
+
+    if (!audioContext || audioContext.state === 'closed') {
+      return
+    }
+
+    await audioContext.close().catch(error => {
+      console.warn('[PlayerCore] Failed to close AudioContext during audio release:', error)
+    })
   }
 
   private _initVolume() {
@@ -399,6 +419,27 @@ export class PlayerCore {
     this.audio.pause()
   }
 
+  public async releaseSource(): Promise<void> {
+    if (this._checkDestroyed()) {
+      return
+    }
+
+    const hadSource = Boolean(this.audio.currentSrc || this.audio.src)
+    this._playRequestId += 1
+    this._cancelPendingPlay?.()
+    this._cancelPendingPlay = null
+    this.audio.pause()
+    this.audio.removeAttribute('src')
+    this._configureCrossOrigin()
+    this.audio.load()
+    this._setState(PlayerState.IDLE)
+    await this._releaseAudioContext()
+    await Promise.resolve()
+    if (hadSource) {
+      await new Promise(resolve => setTimeout(resolve, MEDIA_SOURCE_RELEASE_SETTLE_MS))
+    }
+  }
+
   public toggle() {
     if (this._checkDestroyed()) {
       return
@@ -482,6 +523,33 @@ export class PlayerCore {
 
     this._systemMediaSessionEnabled = enabled
     this._syncSystemMediaSessionExposure()
+  }
+
+  public async setOutputDevice(deviceId: string): Promise<void> {
+    if (this._checkDestroyed()) {
+      return
+    }
+
+    const audio = this.audio as OutputDeviceAudioElement
+    const normalizedDeviceId = deviceId.trim()
+
+    if (audio.sinkId === normalizedDeviceId) {
+      return
+    }
+
+    if (typeof audio.setSinkId !== 'function') {
+      throw new Error('Audio output device selection is not supported in this runtime.')
+    }
+
+    await audio.setSinkId(normalizedDeviceId)
+  }
+
+  public getOutputDeviceId(): string {
+    if (this._isDestroyed) {
+      return ''
+    }
+
+    return (this.audio as OutputDeviceAudioElement).sinkId ?? ''
   }
 
   // Visualization Data
@@ -572,15 +640,7 @@ export class PlayerCore {
     this.audio.load()
 
     // 关闭 AudioContext
-    if (this.audioContext) {
-      void this.audioContext.close()
-      this.audioContext = null
-    }
-
-    // 清空其他引用
-    this.source = null
-    this.analyser = null
-    this.gainNode = null
+    void this._releaseAudioContext()
   }
 }
 

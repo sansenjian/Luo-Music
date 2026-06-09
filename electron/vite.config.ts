@@ -27,15 +27,18 @@ function markAnalyzeExcludedPlugins(plugins: PluginOption[]): PluginOption[] {
 }
 
 function copyExternalPluginWorkerPlugin(): PluginOption {
-  const sourcePath = resolve(rootDir, 'electron/plugins/externalPluginWorker.mjs')
-  const outputPath = resolve(rootDir, 'build/electron/externalPluginWorker.mjs')
+  const workerSourcePath = resolve(rootDir, 'electron/plugins/externalPluginWorker.mjs')
+  const workerOutputPath = resolve(rootDir, 'build/electron/externalPluginWorker.mjs')
+  const runtimeSourcePath = resolve(rootDir, 'packages/plugin-sdk/runtime-shared.mjs')
+  const runtimeOutputPath = resolve(rootDir, 'build/electron/runtime-shared.mjs')
 
   return {
     name: 'luo-copy-external-plugin-worker',
     apply: 'build',
     closeBundle() {
-      mkdirSync(dirname(outputPath), { recursive: true })
-      copyFileSync(sourcePath, outputPath)
+      mkdirSync(dirname(workerOutputPath), { recursive: true })
+      copyFileSync(workerSourcePath, workerOutputPath)
+      copyFileSync(runtimeSourcePath, runtimeOutputPath)
     }
   }
 }

@@ -36,7 +36,7 @@ export const uiMessages = {
       smtc: 'Windows SMTC',
       waveform: '进度条波形可视化（实验）',
       coverSwipe: '滑动封面切歌',
-      pluginInstallPath: '插件目录 / manifest.json 路径',
+      pluginInstallPath: '插件目录 / manifest.json / zip 路径',
       pluginVersion: '版本',
       pluginStatus: '状态',
       pluginNetworkDomains: '网络白名单',
@@ -86,8 +86,11 @@ export const uiMessages = {
     },
     actions: {
       installPlugin: '安装插件',
+      confirmInstallPlugin: '确认安装',
+      cancelInstallPlugin: '取消',
       installingPlugin: '安装中…',
-      browsePluginPath: '浏览…',
+      browsePluginPackage: '选择 zip…',
+      browsePluginFolder: '选择文件夹…',
       refreshPlugins: '刷新列表',
       enablePlugin: '启用',
       disablePlugin: '停用',
@@ -101,6 +104,13 @@ export const uiMessages = {
       pluginReady: 'ready',
       pluginDisabled: 'disabled',
       pluginError: 'error'
+    },
+    dialogs: {
+      pluginInstallConfirmTitle: '确认安装插件',
+      pluginInstallConfirmDescription:
+        '请确认插件来源可信。安装后插件会加入本地插件管理，并可访问它声明的平台能力。',
+      pluginInstallConfirmPathLabel: '待安装路径',
+      pluginInstallConfirmCloseLabel: '关闭确认安装插件弹窗'
     }
   },
   home: {

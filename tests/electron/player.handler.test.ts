@@ -257,6 +257,62 @@ describe('player.handler', () => {
     })
   })
 
+  it('continues broadcasting player state when native SMTC sync throws', async () => {
+    const sendHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(() => {})
+    registerSendMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        sendHandlers.set(channel, handler)
+      }
+    )
+
+    const { flushStateBroadcasts, registerPlayerHandlers } =
+      await import('../../electron/ipc/handlers/player.handler')
+
+    registerPlayerHandlers(
+      {
+        send: vi.fn(),
+        syncPlaybackState: vi.fn(),
+        syncTrayPlayMode: vi.fn()
+      } as never,
+      {
+        handleRequest: vi.fn()
+      } as never,
+      {
+        syncPlayerState: vi.fn(() => {
+          throw new Error('native sync failed')
+        })
+      } as never
+    )
+
+    sendHandlers.get('player:sync-state')?.({
+      isPlaying: true,
+      isLoading: false,
+      progress: 42,
+      duration: 180,
+      volume: 0.8,
+      isMuted: false,
+      playMode: 1,
+      playlist: [],
+      currentIndex: -1,
+      currentSong: null,
+      lyricSong: null,
+      currentLyricIndex: -1,
+      showLyric: true,
+      showPlaylist: false,
+      isPlayerDocked: false,
+      lyricType: ['original', 'trans'],
+      lyrics: [],
+      desktopLyricSequence: 0
+    })
+    flushStateBroadcasts()
+
+    expect(broadcastMock).toHaveBeenCalledWith('player:state-change', {
+      isPlaying: true,
+      currentTime: 42
+    })
+  })
+
   it('fetches lyrics for a non-current song by payload instead of returning current cached lyrics', async () => {
     const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
     const sendHandlers = new Map<string, (...args: unknown[]) => unknown>()
@@ -328,6 +384,36 @@ describe('player.handler', () => {
     expect(serviceManager.handleRequest).toHaveBeenCalledWith('qq', 'getLyric', {
       songmid: 'song-2'
     })
+  })
+
+  it('does not fetch plugin-platform lyrics through built-in services', async () => {
+    const invokeHandlers = new Map<string, (...args: unknown[]) => unknown>()
+    registerInvokeMock.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => unknown) => {
+        invokeHandlers.set(channel, handler)
+      }
+    )
+
+    const { registerPlayerHandlers } = await import('../../electron/ipc/handlers/player.handler')
+
+    const serviceManager = {
+      handleRequest: vi.fn()
+    }
+
+    registerPlayerHandlers(
+      {
+        send: vi.fn(),
+        syncPlaybackState: vi.fn(),
+        syncTrayPlayMode: vi.fn()
+      } as never,
+      serviceManager as never
+    )
+
+    await expect(
+      invokeHandlers.get('player:get-lyric')?.({ id: 'song-2', platform: 'kugou' })
+    ).resolves.toEqual([])
+
+    expect(serviceManager.handleRequest).not.toHaveBeenCalled()
   })
 
   it('refetches current-song lyrics when the synced cache is still empty', async () => {

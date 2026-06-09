@@ -14,19 +14,49 @@ type ElectronStoreShape = {
   delete: (key: string) => void
 }
 
-const StoreModule = require('electron-store') as {
-  default?: new (options?: { projectName: string }) => ElectronStoreShape
-}
-
-const Store =
-  StoreModule.default ??
-  (StoreModule as unknown as new (options?: { projectName: string }) => ElectronStoreShape)
-
-const store = new Store({ projectName: 'luo-music' })
-
 const CONFIG_STORE_KEY = 'appConfig'
 
 const DEFAULT_CONFIG: AppConfig = { ...DEFAULT_APP_CONFIG }
+
+function createMemoryStore(): ElectronStoreShape {
+  const data = new Map<string, unknown>()
+
+  return {
+    get: <T>(key: string, defaultValue?: T): T =>
+      data.has(key) ? (data.get(key) as T) : (defaultValue as T),
+    set: (key: string, value: unknown) => {
+      data.set(key, value)
+    },
+    delete: (key: string) => {
+      data.delete(key)
+    }
+  }
+}
+
+function isTestRuntime(): boolean {
+  return process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
+}
+
+function createConfigStore(): ElectronStoreShape {
+  try {
+    const StoreModule = require('electron-store') as {
+      default?: new (options?: { projectName: string }) => ElectronStoreShape
+    }
+    const Store =
+      StoreModule.default ??
+      (StoreModule as unknown as new (options?: { projectName: string }) => ElectronStoreShape)
+
+    return new Store({ projectName: 'luo-music' })
+  } catch (error) {
+    if (isTestRuntime()) {
+      return createMemoryStore()
+    }
+
+    throw error
+  }
+}
+
+const store = createConfigStore()
 
 export function readConfig(): AppConfig {
   const storedConfig = store.get<Partial<AppConfig> | undefined>(CONFIG_STORE_KEY, undefined)

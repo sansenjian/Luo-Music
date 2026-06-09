@@ -27,6 +27,21 @@
     "supportsLyricFetch": false,
     "supportsUrlRefreshOnFailure": false
   },
+  "capabilitiesV2": {
+    "music": {
+      "search": true,
+      "songUrl": true,
+      "songDetail": true,
+      "lyric": true,
+      "playlistDetail": false,
+      "urlRefresh": false
+    },
+    "storage": true,
+    "network": {
+      "domains": ["soundhelix.com"]
+    },
+    "secrets": false
+  },
   "permissions": {
     "network": {
       "domains": ["soundhelix.com"]
@@ -52,5 +67,35 @@
         "label": "详细日志"
       }
     ]
-  }
+  },
+  "contributionsV2": [
+    {
+      "type": "settings",
+      "settings": [
+        {
+          "key": "maxResults",
+          "type": "select",
+          "label": "最大搜索结果数",
+          "default": "10",
+          "options": [
+            { "value": "5", "label": "5 条" },
+            { "value": "10", "label": "10 条" },
+            { "value": "20", "label": "20 条" }
+          ]
+        },
+        {
+          "key": "verbose",
+          "type": "boolean",
+          "label": "详细日志",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "command",
+      "command": "demo.resetSearchCount",
+      "title": "重置 Demo 搜索计数",
+      "description": "示例命令贡献，用于展示插件 v2 command 元数据。"
+    }
+  ]
 }

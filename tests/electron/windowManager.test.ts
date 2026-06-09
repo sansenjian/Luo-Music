@@ -61,33 +61,25 @@ class BrowserWindowMock {
   }
 }
 
-vi.mock('electron', () => ({
-  app: {
-    quit: appQuitMock
-  },
-  BrowserWindow: BrowserWindowMock,
-  ipcMain: {
-    on: ipcMainOn
-  },
-  nativeImage: {
-    createFromPath: vi.fn((filePath: string) => filePath)
-  },
-  screen: {
-    getPrimaryDisplay: vi.fn(() => ({
-      workAreaSize: { width: 1920, height: 1080 }
-    }))
-  }
-}))
-
-vi.mock('electron-store', () => ({
-  default: class {
-    get() {
-      return undefined
+function createElectronMock() {
+  return {
+    app: {
+      quit: appQuitMock
+    },
+    BrowserWindow: BrowserWindowMock,
+    ipcMain: {
+      on: ipcMainOn
+    },
+    nativeImage: {
+      createFromPath: vi.fn((filePath: string) => filePath)
+    },
+    screen: {
+      getPrimaryDisplay: vi.fn(() => ({
+        workAreaSize: { width: 1920, height: 1080 }
+      }))
     }
-
-    set() {}
   }
-}))
+}
 
 vi.mock('node:path', () => ({
   default: {
@@ -110,11 +102,24 @@ vi.mock('../../electron/DownloadManager', () => ({
   }
 }))
 
+vi.mock('../../electron/main/app', () => ({
+  getWindowsShellIdentity: vi.fn(() => ({
+    appUserModelId: 'com.sansenjian.luo-music',
+    displayName: 'LUO Music',
+    iconPath: '/public/tray.ico'
+  }))
+}))
+
 vi.mock('../../electron/utils/paths', () => ({
   MAIN_DIST: '/main',
   RENDERER_DIST: '/renderer',
   VITE_PUBLIC: '/public'
 }))
+
+type ElectronTestGlobal = typeof globalThis & {
+  __LUO_ELECTRON_TEST_MOCK__?: ReturnType<typeof createElectronMock>
+  __LUO_ELECTRON_STORE_TEST_MOCK__?: unknown
+}
 
 describe('electron/WindowManager', () => {
   const platformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform')
@@ -122,6 +127,14 @@ describe('electron/WindowManager', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.resetModules()
+    ;(globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__ = createElectronMock()
+    ;(globalThis as ElectronTestGlobal).__LUO_ELECTRON_STORE_TEST_MOCK__ = class {
+      get() {
+        return undefined
+      }
+
+      set() {}
+    }
     vi.clearAllMocks()
     browserWindowInstances.length = 0
     delete process.env.VITE_DEV_SERVER_URL
@@ -133,6 +146,8 @@ describe('electron/WindowManager', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    delete (globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__
+    delete (globalThis as ElectronTestGlobal).__LUO_ELECTRON_STORE_TEST_MOCK__
     delete process.env.VITE_DEV_SERVER_URL
     if (platformDescriptor) {
       Object.defineProperty(process, 'platform', platformDescriptor)
@@ -176,6 +191,17 @@ describe('electron/WindowManager', () => {
       appIconIndex: 0,
       relaunchCommand: process.execPath,
       relaunchDisplayName: 'LUO Music'
+    })
+  })
+
+  it('uses the registered app icon for the main window', async () => {
+    const { WindowManager } = await import('../../electron/WindowManager')
+    const manager = new WindowManager()
+    manager.createWindow()
+
+    const window = browserWindowInstances.at(-1)
+    expect(window?.options).toMatchObject({
+      icon: '/public/tray.ico'
     })
   })
 

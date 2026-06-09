@@ -31,14 +31,15 @@ features:
 
 ### 开发指南
 
-| 入口                                   | 说明                                     |
-| -------------------------------------- | ---------------------------------------- |
-| [开发指南总览](/guide/)                | 从安装、启动到构建、测试的主入口         |
-| [快速开始](/guide/getting-started)     | 本地开发、Electron 调试与环境要求        |
-| [构建与发布](/guide/build-and-release) | Web、Electron、portable 与 docs 构建链路 |
-| [测试指南](/guide/testing)             | Vitest、Playwright 与回归验证约定        |
-| [E2E 测试](/guide/e2e-testing)         | Playwright 入口和当前测试组织            |
-| [VSCode 配置](/guide/vscode-setup)     | 本地调试与任务配置                       |
+| 入口                                        | 说明                                     |
+| ------------------------------------------- | ---------------------------------------- |
+| [开发指南总览](/guide/)                     | 从安装、启动到构建、测试的主入口         |
+| [快速开始](/guide/getting-started)          | 本地开发、Electron 调试与环境要求        |
+| [开发分支流程](/guide/development-workflow) | `dev`、`master` 与 PR 合并规则           |
+| [构建与发布](/guide/build-and-release)      | Web、Electron、portable 与 docs 构建链路 |
+| [测试指南](/guide/testing)                  | Vitest、Playwright 与回归验证约定        |
+| [E2E 测试](/guide/e2e-testing)              | Playwright 入口和当前测试组织            |
+| [VSCode 配置](/guide/vscode-setup)          | 本地调试与任务配置                       |
 
 ### 架构设计
 
