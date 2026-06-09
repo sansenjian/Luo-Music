@@ -5,14 +5,24 @@ import type { LocalLibraryArtistSummary } from '@shared/types/localLibrary'
 import { LOCAL_LIBRARY_DEFAULT_PAGE_SIZE } from '@shared/types/localLibrary'
 import type { Artist } from '@shared/types/schemas'
 
-export function resolveDefaultDatabasePath(): string {
-  const electronModule = require('electron') as
-    | string
-    | {
-        app?: {
-          getPath(name: 'userData'): string
-        }
+type ElectronUserDataModule =
+  | string
+  | {
+      app?: {
+        getPath(name: 'userData'): string
       }
+    }
+
+function loadElectronUserDataModule(): ElectronUserDataModule | null {
+  try {
+    return require('electron') as ElectronUserDataModule
+  } catch {
+    return null
+  }
+}
+
+export function resolveDefaultDatabasePath(): string {
+  const electronModule = loadElectronUserDataModule()
   const userDataPath =
     typeof electronModule === 'object' && electronModule !== null && 'app' in electronModule
       ? electronModule.app?.getPath('userData')

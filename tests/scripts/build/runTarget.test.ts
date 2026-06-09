@@ -1,4 +1,6 @@
 import { createRequire } from 'node:module'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 import { describe, expect, it, vi } from 'vitest'
 
@@ -21,6 +23,26 @@ const electronPackagingTempEnv = {
   TEMP: 'D:\\luo-music-packaging-temp',
   TMP: 'D:\\luo-music-packaging-temp',
   TMPDIR: 'D:\\luo-music-packaging-temp'
+}
+const createdBuildFixturePaths: string[] = []
+
+function ensureBuildFixturePath(targetPath: string, content = ''): void {
+  if (existsSync(targetPath)) {
+    return
+  }
+
+  mkdirSync(dirname(targetPath), { recursive: true })
+  writeFileSync(targetPath, content)
+  createdBuildFixturePaths.push(targetPath)
+}
+
+function cleanupCreatedBuildFixtures(): void {
+  while (createdBuildFixturePaths.length > 0) {
+    const targetPath = createdBuildFixturePaths.pop()
+    if (targetPath) {
+      rmSync(targetPath, { force: true })
+    }
+  }
 }
 
 function createWorkflowHarness() {
@@ -67,15 +89,23 @@ function createWorkflowHarness() {
 
 describe('run-target build workflows', () => {
   it('cleans Electron renderer and main bundle outputs without removing service/runtime builds', () => {
-    expect(getElectronBundleCleanTargets()).toEqual(
-      expect.arrayContaining(['build/assets', 'build/electron'])
-    )
-    expect(getElectronBundleCleanTargets()).toEqual(
-      expect.arrayContaining(['build/index.html', 'build/favicon.svg', 'build/tray.ico'])
-    )
-    expect(getElectronBundleCleanTargets()).not.toEqual(
-      expect.arrayContaining(['build', 'build/service', 'build/runtime'])
-    )
+    try {
+      for (const buildEntry of ['index.html', 'favicon.svg', 'tray.ico']) {
+        ensureBuildFixturePath(join(process.cwd(), 'build', buildEntry), buildEntry)
+      }
+
+      expect(getElectronBundleCleanTargets()).toEqual(
+        expect.arrayContaining(['build/assets', 'build/electron'])
+      )
+      expect(getElectronBundleCleanTargets()).toEqual(
+        expect.arrayContaining(['build/index.html', 'build/favicon.svg', 'build/tray.ico'])
+      )
+      expect(getElectronBundleCleanTargets()).not.toEqual(
+        expect.arrayContaining(['build', 'build/service', 'build/runtime'])
+      )
+    } finally {
+      cleanupCreatedBuildFixtures()
+    }
   })
 
   it.each(['electron', 'package', 'electron-portable', 'make-fast'])(

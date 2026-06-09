@@ -49,8 +49,16 @@ export type ElectronLocalMediaProtocolModule = {
   }
 }
 
+function loadElectronProtocolModule(): ElectronLocalMediaProtocolModule | string | null {
+  try {
+    return require('electron') as ElectronLocalMediaProtocolModule | string
+  } catch {
+    return null
+  }
+}
+
 function getElectronProtocolModule(): ElectronLocalMediaProtocolModule {
-  const electronModule = require('electron') as ElectronLocalMediaProtocolModule | string
+  const electronModule = loadElectronProtocolModule()
   if (typeof electronModule !== 'object' || electronModule === null) {
     return {}
   }
