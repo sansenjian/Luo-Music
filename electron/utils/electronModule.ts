@@ -1,15 +1,15 @@
-type ElectronModule = typeof import('electron')
+export type ElectronModuleLike = Record<string, unknown>
 
 type ElectronTestGlobal = typeof globalThis & {
-  __LUO_ELECTRON_TEST_MOCK__?: Partial<ElectronModule>
+  __LUO_ELECTRON_TEST_MOCK__?: ElectronModuleLike
 }
 
-export function getElectronModule(): ElectronModule {
+export function getElectronModule<T extends ElectronModuleLike = ElectronModuleLike>(): T {
   const testMock = (globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__
 
   if (testMock) {
-    return testMock as ElectronModule
+    return testMock as T
   }
 
-  return require('electron') as ElectronModule
+  return require('electron') as T
 }

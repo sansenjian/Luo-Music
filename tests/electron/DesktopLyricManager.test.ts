@@ -46,20 +46,6 @@ function createElectronMock() {
   }
 }
 
-vi.mock('electron', createElectronMock)
-
-vi.mock('electron-store', () => ({
-  default: class {
-    get(key: string): unknown {
-      return storeData.get(key)
-    }
-
-    set(key: string, value: unknown): void {
-      storeData.set(key, value)
-    }
-  }
-}))
-
 type ManagerInternals = {
   win: {
     isDestroyed: () => boolean
@@ -80,6 +66,7 @@ function setInternals(manager: DesktopLyricManager, patch: Partial<ManagerIntern
 type DesktopLyricManager = import('../../electron/DesktopLyricManager').DesktopLyricManager
 type ElectronTestGlobal = typeof globalThis & {
   __LUO_ELECTRON_TEST_MOCK__?: ReturnType<typeof createElectronMock>
+  __LUO_ELECTRON_STORE_TEST_MOCK__?: unknown
 }
 
 function createMockWindow(
@@ -98,6 +85,15 @@ describe('DesktopLyricManager', () => {
   beforeEach(() => {
     vi.resetModules()
     ;(globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__ = createElectronMock()
+    ;(globalThis as ElectronTestGlobal).__LUO_ELECTRON_STORE_TEST_MOCK__ = class {
+      get(key: string): unknown {
+        return storeData.get(key)
+      }
+
+      set(key: string, value: unknown): void {
+        storeData.set(key, value)
+      }
+    }
     vi.clearAllMocks()
     browserWindowInstances.length = 0
     storeData.clear()
@@ -108,6 +104,7 @@ describe('DesktopLyricManager', () => {
 
   afterEach(() => {
     delete (globalThis as ElectronTestGlobal).__LUO_ELECTRON_TEST_MOCK__
+    delete (globalThis as ElectronTestGlobal).__LUO_ELECTRON_STORE_TEST_MOCK__
   })
 
   it('replays the last cached lyric when an existing ready window is shown', async () => {

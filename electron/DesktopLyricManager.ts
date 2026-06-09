@@ -1,11 +1,12 @@
 import path from 'node:path'
-import type { BrowserWindow } from 'electron'
+import type { BrowserWindow, BrowserWindowConstructorOptions, Screen } from 'electron'
 import type { DesktopLyricUpdateCause } from '@shared/contracts/ipc'
 import type { SongPlatform } from '@shared/types/schemas'
 import { DEFAULT_APP_CONFIG, type AppConfig } from '@shared/contracts/config'
 import { RECEIVE_CHANNELS, type ReceiveChannel } from '@shared/protocol/channels'
 
 import { getElectronModule } from './utils/electronModule'
+import { getElectronStoreConstructor } from './utils/electronStoreModule'
 import { MAIN_DIST, RENDERER_DIST } from './utils/paths'
 
 type ElectronStoreInstance = {
@@ -21,12 +22,7 @@ const DESKTOP_LYRIC_RENDERER_CHANNELS = new Set<ReceiveChannel>([
 
 function getStore(): ElectronStoreInstance {
   if (!store) {
-    const StoreModule = require('electron-store') as {
-      default?: new (options?: { projectName: string }) => ElectronStoreInstance
-    }
-    const Store =
-      StoreModule.default ??
-      (StoreModule as unknown as new (options?: { projectName: string }) => ElectronStoreInstance)
+    const Store = getElectronStoreConstructor<ElectronStoreInstance>()
 
     store = new Store({ projectName: 'luo-music' })
   }
@@ -63,13 +59,6 @@ interface CreateWindowOptions {
 function resolveDesktopLyricAlwaysOnTop(): boolean {
   const { alwaysOnTop } = readStoredAppConfig()
   return typeof alwaysOnTop === 'boolean' ? alwaysOnTop : DEFAULT_APP_CONFIG.alwaysOnTop
-}
-
-function resolveDesktopLyricEnabled(): boolean {
-  const { enableDesktopLyric } = readStoredAppConfig()
-  return typeof enableDesktopLyric === 'boolean'
-    ? enableDesktopLyric
-    : DEFAULT_APP_CONFIG.enableDesktopLyric
 }
 
 export const DESKTOP_LYRIC_HASH_ROUTE = '/desktop-lyric'
@@ -217,7 +206,10 @@ export class DesktopLyricManager {
     this.isWindowReady = false
     this.isRendererReady = false
 
-    const { BrowserWindow, screen } = getElectronModule()
+    const { BrowserWindow, screen } = getElectronModule<{
+      BrowserWindow: new (options: BrowserWindowConstructorOptions) => BrowserWindow
+      screen: Screen
+    }>()
     const primaryDisplay = screen.getPrimaryDisplay()
     const { width, height } = primaryDisplay.workAreaSize
     const x = this.lastPosition ? this.lastPosition.x : Math.floor((width - 800) / 2)
@@ -287,7 +279,7 @@ export class DesktopLyricManager {
       return
     }
 
-    this.createWindow({ showOnReady: resolveDesktopLyricEnabled() })
+    this.createWindow({ showOnReady: false })
   }
 
   closeWindow(): void {

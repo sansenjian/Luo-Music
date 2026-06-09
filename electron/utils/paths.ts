@@ -1,12 +1,14 @@
 import path from 'node:path'
 
+import { getElectronModule } from './electronModule'
+
 type ElectronAppLike = {
   isPackaged?: boolean
 }
 
 function getElectronApp(): ElectronAppLike | null {
   try {
-    const { app } = require('electron') as { app?: ElectronAppLike }
+    const { app } = getElectronModule<{ app?: ElectronAppLike }>()
     return app ?? null
   } catch {
     return null

@@ -1,6 +1,8 @@
 import type {
   BrowserWindow as BrowserWindowType,
+  BrowserWindowConstructorOptions,
   Menu as MenuType,
+  NativeImage,
   Tray as TrayType,
   Rectangle,
   WebContents as WebContentsType
@@ -12,19 +14,13 @@ import logger from './logger'
 import { getWindowsShellIdentity, type WindowsShellIdentity } from './main/app'
 import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 import { getElectronModule } from './utils/electronModule'
+import { getElectronStoreConstructor } from './utils/electronStoreModule'
 import { MAIN_DIST, RENDERER_DIST, VITE_PUBLIC } from './utils/paths'
-const StoreModule = require('electron-store') as {
-  default?: new (options?: { projectName: string }) => {
-    get(key: string): unknown
-    set(key: string, value: unknown): void
-  }
+type WindowStoreInstance = {
+  get(key: string): unknown
+  set(key: string, value: unknown): void
 }
-const Store =
-  StoreModule.default ??
-  (StoreModule as unknown as new (options?: { projectName: string }) => {
-    get(key: string): unknown
-    set(key: string, value: unknown): void
-  })
+const Store = getElectronStoreConstructor<WindowStoreInstance>()
 const store = new Store({
   projectName: 'luo-music'
 })
@@ -92,7 +88,9 @@ export class WindowManager {
   }
 
   createWindow(): void {
-    const { BrowserWindow } = getElectronModule()
+    const { BrowserWindow } = getElectronModule<{
+      BrowserWindow: new (options: BrowserWindowConstructorOptions) => BrowserWindowType
+    }>()
     const startedAt = Date.now()
     const width = this.lastSize ? this.lastSize.width : 1200
     const height = this.lastSize ? this.lastSize.height : 800
@@ -508,7 +506,9 @@ export class WindowManager {
       return
     }
 
-    const { nativeImage } = getElectronModule()
+    const { nativeImage } = getElectronModule<{
+      nativeImage: { createFromPath(filePath: string): NativeImage }
+    }>()
     const iconsPath = process.env.VITE_PUBLIC || path.join(__dirname, '../public')
     const buttons = [
       {
