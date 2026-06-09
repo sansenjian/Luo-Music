@@ -77,7 +77,8 @@ describe('audio output remote refresh script', () => {
         LUO_AUDIO_OUTPUT_REMOTE_FRESH_URL: '',
         LUO_AUDIO_OUTPUT_REMOTE_FRESH_HEADERS: '',
         LUO_AUDIO_OUTPUT_REMOTE_REFRESH_REPORT: reportPath,
-        LUO_AUDIO_OUTPUT_REMOTE_NATIVE_PLAYBACK: '1'
+        LUO_AUDIO_OUTPUT_REMOTE_NATIVE_PLAYBACK: '1',
+        LUO_AUDIO_OUTPUT_REMOTE_NATIVE_TIMEOUT_MS: '5000'
       },
       timeout: 60_000
     })
@@ -132,6 +133,7 @@ describe('audio output remote refresh script', () => {
       )
       expect(report.nativePlayback.bytesReceived).toBeGreaterThan(0)
       expect(report.nativePlayback.bodySha256).toMatch(/^[a-f0-9]{64}$/)
+      expect(result.error).toBeUndefined()
       expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual(report)
     } finally {
       rmSync(tempRoot, { recursive: true, force: true })

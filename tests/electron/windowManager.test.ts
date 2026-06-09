@@ -61,23 +61,27 @@ class BrowserWindowMock {
   }
 }
 
-vi.mock('electron', () => ({
-  app: {
-    quit: appQuitMock
-  },
-  BrowserWindow: BrowserWindowMock,
-  ipcMain: {
-    on: ipcMainOn
-  },
-  nativeImage: {
-    createFromPath: vi.fn((filePath: string) => filePath)
-  },
-  screen: {
-    getPrimaryDisplay: vi.fn(() => ({
-      workAreaSize: { width: 1920, height: 1080 }
-    }))
+function createElectronMock() {
+  return {
+    app: {
+      quit: appQuitMock
+    },
+    BrowserWindow: BrowserWindowMock,
+    ipcMain: {
+      on: ipcMainOn
+    },
+    nativeImage: {
+      createFromPath: vi.fn((filePath: string) => filePath)
+    },
+    screen: {
+      getPrimaryDisplay: vi.fn(() => ({
+        workAreaSize: { width: 1920, height: 1080 }
+      }))
+    }
   }
-}))
+}
+
+vi.mock('electron', createElectronMock)
 
 vi.mock('electron-store', () => ({
   default: class {
@@ -130,6 +134,7 @@ describe('electron/WindowManager', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.resetModules()
+    vi.doMock('electron', createElectronMock)
     vi.clearAllMocks()
     browserWindowInstances.length = 0
     delete process.env.VITE_DEV_SERVER_URL

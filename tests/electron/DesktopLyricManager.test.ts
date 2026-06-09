@@ -3,7 +3,50 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
 
 const storeData = vi.hoisted(() => new Map<string, unknown>())
+const browserWindowInstances = vi.hoisted(() => [] as DesktopLyricBrowserWindowMock[])
 const originalNodeEnv = process.env.NODE_ENV
+
+class DesktopLyricBrowserWindowMock {
+  public events: Record<string, (...args: unknown[]) => void> = {}
+  public webContents = { send: vi.fn() }
+  public isDestroyed = vi.fn(() => false)
+  public show = vi.fn()
+  public hide = vi.fn()
+  public close = vi.fn()
+  public isVisible = vi.fn(() => false)
+  public getPosition = vi.fn(() => [100, 200] as const)
+  public setPosition = vi.fn()
+  public setAlwaysOnTop = vi.fn()
+  public setVisibleOnAllWorkspaces = vi.fn()
+  public setIgnoreMouseEvents = vi.fn()
+  public loadURL = vi.fn(() => Promise.resolve())
+  public loadFile = vi.fn(() => Promise.resolve())
+
+  constructor() {
+    browserWindowInstances.push(this)
+  }
+
+  once(event: string, callback: (...args: unknown[]) => void): void {
+    this.events[`once:${event}`] = callback
+  }
+
+  on(event: string, callback: (...args: unknown[]) => void): void {
+    this.events[event] = callback
+  }
+}
+
+function createElectronMock() {
+  return {
+    BrowserWindow: DesktopLyricBrowserWindowMock,
+    screen: {
+      getPrimaryDisplay: vi.fn(() => ({
+        workAreaSize: { width: 1920, height: 1080 }
+      }))
+    }
+  }
+}
+
+vi.mock('electron', createElectronMock)
 
 vi.mock('electron-store', () => ({
   default: class {
@@ -51,7 +94,9 @@ function createMockWindow(
 describe('DesktopLyricManager', () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.doMock('electron', createElectronMock)
     vi.clearAllMocks()
+    browserWindowInstances.length = 0
     storeData.clear()
     process.env.NODE_ENV = originalNodeEnv
     delete process.env.VITE_DEV_SERVER_URL
