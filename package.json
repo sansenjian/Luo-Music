@@ -34,6 +34,7 @@
     "tsdown": "node ./node_modules/tsdown/dist/run.mjs",
     "build:smtc-helper": "node scripts/build/build-smtc-helper.cjs",
     "build:audio-output-helper": "node scripts/build/build-audio-output-helper.cjs",
+    "build:audio-output-helper:ffmpeg": "node scripts/build/build-audio-output-helper.cjs --ffmpeg",
     "build:local-library-scanner": "node scripts/build/build-local-library-scanner.cjs",
     "vitest": "node ./node_modules/vitest/vitest.mjs",
     "vp": "node ./node_modules/vite-plus/bin/vp",

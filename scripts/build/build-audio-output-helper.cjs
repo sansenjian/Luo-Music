@@ -19,6 +19,9 @@ function main(options = {}) {
     'audio-output-helper'
   ]
   const cargoFeatures = resolveCargoFeatures(context)
+  if (context.ffmpegVariant && !cargoFeatures.includes('ffmpeg')) {
+    cargoFeatures.push('ffmpeg')
+  }
   if (context.isRelease) {
     cargoArgs.push('--release')
   }
@@ -82,8 +85,12 @@ function createBuildContext(options = {}) {
   const args = new Set(argv)
   const platform = options.platform ?? processLike.platform
   const isRelease = args.has('--release')
+  const ffmpegVariant = args.has('--ffmpeg')
   const targetProfile = isRelease ? 'release' : 'debug'
   const helperFileName = getAudioOutputHelperFileName(platform)
+  const packagedHelperFileName = ffmpegVariant
+    ? getAudioOutputHelperFileName(platform, 'ffmpeg')
+    : helperFileName
   const helperManifestPath = path.join(projectRoot, 'native', 'audio-engine', 'Cargo.toml')
   const helperExePath = path.join(
     projectRoot,
@@ -101,6 +108,7 @@ function createBuildContext(options = {}) {
     copyResource: args.has('--copy-resource'),
     env: options.env ?? processLike.env,
     exitCode: 0,
+    ffmpegVariant,
     fs,
     helperExePath,
     helperFileName,
@@ -109,7 +117,7 @@ function createBuildContext(options = {}) {
     isRelease,
     packageJson: options.packageJson,
     packageJsonPath: path.join(projectRoot, 'package.json'),
-    packagedHelperPath: path.join(packagedNativeDir, helperFileName),
+    packagedHelperPath: path.join(packagedNativeDir, packagedHelperFileName),
     packagedNativeDir,
     path,
     platform,
@@ -120,8 +128,9 @@ function createBuildContext(options = {}) {
   }
 }
 
-function getAudioOutputHelperFileName(platform = process.platform) {
-  return platform === 'win32' ? 'audio-output-helper.exe' : 'audio-output-helper'
+function getAudioOutputHelperFileName(platform = process.platform, variant = '') {
+  const suffix = variant ? `-${variant}` : ''
+  return platform === 'win32' ? `audio-output-helper${suffix}.exe` : `audio-output-helper${suffix}`
 }
 
 function warnAndSkip(context, message, shouldFail = context.required) {

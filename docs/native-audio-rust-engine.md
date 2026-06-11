@@ -19,7 +19,9 @@ instead of growing the helper `main.rs` further.
   diagnostics, and the streaming PCM buffer.
 - `native/audio-engine/audio-engine-decode` owns the decode manifest surfaced
   to Electron, including supported extensions and optional Opus/WebM feature
-  reporting.
+  reporting. Its optional `ffmpeg` feature adds an FFmpeg fallback decoder and
+  extra uncommon-container extensions; the default helper remains pure
+  Symphonia/APE and does not link FFmpeg.
 - `native/audio-engine/audio-engine-output` owns the output manifest surfaced
   to Electron, including platform-gated native output modes and output
   capability names.
@@ -52,12 +54,32 @@ the Electron layer decide whether a future helper binary supports optional
 features such as Opus, high-quality resampling, or FFmpeg fallback before the
 first status payload arrives.
 
+## FFmpeg Fallback
+
+`audio-engine-decode` exposes an optional `ffmpeg` feature. When
+`audio-output-helper` is built with that feature, local complete files first try
+the normal Symphonia/APE decode path; if Symphonia cannot open or decode the
+file, the helper falls back to FFmpeg and converts decoded audio to interleaved
+f32 PCM for the existing streaming buffer. Growing online cache files keep the
+current Symphonia path and do not use FFmpeg fallback until a complete local
+cache exists.
+
+The default helper binary is still `audio-output-helper(.exe)` and has no
+external FFmpeg dependency. The full build can be produced with
+`npm run build:audio-output-helper:ffmpeg`; when copying resources with the
+build script's `--copy-resource`, the FFmpeg build is written as
+`audio-output-helper-ffmpeg(.exe)`. On Windows this requires either a vcpkg
+FFmpeg installation discoverable through `VCPKG_ROOT`, or FFmpeg development
+libraries plus `pkg-config` configured for `libavutil`, `libavcodec`,
+`libavformat`, and `libswresample`.
+
 ## Near-Term Roadmap
 
 1. Keep extracting low-risk helper modules such as protocol, buffers, decode,
    and diagnostics without changing playback behavior.
-2. Introduce output/decode/resample traits once the module boundaries are stable.
-3. Add `rubato` resampling as the default pure-Rust high-quality resampler.
-4. Treat FFmpeg as an optional fallback build, not a required dependency.
+2. Continue extracting concrete Symphonia/raw PCM/growing-file decode logic into
+   `audio-engine-decode`.
+3. Introduce output/decode/resample traits once the module boundaries are stable.
+4. Add `rubato` resampling as the default pure-Rust high-quality resampler.
 5. Keep ASIO and DSD behind later feature flags unless real hardware validation
    exists.

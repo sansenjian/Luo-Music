@@ -28,6 +28,8 @@ use audio_engine_core::{
     StreamingPcmBuffer, StreamingPcmRenderState, StreamingPcmRenderStatus, PROTOCOL_VERSION,
 };
 use audio_engine_decode::{decode_capabilities, supported_audio_extensions};
+#[cfg(feature = "ffmpeg")]
+use audio_engine_decode::{decode_file_to_f32_with_ffmpeg, DecodedF32Audio, DecodedSampleFormat};
 use audio_engine_output::{output_capabilities, supported_audio_modes};
 
 mod command_loop;
@@ -4449,6 +4451,55 @@ fn decode_streaming_file_to_buffer(
     ready_sender: &mut Option<mpsc::SyncSender<Result<StreamingDecodeReady, String>>>,
     pcm_buffer: &mut Option<Arc<StreamingPcmBuffer>>,
 ) -> Result<()> {
+    #[cfg(feature = "ffmpeg")]
+    {
+        match decode_streaming_file_with_symphonia_to_buffer(
+            path,
+            start_seconds,
+            growing_expected_bytes,
+            stop,
+            ready_sender,
+            pcm_buffer,
+        ) {
+            Ok(()) => Ok(()),
+            Err(symphonia_error) if growing_expected_bytes.is_none() => {
+                let symphonia_reason = format_error_chain(&symphonia_error);
+                decode_streaming_file_with_ffmpeg_to_buffer(
+                    path,
+                    start_seconds,
+                    stop,
+                    ready_sender,
+                    pcm_buffer,
+                )
+                .with_context(|| {
+                    format!(
+                        "Symphonia decode failed ({symphonia_reason}); FFmpeg fallback also failed"
+                    )
+                })
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    #[cfg(not(feature = "ffmpeg"))]
+    decode_streaming_file_with_symphonia_to_buffer(
+        path,
+        start_seconds,
+        growing_expected_bytes,
+        stop,
+        ready_sender,
+        pcm_buffer,
+    )
+}
+
+fn decode_streaming_file_with_symphonia_to_buffer(
+    path: &str,
+    start_seconds: f64,
+    growing_expected_bytes: Option<u64>,
+    stop: &Arc<AtomicBool>,
+    ready_sender: &mut Option<mpsc::SyncSender<Result<StreamingDecodeReady, String>>>,
+    pcm_buffer: &mut Option<Arc<StreamingPcmBuffer>>,
+) -> Result<()> {
     let path_ref = Path::new(path);
     if is_ape_file_path(path_ref) {
         if growing_expected_bytes.is_some() {
@@ -4601,6 +4652,47 @@ fn decode_streaming_file_to_buffer(
 
     if pcm_buffer.is_none() {
         return Err(anyhow!("Decoded audio file is empty."));
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "ffmpeg")]
+fn decode_streaming_file_with_ffmpeg_to_buffer(
+    path: &str,
+    start_seconds: f64,
+    stop: &Arc<AtomicBool>,
+    ready_sender: &mut Option<mpsc::SyncSender<Result<StreamingDecodeReady, String>>>,
+    pcm_buffer: &mut Option<Arc<StreamingPcmBuffer>>,
+) -> Result<()> {
+    let decoded_audio = decode_file_to_f32_with_ffmpeg(path, start_seconds)?;
+    push_decoded_f32_audio_to_buffer(decoded_audio, stop, ready_sender, pcm_buffer)
+}
+
+#[cfg(feature = "ffmpeg")]
+fn push_decoded_f32_audio_to_buffer(
+    decoded_audio: DecodedF32Audio,
+    stop: &Arc<AtomicBool>,
+    ready_sender: &mut Option<mpsc::SyncSender<Result<StreamingDecodeReady, String>>>,
+    pcm_buffer: &mut Option<Arc<StreamingPcmBuffer>>,
+) -> Result<()> {
+    if decoded_audio.format.sample_format != DecodedSampleFormat::F32Interleaved {
+        return Err(anyhow!(
+            "FFmpeg fallback produced unsupported sample format."
+        ));
+    }
+
+    let channels = usize::from(decoded_audio.format.channels.max(1));
+    let buffer = create_streaming_decode_ready(
+        ready_sender,
+        decoded_audio.format.sample_rate,
+        channels,
+        decoded_audio.source,
+    )?;
+    *pcm_buffer = Some(Arc::clone(&buffer));
+
+    if !push_samples_until_stopped(&buffer, &decoded_audio.samples, stop) {
+        return Ok(());
     }
 
     Ok(())

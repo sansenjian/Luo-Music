@@ -25,6 +25,9 @@ describe('package scripts for forge workflows', () => {
     expect(packageJson.scripts?.['build:audio-output-helper']).toBe(
       'node scripts/build/build-audio-output-helper.cjs'
     )
+    expect(packageJson.scripts?.['build:audio-output-helper:ffmpeg']).toBe(
+      'node scripts/build/build-audio-output-helper.cjs --ffmpeg'
+    )
     expect(packageJson.scripts?.['dev:electron']).toContain(
       'npm run build:smtc-helper && npm run build:audio-output-helper'
     )

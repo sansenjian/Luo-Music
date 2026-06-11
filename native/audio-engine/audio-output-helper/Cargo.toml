@@ -18,6 +18,7 @@ symphonia-adapter-libopus = { workspace = true, optional = true }
 
 [features]
 default = []
+ffmpeg = ["audio-engine-decode/ffmpeg"]
 opus = ["dep:symphonia-adapter-libopus", "audio-engine-decode/opus"]
 opus-bundled = ["opus", "symphonia-adapter-libopus/bundled"]
 

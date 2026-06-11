@@ -21,6 +21,11 @@ audio-engine-core = { path = "audio-engine-core" }
 audio-engine-decode = { path = "audio-engine-decode" }
 audio-engine-output = { path = "audio-engine-output" }
 cpal = "0.16"
+ffmpeg-next = { version = "8.1.0", default-features = false, features = [
+  "codec",
+  "format",
+  "software-resampling"
+] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 symphonia = { version = "0.6", default-features = false, features = [

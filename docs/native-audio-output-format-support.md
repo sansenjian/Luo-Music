@@ -49,6 +49,8 @@ npm run test:audio-output:format-matrix:ffmpeg-samples
 
 当前 Windows 开发环境已通过 `npm run check:audio-output:helper-opus`，说明系统 libopus adapter 路线能通过 Rust 类型检查；但 `npm run test:audio-output:helper-opus` 会进入链接阶段，本机在没有可链接 `opus.lib` 时会失败。`cargo check --features opus-bundled` 也会因为缺少 `cmake` 失败。因此 Opus 仍只是可选候选路线，不进入默认验证门禁。若环境已经能构建 Opus helper，`test-audio-output-format-matrix:ffmpeg-samples` 可通过 `LUO_AUDIO_OUTPUT_HELPER_FEATURES=opus`、`--include-opus-samples` 或 `LUO_AUDIO_OUTPUT_FORMAT_INCLUDE_OPUS_SAMPLES=1` 额外准备 `.opus` / `.webm` 样本，让样本矩阵覆盖 helper 新报告的可选扩展名；如需全覆盖，再加 `--require-all-samples`。
 
+FFmpeg fallback 也是 opt-in：默认 helper 不链接 FFmpeg；`npm run build:audio-output-helper:ffmpeg` 或 `node scripts/build/build-audio-output-helper.cjs --ffmpeg --release --copy-resource` 会启用 `audio-engine-decode/ffmpeg`，并在复制 resource 时生成 `audio-output-helper-ffmpeg(.exe)`。该 full helper 会额外声明 `.wma` / `.ra` / `.rm` / `.rmvb` / `.ac3` / `.eac3` / `.dts` / `.amr` / `.wmv` 等 fallback 扩展。当前 Windows 本机缺少 vcpkg 或 `pkg-config` 可发现的 FFmpeg dev libs，因此 `cargo check --features ffmpeg` 会停在 `ffmpeg-sys-next` 的系统依赖探测阶段；这不影响默认 helper。
+
 1. 先验证 Opus opt-in 构建条件：`opus` 需要系统可链接 libopus，`opus-bundled` 需要 CMake；本轮先通过 Windows 构建、包体预算和真实 `.opus` 样本后再考虑默认启用，macOS / Linux 可作为后续扩展验证。
 2. 为 `.ape` 准备覆盖不同压缩级别、位深和声道的真实样本；只有矩阵报告 `samples` 明细证明 `.ape` 样本成功启动，才能把 APE 纳入“大部分格式支持”证据；若未来恢复“全格式支持”，还必须让 `missingSampleExtensions` 为空。
 3. 对在线歌曲补远程鉴权续传、helper 直连 HTTP 流或 Chromium 解码桥后，再扩大“在线 native 支持”的承诺。

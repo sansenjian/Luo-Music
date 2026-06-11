@@ -135,7 +135,7 @@ Forge make 默认生成 zip 分发包。Windows Squirrel maker 保留为显式 o
 
 构建 `native/audio-engine` workspace 内的 `audio-output-helper` Rust helper。开发入口默认构建当前平台 debug helper；Electron 打包流程使用 `--release --copy-resource --required` 生成 release helper 并复制到 `build/native/`。Windows 文件名为 `audio-output-helper.exe`，macOS / Linux 文件名为 `audio-output-helper`，复制后会显式设置可执行位，随后由 Forge / electron-builder 作为 `resources/native/` 下的同名二进制打进安装包。
 
-可设置 `LUO_AUDIO_OUTPUT_HELPER_FEATURES` 透传 Cargo features，例如 `LUO_AUDIO_OUTPUT_HELPER_FEATURES=opus` 使用系统 libopus 的 Opus 解码 adapter，或 `LUO_AUDIO_OUTPUT_HELPER_FEATURES=opus-bundled` 启用 bundled libopus；系统 libopus 路线需要可链接的 `opus.lib` / `libopus`，bundled 路线需要 CMake。
+可设置 `LUO_AUDIO_OUTPUT_HELPER_FEATURES` 透传 Cargo features，例如 `LUO_AUDIO_OUTPUT_HELPER_FEATURES=opus` 使用系统 libopus 的 Opus 解码 adapter，或 `LUO_AUDIO_OUTPUT_HELPER_FEATURES=opus-bundled` 启用 bundled libopus；系统 libopus 路线需要可链接的 `opus.lib` / `libopus`，bundled 路线需要 CMake。`--ffmpeg` 会额外启用 `ffmpeg` feature；复制 resource 时输出 `audio-output-helper-ffmpeg(.exe)`，用于 full helper 发布。Windows 上该路线需要 vcpkg 可发现的 FFmpeg，或 FFmpeg dev libs + `pkg-config` 能找到 `libavutil` / `libavcodec` / `libavformat` / `libswresample`。
 
 音频输出验证脚本默认会构建并使用 `native/audio-engine/target/debug/` 下的 debug helper。如果 Electron 开发进程正在占用该 debug helper，可先运行 `node scripts/build/build-audio-output-helper.cjs --release --copy-resource --required`，再设置 `LUO_AUDIO_OUTPUT_HELPER_PATH=build\native\audio-output-helper.exe` 复用 release helper。设置该变量后验证脚本会跳过 debug build，报告中的 `helperPath` / `helperPathSource` 会记录实际使用路径。
 
