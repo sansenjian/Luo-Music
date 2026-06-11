@@ -25,3 +25,11 @@ export type LocalMusicViewModeOption = {
   id: LocalLibraryViewMode
   label: string
 }
+
+export type LocalMusicDiagnosticCard = {
+  detail: string
+  id: string
+  label: string
+  tone?: 'danger' | 'neutral' | 'success' | 'warning'
+  value: string
+}

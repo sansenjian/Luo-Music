@@ -9,6 +9,7 @@ import type { Song } from '@shared/types/schemas'
 
 import { createLocalMediaUrl } from './protocol'
 import { createAlbumId, createLocalSongArtists } from './repository.helpers'
+import { collectNativeAudioFileEntries } from './nativeScanner'
 import type { PersistedFolder } from './repository.types'
 
 export { normalizeFilePath, normalizeFolderPath } from './repository.helpers'
@@ -27,6 +28,10 @@ export type ParsedLocalTrackMetadata = {
   artist: string | null
   album: string | null
   duration: number | null
+  codec?: string | null
+  sampleRate?: number | null
+  bitDepth?: number | null
+  bitrate?: number | null
   coverData?: Buffer | null
   coverFormat?: string | null
 }
@@ -165,9 +170,28 @@ export async function readTrackMetadata(
       typeof metadata.format.duration === 'number' && Number.isFinite(metadata.format.duration)
         ? Math.max(0, Math.round(metadata.format.duration * 1000))
         : null
+    const codec =
+      typeof metadata.format.codec === 'string' && metadata.format.codec.trim().length > 0
+        ? metadata.format.codec.trim()
+        : null
+    const sampleRate =
+      typeof metadata.format.sampleRate === 'number' && Number.isFinite(metadata.format.sampleRate)
+        ? Math.round(metadata.format.sampleRate)
+        : null
+    const bitDepth = readFiniteIntegerMetadataField(
+      metadata.format as unknown as Record<string, unknown>,
+      'bitsPerSample'
+    )
+    const bitrate =
+      typeof metadata.format.bitrate === 'number' && Number.isFinite(metadata.format.bitrate)
+        ? Math.round(metadata.format.bitrate)
+        : null
+    const hasMetadataFields = Boolean(
+      title || artist || album || duration !== null || codec || sampleRate || bitDepth || bitrate
+    )
 
     if (options?.skipCover) {
-      if (!title && !artist && !album && duration === null) {
+      if (!hasMetadataFields) {
         return null
       }
 
@@ -176,6 +200,10 @@ export async function readTrackMetadata(
         artist,
         album,
         duration,
+        codec,
+        sampleRate,
+        bitDepth,
+        bitrate,
         coverData: undefined,
         coverFormat: null
       }
@@ -183,7 +211,7 @@ export async function readTrackMetadata(
 
     const picture = metadata.common.picture?.[0]
 
-    if (!title && !artist && !album && duration === null && !picture) {
+    if (!hasMetadataFields && !picture) {
       return null
     }
 
@@ -192,12 +220,24 @@ export async function readTrackMetadata(
       artist,
       album,
       duration,
+      codec,
+      sampleRate,
+      bitDepth,
+      bitrate,
       coverData: picture?.data ? Buffer.from(picture.data) : null,
       coverFormat: picture?.format ?? null
     }
   } catch {
     return null
   }
+}
+
+function readFiniteIntegerMetadataField(
+  format: Record<string, unknown>,
+  fieldName: string
+): number | null {
+  const value = format[fieldName]
+  return typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : null
 }
 
 export function requiresFullDurationParse(filePath: string): boolean {
@@ -259,6 +299,11 @@ export function createEmptyPendingFolderChanges(): PendingFolderChanges {
 }
 
 export async function collectAudioFiles(rootPath: string): Promise<string[]> {
+  const nativeFiles = await collectNativeAudioFileEntries(rootPath).catch(() => null)
+  if (nativeFiles) {
+    return nativeFiles.map(file => file.path)
+  }
+
   const queue = [{ path: rootPath, depth: 0 }]
   const files: string[] = []
 

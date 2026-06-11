@@ -42,10 +42,27 @@ export function useLocalLibraryCommands(
     return nextState
   }
 
+  async function rescanFolder(folderId: string): Promise<LocalLibraryState> {
+    const nextState = await runMutation(() => platformService.scanLocalLibraryFolder(folderId))
+    applyState(nextState)
+    return nextState
+  }
+
+  async function showFolder(folderId: string): Promise<boolean> {
+    return runMutation(() => platformService.showLocalLibraryFolder(folderId))
+  }
+
+  async function showTrack(trackId: string): Promise<boolean> {
+    return runMutation(() => platformService.showLocalLibraryTrack(trackId))
+  }
+
   return {
     addFolder,
     removeFolder,
     rescan,
-    setFolderEnabled
+    rescanFolder,
+    setFolderEnabled,
+    showFolder,
+    showTrack
   }
 }

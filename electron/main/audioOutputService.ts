@@ -122,6 +122,7 @@ export class AudioOutputService {
   private nativePlaybackSource: string | null = null
   private nativePlaybackHelperPath: string | null = null
   private nativePlaybackToken: string | null = null
+  private nativePlaybackSession: AudioOutputStatus['nativePlaybackSession'] | null = null
   private nativePlaybackState: NonNullable<AudioOutputStatus['nativePlaybackState']> = 'idle'
   private nativePlaybackPositionSeconds: number | null = null
   private nativePlaybackDownload: AudioOutputStatus['nativePlaybackDownload'] | null = null
@@ -167,6 +168,7 @@ export class AudioOutputService {
       this.nativePlaybackSource = null
       this.nativePlaybackHelperPath = null
       this.nativePlaybackToken = null
+      this.clearNativePlaybackSession()
       this.nativePlaybackState = 'idle'
       this.nativePlaybackPositionSeconds = null
       this.nativePlaybackDownload = null
@@ -342,6 +344,7 @@ export class AudioOutputService {
       this.nativePlaybackSource = sanitizedPayload.url
       this.nativePlaybackHelperPath = null
       this.nativePlaybackToken = null
+      this.clearNativePlaybackSession()
       this.nativePlaybackState = 'error'
       this.nativePlaybackPositionSeconds = null
       this.nativePlaybackDownload = null
@@ -361,6 +364,7 @@ export class AudioOutputService {
     this.nativePlaybackSource = path
     this.nativePlaybackHelperPath = path
     this.nativePlaybackToken = playbackToken
+    this.startNativePlaybackSession(path, playbackToken, requestId)
     this.nativePlaybackState = 'starting'
     this.nativePlaybackPositionSeconds = null
     this.nativePlaybackDownload = null
@@ -453,6 +457,7 @@ export class AudioOutputService {
     this.nativePlaybackSource = null
     this.nativePlaybackHelperPath = null
     this.nativePlaybackToken = null
+    this.clearNativePlaybackSession()
     this.nativePlaybackState = 'stopped'
     this.nativePlaybackPositionSeconds = null
     this.nativePlaybackDownload = null
@@ -523,6 +528,7 @@ export class AudioOutputService {
     this.nativePlaybackSource = null
     this.nativePlaybackHelperPath = null
     this.nativePlaybackToken = null
+    this.clearNativePlaybackSession()
     this.nativePlaybackState = 'stopped'
     this.nativePlaybackPositionSeconds = null
     this.nativePlaybackDownload = null
@@ -540,7 +546,7 @@ export class AudioOutputService {
 
   private createStatus(backend: AudioOutputStatus['backend']): AudioOutputStatus {
     const disabled = backend === 'disabled'
-    return {
+    return this.withNativePlaybackDetails({
       ...createDefaultAudioOutputStatus(),
       enabled: this.enabled,
       backend,
@@ -563,7 +569,7 @@ export class AudioOutputService {
       nativePlaybackDownload: this.nativePlaybackDownload ?? undefined,
       nativePlaybackError: this.nativePlaybackError ?? undefined,
       reason: disabled ? undefined : (this.reason ?? undefined)
-    }
+    })
   }
 
   private createStatusFromLastStatus(
@@ -602,7 +608,46 @@ export class AudioOutputService {
       delete status.voicemeeterRemote
     }
 
-    return status
+    return this.withNativePlaybackDetails(status)
+  }
+
+  private startNativePlaybackSession(source: string, token: string, requestId: number): void {
+    this.nativePlaybackSession = {
+      id: createNativePlaybackSessionId(requestId),
+      token,
+      source,
+      requestedMode: this.settings.mode,
+      activeMode: this.settings.mode,
+      startedAt: Date.now()
+    }
+  }
+
+  private clearNativePlaybackSession(): void {
+    this.nativePlaybackSession = null
+  }
+
+  private withNativePlaybackDetails(status: AudioOutputStatus): AudioOutputStatus {
+    const nativePlaybackSession = this.nativePlaybackSession
+      ? {
+          ...this.nativePlaybackSession,
+          activeMode: status.activeMode ?? this.nativePlaybackSession.activeMode
+        }
+      : undefined
+    const nativePlaybackDiagnostics = createNativePlaybackDiagnostics(status, nativePlaybackSession)
+
+    const nextStatus: AudioOutputStatus = { ...status }
+    if (nativePlaybackSession) {
+      nextStatus.nativePlaybackSession = nativePlaybackSession
+    } else {
+      delete nextStatus.nativePlaybackSession
+    }
+    if (nativePlaybackDiagnostics) {
+      nextStatus.nativePlaybackDiagnostics = nativePlaybackDiagnostics
+    } else {
+      delete nextStatus.nativePlaybackDiagnostics
+    }
+
+    return nextStatus
   }
 
   private playRemoteFile(
@@ -616,6 +661,7 @@ export class AudioOutputService {
     this.nativePlaybackSource = remoteUrl
     this.nativePlaybackHelperPath = null
     this.nativePlaybackToken = playbackToken
+    this.startNativePlaybackSession(remoteUrl, playbackToken, requestId)
     this.nativePlaybackState = 'starting'
     this.nativePlaybackPositionSeconds = null
     this.nativePlaybackDownload = {
@@ -686,12 +732,13 @@ export class AudioOutputService {
       this.nativePlaybackPaused = false
       this.nativePlaybackHelperPath = null
       this.nativePlaybackToken = null
+      this.clearNativePlaybackSession()
       this.nativePlaybackState = 'error'
       this.nativePlaybackPositionSeconds = null
       this.nativePlaybackDownload = null
       this.nativePlaybackError = createNativePlaybackRemoteError(error)
       this.reason = this.nativePlaybackError
-        ? createRemoteAuthExpiredReason(this.nativePlaybackError)
+        ? createNativePlaybackErrorReason(this.nativePlaybackError)
         : `Failed to cache remote media for native audio output: ${formatError(error)}`
       this.logger.warn('[AudioOutput] Failed to cache remote media for native playback', error)
       this.publishStatus(this.createStatusFromLastStatus('unavailable'))
@@ -1006,12 +1053,13 @@ export class AudioOutputService {
         this.nativePlaybackPaused = false
         this.nativePlaybackHelperPath = null
         this.nativePlaybackToken = null
+        this.clearNativePlaybackSession()
         this.nativePlaybackState = 'error'
         this.nativePlaybackPositionSeconds = null
         this.nativePlaybackDownload = null
         this.nativePlaybackError = createNativePlaybackRemoteError(error)
         this.reason = this.nativePlaybackError
-          ? createRemoteAuthExpiredReason(this.nativePlaybackError)
+          ? createNativePlaybackErrorReason(this.nativePlaybackError)
           : `Failed to finish remote media cache for native audio output: ${formatError(error)}`
         this.logger.warn(
           '[AudioOutput] Failed to finish remote media cache for native playback',
@@ -1298,6 +1346,7 @@ export class AudioOutputService {
     this.nativePlaybackPaused = false
     this.nativePlaybackHelperPath = null
     this.nativePlaybackToken = null
+    this.clearNativePlaybackSession()
     this.nativePlaybackState = 'error'
     this.nativePlaybackPositionSeconds = null
     this.nativePlaybackDownload = null
@@ -1325,6 +1374,7 @@ export class AudioOutputService {
     this.nativePlaybackSource = null
     this.nativePlaybackHelperPath = null
     this.nativePlaybackToken = null
+    this.clearNativePlaybackSession()
     this.nativePlaybackState = 'stopped'
     this.nativePlaybackPositionSeconds = null
     this.nativePlaybackDownload = null
@@ -1571,6 +1621,9 @@ export class AudioOutputService {
     if (helperToken && helperToken === this.nativePlaybackToken) {
       this.nativePlaybackToken = null
     }
+    if (!helperToken || helperToken === this.nativePlaybackSession?.token) {
+      this.clearNativePlaybackSession()
+    }
 
     this.nativePlaybackDownload = null
     this.nativePlaybackPositionSeconds = null
@@ -1664,6 +1717,7 @@ export class AudioOutputService {
       this.nativePlaybackSource = null
       this.nativePlaybackHelperPath = null
       this.nativePlaybackToken = null
+      this.clearNativePlaybackSession()
       this.nativePlaybackState = 'error'
       this.nativePlaybackPositionSeconds = null
       this.nativePlaybackDownload = null
@@ -1689,6 +1743,7 @@ export class AudioOutputService {
       this.nativePlaybackSource = null
       this.nativePlaybackHelperPath = null
       this.nativePlaybackToken = null
+      this.clearNativePlaybackSession()
       this.nativePlaybackState = 'error'
       this.nativePlaybackPositionSeconds = null
       this.nativePlaybackDownload = null
@@ -1843,6 +1898,7 @@ export class AudioOutputService {
         this.nativePlaybackSource = null
         this.nativePlaybackHelperPath = null
         this.nativePlaybackToken = null
+        this.clearNativePlaybackSession()
         this.nativePlaybackState = 'error'
         this.nativePlaybackPositionSeconds = null
         this.nativePlaybackDownload = null
@@ -1902,6 +1958,7 @@ export class AudioOutputService {
     this.nativePlaybackSource = null
     this.nativePlaybackHelperPath = null
     this.nativePlaybackToken = null
+    this.clearNativePlaybackSession()
     this.nativePlaybackState = 'idle'
     this.nativePlaybackPositionSeconds = null
     this.nativePlaybackDownload = null
@@ -1980,6 +2037,7 @@ export class AudioOutputService {
     this.nativePlaybackSource = null
     this.nativePlaybackHelperPath = null
     this.nativePlaybackToken = null
+    this.clearNativePlaybackSession()
     this.nativePlaybackState = 'idle'
     this.nativePlaybackPositionSeconds = null
     this.nativePlaybackDownload = null
@@ -2035,8 +2093,9 @@ export class AudioOutputService {
   }
 
   private publishStatus(status: AudioOutputStatus): AudioOutputStatus {
-    this.onStatusChange(status)
-    return status
+    const nextStatus = this.withNativePlaybackDetails(status)
+    this.onStatusChange(nextStatus)
+    return nextStatus
   }
 }
 
@@ -2052,38 +2111,131 @@ function createNativePlaybackToken(requestId: number): string {
   return `native-playback-${requestId}`
 }
 
-function createNativePlaybackRemoteError(error: unknown): NativePlaybackError | null {
-  if (!(error instanceof RemoteMediaHttpStatusError)) {
-    return null
+function createNativePlaybackSessionId(requestId: number): string {
+  return `native-session-${requestId}`
+}
+
+function createNativePlaybackDiagnostics(
+  status: AudioOutputStatus,
+  session?: AudioOutputStatus['nativePlaybackSession']
+): AudioOutputStatus['nativePlaybackDiagnostics'] {
+  const sourceFormat = status.bitPerfect?.sourceFormat
+  const outputFormat = status.bitPerfect?.outputFormat
+  if (!session && !status.bitPerfect && !sourceFormat && !outputFormat) {
+    return undefined
   }
 
-  if (error.status !== 401 && error.status !== 403) {
-    return null
-  }
+  const sourceSampleRate = sourceFormat?.sampleRate
+  const outputSampleRate = outputFormat?.sampleRate
+  const sourceChannels = sourceFormat?.channels
+  const outputChannels = outputFormat?.channels
+  const sourceBitDepth = sourceFormat?.bitDepth
+  const outputBitDepth = outputFormat?.bitDepth
 
   return {
-    code: 'remote-auth-expired',
-    httpStatus: error.status,
-    retryable: true
+    requestedMode: session?.requestedMode ?? status.requestedMode,
+    activeMode: status.activeMode ?? session?.activeMode,
+    sourceFormat,
+    outputFormat,
+    sourceSampleRate,
+    outputSampleRate,
+    sampleRateMismatch:
+      typeof sourceSampleRate === 'number' && typeof outputSampleRate === 'number'
+        ? sourceSampleRate !== outputSampleRate
+        : undefined,
+    sourceChannels,
+    outputChannels,
+    channelMismatch:
+      typeof sourceChannels === 'number' && typeof outputChannels === 'number'
+        ? sourceChannels !== outputChannels
+        : undefined,
+    bitDepthMismatch:
+      typeof sourceBitDepth === 'number' && typeof outputBitDepth === 'number'
+        ? sourceBitDepth !== outputBitDepth
+        : undefined,
+    bitPerfectStatus: status.bitPerfect?.status,
+    reason: status.bitPerfect?.reason ?? status.reason
   }
+}
+
+function createNativePlaybackRemoteError(error: unknown): NativePlaybackError | null {
+  if (error instanceof RemoteMediaHttpStatusError) {
+    if (error.status === 401 || error.status === 403 || error.status === 404) {
+      return {
+        code: 'remote-auth-expired',
+        httpStatus: error.status,
+        retryable: true
+      }
+    }
+
+    return {
+      code: isTransientRemoteHttpStatus(error.status)
+        ? 'remote-network-failed'
+        : 'remote-cache-failed',
+      httpStatus: error.status,
+      nativeMessage: error.message,
+      retryable: false
+    }
+  }
+
+  const message = formatError(error)
+  if (isRemoteUnsupportedCodecMessage(message)) {
+    return {
+      code: 'remote-unsupported-codec',
+      nativeMessage: message,
+      retryable: false
+    }
+  }
+
+  if (isRemoteNetworkFailureMessage(message)) {
+    return {
+      code: 'remote-network-failed',
+      nativeMessage: message,
+      retryable: false
+    }
+  }
+
+  if (isRemoteCacheFailureMessage(message)) {
+    return {
+      code: 'remote-cache-failed',
+      nativeMessage: message,
+      retryable: false
+    }
+  }
+
+  return null
 }
 
 function createNativePlaybackErrorFromReason(
   state: NonNullable<AudioOutputStatus['nativePlaybackState']>,
   reason: string | undefined
 ): NativePlaybackError | null {
-  if (
-    state !== 'error' ||
-    !reason ||
-    !/\bwasapi\b/i.test(reason) ||
-    !/\bexclusive\b/i.test(reason)
-  ) {
+  if (state !== 'error' || !reason) {
     return null
   }
 
+  if (/\bwasapi\b/i.test(reason) && /\bexclusive\b/i.test(reason)) {
+    return {
+      code: 'wasapi-exclusive-failed',
+      nativeErrorCode: extractNativeAudioErrorCode(reason),
+      nativeMessage: reason,
+      retryable: false
+    }
+  }
+
+  if (isNativeDecodeFailureMessage(reason)) {
+    return {
+      code: 'native-decode-failed',
+      nativeErrorCode: extractNativeAudioErrorCode(reason),
+      nativeMessage: reason,
+      retryable: false
+    }
+  }
+
   return {
-    code: 'wasapi-exclusive-failed',
+    code: 'native-playback-failed',
     nativeErrorCode: extractNativeAudioErrorCode(reason),
+    nativeMessage: reason,
     retryable: false
   }
 }
@@ -2097,6 +2249,56 @@ function extractNativeAudioErrorCode(reason: string): string | undefined {
 function createRemoteAuthExpiredReason(error: NativePlaybackError): string {
   const suffix = typeof error.httpStatus === 'number' ? ` HTTP ${error.httpStatus}.` : '.'
   return `Native audio output remote media authorization expired; refreshing the playback URL is required.${suffix}`
+}
+
+function createNativePlaybackErrorReason(error: NativePlaybackError): string {
+  if (error.code === 'remote-auth-expired') {
+    return createRemoteAuthExpiredReason(error)
+  }
+
+  const suffix = error.nativeMessage ? ` ${error.nativeMessage}` : ''
+  switch (error.code) {
+    case 'remote-network-failed':
+      return `Native audio output remote media network failed.${suffix}`.trim()
+    case 'remote-cache-failed':
+      return `Native audio output remote media cache failed.${suffix}`.trim()
+    case 'remote-unsupported-codec':
+      return `Native audio output helper does not support the remote media codec.${suffix}`.trim()
+    case 'native-decode-failed':
+      return `Native audio output failed to decode the source.${suffix}`.trim()
+    case 'native-playback-failed':
+      return `Native audio output playback failed.${suffix}`.trim()
+    case 'wasapi-exclusive-failed':
+      return 'Native WASAPI exclusive playback failed.'
+  }
+}
+
+function isTransientRemoteHttpStatus(status: number): boolean {
+  return status === 408 || status === 425 || status === 429 || status >= 500
+}
+
+function isRemoteUnsupportedCodecMessage(message: string): boolean {
+  return /helper did not report support|unsupported .*codec|resolved to .*but the helper did not report support/i.test(
+    message
+  )
+}
+
+function isRemoteNetworkFailureMessage(message: string): boolean {
+  return /fetch failed|network|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|timeout|socket|TLS|certificate/i.test(
+    message
+  )
+}
+
+function isRemoteCacheFailureMessage(message: string): boolean {
+  return /remote media|content type|content-range|range response|cache limit|did not include a body|body size|exceeded|larger than|superseded/i.test(
+    message
+  )
+}
+
+function isNativeDecodeFailureMessage(message: string): boolean {
+  return /decode|decoder|symphonia|probe audio file|playable audio track|unsupported .*bit depth|APE .*PCM|APE .*audio|Failed to open audio file/i.test(
+    message
+  )
 }
 
 function resolveDefaultRemoteMediaFetch(electronNet?: ElectronNetLike): RemoteMediaFetch {

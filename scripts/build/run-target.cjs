@@ -282,6 +282,13 @@ function createWorkflows(overrides = {}) {
             '--copy-resource',
             '--required'
           ]),
+        'build:local-library-scanner': () =>
+          deps.npmRunAsync('build:local-library-scanner', [
+            '--',
+            '--release',
+            '--copy-resource',
+            '--required'
+          ]),
         'build:qq-runtime': () => deps.npmRunAsync('build:qq-runtime'),
         'build:server': () => deps.npmRunAsync('build:server'),
         'electron-vite:build': () => deps.npmRunAsync('electron-vite:build')

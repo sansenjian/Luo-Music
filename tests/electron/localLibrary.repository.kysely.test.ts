@@ -24,6 +24,7 @@ describe('localLibrary Kysely query builders', () => {
     expect(queries.count.sql).toContain('"track"."album" = ?')
     expect(queries.count.sql).toContain('"track"."title" COLLATE NOCASE LIKE ?')
     expect(queries.count.parameters).toEqual([
+      'strict',
       1,
       'folder-1',
       'Album',
@@ -50,7 +51,16 @@ describe('localLibrary Kysely query builders', () => {
 
     expect(query.sql).not.toContain('"track"."artist" = ?')
     expect(query.sql).toContain('"track"."artist" COLLATE NOCASE LIKE ?')
-    expect(query.parameters).toEqual([1, '%artist%', '%artist%', '%artist%', '%artist%', 200, 0])
+    expect(query.parameters).toEqual([
+      'strict',
+      1,
+      '%artist%',
+      '%artist%',
+      '%artist%',
+      '%artist%',
+      200,
+      0
+    ])
   })
 
   it('builds grouped album summary queries with search and pagination', () => {

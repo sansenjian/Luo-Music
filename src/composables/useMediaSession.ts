@@ -45,6 +45,7 @@ export type MediaSessionDeps = {
 }
 
 const MEDIA_SESSION_ARTWORK_SIZE = '300x300'
+const MEDIA_SESSION_LOCAL_COVER_SIZE = 'album'
 const DEFAULT_SEEK_OFFSET_SECONDS = 5
 const POSITION_SYNC_INTERVAL_MS = 1000
 const PLAYBACK_RESYNC_RETRY_DELAYS_MS = [120, 450, 1000] as const
@@ -126,8 +127,10 @@ export function useMediaSession(deps: MediaSessionDeps = {}): void {
     (async (song: Song) => {
       const localCoverHash = getLocalCoverHash(song)
       if (localCoverHash) {
-        const localArtwork = await CoverCacheManager.fetchThumbnailAsDataUrl(localCoverHash, hash =>
-          platformService.getLocalLibraryCover(hash)
+        const localArtwork = await CoverCacheManager.fetchThumbnailAsDataUrl(
+          localCoverHash,
+          (hash, size) => platformService.getLocalLibraryCover(hash, size),
+          { size: MEDIA_SESSION_LOCAL_COVER_SIZE }
         )
 
         if (localArtwork) {

@@ -3,13 +3,39 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import type { LocalLibraryCoverSize } from '@shared/types/localLibrary'
+
 const RESOLVED_PATH_CACHE_MAX_ENTRIES = 500
+const LOCAL_LIBRARY_COVER_SIZES = new Set<LocalLibraryCoverSize>(['thumb', 'album', 'large'])
+const RESIZED_COVER_EXTENSION = 'png'
+const LOCAL_LIBRARY_COVER_SIZE_PIXELS: Record<Exclude<LocalLibraryCoverSize, 'large'>, number> = {
+  thumb: 96,
+  album: 512
+}
+
+export type LocalLibraryCoverResizeInput = {
+  data: Buffer
+  maxSize: number
+  size: Exclude<LocalLibraryCoverSize, 'large'>
+}
+
+export type LocalLibraryCoverResizer = (
+  input: LocalLibraryCoverResizeInput
+) => Buffer | null | Promise<Buffer | null>
 
 type ElectronUserDataModule =
   | string
   | {
       app?: {
         getPath(name: 'userData'): string
+      }
+      nativeImage?: {
+        createFromBuffer(data: Buffer): {
+          isEmpty?(): boolean
+          resize(options: { width: number; height: number; quality: 'good' }): {
+            toPNG(): Buffer
+          }
+        }
       }
     }
 
@@ -68,10 +94,15 @@ function inferMimeType(filePath: string): string {
 
 export class LocalLibraryCoverManager {
   private readonly coverDirectoryPath: string
+  private readonly resizer: LocalLibraryCoverResizer | null
   private readonly resolvedPathCache = new Map<string, string>()
 
-  constructor(coverDirectoryPath = resolveCoverDirectoryPath()) {
+  constructor(
+    coverDirectoryPath = resolveCoverDirectoryPath(),
+    resizer: LocalLibraryCoverResizer | null = createDefaultCoverResizer()
+  ) {
     this.coverDirectoryPath = coverDirectoryPath
+    this.resizer = resizer
     if (!existsSync(this.coverDirectoryPath)) {
       mkdirSync(this.coverDirectoryPath, { recursive: true })
     }
@@ -94,12 +125,15 @@ export class LocalLibraryCoverManager {
       }
     }
 
-    this.setResolvedPathCache(hash, filePath)
+    this.setResolvedPathCache(createResolvedPathCacheKey(hash, 'large'), filePath)
     return hash
   }
 
-  async getCoverDataUrl(hash: string): Promise<string | null> {
-    let filePath = await this.resolveCoverPath(hash)
+  async getCoverDataUrl(
+    hash: string,
+    size: LocalLibraryCoverSize = 'large'
+  ): Promise<string | null> {
+    let filePath = await this.resolveCoverPath(hash, size)
     if (!filePath) {
       return null
     }
@@ -112,8 +146,8 @@ export class LocalLibraryCoverManager {
         throw error
       }
 
-      this.resolvedPathCache.delete(hash)
-      filePath = await this.resolveCoverPath(hash)
+      this.resolvedPathCache.delete(createResolvedPathCacheKey(hash, size))
+      filePath = await this.resolveCoverPath(hash, size)
       if (!filePath) {
         return null
       }
@@ -127,32 +161,45 @@ export class LocalLibraryCoverManager {
     const entries = await readdir(this.coverDirectoryPath, { withFileTypes: true })
     await Promise.all(
       entries.map(async entry => {
-        if (!entry.isFile()) {
+        if (
+          entry.isDirectory() &&
+          LOCAL_LIBRARY_COVER_SIZES.has(entry.name as LocalLibraryCoverSize)
+        ) {
+          await this.cleanupUnusedCoverFiles(
+            path.join(this.coverDirectoryPath, entry.name),
+            usedHashes
+          )
           return
         }
 
-        const matched = /^([a-f0-9]+)\./i.exec(entry.name)
-        if (!matched) {
-          return
-        }
-
-        const hash = matched[1] ?? ''
-        if (usedHashes.has(hash)) {
-          return
-        }
-
-        const entryPath = path.join(this.coverDirectoryPath, entry.name)
-        this.resolvedPathCache.delete(hash)
-        await rm(entryPath, { force: true })
+        await this.cleanupUnusedCoverFile(this.coverDirectoryPath, entry.name, usedHashes)
       })
     )
   }
 
-  private async resolveCoverPath(hash: string): Promise<string | null> {
-    const cachedPath = this.resolvedPathCache.get(hash)
+  private async resolveCoverPath(
+    hash: string,
+    size: LocalLibraryCoverSize
+  ): Promise<string | null> {
+    const cacheKey = createResolvedPathCacheKey(hash, size)
+    const cachedPath = this.resolvedPathCache.get(cacheKey)
     if (cachedPath) {
-      this.setResolvedPathCache(hash, cachedPath)
+      this.setResolvedPathCache(cacheKey, cachedPath)
       return cachedPath
+    }
+
+    if (size !== 'large') {
+      const sizedPath = await this.resolveSizedCoverPath(hash, size)
+      if (sizedPath) {
+        this.setResolvedPathCache(cacheKey, sizedPath)
+        return sizedPath
+      }
+
+      const generatedPath = await this.generateSizedCover(hash, size)
+      if (generatedPath) {
+        this.setResolvedPathCache(cacheKey, generatedPath)
+        return generatedPath
+      }
     }
 
     const entries = await readdir(this.coverDirectoryPath, { withFileTypes: true })
@@ -162,16 +209,109 @@ export class LocalLibraryCoverManager {
     }
 
     const filePath = path.join(this.coverDirectoryPath, matchedEntry.name)
-    this.setResolvedPathCache(hash, filePath)
+    this.setResolvedPathCache(cacheKey, filePath)
     return filePath
   }
 
-  private setResolvedPathCache(hash: string, filePath: string): void {
-    if (this.resolvedPathCache.has(hash)) {
-      this.resolvedPathCache.delete(hash)
+  private async resolveSizedCoverPath(
+    hash: string,
+    size: Exclude<LocalLibraryCoverSize, 'large'>
+  ): Promise<string | null> {
+    const sizedDirectoryPath = path.join(this.coverDirectoryPath, size)
+    if (!existsSync(sizedDirectoryPath)) {
+      return null
     }
 
-    this.resolvedPathCache.set(hash, filePath)
+    const entries = await readdir(sizedDirectoryPath, { withFileTypes: true })
+    const matchedEntry = entries.find(entry => entry.isFile() && entry.name.startsWith(`${hash}.`))
+    return matchedEntry ? path.join(sizedDirectoryPath, matchedEntry.name) : null
+  }
+
+  private async generateSizedCover(
+    hash: string,
+    size: Exclude<LocalLibraryCoverSize, 'large'>
+  ): Promise<string | null> {
+    const originalPath = await this.resolveCoverPath(hash, 'large')
+    if (!originalPath) {
+      return null
+    }
+
+    if (!this.resizer) {
+      return originalPath
+    }
+
+    try {
+      const originalBuffer = await readFile(originalPath)
+      const resizedBuffer = await this.resizer({
+        data: originalBuffer,
+        maxSize: LOCAL_LIBRARY_COVER_SIZE_PIXELS[size],
+        size
+      })
+      if (!Buffer.isBuffer(resizedBuffer) || resizedBuffer.length === 0) {
+        return originalPath
+      }
+
+      const sizedDirectoryPath = path.join(this.coverDirectoryPath, size)
+      if (!existsSync(sizedDirectoryPath)) {
+        mkdirSync(sizedDirectoryPath, { recursive: true })
+      }
+
+      const sizedPath = path.join(sizedDirectoryPath, `${hash}.${RESIZED_COVER_EXTENSION}`)
+      try {
+        await writeFile(sizedPath, resizedBuffer, { flag: 'wx' })
+      } catch (error) {
+        if (!isFileAlreadyExistsError(error)) {
+          throw error
+        }
+      }
+
+      return sizedPath
+    } catch {
+      return originalPath
+    }
+  }
+
+  private async cleanupUnusedCoverFiles(
+    directoryPath: string,
+    usedHashes: Set<string>
+  ): Promise<void> {
+    const entries = await readdir(directoryPath, { withFileTypes: true })
+    await Promise.all(
+      entries.map(entry => this.cleanupUnusedCoverFile(directoryPath, entry.name, usedHashes))
+    )
+  }
+
+  private async cleanupUnusedCoverFile(
+    directoryPath: string,
+    entryName: string,
+    usedHashes: Set<string>
+  ): Promise<void> {
+    const matched = /^([a-f0-9]+)\./i.exec(entryName)
+    if (!matched) {
+      return
+    }
+
+    const hash = matched[1] ?? ''
+    if (usedHashes.has(hash)) {
+      return
+    }
+
+    this.deleteResolvedPathCacheEntries(hash)
+    await rm(path.join(directoryPath, entryName), { force: true })
+  }
+
+  private deleteResolvedPathCacheEntries(hash: string): void {
+    for (const size of LOCAL_LIBRARY_COVER_SIZES) {
+      this.resolvedPathCache.delete(createResolvedPathCacheKey(hash, size))
+    }
+  }
+
+  private setResolvedPathCache(cacheKey: string, filePath: string): void {
+    if (this.resolvedPathCache.has(cacheKey)) {
+      this.resolvedPathCache.delete(cacheKey)
+    }
+
+    this.resolvedPathCache.set(cacheKey, filePath)
 
     if (this.resolvedPathCache.size <= RESOLVED_PATH_CACHE_MAX_ENTRIES) {
       return
@@ -181,6 +321,37 @@ export class LocalLibraryCoverManager {
     if (typeof oldestEntryKey === 'string') {
       this.resolvedPathCache.delete(oldestEntryKey)
     }
+  }
+}
+
+function createResolvedPathCacheKey(hash: string, size: LocalLibraryCoverSize): string {
+  return `${size}:${hash}`
+}
+
+function createDefaultCoverResizer(): LocalLibraryCoverResizer | null {
+  const electronModule = loadElectronUserDataModule()
+  if (typeof electronModule !== 'object' || electronModule === null) {
+    return null
+  }
+
+  const nativeImage = electronModule.nativeImage
+  if (typeof nativeImage?.createFromBuffer !== 'function') {
+    return null
+  }
+
+  return ({ data, maxSize }) => {
+    const image = nativeImage.createFromBuffer(data)
+    if (typeof image.isEmpty === 'function' && image.isEmpty()) {
+      return null
+    }
+
+    const resizedImage = image.resize({
+      width: maxSize,
+      height: maxSize,
+      quality: 'good'
+    })
+    const resizedBuffer = resizedImage.toPNG()
+    return Buffer.isBuffer(resizedBuffer) && resizedBuffer.length > 0 ? resizedBuffer : null
   }
 }
 

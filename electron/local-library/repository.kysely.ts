@@ -24,7 +24,17 @@ type TrackSelectAlias =
   | 'track.duration'
   | 'track.file_size'
   | 'track.modified_at'
+  | 'track.first_seen_at'
   | 'track.cover_hash'
+  | 'track.codec'
+  | 'track.sample_rate'
+  | 'track.bit_depth'
+  | 'track.bitrate'
+  | 'track.metadata_sources_json'
+  | 'duplicate_member.group_id as duplicate_group_id'
+  | 'duplicate_member.rank as duplicate_rank'
+  | 'duplicate_member.hidden as duplicate_hidden'
+  | 'duplicate_member.quality_score as duplicate_quality_score'
 
 const TRACK_SELECT_COLUMNS: TrackSelectAlias[] = [
   'track.id',
@@ -37,7 +47,17 @@ const TRACK_SELECT_COLUMNS: TrackSelectAlias[] = [
   'track.duration',
   'track.file_size',
   'track.modified_at',
-  'track.cover_hash'
+  'track.first_seen_at',
+  'track.cover_hash',
+  'track.codec',
+  'track.sample_rate',
+  'track.bit_depth',
+  'track.bitrate',
+  'track.metadata_sources_json',
+  'duplicate_member.group_id as duplicate_group_id',
+  'duplicate_member.rank as duplicate_rank',
+  'duplicate_member.hidden as duplicate_hidden',
+  'duplicate_member.quality_score as duplicate_quality_score'
 ]
 
 const TRACK_SEARCH_COLUMNS = ['track.title', 'track.artist', 'track.album', 'track.file_name']
@@ -68,6 +88,9 @@ export function createListTracksPageQueries(
     count: baseQuery.select(({ fn }) => fn.count('track.id').as('count')).compile(),
     rows: baseQuery
       .select(TRACK_SELECT_COLUMNS)
+      .$if(Boolean(query.recentlyAddedOnly), queryBuilder =>
+        queryBuilder.orderBy('track.first_seen_at', 'desc')
+      )
       .orderBy(sql`${sql.ref('track.title')} COLLATE NOCASE`, 'asc')
       .orderBy(sql`${sql.ref('track.file_path')} COLLATE NOCASE`, 'asc')
       .limit(limit)
@@ -83,6 +106,9 @@ export function createListTracksBatchQuery(
 ): LocalLibraryCompiledQuery<TrackRow> {
   return createTracksBaseQuery(query)
     .select(TRACK_SELECT_COLUMNS)
+    .$if(Boolean(query.recentlyAddedOnly), queryBuilder =>
+      queryBuilder.orderBy('track.first_seen_at', 'desc')
+    )
     .orderBy(sql`${sql.ref('track.title')} COLLATE NOCASE`, 'asc')
     .orderBy(sql`${sql.ref('track.file_path')} COLLATE NOCASE`, 'asc')
     .limit(limit)
@@ -126,10 +152,19 @@ export function createListAlbumsPageQueries(
 
 function createTracksBaseQuery(query: LocalLibraryTrackQuery) {
   const searchPattern = query.search?.trim() ? createContainsSearchPattern(query.search) : null
+  const recentlyAddedSince =
+    query.recentlyAddedOnly && typeof query.recentlyAddedSince === 'number'
+      ? query.recentlyAddedSince
+      : null
 
   return localLibraryQueryBuilder
     .selectFrom('local_library_tracks as track')
     .innerJoin('local_library_folders as folder', 'folder.id', 'track.folder_id')
+    .leftJoin('local_library_duplicate_members as duplicate_member', join =>
+      join
+        .onRef('duplicate_member.track_id', '=', 'track.id')
+        .on('duplicate_member.mode', '=', query.duplicateMode ?? 'strict')
+    )
     .where('folder.enabled', '=', 1)
     .$if(Boolean(query.folderId), queryBuilder =>
       queryBuilder.where('track.folder_id', '=', query.folderId ?? '')
@@ -140,6 +175,9 @@ function createTracksBaseQuery(query: LocalLibraryTrackQuery) {
     .$if(Boolean(query.album), queryBuilder =>
       queryBuilder.where('track.album', '=', query.album ?? '')
     )
+    .$if(recentlyAddedSince !== null, queryBuilder =>
+      queryBuilder.where('track.first_seen_at', '>=', recentlyAddedSince ?? 0)
+    )
     .$if(Boolean(searchPattern), queryBuilder =>
       queryBuilder.where(({ or }) =>
         or(
@@ -148,6 +186,14 @@ function createTracksBaseQuery(query: LocalLibraryTrackQuery) {
           )
         )
       )
+    )
+    .$if(Boolean(query.hideDuplicates), queryBuilder =>
+      queryBuilder.where(({ or, eb }) =>
+        or([eb('duplicate_member.hidden', 'is', null), eb('duplicate_member.hidden', '=', 0)])
+      )
+    )
+    .$if(Boolean(query.showDuplicatesOnly), queryBuilder =>
+      queryBuilder.where('duplicate_member.track_id', 'is not', null)
     )
 }
 

@@ -53,7 +53,11 @@ function handleSearchDraftInput(event: Event): void {
         <input
           :value="searchDraft"
           type="search"
-          :placeholder="activeView === 'songs' ? '搜索歌曲、歌手、专辑或文件名' : '搜索名称'"
+          :placeholder="
+            activeView === 'songs' || activeView === 'inbox'
+              ? '搜索歌曲、歌手、专辑或文件名'
+              : '搜索名称'
+          "
           @input="handleSearchDraftInput"
         />
         <button type="submit" class="search-submit">搜索</button>

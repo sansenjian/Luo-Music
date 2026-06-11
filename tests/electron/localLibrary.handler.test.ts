@@ -8,6 +8,9 @@ const addFolderMock = vi.hoisted(() => vi.fn())
 const removeFolderMock = vi.hoisted(() => vi.fn())
 const setFolderEnabledMock = vi.hoisted(() => vi.fn())
 const scanMock = vi.hoisted(() => vi.fn())
+const scanFolderMock = vi.hoisted(() => vi.fn())
+const getFolderPathMock = vi.hoisted(() => vi.fn())
+const getTrackFilePathMock = vi.hoisted(() => vi.fn())
 const getTracksPageMock = vi.hoisted(() => vi.fn())
 const getArtistsPageMock = vi.hoisted(() => vi.fn())
 const getAlbumsPageMock = vi.hoisted(() => vi.fn())
@@ -15,6 +18,8 @@ const getCoverDataUrlMock = vi.hoisted(() => vi.fn())
 const onUpdatedMock = vi.hoisted(() => vi.fn())
 const onStatusChangeMock = vi.hoisted(() => vi.fn())
 const getLocalLibraryServiceMock = vi.hoisted(() => vi.fn())
+const openPathMock = vi.hoisted(() => vi.fn())
+const showItemInFolderMock = vi.hoisted(() => vi.fn())
 
 describe('localLibrary.handler', () => {
   beforeEach(() => {
@@ -31,6 +36,10 @@ describe('localLibrary.handler', () => {
     vi.doMock('electron', () => ({
       dialog: {
         showOpenDialog: showOpenDialogMock
+      },
+      shell: {
+        openPath: openPathMock,
+        showItemInFolder: showItemInFolderMock
       }
     }))
 
@@ -43,6 +52,9 @@ describe('localLibrary.handler', () => {
         removeFolder: removeFolderMock,
         setFolderEnabled: setFolderEnabledMock,
         scan: scanMock,
+        scanFolder: scanFolderMock,
+        getFolderPath: getFolderPathMock,
+        getTrackFilePath: getTrackFilePathMock,
         getTracksPage: getTracksPageMock,
         getArtistsPage: getArtistsPageMock,
         getAlbumsPage: getAlbumsPageMock,
@@ -91,6 +103,10 @@ describe('localLibrary.handler', () => {
     removeFolderMock.mockResolvedValue(libraryState)
     setFolderEnabledMock.mockResolvedValue(libraryState)
     scanMock.mockResolvedValue(libraryState)
+    scanFolderMock.mockResolvedValue(libraryState)
+    getFolderPathMock.mockReturnValue('D:\\Music')
+    getTrackFilePathMock.mockReturnValue('D:\\Music\\Song.mp3')
+    openPathMock.mockResolvedValue('')
     getTracksPageMock.mockResolvedValue({
       items: [],
       nextCursor: null,
@@ -137,7 +153,22 @@ describe('localLibrary.handler', () => {
       )
     ).resolves.toEqual(libraryState)
     await expect(invokeHandlers.get('local-library:scan')?.()).resolves.toEqual(libraryState)
-    await expect(invokeHandlers.get('local-library:get-tracks')?.({ limit: 20 })).resolves.toEqual({
+    await expect(
+      invokeHandlers.get('local-library:scan-folder')?.(`local-folder:${'a'.repeat(40)}`)
+    ).resolves.toEqual(libraryState)
+    await expect(
+      invokeHandlers.get('local-library:show-folder')?.(`local-folder:${'a'.repeat(40)}`)
+    ).resolves.toBe(true)
+    await expect(
+      invokeHandlers.get('local-library:show-track')?.(`local:${'b'.repeat(40)}`)
+    ).resolves.toBe(true)
+    await expect(
+      invokeHandlers.get('local-library:get-tracks')?.({
+        duplicateMode: 'strict',
+        hideDuplicates: true,
+        limit: 20
+      })
+    ).resolves.toEqual({
       items: [],
       nextCursor: null,
       total: 0,
@@ -166,10 +197,21 @@ describe('localLibrary.handler', () => {
     expect(removeFolderMock).toHaveBeenCalledWith(`local-folder:${'a'.repeat(40)}`)
     expect(setFolderEnabledMock).toHaveBeenCalledWith(`local-folder:${'a'.repeat(40)}`, false)
     expect(scanMock).toHaveBeenCalled()
-    expect(getTracksPageMock).toHaveBeenCalledWith({ limit: 20 })
+    expect(scanFolderMock).toHaveBeenCalledWith(`local-folder:${'a'.repeat(40)}`)
+    expect(getFolderPathMock).toHaveBeenCalledWith(`local-folder:${'a'.repeat(40)}`)
+    expect(openPathMock).toHaveBeenCalledWith('D:\\Music')
+    expect(getTrackFilePathMock).toHaveBeenCalledWith(`local:${'b'.repeat(40)}`)
+    expect(showItemInFolderMock).toHaveBeenCalledWith('D:\\Music\\Song.mp3')
+    expect(getTracksPageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        duplicateMode: 'strict',
+        hideDuplicates: true,
+        limit: 20
+      })
+    )
     expect(getArtistsPageMock).toHaveBeenCalledWith(undefined)
     expect(getAlbumsPageMock).toHaveBeenCalledWith(undefined)
-    expect(getCoverDataUrlMock).toHaveBeenCalledWith('a'.repeat(40))
+    expect(getCoverDataUrlMock).toHaveBeenCalledWith('a'.repeat(40), 'large')
     expect(broadcastMock).toHaveBeenCalledWith('local-library:updated', libraryState)
     expect(broadcastMock).toHaveBeenCalledWith('local-library:scan-status', libraryState.status)
   })
@@ -219,12 +261,33 @@ describe('localLibrary.handler', () => {
     await expect(
       invokeHandlers.get('local-library:set-folder-enabled')?.('folder-1', 'yes')
     ).rejects.toThrow('Invalid folderId')
+    await expect(invokeHandlers.get('local-library:scan-folder')?.('folder-1')).rejects.toThrow(
+      'Invalid folderId'
+    )
+    await expect(invokeHandlers.get('local-library:show-folder')?.('folder-1')).rejects.toThrow(
+      'Invalid folderId'
+    )
+    await expect(invokeHandlers.get('local-library:show-track')?.('track-1')).rejects.toThrow(
+      'Invalid trackId'
+    )
     await expect(invokeHandlers.get('local-library:get-cover')?.('cover-1')).rejects.toThrow(
       'Invalid coverHash'
     )
+    await expect(
+      invokeHandlers.get('local-library:get-cover')?.('a'.repeat(40), 'poster')
+    ).rejects.toThrow('Invalid coverSize')
+    await expect(
+      invokeHandlers.get('local-library:get-tracks')?.({ duplicateMode: 'loose' })
+    ).rejects.toThrow('Invalid query.duplicateMode')
+    await expect(
+      invokeHandlers.get('local-library:get-tracks')?.({ hideDuplicates: 'yes' })
+    ).rejects.toThrow('Invalid query.hideDuplicates')
 
     expect(addFolderMock).not.toHaveBeenCalled()
     expect(setFolderEnabledMock).not.toHaveBeenCalled()
+    expect(scanFolderMock).not.toHaveBeenCalled()
+    expect(getFolderPathMock).not.toHaveBeenCalled()
+    expect(getTrackFilePathMock).not.toHaveBeenCalled()
     expect(getCoverDataUrlMock).not.toHaveBeenCalled()
   })
 })

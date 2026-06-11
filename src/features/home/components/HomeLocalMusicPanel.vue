@@ -22,17 +22,21 @@ const {
   currentPageSizeLabel,
   currentSummaryLabel,
   currentViewTitle,
+  diagnosticCards,
   folders,
   handleAddFolder,
   handleLoadMore,
   handleRemoveFolder,
   handleRescan,
+  handleRescanFolder,
   handleSearchSubmit,
+  handleShowFolder,
   handleToggleFolder,
   hasEnabledFolders,
   hasFolders,
   hasMoreForActiveView,
-  hasSongFilters,
+  hasSearchValue,
+  hideDuplicateSongs,
   isScanning,
   addLocalSongToPlaylist,
   lastScanLabel,
@@ -47,6 +51,8 @@ const {
   selectAlbumCard,
   selectArtistCard,
   setActiveView,
+  showDuplicateSongsOnly,
+  showLocalSongInFolder,
   songsEmptyState,
   status,
   supported,
@@ -55,7 +61,9 @@ const {
   unsupportedEmptyState,
   updateSearchDraft,
   viewModes,
-  showCurrentViewLoading
+  showCurrentViewLoading,
+  toggleHideDuplicateSongs,
+  toggleShowDuplicateSongsOnly
 } = useHomeLocalMusicPanel()
 </script>
 
@@ -65,6 +73,7 @@ const {
 
     <div v-else class="local-shell">
       <LocalMusicHero
+        :diagnostic-cards="diagnosticCards"
         :has-enabled-folders="hasEnabledFolders"
         :is-scanning="isScanning"
         :last-scan-label="lastScanLabel"
@@ -82,6 +91,8 @@ const {
           :mutating="mutating"
           :total-folder-label="totalFolderLabel"
           @remove-folder="handleRemoveFolder"
+          @rescan-folder="handleRescanFolder"
+          @show-folder="handleShowFolder"
           @toggle-folder="handleToggleFolder"
         />
 
@@ -90,7 +101,7 @@ const {
             :active-view="activeView"
             :current-summary-label="currentSummaryLabel"
             :current-view-title="currentViewTitle"
-            :has-search-value="searchDraft.length > 0 || hasSongFilters"
+            :has-search-value="hasSearchValue"
             :search-draft="searchDraft"
             :view-modes="viewModes"
             @clear-search="clearSearch"
@@ -102,19 +113,24 @@ const {
           <LocalMusicEmptyState v-if="showCurrentViewLoading" :model="loadingEmptyState" />
 
           <LocalMusicSongsView
-            v-else-if="activeView === 'songs'"
+            v-else-if="activeView === 'songs' || activeView === 'inbox'"
             :active-song-scope-label="activeSongScopeLabel"
             :empty-state="songsEmptyState"
             :footnote-size-label="currentPageSizeLabel"
             :has-more="hasMoreForActiveView"
+            :hide-duplicates="hideDuplicateSongs"
             :local-playlists="localPlaylistOptions"
             :page-loading="pageLoading"
+            :show-duplicates-only="showDuplicateSongsOnly"
             :songs="playbackSongs"
             @add-to-local-playlist="addLocalSongToPlaylist"
             @clear-scope="clearSongScope"
             @create-local-playlist="createLocalPlaylistFromSong"
             @load-more="handleLoadMore"
             @play-song="playLocalSongAt"
+            @show-in-folder="showLocalSongInFolder"
+            @toggle-hide-duplicates="toggleHideDuplicateSongs"
+            @toggle-show-duplicates-only="toggleShowDuplicateSongsOnly"
           />
 
           <LocalMusicSummaryGrid

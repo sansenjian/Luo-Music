@@ -47,6 +47,31 @@ export type AudioOutputBitPerfectDiagnostics = {
   reason: string
 }
 
+export type AudioOutputNativePlaybackSession = {
+  id: string
+  token: string
+  source: string
+  requestedMode: AudioOutputMode
+  activeMode?: AudioOutputMode
+  startedAt: number
+}
+
+export type AudioOutputNativePlaybackDiagnostics = {
+  requestedMode: AudioOutputMode
+  activeMode?: AudioOutputMode
+  sourceFormat?: AudioOutputFormatDiagnostics
+  outputFormat?: AudioOutputFormatDiagnostics
+  sourceSampleRate?: number
+  outputSampleRate?: number
+  sampleRateMismatch?: boolean
+  sourceChannels?: number
+  outputChannels?: number
+  channelMismatch?: boolean
+  bitDepthMismatch?: boolean
+  bitPerfectStatus?: AudioOutputBitPerfectStatus
+  reason?: string
+}
+
 export type AudioOutputVoicemeeterRemoteKind = 'standard' | 'banana' | 'potato' | 'unknown'
 export type AudioOutputVoicemeeterBus = 'A1' | 'A2' | 'A3' | 'B1' | 'B2' | 'B3'
 export type AudioOutputVoicemeeterHardwareOutBus = 'A1' | 'A2' | 'A3'
@@ -123,7 +148,14 @@ export type AudioOutputNativePlaybackDownloadStatus = {
   strategy?: AudioOutputNativePlaybackDownloadStrategy
 }
 
-export type AudioOutputNativePlaybackErrorCode = 'remote-auth-expired' | 'wasapi-exclusive-failed'
+export type AudioOutputNativePlaybackErrorCode =
+  | 'remote-auth-expired'
+  | 'remote-network-failed'
+  | 'remote-cache-failed'
+  | 'remote-unsupported-codec'
+  | 'native-decode-failed'
+  | 'native-playback-failed'
+  | 'wasapi-exclusive-failed'
 
 export type AudioOutputNativePlaybackError = {
   code: AudioOutputNativePlaybackErrorCode
@@ -155,6 +187,8 @@ export type AudioOutputStatus = {
   nativePlaybackToken?: string
   nativePlaybackDownload?: AudioOutputNativePlaybackDownloadStatus
   nativePlaybackError?: AudioOutputNativePlaybackError
+  nativePlaybackSession?: AudioOutputNativePlaybackSession
+  nativePlaybackDiagnostics?: AudioOutputNativePlaybackDiagnostics
   exclusiveProbe?: AudioOutputExclusiveProbeResult
   bitPerfect?: AudioOutputBitPerfectDiagnostics
   voicemeeterRemote?: AudioOutputVoicemeeterRemoteStatus
@@ -478,6 +512,10 @@ function isAudioOutputStatusPayload(value: unknown, requireSettings: boolean): b
       isAudioOutputNativePlaybackDownloadStatus(value.nativePlaybackDownload)) &&
     (value.nativePlaybackError === undefined ||
       isAudioOutputNativePlaybackError(value.nativePlaybackError)) &&
+    (value.nativePlaybackSession === undefined ||
+      isAudioOutputNativePlaybackSession(value.nativePlaybackSession)) &&
+    (value.nativePlaybackDiagnostics === undefined ||
+      isAudioOutputNativePlaybackDiagnostics(value.nativePlaybackDiagnostics)) &&
     (value.exclusiveProbe === undefined ||
       isAudioOutputExclusiveProbeResult(value.exclusiveProbe)) &&
     (value.bitPerfect === undefined || isAudioOutputBitPerfectDiagnostics(value.bitPerfect)) &&
@@ -505,7 +543,15 @@ function isAudioOutputNativePlaybackError(value: unknown): value is AudioOutputN
 function isAudioOutputNativePlaybackErrorCode(
   value: unknown
 ): value is AudioOutputNativePlaybackErrorCode {
-  return value === 'remote-auth-expired' || value === 'wasapi-exclusive-failed'
+  return (
+    value === 'remote-auth-expired' ||
+    value === 'remote-network-failed' ||
+    value === 'remote-cache-failed' ||
+    value === 'remote-unsupported-codec' ||
+    value === 'native-decode-failed' ||
+    value === 'native-playback-failed' ||
+    value === 'wasapi-exclusive-failed'
+  )
 }
 
 function isAudioOutputNativePlaybackDownloadStatus(
@@ -664,6 +710,50 @@ function isAudioOutputNativePlaybackState(value: unknown): value is AudioOutputN
     value === 'stopped' ||
     value === 'ended' ||
     value === 'error'
+  )
+}
+
+function isAudioOutputNativePlaybackSession(
+  value: unknown
+): value is AudioOutputNativePlaybackSession {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    typeof value.token === 'string' &&
+    value.token.length > 0 &&
+    typeof value.source === 'string' &&
+    value.source.length > 0 &&
+    isAudioOutputMode(value.requestedMode) &&
+    (value.activeMode === undefined || isAudioOutputMode(value.activeMode)) &&
+    isNonNegativeFiniteNumber(value.startedAt)
+  )
+}
+
+function isAudioOutputNativePlaybackDiagnostics(
+  value: unknown
+): value is AudioOutputNativePlaybackDiagnostics {
+  return (
+    isRecord(value) &&
+    isAudioOutputMode(value.requestedMode) &&
+    (value.activeMode === undefined || isAudioOutputMode(value.activeMode)) &&
+    (value.sourceFormat === undefined || isAudioOutputFormatDiagnostics(value.sourceFormat)) &&
+    (value.outputFormat === undefined || isAudioOutputFormatDiagnostics(value.outputFormat)) &&
+    (value.sourceSampleRate === undefined ||
+      isNonNegativeFiniteNumber(value.sourceSampleRate)) &&
+    (value.outputSampleRate === undefined ||
+      isNonNegativeFiniteNumber(value.outputSampleRate)) &&
+    (value.sampleRateMismatch === undefined ||
+      typeof value.sampleRateMismatch === 'boolean') &&
+    (value.sourceChannels === undefined || isNonNegativeFiniteNumber(value.sourceChannels)) &&
+    (value.outputChannels === undefined || isNonNegativeFiniteNumber(value.outputChannels)) &&
+    (value.channelMismatch === undefined || typeof value.channelMismatch === 'boolean') &&
+    (value.bitDepthMismatch === undefined || typeof value.bitDepthMismatch === 'boolean') &&
+    (value.bitPerfectStatus === undefined ||
+      value.bitPerfectStatus === 'candidate' ||
+      value.bitPerfectStatus === 'notCandidate' ||
+      value.bitPerfectStatus === 'unverified') &&
+    (value.reason === undefined || typeof value.reason === 'string')
   )
 }
 

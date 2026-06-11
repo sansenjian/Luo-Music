@@ -1,6 +1,7 @@
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
+  LocalLibraryCoverSize,
   LocalLibraryPage,
   LocalLibraryScanStatus,
   LocalLibraryState,
@@ -18,7 +19,7 @@ export interface LocalLibraryPlatformService {
   getLocalLibraryArtists: (
     query?: LocalLibrarySummaryQuery
   ) => Promise<LocalLibraryPage<LocalLibraryArtistSummary>>
-  getLocalLibraryCover: (coverHash: string) => Promise<string | null>
+  getLocalLibraryCover: (coverHash: string, size?: LocalLibraryCoverSize) => Promise<string | null>
   getLocalLibraryState: () => Promise<LocalLibraryState>
   getLocalLibraryTracks: (
     query?: LocalLibraryTrackQuery
@@ -27,7 +28,10 @@ export interface LocalLibraryPlatformService {
   pickLocalLibraryFolder: () => Promise<string | null>
   removeLocalLibraryFolder: (folderId: string) => Promise<LocalLibraryState>
   scanLocalLibrary: () => Promise<LocalLibraryState>
+  scanLocalLibraryFolder: (folderId: string) => Promise<LocalLibraryState>
   setLocalLibraryFolderEnabled: (folderId: string, enabled: boolean) => Promise<LocalLibraryState>
+  showLocalLibraryFolder: (folderId: string) => Promise<boolean>
+  showLocalLibraryTrack: (trackId: string) => Promise<boolean>
 }
 
 export type LocalLibraryPageRunner = <T>(task: () => Promise<T>) => Promise<T>
@@ -61,5 +65,8 @@ export interface UseLocalLibraryCommandsGroup {
   addFolder: () => Promise<LocalLibraryState | null>
   removeFolder: (folderId: string) => Promise<LocalLibraryState>
   rescan: () => Promise<LocalLibraryState>
+  rescanFolder: (folderId: string) => Promise<LocalLibraryState>
   setFolderEnabled: (folderId: string, enabled: boolean) => Promise<LocalLibraryState>
+  showFolder: (folderId: string) => Promise<boolean>
+  showTrack: (trackId: string) => Promise<boolean>
 }

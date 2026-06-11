@@ -17,6 +17,7 @@ import { Platform as PlatformEnum } from './types'
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
+  LocalLibraryCoverSize,
   LocalLibraryPage,
   LocalLibrarySummaryQuery,
   LocalLibraryTrack,
@@ -176,6 +177,20 @@ export abstract class PlatformServiceBase implements IPlatformService {
     return createUnsupportedLocalLibraryState()
   }
 
+  async scanLocalLibraryFolder(
+    _folderId: string
+  ): Promise<ReturnType<typeof createUnsupportedLocalLibraryState>> {
+    return createUnsupportedLocalLibraryState()
+  }
+
+  async showLocalLibraryFolder(_folderId: string): Promise<boolean> {
+    return false
+  }
+
+  async showLocalLibraryTrack(_trackId: string): Promise<boolean> {
+    return false
+  }
+
   async getLocalLibraryTracks(
     _query?: LocalLibraryTrackQuery
   ): Promise<LocalLibraryPage<LocalLibraryTrack>> {
@@ -194,7 +209,10 @@ export abstract class PlatformServiceBase implements IPlatformService {
     return createEmptyLocalLibraryPage()
   }
 
-  async getLocalLibraryCover(_coverHash: string): Promise<string | null> {
+  async getLocalLibraryCover(
+    _coverHash: string,
+    _size?: LocalLibraryCoverSize
+  ): Promise<string | null> {
     return null
   }
 }

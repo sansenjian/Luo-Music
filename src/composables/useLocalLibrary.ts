@@ -33,11 +33,8 @@ export function useLocalLibrary() {
     reloadLoadedPages,
     songsPage
   } = useLocalLibraryQueries(platformService, runPageRequest)
-  const { addFolder, removeFolder, rescan, setFolderEnabled } = useLocalLibraryCommands(
-    platformService,
-    applyState,
-    runMutation
-  )
+  const { addFolder, removeFolder, rescan, rescanFolder, setFolderEnabled, showFolder, showTrack } =
+    useLocalLibraryCommands(platformService, applyState, runMutation)
 
   let resolveReady: () => void
   const ready = new Promise<void>(resolve => {
@@ -106,7 +103,10 @@ export function useLocalLibrary() {
     addFolder,
     removeFolder,
     rescan,
-    setFolderEnabled
+    rescanFolder,
+    setFolderEnabled,
+    showFolder,
+    showTrack
   }
 
   return {
@@ -128,6 +128,9 @@ export function useLocalLibrary() {
     removeFolder,
     setFolderEnabled,
     rescan,
+    rescanFolder,
+    showFolder,
+    showTrack,
     loadTracks,
     loadArtists,
     loadAlbums

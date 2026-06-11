@@ -5,7 +5,11 @@ import { DatabaseSync } from 'node:sqlite'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { LOCAL_LIBRARY_SONG_ID_PREFIX } from '@shared/types/localLibrary'
+import {
+  LOCAL_LIBRARY_INBOX_WINDOW_MS,
+  LOCAL_LIBRARY_SONG_ID_PREFIX,
+  type LocalLibraryTrack
+} from '@shared/types/localLibrary'
 
 import {
   createFolderId,
@@ -19,6 +23,55 @@ async function createTempPath(name: string): Promise<string> {
   const directoryPath = await mkdtemp(join(tmpdir(), `${name}-`))
   createdPaths.push(directoryPath)
   return directoryPath
+}
+
+function createRepositoryTrack(overrides: Partial<LocalLibraryTrack> = {}): LocalLibraryTrack {
+  const id = overrides.id ?? 'local:track'
+  const title = overrides.title ?? 'Track'
+  const artist = overrides.artist ?? 'Artist'
+  const album = overrides.album ?? 'Album'
+  const filePath = overrides.filePath ?? `D:\\Music\\${title}.mp3`
+  const duration = overrides.duration ?? 180000
+
+  const track: LocalLibraryTrack = {
+    id,
+    folderId: overrides.folderId ?? 'folder-1',
+    filePath,
+    fileName: overrides.fileName ?? filePath.split(/[\\/]/).pop() ?? 'Track.mp3',
+    title,
+    artist,
+    album,
+    duration,
+    fileSize: overrides.fileSize ?? 1024,
+    modifiedAt: overrides.modifiedAt ?? 1,
+    firstSeenAt: overrides.firstSeenAt,
+    coverHash: overrides.coverHash ?? null,
+    codec: overrides.codec ?? null,
+    sampleRate: overrides.sampleRate ?? null,
+    bitDepth: overrides.bitDepth ?? null,
+    bitrate: overrides.bitrate ?? null,
+    metadataSources: overrides.metadataSources,
+    song: {
+      id,
+      name: title,
+      artists: [{ id: 'artist-1', name: artist }],
+      album: { id: 'album-1', name: album, picUrl: '' },
+      duration,
+      mvid: 0,
+      platform: 'local',
+      originalId: id,
+      url: `luo-media://media?path=${encodeURIComponent(filePath)}`,
+      extra: {
+        localSource: true
+      }
+    }
+  }
+
+  return {
+    ...track,
+    ...overrides,
+    song: overrides.song ?? track.song
+  }
 }
 
 afterEach(async () => {
@@ -63,6 +116,14 @@ describe('LocalLibraryRepository', () => {
         fileSize: 2048,
         modifiedAt: 456,
         coverHash: 'cover-1',
+        metadataSources: {
+          title: 'embedded',
+          artist: 'filename',
+          album: 'folder',
+          duration: 'embedded',
+          cover: 'embedded',
+          technical: 'embedded'
+        },
         song: {
           id: createTrackId(LOCAL_LIBRARY_SONG_ID_PREFIX, join(folderPath, 'Artist - Song.mp3')),
           name: 'Song',
@@ -106,7 +167,15 @@ describe('LocalLibraryRepository', () => {
       artist: 'Artist',
       album: 'Album',
       coverHash: 'cover-1',
-      duration: 123
+      duration: 123,
+      metadataSources: {
+        title: 'embedded',
+        artist: 'filename',
+        album: 'folder',
+        duration: 'embedded',
+        cover: 'embedded',
+        technical: 'embedded'
+      }
     })
     expect(tracks[0].song.extra).toMatchObject({
       localSource: true,
@@ -435,6 +504,159 @@ describe('LocalLibraryRepository', () => {
       id: 'local:second-id',
       title: 'Second Title',
       filePath
+    })
+
+    repository.close()
+  })
+
+  it('preserves first seen timestamps and filters the recently added inbox', async () => {
+    const tempDir = await createTempPath('local-library-repository-inbox')
+    const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))
+    const folderPath = join(tempDir, 'Music')
+    const folderId = createFolderId(folderPath)
+    const now = Date.now()
+    const oldFirstSeenAt = now - LOCAL_LIBRARY_INBOX_WINDOW_MS - 10_000
+    const newFirstSeenAt = now - 1_000
+    const oldTrackPath = join(folderPath, 'Old Song.mp3')
+    const newTrackPath = join(folderPath, 'New Song.mp3')
+
+    repository.upsertFolder({
+      id: folderId,
+      path: folderPath,
+      name: 'Music',
+      enabled: true,
+      createdAt: 1,
+      lastScannedAt: now
+    })
+    repository.replaceFolderTracks(folderId, [
+      createRepositoryTrack({
+        id: 'local:old',
+        folderId,
+        filePath: oldTrackPath,
+        title: 'Old Song',
+        firstSeenAt: oldFirstSeenAt
+      }),
+      createRepositoryTrack({
+        id: 'local:new',
+        folderId,
+        filePath: newTrackPath,
+        title: 'New Song',
+        firstSeenAt: newFirstSeenAt
+      })
+    ])
+
+    expect(
+      repository
+        .getTracksPage({
+          recentlyAddedOnly: true,
+          recentlyAddedSince: now - LOCAL_LIBRARY_INBOX_WINDOW_MS
+        })
+        .items.map(track => track.id)
+    ).toEqual(['local:new'])
+
+    repository.replaceFolderTracks(folderId, [
+      createRepositoryTrack({
+        id: 'local:old',
+        folderId,
+        filePath: oldTrackPath,
+        title: 'Old Song Updated',
+        modifiedAt: now
+      })
+    ])
+
+    expect(repository.findTrackById('local:old')?.firstSeenAt).toBe(oldFirstSeenAt)
+
+    repository.close()
+  })
+
+  it('summarizes library health, duplicate groups, and pending metadata candidates', async () => {
+    const tempDir = await createTempPath('local-library-repository-health')
+    const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))
+    const folderPath = join(tempDir, 'Music')
+    const folderId = createFolderId(folderPath)
+    const now = Date.now()
+
+    repository.upsertFolder({
+      id: folderId,
+      path: folderPath,
+      name: 'Music',
+      enabled: true,
+      createdAt: 1,
+      lastScannedAt: null
+    })
+    repository.replaceFolderTracks(folderId, [
+      createRepositoryTrack({
+        id: 'local:mp3',
+        folderId,
+        filePath: join(folderPath, 'Artist - Same Song.mp3'),
+        title: 'Same Song',
+        artist: 'Artist',
+        album: 'Fallback Album',
+        duration: 180000,
+        firstSeenAt: now,
+        coverHash: null,
+        metadataSources: {
+          title: 'filename',
+          artist: 'filename',
+          album: 'folder',
+          duration: 'embedded',
+          cover: 'unknown',
+          technical: 'unknown'
+        }
+      }),
+      createRepositoryTrack({
+        id: 'local:flac',
+        folderId,
+        filePath: join(folderPath, 'Artist - Same Song.flac'),
+        title: 'Same Song',
+        artist: 'Artist',
+        album: 'Tagged Album',
+        duration: 180000,
+        firstSeenAt: now,
+        coverHash: 'a'.repeat(40),
+        codec: 'FLAC',
+        sampleRate: 96000,
+        bitDepth: 24,
+        bitrate: 1800000,
+        metadataSources: {
+          title: 'embedded',
+          artist: 'embedded',
+          album: 'embedded',
+          duration: 'embedded',
+          cover: 'embedded',
+          technical: 'embedded'
+        }
+      })
+    ])
+    repository.rebuildDuplicateIndex()
+
+    expect(repository.getHealthSummary()).toMatchObject({
+      trackCount: 2,
+      folderCount: 1,
+      enabledFolderCount: 1,
+      inboxTrackCount: 2,
+      missingCoverCount: 1,
+      missingDurationCount: 0,
+      missingTechnicalMetadataCount: 1,
+      duplicateGroupCount: 1,
+      duplicateTrackCount: 2,
+      hiddenDuplicateTrackCount: 1,
+      staleTrackCount: 2
+    })
+    expect(repository.getMetadataCandidateSummary()).toMatchObject({
+      pendingCount: 5,
+      byField: expect.objectContaining({
+        title: 1,
+        artist: 1,
+        album: 1,
+        cover: 1,
+        technical: 1
+      }),
+      bySource: expect.objectContaining({
+        filename: 2,
+        folder: 1,
+        unknown: 2
+      })
     })
 
     repository.close()

@@ -15,6 +15,7 @@ import type {
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
+  LocalLibraryCoverSize,
   LocalLibraryPage,
   LocalLibraryState,
   LocalLibrarySummaryQuery,
@@ -269,6 +270,36 @@ export class ElectronPlatformService extends PlatformServiceBase {
     return super.scanLocalLibrary()
   }
 
+  override async scanLocalLibraryFolder(folderId: string): Promise<LocalLibraryState> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<LocalLibraryState>(
+        INVOKE_CHANNELS.LOCAL_LIBRARY_SCAN_FOLDER,
+        folderId
+      )
+    }
+
+    return super.scanLocalLibraryFolder(folderId)
+  }
+
+  override async showLocalLibraryFolder(folderId: string): Promise<boolean> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<boolean>(
+        INVOKE_CHANNELS.LOCAL_LIBRARY_SHOW_FOLDER,
+        folderId
+      )
+    }
+
+    return super.showLocalLibraryFolder(folderId)
+  }
+
+  override async showLocalLibraryTrack(trackId: string): Promise<boolean> {
+    if (this.servicesBridge?.invoke) {
+      return this.servicesBridge.invoke<boolean>(INVOKE_CHANNELS.LOCAL_LIBRARY_SHOW_TRACK, trackId)
+    }
+
+    return super.showLocalLibraryTrack(trackId)
+  }
+
   override async getLocalLibraryTracks(
     query?: LocalLibraryTrackQuery
   ): Promise<LocalLibraryPage<LocalLibraryTrack>> {
@@ -279,7 +310,7 @@ export class ElectronPlatformService extends PlatformServiceBase {
       )
     }
 
-    return super.getLocalLibraryTracks()
+    return super.getLocalLibraryTracks(query)
   }
 
   override async getLocalLibraryArtists(
@@ -292,7 +323,7 @@ export class ElectronPlatformService extends PlatformServiceBase {
       )
     }
 
-    return super.getLocalLibraryArtists()
+    return super.getLocalLibraryArtists(query)
   }
 
   override async getLocalLibraryAlbums(
@@ -305,18 +336,22 @@ export class ElectronPlatformService extends PlatformServiceBase {
       )
     }
 
-    return super.getLocalLibraryAlbums()
+    return super.getLocalLibraryAlbums(query)
   }
 
-  override async getLocalLibraryCover(coverHash: string): Promise<string | null> {
+  override async getLocalLibraryCover(
+    coverHash: string,
+    size?: LocalLibraryCoverSize
+  ): Promise<string | null> {
     if (this.servicesBridge?.invoke) {
       return this.servicesBridge.invoke<string | null>(
         INVOKE_CHANNELS.LOCAL_LIBRARY_GET_COVER,
-        coverHash
+        coverHash,
+        size
       )
     }
 
-    return super.getLocalLibraryCover(coverHash)
+    return super.getLocalLibraryCover(coverHash, size)
   }
 
   dispose(): void {

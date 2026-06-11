@@ -3,6 +3,7 @@ import type { IDisposable } from '@/base/common/lifecycle/disposable'
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
+  LocalLibraryCoverSize,
   LocalLibraryPage,
   LocalLibraryState,
   LocalLibrarySummaryQuery,
@@ -55,6 +56,9 @@ export interface ILocalLibraryService {
   removeLocalLibraryFolder(folderId: string): Promise<LocalLibraryState>
   setLocalLibraryFolderEnabled(folderId: string, enabled: boolean): Promise<LocalLibraryState>
   scanLocalLibrary(): Promise<LocalLibraryState>
+  scanLocalLibraryFolder(folderId: string): Promise<LocalLibraryState>
+  showLocalLibraryFolder(folderId: string): Promise<boolean>
+  showLocalLibraryTrack(trackId: string): Promise<boolean>
   getLocalLibraryTracks(
     query?: LocalLibraryTrackQuery
   ): Promise<LocalLibraryPage<LocalLibraryTrack>>
@@ -64,7 +68,7 @@ export interface ILocalLibraryService {
   getLocalLibraryAlbums(
     query?: LocalLibrarySummaryQuery
   ): Promise<LocalLibraryPage<LocalLibraryAlbumSummary>>
-  getLocalLibraryCover(coverHash: string): Promise<string | null>
+  getLocalLibraryCover(coverHash: string, size?: LocalLibraryCoverSize): Promise<string | null>
 }
 
 export interface IIPCService {

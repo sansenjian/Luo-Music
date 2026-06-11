@@ -157,6 +157,9 @@ describe('package scripts for forge workflows', () => {
     expect(packageJson.scripts?.['quality']).toBe(
       'npm run typecheck && npm run lint && npm run format:check'
     )
+    expect(packageJson.scripts?.['typecheck']).toBe(
+      'node ./node_modules/vue-tsc/bin/vue-tsc.js --noEmit -p tsconfig.json && node ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.node.json'
+    )
     expect(packageJson.scripts?.['lint:staged']).toBe('npm run vp -- staged')
     expect(packageJson.scripts).not.toHaveProperty('lint:eslint')
     expect(packageJson.scripts).not.toHaveProperty('lint:eslint:fix')

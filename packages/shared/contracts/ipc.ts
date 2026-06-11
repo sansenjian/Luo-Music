@@ -23,6 +23,7 @@ import type { AppConfig, ConfigChangeEvent } from './config'
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
+  LocalLibraryCoverSize,
   LocalLibraryPage,
   LocalLibraryScanStatus,
   LocalLibraryState,
@@ -332,6 +333,21 @@ type InvokeChannelsDefinition = MergeChannels<
     > &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.LOCAL_LIBRARY_SCAN, [], LocalLibraryState> &
     DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.LOCAL_LIBRARY_SCAN_FOLDER,
+      [folderId: string],
+      LocalLibraryState
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.LOCAL_LIBRARY_SHOW_FOLDER,
+      [folderId: string],
+      boolean
+    > &
+    DefineInvokeChannel<
+      typeof INVOKE_CHANNELS.LOCAL_LIBRARY_SHOW_TRACK,
+      [trackId: string],
+      boolean
+    > &
+    DefineInvokeChannel<
       typeof INVOKE_CHANNELS.LOCAL_LIBRARY_GET_TRACKS,
       [query?: LocalLibraryTrackQuery],
       LocalLibraryPage<LocalLibraryTrack>
@@ -348,7 +364,7 @@ type InvokeChannelsDefinition = MergeChannels<
     > &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.LOCAL_LIBRARY_GET_COVER,
-      [coverHash: string],
+      [coverHash: string, size?: LocalLibraryCoverSize],
       string | null
     > &
     // 插件管理

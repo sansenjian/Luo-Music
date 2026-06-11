@@ -9,6 +9,8 @@ defineProps<{
 
 defineEmits<{
   'remove-folder': [folderId: string]
+  'rescan-folder': [folder: LocalLibraryFolder]
+  'show-folder': [folder: LocalLibraryFolder]
   'toggle-folder': [folder: LocalLibraryFolder]
 }>()
 </script>
@@ -29,6 +31,22 @@ defineEmits<{
           <span>{{ folder.songCount }} 首 · {{ folder.path }}</span>
         </div>
         <div class="folder-chip-actions">
+          <button
+            type="button"
+            class="folder-chip-action"
+            :disabled="mutating"
+            @click="$emit('show-folder', folder)"
+          >
+            打开
+          </button>
+          <button
+            type="button"
+            class="folder-chip-action"
+            :disabled="mutating || !folder.enabled"
+            @click="$emit('rescan-folder', folder)"
+          >
+            同步
+          </button>
           <button
             type="button"
             class="folder-chip-action"

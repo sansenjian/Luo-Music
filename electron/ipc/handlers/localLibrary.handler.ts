@@ -1,16 +1,21 @@
 import path from 'node:path'
-import { dialog } from 'electron'
+import { dialog, shell } from 'electron'
 import type { OpenDialogOptions } from 'electron'
 
 import { getLocalLibraryService } from '../../local-library/service'
 import { INVOKE_CHANNELS, RECEIVE_CHANNELS } from '@shared/protocol/channels'
 import { ipcService } from '../IpcService'
 import type { WindowManager } from '../../WindowManager'
-import type { LocalLibrarySummaryQuery, LocalLibraryTrackQuery } from '@shared/types/localLibrary'
+import type {
+  LocalLibraryCoverSize,
+  LocalLibrarySummaryQuery,
+  LocalLibraryTrackQuery
+} from '@shared/types/localLibrary'
 
 let listenersRegistered = false
 const LOCAL_LIBRARY_FOLDER_ID_PATTERN = /^local-folder:[a-f0-9]{40}$/i
 const LOCAL_LIBRARY_COVER_HASH_PATTERN = /^[a-f0-9]{40}$/i
+const LOCAL_LIBRARY_TRACK_ID_PATTERN = /^local:[a-f0-9]{40}$/i
 
 function parseOptionalString(value: unknown, fieldName: string): string | undefined {
   if (value === undefined || value === null || value === '') {
@@ -40,6 +45,14 @@ function parseBoolean(value: unknown, fieldName: string): boolean {
   return value
 }
 
+function parseOptionalBoolean(value: unknown, fieldName: string): boolean | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+
+  return parseBoolean(value, fieldName)
+}
+
 function parseAbsoluteFolderPath(value: unknown): string {
   const folderPath = parseRequiredString(value, 'folderPath')
   if (!path.isAbsolute(folderPath)) {
@@ -67,6 +80,27 @@ function parseCoverHash(value: unknown): string {
   return coverHash
 }
 
+function parseCoverSize(value: unknown): LocalLibraryCoverSize {
+  if (value === undefined || value === null || value === '') {
+    return 'large'
+  }
+
+  if (value === 'thumb' || value === 'album' || value === 'large') {
+    return value
+  }
+
+  throw new Error('Invalid coverSize')
+}
+
+function parseTrackId(value: unknown): string {
+  const trackId = parseRequiredString(value, 'trackId')
+  if (!LOCAL_LIBRARY_TRACK_ID_PATTERN.test(trackId)) {
+    throw new Error('Invalid trackId')
+  }
+
+  return trackId
+}
+
 function parseOptionalLimit(value: unknown): number | undefined {
   if (value === undefined || value === null) {
     return undefined
@@ -79,6 +113,18 @@ function parseOptionalLimit(value: unknown): number | undefined {
     value < 1
   ) {
     throw new Error('Invalid query.limit')
+  }
+
+  return value
+}
+
+function parseOptionalTimestamp(value: unknown, fieldName: string): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new Error(`Invalid ${fieldName}`)
   }
 
   return value
@@ -112,11 +158,27 @@ function parseTrackQuery(query: unknown): LocalLibraryTrackQuery | undefined {
   }
 
   const candidate = query as Record<string, unknown>
+  const duplicateMode = parseOptionalString(candidate.duplicateMode, 'query.duplicateMode')
+  if (duplicateMode !== undefined && duplicateMode !== 'strict') {
+    throw new Error('Invalid query.duplicateMode')
+  }
+
   return {
     ...parseSummaryQuery(query),
     album: parseOptionalString(candidate.album, 'query.album'),
     artist: parseOptionalString(candidate.artist, 'query.artist'),
-    folderId: parseOptionalString(candidate.folderId, 'query.folderId')
+    duplicateMode,
+    folderId: parseOptionalString(candidate.folderId, 'query.folderId'),
+    hideDuplicates: parseOptionalBoolean(candidate.hideDuplicates, 'query.hideDuplicates'),
+    recentlyAddedOnly: parseOptionalBoolean(candidate.recentlyAddedOnly, 'query.recentlyAddedOnly'),
+    recentlyAddedSince: parseOptionalTimestamp(
+      candidate.recentlyAddedSince,
+      'query.recentlyAddedSince'
+    ),
+    showDuplicatesOnly: parseOptionalBoolean(
+      candidate.showDuplicatesOnly,
+      'query.showDuplicatesOnly'
+    )
   }
 }
 
@@ -191,6 +253,34 @@ export function registerLocalLibraryHandlers(
     return localLibraryService.scan()
   })
 
+  ipcService.registerInvoke(
+    INVOKE_CHANNELS.LOCAL_LIBRARY_SCAN_FOLDER,
+    async (folderId: unknown) => {
+      return localLibraryService.scanFolder(parseFolderId(folderId))
+    }
+  )
+
+  ipcService.registerInvoke(
+    INVOKE_CHANNELS.LOCAL_LIBRARY_SHOW_FOLDER,
+    async (folderId: unknown) => {
+      const folderPath = localLibraryService.getFolderPath(parseFolderId(folderId))
+      const errorMessage = await shell.openPath(folderPath)
+
+      if (errorMessage) {
+        throw new Error(errorMessage)
+      }
+
+      return true
+    }
+  )
+
+  ipcService.registerInvoke(INVOKE_CHANNELS.LOCAL_LIBRARY_SHOW_TRACK, async (trackId: unknown) => {
+    const trackPath = localLibraryService.getTrackFilePath(parseTrackId(trackId))
+    shell.showItemInFolder(trackPath)
+
+    return true
+  })
+
   ipcService.registerInvoke(INVOKE_CHANNELS.LOCAL_LIBRARY_GET_TRACKS, async query => {
     return localLibraryService.getTracksPage(parseTrackQuery(query))
   })
@@ -203,7 +293,13 @@ export function registerLocalLibraryHandlers(
     return localLibraryService.getAlbumsPage(parseSummaryQuery(query))
   })
 
-  ipcService.registerInvoke(INVOKE_CHANNELS.LOCAL_LIBRARY_GET_COVER, async (coverHash: unknown) => {
-    return localLibraryService.getCoverDataUrl(parseCoverHash(coverHash))
-  })
+  ipcService.registerInvoke(
+    INVOKE_CHANNELS.LOCAL_LIBRARY_GET_COVER,
+    async (coverHash: unknown, coverSize: unknown) => {
+      return localLibraryService.getCoverDataUrl(
+        parseCoverHash(coverHash),
+        parseCoverSize(coverSize)
+      )
+    }
+  )
 }

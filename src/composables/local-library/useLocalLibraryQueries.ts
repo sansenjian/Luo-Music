@@ -13,6 +13,8 @@ import { CoverCacheManager } from '@/utils/cache/coverCache'
 
 import type { LocalLibraryPageRunner, LocalLibraryPlatformService } from './types'
 
+const LOCAL_LIBRARY_LIST_COVER_SIZE = 'thumb'
+
 function mergePageItems<T>(
   currentPage: LocalLibraryPage<T>,
   nextPage: LocalLibraryPage<T>,
@@ -59,7 +61,7 @@ export function useLocalLibraryQueries(
           return null
         }
 
-        const cachedUrl = CoverCacheManager.get(coverHash)
+        const cachedUrl = CoverCacheManager.get(coverHash, LOCAL_LIBRARY_LIST_COVER_SIZE)
         if (cachedUrl) {
           return [coverHash, cachedUrl] as const
         }
@@ -70,13 +72,13 @@ export function useLocalLibraryQueries(
         }
 
         const nextRequest = platformService
-          .getLocalLibraryCover(coverHash)
+          .getLocalLibraryCover(coverHash, LOCAL_LIBRARY_LIST_COVER_SIZE)
           .then(nextUrl => {
             if (!nextUrl) {
               return null
             }
 
-            CoverCacheManager.set(coverHash, nextUrl)
+            CoverCacheManager.set(coverHash, nextUrl, LOCAL_LIBRARY_LIST_COVER_SIZE)
             return [coverHash, nextUrl] as const
           })
           .finally(() => {
