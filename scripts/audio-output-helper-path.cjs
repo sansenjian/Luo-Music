@@ -13,7 +13,7 @@ function getDefaultAudioOutputHelperPath(options = {}) {
   return path.join(
     projectRoot,
     'native',
-    'audio-output-helper',
+    'audio-engine',
     'target',
     'debug',
     getAudioOutputHelperFileName(options.platform)

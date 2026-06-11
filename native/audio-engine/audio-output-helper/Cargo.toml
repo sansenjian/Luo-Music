@@ -1,0 +1,25 @@
+[package]
+name = "audio-output-helper"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+audio-engine-core.workspace = true
+audio-engine-decode.workspace = true
+audio-engine-output.workspace = true
+anyhow.workspace = true
+ape-decoder.workspace = true
+cpal.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+symphonia.workspace = true
+symphonia-adapter-libopus = { workspace = true, optional = true }
+
+[features]
+default = []
+opus = ["dep:symphonia-adapter-libopus", "audio-engine-decode/opus"]
+opus-bundled = ["opus", "symphonia-adapter-libopus/bundled"]
+
+[target.'cfg(windows)'.dependencies]
+windows.workspace = true

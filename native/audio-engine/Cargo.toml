@@ -1,24 +1,25 @@
-[package]
-name = "audio-output-helper"
-version = "0.1.0"
-edition = "2021"
-publish = false
-
 [workspace]
 resolver = "2"
 members = [
-  ".",
-  "crates/audio-engine-core",
-  "crates/audio-engine-decode",
-  "crates/audio-engine-output"
+  "audio-engine-core",
+  "audio-engine-decode",
+  "audio-engine-dsp",
+  "audio-engine-output",
+  "audio-engine-resample",
+  "audio-output-helper"
 ]
 
-[dependencies]
-audio-engine-core = { path = "crates/audio-engine-core" }
-audio-engine-decode = { path = "crates/audio-engine-decode" }
-audio-engine-output = { path = "crates/audio-engine-output" }
+[workspace.package]
+edition = "2021"
+publish = false
+version = "0.1.0"
+
+[workspace.dependencies]
 anyhow = "1"
 ape-decoder = "0.3.2"
+audio-engine-core = { path = "audio-engine-core" }
+audio-engine-decode = { path = "audio-engine-decode" }
+audio-engine-output = { path = "audio-engine-output" }
 cpal = "0.16"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -39,14 +40,7 @@ symphonia = { version = "0.6", default-features = false, features = [
   "vorbis",
   "wav"
 ] }
-symphonia-adapter-libopus = { version = "0.3.0", default-features = false, optional = true }
-
-[features]
-default = []
-opus = ["dep:symphonia-adapter-libopus", "audio-engine-decode/opus"]
-opus-bundled = ["opus", "symphonia-adapter-libopus/bundled"]
-
-[target.'cfg(windows)'.dependencies]
+symphonia-adapter-libopus = { version = "0.3.0", default-features = false }
 windows = { version = "0.54", features = [
   "Win32_Devices_Properties",
   "Win32_Foundation",

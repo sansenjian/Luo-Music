@@ -1,0 +1,9 @@
+[package]
+name = "audio-engine-decode"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+opus = []

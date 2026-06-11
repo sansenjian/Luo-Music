@@ -2,25 +2,30 @@
 
 LUO Music uses a Rust helper as the native audio backend for shared output,
 WASAPI exclusive output, Voicemeeter routing, streaming decode, and bit-perfect
-diagnostics. The current helper still lives in
-`native/audio-output-helper`, which is now a Cargo workspace. New native-audio
-work should prefer small engine crates instead of growing `src/main.rs`
-further.
+diagnostics. The native audio engine now lives in `native/audio-engine`, which
+is a Cargo workspace. New native-audio work should prefer small engine crates
+instead of growing the helper `main.rs` further.
 
 ## Current Shape
 
-- `native/audio-output-helper/src/main.rs` remains the helper binary. It owns
-  the JSON-line command loop, runtime state, playback orchestration, concrete
-  file/network decode paths, and concrete CPAL/WASAPI/Voicemeeter output paths.
-- `native/audio-output-helper/crates/audio-engine-core` owns shared protocol
-  types and pure helper logic: protocol version, output modes, bit-perfect
-  diagnostics, format diagnostics, and the streaming PCM buffer.
-- `native/audio-output-helper/crates/audio-engine-decode` owns the decode
-  manifest surfaced to Electron, including supported extensions and optional
-  Opus/WebM feature reporting.
-- `native/audio-output-helper/crates/audio-engine-output` owns the output
-  manifest surfaced to Electron, including platform-gated native output modes
-  and output capability names.
+- `native/audio-engine/audio-output-helper/src/main.rs` remains the helper
+  binary entrypoint. It delegates the JSON-line command loop to
+  `audio-output-helper/src/command_loop.rs`; runtime state, playback
+  orchestration, concrete file/network decode paths, and concrete
+  CPAL/WASAPI/Voicemeeter output paths are still being moved out of the helper
+  crate in later Phase 0 slices.
+- `native/audio-engine/audio-engine-core` owns shared protocol types and pure
+  helper logic: protocol version, output modes, bit-perfect diagnostics, format
+  diagnostics, and the streaming PCM buffer.
+- `native/audio-engine/audio-engine-decode` owns the decode manifest surfaced
+  to Electron, including supported extensions and optional Opus/WebM feature
+  reporting.
+- `native/audio-engine/audio-engine-output` owns the output manifest surfaced
+  to Electron, including platform-gated native output modes and output
+  capability names.
+- `native/audio-engine/audio-engine-resample` and
+  `native/audio-engine/audio-engine-dsp` are Phase 1 placeholder crates. They
+  currently report no capabilities and do not affect playback.
 - `electron/main/audioOutputService.ts` starts the helper, sends JSON-line
   commands, tracks playback state, and now hydrates helper-supported formats and
   modes as soon as the helper reports ready.

@@ -40,7 +40,7 @@ Remove-Item Env:\LUO_AUDIO_OUTPUT_TEST_BUFFER_FRAMES
 底层等价命令：
 
 ```bash
-cargo test --manifest-path native/audio-output-helper/Cargo.toml exclusive_lock_probe_blocks_second_wasapi_client -- --ignored --nocapture
+cargo test --manifest-path native/audio-engine/Cargo.toml -p audio-output-helper exclusive_lock_probe_blocks_second_wasapi_client -- --ignored --nocapture
 ```
 
 ## 前置条件

@@ -193,7 +193,7 @@ describe('AudioOutputService', () => {
     })
 
     expect(spawnHelper).toHaveBeenCalledWith(
-      'D:\\app\\native\\audio-output-helper\\target\\debug\\audio-output-helper.exe',
+      'D:\\app\\native\\audio-engine\\target\\debug\\audio-output-helper.exe',
       [],
       expect.objectContaining({
         stdio: 'pipe',
@@ -288,7 +288,7 @@ describe('AudioOutputService', () => {
     })
 
     expect(spawnHelper).toHaveBeenCalledWith(
-      'D:\\app\\native\\audio-output-helper\\target\\debug\\audio-output-helper',
+      'D:\\app\\native\\audio-engine\\target\\debug\\audio-output-helper',
       [],
       expect.objectContaining({
         stdio: 'pipe',

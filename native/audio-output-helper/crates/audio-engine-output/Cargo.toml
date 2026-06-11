@@ -1,8 +1,0 @@
-[package]
-name = "audio-engine-output"
-version = "0.1.0"
-edition = "2021"
-publish = false
-
-[dependencies]
-audio-engine-core = { path = "../audio-engine-core" }

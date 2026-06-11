@@ -11,7 +11,13 @@ function main(options = {}) {
   }
 
   const cargoCommand = resolveCargoCommand(context)
-  const cargoArgs = ['build', '--manifest-path', context.helperManifestPath]
+  const cargoArgs = [
+    'build',
+    '--manifest-path',
+    context.helperManifestPath,
+    '-p',
+    'audio-output-helper'
+  ]
   const cargoFeatures = resolveCargoFeatures(context)
   if (context.isRelease) {
     cargoArgs.push('--release')
@@ -78,11 +84,11 @@ function createBuildContext(options = {}) {
   const isRelease = args.has('--release')
   const targetProfile = isRelease ? 'release' : 'debug'
   const helperFileName = getAudioOutputHelperFileName(platform)
-  const helperManifestPath = path.join(projectRoot, 'native', 'audio-output-helper', 'Cargo.toml')
+  const helperManifestPath = path.join(projectRoot, 'native', 'audio-engine', 'Cargo.toml')
   const helperExePath = path.join(
     projectRoot,
     'native',
-    'audio-output-helper',
+    'audio-engine',
     'target',
     targetProfile,
     helperFileName

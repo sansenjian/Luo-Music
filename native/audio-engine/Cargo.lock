@@ -52,11 +52,19 @@ name = "audio-engine-decode"
 version = "0.1.0"
 
 [[package]]
+name = "audio-engine-dsp"
+version = "0.1.0"
+
+[[package]]
 name = "audio-engine-output"
 version = "0.1.0"
 dependencies = [
  "audio-engine-core",
 ]
+
+[[package]]
+name = "audio-engine-resample"
+version = "0.1.0"
 
 [[package]]
 name = "audio-output-helper"

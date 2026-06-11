@@ -72,13 +72,13 @@ describe('build audio output helper script', () => {
           spawnSync
         })
 
-        const manifestPath = resolve(tempRoot, 'native/audio-output-helper/Cargo.toml')
+        const manifestPath = resolve(tempRoot, 'native/audio-engine/Cargo.toml')
         const packagedHelperPath = resolve(tempRoot, 'build/native/audio-output-helper')
 
         expect(exitCode).toBe(0)
         expect(spawnSync).toHaveBeenCalledWith(
           'cargo',
-          ['build', '--manifest-path', manifestPath, '--release'],
+          ['build', '--manifest-path', manifestPath, '-p', 'audio-output-helper', '--release'],
           {
             cwd: tempRoot,
             stdio: 'inherit',
@@ -99,14 +99,19 @@ describe('build audio output helper script', () => {
 function createAudioOutputHelperProject(platform: NodeJS.Platform): string {
   const tempRoot = resolve(tmpdir(), `luo-music-audio-helper-${platform}-${process.pid}`)
   rmSync(tempRoot, { recursive: true, force: true })
-  mkdirSync(resolve(tempRoot, 'native/audio-output-helper/target/release'), { recursive: true })
+  mkdirSync(resolve(tempRoot, 'native/audio-engine/target/release'), { recursive: true })
   writeFileSync(
-    resolve(tempRoot, 'native/audio-output-helper/Cargo.toml'),
+    resolve(tempRoot, 'native/audio-engine/Cargo.toml'),
+    '[workspace]\nresolver = "2"\nmembers = ["audio-output-helper"]\n'
+  )
+  mkdirSync(resolve(tempRoot, 'native/audio-engine/audio-output-helper/src'), { recursive: true })
+  writeFileSync(
+    resolve(tempRoot, 'native/audio-engine/audio-output-helper/Cargo.toml'),
     '[package]\nname = "audio-output-helper"\nversion = "0.1.0"\nedition = "2021"\n'
   )
   writeFileSync(resolve(tempRoot, 'package.json'), JSON.stringify({ version: '0.16.0' }))
   writeFileSync(
-    resolve(tempRoot, 'native/audio-output-helper/target/release/audio-output-helper'),
+    resolve(tempRoot, 'native/audio-engine/target/release/audio-output-helper'),
     'helper'
   )
   return tempRoot

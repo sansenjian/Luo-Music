@@ -1,0 +1,5 @@
+[package]
+name = "audio-engine-dsp"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true

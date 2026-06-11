@@ -56,7 +56,7 @@ describe('audio output helper path resolver', () => {
     })
 
     expect(helperPath).toBe(
-      resolve(projectRoot, 'native/audio-output-helper/target/debug/audio-output-helper.exe')
+      resolve(projectRoot, 'native/audio-engine/target/debug/audio-output-helper.exe')
     )
     expect(
       resolveAudioOutputHelperPath({
