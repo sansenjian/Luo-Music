@@ -41,11 +41,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "audio-engine-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "audio-engine-decode"
+version = "0.1.0"
+
+[[package]]
+name = "audio-engine-output"
+version = "0.1.0"
+dependencies = [
+ "audio-engine-core",
+]
+
+[[package]]
 name = "audio-output-helper"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "ape-decoder",
+ "audio-engine-core",
+ "audio-engine-decode",
+ "audio-engine-output",
  "cpal",
  "serde",
  "serde_json",

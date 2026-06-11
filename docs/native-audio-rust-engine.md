@@ -3,16 +3,24 @@
 LUO Music uses a Rust helper as the native audio backend for shared output,
 WASAPI exclusive output, Voicemeeter routing, streaming decode, and bit-perfect
 diagnostics. The current helper still lives in
-`native/audio-output-helper`, but new native-audio work should move toward
-small, explicit modules instead of growing `src/main.rs` further.
+`native/audio-output-helper`, which is now a Cargo workspace. New native-audio
+work should prefer small engine crates instead of growing `src/main.rs`
+further.
 
 ## Current Shape
 
-- `native/audio-output-helper/src/main.rs` owns the command loop, runtime state,
-  decoding, streaming PCM buffer, output backends, and tests.
-- `native/audio-output-helper/src/capabilities.rs` owns the helper protocol
-  version, supported source extensions, and helper capability names surfaced in
-  the `ready` event.
+- `native/audio-output-helper/src/main.rs` remains the helper binary. It owns
+  the JSON-line command loop, runtime state, playback orchestration, concrete
+  file/network decode paths, and concrete CPAL/WASAPI/Voicemeeter output paths.
+- `native/audio-output-helper/crates/audio-engine-core` owns shared protocol
+  types and pure helper logic: protocol version, output modes, bit-perfect
+  diagnostics, format diagnostics, and the streaming PCM buffer.
+- `native/audio-output-helper/crates/audio-engine-decode` owns the decode
+  manifest surfaced to Electron, including supported extensions and optional
+  Opus/WebM feature reporting.
+- `native/audio-output-helper/crates/audio-engine-output` owns the output
+  manifest surfaced to Electron, including platform-gated native output modes
+  and output capability names.
 - `electron/main/audioOutputService.ts` starts the helper, sends JSON-line
   commands, tracks playback state, and now hydrates helper-supported formats and
   modes as soon as the helper reports ready.

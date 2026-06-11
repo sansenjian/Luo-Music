@@ -4,7 +4,19 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[workspace]
+resolver = "2"
+members = [
+  ".",
+  "crates/audio-engine-core",
+  "crates/audio-engine-decode",
+  "crates/audio-engine-output"
+]
+
 [dependencies]
+audio-engine-core = { path = "crates/audio-engine-core" }
+audio-engine-decode = { path = "crates/audio-engine-decode" }
+audio-engine-output = { path = "crates/audio-engine-output" }
 anyhow = "1"
 ape-decoder = "0.3.2"
 cpal = "0.16"
@@ -31,7 +43,7 @@ symphonia-adapter-libopus = { version = "0.3.0", default-features = false, optio
 
 [features]
 default = []
-opus = ["dep:symphonia-adapter-libopus"]
+opus = ["dep:symphonia-adapter-libopus", "audio-engine-decode/opus"]
 opus-bundled = ["opus", "symphonia-adapter-libopus/bundled"]
 
 [target.'cfg(windows)'.dependencies]
