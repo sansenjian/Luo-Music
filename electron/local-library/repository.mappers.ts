@@ -2,7 +2,8 @@ import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
   LocalLibraryFolder,
-  LocalLibraryTrack
+  LocalLibraryTrack,
+  LocalLibraryTrackMetadataSources
 } from '@shared/types/localLibrary'
 
 import { createTrackSong } from './service.helpers'
@@ -39,7 +40,17 @@ export function mapTrackRow(row: TrackRow): LocalLibraryTrack {
     duration: row.duration,
     fileSize: row.file_size,
     modifiedAt: row.modified_at,
+    firstSeenAt: row.first_seen_at ?? row.modified_at,
     coverHash: row.cover_hash ?? null,
+    codec: row.codec ?? null,
+    sampleRate: row.sample_rate ?? null,
+    bitDepth: row.bit_depth ?? null,
+    bitrate: row.bitrate ?? null,
+    duplicateGroupId: row.duplicate_group_id ?? null,
+    duplicateRank: row.duplicate_rank ?? null,
+    duplicateHidden: row.duplicate_hidden === undefined ? false : row.duplicate_hidden === 1,
+    duplicateQualityScore: row.duplicate_quality_score ?? null,
+    metadataSources: parseMetadataSources(row.metadata_sources_json),
     song: createTrackSong(
       row.id,
       row.title,
@@ -50,6 +61,43 @@ export function mapTrackRow(row: TrackRow): LocalLibraryTrack {
       row.cover_hash ?? null
     )
   }
+}
+
+function parseMetadataSources(value: string | null | undefined): LocalLibraryTrackMetadataSources {
+  const fallbackSources: LocalLibraryTrackMetadataSources = {
+    title: 'unknown',
+    artist: 'unknown',
+    album: 'unknown',
+    duration: 'unknown',
+    cover: 'unknown',
+    technical: 'unknown'
+  }
+
+  if (!value) {
+    return fallbackSources
+  }
+
+  try {
+    const parsed = JSON.parse(value) as Partial<LocalLibraryTrackMetadataSources>
+    return {
+      title: normalizeMetadataSource(parsed.title),
+      artist: normalizeMetadataSource(parsed.artist),
+      album: normalizeMetadataSource(parsed.album),
+      duration: normalizeMetadataSource(parsed.duration),
+      cover: normalizeMetadataSource(parsed.cover),
+      technical: normalizeMetadataSource(parsed.technical)
+    }
+  } catch {
+    return fallbackSources
+  }
+}
+
+function normalizeMetadataSource(
+  value: unknown
+): LocalLibraryTrackMetadataSources[keyof LocalLibraryTrackMetadataSources] {
+  return value === 'embedded' || value === 'filename' || value === 'folder' || value === 'unknown'
+    ? value
+    : 'unknown'
 }
 
 export function toArtistSummary(row: ArtistRow): LocalLibraryArtistSummary {

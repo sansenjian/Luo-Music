@@ -399,7 +399,7 @@ describe('useMediaSession', () => {
 
     await flushPromises()
 
-    expect(getLocalLibraryCover).toHaveBeenCalledWith('cover-hash')
+    expect(getLocalLibraryCover).toHaveBeenCalledWith('cover-hash', 'album')
     expect(mediaSession.metadata).toMatchObject({
       artwork: [
         expect.objectContaining({
@@ -407,7 +407,7 @@ describe('useMediaSession', () => {
         })
       ]
     })
-    expect(CoverCacheManager.get('cover-hash')).toBe('data:image/jpeg;base64,ZmFrZQ==')
+    expect(CoverCacheManager.get('cover-hash', 'album')).toBe('data:image/jpeg;base64,ZmFrZQ==')
 
     wrapper.unmount()
   })

@@ -79,7 +79,13 @@ const electronBuilderExtraResources = [
   {
     from: runtimeExtraResources.smtcHelper,
     to: "native",
-    filter: ["smtc-helper.exe", "audio-output-helper.exe", "audio-output-helper"],
+    filter: [
+      "smtc-helper.exe",
+      "audio-output-helper.exe",
+      "audio-output-helper",
+      "local-library-scanner.exe",
+      "local-library-scanner",
+    ],
   },
   {
     from: runtimeExtraResources.windowsAppIcon,

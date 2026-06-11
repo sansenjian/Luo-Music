@@ -1,7 +1,9 @@
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
+  LocalLibraryCoverSize,
   LocalLibraryPage,
+  LocalLibraryScanJobKind,
   LocalLibraryScanStatus,
   LocalLibraryState,
   LocalLibrarySummaryQuery,
@@ -125,6 +127,9 @@ export class LocalLibraryService {
       return {
         supported: true,
         folders: [],
+        health: this.repository.getHealthSummary(),
+        latestScanJob: this.repository.getLatestScanJob(),
+        metadataCandidateSummary: this.repository.getMetadataCandidateSummary(),
         tracks: [],
         status: this.currentStatus
       }
@@ -133,6 +138,9 @@ export class LocalLibraryService {
     return {
       supported: true,
       folders: this.repository.listFolders(),
+      health: this.repository.getHealthSummary(),
+      latestScanJob: this.repository.getLatestScanJob(),
+      metadataCandidateSummary: this.repository.getMetadataCandidateSummary(),
       tracks: [],
       status: this.currentStatus
     }
@@ -158,8 +166,11 @@ export class LocalLibraryService {
     return this.repository.getAlbumsPage(query)
   }
 
-  async getCoverDataUrl(coverHash: string): Promise<string | null> {
-    return this.coverManager.getCoverDataUrl(coverHash)
+  async getCoverDataUrl(
+    coverHash: string,
+    size: LocalLibraryCoverSize = 'large'
+  ): Promise<string | null> {
+    return this.coverManager.getCoverDataUrl(coverHash, size)
   }
 
   async addFolder(folderPath: string): Promise<LocalLibraryState> {
@@ -211,7 +222,7 @@ export class LocalLibraryService {
       this.emitUpdated()
 
       return this.runExclusiveScan(() =>
-        this.performScanForFolders([nextFolder], '正在扫描本地音乐...')
+        this.performScanForFolders([nextFolder], '正在扫描本地音乐...', 'folder')
       )
     })
   }
@@ -224,6 +235,7 @@ export class LocalLibraryService {
 
       await this.watchCoordinator.stopWatchingFolder(folderId)
       this.repository.removeFolder(folderId)
+      this.repository.rebuildDuplicateIndex()
       this.setStatus(this.createIdleStatus())
       this.emitUpdated()
       void this.cleanupUnusedCovers()
@@ -251,6 +263,7 @@ export class LocalLibraryService {
 
       if (!enabled) {
         await this.watchCoordinator.stopWatchingFolder(folderId)
+        this.repository.rebuildDuplicateIndex()
         this.setStatus(
           this.createIdleStatus({
             message: '已停用本地音乐文件夹'
@@ -271,7 +284,28 @@ export class LocalLibraryService {
       this.watchCoordinator.startWatchingFolder(enabledFolder)
 
       return this.runExclusiveScan(() =>
-        this.performScanForFolders([enabledFolder], `正在启用 ${enabledFolder.name}`)
+        this.performScanForFolders([enabledFolder], `正在启用 ${enabledFolder.name}`, 'folder')
+      )
+    })
+  }
+
+  async scanFolder(folderId: string): Promise<LocalLibraryState> {
+    return this.runExclusiveMutation(async () => {
+      if (this.scanPromise) {
+        await this.scanPromise
+      }
+
+      const folder = this.repository.findFolderById(folderId)
+      if (!folder) {
+        throw new Error('未找到对应的本地音乐文件夹')
+      }
+
+      if (!folder.enabled) {
+        throw new Error('请先启用该本地音乐文件夹')
+      }
+
+      return this.runExclusiveScan(() =>
+        this.performScanForFolders([folder], `正在同步 ${folder.name}`, 'folder')
       )
     })
   }
@@ -282,6 +316,24 @@ export class LocalLibraryService {
     }
 
     return this.runExclusiveScan(() => this.performScan())
+  }
+
+  getFolderPath(folderId: string): string {
+    const folder = this.repository.findFolderById(folderId)
+    if (!folder) {
+      throw new Error('未找到对应的本地音乐文件夹')
+    }
+
+    return folder.path
+  }
+
+  getTrackFilePath(trackId: string): string {
+    const track = this.repository.findTrackById(trackId)
+    if (!track) {
+      throw new Error('未找到对应的本地音乐文件')
+    }
+
+    return track.filePath
   }
 
   async dispose(): Promise<void> {
@@ -351,7 +403,8 @@ export class LocalLibraryService {
 
     this.scanPromise = this.performScanForFolders(
       [folder],
-      '检测到本地文件夹结构变动，正在重新扫描...'
+      '检测到本地文件夹结构变动，正在重新扫描...',
+      'folder'
     ).finally(() => {
       this.scanPromise = null
     })
@@ -398,21 +451,32 @@ export class LocalLibraryService {
       return this.getState()
     }
 
-    return this.performScanForFolders(enabledFolders, '正在扫描本地音乐...')
+    return this.performScanForFolders(enabledFolders, '正在扫描本地音乐...', 'full')
   }
 
   private async performScanForFolders(
     folders: PersistedFolder[],
-    initialMessage: string
+    initialMessage: string,
+    scanJobKind: LocalLibraryScanJobKind
   ): Promise<LocalLibraryState> {
     if (this.disposed) {
       return this.getState()
     }
 
-    const startedAt = Date.now()
+    const scanJob = this.repository.createScanJob({
+      kind: scanJobKind,
+      message: initialMessage,
+      folderCount: folders.length
+    })
+    this.repository.updateScanJob(scanJob.id, {
+      phase: 'scanning'
+    })
+    const startedAt = scanJob.startedAt
     this.setStatus(
       createLocalLibraryScanStatus({
         phase: 'scanning',
+        scanJobId: scanJob.id,
+        scanJobKind: scanJob.kind,
         startedAt,
         message: initialMessage
       })
@@ -433,6 +497,13 @@ export class LocalLibraryService {
           currentFolder: folder.path,
           message: `正在扫描 ${folder.name}`
         })
+        this.repository.updateScanJob(scanJob.id, {
+          discoveredTracks: this.repository.getTrackCount(),
+          message: `正在扫描 ${folder.name}`,
+          phase: 'scanning',
+          scannedFiles,
+          scannedFolders
+        })
 
         const folderTracks = await this.scanEngine.scanFolder(
           folder,
@@ -446,6 +517,13 @@ export class LocalLibraryService {
               scannedFiles,
               currentFolder: folder.path,
               message: `正在分析 ${folder.name} 中的音频文件`
+            })
+            this.repository.updateScanJob(scanJob.id, {
+              discoveredTracks: this.repository.getTrackCount(),
+              message: `正在分析 ${folder.name} 中的音频文件`,
+              phase: 'scanning',
+              scannedFiles,
+              scannedFolders
             })
           },
           this.currentStatus.scannedFiles,
@@ -461,6 +539,11 @@ export class LocalLibraryService {
         this.patchStatus({
           discoveredTracks: this.repository.getTrackCount()
         })
+        this.repository.updateScanJob(scanJob.id, {
+          discoveredTracks: this.repository.getTrackCount(),
+          scannedFiles,
+          scannedFolders
+        })
       }
 
       await this.cleanupUnusedCovers()
@@ -474,10 +557,22 @@ export class LocalLibraryService {
         return this.getState()
       }
 
+      this.repository.rebuildDuplicateIndex()
+      const finishedAt = Date.now()
+      this.repository.updateScanJob(scanJob.id, {
+        discoveredTracks: this.repository.getTrackCount(),
+        finishedAt,
+        message: '本地音乐扫描完成',
+        phase: 'completed',
+        scannedFiles,
+        scannedFolders
+      })
       this.setStatus(
         this.createIdleStatus({
           startedAt,
-          finishedAt: Date.now(),
+          finishedAt,
+          scanJobId: scanJob.id,
+          scanJobKind: scanJob.kind,
           scannedFolders,
           scannedFiles,
           discoveredTracks: this.repository.getTrackCount()
@@ -487,6 +582,16 @@ export class LocalLibraryService {
       return this.getState()
     } catch (error) {
       const message = error instanceof Error ? error.message : '扫描本地音乐失败'
+      const finishedAt = Date.now()
+      this.repository.updateScanJob(scanJob.id, {
+        discoveredTracks: this.repository.getTrackCount(),
+        errorMessage: message,
+        finishedAt,
+        message,
+        phase: 'failed',
+        scannedFiles,
+        scannedFolders
+      })
       this.setStatus(
         createLocalLibraryErrorStatus(
           this.currentStatus,
@@ -494,6 +599,9 @@ export class LocalLibraryService {
           message,
           {
             startedAt,
+            finishedAt,
+            scanJobId: scanJob.id,
+            scanJobKind: scanJob.kind,
             scannedFolders,
             scannedFiles
           }
@@ -511,10 +619,21 @@ export class LocalLibraryService {
       return this.getState()
     }
 
-    const startedAt = Date.now()
+    const scanJob = this.repository.createScanJob({
+      kind: 'incremental',
+      message: '检测到本地文件变动，正在同步...',
+      folderCount: 1
+    })
+    this.repository.updateScanJob(scanJob.id, {
+      phase: 'scanning',
+      scannedFolders: 1
+    })
+    const startedAt = scanJob.startedAt
     this.setStatus(
       createLocalLibraryScanStatus({
         phase: 'scanning',
+        scanJobId: scanJob.id,
+        scanJobKind: scanJob.kind,
         startedAt,
         scannedFolders: 1,
         currentFolder: folder.path,
@@ -539,6 +658,13 @@ export class LocalLibraryService {
           currentFolder: folder.path,
           message: `正在同步 ${folder.name} 中的变动文件`
         })
+        this.repository.updateScanJob(scanJob.id, {
+          discoveredTracks: this.repository.getTrackCount(),
+          message: `正在同步 ${folder.name} 中的变动文件`,
+          phase: 'scanning',
+          scannedFiles,
+          scannedFolders: 1
+        })
         const track = await this.scanEngine.scanSingleFile(folder, filePath)
         if (track) {
           upsertedTracks.push(track)
@@ -557,10 +683,22 @@ export class LocalLibraryService {
         return this.getState()
       }
 
+      this.repository.rebuildDuplicateIndex()
+      const finishedAt = Date.now()
+      this.repository.updateScanJob(scanJob.id, {
+        discoveredTracks: this.repository.getTrackCount(),
+        finishedAt,
+        message: '已同步本地音乐变动',
+        phase: 'completed',
+        scannedFiles,
+        scannedFolders: 1
+      })
       this.setStatus(
         this.createIdleStatus({
           startedAt,
-          finishedAt: Date.now(),
+          finishedAt,
+          scanJobId: scanJob.id,
+          scanJobKind: scanJob.kind,
           scannedFolders: 1,
           scannedFiles,
           discoveredTracks: this.repository.getTrackCount(),
@@ -571,6 +709,16 @@ export class LocalLibraryService {
       return this.getState()
     } catch (error) {
       const message = error instanceof Error ? error.message : '同步本地音乐失败'
+      const finishedAt = Date.now()
+      this.repository.updateScanJob(scanJob.id, {
+        discoveredTracks: this.repository.getTrackCount(),
+        errorMessage: message,
+        finishedAt,
+        message,
+        phase: 'failed',
+        scannedFiles,
+        scannedFolders: 1
+      })
       this.setStatus(
         createLocalLibraryErrorStatus(
           this.currentStatus,
@@ -578,6 +726,9 @@ export class LocalLibraryService {
           message,
           {
             startedAt,
+            finishedAt,
+            scanJobId: scanJob.id,
+            scanJobKind: scanJob.kind,
             scannedFolders: 1,
             scannedFiles,
             currentFolder: folder.path
@@ -692,6 +843,7 @@ export class LocalLibraryService {
     }
 
     this.repository.upsertTracks([repairedTrack])
+    this.repository.rebuildDuplicateIndex()
     this.emitUpdated()
   }
 

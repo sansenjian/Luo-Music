@@ -303,6 +303,62 @@ describe('audio output protocol', () => {
     ).toBe(false)
   })
 
+  it('identifies native playback sessions and output diagnostics on status payloads', () => {
+    expect(
+      isAudioOutputStatus({
+        ...createDefaultAudioOutputStatus(),
+        enabled: true,
+        backend: 'native',
+        backendAvailable: true,
+        requestedMode: 'exclusive',
+        activeMode: 'exclusive',
+        devices: [],
+        nativePlaybackRunning: true,
+        nativePlaybackSource: 'D:\\Music\\track.wav',
+        nativePlaybackState: 'playing',
+        nativePlaybackToken: 'native-playback-1',
+        nativePlaybackSession: {
+          id: 'native-session-1',
+          token: 'native-playback-1',
+          source: 'D:\\Music\\track.wav',
+          requestedMode: 'exclusive',
+          activeMode: 'exclusive',
+          startedAt: 100
+        },
+        nativePlaybackDiagnostics: {
+          requestedMode: 'exclusive',
+          activeMode: 'exclusive',
+          sourceSampleRate: 44100,
+          outputSampleRate: 48000,
+          sampleRateMismatch: true,
+          sourceChannels: 2,
+          outputChannels: 2,
+          channelMismatch: false,
+          bitPerfectStatus: 'notCandidate',
+          reason: 'Source and output sample rates differ.'
+        }
+      })
+    ).toBe(true)
+
+    expect(
+      isAudioOutputStatus({
+        ...createDefaultAudioOutputStatus(),
+        enabled: true,
+        backend: 'native',
+        backendAvailable: true,
+        requestedMode: 'exclusive',
+        devices: [],
+        nativePlaybackSession: {
+          id: '',
+          token: 'native-playback-1',
+          source: 'D:\\Music\\track.wav',
+          requestedMode: 'exclusive',
+          startedAt: -1
+        }
+      })
+    ).toBe(false)
+  })
+
   it('identifies helper-supported native extensions on status payloads', () => {
     expect(
       isAudioOutputStatus({
@@ -558,6 +614,22 @@ describe('audio output protocol', () => {
         nativePlaybackError: {
           code: 'wasapi-exclusive-failed',
           nativeErrorCode: 'AUDCLNT_E_EXCLUSIVE_MODE_NOT_ALLOWED',
+          retryable: false
+        }
+      })
+    ).toBe(true)
+
+    expect(
+      isAudioOutputStatus({
+        ...createDefaultAudioOutputStatus(),
+        enabled: true,
+        backend: 'native',
+        backendAvailable: true,
+        requestedMode: 'shared',
+        devices: [],
+        nativePlaybackError: {
+          code: 'remote-cache-failed',
+          nativeMessage: 'remote media response content type is not audio',
           retryable: false
         }
       })

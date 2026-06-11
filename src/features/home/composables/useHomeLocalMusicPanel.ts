@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue'
 
+import { useAudioOutputPlugin } from '@/composables/useAudioOutputPlugin'
 import { useLocalLibrary } from '@/composables/useLocalLibrary'
 import type { Song } from '@/platform/music/interface'
 import {
@@ -13,10 +14,23 @@ import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
   LocalLibraryFolder,
+  LocalLibraryHealthSummary,
+  LocalLibraryMetadataCandidateSummary,
   LocalLibraryTrackQuery,
   LocalLibraryViewMode
 } from '@shared/types/localLibrary'
-import { isLocalLibrarySong } from '@shared/types/localLibrary'
+import {
+  LOCAL_LIBRARY_INBOX_WINDOW_MS,
+  createEmptyLocalLibraryHealthSummary,
+  createEmptyLocalLibraryMetadataCandidateSummary,
+  isLocalLibrarySong
+} from '@shared/types/localLibrary'
+import type {
+  AudioOutputBitPerfectStatus,
+  AudioOutputMode,
+  AudioOutputNativePlaybackState,
+  AudioOutputStatus
+} from '@shared/audioOutput/protocol'
 import {
   formatLocalLibraryBytes,
   formatLocalLibraryDateTime,
@@ -24,6 +38,7 @@ import {
 } from '@/utils/localLibrary/formatters'
 
 import type {
+  LocalMusicDiagnosticCard,
   LocalMusicEmptyStateModel,
   LocalMusicPlaylistOption,
   LocalMusicSummaryCard,
@@ -33,6 +48,7 @@ import { playMediaSongSelection, resolvePanelErrorMessage } from './mediaPanelSh
 
 const LOCAL_LIBRARY_VIEW_MODES: LocalMusicViewModeOption[] = [
   { id: 'songs', label: '歌曲' },
+  { id: 'inbox', label: '新入库' },
   { id: 'artists', label: '艺人' },
   { id: 'albums', label: '专辑' }
 ]
@@ -67,6 +83,12 @@ const SONGS_EMPTY_STATE: LocalMusicEmptyStateModel = {
   description: '请确认文件夹里包含常见音频格式，例如 MP3、FLAC、M4A 或 OGG。'
 }
 
+const INBOX_EMPTY_STATE: LocalMusicEmptyStateModel = {
+  icon: '＋',
+  title: '最近没有新入库歌曲',
+  description: '新扫描或变动同步进入资料库的歌曲，会先出现在这里。'
+}
+
 const ARTISTS_EMPTY_STATE: LocalMusicEmptyStateModel = {
   icon: '◎',
   title: '还没有可展示的艺人',
@@ -84,6 +106,7 @@ export function useHomeLocalMusicPanel() {
   const toastStore = useToastStore()
   const localPlaylistStore = useLocalPlaylistStore()
   const localLibrary = useLocalLibrary()
+  const { audioOutputStatus } = useAudioOutputPlugin()
   const { state, status, loading, mutating, pageLoading } = localLibrary.stateGroup
   const {
     albumsPage,
@@ -95,19 +118,28 @@ export function useHomeLocalMusicPanel() {
     patchTrackDuration,
     songsPage
   } = localLibrary.queries
-  const { addFolder, removeFolder, rescan, setFolderEnabled } = localLibrary.commands
+  const { addFolder, removeFolder, rescan, rescanFolder, setFolderEnabled, showFolder, showTrack } =
+    localLibrary.commands
 
   const activeView = ref<LocalLibraryViewMode>('songs')
   const searchDraft = ref('')
   const appliedSearch = ref('')
   const selectedArtist = ref<string | null>(null)
   const selectedAlbum = ref<Pick<LocalLibraryAlbumSummary, 'name' | 'artist'> | null>(null)
+  const hideDuplicateSongs = ref(false)
+  const showDuplicateSongsOnly = ref(false)
 
   const supported = computed(() => state.value.supported)
   const folders = computed(() => state.value.folders)
   const hasFolders = computed(() => folders.value.length > 0)
   const isScanning = computed(() => status.value.phase === 'scanning')
   const hasEnabledFolders = computed(() => folders.value.some(folder => folder.enabled))
+  const healthSummary = computed<LocalLibraryHealthSummary>(
+    () => state.value.health ?? createEmptyLocalLibraryHealthSummary()
+  )
+  const metadataCandidateSummary = computed<LocalLibraryMetadataCandidateSummary>(
+    () => state.value.metadataCandidateSummary ?? createEmptyLocalLibraryMetadataCandidateSummary()
+  )
   const totalFolderLabel = computed(() => `${folders.value.length} 个文件夹`)
   const totalTrackLabel = computed(() => `${status.value.discoveredTracks} 首歌曲`)
   const lastScanLabel = computed(() => {
@@ -118,11 +150,23 @@ export function useHomeLocalMusicPanel() {
 
     return formatLocalLibraryDateTime(finishedAt)
   })
-  const currentSongQuery = computed<LocalLibraryTrackQuery>(() => ({
-    search: appliedSearch.value || undefined,
-    artist: selectedAlbum.value ? selectedAlbum.value.artist : selectedArtist.value,
-    album: selectedAlbum.value?.name
-  }))
+  const currentSongQuery = computed<LocalLibraryTrackQuery>(() => {
+    const query: LocalLibraryTrackQuery = {
+      search: appliedSearch.value || undefined,
+      artist: selectedAlbum.value ? selectedAlbum.value.artist : selectedArtist.value,
+      album: selectedAlbum.value?.name,
+      duplicateMode:
+        hideDuplicateSongs.value || showDuplicateSongsOnly.value ? 'strict' : undefined,
+      hideDuplicates: hideDuplicateSongs.value || undefined,
+      showDuplicatesOnly: showDuplicateSongsOnly.value || undefined
+    }
+
+    if (activeView.value === 'inbox') {
+      query.recentlyAddedOnly = true
+    }
+
+    return query
+  })
   const playbackSongs = computed(() =>
     songsPage.value.items.map(track => {
       const coverUrl = track.coverHash ? (coverUrls.value[track.coverHash] ?? '') : ''
@@ -145,6 +189,10 @@ export function useHomeLocalMusicPanel() {
       return `${albumsPage.value.total} 张专辑`
     }
 
+    if (activeView.value === 'inbox') {
+      return `${songsPage.value.total} 首新入库`
+    }
+
     return `${songsPage.value.total} 首歌曲`
   })
   const currentViewTitle = computed(() => {
@@ -154,6 +202,10 @@ export function useHomeLocalMusicPanel() {
 
     if (activeView.value === 'albums') {
       return '专辑视图'
+    }
+
+    if (activeView.value === 'inbox') {
+      return '新入库'
     }
 
     return '歌曲列表'
@@ -170,7 +222,16 @@ export function useHomeLocalMusicPanel() {
     return null
   })
   const hasSongFilters = computed(() =>
-    Boolean(appliedSearch.value || selectedArtist.value || selectedAlbum.value)
+    Boolean(
+      appliedSearch.value ||
+      selectedArtist.value ||
+      selectedAlbum.value ||
+      hideDuplicateSongs.value ||
+      showDuplicateSongsOnly.value
+    )
+  )
+  const hasSearchValue = computed(() =>
+    Boolean(searchDraft.value.length > 0 || appliedSearch.value)
   )
   const showCurrentViewLoading = computed(() => {
     if (!(loading.value || pageLoading.value)) {
@@ -187,9 +248,26 @@ export function useHomeLocalMusicPanel() {
 
     return songsPage.value.items.length === 0
   })
-  const songsEmptyState = computed(() =>
-    hasSongFilters.value ? SONGS_FILTER_EMPTY_STATE : SONGS_EMPTY_STATE
+  const songsEmptyState = computed(() => {
+    if (hasSongFilters.value) {
+      return SONGS_FILTER_EMPTY_STATE
+    }
+
+    return activeView.value === 'inbox' ? INBOX_EMPTY_STATE : SONGS_EMPTY_STATE
+  })
+  const localDiagnosticsCards = computed<LocalMusicDiagnosticCard[]>(() =>
+    createLocalDiagnosticsCards(healthSummary.value, metadataCandidateSummary.value)
   )
+  const nativeAudioDiagnosticsSnapshot = ref(
+    createNativeAudioDiagnosticsSnapshot(audioOutputStatus.value)
+  )
+  const nativeAudioDiagnostics = computed<LocalMusicDiagnosticCard[]>(() =>
+    createNativeAudioDiagnosticCards(nativeAudioDiagnosticsSnapshot.value)
+  )
+  const diagnosticCards = computed<LocalMusicDiagnosticCard[]>(() => [
+    ...localDiagnosticsCards.value,
+    ...nativeAudioDiagnostics.value
+  ])
   const artistCards = computed<LocalMusicSummaryCard[]>(() =>
     artistsPage.value.items.map(artist => ({
       actionLabel: '查看歌曲',
@@ -244,6 +322,16 @@ export function useHomeLocalMusicPanel() {
   })
 
   watch(
+    () => createNativeAudioDiagnosticsKey(audioOutputStatus.value),
+    () => {
+      nativeAudioDiagnosticsSnapshot.value = createNativeAudioDiagnosticsSnapshot(
+        audioOutputStatus.value
+      )
+    },
+    { immediate: true }
+  )
+
+  watch(
     () => [playerStore.currentSong, playerStore.duration] as const,
     ([currentSong, durationSeconds]) => {
       if (!currentSong || !isLocalLibrarySong(currentSong) || !Number.isFinite(durationSeconds)) {
@@ -262,7 +350,7 @@ export function useHomeLocalMusicPanel() {
   async function loadView(view: LocalLibraryViewMode, append = false): Promise<void> {
     const query = appliedSearch.value || undefined
 
-    if (view === 'songs') {
+    if (view === 'songs' || view === 'inbox') {
       await loadTracks(currentSongQuery.value, append)
       return
     }
@@ -307,6 +395,23 @@ export function useHomeLocalMusicPanel() {
     }
   }
 
+  async function handleShowFolder(folder: LocalLibraryFolder): Promise<void> {
+    try {
+      await showFolder(folder.id)
+    } catch (error) {
+      toastStore.error(resolvePanelErrorMessage(error, '打开本地音乐文件夹失败'))
+    }
+  }
+
+  async function handleRescanFolder(folder: LocalLibraryFolder): Promise<void> {
+    try {
+      await rescanFolder(folder.id)
+      toastStore.success(`已同步本地音乐文件夹「${folder.name}」`)
+    } catch (error) {
+      toastStore.error(resolvePanelErrorMessage(error, '同步本地音乐文件夹失败'))
+    }
+  }
+
   async function handleToggleFolder(folder: LocalLibraryFolder): Promise<void> {
     try {
       const nextEnabledState = !folder.enabled
@@ -340,6 +445,24 @@ export function useHomeLocalMusicPanel() {
   async function clearSongScope(): Promise<void> {
     selectedArtist.value = null
     selectedAlbum.value = null
+    await loadTracks(currentSongQuery.value)
+  }
+
+  async function toggleHideDuplicateSongs(): Promise<void> {
+    hideDuplicateSongs.value = !hideDuplicateSongs.value
+    if (hideDuplicateSongs.value) {
+      showDuplicateSongsOnly.value = false
+    }
+
+    await loadTracks(currentSongQuery.value)
+  }
+
+  async function toggleShowDuplicateSongsOnly(): Promise<void> {
+    showDuplicateSongsOnly.value = !showDuplicateSongsOnly.value
+    if (showDuplicateSongsOnly.value) {
+      hideDuplicateSongs.value = false
+    }
+
     await loadTracks(currentSongQuery.value)
   }
 
@@ -388,6 +511,19 @@ export function useHomeLocalMusicPanel() {
       index,
       '播放本地音乐失败'
     )
+  }
+
+  async function showLocalSongInFolder(song: Song): Promise<void> {
+    if (!isLocalLibrarySong(song)) {
+      toastStore.error('只能定位本地音乐文件')
+      return
+    }
+
+    try {
+      await showTrack(String(song.id))
+    } catch (error) {
+      toastStore.error(resolvePanelErrorMessage(error, '定位本地音乐文件失败'))
+    }
   }
 
   function createLocalPlaylistFromSong(song: Song, playlistName: string): void {
@@ -460,21 +596,27 @@ export function useHomeLocalMusicPanel() {
     currentSummaryLabel,
     currentViewTitle,
     createLocalPlaylistFromSong,
+    diagnosticCards,
     folders,
     handleAddFolder,
     handleLoadMore,
     handleRemoveFolder,
     handleRescan,
+    handleRescanFolder,
     handleSearchSubmit,
+    handleShowFolder,
     handleToggleFolder,
     hasEnabledFolders,
     hasFolders,
     hasMoreForActiveView,
+    hasSearchValue,
     hasSongFilters,
+    hideDuplicateSongs,
     isScanning,
     lastScanLabel,
     loadingEmptyState: LOADING_EMPTY_STATE,
     localPlaylistOptions,
+    metadataCandidateSummary,
     mutating,
     pageLoading,
     addLocalSongToPlaylist,
@@ -485,14 +627,249 @@ export function useHomeLocalMusicPanel() {
     selectAlbumCard,
     selectArtistCard,
     setActiveView,
+    showDuplicateSongsOnly,
+    showLocalSongInFolder,
     songsEmptyState,
     status,
     supported,
+    healthSummary,
     totalFolderLabel,
     totalTrackLabel,
     unsupportedEmptyState: UNSUPPORTED_EMPTY_STATE,
     updateSearchDraft,
     viewModes: LOCAL_LIBRARY_VIEW_MODES,
-    showCurrentViewLoading
+    showCurrentViewLoading,
+    toggleHideDuplicateSongs,
+    toggleShowDuplicateSongsOnly
+  }
+}
+
+type NativeAudioDiagnosticsSnapshot = {
+  activeMode?: AudioOutputMode
+  backend: AudioOutputStatus['backend']
+  bitDepthMismatch?: boolean
+  bitPerfectStatus?: AudioOutputBitPerfectStatus
+  channelMismatch?: boolean
+  enabled: boolean
+  errorCode?: string
+  errorMessage?: string
+  outputSampleRate?: number
+  playbackState?: AudioOutputNativePlaybackState
+  reason?: string
+  requestedMode: AudioOutputMode
+  sampleRateMismatch?: boolean
+  sourceSampleRate?: number
+}
+
+function createLocalDiagnosticsCards(
+  health: LocalLibraryHealthSummary,
+  metadataCandidates: LocalLibraryMetadataCandidateSummary
+): LocalMusicDiagnosticCard[] {
+  const missingMetadataCount =
+    health.missingCoverCount + health.missingDurationCount + health.missingTechnicalMetadataCount
+  const duplicateDetail =
+    health.duplicateGroupCount > 0
+      ? `${health.duplicateGroupCount} 组重复，已隐藏 ${health.hiddenDuplicateTrackCount} 首`
+      : '暂无重复歌曲分组'
+  const metadataDetail =
+    missingMetadataCount > 0
+      ? `封面 ${health.missingCoverCount}，时长 ${health.missingDurationCount}，技术信息 ${health.missingTechnicalMetadataCount}`
+      : duplicateDetail
+
+  return [
+    {
+      detail: metadataDetail,
+      id: 'library-health',
+      label: '曲库健康',
+      tone: missingMetadataCount > 0 || health.duplicateGroupCount > 0 ? 'warning' : 'success',
+      value: `${health.trackCount} 首`
+    },
+    {
+      detail: `最近 ${Math.round(LOCAL_LIBRARY_INBOX_WINDOW_MS / 86400000)} 天首次收录`,
+      id: 'library-inbox',
+      label: '新入库',
+      tone: health.inboxTrackCount > 0 ? 'neutral' : 'success',
+      value: `${health.inboxTrackCount} 首`
+    },
+    {
+      detail: createMetadataCandidateDetail(metadataCandidates),
+      id: 'metadata-candidates',
+      label: '元数据候选',
+      tone: metadataCandidates.pendingCount > 0 ? 'warning' : 'success',
+      value: `${metadataCandidates.pendingCount} 项`
+    }
+  ]
+}
+
+function createMetadataCandidateDetail(summary: LocalLibraryMetadataCandidateSummary): string {
+  if (summary.pendingCount === 0) {
+    return '暂无待确认字段'
+  }
+
+  const fieldLabels: Record<keyof LocalLibraryMetadataCandidateSummary['byField'], string> = {
+    album: '专辑',
+    artist: '艺人',
+    cover: '封面',
+    duration: '时长',
+    technical: '技术信息',
+    title: '标题'
+  }
+  const topFields = Object.entries(summary.byField)
+    .filter(([, count]) => count > 0)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 2)
+    .map(([field, count]) => `${fieldLabels[field as keyof typeof fieldLabels]} ${count}`)
+
+  return topFields.length > 0 ? topFields.join('，') : '等待批量确认'
+}
+
+function createNativeAudioDiagnosticsKey(status: AudioOutputStatus): string {
+  const diagnostics = status.nativePlaybackDiagnostics
+  const error = status.nativePlaybackError
+
+  return JSON.stringify({
+    activeMode: status.activeMode,
+    backend: status.backend,
+    bitDepthMismatch: diagnostics?.bitDepthMismatch,
+    bitPerfect: status.bitPerfect?.status ?? diagnostics?.bitPerfectStatus,
+    channelMismatch: diagnostics?.channelMismatch,
+    enabled: status.enabled,
+    errorCode: error?.code,
+    errorMessage: error?.nativeMessage,
+    outputSampleRate: diagnostics?.outputSampleRate,
+    playbackState: status.nativePlaybackState,
+    reason: diagnostics?.reason ?? status.bitPerfect?.reason ?? status.reason,
+    requestedMode: status.requestedMode,
+    sampleRateMismatch: diagnostics?.sampleRateMismatch,
+    sourceSampleRate: diagnostics?.sourceSampleRate
+  })
+}
+
+function createNativeAudioDiagnosticsSnapshot(
+  status: AudioOutputStatus
+): NativeAudioDiagnosticsSnapshot {
+  const diagnostics = status.nativePlaybackDiagnostics
+  const error = status.nativePlaybackError
+
+  return {
+    activeMode: status.activeMode,
+    backend: status.backend,
+    bitDepthMismatch: diagnostics?.bitDepthMismatch,
+    bitPerfectStatus: status.bitPerfect?.status ?? diagnostics?.bitPerfectStatus,
+    channelMismatch: diagnostics?.channelMismatch,
+    enabled: status.enabled,
+    errorCode: error?.code,
+    errorMessage: error?.nativeMessage,
+    outputSampleRate: diagnostics?.outputSampleRate,
+    playbackState: status.nativePlaybackState,
+    reason: diagnostics?.reason ?? status.bitPerfect?.reason ?? status.reason,
+    requestedMode: status.requestedMode,
+    sampleRateMismatch: diagnostics?.sampleRateMismatch,
+    sourceSampleRate: diagnostics?.sourceSampleRate
+  }
+}
+
+function createNativeAudioDiagnosticCards(
+  snapshot: NativeAudioDiagnosticsSnapshot
+): LocalMusicDiagnosticCard[] {
+  const mismatchCount = [
+    snapshot.sampleRateMismatch,
+    snapshot.channelMismatch,
+    snapshot.bitDepthMismatch
+  ].filter(Boolean).length
+  const isError = snapshot.playbackState === 'error' || Boolean(snapshot.errorCode)
+  const playbackDetail = snapshot.errorCode
+    ? `${snapshot.errorCode}${snapshot.errorMessage ? `：${snapshot.errorMessage}` : ''}`
+    : `请求 ${formatAudioMode(snapshot.requestedMode)}，实际 ${formatAudioMode(snapshot.activeMode ?? snapshot.requestedMode)}`
+
+  return [
+    {
+      detail: playbackDetail,
+      id: 'native-output-state',
+      label: '原生输出',
+      tone: isError ? 'danger' : snapshot.enabled ? 'success' : 'neutral',
+      value: snapshot.enabled
+        ? formatNativePlaybackState(snapshot.playbackState)
+        : formatAudioBackend(snapshot.backend)
+    },
+    {
+      detail: createOutputClockDetail(snapshot),
+      id: 'native-output-clock',
+      label: '输出时钟',
+      tone: mismatchCount > 0 ? 'warning' : 'success',
+      value: snapshot.bitPerfectStatus
+        ? formatBitPerfectStatus(snapshot.bitPerfectStatus)
+        : mismatchCount > 0
+          ? `${mismatchCount} 项偏差`
+          : '未验证'
+    }
+  ]
+}
+
+function createOutputClockDetail(snapshot: NativeAudioDiagnosticsSnapshot): string {
+  const sourceRate = snapshot.sourceSampleRate ? `${snapshot.sourceSampleRate} Hz` : '未知源'
+  const outputRate = snapshot.outputSampleRate ? `${snapshot.outputSampleRate} Hz` : '未知输出'
+  const mismatches: string[] = []
+  if (snapshot.sampleRateMismatch) mismatches.push('采样率')
+  if (snapshot.channelMismatch) mismatches.push('声道')
+  if (snapshot.bitDepthMismatch) mismatches.push('位深')
+
+  if (mismatches.length > 0) {
+    return `${sourceRate} → ${outputRate}，${mismatches.join('、')}不一致`
+  }
+
+  return snapshot.reason || `${sourceRate} → ${outputRate}`
+}
+
+function formatAudioMode(mode: AudioOutputMode): string {
+  switch (mode) {
+    case 'exclusive':
+      return '真独占'
+    case 'voicemeeter':
+      return 'Voicemeeter'
+    case 'shared':
+      return '共享'
+  }
+}
+
+function formatAudioBackend(backend: AudioOutputStatus['backend']): string {
+  switch (backend) {
+    case 'native':
+      return '可用'
+    case 'unavailable':
+      return '不可用'
+    case 'disabled':
+      return '未启用'
+  }
+}
+
+function formatNativePlaybackState(state: AudioOutputNativePlaybackState | undefined): string {
+  switch (state) {
+    case 'starting':
+      return '启动中'
+    case 'playing':
+      return '播放中'
+    case 'paused':
+      return '已暂停'
+    case 'stopped':
+      return '已停止'
+    case 'ended':
+      return '已结束'
+    case 'error':
+      return '异常'
+    case 'idle':
+    case undefined:
+      return '待机'
+  }
+}
+
+function formatBitPerfectStatus(status: AudioOutputBitPerfectStatus): string {
+  switch (status) {
+    case 'candidate':
+      return '候选'
+    case 'notCandidate':
+      return '不满足'
+    case 'unverified':
+      return '未验证'
   }
 }

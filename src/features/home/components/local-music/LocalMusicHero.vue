@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { LocalLibraryScanStatus } from '@shared/types/localLibrary'
+import type { LocalMusicDiagnosticCard } from '@/features/home/composables/localMusic.types'
 
 defineProps<{
+  diagnosticCards: LocalMusicDiagnosticCard[]
   hasEnabledFolders: boolean
   isScanning: boolean
   lastScanLabel: string
@@ -62,6 +64,19 @@ defineEmits<{
             isScanning ? '正在同步资料库' : status.phase === 'error' ? '扫描异常' : '资料库已就绪'
           }}
         </span>
+      </div>
+    </div>
+
+    <div v-if="diagnosticCards.length > 0" class="local-diagnostics-grid">
+      <div
+        v-for="card in diagnosticCards"
+        :key="card.id"
+        class="local-diagnostic-card"
+        :class="card.tone ? `is-${card.tone}` : undefined"
+      >
+        <span>{{ card.label }}</span>
+        <strong>{{ card.value }}</strong>
+        <small>{{ card.detail }}</small>
       </div>
     </div>
   </section>

@@ -30,6 +30,39 @@ describe('localLibrary repository mappers', () => {
     ])
   })
 
+  it('maps persisted metadata source provenance into tracks', () => {
+    const track = mapTrackRow({
+      id: 'local:track-1',
+      folder_id: 'folder-1',
+      file_path: 'D:\\Music\\sample.mp3',
+      file_name: 'sample.mp3',
+      title: 'Sample Song',
+      artist: 'Artist A',
+      album: 'Sample Album',
+      duration: 123000,
+      file_size: 1024,
+      modified_at: 1,
+      cover_hash: null,
+      metadata_sources_json: JSON.stringify({
+        title: 'embedded',
+        artist: 'filename',
+        album: 'folder',
+        duration: 'embedded',
+        cover: 'unknown',
+        technical: 'embedded'
+      })
+    })
+
+    expect(track.metadataSources).toEqual({
+      title: 'embedded',
+      artist: 'filename',
+      album: 'folder',
+      duration: 'embedded',
+      cover: 'unknown',
+      technical: 'embedded'
+    })
+  })
+
   it('maps folder list rows into enabled booleans and song counts', () => {
     expect(
       mapFolderListRow({

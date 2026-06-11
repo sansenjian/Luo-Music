@@ -1,4 +1,8 @@
-import { LOCAL_LIBRARY_SONG_ID_PREFIX, type LocalLibraryTrack } from '@shared/types/localLibrary'
+import {
+  LOCAL_LIBRARY_SONG_ID_PREFIX,
+  type LocalLibraryTrack,
+  type LocalLibraryTrackMetadataSources
+} from '@shared/types/localLibrary'
 
 import { LocalLibraryCoverManager } from './coverManager'
 import { createTrackId } from './repository.helpers'
@@ -131,6 +135,11 @@ export class LocalLibraryScanEngine {
       fileSize: fileStats.size,
       modifiedAt: normalizedModifiedAt,
       coverHash,
+      codec: metadata?.codec ?? existingTrack?.codec ?? null,
+      sampleRate: metadata?.sampleRate ?? existingTrack?.sampleRate ?? null,
+      bitDepth: metadata?.bitDepth ?? existingTrack?.bitDepth ?? null,
+      bitrate: metadata?.bitrate ?? existingTrack?.bitrate ?? null,
+      metadataSources: createTrackMetadataSources(metadata, existingTrack),
       song: createTrackSong(trackId, title, artist, album, normalizedPath, duration, coverHash)
     }
   }
@@ -156,5 +165,33 @@ export class LocalLibraryScanEngine {
     }
 
     return existingTrack?.coverHash ?? null
+  }
+}
+
+function createTrackMetadataSources(
+  metadata: ParsedLocalTrackMetadata | null,
+  existingTrack: LocalLibraryTrack | null
+): LocalLibraryTrackMetadataSources {
+  const coverSource = (() => {
+    if (metadata?.coverData) {
+      return 'embedded'
+    }
+    if (metadata?.coverData === undefined && existingTrack?.metadataSources?.cover) {
+      return existingTrack.metadataSources.cover
+    }
+    return 'unknown'
+  })()
+
+  return {
+    title: metadata?.title ? 'embedded' : 'filename',
+    artist: metadata?.artist ? 'embedded' : 'filename',
+    album: metadata?.album ? 'embedded' : 'folder',
+    duration:
+      metadata?.duration !== null && metadata?.duration !== undefined ? 'embedded' : 'unknown',
+    cover: coverSource,
+    technical:
+      metadata?.codec || metadata?.sampleRate || metadata?.bitDepth || metadata?.bitrate
+        ? 'embedded'
+        : 'unknown'
   }
 }

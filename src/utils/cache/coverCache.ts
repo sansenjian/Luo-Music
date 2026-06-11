@@ -1,5 +1,7 @@
 import { LRUCache } from 'lru-cache'
 
+import type { LocalLibraryCoverSize } from '@shared/types/localLibrary'
+
 // 创建一个 LRU 缓存实例
 // max: 最大缓存数量 (例如 50 张图片)
 // ttl: 缓存过期时间 (例如 1 小时)
@@ -15,6 +17,11 @@ const coverCache = new LRUCache<string, string>({
     }
   }
 })
+
+type FetchThumbnailOptions = {
+  mimeType?: string
+  size?: LocalLibraryCoverSize
+}
 
 export class CoverCacheManager {
   /**
@@ -39,8 +46,8 @@ export class CoverCacheManager {
    * 获取缓存的封面 URL
    * @param id 歌曲 ID 或唯一标识
    */
-  static get(id: string): string | undefined {
-    return coverCache.get(id)
+  static get(id: string, size: LocalLibraryCoverSize = 'large'): string | undefined {
+    return coverCache.get(createCoverCacheKey(id, size))
   }
 
   /**
@@ -48,10 +55,10 @@ export class CoverCacheManager {
    * @param id 歌曲 ID
    * @param url 图片 URL
    */
-  static set(id: string, url: string) {
+  static set(id: string, url: string, size: LocalLibraryCoverSize = 'large') {
     // 如果已存在且是 Blob URL，先不处理，让 LRU 自动处理旧值
     // 但如果直接覆盖，LRU 会调用 dispose 释放旧值吗？是的，lru-cache 会处理。
-    coverCache.set(id, url)
+    coverCache.set(createCoverCacheKey(id, size), url)
   }
 
   /**
@@ -59,21 +66,25 @@ export class CoverCacheManager {
    */
   static async fetchThumbnailAsDataUrl(
     id: string,
-    fetcher: (id: string) => Promise<string | null>,
-    mimeType = 'image/jpeg'
+    fetcher: (id: string, size: LocalLibraryCoverSize) => Promise<string | null>,
+    optionsOrMimeType: FetchThumbnailOptions | string = {}
   ): Promise<string> {
-    const cached = this.get(id)
+    const options =
+      typeof optionsOrMimeType === 'string' ? { mimeType: optionsOrMimeType } : optionsOrMimeType
+    const mimeType = options.mimeType ?? 'image/jpeg'
+    const size = options.size ?? 'thumb'
+    const cached = this.get(id, size)
     if (cached) {
       return cached
     }
 
-    const nextValue = await fetcher(id)
+    const nextValue = await fetcher(id, size)
     if (!nextValue) {
       return ''
     }
 
     const dataUrl = this.toArtworkUrl(nextValue, mimeType)
-    this.set(id, dataUrl)
+    this.set(id, dataUrl, size)
     return dataUrl
   }
 
@@ -82,15 +93,19 @@ export class CoverCacheManager {
    * @param id 歌曲 ID
    * @param url 图片原始 URL
    */
-  static async preload(id: string, url: string): Promise<string> {
-    const cached = this.get(id)
+  static async preload(
+    id: string,
+    url: string,
+    size: LocalLibraryCoverSize = 'large'
+  ): Promise<string> {
+    const cached = this.get(id, size)
     if (cached) return cached
 
     try {
       const response = await fetch(url)
       const blob = await response.blob()
       const objectUrl = URL.createObjectURL(blob)
-      this.set(id, objectUrl)
+      this.set(id, objectUrl, size)
       return objectUrl
     } catch (error) {
       console.error('Failed to preload cover:', error)
@@ -101,4 +116,8 @@ export class CoverCacheManager {
   static clear() {
     coverCache.clear()
   }
+}
+
+function createCoverCacheKey(id: string, size: LocalLibraryCoverSize): string {
+  return `${size}:${id}`
 }

@@ -13,8 +13,10 @@ defineProps<{
   emptyState: LocalMusicEmptyStateModel
   footnoteSizeLabel: string
   hasMore: boolean
+  hideDuplicates: boolean
   localPlaylists: LocalMusicPlaylistOption[]
   pageLoading: boolean
+  showDuplicatesOnly: boolean
   songs: Song[]
 }>()
 
@@ -24,6 +26,9 @@ const emit = defineEmits<{
   'create-local-playlist': [song: Song, name: string]
   'load-more': []
   'play-song': [index: number]
+  'show-in-folder': [song: Song]
+  'toggle-hide-duplicates': []
+  'toggle-show-duplicates-only': []
 }>()
 
 type SongContextMenuPayload = {
@@ -136,6 +141,17 @@ function addSongToLocalPlaylist(playlistId: string): void {
   closeSongContextMenu()
 }
 
+function showSongInFolder(): void {
+  const song = songContextMenu.value.song
+  if (!song) {
+    closeSongContextMenu()
+    return
+  }
+
+  emit('show-in-folder', song)
+  closeSongContextMenu()
+}
+
 function submitLocalPlaylistDialog(): void {
   const song = localPlaylistDialog.value.song
   if (!song) {
@@ -193,6 +209,27 @@ onUnmounted(() => {
     </div>
   </template>
 
+  <div class="duplicate-filter-bar" aria-label="重复歌曲筛选">
+    <button
+      type="button"
+      class="duplicate-filter-toggle"
+      :class="{ active: hideDuplicates }"
+      :aria-pressed="hideDuplicates"
+      @click="$emit('toggle-hide-duplicates')"
+    >
+      隐藏重复
+    </button>
+    <button
+      type="button"
+      class="duplicate-filter-toggle"
+      :class="{ active: showDuplicatesOnly }"
+      :aria-pressed="showDuplicatesOnly"
+      @click="$emit('toggle-show-duplicates-only')"
+    >
+      只看重复
+    </button>
+  </div>
+
   <div v-if="songs.length === 0" class="local-empty-state">
     <div class="empty-icon">{{ emptyState.icon }}</div>
     <h2>{{ emptyState.title }}</h2>
@@ -231,6 +268,14 @@ onUnmounted(() => {
           @click="openLocalPlaylistDialog"
         >
           创建本地歌单
+        </button>
+        <button
+          type="button"
+          class="local-menu-item local-menu-show-in-folder"
+          role="menuitem"
+          @click="showSongInFolder"
+        >
+          在文件夹中显示
         </button>
 
         <template v-if="localPlaylists.length > 0">

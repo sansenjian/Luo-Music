@@ -63,6 +63,7 @@ describe('useLocalLibraryQueries', () => {
     await Promise.resolve()
 
     expect(platformService.getLocalLibraryCover).toHaveBeenCalledTimes(1)
+    expect(platformService.getLocalLibraryCover).toHaveBeenCalledWith('a'.repeat(40), 'thumb')
 
     coverRequest.resolve('data:image/png;base64,ZmFrZQ==')
 

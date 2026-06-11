@@ -580,11 +580,130 @@ describe('AudioOutputService', () => {
       nativePlaybackRunning: true,
       nativePlaybackSource: 'D:\\Music\\exclusive.wav',
       nativePlaybackState: 'starting',
+      nativePlaybackSession: {
+        token: expect.stringMatching(/^native-playback-\d+$/),
+        source: 'D:\\Music\\exclusive.wav',
+        requestedMode: 'exclusive',
+        activeMode: 'exclusive'
+      },
       reason: 'Native audio output playback is starting.'
     })
     expect(status).not.toHaveProperty('activeMode')
     expect(status).not.toHaveProperty('voicemeeterRemote')
     expect(status).not.toHaveProperty('exclusiveProbe')
+  })
+
+  it('tracks native playback sessions and clears them after terminal helper events', () => {
+    const fake = createFakeHelper()
+    const service = new AudioOutputService({
+      exists: () => true,
+      logger: createLoggerMock(),
+      platform: 'win32',
+      spawnHelper: vi.fn(() => fake.helper)
+    })
+
+    service.setEnabled(true)
+    fake.stdout.write(
+      JSON.stringify({
+        type: 'status',
+        payload: createStatus()
+      }) + '\n'
+    )
+
+    const status = service.playFile({
+      path: 'D:\\Music\\track.wav',
+      startSeconds: 0,
+      volume: 1
+    }) as AudioOutputStatus
+    const playbackToken = getPlaybackToken(fake.commands().at(-1))
+
+    expect(status.nativePlaybackSession).toMatchObject({
+      id: expect.stringMatching(/^native-session-\d+$/),
+      token: playbackToken,
+      source: 'D:\\Music\\track.wav',
+      requestedMode: 'shared',
+      activeMode: 'shared'
+    })
+
+    fake.stdout.write(
+      JSON.stringify({
+        type: 'playback',
+        payload: {
+          state: 'ended',
+          running: false,
+          source: 'D:\\Music\\track.wav',
+          playbackToken
+        }
+      }) + '\n'
+    )
+
+    expect(service.getStatus()).toMatchObject({
+      nativePlaybackRunning: false,
+      nativePlaybackState: 'ended'
+    })
+    expect(service.getStatus().nativePlaybackSession).toBeUndefined()
+  })
+
+  it('derives native playback diagnostics from helper bit-perfect formats', () => {
+    const fake = createFakeHelper()
+    const service = new AudioOutputService({
+      exists: () => true,
+      logger: createLoggerMock(),
+      platform: 'win32',
+      spawnHelper: vi.fn(() => fake.helper)
+    })
+
+    service.setEnabled(true, {
+      mode: 'exclusive',
+      sharedDeviceId: '',
+      deviceId: '0:Speakers',
+      bufferFrames: 512,
+      fallbackToShared: false,
+      bitPerfectRequired: true,
+      voicemeeterBus: 'A1',
+      diagnosticsEnabled: true
+    })
+
+    fake.stdout.write(
+      JSON.stringify({
+        type: 'status',
+        payload: createStatus({
+          requestedMode: 'exclusive',
+          activeMode: 'exclusive',
+          bitPerfect: {
+            status: 'notCandidate',
+            sourceFormat: {
+              sampleRate: 44100,
+              channels: 2,
+              sampleFormat: 'pcm',
+              bitDepth: 16
+            },
+            outputFormat: {
+              sampleRate: 48000,
+              channels: 2,
+              sampleFormat: 'pcm',
+              bitDepth: 24
+            },
+            volume: 1,
+            reason: 'Source and output formats differ.'
+          }
+        })
+      }) + '\n'
+    )
+
+    expect(service.getStatus()).toMatchObject({
+      nativePlaybackDiagnostics: {
+        requestedMode: 'exclusive',
+        activeMode: 'exclusive',
+        sourceSampleRate: 44100,
+        outputSampleRate: 48000,
+        sampleRateMismatch: true,
+        channelMismatch: false,
+        bitDepthMismatch: true,
+        bitPerfectStatus: 'notCandidate',
+        reason: 'Source and output formats differ.'
+      }
+    })
   })
 
   it('sanitizes setting updates and sends them to a running helper', () => {
@@ -2644,6 +2763,13 @@ describe('AudioOutputService', () => {
             nativePlaybackRunning: false,
             nativePlaybackSource: 'https://song.test/path/native.mp3',
             nativePlaybackState: 'error',
+            nativePlaybackError: {
+              code: 'remote-cache-failed',
+              nativeMessage: expect.stringContaining(
+                'remote media response content type is not audio'
+              ),
+              retryable: false
+            },
             reason: expect.stringContaining('remote media response content type is not audio')
           })
         })
@@ -3582,6 +3708,13 @@ describe('AudioOutputService', () => {
           nativePlaybackRunning: false,
           nativePlaybackSource: 'https://song.test/path/range-login-page.mp3',
           nativePlaybackState: 'error',
+          nativePlaybackError: {
+            code: 'remote-cache-failed',
+            nativeMessage: expect.stringContaining(
+              'remote media range response content type is not audio'
+            ),
+            retryable: false
+          },
           reason: expect.stringContaining('remote media range response content type is not audio')
         })
       })
@@ -3804,6 +3937,11 @@ describe('AudioOutputService', () => {
           nativePlaybackRunning: false,
           nativePlaybackSource: 'https://song.test/native-stream?format=opus',
           nativePlaybackState: 'error',
+          nativePlaybackError: {
+            code: 'remote-unsupported-codec',
+            nativeMessage: expect.stringContaining('helper did not report support'),
+            retryable: false
+          },
           reason: expect.stringContaining('helper did not report support')
         })
       })
@@ -4223,6 +4361,47 @@ describe('AudioOutputService', () => {
       nativePlaybackError: {
         code: 'wasapi-exclusive-failed',
         nativeErrorCode: 'AUDCLNT_E_EXCLUSIVE_MODE_NOT_ALLOWED',
+        retryable: false
+      }
+    })
+  })
+
+  it('classifies legacy helper decode reasons as structured native errors', () => {
+    const fake = createFakeHelper()
+    const service = new AudioOutputService({
+      exists: () => true,
+      logger: createLoggerMock(),
+      platform: 'win32',
+      spawnHelper: vi.fn(() => fake.helper)
+    })
+
+    service.setEnabled(true)
+    service.playFile({
+      path: 'D:\\Music\\broken.flac',
+      startSeconds: 0,
+      volume: 1
+    })
+    const playbackToken = getPlaybackToken(fake.commands().at(-1))
+
+    fake.stdout.write(
+      JSON.stringify({
+        type: 'playback',
+        payload: {
+          state: 'error',
+          running: false,
+          paused: false,
+          source: 'D:\\Music\\broken.flac',
+          playbackToken,
+          reason: 'Failed to probe audio file: unsupported codec'
+        }
+      }) + '\n'
+    )
+
+    expect(service.getStatus()).toMatchObject({
+      nativePlaybackState: 'error',
+      nativePlaybackError: {
+        code: 'native-decode-failed',
+        nativeMessage: 'Failed to probe audio file: unsupported codec',
         retryable: false
       }
     })

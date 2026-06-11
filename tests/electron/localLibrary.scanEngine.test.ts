@@ -179,7 +179,15 @@ describe('LocalLibraryScanEngine', () => {
       duration: 189000,
       title: 'Unknown Duration',
       artist: 'Artist',
-      album: 'Album'
+      album: 'Album',
+      metadataSources: {
+        album: 'embedded',
+        artist: 'embedded',
+        cover: 'unknown',
+        duration: 'embedded',
+        technical: 'unknown',
+        title: 'embedded'
+      }
     })
     expect(track?.song.duration).toBe(189000)
     expect(track?.song.extra).toMatchObject({
@@ -245,6 +253,14 @@ describe('LocalLibraryScanEngine', () => {
       fileSize: trackStats.size,
       modifiedAt: trackStats.mtimeMs,
       coverHash: 'cover-hash',
+      metadataSources: {
+        title: 'embedded',
+        artist: 'embedded',
+        album: 'embedded',
+        duration: 'embedded',
+        cover: 'embedded',
+        technical: 'embedded'
+      },
       song: {
         id: trackId,
         name: 'Covered Song',
@@ -289,5 +305,6 @@ describe('LocalLibraryScanEngine', () => {
     )
 
     expect(track?.coverHash).toBe('cover-hash')
+    expect(track?.metadataSources?.cover).toBe('embedded')
   })
 })

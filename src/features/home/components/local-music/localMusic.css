@@ -108,6 +108,58 @@
   font-size: 13px;
 }
 
+.local-diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(156px, 1fr));
+  gap: 10px;
+}
+
+.local-diagnostic-card {
+  min-width: 0;
+  min-height: 104px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--sidebar-note-border);
+  border-radius: calc(var(--sidebar-link-radius) + 8px);
+  background: color-mix(in srgb, var(--surface-soft) 88%, var(--white));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 22px rgba(15, 23, 42, 0.06);
+}
+
+.local-diagnostic-card span {
+  color: var(--gray-light);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.local-diagnostic-card strong {
+  color: var(--black);
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.local-diagnostic-card small {
+  color: var(--gray);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.local-diagnostic-card.is-success {
+  border-color: rgba(22, 163, 74, 0.22);
+}
+
+.local-diagnostic-card.is-warning {
+  border-color: rgba(180, 83, 9, 0.24);
+}
+
+.local-diagnostic-card.is-danger {
+  border-color: rgba(190, 18, 60, 0.24);
+}
+
 .local-status-pill {
   display: inline-flex;
   align-items: center;
@@ -270,6 +322,46 @@
   background: var(--surface-muted);
   color: var(--gray);
   box-shadow: inset 0 0 0 1px var(--sidebar-note-border);
+}
+
+.duplicate-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.duplicate-filter-toggle {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--sidebar-note-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--surface-muted);
+  color: var(--gray);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.duplicate-filter-toggle:hover,
+.duplicate-filter-toggle:focus-visible {
+  border-color: var(--ui-focus-border);
+  color: var(--black);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.duplicate-filter-toggle.active {
+  border-color: transparent;
+  background: var(--ui-primary-bg);
+  color: var(--ui-primary-text);
+  box-shadow: var(--ui-primary-shadow);
 }
 
 .folder-chip-list,

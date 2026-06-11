@@ -12,6 +12,7 @@ import { WebPlatformService } from './web/webPlatformService'
 import type {
   LocalLibraryAlbumSummary,
   LocalLibraryArtistSummary,
+  LocalLibraryCoverSize,
   LocalLibraryPage,
   LocalLibraryState,
   LocalLibrarySummaryQuery,
@@ -90,6 +91,9 @@ type LegacyPlatform = {
   removeLocalLibraryFolder(folderId: string): Promise<LocalLibraryState>
   setLocalLibraryFolderEnabled(folderId: string, enabled: boolean): Promise<LocalLibraryState>
   scanLocalLibrary(): Promise<LocalLibraryState>
+  scanLocalLibraryFolder(folderId: string): Promise<LocalLibraryState>
+  showLocalLibraryFolder(folderId: string): Promise<boolean>
+  showLocalLibraryTrack(trackId: string): Promise<boolean>
   getLocalLibraryTracks(
     query?: LocalLibraryTrackQuery
   ): Promise<LocalLibraryPage<LocalLibraryTrack>>
@@ -99,7 +103,7 @@ type LegacyPlatform = {
   getLocalLibraryAlbums(
     query?: LocalLibrarySummaryQuery
   ): Promise<LocalLibraryPage<LocalLibraryAlbumSummary>>
-  getLocalLibraryCover(coverHash: string): Promise<string | null>
+  getLocalLibraryCover(coverHash: string, size?: LocalLibraryCoverSize): Promise<string | null>
 }
 
 const platform: LegacyPlatform = {
@@ -204,6 +208,18 @@ const platform: LegacyPlatform = {
     return getPlatformService().scanLocalLibrary()
   },
 
+  async scanLocalLibraryFolder(folderId: string): Promise<LocalLibraryState> {
+    return getPlatformService().scanLocalLibraryFolder(folderId)
+  },
+
+  async showLocalLibraryFolder(folderId: string): Promise<boolean> {
+    return getPlatformService().showLocalLibraryFolder(folderId)
+  },
+
+  async showLocalLibraryTrack(trackId: string): Promise<boolean> {
+    return getPlatformService().showLocalLibraryTrack(trackId)
+  },
+
   async getLocalLibraryTracks(
     query?: LocalLibraryTrackQuery
   ): Promise<LocalLibraryPage<LocalLibraryTrack>> {
@@ -222,8 +238,11 @@ const platform: LegacyPlatform = {
     return getPlatformService().getLocalLibraryAlbums(query)
   },
 
-  async getLocalLibraryCover(coverHash: string): Promise<string | null> {
-    return getPlatformService().getLocalLibraryCover(coverHash)
+  async getLocalLibraryCover(
+    coverHash: string,
+    size?: LocalLibraryCoverSize
+  ): Promise<string | null> {
+    return getPlatformService().getLocalLibraryCover(coverHash, size)
   }
 }
 

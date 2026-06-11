@@ -164,6 +164,76 @@ describe('LocalLibraryService', () => {
     expect(trackPage.items.map(track => track.artist)).toEqual(['Artist', '未知艺术家'])
     expect(state.status.phase).toBe('idle')
     expect(state.status.discoveredTracks).toBe(2)
+    expect(state.status.scanJobKind).toBe('folder')
+    expect(state.status.scanJobId).toBe(state.latestScanJob?.id)
+    expect(state.latestScanJob).toMatchObject({
+      kind: 'folder',
+      phase: 'completed',
+      folderCount: 1,
+      scannedFolders: 1,
+      scannedFiles: 2,
+      discoveredTracks: 2,
+      errorMessage: null
+    })
+
+    await service.dispose()
+  })
+
+  it('rescans a single registered folder and resolves registered paths for native actions', async () => {
+    const tempDir = await createTempPath('local-library-service-single-folder-scan')
+    const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))
+    const firstFolderPath = join(tempDir, 'Music')
+    const secondFolderPath = join(tempDir, 'Other')
+    const firstTrackPath = join(firstFolderPath, 'Artist A - First Song.mp3')
+    const secondTrackPath = join(secondFolderPath, 'Artist B - Second Song.mp3')
+    const addedFirstFolderTrackPath = join(firstFolderPath, 'Artist A - Added Song.mp3')
+    const unsyncedSecondFolderTrackPath = join(secondFolderPath, 'Artist B - Unsynced Song.mp3')
+    await mkdir(firstFolderPath, { recursive: true })
+    await mkdir(secondFolderPath, { recursive: true })
+    await writeFile(firstTrackPath, '')
+    await writeFile(secondTrackPath, '')
+
+    const service = new LocalLibraryService(
+      repository,
+      {
+        get: <T>() => undefined as T
+      },
+      undefined,
+      createNoopWatcherFactory()
+    )
+
+    await service.addFolder(firstFolderPath)
+    await service.addFolder(secondFolderPath)
+    await writeFile(addedFirstFolderTrackPath, '')
+    await writeFile(unsyncedSecondFolderTrackPath, '')
+
+    const firstFolderId = createFolderId(firstFolderPath)
+    const addedTrackId = createTrackId(LOCAL_LIBRARY_SONG_ID_PREFIX, addedFirstFolderTrackPath)
+    const nextState = await service.scanFolder(firstFolderId)
+    const trackPage = await service.getTracksPage({ limit: 10 })
+
+    expect(nextState.folders).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: firstFolderId,
+          songCount: 2
+        }),
+        expect.objectContaining({
+          id: createFolderId(secondFolderPath),
+          songCount: 1
+        })
+      ])
+    )
+    expect(trackPage.total).toBe(3)
+    expect(trackPage.items.map(track => track.filePath)).toContain(addedFirstFolderTrackPath)
+    expect(trackPage.items.map(track => track.filePath)).not.toContain(
+      unsyncedSecondFolderTrackPath
+    )
+    expect(service.getFolderPath(firstFolderId)).toBe(firstFolderPath)
+    expect(service.getTrackFilePath(addedTrackId)).toBe(addedFirstFolderTrackPath)
+
+    await service.setFolderEnabled(firstFolderId, false)
+    await expect(service.scanFolder(firstFolderId)).rejects.toThrow('请先启用该本地音乐文件夹')
 
     await service.dispose()
   })
@@ -463,6 +533,56 @@ describe('LocalLibraryService', () => {
         expect(repairedPage.items[0]?.song.duration).toBe(189000)
       })
     })
+
+    await service.dispose()
+  })
+
+  it('indexes strict duplicate tracks and filters hidden duplicate members', async () => {
+    const tempDir = await createTempPath('local-library-service-duplicates')
+    const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))
+    const folderPath = join(tempDir, 'Music')
+    const flacPath = join(folderPath, 'Artist - Same Song.flac')
+    const mp3Path = join(folderPath, 'Artist - Same Song.mp3')
+    await mkdir(folderPath, { recursive: true })
+    await writeFile(flacPath, 'flac-data')
+    await writeFile(mp3Path, 'mp3-data')
+
+    const service = new LocalLibraryService(
+      repository,
+      {
+        get: <T>() => undefined as T
+      },
+      async filePath => ({
+        title: 'Same Song',
+        artist: 'Artist',
+        album: 'Album',
+        duration: filePath === flacPath ? 180000 : 181000,
+        codec: filePath === flacPath ? 'FLAC' : 'MP3',
+        sampleRate: filePath === flacPath ? 96000 : 44100,
+        bitDepth: filePath === flacPath ? 24 : null,
+        bitrate: filePath === flacPath ? 1800000 : 320000
+      }),
+      createNoopWatcherFactory()
+    )
+
+    await service.addFolder(folderPath)
+
+    const allTracks = await service.getTracksPage()
+    const visibleTracks = await service.getTracksPage({ hideDuplicates: true })
+    const duplicateTracks = await service.getTracksPage({ showDuplicatesOnly: true })
+
+    expect(allTracks.total).toBe(2)
+    expect(visibleTracks.total).toBe(1)
+    expect(visibleTracks.items[0]).toMatchObject({
+      codec: 'FLAC',
+      duplicateHidden: false,
+      duplicateRank: 1
+    })
+    expect(duplicateTracks.total).toBe(2)
+    expect(duplicateTracks.items.map(track => track.duplicateGroupId)).toEqual([
+      expect.stringMatching(/^local-duplicate:/),
+      expect.stringMatching(/^local-duplicate:/)
+    ])
 
     await service.dispose()
   })
