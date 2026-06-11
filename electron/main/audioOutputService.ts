@@ -8,6 +8,7 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 
+import { AUDIO_OUTPUT_CACHE_DIR_NAME } from '../cachePolicy'
 import {
   AUDIO_OUTPUT_PROTOCOL_VERSION,
   createDefaultAudioOutputStatus,
@@ -141,7 +142,7 @@ export class AudioOutputService {
 
   constructor(deps: AudioOutputServiceDeps = {}) {
     this.appPath = deps.appPath ?? process.cwd()
-    this.cacheDir = deps.cacheDir ?? join(this.appPath, '.userData', 'audio-output-cache')
+    this.cacheDir = deps.cacheDir ?? join(this.appPath, '.userData', AUDIO_OUTPUT_CACHE_DIR_NAME)
     this.exists = deps.exists ?? existsSync
     this.fetchRemoteMedia =
       deps.fetchRemoteMedia ?? resolveDefaultRemoteMediaFetch(deps.electronNet)

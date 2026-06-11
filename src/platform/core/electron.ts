@@ -1,5 +1,5 @@
 import { PlatformAdapter } from './adapter'
-import type { CacheClearOptions, CacheClearResult } from '@shared/protocol/cache'
+import type { CacheClearOptions, CacheClearResult, CacheSize } from '@shared/protocol/cache'
 
 type ElectronAPI = {
   minimizeWindow?: () => void
@@ -9,7 +9,7 @@ type ElectronAPI = {
   send?: (channel: string, data: unknown) => void
   sendPlayingState?: (playing: boolean) => void
   sendPlayModeChange?: (mode: number) => void
-  getCacheSize?: () => Promise<{ httpCache: number; httpCacheFormatted: string }>
+  getCacheSize?: () => Promise<CacheSize>
   clearCache?: (options?: CacheClearOptions) => Promise<CacheClearResult>
   clearAllCache?: (keepUserData?: boolean) => Promise<CacheClearResult>
 }
@@ -55,7 +55,7 @@ export class ElectronAdapter extends PlatformAdapter {
     this.api?.sendPlayModeChange?.(mode)
   }
 
-  override async getCacheSize(): Promise<{ httpCache: number; httpCacheFormatted: string }> {
+  override async getCacheSize(): Promise<CacheSize> {
     return this.api?.getCacheSize?.() ?? super.getCacheSize()
   }
 

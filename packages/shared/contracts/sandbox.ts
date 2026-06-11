@@ -7,7 +7,7 @@ import type {
   SendChannel,
   ServiceStatusResponse
 } from './ipc'
-import type { CacheClearOptions, CacheClearResult } from '../protocol/cache'
+import type { CacheClearOptions, CacheClearResult, CacheSize } from '../protocol/cache'
 import type { AppConfig, ConfigChangeEvent, ConfigKey } from './config'
 import type { LyricLine } from '../player/lyric'
 import type { PlayMode } from '../types/player'
@@ -150,7 +150,7 @@ export interface ElectronAPI {
   maximizeWindow(): void
   closeWindow(): void
   resizeWindow(dims: { width: number; height: number }): void
-  getCacheSize(): Promise<{ httpCache: number; httpCacheFormatted: string; note?: string }>
+  getCacheSize(): Promise<CacheSize>
   clearCache(options?: CacheClearOptions): Promise<CacheClearResult>
   clearAllCache(keepUserData?: boolean): Promise<CacheClearResult>
   getCachePaths(): Promise<Record<string, string>>

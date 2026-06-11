@@ -1,5 +1,12 @@
 ﻿import type { ClearStorageDataOptions } from 'electron'
-import type { CacheClearOptions } from '@shared/protocol/cache'
+import type { CacheClearOptions, CacheSize } from '@shared/protocol/cache'
+import { join } from 'node:path'
+import {
+  AUDIO_OUTPUT_CACHE_DIR_NAME,
+  clearDirectoryContents,
+  formatBytes,
+  getDirectorySize
+} from './cachePolicy'
 
 const { app, session, ipcMain } = require('electron')
 
@@ -51,21 +58,19 @@ class CacheManager {
     safeHandle('cache:get-paths', () => this.getCachePaths())
   }
 
-  private formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
-
-  async getCacheSize() {
+  async getCacheSize(): Promise<CacheSize> {
     const ses = session.defaultSession
     const httpCacheSize = await ses.getCacheSize()
+    const nativeAudioCacheSize = await getDirectorySize(this.getNativeAudioCachePath())
+    const totalCacheSize = httpCacheSize + nativeAudioCacheSize
 
     return {
       httpCache: httpCacheSize,
-      httpCacheFormatted: this.formatBytes(httpCacheSize),
+      httpCacheFormatted: formatBytes(httpCacheSize),
+      nativeAudioCache: nativeAudioCacheSize,
+      nativeAudioCacheFormatted: formatBytes(nativeAudioCacheSize),
+      totalCache: totalCacheSize,
+      totalCacheFormatted: formatBytes(totalCacheSize),
       note: 'Storage data size is not available via Electron API'
     }
   }
@@ -78,6 +83,7 @@ class CacheManager {
       indexDB = false,
       webSQL = false,
       cache = false,
+      nativeAudio = false,
       serviceWorkers = false,
       shaderCache = false,
       all = false
@@ -111,6 +117,10 @@ class CacheManager {
       } catch (error) {
         results.failed.push({ type: 'http-cache', error: getErrorMessage(error) })
       }
+    }
+
+    if (nativeAudio || all) {
+      await this.clearNativeAudioCache(results)
     }
 
     return results
@@ -151,6 +161,8 @@ class CacheManager {
       results.failed.push({ type: 'http-cache', error: getErrorMessage(error) })
     }
 
+    await this.clearNativeAudioCache(results)
+
     return results
   }
 
@@ -158,9 +170,30 @@ class CacheManager {
     return {
       userData: app.getPath('userData'),
       cache: app.getPath('sessionData'),
+      nativeAudioCache: this.getNativeAudioCachePath(),
       temp: app.getPath('temp'),
       logs: app.getPath('logs')
     }
+  }
+
+  private getNativeAudioCachePath(): string {
+    return join(app.getPath('userData'), AUDIO_OUTPUT_CACHE_DIR_NAME)
+  }
+
+  private async clearNativeAudioCache(results: CacheClearResult): Promise<void> {
+    const clearResult = await clearDirectoryContents(this.getNativeAudioCachePath())
+    if (clearResult.failed.length === 0) {
+      results.success.push('native-audio-cache')
+      return
+    }
+
+    if (clearResult.removed.length > 0) {
+      results.success.push('native-audio-cache')
+    }
+    results.failed.push({
+      type: 'native-audio-cache',
+      error: clearResult.failed.map(item => `${item.path}: ${item.error}`).join('; ')
+    })
   }
 }
 

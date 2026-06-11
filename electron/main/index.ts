@@ -58,6 +58,7 @@ import {
 import { configureSmtcCommandLine } from './smtc'
 import { SmtcNativeService, type SmtcNativePlayerCommand } from './smtcNativeService'
 import { AudioOutputService } from './audioOutputService'
+import { AUDIO_OUTPUT_CACHE_DIR_NAME } from '../cachePolicy'
 import { DEFAULT_SHORTCUTS } from '../../src/config/shortcuts'
 import { NETEASE_API_PORT, QQ_API_PORT } from '@shared/protocol/cache'
 import { RECEIVE_CHANNELS } from '@shared/protocol/channels'
@@ -240,7 +241,7 @@ function initializeIpcService(currentPluginCatalog: PluginCatalog): void {
   })
   audioOutputService = new AudioOutputService({
     appPath: app.getAppPath(),
-    cacheDir: join(app.getPath('userData'), 'audio-output-cache'),
+    cacheDir: join(app.getPath('userData'), AUDIO_OUTPUT_CACHE_DIR_NAME),
     electronNet: net,
     isPackaged: app.isPackaged,
     logger,
