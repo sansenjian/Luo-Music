@@ -25,6 +25,9 @@ describe('package scripts for forge workflows', () => {
     expect(packageJson.scripts?.['build:audio-output-helper']).toBe(
       'node scripts/build/build-audio-output-helper.cjs'
     )
+    expect(packageJson.scripts?.['build:audio-output-helper:ffmpeg']).toBe(
+      'node scripts/build/build-audio-output-helper.cjs --ffmpeg'
+    )
     expect(packageJson.scripts?.['dev:electron']).toContain(
       'npm run build:smtc-helper && npm run build:audio-output-helper'
     )
@@ -90,10 +93,10 @@ describe('package scripts for forge workflows', () => {
       'node scripts/check-audio-output-windows-proof.cjs'
     )
     expect(packageJson.scripts?.['check:audio-output:helper-opus']).toBe(
-      'cargo check --manifest-path native/audio-output-helper/Cargo.toml --features opus'
+      'cargo check --manifest-path native/audio-engine/Cargo.toml -p audio-output-helper --features opus'
     )
     expect(packageJson.scripts?.['test:audio-output:helper-opus']).toBe(
-      'cargo test --manifest-path native/audio-output-helper/Cargo.toml --features opus --no-run'
+      'cargo test --manifest-path native/audio-engine/Cargo.toml -p audio-output-helper --features opus --no-run'
     )
     expect(packageJson.scripts?.['test:ci']).toBe('npm run test:run && npm run test:native')
     expect(packageJson.scripts?.['vitest']).toBe('node ./node_modules/vitest/vitest.mjs')

@@ -27,9 +27,9 @@ export function resolveAudioOutputHelperPath(
   const candidates = options.isPackaged
     ? [path.join(resourcesPath, 'native', helperFileName)]
     : [
-        path.join(appPath, 'native', 'audio-output-helper', 'target', 'debug', helperFileName),
+        path.join(appPath, 'native', 'audio-engine', 'target', 'debug', helperFileName),
         path.join(appPath, 'build', 'native', helperFileName),
-        path.join(appPath, 'native', 'audio-output-helper', 'target', 'release', helperFileName)
+        path.join(appPath, 'native', 'audio-engine', 'target', 'release', helperFileName)
       ]
 
   return candidates.find(candidate => exists(candidate)) ?? null

@@ -1,6 +1,5 @@
-use std::collections::VecDeque;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Write};
+use std::io::{self, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::sync::{
     atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering},
@@ -23,7 +22,21 @@ use symphonia::core::io::{MediaSource, MediaSourceStream};
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::units::Time;
 
-const PROTOCOL_VERSION: u32 = 2;
+use audio_engine_core::{
+    core_capabilities, create_unverified_bit_perfect_diagnostics, evaluate_bit_perfect,
+    AudioFormatDiagnostics, AudioOutputMode, BitPerfectDiagnostics, BitPerfectStatus,
+    StreamingPcmBuffer, StreamingPcmRenderState, StreamingPcmRenderStatus, PROTOCOL_VERSION,
+};
+use audio_engine_decode::{decode_capabilities, supported_audio_extensions};
+#[cfg(feature = "ffmpeg")]
+use audio_engine_decode::{decode_file_to_f32_with_ffmpeg, DecodedF32Audio, DecodedSampleFormat};
+use audio_engine_output::{output_capabilities, supported_audio_modes};
+
+mod command_loop;
+
+#[cfg(test)]
+use command_loop::handle_command;
+
 const DEFAULT_BUFFER_FRAMES: u32 = 960;
 const DEFAULT_TEST_TONE_DURATION_MS: u64 = 500;
 const DEFAULT_TEST_TONE_FREQUENCY_HZ: f32 = 440.0;
@@ -35,10 +48,6 @@ const GROWING_FILE_READ_SLEEP_MS: u64 = 20;
 const DEFAULT_VOICEMEETER_BUS: &str = "A1";
 const DEFAULT_VOICEMEETER_HARDWARE_OUT_BUS: &str = "A1";
 const DEFAULT_VOICEMEETER_HARDWARE_OUT_DRIVER: &str = "wdm";
-const BASE_SUPPORTED_AUDIO_EXTENSIONS: &[&str] = &[
-    ".aac", ".aif", ".aiff", ".ape", ".caf", ".flac", ".m2a", ".m4a", ".mka", ".mp1", ".mp2",
-    ".mp3", ".mpa", ".oga", ".ogg", ".wav",
-];
 const WAVE_FORMAT_PCM_TAG: u16 = 0x0001;
 const WAVE_FORMAT_IEEE_FLOAT_TAG: u16 = 0x0003;
 
@@ -52,20 +61,6 @@ fn format_error_chain(error: &anyhow::Error) -> String {
     }
 
     parts.join(": ")
-}
-
-fn supported_audio_extensions() -> Vec<String> {
-    let mut extensions = BASE_SUPPORTED_AUDIO_EXTENSIONS
-        .iter()
-        .map(|extension| (*extension).to_string())
-        .collect::<Vec<_>>();
-
-    if cfg!(feature = "opus") {
-        extensions.push(".opus".to_string());
-        extensions.push(".webm".to_string());
-    }
-
-    extensions
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -295,24 +290,6 @@ struct AudioOutputSettings {
     diagnostics_enabled: bool,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-enum AudioOutputMode {
-    Shared,
-    Exclusive,
-    Voicemeeter,
-}
-
-fn supported_audio_modes() -> Vec<AudioOutputMode> {
-    let mut modes = vec![AudioOutputMode::Shared];
-    if platform::supports_exclusive_output() {
-        modes.push(AudioOutputMode::Exclusive);
-        modes.push(AudioOutputMode::Voicemeeter);
-    }
-
-    modes
-}
-
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 enum AudioOutputBackend {
@@ -535,39 +512,6 @@ impl ExclusiveProbeResult {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-enum BitPerfectStatus {
-    Candidate,
-    NotCandidate,
-    Unverified,
-}
-
-#[derive(Clone, Debug, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-struct AudioFormatDiagnostics {
-    sample_rate: u32,
-    channels: u16,
-    sample_format: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    bit_depth: Option<u16>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    source: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-struct BitPerfectDiagnostics {
-    status: BitPerfectStatus,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    source_format: Option<AudioFormatDiagnostics>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    output_format: Option<AudioFormatDiagnostics>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    volume: Option<f32>,
-    reason: String,
-}
-
-#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 enum NativePlaybackErrorCode {
     WasapiExclusiveFailed,
@@ -702,11 +646,23 @@ enum HelperEvent {
 struct ReadyPayload {
     #[serde(rename = "protocolVersion")]
     protocol_version: u32,
+    capabilities: Vec<String>,
+    #[serde(rename = "supportedExtensions")]
+    supported_extensions: Vec<String>,
+    #[serde(rename = "supportedModes")]
+    supported_modes: Vec<AudioOutputMode>,
 }
 
 #[derive(Serialize)]
 struct DevicesPayload {
     devices: Vec<AudioOutputDevice>,
+}
+
+fn helper_capabilities() -> Vec<String> {
+    let mut capabilities = core_capabilities();
+    capabilities.extend(decode_capabilities());
+    capabilities.extend(output_capabilities());
+    capabilities
 }
 
 struct AudioOutputRuntime {
@@ -2623,132 +2579,7 @@ fn voicemeeter_route_name_hint(selected_name_hint: &str, resolved_device_id: &st
 }
 
 fn main() -> Result<()> {
-    let sink = EventSink::new();
-    sink.emit(&HelperEvent::Ready {
-        payload: ReadyPayload {
-            protocol_version: PROTOCOL_VERSION,
-        },
-    })?;
-
-    let mut runtime = AudioOutputRuntime::new();
-    let stdin = io::stdin();
-
-    for line in stdin.lock().lines() {
-        let line = line?;
-        if line.trim().is_empty() {
-            continue;
-        }
-
-        let command: IncomingCommand = match serde_json::from_str(&line) {
-            Ok(command) => command,
-            Err(error) => {
-                sink.error(format!("Invalid command JSON: {error}"));
-                continue;
-            }
-        };
-
-        match handle_command(&mut runtime, &sink, command) {
-            Ok(true) => {}
-            Ok(false) => break,
-            Err(error) => sink.error(format_error_chain(&error)),
-        }
-    }
-
-    Ok(())
-}
-
-fn handle_command(
-    runtime: &mut AudioOutputRuntime,
-    sink: &EventSink,
-    command: IncomingCommand,
-) -> Result<bool> {
-    match command.command_type.as_str() {
-        "initialize" => {
-            let payload = parse_payload::<InitializePayload>(command.payload)?;
-            if payload.protocol_version != Some(PROTOCOL_VERSION) {
-                return Err(anyhow!(
-                    "Unsupported audio output protocol version: expected {}, received {:?}",
-                    PROTOCOL_VERSION,
-                    payload.protocol_version
-                ));
-            }
-            emit_devices(runtime, sink)?;
-            emit_status(runtime, sink)?;
-            Ok(true)
-        }
-        "configure" => {
-            runtime.configure(parse_payload(command.payload)?);
-            emit_status(runtime, sink)?;
-            Ok(true)
-        }
-        "playTestTone" => {
-            runtime.play_test_tone(parse_payload(command.payload)?)?;
-            emit_status(runtime, sink)?;
-            Ok(true)
-        }
-        "probeExclusiveLock" => {
-            runtime.probe_exclusive_lock()?;
-            emit_status(runtime, sink)?;
-            Ok(true)
-        }
-        "playFile" => {
-            let payload = parse_payload::<PlayFilePayload>(command.payload)?;
-            let source = payload.path.trim().to_string();
-            let playback_token = payload.playback_token.clone();
-            match runtime.play_file(payload, sink.clone()) {
-                Ok(()) => {
-                    emit_status(runtime, sink)?;
-                    Ok(true)
-                }
-                Err(error) => {
-                    let reason = format_error_chain(&error);
-                    runtime.mark_playback_error(
-                        (!source.is_empty()).then_some(source),
-                        playback_token,
-                        reason,
-                        sink,
-                    );
-                    emit_status(runtime, sink)?;
-                    Ok(true)
-                }
-            }
-        }
-        "pausePlayback" => {
-            runtime.pause_playback();
-            emit_status(runtime, sink)?;
-            Ok(true)
-        }
-        "resumePlayback" => {
-            runtime.resume_playback();
-            emit_status(runtime, sink)?;
-            Ok(true)
-        }
-        "stopPlaybackOnly" => {
-            runtime.stop_playback(true);
-            emit_status(runtime, sink)?;
-            Ok(true)
-        }
-        "stopPlayback" => {
-            runtime.stop_current_mode();
-            emit_status(runtime, sink)?;
-            Ok(true)
-        }
-        "setPlaybackVolume" => {
-            runtime.set_playback_volume(parse_payload(command.payload)?);
-            emit_status(runtime, sink)?;
-            Ok(true)
-        }
-        "enumerateDevices" => {
-            emit_devices(runtime, sink)?;
-            Ok(true)
-        }
-        "shutdown" => {
-            runtime.shutdown();
-            emit_status(runtime, sink)?;
-            Ok(false)
-        }
-        other => Err(anyhow!("Unknown command type: {other}")),
-    }
+    command_loop::run()
 }
 
 #[cfg(test)]
@@ -3271,6 +3102,22 @@ mod runtime_tests {
             assert!(!extensions.contains(&".opus".to_string()));
             assert!(!extensions.contains(&".webm".to_string()));
         }
+    }
+
+    #[test]
+    fn reports_helper_capabilities_from_enabled_backends() {
+        let capabilities = helper_capabilities();
+
+        assert!(capabilities.contains(&"symphonia-decode".to_string()));
+        assert!(capabilities.contains(&"streaming-pcm-buffer".to_string()));
+        assert!(capabilities.contains(&"cpal-shared-output".to_string()));
+        #[cfg(windows)]
+        {
+            assert!(capabilities.contains(&"wasapi-exclusive-output".to_string()));
+            assert!(capabilities.contains(&"voicemeeter-route".to_string()));
+        }
+        #[cfg(feature = "opus")]
+        assert!(capabilities.contains(&"opus-decode".to_string()));
     }
 
     #[test]
@@ -4004,35 +3851,6 @@ mod runtime_tests {
     }
 }
 
-fn emit_devices(runtime: &AudioOutputRuntime, sink: &EventSink) -> Result<()> {
-    sink.emit(&HelperEvent::Devices {
-        payload: DevicesPayload {
-            devices: runtime.enumerate_devices(),
-        },
-    })
-}
-
-fn emit_status(runtime: &AudioOutputRuntime, sink: &EventSink) -> Result<()> {
-    let status = runtime.create_status();
-    if runtime.settings.diagnostics_enabled {
-        sink.log(
-            LogLevel::Info,
-            format!(
-                "Audio output status: enabled={}, requested={:?}, backend={:?}",
-                status.enabled, status.requested_mode, status.backend
-            ),
-        );
-    }
-    sink.emit(&HelperEvent::Status { payload: status })
-}
-
-fn parse_payload<T>(payload: Value) -> Result<T>
-where
-    T: for<'de> Deserialize<'de>,
-{
-    serde_json::from_value(payload).context("Invalid command payload")
-}
-
 fn default_buffer_frames() -> u32 {
     DEFAULT_BUFFER_FRAMES
 }
@@ -4633,6 +4451,55 @@ fn decode_streaming_file_to_buffer(
     ready_sender: &mut Option<mpsc::SyncSender<Result<StreamingDecodeReady, String>>>,
     pcm_buffer: &mut Option<Arc<StreamingPcmBuffer>>,
 ) -> Result<()> {
+    #[cfg(feature = "ffmpeg")]
+    {
+        match decode_streaming_file_with_symphonia_to_buffer(
+            path,
+            start_seconds,
+            growing_expected_bytes,
+            stop,
+            ready_sender,
+            pcm_buffer,
+        ) {
+            Ok(()) => Ok(()),
+            Err(symphonia_error) if growing_expected_bytes.is_none() => {
+                let symphonia_reason = format_error_chain(&symphonia_error);
+                decode_streaming_file_with_ffmpeg_to_buffer(
+                    path,
+                    start_seconds,
+                    stop,
+                    ready_sender,
+                    pcm_buffer,
+                )
+                .with_context(|| {
+                    format!(
+                        "Symphonia decode failed ({symphonia_reason}); FFmpeg fallback also failed"
+                    )
+                })
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    #[cfg(not(feature = "ffmpeg"))]
+    decode_streaming_file_with_symphonia_to_buffer(
+        path,
+        start_seconds,
+        growing_expected_bytes,
+        stop,
+        ready_sender,
+        pcm_buffer,
+    )
+}
+
+fn decode_streaming_file_with_symphonia_to_buffer(
+    path: &str,
+    start_seconds: f64,
+    growing_expected_bytes: Option<u64>,
+    stop: &Arc<AtomicBool>,
+    ready_sender: &mut Option<mpsc::SyncSender<Result<StreamingDecodeReady, String>>>,
+    pcm_buffer: &mut Option<Arc<StreamingPcmBuffer>>,
+) -> Result<()> {
     let path_ref = Path::new(path);
     if is_ape_file_path(path_ref) {
         if growing_expected_bytes.is_some() {
@@ -4790,6 +4657,47 @@ fn decode_streaming_file_to_buffer(
     Ok(())
 }
 
+#[cfg(feature = "ffmpeg")]
+fn decode_streaming_file_with_ffmpeg_to_buffer(
+    path: &str,
+    start_seconds: f64,
+    stop: &Arc<AtomicBool>,
+    ready_sender: &mut Option<mpsc::SyncSender<Result<StreamingDecodeReady, String>>>,
+    pcm_buffer: &mut Option<Arc<StreamingPcmBuffer>>,
+) -> Result<()> {
+    let decoded_audio = decode_file_to_f32_with_ffmpeg(path, start_seconds)?;
+    push_decoded_f32_audio_to_buffer(decoded_audio, stop, ready_sender, pcm_buffer)
+}
+
+#[cfg(feature = "ffmpeg")]
+fn push_decoded_f32_audio_to_buffer(
+    decoded_audio: DecodedF32Audio,
+    stop: &Arc<AtomicBool>,
+    ready_sender: &mut Option<mpsc::SyncSender<Result<StreamingDecodeReady, String>>>,
+    pcm_buffer: &mut Option<Arc<StreamingPcmBuffer>>,
+) -> Result<()> {
+    if decoded_audio.format.sample_format != DecodedSampleFormat::F32Interleaved {
+        return Err(anyhow!(
+            "FFmpeg fallback produced unsupported sample format."
+        ));
+    }
+
+    let channels = usize::from(decoded_audio.format.channels.max(1));
+    let buffer = create_streaming_decode_ready(
+        ready_sender,
+        decoded_audio.format.sample_rate,
+        channels,
+        decoded_audio.source,
+    )?;
+    *pcm_buffer = Some(Arc::clone(&buffer));
+
+    if !push_samples_until_stopped(&buffer, &decoded_audio.samples, stop) {
+        return Ok(());
+    }
+
+    Ok(())
+}
+
 fn create_streaming_decode_ready(
     ready_sender: &mut Option<mpsc::SyncSender<Result<StreamingDecodeReady, String>>>,
     sample_rate: u32,
@@ -4921,332 +4829,6 @@ fn push_samples_until_stopped(
     }
 
     offset == samples.len()
-}
-
-#[cfg_attr(not(test), allow(dead_code))]
-struct StreamingPcmBuffer {
-    inner: Mutex<StreamingPcmBufferState>,
-}
-
-#[cfg_attr(not(test), allow(dead_code))]
-struct StreamingPcmBufferState {
-    samples: VecDeque<f32>,
-    capacity_samples: usize,
-    closed: bool,
-}
-
-#[cfg_attr(not(test), allow(dead_code))]
-impl StreamingPcmBuffer {
-    fn with_capacity(capacity_samples: usize) -> Self {
-        Self {
-            inner: Mutex::new(StreamingPcmBufferState {
-                samples: VecDeque::with_capacity(capacity_samples.max(1)),
-                capacity_samples: capacity_samples.max(1),
-                closed: false,
-            }),
-        }
-    }
-
-    fn push_samples(&self, samples: &[f32]) -> usize {
-        if samples.is_empty() {
-            return 0;
-        }
-
-        let mut state = self.lock_state();
-        if state.closed {
-            return 0;
-        }
-
-        let writable = state.capacity_samples.saturating_sub(state.samples.len());
-        let write_count = writable.min(samples.len());
-        state
-            .samples
-            .extend(samples.iter().take(write_count).copied());
-        write_count
-    }
-
-    fn pop_samples(&self, output: &mut [f32]) -> usize {
-        if output.is_empty() {
-            return 0;
-        }
-
-        let mut state = self.lock_state();
-        let mut read_count = 0usize;
-        for slot in output.iter_mut() {
-            let Some(sample) = state.samples.pop_front() else {
-                break;
-            };
-
-            *slot = sample;
-            read_count += 1;
-        }
-
-        read_count
-    }
-
-    fn pop_exact_samples(&self, output: &mut [f32]) -> bool {
-        if output.is_empty() {
-            return true;
-        }
-
-        let mut state = self.lock_state();
-        if state.samples.len() < output.len() {
-            return false;
-        }
-
-        for slot in output.iter_mut() {
-            *slot = state
-                .samples
-                .pop_front()
-                .expect("buffer length was checked before pop");
-        }
-
-        true
-    }
-
-    fn close(&self) {
-        self.lock_state().closed = true;
-    }
-
-    fn buffered_samples(&self) -> usize {
-        self.lock_state().samples.len()
-    }
-
-    fn is_closed_and_empty(&self) -> bool {
-        let state = self.lock_state();
-        state.closed && state.samples.is_empty()
-    }
-
-    fn lock_state(&self) -> std::sync::MutexGuard<'_, StreamingPcmBufferState> {
-        self.inner.lock().unwrap_or_else(|error| error.into_inner())
-    }
-}
-
-#[cfg_attr(not(test), allow(dead_code))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum StreamingPcmRenderStatus {
-    Playing,
-    Underrun,
-    Ended,
-}
-
-#[cfg_attr(not(test), allow(dead_code))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum StreamingPcmFrameRead {
-    Ready,
-    Underrun,
-    Ended,
-}
-
-#[cfg_attr(not(test), allow(dead_code))]
-struct StreamingPcmRenderState {
-    source_channels: usize,
-    output_channels: usize,
-    frame_step: f64,
-    source_frame_position: f64,
-    consumed_source_frames: usize,
-    current_frame: Vec<f32>,
-}
-
-#[cfg_attr(not(test), allow(dead_code))]
-impl StreamingPcmRenderState {
-    fn new(
-        source_sample_rate: u32,
-        output_sample_rate: u32,
-        source_channels: usize,
-        output_channels: usize,
-    ) -> Self {
-        let source_channels = source_channels.max(1);
-        Self {
-            source_channels,
-            output_channels: output_channels.max(1),
-            frame_step: source_sample_rate.max(1) as f64 / output_sample_rate.max(1) as f64,
-            source_frame_position: 0.0,
-            consumed_source_frames: 0,
-            current_frame: vec![0.0; source_channels],
-        }
-    }
-
-    fn fill_output(
-        &mut self,
-        buffer: &StreamingPcmBuffer,
-        output: &mut [f32],
-        volume: f32,
-    ) -> StreamingPcmRenderStatus {
-        let volume = volume.clamp(0.0, 1.0);
-        let mut status = StreamingPcmRenderStatus::Playing;
-
-        for frame in output.chunks_mut(self.output_channels) {
-            let source_frame_index = self.source_frame_position.floor().max(0.0) as usize;
-            match self.ensure_source_frame(buffer, source_frame_index) {
-                StreamingPcmFrameRead::Ready => {
-                    for (channel_index, sample) in frame.iter_mut().enumerate() {
-                        let source_channel = if self.source_channels == 1 {
-                            0
-                        } else {
-                            channel_index.min(self.source_channels - 1)
-                        };
-                        *sample = self.current_frame[source_channel] * volume;
-                    }
-                    self.source_frame_position += self.frame_step;
-                }
-                StreamingPcmFrameRead::Underrun => {
-                    frame.fill(0.0);
-                    if status == StreamingPcmRenderStatus::Playing {
-                        status = StreamingPcmRenderStatus::Underrun;
-                    }
-                }
-                StreamingPcmFrameRead::Ended => {
-                    frame.fill(0.0);
-                    status = StreamingPcmRenderStatus::Ended;
-                }
-            }
-        }
-
-        status
-    }
-
-    fn ensure_source_frame(
-        &mut self,
-        buffer: &StreamingPcmBuffer,
-        target_frame_index: usize,
-    ) -> StreamingPcmFrameRead {
-        while self.consumed_source_frames <= target_frame_index {
-            let mut next_frame = vec![0.0; self.source_channels];
-            if buffer.pop_exact_samples(&mut next_frame) {
-                self.current_frame = next_frame;
-                self.consumed_source_frames += 1;
-                continue;
-            }
-
-            if buffer.is_closed_and_empty() {
-                return StreamingPcmFrameRead::Ended;
-            }
-
-            return StreamingPcmFrameRead::Underrun;
-        }
-
-        StreamingPcmFrameRead::Ready
-    }
-
-    fn cursor_samples(&self) -> usize {
-        (self.source_frame_position.floor().max(0.0) as usize).saturating_mul(self.source_channels)
-    }
-}
-
-fn evaluate_bit_perfect(
-    active_mode: AudioOutputMode,
-    source_format: AudioFormatDiagnostics,
-    output_format: AudioFormatDiagnostics,
-    volume: f32,
-) -> BitPerfectDiagnostics {
-    let volume = volume.clamp(0.0, 1.0);
-    let status;
-    let reason;
-
-    if active_mode != AudioOutputMode::Exclusive {
-        status = BitPerfectStatus::NotCandidate;
-        reason = "Only WASAPI exclusive playback can be a bit-perfect candidate.".to_string();
-    } else if (volume - 1.0).abs() > f32::EPSILON {
-        status = BitPerfectStatus::NotCandidate;
-        reason = "Playback volume is not unity, so samples are scaled before output.".to_string();
-    } else if source_format.sample_rate != output_format.sample_rate {
-        status = BitPerfectStatus::NotCandidate;
-        reason = format!(
-            "Source sample rate {} Hz does not match output sample rate {} Hz.",
-            source_format.sample_rate, output_format.sample_rate
-        );
-    } else if source_format.channels != output_format.channels {
-        status = BitPerfectStatus::NotCandidate;
-        reason = format!(
-            "Source channel count {} does not match output channel count {}.",
-            source_format.channels, output_format.channels
-        );
-    } else if source_format_is_helper_decoded_pcm(&source_format) {
-        status = BitPerfectStatus::NotCandidate;
-        reason = "Source samples are flowing through the helper's decoded-f32 streaming pipeline, so the original file sample bits are not preserved for bit-perfect output.".to_string();
-    } else if !audio_formats_are_bit_perfect_compatible(&source_format, &output_format) {
-        status = BitPerfectStatus::NotCandidate;
-        reason = format!(
-            "Source sample format {} does not match output sample format {}; helper sample conversion would be required.",
-            audio_format_summary(&source_format),
-            audio_format_summary(&output_format)
-        );
-    } else {
-        status = BitPerfectStatus::Candidate;
-        reason = "WASAPI exclusive output format matches source sample rate/channels/sample format and playback volume is unity; loopback or DAC verification is still required.".to_string();
-    }
-
-    BitPerfectDiagnostics {
-        status,
-        source_format: Some(source_format),
-        output_format: Some(output_format),
-        volume: Some(volume),
-        reason,
-    }
-}
-
-fn audio_formats_are_bit_perfect_compatible(
-    source_format: &AudioFormatDiagnostics,
-    output_format: &AudioFormatDiagnostics,
-) -> bool {
-    let source_kind = normalized_audio_sample_format(&source_format.sample_format);
-    let output_kind = normalized_audio_sample_format(&output_format.sample_format);
-
-    match (source_kind, output_kind) {
-        (Some(AudioSampleFormatKind::Float), Some(AudioSampleFormatKind::Float)) => {
-            source_format.bit_depth == Some(32) && output_format.bit_depth == Some(32)
-        }
-        (Some(AudioSampleFormatKind::Pcm), Some(AudioSampleFormatKind::Pcm)) => {
-            source_format.bit_depth.is_some() && source_format.bit_depth == output_format.bit_depth
-        }
-        _ => false,
-    }
-}
-
-fn source_format_is_helper_decoded_pcm(source_format: &AudioFormatDiagnostics) -> bool {
-    source_format
-        .sample_format
-        .trim()
-        .eq_ignore_ascii_case("decoded-f32")
-        || source_format.source.as_ref().is_some_and(|source| {
-            source
-                .trim()
-                .eq_ignore_ascii_case("Symphonia streaming decoded PCM")
-        })
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum AudioSampleFormatKind {
-    Float,
-    Pcm,
-}
-
-fn normalized_audio_sample_format(sample_format: &str) -> Option<AudioSampleFormatKind> {
-    match sample_format.trim().to_ascii_lowercase().as_str() {
-        "decoded-f32" | "f32" | "float" => Some(AudioSampleFormatKind::Float),
-        "pcm" | "i8" | "i16" | "i24" | "i32" | "u8" | "u16" | "u32" => {
-            Some(AudioSampleFormatKind::Pcm)
-        }
-        _ => None,
-    }
-}
-
-fn audio_format_summary(format: &AudioFormatDiagnostics) -> String {
-    match format.bit_depth {
-        Some(bit_depth) => format!("{}-bit {}", bit_depth, format.sample_format),
-        None => format.sample_format.clone(),
-    }
-}
-
-fn create_unverified_bit_perfect_diagnostics(reason: impl Into<String>) -> BitPerfectDiagnostics {
-    BitPerfectDiagnostics {
-        status: BitPerfectStatus::Unverified,
-        source_format: None,
-        output_format: None,
-        volume: None,
-        reason: reason.into(),
-    }
 }
 
 mod shared_cpal {

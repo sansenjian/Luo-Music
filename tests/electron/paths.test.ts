@@ -131,7 +131,7 @@ describe('electron/main/audioOutputNativePaths', () => {
 
     expect(resolved).toBe('/mock/app/build/native/audio-output-helper')
     expect(seen).toEqual([
-      '/mock/app/native/audio-output-helper/target/debug/audio-output-helper',
+      '/mock/app/native/audio-engine/target/debug/audio-output-helper',
       '/mock/app/build/native/audio-output-helper'
     ])
   })

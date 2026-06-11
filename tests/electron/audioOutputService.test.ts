@@ -193,7 +193,7 @@ describe('AudioOutputService', () => {
     })
 
     expect(spawnHelper).toHaveBeenCalledWith(
-      'D:\\app\\native\\audio-output-helper\\target\\debug\\audio-output-helper.exe',
+      'D:\\app\\native\\audio-engine\\target\\debug\\audio-output-helper.exe',
       [],
       expect.objectContaining({
         stdio: 'pipe',
@@ -233,6 +233,38 @@ describe('AudioOutputService', () => {
     ])
   })
 
+  it('hydrates helper-supported formats and modes from the ready event', async () => {
+    const fake = createFakeHelper()
+    const spawnHelper = vi.fn(() => fake.helper)
+    const service = new AudioOutputService({
+      appPath: 'D:\\app',
+      exists: filePath => filePath.includes('\\target\\debug\\'),
+      logger: createLoggerMock(),
+      platform: 'win32',
+      spawnHelper
+    })
+
+    service.setEnabled(true)
+    fake.stdout.write(
+      JSON.stringify({
+        type: 'ready',
+        payload: {
+          protocolVersion: 2,
+          capabilities: ['symphonia-decode', 'cpal-shared-output'],
+          supportedExtensions: ['.mp3', '.flac'],
+          supportedModes: ['shared']
+        }
+      }) + '\n'
+    )
+
+    await vi.waitFor(() => {
+      expect(service.getStatus()).toMatchObject({
+        supportedExtensions: ['.mp3', '.flac'],
+        supportedModes: ['shared']
+      })
+    })
+  })
+
   it('starts the platform audio helper without an exe suffix on non-Windows desktop builds', () => {
     const fake = createFakeHelper()
     const spawnHelper = vi.fn(() => fake.helper)
@@ -256,7 +288,7 @@ describe('AudioOutputService', () => {
     })
 
     expect(spawnHelper).toHaveBeenCalledWith(
-      'D:\\app\\native\\audio-output-helper\\target\\debug\\audio-output-helper',
+      'D:\\app\\native\\audio-engine\\target\\debug\\audio-output-helper',
       [],
       expect.objectContaining({
         stdio: 'pipe',

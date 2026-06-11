@@ -29,6 +29,7 @@ describe('build audio output helper script', () => {
   it('can pass opt-in Cargo features to the helper build', () => {
     expect(script).toContain('LUO_AUDIO_OUTPUT_HELPER_FEATURES')
     expect(script).toContain("cargoArgs.push('--features', cargoFeatures.join(','))")
+    expect(script).toContain("args.has('--ffmpeg')")
   })
 
   it('marks copied non-Windows helpers as executable', () => {
@@ -72,13 +73,13 @@ describe('build audio output helper script', () => {
           spawnSync
         })
 
-        const manifestPath = resolve(tempRoot, 'native/audio-output-helper/Cargo.toml')
+        const manifestPath = resolve(tempRoot, 'native/audio-engine/Cargo.toml')
         const packagedHelperPath = resolve(tempRoot, 'build/native/audio-output-helper')
 
         expect(exitCode).toBe(0)
         expect(spawnSync).toHaveBeenCalledWith(
           'cargo',
-          ['build', '--manifest-path', manifestPath, '--release'],
+          ['build', '--manifest-path', manifestPath, '-p', 'audio-output-helper', '--release'],
           {
             cwd: tempRoot,
             stdio: 'inherit',
@@ -94,19 +95,73 @@ describe('build audio output helper script', () => {
       }
     }
   )
+
+  it('builds the FFmpeg variant with a suffixed packaged helper name', () => {
+    const tempRoot = createAudioOutputHelperProject('win32')
+    const spawnSync = vi.fn(() => ({
+      pid: 1,
+      output: [],
+      stdout: null,
+      stderr: null,
+      status: 0,
+      signal: null
+    })) as unknown as typeof import('node:child_process').spawnSync
+
+    try {
+      const exitCode = buildAudioOutputHelper.main({
+        argv: ['--release', '--copy-resource', '--ffmpeg'],
+        env: {},
+        platform: 'win32',
+        projectRoot: tempRoot,
+        spawnSync
+      })
+
+      const manifestPath = resolve(tempRoot, 'native/audio-engine/Cargo.toml')
+
+      expect(exitCode).toBe(0)
+      expect(spawnSync).toHaveBeenCalledWith(
+        expect.any(String),
+        [
+          'build',
+          '--manifest-path',
+          manifestPath,
+          '-p',
+          'audio-output-helper',
+          '--release',
+          '--features',
+          'ffmpeg'
+        ],
+        expect.objectContaining({ cwd: tempRoot })
+      )
+      expect(existsSync(resolve(tempRoot, 'build/native/audio-output-helper-ffmpeg.exe'))).toBe(
+        true
+      )
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true })
+    }
+  })
 })
 
 function createAudioOutputHelperProject(platform: NodeJS.Platform): string {
   const tempRoot = resolve(tmpdir(), `luo-music-audio-helper-${platform}-${process.pid}`)
   rmSync(tempRoot, { recursive: true, force: true })
-  mkdirSync(resolve(tempRoot, 'native/audio-output-helper/target/release'), { recursive: true })
+  mkdirSync(resolve(tempRoot, 'native/audio-engine/target/release'), { recursive: true })
   writeFileSync(
-    resolve(tempRoot, 'native/audio-output-helper/Cargo.toml'),
+    resolve(tempRoot, 'native/audio-engine/Cargo.toml'),
+    '[workspace]\nresolver = "2"\nmembers = ["audio-output-helper"]\n'
+  )
+  mkdirSync(resolve(tempRoot, 'native/audio-engine/audio-output-helper/src'), { recursive: true })
+  writeFileSync(
+    resolve(tempRoot, 'native/audio-engine/audio-output-helper/Cargo.toml'),
     '[package]\nname = "audio-output-helper"\nversion = "0.1.0"\nedition = "2021"\n'
   )
   writeFileSync(resolve(tempRoot, 'package.json'), JSON.stringify({ version: '0.16.0' }))
   writeFileSync(
-    resolve(tempRoot, 'native/audio-output-helper/target/release/audio-output-helper'),
+    resolve(tempRoot, 'native/audio-engine/target/release/audio-output-helper'),
+    'helper'
+  )
+  writeFileSync(
+    resolve(tempRoot, 'native/audio-engine/target/release/audio-output-helper.exe'),
     'helper'
   )
   return tempRoot
