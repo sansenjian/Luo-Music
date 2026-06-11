@@ -23,7 +23,10 @@ use symphonia::core::io::{MediaSource, MediaSourceStream};
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::units::Time;
 
-const PROTOCOL_VERSION: u32 = 2;
+mod capabilities;
+
+use capabilities::{helper_capabilities, supported_audio_extensions, PROTOCOL_VERSION};
+
 const DEFAULT_BUFFER_FRAMES: u32 = 960;
 const DEFAULT_TEST_TONE_DURATION_MS: u64 = 500;
 const DEFAULT_TEST_TONE_FREQUENCY_HZ: f32 = 440.0;
@@ -35,10 +38,6 @@ const GROWING_FILE_READ_SLEEP_MS: u64 = 20;
 const DEFAULT_VOICEMEETER_BUS: &str = "A1";
 const DEFAULT_VOICEMEETER_HARDWARE_OUT_BUS: &str = "A1";
 const DEFAULT_VOICEMEETER_HARDWARE_OUT_DRIVER: &str = "wdm";
-const BASE_SUPPORTED_AUDIO_EXTENSIONS: &[&str] = &[
-    ".aac", ".aif", ".aiff", ".ape", ".caf", ".flac", ".m2a", ".m4a", ".mka", ".mp1", ".mp2",
-    ".mp3", ".mpa", ".oga", ".ogg", ".wav",
-];
 const WAVE_FORMAT_PCM_TAG: u16 = 0x0001;
 const WAVE_FORMAT_IEEE_FLOAT_TAG: u16 = 0x0003;
 
@@ -52,20 +51,6 @@ fn format_error_chain(error: &anyhow::Error) -> String {
     }
 
     parts.join(": ")
-}
-
-fn supported_audio_extensions() -> Vec<String> {
-    let mut extensions = BASE_SUPPORTED_AUDIO_EXTENSIONS
-        .iter()
-        .map(|extension| (*extension).to_string())
-        .collect::<Vec<_>>();
-
-    if cfg!(feature = "opus") {
-        extensions.push(".opus".to_string());
-        extensions.push(".webm".to_string());
-    }
-
-    extensions
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -702,6 +687,11 @@ enum HelperEvent {
 struct ReadyPayload {
     #[serde(rename = "protocolVersion")]
     protocol_version: u32,
+    capabilities: Vec<String>,
+    #[serde(rename = "supportedExtensions")]
+    supported_extensions: Vec<String>,
+    #[serde(rename = "supportedModes")]
+    supported_modes: Vec<AudioOutputMode>,
 }
 
 #[derive(Serialize)]
@@ -2627,6 +2617,9 @@ fn main() -> Result<()> {
     sink.emit(&HelperEvent::Ready {
         payload: ReadyPayload {
             protocol_version: PROTOCOL_VERSION,
+            capabilities: helper_capabilities(),
+            supported_extensions: supported_audio_extensions(),
+            supported_modes: supported_audio_modes(),
         },
     })?;
 
@@ -3271,6 +3264,22 @@ mod runtime_tests {
             assert!(!extensions.contains(&".opus".to_string()));
             assert!(!extensions.contains(&".webm".to_string()));
         }
+    }
+
+    #[test]
+    fn reports_helper_capabilities_from_enabled_backends() {
+        let capabilities = helper_capabilities();
+
+        assert!(capabilities.contains(&"symphonia-decode".to_string()));
+        assert!(capabilities.contains(&"streaming-pcm-buffer".to_string()));
+        assert!(capabilities.contains(&"cpal-shared-output".to_string()));
+        #[cfg(windows)]
+        {
+            assert!(capabilities.contains(&"wasapi-exclusive-output".to_string()));
+            assert!(capabilities.contains(&"voicemeeter-route".to_string()));
+        }
+        #[cfg(feature = "opus")]
+        assert!(capabilities.contains(&"opus-decode".to_string()));
     }
 
     #[test]

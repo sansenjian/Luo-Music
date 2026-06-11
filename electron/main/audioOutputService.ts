@@ -114,6 +114,8 @@ export class AudioOutputService {
   private helperPath: string | null = null
   private stdoutBuffer = ''
   private devices: AudioOutputDevice[] = []
+  private supportedExtensions: string[] = []
+  private helperSupportedModes: AudioOutputMode[] | null = null
   private reason: string | null = null
   private lastStatus: AudioOutputStatus | null = null
   private testToneRunning = false
@@ -556,7 +558,10 @@ export class AudioOutputService {
       activeMode: backend === 'native' ? this.settings.mode : undefined,
       deviceId: this.settings.deviceId || undefined,
       devices: [...this.devices],
-      supportedModes: getSupportedAudioOutputModes(this.platform),
+      supportedExtensions: [...this.supportedExtensions],
+      supportedModes: [
+        ...(this.helperSupportedModes ?? getSupportedAudioOutputModes(this.platform))
+      ],
       helperPath: this.helperPath ?? undefined,
       helperRunning: Boolean(this.helper),
       testToneRunning: this.testToneRunning,
@@ -1775,6 +1780,8 @@ export class AudioOutputService {
   private handleHelperEvent(event: AudioOutputEvent): void {
     switch (event.type) {
       case 'ready':
+        this.supportedExtensions = event.payload.supportedExtensions ?? this.supportedExtensions
+        this.helperSupportedModes = event.payload.supportedModes ?? this.helperSupportedModes
         this.logger.info('[AudioOutput] Helper ready')
         break
       case 'devices':

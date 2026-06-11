@@ -385,6 +385,70 @@ describe('audio output protocol', () => {
     ).toBe(false)
   })
 
+  it('parses helper ready capabilities without requiring them for older helpers', () => {
+    expect(
+      parseAudioOutputEventLine(
+        JSON.stringify({
+          type: 'ready',
+          payload: {
+            protocolVersion: 2,
+            capabilities: ['symphonia-decode', 'cpal-shared-output'],
+            supportedExtensions: ['.mp3', '.flac'],
+            supportedModes: ['shared', 'exclusive']
+          }
+        })
+      )
+    ).toEqual({
+      type: 'ready',
+      payload: {
+        protocolVersion: 2,
+        capabilities: ['symphonia-decode', 'cpal-shared-output'],
+        supportedExtensions: ['.mp3', '.flac'],
+        supportedModes: ['shared', 'exclusive']
+      }
+    })
+
+    expect(
+      parseAudioOutputEventLine(
+        JSON.stringify({
+          type: 'ready',
+          payload: {
+            protocolVersion: 2
+          }
+        })
+      )
+    ).toEqual({
+      type: 'ready',
+      payload: {
+        protocolVersion: 2
+      }
+    })
+
+    expect(
+      parseAudioOutputEventLine(
+        JSON.stringify({
+          type: 'ready',
+          payload: {
+            protocolVersion: 2,
+            capabilities: ['symphonia-decode', 42]
+          }
+        })
+      )
+    ).toBeNull()
+
+    expect(
+      parseAudioOutputEventLine(
+        JSON.stringify({
+          type: 'ready',
+          payload: {
+            protocolVersion: 2,
+            supportedModes: ['shared', 'asio']
+          }
+        })
+      )
+    ).toBeNull()
+  })
+
   it('identifies Voicemeeter Remote API status payloads', () => {
     expect(
       isAudioOutputStatus({

@@ -201,6 +201,9 @@ export type AudioOutputHelperStatus = Omit<AudioOutputStatus, 'settings'> & {
 
 export type AudioOutputReadyPayload = {
   protocolVersion: number
+  capabilities?: string[]
+  supportedExtensions?: string[]
+  supportedModes?: AudioOutputMode[]
 }
 
 export type AudioOutputConfigurePayload = {
@@ -877,7 +880,14 @@ function isAudioOutputEvent(value: unknown): value is AudioOutputEvent {
       return (
         isRecord(value.payload) &&
         typeof value.payload.protocolVersion === 'number' &&
-        Number.isFinite(value.payload.protocolVersion)
+        Number.isFinite(value.payload.protocolVersion) &&
+        (value.payload.capabilities === undefined ||
+          isStringArray(value.payload.capabilities)) &&
+        (value.payload.supportedExtensions === undefined ||
+          isStringArray(value.payload.supportedExtensions)) &&
+        (value.payload.supportedModes === undefined ||
+          (Array.isArray(value.payload.supportedModes) &&
+            value.payload.supportedModes.every(isAudioOutputMode)))
       )
     case 'status':
       return isAudioOutputHelperStatus(value.payload)
@@ -933,6 +943,10 @@ function isAudioOutputLogLevel(
   value: unknown
 ): value is Extract<AudioOutputEvent, { type: 'log' }>['level'] {
   return value === 'debug' || value === 'info' || value === 'warn' || value === 'error'
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => typeof item === 'string')
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
