@@ -1,7 +1,21 @@
 export const AUDIO_OUTPUT_STORAGE_KEY = 'audioOutput'
 export const AUDIO_OUTPUT_PROTOCOL_VERSION = 2
+export const AUDIO_OUTPUT_HELPER_CAPABILITIES = [
+  'streaming-pcm-buffer',
+  'raw-pcm-passthrough',
+  'bit-perfect-diagnostics',
+  'symphonia-decode',
+  'growing-file-source',
+  'opus-decode',
+  'ffmpeg-decode',
+  'ffmpeg-fallback-decode',
+  'cpal-shared-output',
+  'wasapi-exclusive-output',
+  'voicemeeter-route'
+] as const
 
 export type AudioOutputMode = 'shared' | 'exclusive' | 'voicemeeter'
+export type AudioOutputHelperCapability = (typeof AUDIO_OUTPUT_HELPER_CAPABILITIES)[number]
 export type AudioOutputBackend = 'disabled' | 'native' | 'unavailable'
 export type AudioOutputNativePlaybackState =
   | 'idle'
@@ -201,7 +215,7 @@ export type AudioOutputHelperStatus = Omit<AudioOutputStatus, 'settings'> & {
 
 export type AudioOutputReadyPayload = {
   protocolVersion: number
-  capabilities?: string[]
+  capabilities?: AudioOutputHelperCapability[]
   supportedExtensions?: string[]
   supportedModes?: AudioOutputMode[]
 }
@@ -286,6 +300,7 @@ export const DEFAULT_AUDIO_OUTPUT_STATE: AudioOutputState = {
 }
 
 const AUDIO_OUTPUT_MODES = new Set<AudioOutputMode>(['shared', 'exclusive', 'voicemeeter'])
+const AUDIO_OUTPUT_HELPER_CAPABILITY_SET = new Set<string>(AUDIO_OUTPUT_HELPER_CAPABILITIES)
 const AUDIO_OUTPUT_VOICEMEETER_REMOTE_KINDS = new Set<AudioOutputVoicemeeterRemoteKind>([
   'standard',
   'banana',
@@ -673,6 +688,10 @@ function isAudioOutputMode(value: unknown): value is AudioOutputMode {
   return typeof value === 'string' && AUDIO_OUTPUT_MODES.has(value as AudioOutputMode)
 }
 
+function isAudioOutputHelperCapability(value: unknown): value is AudioOutputHelperCapability {
+  return typeof value === 'string' && AUDIO_OUTPUT_HELPER_CAPABILITY_SET.has(value)
+}
+
 function isAudioOutputBackend(value: unknown): value is AudioOutputBackend {
   return value === 'disabled' || value === 'native' || value === 'unavailable'
 }
@@ -742,12 +761,9 @@ function isAudioOutputNativePlaybackDiagnostics(
     (value.activeMode === undefined || isAudioOutputMode(value.activeMode)) &&
     (value.sourceFormat === undefined || isAudioOutputFormatDiagnostics(value.sourceFormat)) &&
     (value.outputFormat === undefined || isAudioOutputFormatDiagnostics(value.outputFormat)) &&
-    (value.sourceSampleRate === undefined ||
-      isNonNegativeFiniteNumber(value.sourceSampleRate)) &&
-    (value.outputSampleRate === undefined ||
-      isNonNegativeFiniteNumber(value.outputSampleRate)) &&
-    (value.sampleRateMismatch === undefined ||
-      typeof value.sampleRateMismatch === 'boolean') &&
+    (value.sourceSampleRate === undefined || isNonNegativeFiniteNumber(value.sourceSampleRate)) &&
+    (value.outputSampleRate === undefined || isNonNegativeFiniteNumber(value.outputSampleRate)) &&
+    (value.sampleRateMismatch === undefined || typeof value.sampleRateMismatch === 'boolean') &&
     (value.sourceChannels === undefined || isNonNegativeFiniteNumber(value.sourceChannels)) &&
     (value.outputChannels === undefined || isNonNegativeFiniteNumber(value.outputChannels)) &&
     (value.channelMismatch === undefined || typeof value.channelMismatch === 'boolean') &&
@@ -882,7 +898,8 @@ function isAudioOutputEvent(value: unknown): value is AudioOutputEvent {
         typeof value.payload.protocolVersion === 'number' &&
         Number.isFinite(value.payload.protocolVersion) &&
         (value.payload.capabilities === undefined ||
-          isStringArray(value.payload.capabilities)) &&
+          (Array.isArray(value.payload.capabilities) &&
+            value.payload.capabilities.every(isAudioOutputHelperCapability))) &&
         (value.payload.supportedExtensions === undefined ||
           isStringArray(value.payload.supportedExtensions)) &&
         (value.payload.supportedModes === undefined ||
