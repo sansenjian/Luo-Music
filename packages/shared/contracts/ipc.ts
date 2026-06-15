@@ -9,7 +9,7 @@
  */
 
 import type { INVOKE_CHANNELS, RECEIVE_CHANNELS, SEND_CHANNELS } from '../protocol/channels'
-import type { CacheClearOptions, CacheClearResult } from '../protocol/cache'
+import type { CacheClearOptions, CacheClearResult, CacheSize } from '../protocol/cache'
 import type { SmtcNativeStatus } from '../smtc/protocol'
 import type {
   AudioOutputPlayFilePayload,
@@ -238,11 +238,7 @@ type MergeChannels<T extends Record<string, unknown>> = {
 
 type InvokeChannelsDefinition = MergeChannels<
   // 缓存管理
-  DefineInvokeChannel<
-    typeof INVOKE_CHANNELS.CACHE_GET_SIZE,
-    [],
-    { httpCache: number; httpCacheFormatted: string; note?: string }
-  > &
+  DefineInvokeChannel<typeof INVOKE_CHANNELS.CACHE_GET_SIZE, [], CacheSize> &
     DefineInvokeChannel<typeof INVOKE_CHANNELS.CACHE_CLEAR, [CacheClearOptions], CacheClearResult> &
     DefineInvokeChannel<
       typeof INVOKE_CHANNELS.CACHE_CLEAR_ALL,
