@@ -1,4 +1,4 @@
-import type { CacheClearOptions, CacheClearResult } from '@shared/protocol/cache'
+import type { CacheClearOptions, CacheClearResult, CacheSize } from '@shared/protocol/cache'
 import type { IDisposable } from '@/base/common/lifecycle/disposable'
 import type {
   LocalLibraryAlbumSummary,
@@ -24,11 +24,7 @@ export const enum WindowState {
   Fullscreen = 'fullscreen'
 }
 
-export interface ICacheSize {
-  httpCache: number
-  httpCacheFormatted: string
-  [key: string]: number | string
-}
+export type ICacheSize = CacheSize
 
 export type IClearCacheOptions = CacheClearOptions
 

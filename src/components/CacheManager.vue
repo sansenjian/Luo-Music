@@ -4,23 +4,38 @@ import { clearPlatformAuthSessions } from '@/app/legacyPlatformAuth'
 import { services } from '@/services'
 import { getPlatformDisplayInfo } from '@/platform/music/display'
 import { useUserStore } from '@/store/userStore'
+import type { ICacheSize } from '@/platform/common/types'
 
 const platformService = services.platform()
 const musicService = services.music()
 const userStore = useUserStore()
-const cacheSize = ref({ httpCache: 0, httpCacheFormatted: '0 B' })
+const cacheSize = ref<ICacheSize>({
+  httpCache: 0,
+  httpCacheFormatted: '0 B',
+  nativeAudioCache: 0,
+  nativeAudioCacheFormatted: '0 B',
+  totalCache: 0,
+  totalCacheFormatted: '0 B'
+})
 const loading = ref(false)
 const emit = defineEmits(['notify'])
 const isElectron = computed(() => platformService.isElectron())
 
-type CacheOptionKey = 'cookies' | 'localStorage' | 'sessionStorage' | 'indexDB' | 'cache'
+type CacheOptionKey =
+  | 'cookies'
+  | 'localStorage'
+  | 'sessionStorage'
+  | 'indexDB'
+  | 'cache'
+  | 'nativeAudio'
 
 const cacheOptionKeys: CacheOptionKey[] = [
   'cookies',
   'localStorage',
   'sessionStorage',
   'indexDB',
-  'cache'
+  'cache',
+  'nativeAudio'
 ]
 
 const cacheOptions = reactive<Record<CacheOptionKey, boolean>>({
@@ -28,7 +43,8 @@ const cacheOptions = reactive<Record<CacheOptionKey, boolean>>({
   localStorage: false,
   sessionStorage: false,
   indexDB: false,
-  cache: true
+  cache: true,
+  nativeAudio: false
 })
 
 const allSelected = computed(() => cacheOptionKeys.every(k => cacheOptions[k]))
@@ -47,7 +63,8 @@ const cacheTypeLabels: Record<CacheOptionKey, string> = {
   localStorage: '本地存储',
   sessionStorage: '会话存储',
   indexDB: 'IndexedDB',
-  cache: 'HTTP 缓存'
+  cache: 'HTTP 缓存',
+  nativeAudio: '原生音频临时缓存'
 }
 
 onMounted(() => {
@@ -160,8 +177,16 @@ function handleClearResult(result: {
     </div>
 
     <div class="cache-info">
-      <span class="cache-label">当前缓存大小:</span>
-      <span class="cache-value">{{ cacheSize.httpCacheFormatted }}</span>
+      <div class="cache-total">
+        <span class="cache-label">当前缓存大小:</span>
+        <span class="cache-value">
+          {{ cacheSize.totalCacheFormatted ?? cacheSize.httpCacheFormatted }}
+        </span>
+      </div>
+      <div class="cache-breakdown">
+        <span>HTTP {{ cacheSize.httpCacheFormatted }}</span>
+        <span>原生音频 {{ cacheSize.nativeAudioCacheFormatted ?? '0 B' }}</span>
+      </div>
     </div>
 
     <div class="cache-account">
@@ -236,13 +261,26 @@ function handleClearResult(result: {
 
 .cache-info {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 12px;
   padding: 10px;
   background: var(--ui-surface-muted);
   border: 1px solid var(--ui-border-subtle);
   border-radius: var(--ui-radius-md);
+}
+
+.cache-total,
+.cache-breakdown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cache-breakdown {
+  font-size: 12px;
+  color: var(--gray, #666);
 }
 
 .cache-label {

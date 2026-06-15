@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  AUDIO_OUTPUT_HELPER_CAPABILITIES,
   createDefaultAudioOutputStatus,
   isAudioOutputStatus,
   parseAudioOutputEventLine,
@@ -386,6 +387,21 @@ describe('audio output protocol', () => {
   })
 
   it('parses helper ready capabilities without requiring them for older helpers', () => {
+    expect(AUDIO_OUTPUT_HELPER_CAPABILITIES).toEqual(
+      expect.arrayContaining([
+        'streaming-pcm-buffer',
+        'raw-pcm-passthrough',
+        'bit-perfect-diagnostics',
+        'symphonia-decode',
+        'growing-file-source',
+        'ffmpeg-decode',
+        'ffmpeg-fallback-decode',
+        'cpal-shared-output',
+        'wasapi-exclusive-output',
+        'voicemeeter-route'
+      ])
+    )
+
     expect(
       parseAudioOutputEventLine(
         JSON.stringify({
@@ -431,6 +447,18 @@ describe('audio output protocol', () => {
           payload: {
             protocolVersion: 2,
             capabilities: ['symphonia-decode', 42]
+          }
+        })
+      )
+    ).toBeNull()
+
+    expect(
+      parseAudioOutputEventLine(
+        JSON.stringify({
+          type: 'ready',
+          payload: {
+            protocolVersion: 2,
+            capabilities: ['unknown-helper-capability']
           }
         })
       )

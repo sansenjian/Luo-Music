@@ -29,9 +29,22 @@ export type CacheClearOptions = {
   indexDB?: boolean
   webSQL?: boolean
   cache?: boolean
+  nativeAudio?: boolean
   serviceWorkers?: boolean
   shaderCache?: boolean
   all?: boolean
+}
+
+export type CacheSize = {
+  httpCache: number
+  httpCacheFormatted: string
+  quota?: number
+  quotaFormatted?: string
+  nativeAudioCache?: number
+  nativeAudioCacheFormatted?: string
+  totalCache?: number
+  totalCacheFormatted?: string
+  note?: string
 }
 
 export type CacheClearResult = {
