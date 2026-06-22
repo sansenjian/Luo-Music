@@ -33,6 +33,7 @@ import { useAudioOutputPlugin } from '@/composables/useAudioOutputPlugin'
 import type { AudioOutputSharedDevice } from '@/composables/useAudioOutputPlugin'
 import type {
   AudioOutputBitPerfectDiagnostics,
+  AudioOutputDspSettings,
   AudioOutputFormatDiagnostics,
   AudioOutputMode,
   AudioOutputSettings,
@@ -96,6 +97,18 @@ const baseAudioOutputSettingsSchema: PluginSettingDefinition[] = [
     type: 'boolean',
     label: '强制 bit-perfect 候选输出',
     default: false
+  },
+  {
+    key: 'dspEnabled',
+    type: 'boolean',
+    label: '启用 DSP 处理',
+    default: false
+  },
+  {
+    key: 'dspHeadroomDb',
+    type: 'text',
+    label: 'DSP headroom (dB)',
+    default: 0
   },
   {
     key: 'voicemeeterBus',
@@ -1361,6 +1374,55 @@ function isFirstPartyPlugin(platformId: string): boolean {
   return firstPartyPluginIds.has(platformId)
 }
 
+function createAudioOutputPluginSettingsSnapshot(
+  settings: AudioOutputSettings
+): Record<string, unknown> {
+  return {
+    ...settings,
+    dspEnabled: Boolean(settings.dsp?.enabled),
+    dspHeadroomDb: settings.dsp?.headroomDb ?? 0
+  }
+}
+
+function normalizeAudioOutputPluginSettingsUpdate(
+  settings: Record<string, unknown>
+): Record<string, unknown> {
+  const { dspEnabled, dspHeadroomDb, ...baseSettings } = settings
+
+  if (dspEnabled === undefined && dspHeadroomDb === undefined) {
+    return settings
+  }
+
+  const dsp = normalizeAudioOutputDspSettingsForUpdate(baseSettings.dsp, dspEnabled, dspHeadroomDb)
+  return {
+    ...baseSettings,
+    dsp
+  }
+}
+
+function normalizeAudioOutputDspSettingsForUpdate(
+  currentDsp: unknown,
+  enabled: unknown,
+  headroomDb: unknown
+): AudioOutputDspSettings {
+  const current =
+    currentDsp && typeof currentDsp === 'object'
+      ? (currentDsp as Partial<AudioOutputDspSettings>)
+      : {}
+  const parsedHeadroomDb =
+    typeof headroomDb === 'number'
+      ? headroomDb
+      : typeof headroomDb === 'string'
+        ? Number.parseFloat(headroomDb)
+        : current.headroomDb
+
+  return {
+    enabled: typeof enabled === 'boolean' ? enabled : Boolean(current.enabled),
+    headroomDb: Number.isFinite(parsedHeadroomDb) ? Number(parsedHeadroomDb) : 0,
+    eq: Array.isArray(current.eq) ? current.eq : []
+  }
+}
+
 async function setFirstPartyPluginEnabled(platformId: string, enabled: boolean): Promise<boolean> {
   const { setSMTCEnabled, setCoverSwipeEnabled } = useExperimentalFeatures()
   const { setAudioOutputEnabled } = useAudioOutputPlugin()
@@ -1392,7 +1454,7 @@ async function setFirstPartyPluginEnabled(platformId: string, enabled: boolean):
 
 function getFirstPartyPluginSettings(platformId: string): Record<string, unknown> {
   if (platformId === FIRST_PARTY_AUDIO_OUTPUT_PLUGIN_ID) {
-    return { ...useAudioOutputPlugin().audioOutputSettings.value }
+    return createAudioOutputPluginSettingsSnapshot(useAudioOutputPlugin().audioOutputSettings.value)
   }
 
   return {}
@@ -1403,7 +1465,9 @@ function updateFirstPartyPluginSettings(
   settings: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   if (platformId === FIRST_PARTY_AUDIO_OUTPUT_PLUGIN_ID) {
-    return useAudioOutputPlugin().updateAudioOutputSettings(settings)
+    return useAudioOutputPlugin().updateAudioOutputSettings(
+      normalizeAudioOutputPluginSettingsUpdate(settings)
+    )
   }
 
   return Promise.resolve({})

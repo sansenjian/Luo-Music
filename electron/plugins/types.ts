@@ -18,6 +18,7 @@ export interface ExternalPluginEntry {
 
 export interface ExternalPluginManifest {
   manifestVersion: number
+  apiVersion?: 1 | 2
   id: string
   name: string
   version: string
@@ -244,6 +245,7 @@ const pluginCategorySchema = z.enum(['api', 'extension', 'theme'])
 
 export const ExternalPluginManifestSchema = z.object({
   manifestVersion: z.number().int().positive(),
+  apiVersion: z.union([z.literal(1), z.literal(2)]).optional(),
   id: z.string().min(1),
   name: z.string().min(1),
   version: z.string().min(1),
@@ -278,6 +280,7 @@ export function createPlatformDescriptorFromExternalPlugin(
   return {
     id: manifest.platformId,
     displayName: manifest.name,
+    apiVersion: manifest.apiVersion ?? 1,
     source: manifest.source,
     runtime: manifest.runtime,
     category: manifest.category ?? 'api',

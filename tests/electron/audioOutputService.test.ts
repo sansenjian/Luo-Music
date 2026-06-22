@@ -226,7 +226,12 @@ describe('AudioOutputService', () => {
             voicemeeterHardwareOutBus: 'A1',
             voicemeeterHardwareOutDriver: 'wdm',
             voicemeeterHardwareOutDevice: '',
-            diagnosticsEnabled: false
+            diagnosticsEnabled: false,
+            dsp: {
+              enabled: false,
+              headroomDb: 0,
+              eq: []
+            }
           }
         }
       }

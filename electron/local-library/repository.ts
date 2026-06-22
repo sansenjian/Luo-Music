@@ -42,7 +42,7 @@ import {
   createListTracksPageQueries,
   type LocalLibraryCompiledQuery
 } from './repository.kysely'
-import { buildStrictDuplicateIndex } from './duplicates'
+import { buildFuzzyDuplicateIndex, buildStrictDuplicateIndex } from './duplicates'
 import { mapFolderListRow, mapFolderRow, mapTrackRow, toAlbumSummary } from './repository.mappers'
 import type {
   ArtistSummarySourceRow,
@@ -554,7 +554,7 @@ export class LocalLibraryRepository {
       }
     })
 
-    this.rebuildDuplicateIndex()
+    this.rebuildDuplicateIndexes()
   }
 
   hasAnyFolder(): boolean {
@@ -948,8 +948,19 @@ export class LocalLibraryRepository {
     return row ? mapScanJobRow(row) : null
   }
 
-  rebuildDuplicateIndex(mode: LocalLibraryDuplicateMode = 'strict'): LocalLibraryDuplicateSummary {
-    const groups = mode === 'strict' ? buildStrictDuplicateIndex(this.listTracks()) : []
+  rebuildDuplicateIndexes(): LocalLibraryDuplicateSummary {
+    const tracks = this.listTracks()
+    const strictSummary = this.rebuildDuplicateIndex('strict', tracks)
+    this.rebuildDuplicateIndex('fuzzy', tracks)
+    return strictSummary
+  }
+
+  rebuildDuplicateIndex(
+    mode: LocalLibraryDuplicateMode = 'strict',
+    tracks: LocalLibraryTrack[] = this.listTracks()
+  ): LocalLibraryDuplicateSummary {
+    const groups =
+      mode === 'strict' ? buildStrictDuplicateIndex(tracks) : buildFuzzyDuplicateIndex(tracks)
     const updatedAt = Date.now()
     const deleteMembersStatement = this.db.prepare(`
       DELETE FROM local_library_duplicate_members
@@ -1386,6 +1397,10 @@ function resolveMetadataCandidateConfidence(
 
   if (source === 'folder') {
     return 0.52
+  }
+
+  if (source === 'network') {
+    return 0.68
   }
 
   return 0.25

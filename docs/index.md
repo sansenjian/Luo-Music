@@ -31,36 +31,43 @@ features:
 
 ### 开发指南
 
-| 入口                                        | 说明                                     |
-| ------------------------------------------- | ---------------------------------------- |
-| [开发指南总览](/guide/)                     | 从安装、启动到构建、测试的主入口         |
-| [快速开始](/guide/getting-started)          | 本地开发、Electron 调试与环境要求        |
-| [开发分支流程](/guide/development-workflow) | `dev`、`master` 与 PR 合并规则           |
-| [构建与发布](/guide/build-and-release)      | Web、Electron、portable 与 docs 构建链路 |
-| [测试指南](/guide/testing)                  | Vitest、Playwright 与回归验证约定        |
-| [E2E 测试](/guide/e2e-testing)              | Playwright 入口和当前测试组织            |
-| [VSCode 配置](/guide/vscode-setup)          | 本地调试与任务配置                       |
+| 入口                                                          | 说明                                            |
+| ------------------------------------------------------------- | ----------------------------------------------- |
+| [开发指南总览](/guide/)                                       | 从安装、启动到构建、测试的主入口                |
+| [快速开始](/guide/getting-started)                            | 本地开发、Electron 调试与环境要求               |
+| [开发分支流程](/guide/development-workflow)                   | `dev`、`master` 与 PR 合并规则                  |
+| [构建与发布](/guide/build-and-release)                        | Web、Electron、portable 与 docs 构建链路        |
+| [测试指南](/guide/testing)                                    | Vitest、Playwright 与回归验证约定               |
+| [E2E 测试](/guide/e2e-testing)                                | Playwright 入口和当前测试组织                   |
+| [原生音频输出验证](/guide/native-audio-output-exclusive-test) | WASAPI、bit-perfect、Voicemeeter 与格式证据验证 |
+| [VSCode 配置](/guide/vscode-setup)                            | 本地调试与任务配置                              |
 
 ### 架构设计
 
-| 入口                                             | 说明                                    |
-| ------------------------------------------------ | --------------------------------------- |
-| [架构总览](/architecture/)                       | 系统设计与关键模块入口                  |
-| [项目概览](/architecture/project-overview)       | 模块边界、运行时形态与目录职责          |
-| [服务层设计](/architecture/service-layer)        | 服务注册、依赖组织与调用边界            |
-| [Service Manager](/architecture/service-manager) | Electron 子进程与服务生命周期           |
-| [请求层说明](/architecture/request-layer)        | `src/utils/http` 的缓存、重试与取消机制 |
-| [数据库层路线](/architecture/database)           | SQLite、Kysely 与后续 Drizzle 迁移边界  |
-| [统一 IPC](/architecture/unified-ipc)            | preload / IPC 落地说明                  |
+| 入口                                                        | 说明                                       |
+| ----------------------------------------------------------- | ------------------------------------------ |
+| [架构总览](/architecture/)                                  | 系统设计与关键模块入口                     |
+| [项目概览](/architecture/project-overview)                  | 模块边界、运行时形态与目录职责             |
+| [服务层设计](/architecture/service-layer)                   | 服务注册、依赖组织与调用边界               |
+| [Service Manager](/architecture/service-manager)            | Electron 子进程与服务生命周期              |
+| [请求层说明](/architecture/request-layer)                   | `src/utils/http` 的缓存、重试与取消机制    |
+| [数据库层路线](/architecture/database)                      | SQLite、Kysely 与后续 Drizzle 迁移边界     |
+| [本地音乐库](/architecture/local-library)                   | 本地扫描、SQLite、分页、去重和元数据候选   |
+| [统一 IPC](/architecture/unified-ipc)                       | preload / IPC 落地说明                     |
+| [插件拓展架构](/architecture/plugin-extension-architecture) | 插件边界、标准模型、登录和贡献点设计       |
+| [Rust 原生音频引擎](/architecture/native-audio-rust-engine) | `native/audio-engine` 工作区和 helper 边界 |
+| [SMTC 集成](/architecture/smtc)                             | Windows 系统媒体控制集成边界               |
 
 ### 参考资料
 
-| 入口                                   | 说明                     |
-| -------------------------------------- | ------------------------ |
-| [参考总览](/reference/)                | 速查与接口文档入口       |
-| [快速参考](/reference/quick-reference) | 高频命令、目录和排查速查 |
-| [API 文档](/reference/api)             | 平台与用户相关 API 说明  |
-| [组件文档](/reference/components)      | 核心组件说明             |
+| 入口                                                              | 说明                                 |
+| ----------------------------------------------------------------- | ------------------------------------ |
+| [参考总览](/reference/)                                           | 速查与接口文档入口                   |
+| [快速参考](/reference/quick-reference)                            | 高频命令、目录和排查速查             |
+| [API 文档](/reference/api)                                        | 平台与用户相关 API 说明              |
+| [组件文档](/reference/components)                                 | 核心组件说明                         |
+| [插件规范](/reference/plugin-specification)                       | Manifest、SDK、权限和第三方插件开发  |
+| [原生音频格式矩阵](/reference/native-audio-output-format-support) | native helper 格式支持和样本验证边界 |
 
 ### 归档区
 

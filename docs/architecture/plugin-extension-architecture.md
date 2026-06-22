@@ -3,7 +3,7 @@
 > 状态: 设计草案
 > 最后更新: 2026-04-27
 
-> 当前落地进度: 已完成插件存储命名空间、`ctx.secrets`、入站标准化、播放 URL 刷新竞态保护，以及 SMTC / 滑动封面切歌第一方拓展插件入口；SMTC 已收口到 `useSmtcExtension()` 启动器，主进程会按插件开关启用 / 禁用 Chromium MediaSession features，停用时会 relaunch 使系统媒体面板彻底消失；完整平台登录 UI 插件化仍是后续阶段。
+> 当前落地进度: 已完成插件存储命名空间、`ctx.secrets`、入站标准化、播放 URL 刷新竞态保护、manifest `apiVersion` 透传，以及 SMTC / 滑动封面切歌第一方拓展插件入口；SMTC 已收口到 `useSmtcExtension()` 启动器，主进程会按插件开关启用 / 禁用 Chromium MediaSession features，停用时会 relaunch 使系统媒体面板彻底消失；完整平台登录 UI 插件化仍是后续阶段。
 
 ## 1. 目标
 
@@ -688,12 +688,14 @@ export interface PluginPlayerFacade {
 - 入站边界先同时接受旧 `PluginSong` 和新 `StandardSong`，业务层逐步收敛到只接收标准模型。不要在旧插件仍存在时一次性删除兼容转换。
 - 旧接口和旧字段先标记 `@deprecated`，并在诊断日志中统计调用量。只有确认旧路径使用量足够低后，才能进入删除阶段。
 - `LoginModal.vue`、`QQLoginModal.vue` 在统一登录容器完成前保留为适配层，不直接删除；组件入口必须经过 `resolvePlatformLoginRoute()`，避免新增散落的平台判断。
+- `apiVersion` 是宿主识别插件能力协议的轻量版本号。省略时按 `1` 处理；`2` 表示插件可以声明 `capabilitiesV2` / `contributionsV2`，但不能跳过 v1 兼容字段。
 - 新字段通过可选 `capabilitiesV2` 和 `contributionsV2` 增量加入。
 
 推荐 manifest 扩展:
 
 ```ts
 export interface PluginManifestV2Extensions {
+  apiVersion?: 1 | 2
   category?: 'api' | 'extension' | 'theme'
   engines?: {
     pluginApi?: string
@@ -704,7 +706,7 @@ export interface PluginManifestV2Extensions {
 }
 ```
 
-在实现完成前，文档和 SDK 可先声明这些类型，运行时继续使用现有 v1 字段。
+运行时会把 `apiVersion` 透传到 `PlatformDescriptor`，插件管理页和服务层可以据此选择展示或迁移策略。当前宿主仍继续使用现有 v1 字段作为主入口，v2 字段只做增量声明。
 
 ## 9. 迁移路线
 

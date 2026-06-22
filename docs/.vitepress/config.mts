@@ -19,15 +19,22 @@ export default defineConfig({
     'service-manager-architecture.md': 'architecture/service-manager.md',
     'request-usage.md': 'architecture/request-layer.md',
     'database.md': 'architecture/database.md',
+    '本地音乐.md': 'architecture/local-library.md',
     'error-handling.md': 'architecture/error-handling.md',
     'sandbox-services.md': 'architecture/sandbox-services.md',
     'unified-ipc-implementation.md': 'architecture/unified-ipc.md',
     'dependency-graph.md': 'architecture/dependency-graph.md',
     'di-performance-monitoring.md': 'architecture/di-performance-monitoring.md',
+    'plugin-extension-architecture.md': 'architecture/plugin-extension-architecture.md',
+    'native-audio-rust-engine.md': 'architecture/native-audio-rust-engine.md',
+    'smtc.md': 'architecture/smtc.md',
     'QUICK_REFERENCE.md': 'reference/quick-reference.md',
     'api-documentation.md': 'reference/api.md',
     'components-documentation.md': 'reference/components.md',
-    'project-er-diagram.md': 'reference/project-er-diagram.md'
+    'project-er-diagram.md': 'reference/project-er-diagram.md',
+    'plugin-specification.md': 'reference/plugin-specification.md',
+    'native-audio-output-format-support.md': 'reference/native-audio-output-format-support.md',
+    'native-audio-output-exclusive-test.md': 'guide/native-audio-output-exclusive-test.md'
   },
   themeConfig: {
     nav: [
@@ -50,6 +57,7 @@ export default defineConfig({
             { text: '构建与发布', link: '/guide/build-and-release' },
             { text: '测试指南', link: '/guide/testing' },
             { text: 'E2E 测试', link: '/guide/e2e-testing' },
+            { text: '原生音频输出验证', link: '/guide/native-audio-output-exclusive-test' },
             { text: 'VSCode 配置', link: '/guide/vscode-setup' },
             { text: '更新日志', link: '/guide/changelog' }
           ]
@@ -65,9 +73,13 @@ export default defineConfig({
             { text: 'Service Manager', link: '/architecture/service-manager' },
             { text: '请求层说明', link: '/architecture/request-layer' },
             { text: '数据库层路线', link: '/architecture/database' },
+            { text: '本地音乐库', link: '/architecture/local-library' },
             { text: '错误处理', link: '/architecture/error-handling' },
             { text: 'Sandbox 服务', link: '/architecture/sandbox-services' },
             { text: '统一 IPC', link: '/architecture/unified-ipc' },
+            { text: '插件拓展架构', link: '/architecture/plugin-extension-architecture' },
+            { text: 'Rust 原生音频引擎', link: '/architecture/native-audio-rust-engine' },
+            { text: 'SMTC 集成', link: '/architecture/smtc' },
             { text: '依赖图', link: '/architecture/dependency-graph' },
             { text: 'DI 性能监控', link: '/architecture/di-performance-monitoring' }
           ]
@@ -81,6 +93,8 @@ export default defineConfig({
             { text: '快速参考', link: '/reference/quick-reference' },
             { text: 'API 文档', link: '/reference/api' },
             { text: '组件文档', link: '/reference/components' },
+            { text: '插件规范', link: '/reference/plugin-specification' },
+            { text: '原生音频格式矩阵', link: '/reference/native-audio-output-format-support' },
             { text: 'ER 图', link: '/reference/project-er-diagram' }
           ]
         }
@@ -90,6 +104,7 @@ export default defineConfig({
           text: '方案与路线图',
           items: [
             { text: '总览', link: '/plans/' },
+            { text: '当前项目规划', link: '/plans/current-project-plan' },
             { text: '项目结构优化规划', link: '/plans/project-structure-optimization-plan' },
             { text: '项目结构归属审计', link: '/plans/project-structure-ownership-audit' },
             { text: 'DI 后续路线图', link: '/plans/di-followup-roadmap' },

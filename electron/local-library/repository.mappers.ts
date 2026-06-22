@@ -95,7 +95,11 @@ function parseMetadataSources(value: string | null | undefined): LocalLibraryTra
 function normalizeMetadataSource(
   value: unknown
 ): LocalLibraryTrackMetadataSources[keyof LocalLibraryTrackMetadataSources] {
-  return value === 'embedded' || value === 'filename' || value === 'folder' || value === 'unknown'
+  return value === 'embedded' ||
+    value === 'filename' ||
+    value === 'folder' ||
+    value === 'network' ||
+    value === 'unknown'
     ? value
     : 'unknown'
 }

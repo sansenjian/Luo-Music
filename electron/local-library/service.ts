@@ -235,7 +235,7 @@ export class LocalLibraryService {
 
       await this.watchCoordinator.stopWatchingFolder(folderId)
       this.repository.removeFolder(folderId)
-      this.repository.rebuildDuplicateIndex()
+      this.repository.rebuildDuplicateIndexes()
       this.setStatus(this.createIdleStatus())
       this.emitUpdated()
       void this.cleanupUnusedCovers()
@@ -263,7 +263,7 @@ export class LocalLibraryService {
 
       if (!enabled) {
         await this.watchCoordinator.stopWatchingFolder(folderId)
-        this.repository.rebuildDuplicateIndex()
+        this.repository.rebuildDuplicateIndexes()
         this.setStatus(
           this.createIdleStatus({
             message: '已停用本地音乐文件夹'
@@ -557,7 +557,7 @@ export class LocalLibraryService {
         return this.getState()
       }
 
-      this.repository.rebuildDuplicateIndex()
+      this.repository.rebuildDuplicateIndexes()
       const finishedAt = Date.now()
       this.repository.updateScanJob(scanJob.id, {
         discoveredTracks: this.repository.getTrackCount(),
@@ -683,7 +683,7 @@ export class LocalLibraryService {
         return this.getState()
       }
 
-      this.repository.rebuildDuplicateIndex()
+      this.repository.rebuildDuplicateIndexes()
       const finishedAt = Date.now()
       this.repository.updateScanJob(scanJob.id, {
         discoveredTracks: this.repository.getTrackCount(),
@@ -843,7 +843,7 @@ export class LocalLibraryService {
     }
 
     this.repository.upsertTracks([repairedTrack])
-    this.repository.rebuildDuplicateIndex()
+    this.repository.rebuildDuplicateIndexes()
     this.emitUpdated()
   }
 

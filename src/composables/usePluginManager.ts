@@ -79,7 +79,21 @@ function createAudioOutputDescriptorRefreshKey(status: AudioOutputStatus): strin
           voicemeeterHardwareOutBus: settings.voicemeeterHardwareOutBus,
           voicemeeterHardwareOutDriver: settings.voicemeeterHardwareOutDriver,
           voicemeeterHardwareOutDevice: settings.voicemeeterHardwareOutDevice,
-          diagnosticsEnabled: settings.diagnosticsEnabled
+          diagnosticsEnabled: settings.diagnosticsEnabled,
+          dsp: settings.dsp
+            ? {
+                enabled: settings.dsp.enabled,
+                headroomDb: settings.dsp.headroomDb,
+                eq: settings.dsp.eq.map(band => [
+                  band.id,
+                  band.type,
+                  band.frequencyHz,
+                  band.gainDb,
+                  band.q,
+                  band.enabled
+                ])
+              }
+            : null
         }
       : null
   })

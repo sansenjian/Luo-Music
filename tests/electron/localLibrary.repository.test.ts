@@ -662,6 +662,68 @@ describe('LocalLibraryRepository', () => {
     repository.close()
   })
 
+  it('stores fuzzy duplicate groups and lets fuzzy duplicate filters use them', async () => {
+    const tempDir = await createTempPath('local-library-repository-fuzzy-duplicates')
+    const repository = new LocalLibraryRepository(join(tempDir, 'library.db'))
+    const folderPath = join(tempDir, 'Music')
+    const folderId = createFolderId(folderPath)
+
+    repository.upsertFolder({
+      id: folderId,
+      path: folderPath,
+      name: 'Music',
+      enabled: true,
+      createdAt: 1,
+      lastScannedAt: Date.now()
+    })
+    repository.replaceFolderTracks(folderId, [
+      createRepositoryTrack({
+        id: 'local:typo',
+        folderId,
+        filePath: join(folderPath, 'Same Artist - Starligt.mp3'),
+        title: 'Starligt',
+        artist: 'Same Artist',
+        duration: 180000,
+        codec: 'MP3'
+      }),
+      createRepositoryTrack({
+        id: 'local:canonical',
+        folderId,
+        filePath: join(folderPath, 'Same Artist - Starlight.flac'),
+        title: 'Starlight',
+        artist: 'Same Artist',
+        duration: 184000,
+        codec: 'FLAC',
+        sampleRate: 96000,
+        bitDepth: 24
+      })
+    ])
+
+    repository.rebuildDuplicateIndexes()
+
+    expect(repository.getDuplicateSummary('strict')).toMatchObject({
+      mode: 'strict',
+      groupCount: 0,
+      duplicateTrackCount: 0
+    })
+    expect(repository.getDuplicateSummary('fuzzy')).toMatchObject({
+      mode: 'fuzzy',
+      groupCount: 1,
+      duplicateTrackCount: 2,
+      hiddenTrackCount: 1
+    })
+    expect(
+      repository
+        .getTracksPage({ duplicateMode: 'fuzzy', hideDuplicates: true })
+        .items.map(track => ({
+          id: track.id,
+          hidden: track.duplicateHidden
+        }))
+    ).toEqual([{ id: 'local:canonical', hidden: false }])
+
+    repository.close()
+  })
+
   it('migrates legacy databases before preparing cover hash queries', async () => {
     const tempDir = await createTempPath('local-library-repository-legacy')
     const databasePath = join(tempDir, 'library.db')

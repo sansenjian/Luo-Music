@@ -182,7 +182,7 @@
 ## 关联文档
 
 - [DI 后续路线图](./di-followup-roadmap.md)
-- [插件体系拓展架构](../plugin-extension-architecture.md)
+- [插件体系拓展架构](../architecture/plugin-extension-architecture.md)
 - [服务层 / DI 规则](../service-layer.md)
 - [服务层 + DI 差距报告](../reports/service-layer-gap-report.md)
 - [LUO Music 当前问题清单](../reports/vscode-gap-issues.md)

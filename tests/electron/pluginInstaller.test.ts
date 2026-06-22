@@ -112,6 +112,7 @@ describe('PluginInstaller', () => {
       expect(result.manifest.name).toBe('Test')
       expect(result.manifest.version).toBe('1.0.0')
       expect(result.manifest.category).toBe('api')
+      expect(result.manifest.apiVersion).toBeUndefined()
       expect(result.installPath).toBe(path.join(pluginsRoot, 'com.example.test', '1.0.0'))
       expect(result.entryPath).toBe(
         path.join(pluginsRoot, 'com.example.test', '1.0.0', 'index.mjs')
@@ -125,6 +126,40 @@ describe('PluginInstaller', () => {
 
       const installedEntry = await fs.readFile(result.entryPath, 'utf-8')
       expect(installedEntry).toBe('export default {}')
+    })
+
+    it('installs a plugin manifest that declares API version 2', async () => {
+      const sourceDir = path.join(tempRoot, 'api-version-plugin')
+      await writePlugin(sourceDir, {
+        ...VALID_MANIFEST,
+        apiVersion: 2,
+        capabilitiesV2: {
+          music: {
+            search: true
+          }
+        }
+      })
+
+      const installer = await createInstaller()
+      const result = await installer.installFromPath(sourceDir)
+
+      expect(result.manifest.apiVersion).toBe(2)
+      expect(result.manifest.capabilitiesV2).toEqual({
+        music: {
+          search: true
+        }
+      })
+    })
+
+    it('rejects unsupported plugin API versions', async () => {
+      const sourceDir = path.join(tempRoot, 'unsupported-api-version-plugin')
+      await writePlugin(sourceDir, {
+        ...VALID_MANIFEST,
+        apiVersion: 3
+      })
+
+      const installer = await createInstaller()
+      await expect(installer.installFromPath(sourceDir)).rejects.toThrow('Invalid plugin manifest')
     })
 
     it('installs a valid theme plugin with theme resource contributions', async () => {

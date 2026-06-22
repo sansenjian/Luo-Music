@@ -197,6 +197,32 @@ describe('electron/plugins/PluginCatalog', () => {
       expect(kugou).toBeDefined()
       expect(kugou!.source).toBe('external')
       expect(kugou!.category).toBe('api')
+      expect(kugou!.apiVersion).toBe(1)
+    })
+
+    it('maps plugin API version onto external plugin descriptors', async () => {
+      const base = makeRegistration('kugou')
+      const reg = makeRegistration('kugou', {
+        manifest: {
+          ...base.manifest,
+          apiVersion: 2,
+          capabilitiesV2: {
+            music: {
+              search: true
+            }
+          }
+        }
+      })
+      mockListPlatforms.mockResolvedValue([reg])
+      mockEnsureState.mockReturnValue(reg.state)
+
+      const platforms = await catalog.listPlatforms()
+
+      expect(platforms.find(p => p.id === 'kugou')).toMatchObject({
+        apiVersion: 2,
+        source: 'external',
+        runtime: 'external-host'
+      })
     })
 
     it('maps manifest category onto external plugin descriptors', async () => {

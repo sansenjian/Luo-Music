@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import type { LocalLibraryTrack } from '@shared/types/localLibrary'
 import {
+  buildFuzzyDuplicateIndex,
   buildStrictDuplicateIndex,
+  canFuzzyMergeTracks,
   canStrictMergeTracks
 } from '../../electron/local-library/duplicates'
 
@@ -101,6 +103,54 @@ describe('local library duplicate index', () => {
       canStrictMergeTracks(
         createTrack({ id: 'local:version-a', title: 'Same Song Live' }),
         createTrack({ id: 'local:version-b', title: 'Same Song Remix' })
+      )
+    ).toBe(false)
+  })
+
+  it('keeps strict matching conservative but groups close fuzzy duplicates', () => {
+    const typoTrack = createTrack({
+      id: 'local:typo',
+      title: 'Starligt',
+      artist: 'Same Artist',
+      codec: 'MP3',
+      duration: 180000
+    })
+    const canonicalTrack = createTrack({
+      id: 'local:canonical',
+      title: 'Starlight',
+      artist: 'Same Artist',
+      codec: 'FLAC',
+      duration: 184000
+    })
+
+    expect(canStrictMergeTracks(typoTrack, canonicalTrack)).toBe(false)
+    expect(canFuzzyMergeTracks(typoTrack, canonicalTrack)).toBe(true)
+
+    const strictGroups = buildStrictDuplicateIndex([typoTrack, canonicalTrack])
+    const fuzzyGroups = buildFuzzyDuplicateIndex([typoTrack, canonicalTrack])
+
+    expect(strictGroups).toHaveLength(0)
+    expect(fuzzyGroups).toHaveLength(1)
+    expect(fuzzyGroups[0]).toMatchObject({
+      mode: 'fuzzy',
+      representativeTrackId: 'local:canonical',
+      trackCount: 2,
+      hiddenCount: 1
+    })
+  })
+
+  it('rejects fuzzy version conflicts and large duration drift', () => {
+    expect(
+      canFuzzyMergeTracks(
+        createTrack({ id: 'local:live', title: 'Same Song Live' }),
+        createTrack({ id: 'local:studio', title: 'Same Song' })
+      )
+    ).toBe(false)
+
+    expect(
+      canFuzzyMergeTracks(
+        createTrack({ id: 'local:short', title: 'Same Song', duration: 180000 }),
+        createTrack({ id: 'local:long', title: 'Same Song', duration: 191000 })
       )
     ).toBe(false)
   })

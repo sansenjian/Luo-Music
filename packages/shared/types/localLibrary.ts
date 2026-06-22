@@ -44,6 +44,7 @@ export type LocalLibraryMetadataFieldSource =
   | 'embedded'
   | 'filename'
   | 'folder'
+  | 'network'
   | 'unknown'
 
 export type LocalLibraryMetadataCandidateField =
@@ -80,7 +81,33 @@ export type LocalLibraryTrackMetadataSources = {
 
 export type LocalLibraryCoverSize = 'thumb' | 'album' | 'large'
 
-export type LocalLibraryDuplicateMode = 'strict'
+export type LocalLibraryDuplicateMode = 'strict' | 'fuzzy'
+
+export type LocalLibraryNetworkMetadataProvider = 'netease' | 'qq' | 'plugin' | 'unknown'
+
+export type LocalLibraryNetworkMetadataCandidateInput = {
+  provider?: LocalLibraryNetworkMetadataProvider
+  title?: string | null
+  artist?: string | null
+  album?: string | null
+  duration?: number | null
+  coverUrl?: string | null
+}
+
+export type LocalLibraryNetworkMetadataSuggestion = {
+  field: LocalLibraryMetadataCandidateField
+  currentValue: string | null
+  suggestedValue: string
+  confidence: number
+}
+
+export type LocalLibraryNetworkMetadataCandidateScore = {
+  provider: LocalLibraryNetworkMetadataProvider
+  confidence: number
+  matchScore: number
+  reasons: string[]
+  suggestions: LocalLibraryNetworkMetadataSuggestion[]
+}
 
 export type LocalLibraryDuplicateSummary = {
   mode: LocalLibraryDuplicateMode
