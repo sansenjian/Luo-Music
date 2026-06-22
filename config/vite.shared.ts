@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
@@ -51,6 +52,7 @@ export function createVueRendererPlugins(options: VueRendererPluginOptions = {})
   const dtsEnabled = options.dts ?? true
 
   return [
+    tailwindcss() as PluginOption,
     vue() as PluginOption,
     AutoImport({
       imports: ['vue', 'vue-router', 'pinia', '@vueuse/core'],

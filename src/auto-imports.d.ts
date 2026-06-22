@@ -499,7 +499,7 @@ declare global {
   export type { UserInfo } from './store/userStore'
   import('./store/userStore')
   // @ts-ignore
-  export type { LocalMusicEmptyStateModel, LocalMusicSummaryCard, LocalMusicPlaylistOption, LocalMusicViewModeOption } from './features/home/composables/localMusic.types'
+  export type { LocalMusicEmptyStateModel, LocalMusicSummaryCard, LocalMusicPlaylistOption, LocalMusicViewModeOption, LocalMusicDiagnosticCard } from './features/home/composables/localMusic.types'
   import('./features/home/composables/localMusic.types')
   // @ts-ignore
   export type { HomeMediaSongItem, HomeMediaPlayerStore, HomeMediaToastStore } from './features/home/composables/mediaPanelShared'

@@ -9,7 +9,7 @@ const props = withDefaults(
     dockedPlayerBarLayout?: DockedPlayerBarLayout
   }>(),
   {
-    dockedPlayerBarLayout: 'full'
+    dockedPlayerBarLayout: 'with-sidebar'
   }
 )
 </script>
