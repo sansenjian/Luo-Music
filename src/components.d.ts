@@ -18,6 +18,7 @@ declare module 'vue' {
     AppPlaybackSettingsSection: typeof import('./components/settings/AppPlaybackSettingsSection.vue')['default']
     AppSettingsContent: typeof import('./components/settings/AppSettingsContent.vue')['default']
     AppSettingsSectionShell: typeof import('./components/settings/AppSettingsSectionShell.vue')['default']
+    Button: typeof import('./components/ui/button/Button.vue')['default']
     CacheManager: typeof import('./components/CacheManager.vue')['default']
     ErrorToast: typeof import('./components/ErrorToast.vue')['default']
     EventsView: typeof import('./features/user-center/components/EventsView.vue')['default']
