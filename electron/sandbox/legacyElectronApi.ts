@@ -1,5 +1,5 @@
 import { INVOKE_CHANNELS, SEND_CHANNELS, isValidSendChannel } from '@shared/protocol/channels'
-import type { CacheClearOptions, CacheClearResult } from '@shared/protocol/cache'
+import type { CacheClearOptions, CacheClearResult, CacheSize } from '@shared/protocol/cache'
 import type { ServiceStatusResponse } from '@shared/contracts/ipc'
 
 type ChannelBridge = {
@@ -44,7 +44,7 @@ export interface ElectronAPI {
   maximizeWindow: () => void
   closeWindow: () => void
   resizeWindow: (dims: { width: number; height: number }) => void
-  getCacheSize: () => Promise<{ httpCache: number; httpCacheFormatted: string; note?: string }>
+  getCacheSize: () => Promise<CacheSize>
   clearCache: (options?: CacheClearOptions) => Promise<CacheClearResult>
   clearAllCache: (keepUserData?: boolean) => Promise<CacheClearResult>
   getCachePaths: () => Promise<Record<string, string>>

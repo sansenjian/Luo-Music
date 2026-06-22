@@ -40,7 +40,11 @@ describe('CacheManager.vue', () => {
     platformServiceMock.isElectron.mockReturnValue(true)
     platformServiceMock.getCacheSize.mockResolvedValue({
       httpCache: 1024,
-      httpCacheFormatted: '1 KB'
+      httpCacheFormatted: '1 KB',
+      nativeAudioCache: 2048,
+      nativeAudioCacheFormatted: '2 KB',
+      totalCache: 3072,
+      totalCacheFormatted: '3 KB'
     })
     musicServiceMock.getLoginCapablePlatformDescriptors.mockReturnValue([])
     clearPlatformAuthSessionsMock.mockResolvedValue(undefined)
@@ -54,7 +58,24 @@ describe('CacheManager.vue', () => {
 
     expect(platformServiceMock.isElectron).toHaveBeenCalled()
     expect(platformServiceMock.getCacheSize).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('1 KB')
+    expect(wrapper.find('.cache-total').text()).toContain('3 KB')
+    expect(wrapper.find('.cache-breakdown').text()).toContain('HTTP 1 KB')
+    expect(wrapper.find('.cache-breakdown').text()).toContain('原生音频 2 KB')
+  })
+
+  it('clears selected cache types without native audio temp cache by default', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    platformServiceMock.clearCache.mockResolvedValue({ success: ['cache'], failed: [] })
+
+    const { default: CacheManager } = await import('@/components/CacheManager.vue')
+    const wrapper = mount(CacheManager)
+
+    await flushPromises()
+    await wrapper.get('.cache-actions .cache-btn').trigger('click')
+    await flushPromises()
+
+    expect(confirm).toHaveBeenCalled()
+    expect(platformServiceMock.clearCache).toHaveBeenCalledWith({ cache: true })
   })
 
   it('does not load cache size outside Electron', async () => {

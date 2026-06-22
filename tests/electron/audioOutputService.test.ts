@@ -270,6 +270,108 @@ describe('AudioOutputService', () => {
     })
   })
 
+  it('falls back to platform defaults when ready event omits helper-supported formats and modes', async () => {
+    const fake = createFakeHelper()
+    const spawnHelper = vi.fn(() => fake.helper)
+    const logger = createLoggerMock()
+    const service = new AudioOutputService({
+      appPath: 'D:\\app',
+      exists: filePath => filePath.includes('\\target\\debug\\'),
+      logger,
+      platform: 'win32',
+      spawnHelper
+    })
+
+    service.setEnabled(true)
+    fake.stdout.write(
+      JSON.stringify({
+        type: 'ready',
+        payload: {
+          protocolVersion: 2,
+          capabilities: ['symphonia-decode', 'cpal-shared-output'],
+          supportedExtensions: ['.mp3', '.flac'],
+          supportedModes: ['shared']
+        }
+      }) + '\n'
+    )
+
+    await vi.waitFor(() => {
+      expect(service.getStatus()).toMatchObject({
+        supportedExtensions: ['.mp3', '.flac'],
+        supportedModes: ['shared']
+      })
+    })
+
+    fake.stdout.write(
+      JSON.stringify({
+        type: 'ready',
+        payload: {
+          protocolVersion: 2,
+          capabilities: ['symphonia-decode', 'cpal-shared-output']
+        }
+      }) + '\n'
+    )
+
+    await vi.waitFor(() => {
+      expect(logger.info).toHaveBeenCalledTimes(2)
+      expect(service.getStatus()).toMatchObject({
+        supportedExtensions: [],
+        supportedModes: ['shared', 'exclusive', 'voicemeeter']
+      })
+    })
+  })
+
+  it('replaces helper-supported formats and modes on subsequent ready events', async () => {
+    const fake = createFakeHelper()
+    const spawnHelper = vi.fn(() => fake.helper)
+    const service = new AudioOutputService({
+      appPath: 'D:\\app',
+      exists: filePath => filePath.includes('\\target\\debug\\'),
+      logger: createLoggerMock(),
+      platform: 'win32',
+      spawnHelper
+    })
+
+    service.setEnabled(true)
+    fake.stdout.write(
+      JSON.stringify({
+        type: 'ready',
+        payload: {
+          protocolVersion: 2,
+          capabilities: ['symphonia-decode', 'cpal-shared-output'],
+          supportedExtensions: ['.mp3', '.flac'],
+          supportedModes: ['shared']
+        }
+      }) + '\n'
+    )
+
+    await vi.waitFor(() => {
+      expect(service.getStatus()).toMatchObject({
+        supportedExtensions: ['.mp3', '.flac'],
+        supportedModes: ['shared']
+      })
+    })
+
+    fake.stdout.write(
+      JSON.stringify({
+        type: 'ready',
+        payload: {
+          protocolVersion: 2,
+          capabilities: ['symphonia-decode', 'cpal-shared-output'],
+          supportedExtensions: ['.ogg'],
+          supportedModes: ['exclusive']
+        }
+      }) + '\n'
+    )
+
+    await vi.waitFor(() => {
+      expect(service.getStatus()).toMatchObject({
+        supportedExtensions: ['.ogg'],
+        supportedModes: ['exclusive']
+      })
+    })
+  })
+
   it('starts the platform audio helper without an exe suffix on non-Windows desktop builds', () => {
     const fake = createFakeHelper()
     const spawnHelper = vi.fn(() => fake.helper)

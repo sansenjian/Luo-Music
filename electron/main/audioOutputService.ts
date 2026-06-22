@@ -8,6 +8,7 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 
+import { AUDIO_OUTPUT_CACHE_DIR_NAME } from '../cachePolicy'
 import {
   AUDIO_OUTPUT_PROTOCOL_VERSION,
   createDefaultAudioOutputStatus,
@@ -115,7 +116,7 @@ export class AudioOutputService {
   private stdoutBuffer = ''
   private devices: AudioOutputDevice[] = []
   private supportedExtensions: string[] = []
-  private helperSupportedModes: AudioOutputMode[] | null = null
+  private helperSupportedModes: AudioOutputMode[] = []
   private reason: string | null = null
   private lastStatus: AudioOutputStatus | null = null
   private testToneRunning = false
@@ -141,7 +142,7 @@ export class AudioOutputService {
 
   constructor(deps: AudioOutputServiceDeps = {}) {
     this.appPath = deps.appPath ?? process.cwd()
-    this.cacheDir = deps.cacheDir ?? join(this.appPath, '.userData', 'audio-output-cache')
+    this.cacheDir = deps.cacheDir ?? join(this.appPath, '.userData', AUDIO_OUTPUT_CACHE_DIR_NAME)
     this.exists = deps.exists ?? existsSync
     this.fetchRemoteMedia =
       deps.fetchRemoteMedia ?? resolveDefaultRemoteMediaFetch(deps.electronNet)
@@ -149,6 +150,7 @@ export class AudioOutputService {
     this.logger = deps.logger ?? console
     this.onStatusChange = deps.onStatusChange ?? (() => {})
     this.platform = deps.platform ?? process.platform
+    this.resetHelperSupportManifest()
     this.remoteRangeChunkBytes = sanitizeRemoteRangeChunkBytes(deps.remoteRangeChunkBytes)
     this.resourcesPath = deps.resourcesPath ?? process.resourcesPath ?? this.appPath
     this.spawnHelper =
@@ -559,9 +561,7 @@ export class AudioOutputService {
       deviceId: this.settings.deviceId || undefined,
       devices: [...this.devices],
       supportedExtensions: [...this.supportedExtensions],
-      supportedModes: [
-        ...(this.helperSupportedModes ?? getSupportedAudioOutputModes(this.platform))
-      ],
+      supportedModes: [...this.helperSupportedModes],
       helperPath: this.helperPath ?? undefined,
       helperRunning: Boolean(this.helper),
       testToneRunning: this.testToneRunning,
@@ -589,6 +589,8 @@ export class AudioOutputService {
       ...baseStatus,
       settings: { ...this.settings },
       requestedMode: this.settings.mode,
+      supportedExtensions: [...this.supportedExtensions],
+      supportedModes: [...this.helperSupportedModes],
       helperPath: this.helperPath ?? undefined,
       helperRunning: Boolean(this.helper),
       testToneRunning: this.testToneRunning,
@@ -1691,6 +1693,7 @@ export class AudioOutputService {
       return
     }
 
+    this.resetHelperSupportManifest()
     this.helperPath = helperPath
     const helper = this.spawnHelper(helperPath, [], {
       env: process.env,
@@ -1780,8 +1783,10 @@ export class AudioOutputService {
   private handleHelperEvent(event: AudioOutputEvent): void {
     switch (event.type) {
       case 'ready':
-        this.supportedExtensions = event.payload.supportedExtensions ?? this.supportedExtensions
-        this.helperSupportedModes = event.payload.supportedModes ?? this.helperSupportedModes
+        this.supportedExtensions = [...(event.payload.supportedExtensions ?? [])]
+        this.helperSupportedModes = [
+          ...(event.payload.supportedModes ?? getSupportedAudioOutputModes(this.platform))
+        ]
         this.logger.info('[AudioOutput] Helper ready')
         break
       case 'devices':
@@ -2097,6 +2102,11 @@ export class AudioOutputService {
     })
     this.helperPath = helperPath
     return helperPath
+  }
+
+  private resetHelperSupportManifest(): void {
+    this.supportedExtensions = []
+    this.helperSupportedModes = getSupportedAudioOutputModes(this.platform)
   }
 
   private publishStatus(status: AudioOutputStatus): AudioOutputStatus {
