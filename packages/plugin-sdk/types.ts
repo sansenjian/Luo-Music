@@ -464,6 +464,7 @@ export interface MusicPluginCapabilities {
 
 export interface PluginManifest {
   manifestVersion: number
+  apiVersion?: 1 | 2
   id: string
   name: string
   version: string

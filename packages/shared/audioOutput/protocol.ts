@@ -111,6 +111,23 @@ export type AudioOutputVoicemeeterRemoteStatus = {
   reason?: string
 }
 
+export type AudioOutputEqBandType = 'peaking' | 'lowShelf' | 'highShelf'
+
+export type AudioOutputEqBand = {
+  id: string
+  type: AudioOutputEqBandType
+  frequencyHz: number
+  gainDb: number
+  q: number
+  enabled: boolean
+}
+
+export type AudioOutputDspSettings = {
+  enabled: boolean
+  headroomDb: number
+  eq: AudioOutputEqBand[]
+}
+
 export type AudioOutputSettings = {
   mode: AudioOutputMode
   sharedDeviceId: string
@@ -123,6 +140,7 @@ export type AudioOutputSettings = {
   voicemeeterHardwareOutDriver?: AudioOutputVoicemeeterHardwareOutDriver
   voicemeeterHardwareOutDevice?: string
   diagnosticsEnabled: boolean
+  dsp?: AudioOutputDspSettings
 }
 
 export type AudioOutputState = {
@@ -266,6 +284,12 @@ export type AudioOutputEvent =
 const DEFAULT_VOICEMEETER_HARDWARE_OUT_BUS: AudioOutputVoicemeeterHardwareOutBus = 'A1'
 const DEFAULT_VOICEMEETER_HARDWARE_OUT_DRIVER: AudioOutputVoicemeeterHardwareOutDriver = 'wdm'
 
+export const DEFAULT_AUDIO_OUTPUT_DSP_SETTINGS: AudioOutputDspSettings = {
+  enabled: false,
+  headroomDb: 0,
+  eq: []
+}
+
 export const DEFAULT_AUDIO_OUTPUT_SETTINGS: AudioOutputSettings = {
   mode: 'shared',
   sharedDeviceId: '',
@@ -277,7 +301,8 @@ export const DEFAULT_AUDIO_OUTPUT_SETTINGS: AudioOutputSettings = {
   voicemeeterHardwareOutBus: DEFAULT_VOICEMEETER_HARDWARE_OUT_BUS,
   voicemeeterHardwareOutDriver: DEFAULT_VOICEMEETER_HARDWARE_OUT_DRIVER,
   voicemeeterHardwareOutDevice: '',
-  diagnosticsEnabled: false
+  diagnosticsEnabled: false,
+  dsp: { ...DEFAULT_AUDIO_OUTPUT_DSP_SETTINGS }
 }
 
 export const DEFAULT_AUDIO_OUTPUT_STATE: AudioOutputState = {
@@ -309,8 +334,22 @@ const AUDIO_OUTPUT_VOICEMEETER_HARDWARE_OUT_DRIVERS =
   new Set<AudioOutputVoicemeeterHardwareOutDriver>(['wdm', 'mme', 'ks', 'asio'])
 const AUDIO_OUTPUT_VOICEMEETER_LEVEL_PROBE_TARGETS =
   new Set<AudioOutputVoicemeeterLevelProbeTarget>(['outputBus', 'virtualInput'])
+const AUDIO_OUTPUT_EQ_BAND_TYPES = new Set<AudioOutputEqBandType>([
+  'peaking',
+  'lowShelf',
+  'highShelf'
+])
 const MIN_BUFFER_FRAMES = 128
 const MAX_BUFFER_FRAMES = 8192
+const MIN_AUDIO_OUTPUT_HEADROOM_DB = -24
+const MAX_AUDIO_OUTPUT_HEADROOM_DB = 0
+const MIN_AUDIO_OUTPUT_EQ_FREQUENCY_HZ = 20
+const MAX_AUDIO_OUTPUT_EQ_FREQUENCY_HZ = 20000
+const MIN_AUDIO_OUTPUT_EQ_GAIN_DB = -12
+const MAX_AUDIO_OUTPUT_EQ_GAIN_DB = 12
+const MIN_AUDIO_OUTPUT_EQ_Q = 0.1
+const MAX_AUDIO_OUTPUT_EQ_Q = 18
+const MAX_AUDIO_OUTPUT_EQ_BANDS = 12
 const DEFAULT_TEST_TONE_DURATION_MS = 500
 const MIN_TEST_TONE_DURATION_MS = 120
 const MAX_TEST_TONE_DURATION_MS = 2000
@@ -332,7 +371,7 @@ export function createDefaultAudioOutputStatus(): AudioOutputStatus {
     enabled: false,
     backend: 'disabled',
     backendAvailable: false,
-    settings: { ...DEFAULT_AUDIO_OUTPUT_SETTINGS },
+    settings: createDefaultAudioOutputSettings(),
     requestedMode: DEFAULT_AUDIO_OUTPUT_SETTINGS.mode,
     devices: []
   }
@@ -340,10 +379,15 @@ export function createDefaultAudioOutputStatus(): AudioOutputStatus {
 
 export function sanitizeAudioOutputSettings(value: unknown): AudioOutputSettings {
   if (!isRecord(value)) {
-    return { ...DEFAULT_AUDIO_OUTPUT_SETTINGS }
+    return createDefaultAudioOutputSettings()
   }
 
   const mode = isAudioOutputMode(value.mode) ? value.mode : DEFAULT_AUDIO_OUTPUT_SETTINGS.mode
+  const bitPerfectRequired =
+    mode === 'exclusive' && typeof value.bitPerfectRequired === 'boolean'
+      ? value.bitPerfectRequired
+      : false
+  const dsp = sanitizeAudioOutputDspSettings(value.dsp, bitPerfectRequired)
 
   return {
     mode,
@@ -354,10 +398,7 @@ export function sanitizeAudioOutputSettings(value: unknown): AudioOutputSettings
       typeof value.fallbackToShared === 'boolean'
         ? value.fallbackToShared
         : DEFAULT_AUDIO_OUTPUT_SETTINGS.fallbackToShared,
-    bitPerfectRequired:
-      mode === 'exclusive' && typeof value.bitPerfectRequired === 'boolean'
-        ? value.bitPerfectRequired
-        : false,
+    bitPerfectRequired,
     voicemeeterBus: sanitizeVoicemeeterBus(value.voicemeeterBus),
     voicemeeterHardwareOutBus: sanitizeVoicemeeterHardwareOutBus(value.voicemeeterHardwareOutBus),
     voicemeeterHardwareOutDriver: sanitizeVoicemeeterHardwareOutDriver(
@@ -370,7 +411,8 @@ export function sanitizeAudioOutputSettings(value: unknown): AudioOutputSettings
     diagnosticsEnabled:
       typeof value.diagnosticsEnabled === 'boolean'
         ? value.diagnosticsEnabled
-        : DEFAULT_AUDIO_OUTPUT_SETTINGS.diagnosticsEnabled
+        : DEFAULT_AUDIO_OUTPUT_SETTINGS.diagnosticsEnabled,
+    dsp
   }
 }
 
@@ -378,7 +420,7 @@ export function sanitizeAudioOutputState(value: unknown): AudioOutputState {
   if (!isRecord(value)) {
     return {
       enabled: DEFAULT_AUDIO_OUTPUT_STATE.enabled,
-      settings: { ...DEFAULT_AUDIO_OUTPUT_SETTINGS }
+      settings: createDefaultAudioOutputSettings()
     }
   }
 
@@ -386,6 +428,16 @@ export function sanitizeAudioOutputState(value: unknown): AudioOutputState {
     enabled:
       typeof value.enabled === 'boolean' ? value.enabled : DEFAULT_AUDIO_OUTPUT_STATE.enabled,
     settings: sanitizeAudioOutputSettings(value.settings)
+  }
+}
+
+function createDefaultAudioOutputSettings(): AudioOutputSettings {
+  return {
+    ...DEFAULT_AUDIO_OUTPUT_SETTINGS,
+    dsp: {
+      ...DEFAULT_AUDIO_OUTPUT_DSP_SETTINGS,
+      eq: []
+    }
   }
 }
 
@@ -406,7 +458,9 @@ export function isAudioOutputSettings(value: unknown): value is AudioOutputSetti
       isAudioOutputVoicemeeterHardwareOutDriver(value.voicemeeterHardwareOutDriver)) &&
     (value.voicemeeterHardwareOutDevice === undefined ||
       typeof value.voicemeeterHardwareOutDevice === 'string') &&
-    typeof value.diagnosticsEnabled === 'boolean'
+    typeof value.diagnosticsEnabled === 'boolean' &&
+    (value.dsp === undefined || isAudioOutputDspSettings(value.dsp)) &&
+    (!value.bitPerfectRequired || value.dsp === undefined || value.dsp.enabled === false)
   )
 }
 
@@ -649,6 +703,62 @@ function sanitizeVoicemeeterHardwareOutDriver(
     : DEFAULT_VOICEMEETER_HARDWARE_OUT_DRIVER
 }
 
+function sanitizeAudioOutputDspSettings(
+  value: unknown,
+  bitPerfectRequired: boolean
+): AudioOutputDspSettings {
+  const record = isRecord(value) ? value : {}
+  const enabled = bitPerfectRequired
+    ? false
+    : typeof record.enabled === 'boolean'
+      ? record.enabled
+      : DEFAULT_AUDIO_OUTPUT_DSP_SETTINGS.enabled
+  const eq = Array.isArray(record.eq)
+    ? record.eq.slice(0, MAX_AUDIO_OUTPUT_EQ_BANDS).map(sanitizeAudioOutputEqBand)
+    : []
+
+  return {
+    enabled,
+    headroomDb: enabled
+      ? sanitizeRangedFloat(
+          record.headroomDb,
+          DEFAULT_AUDIO_OUTPUT_DSP_SETTINGS.headroomDb,
+          MIN_AUDIO_OUTPUT_HEADROOM_DB,
+          MAX_AUDIO_OUTPUT_HEADROOM_DB
+        )
+      : DEFAULT_AUDIO_OUTPUT_DSP_SETTINGS.headroomDb,
+    eq: enabled ? eq : []
+  }
+}
+
+function sanitizeAudioOutputEqBand(value: unknown, index: number): AudioOutputEqBand {
+  const record = isRecord(value) ? value : {}
+  const id =
+    typeof record.id === 'string' && record.id.trim()
+      ? record.id.trim().slice(0, 64)
+      : `eq-${index + 1}`
+  const type = isAudioOutputEqBandType(record.type) ? record.type : 'peaking'
+
+  return {
+    id,
+    type,
+    frequencyHz: sanitizeRangedFloat(
+      record.frequencyHz,
+      1000,
+      MIN_AUDIO_OUTPUT_EQ_FREQUENCY_HZ,
+      MAX_AUDIO_OUTPUT_EQ_FREQUENCY_HZ
+    ),
+    gainDb: sanitizeRangedFloat(
+      record.gainDb,
+      0,
+      MIN_AUDIO_OUTPUT_EQ_GAIN_DB,
+      MAX_AUDIO_OUTPUT_EQ_GAIN_DB
+    ),
+    q: sanitizeRangedFloat(record.q, 1, MIN_AUDIO_OUTPUT_EQ_Q, MAX_AUDIO_OUTPUT_EQ_Q),
+    enabled: typeof record.enabled === 'boolean' ? record.enabled : true
+  }
+}
+
 function sanitizeRangedNumber(
   value: unknown,
   fallback: number,
@@ -667,6 +777,26 @@ function sanitizeRangedNumber(
   }
 
   return Math.min(maxValue, Math.max(minValue, Math.round(numericValue)))
+}
+
+function sanitizeRangedFloat(
+  value: unknown,
+  fallback: number,
+  minValue: number,
+  maxValue: number
+): number {
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number.parseFloat(value)
+        : fallback
+
+  if (!Number.isFinite(numericValue)) {
+    return fallback
+  }
+
+  return Math.min(maxValue, Math.max(minValue, numericValue))
 }
 
 function isAudioOutputMode(value: unknown): value is AudioOutputMode {
@@ -701,6 +831,46 @@ function isAudioOutputVoicemeeterHardwareOutDriver(
     AUDIO_OUTPUT_VOICEMEETER_HARDWARE_OUT_DRIVERS.has(
       value as AudioOutputVoicemeeterHardwareOutDriver
     )
+  )
+}
+
+function isAudioOutputEqBandType(value: unknown): value is AudioOutputEqBandType {
+  return typeof value === 'string' && AUDIO_OUTPUT_EQ_BAND_TYPES.has(value as AudioOutputEqBandType)
+}
+
+function isAudioOutputDspSettings(value: unknown): value is AudioOutputDspSettings {
+  return (
+    isRecord(value) &&
+    typeof value.enabled === 'boolean' &&
+    typeof value.headroomDb === 'number' &&
+    Number.isFinite(value.headroomDb) &&
+    value.headroomDb >= MIN_AUDIO_OUTPUT_HEADROOM_DB &&
+    value.headroomDb <= MAX_AUDIO_OUTPUT_HEADROOM_DB &&
+    Array.isArray(value.eq) &&
+    value.eq.length <= MAX_AUDIO_OUTPUT_EQ_BANDS &&
+    value.eq.every(isAudioOutputEqBand)
+  )
+}
+
+function isAudioOutputEqBand(value: unknown): value is AudioOutputEqBand {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    isAudioOutputEqBandType(value.type) &&
+    typeof value.frequencyHz === 'number' &&
+    Number.isFinite(value.frequencyHz) &&
+    value.frequencyHz >= MIN_AUDIO_OUTPUT_EQ_FREQUENCY_HZ &&
+    value.frequencyHz <= MAX_AUDIO_OUTPUT_EQ_FREQUENCY_HZ &&
+    typeof value.gainDb === 'number' &&
+    Number.isFinite(value.gainDb) &&
+    value.gainDb >= MIN_AUDIO_OUTPUT_EQ_GAIN_DB &&
+    value.gainDb <= MAX_AUDIO_OUTPUT_EQ_GAIN_DB &&
+    typeof value.q === 'number' &&
+    Number.isFinite(value.q) &&
+    value.q >= MIN_AUDIO_OUTPUT_EQ_Q &&
+    value.q <= MAX_AUDIO_OUTPUT_EQ_Q &&
+    typeof value.enabled === 'boolean'
   )
 }
 
@@ -742,12 +912,9 @@ function isAudioOutputNativePlaybackDiagnostics(
     (value.activeMode === undefined || isAudioOutputMode(value.activeMode)) &&
     (value.sourceFormat === undefined || isAudioOutputFormatDiagnostics(value.sourceFormat)) &&
     (value.outputFormat === undefined || isAudioOutputFormatDiagnostics(value.outputFormat)) &&
-    (value.sourceSampleRate === undefined ||
-      isNonNegativeFiniteNumber(value.sourceSampleRate)) &&
-    (value.outputSampleRate === undefined ||
-      isNonNegativeFiniteNumber(value.outputSampleRate)) &&
-    (value.sampleRateMismatch === undefined ||
-      typeof value.sampleRateMismatch === 'boolean') &&
+    (value.sourceSampleRate === undefined || isNonNegativeFiniteNumber(value.sourceSampleRate)) &&
+    (value.outputSampleRate === undefined || isNonNegativeFiniteNumber(value.outputSampleRate)) &&
+    (value.sampleRateMismatch === undefined || typeof value.sampleRateMismatch === 'boolean') &&
     (value.sourceChannels === undefined || isNonNegativeFiniteNumber(value.sourceChannels)) &&
     (value.outputChannels === undefined || isNonNegativeFiniteNumber(value.outputChannels)) &&
     (value.channelMismatch === undefined || typeof value.channelMismatch === 'boolean') &&
@@ -881,8 +1048,7 @@ function isAudioOutputEvent(value: unknown): value is AudioOutputEvent {
         isRecord(value.payload) &&
         typeof value.payload.protocolVersion === 'number' &&
         Number.isFinite(value.payload.protocolVersion) &&
-        (value.payload.capabilities === undefined ||
-          isStringArray(value.payload.capabilities)) &&
+        (value.payload.capabilities === undefined || isStringArray(value.payload.capabilities)) &&
         (value.payload.supportedExtensions === undefined ||
           isStringArray(value.payload.supportedExtensions)) &&
         (value.payload.supportedModes === undefined ||

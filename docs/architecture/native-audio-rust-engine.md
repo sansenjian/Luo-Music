@@ -27,7 +27,9 @@ instead of growing the helper `main.rs` further.
   capability names.
 - `native/audio-engine/audio-engine-resample` and
   `native/audio-engine/audio-engine-dsp` are Phase 1 placeholder crates. They
-  currently report no capabilities and do not affect playback.
+  currently report no capabilities and do not affect playback. The
+  TypeScript/Electron protocol can already persist DSP intent, but the Rust DSP
+  crate is not yet inserted into the PCM render path.
 - `electron/main/audioOutputService.ts` starts the helper, sends JSON-line
   commands, tracks playback state, and now hydrates helper-supported formats and
   modes as soon as the helper reports ready.
@@ -53,6 +55,42 @@ Older helpers that only send `protocolVersion` are still accepted. New fields le
 the Electron layer decide whether a future helper binary supports optional
 features such as Opus, high-quality resampling, or FFmpeg fallback before the
 first status payload arrives.
+
+## DSP Settings Contract
+
+`packages/shared/audioOutput/protocol.ts` now carries optional DSP settings:
+
+```ts
+type AudioOutputDspSettings = {
+  enabled: boolean
+  headroomDb: number
+  eq: Array<{
+    id: string
+    type: 'peaking' | 'lowShelf' | 'highShelf'
+    frequencyHz: number
+    gainDb: number
+    q: number
+    enabled: boolean
+  }>
+}
+```
+
+The sanitizer clamps the user-facing range before settings reach Electron:
+
+| Field         | Range           |
+| ------------- | --------------- |
+| `headroomDb`  | `-24` to `0`    |
+| `frequencyHz` | `20` to `20000` |
+| `gainDb`      | `-12` to `12`   |
+| `q`           | `0.1` to `18`   |
+| `eq`          | up to 12 bands  |
+
+When `bitPerfectRequired` is true, DSP is forced off and EQ bands are dropped
+from the sanitized settings. This keeps the bit-perfect candidate path from
+being silently polluted by volume headroom or EQ processing. The current
+first-party audio output settings UI exposes `dspEnabled` and `dspHeadroomDb`
+as compatibility settings; EQ bands are protocol-ready but do not yet have a
+full editor or Rust processing path.
 
 ## FFmpeg Fallback
 

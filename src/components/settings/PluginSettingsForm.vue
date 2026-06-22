@@ -28,6 +28,14 @@ function getAudioOutputMode(): string {
   return typeof mode === 'string' ? mode : 'shared'
 }
 
+function isAudioOutputBitPerfectRequired(): boolean {
+  return props.settingValues.bitPerfectRequired === true
+}
+
+function isAudioOutputDspEnabled(): boolean {
+  return props.settingValues.dspEnabled === true
+}
+
 function isSettingVisible(key: string): boolean {
   if (props.platformId !== AUDIO_OUTPUT_PLUGIN_ID) {
     return true
@@ -50,6 +58,10 @@ function isSettingVisible(key: string): boolean {
       return mode === 'exclusive'
     case 'bitPerfectRequired':
       return mode === 'exclusive'
+    case 'dspEnabled':
+      return !isAudioOutputBitPerfectRequired()
+    case 'dspHeadroomDb':
+      return !isAudioOutputBitPerfectRequired() && isAudioOutputDspEnabled()
     case 'voicemeeterBus':
     case 'voicemeeterHardwareOutBus':
     case 'voicemeeterHardwareOutDriver':

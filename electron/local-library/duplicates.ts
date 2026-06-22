@@ -34,6 +34,9 @@ type DuplicateCandidate = {
 }
 
 const STRICT_DURATION_TOLERANCE_MS = 2000
+const FUZZY_DURATION_TOLERANCE_MS = 8000
+const FUZZY_TITLE_SIMILARITY_THRESHOLD = 0.82
+const FUZZY_ARTIST_SIMILARITY_THRESHOLD = 0.9
 
 const SOURCE_PREFIX_PATTERN = /^(?:【\s*转载\s*】|\[\s*转载\s*\]|\(\s*转载\s*\)|转载|搬运)\s*/iu
 
@@ -109,6 +112,48 @@ export function buildStrictDuplicateIndex(
   return groups.sort((left, right) => left.duplicateKey.localeCompare(right.duplicateKey))
 }
 
+export function buildFuzzyDuplicateIndex(
+  tracks: LocalLibraryTrack[]
+): LocalLibraryDuplicateIndexGroup[] {
+  const candidatesByBucket = new Map<string, DuplicateCandidate[]>()
+
+  for (const track of tracks) {
+    const candidate = createDuplicateCandidate(track)
+    if (!candidate) {
+      continue
+    }
+
+    const bucketKey = createFuzzyBucketKey(candidate)
+    const candidates = candidatesByBucket.get(bucketKey) ?? []
+    candidates.push(candidate)
+    candidatesByBucket.set(bucketKey, candidates)
+  }
+
+  const groups: LocalLibraryDuplicateIndexGroup[] = []
+
+  for (const candidates of candidatesByBucket.values()) {
+    if (candidates.length < 2) {
+      continue
+    }
+
+    for (const cluster of clusterFuzzyCandidates(candidates)) {
+      if (cluster.length < 2) {
+        continue
+      }
+
+      groups.push(
+        createDuplicateGroup(cluster, {
+          confidence: resolveFuzzyClusterConfidence(cluster),
+          mode: 'fuzzy',
+          reasons: ['metadata-fuzzy-match', 'duration-delta<=8s', 'version-markers-compatible']
+        })
+      )
+    }
+  }
+
+  return groups.sort((left, right) => left.duplicateKey.localeCompare(right.duplicateKey))
+}
+
 export function normalizeDuplicateTitle(title: string): string {
   let normalized = normalizeDuplicateText(title)
   let next = normalized.replace(SOURCE_PREFIX_PATTERN, '')
@@ -132,6 +177,36 @@ export function canStrictMergeTracks(left: LocalLibraryTrack, right: LocalLibrar
   }
 
   return canStrictMergeCandidates(leftCandidate, rightCandidate)
+}
+
+export function canFuzzyMergeTracks(left: LocalLibraryTrack, right: LocalLibraryTrack): boolean {
+  const leftCandidate = createDuplicateCandidate(left)
+  const rightCandidate = createDuplicateCandidate(right)
+  if (!leftCandidate || !rightCandidate) {
+    return false
+  }
+
+  return canFuzzyMergeCandidates(leftCandidate, rightCandidate)
+}
+
+export function scoreDuplicateTextSimilarity(left: string, right: string): number {
+  const normalizedLeft = normalizeDuplicateText(left)
+  const normalizedRight = normalizeDuplicateText(right)
+
+  if (!normalizedLeft || !normalizedRight) {
+    return 0
+  }
+
+  if (normalizedLeft === normalizedRight) {
+    return 1
+  }
+
+  const leftTokens = tokenizeDuplicateText(normalizedLeft)
+  const rightTokens = tokenizeDuplicateText(normalizedRight)
+  const tokenSimilarity = calculateJaccardSimilarity(leftTokens, rightTokens)
+  const editSimilarity = calculateEditSimilarity(normalizedLeft, normalizedRight)
+
+  return Math.max(tokenSimilarity, editSimilarity)
 }
 
 export function scoreTrackQuality(track: LocalLibraryTrack): number {
@@ -202,7 +277,55 @@ function canStrictMergeCandidates(left: DuplicateCandidate, right: DuplicateCand
   )
 }
 
-function createDuplicateGroup(candidates: DuplicateCandidate[]): LocalLibraryDuplicateIndexGroup {
+function clusterFuzzyCandidates(candidates: DuplicateCandidate[]): DuplicateCandidate[][] {
+  const clusters: DuplicateCandidate[][] = []
+  const sortedCandidates = [...candidates].sort((left, right) =>
+    left.track.filePath.localeCompare(right.track.filePath)
+  )
+
+  for (const candidate of sortedCandidates) {
+    const matchingCluster = clusters.find(cluster =>
+      cluster.every(member => canFuzzyMergeCandidates(member, candidate))
+    )
+
+    if (matchingCluster) {
+      matchingCluster.push(candidate)
+      continue
+    }
+
+    clusters.push([candidate])
+  }
+
+  return clusters
+}
+
+function canFuzzyMergeCandidates(left: DuplicateCandidate, right: DuplicateCandidate): boolean {
+  const titleSimilarity = scoreDuplicateTextSimilarity(left.normalizedTitle, right.normalizedTitle)
+  const artistSimilarity = scoreDuplicateTextSimilarity(
+    left.normalizedArtist,
+    right.normalizedArtist
+  )
+
+  return (
+    titleSimilarity >= FUZZY_TITLE_SIMILARITY_THRESHOLD &&
+    artistSimilarity >= FUZZY_ARTIST_SIMILARITY_THRESHOLD &&
+    Math.abs(left.durationMs - right.durationMs) <= FUZZY_DURATION_TOLERANCE_MS &&
+    !hasVersionMarkerConflict(left.markers, right.markers)
+  )
+}
+
+function createDuplicateGroup(
+  candidates: DuplicateCandidate[],
+  options: {
+    confidence: number
+    mode: LocalLibraryDuplicateMode
+    reasons: string[]
+  } = {
+    confidence: 0.98,
+    mode: 'strict',
+    reasons: ['metadata-strict-match', 'duration-delta<=2s', 'version-markers-compatible']
+  }
+): LocalLibraryDuplicateIndexGroup {
   const medianDurationMs = getMedian(candidates.map(candidate => candidate.durationMs))
   const duplicateKey = candidates[0]?.key ?? ''
   const sortedCandidates = [...candidates].sort((left, right) => {
@@ -225,6 +348,7 @@ function createDuplicateGroup(candidates: DuplicateCandidate[]): LocalLibraryDup
     return left.track.filePath.localeCompare(right.track.filePath)
   })
   const groupId = createDuplicateGroupId(
+    options.mode,
     duplicateKey,
     sortedCandidates.map(candidate => candidate.track.id)
   )
@@ -239,15 +363,20 @@ function createDuplicateGroup(candidates: DuplicateCandidate[]): LocalLibraryDup
 
   return {
     id: groupId,
-    mode: 'strict',
+    mode: options.mode,
     duplicateKey,
     representativeTrackId: sortedCandidates[0]?.track.id ?? '',
     trackCount: sortedCandidates.length,
     hiddenCount: Math.max(0, sortedCandidates.length - 1),
-    confidence: 0.98,
-    reasons: ['metadata-strict-match', 'duration-delta<=2s', 'version-markers-compatible'],
+    confidence: options.confidence,
+    reasons: options.reasons,
     members
   }
+}
+
+function createFuzzyBucketKey(candidate: DuplicateCandidate): string {
+  const artistToken = tokenizeDuplicateText(candidate.normalizedArtist)[0] ?? ''
+  return artistToken.slice(0, 4)
 }
 
 function normalizeDuplicateText(value: string): string {
@@ -294,11 +423,100 @@ function hasVersionMarkerConflict(left: Set<string>, right: Set<string>): boolea
   return false
 }
 
-function createDuplicateGroupId(duplicateKey: string, trackIds: string[]): string {
+function createDuplicateGroupId(
+  mode: LocalLibraryDuplicateMode,
+  duplicateKey: string,
+  trackIds: string[]
+): string {
   const hash = createHash('sha1')
-    .update(`strict\u0000${duplicateKey}\u0000${[...trackIds].sort().join('\u0000')}`)
+    .update(`${mode}\u0000${duplicateKey}\u0000${[...trackIds].sort().join('\u0000')}`)
     .digest('hex')
   return `local-duplicate:${hash}`
+}
+
+function resolveFuzzyClusterConfidence(candidates: DuplicateCandidate[]): number {
+  let weakestPairScore = 1
+
+  for (let leftIndex = 0; leftIndex < candidates.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < candidates.length; rightIndex += 1) {
+      const left = candidates[leftIndex]
+      const right = candidates[rightIndex]
+      if (!left || !right) {
+        continue
+      }
+
+      const titleSimilarity = scoreDuplicateTextSimilarity(
+        left.normalizedTitle,
+        right.normalizedTitle
+      )
+      const artistSimilarity = scoreDuplicateTextSimilarity(
+        left.normalizedArtist,
+        right.normalizedArtist
+      )
+      const durationScore = 1 - Math.min(Math.abs(left.durationMs - right.durationMs), 8000) / 8000
+      const pairScore = titleSimilarity * 0.55 + artistSimilarity * 0.3 + durationScore * 0.15
+      weakestPairScore = Math.min(weakestPairScore, pairScore)
+    }
+  }
+
+  return Number(Math.max(0.7, Math.min(0.94, weakestPairScore)).toFixed(2))
+}
+
+function tokenizeDuplicateText(value: string): string[] {
+  return normalizeDuplicateText(value)
+    .replace(/[^\p{Letter}\p{Number}]+/gu, ' ')
+    .split(' ')
+    .map(token => token.trim())
+    .filter(Boolean)
+}
+
+function calculateJaccardSimilarity(leftTokens: string[], rightTokens: string[]): number {
+  if (leftTokens.length === 0 || rightTokens.length === 0) {
+    return 0
+  }
+
+  const left = new Set(leftTokens)
+  const right = new Set(rightTokens)
+  const intersectionSize = [...left].filter(token => right.has(token)).length
+  const unionSize = new Set([...left, ...right]).size
+
+  return unionSize === 0 ? 0 : intersectionSize / unionSize
+}
+
+function calculateEditSimilarity(left: string, right: string): number {
+  const maxLength = Math.max(left.length, right.length)
+  if (maxLength === 0) {
+    return 1
+  }
+
+  return 1 - calculateLevenshteinDistance(left, right) / maxLength
+}
+
+function calculateLevenshteinDistance(left: string, right: string): number {
+  const previousRow = Array.from({ length: right.length + 1 }, (_, index) => index)
+  const currentRow = Array.from({ length: right.length + 1 }, () => 0)
+
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    currentRow[0] = leftIndex
+
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      const substitutionCost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1
+      const previousInsertCost = currentRow[rightIndex - 1] ?? leftIndex
+      const previousDeleteCost = previousRow[rightIndex] ?? rightIndex
+      const previousSubstitutionCost = previousRow[rightIndex - 1] ?? rightIndex - 1
+      currentRow[rightIndex] = Math.min(
+        previousInsertCost + 1,
+        previousDeleteCost + 1,
+        previousSubstitutionCost + substitutionCost
+      )
+    }
+
+    for (let index = 0; index < previousRow.length; index += 1) {
+      previousRow[index] = currentRow[index] ?? 0
+    }
+  }
+
+  return previousRow[right.length] ?? 0
 }
 
 function resolveCodecScore(track: LocalLibraryTrack): number {

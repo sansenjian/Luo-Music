@@ -159,7 +159,7 @@ function parseTrackQuery(query: unknown): LocalLibraryTrackQuery | undefined {
 
   const candidate = query as Record<string, unknown>
   const duplicateMode = parseOptionalString(candidate.duplicateMode, 'query.duplicateMode')
-  if (duplicateMode !== undefined && duplicateMode !== 'strict') {
+  if (duplicateMode !== undefined && duplicateMode !== 'strict' && duplicateMode !== 'fuzzy') {
     throw new Error('Invalid query.duplicateMode')
   }
 

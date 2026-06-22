@@ -49,6 +49,18 @@ const audioOutputSettingsSchema: PluginSettingDefinition[] = [
     default: false
   },
   {
+    key: 'dspEnabled',
+    type: 'boolean',
+    label: '启用 DSP 处理',
+    default: false
+  },
+  {
+    key: 'dspHeadroomDb',
+    type: 'text',
+    label: 'DSP headroom (dB)',
+    default: 0
+  },
+  {
     key: 'voicemeeterBus',
     type: 'select',
     label: 'VoiceMeeter bus',
@@ -104,6 +116,8 @@ function mountForm(options: { platformId?: string; mode?: string } = {}) {
         bufferFrames: 960,
         fallbackToShared: true,
         bitPerfectRequired: false,
+        dspEnabled: false,
+        dspHeadroomDb: 0,
         voicemeeterBus: 'A1',
         voicemeeterHardwareOutBus: 'A1',
         voicemeeterHardwareOutDriver: 'wdm',
@@ -140,6 +154,8 @@ describe('PluginSettingsForm', () => {
         bufferFrames: 960,
         fallbackToShared: true,
         bitPerfectRequired: true,
+        dspEnabled: true,
+        dspHeadroomDb: -3,
         voicemeeterBus: 'A1',
         voicemeeterHardwareOutBus: 'A1',
         voicemeeterHardwareOutDriver: 'wdm',
@@ -154,6 +170,8 @@ describe('PluginSettingsForm', () => {
     expect(wrapper.text()).toContain('独占失败时回退共享模式')
     expect(wrapper.text()).toContain('强制 bit-perfect 候选输出')
     expect(wrapper.text()).toContain('启用诊断日志')
+    expect(wrapper.text()).not.toContain('启用 DSP 处理')
+    expect(wrapper.text()).not.toContain('DSP headroom (dB)')
     expect(wrapper.text()).not.toContain('VoiceMeeter bus')
     expect(wrapper.text()).not.toContain('VoiceMeeter HARDWARE OUT')
     expect(wrapper.text()).not.toContain('HARDWARE OUT 驱动')
@@ -170,6 +188,7 @@ describe('PluginSettingsForm', () => {
     expect(wrapper.text()).toContain('HARDWARE OUT 驱动')
     expect(wrapper.text()).toContain('HARDWARE OUT 设备名')
     expect(wrapper.text()).toContain('启用诊断日志')
+    expect(wrapper.text()).toContain('启用 DSP 处理')
     expect(wrapper.text()).not.toContain('Buffer frames')
     expect(wrapper.text()).not.toContain('独占失败时回退共享模式')
     expect(wrapper.text()).not.toContain('强制 bit-perfect 候选输出')
@@ -182,5 +201,32 @@ describe('PluginSettingsForm', () => {
     expect(wrapper.text()).toContain('原生输出设备')
     expect(wrapper.text()).toContain('独占失败时回退共享模式')
     expect(wrapper.text()).toContain('强制 bit-perfect 候选输出')
+  })
+
+  it('shows audio-output DSP headroom only when DSP is enabled', async () => {
+    const wrapper = mountForm({ mode: 'shared' })
+
+    expect(wrapper.text()).toContain('启用 DSP 处理')
+    expect(wrapper.text()).not.toContain('DSP headroom (dB)')
+
+    await wrapper.setProps({
+      settingValues: {
+        mode: 'shared',
+        sharedDeviceId: '',
+        deviceId: '',
+        bufferFrames: 960,
+        fallbackToShared: true,
+        bitPerfectRequired: false,
+        dspEnabled: true,
+        dspHeadroomDb: -3,
+        voicemeeterBus: 'A1',
+        voicemeeterHardwareOutBus: 'A1',
+        voicemeeterHardwareOutDriver: 'wdm',
+        voicemeeterHardwareOutDevice: '',
+        diagnosticsEnabled: false
+      }
+    })
+
+    expect(wrapper.text()).toContain('DSP headroom (dB)')
   })
 })

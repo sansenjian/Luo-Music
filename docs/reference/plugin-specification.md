@@ -140,6 +140,7 @@ API 插件提供音乐平台能力，例如搜索、播放地址、歌词、歌�
 {
   // ─── 必填 ─────────────────────────────────────────
   "manifestVersion": 1, // 清单格式版本，当前为 1
+  "apiVersion": 2, // 可选；省略时按 1 处理，2 表示插件可声明 v2 能力/贡献点
   "id": "com.example.my-plugin", // 全局唯一 ID，反向域名格式
   "name": "My Plugin", // 显示名称
   "version": "1.0.0", // 语义化版本
@@ -177,6 +178,17 @@ API 插件提供音乐平台能力，例如搜索、播放地址、歌词、歌�
     "needsHydration": false, // 搜索结果是否需要二次补全
     "supportsLyricFetch": true, // 是否支持独立歌词获取
     "supportsUrlRefreshOnFailure": false // 播放失败时是否可刷新 URL
+  },
+  "capabilitiesV2": {
+    "music": {
+      "search": true,
+      "songUrl": true,
+      "urlRefresh": false
+    },
+    "auth": {
+      "login": false
+    },
+    "player": false
   },
 
   // ─── 权限声明 ────────────────────────────────────
@@ -226,21 +238,41 @@ API 插件提供音乐平台能力，例如搜索、播放地址、歌词、歌�
         "label": "API Token"
       }
     ]
-  }
+  },
+  "contributionsV2": [
+    {
+      "type": "settings",
+      "settings": [
+        {
+          "key": "bitrate",
+          "type": "select",
+          "label": "默认音质",
+          "default": "standard",
+          "options": [
+            { "value": "standard", "label": "标准" },
+            { "value": "lossless", "label": "无损" }
+          ]
+        }
+      ]
+    }
+  ]
 }
 ```
 
 ### 3.2 字段约束
 
-| 字段          | 第三方                 | 第一方 (builtin)       | 说明                     |
-| ------------- | ---------------------- | ---------------------- | ------------------------ |
-| `id`          | 反向域名格式           | `builtin.{platformId}` | 全局唯一                 |
-| `category`    | 可选，默认 `api`       | 可选，默认 `api`       | 插件管理页分组           |
-| `source`      | 必须为 `external`      | `builtin`              | —                        |
-| `runtime`     | 必须为 `external-host` | `local`                | —                        |
-| `entry`       | 必填                   | 不需要                 | 第三方需要入口文件       |
-| `engines`     | 必填                   | 可选                   | 版本兼容性               |
-| `permissions` | 必填                   | 不需要                 | 第三方需声明权限才能使用 |
+| 字段          | 第三方                 | 第一方 (builtin)       | 说明                              |
+| ------------- | ---------------------- | ---------------------- | --------------------------------- |
+| `id`          | 反向域名格式           | `builtin.{platformId}` | 全局唯一                          |
+| `apiVersion`  | 可选，`1 \| 2`         | 可选，`1 \| 2`         | 宿主能力协议版本；省略按 `1` 处理 |
+| `category`    | 可选，默认 `api`       | 可选，默认 `api`       | 插件管理页分组                    |
+| `source`      | 必须为 `external`      | `builtin`              | —                                 |
+| `runtime`     | 必须为 `external-host` | `local`                | —                                 |
+| `entry`       | 必填                   | 不需要                 | 第三方需要入口文件                |
+| `engines`     | 必填                   | 可选                   | 版本兼容性                        |
+| `permissions` | 必填                   | 不需要                 | 第三方需声明权限才能使用          |
+
+`capabilities` 和 `contributions` 仍是 v1 兼容入口。新能力优先增量放入 `capabilitiesV2` 和 `contributionsV2`，宿主在运行时可以同时读取两套字段。不要为了新增一个 v2 字段删除旧 v1 能力声明。
 
 ---
 
@@ -919,7 +951,26 @@ export default manifest
 | `text`    | 文本输入框 | `string`                          |
 | `select`  | 下拉选择   | `string` (来自 `options[].value`) |
 
-### 10.3 主题资源
+设置项只适合保存普通偏好，例如默认音质、开关和 API base URL。Cookie、token、refresh token、密码、一次性验证码和授权头不应放在 settings 中；需要长期保存的平台凭据必须声明 `permissions.secrets: true`，并通过插件运行时的 `ctx.secrets` 写入。
+
+`contributionsV2` 可以把设置项作为 `{ "type": "settings", "settings": [...] }` 声明。当前宿主仍保留 v1 `contributions.settings`，第三方插件可以同时声明两套字段，直到 v2 贡献点完成迁移。
+
+### 10.3 v2 贡献点
+
+`contributionsV2` 是面向后续拓展能力的增量入口。当前 SDK 类型允许以下贡献：
+
+| 类型         | 用途                       | 运行时状态            |
+| ------------ | -------------------------- | --------------------- |
+| `settings`   | 声明插件设置项             | 可用于生成设置 UI     |
+| `auth`       | 声明登录模式和首选登录方式 | 供统一登录容器消费    |
+| `command`    | 声明插件命令               | 预留给命令注册中心    |
+| `menu`       | 声明菜单入口               | 预留给菜单注册中心    |
+| `panel`      | 声明受控面板               | 预留给声明式 UI       |
+| `playerHook` | 声明播放器生命周期 hook    | 预留给受控播放器 hook |
+
+第三方插件不能通过 v2 贡献点直接向 renderer 注入任意 Vue 组件、Node API 或未声明权限的网络能力。播放器 hook 也只能返回标准结果，例如阻止播放、替换播放 URL 或给出提示，不能直接拿到播放器内部实例。
+
+### 10.4 主题资源
 
 主题插件通过 `contributions.themeResources` 声明一个或多个主题资源：
 

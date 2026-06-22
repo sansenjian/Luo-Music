@@ -164,7 +164,7 @@ describe('localLibrary.handler', () => {
     ).resolves.toBe(true)
     await expect(
       invokeHandlers.get('local-library:get-tracks')?.({
-        duplicateMode: 'strict',
+        duplicateMode: 'fuzzy',
         hideDuplicates: true,
         limit: 20
       })
@@ -204,7 +204,7 @@ describe('localLibrary.handler', () => {
     expect(showItemInFolderMock).toHaveBeenCalledWith('D:\\Music\\Song.mp3')
     expect(getTracksPageMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        duplicateMode: 'strict',
+        duplicateMode: 'fuzzy',
         hideDuplicates: true,
         limit: 20
       })

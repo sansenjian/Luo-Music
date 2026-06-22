@@ -26,7 +26,21 @@ describe('audio output protocol', () => {
         voicemeeterHardwareOutBus: ' a2 ',
         voicemeeterHardwareOutDriver: ' KS ',
         voicemeeterHardwareOutDevice: '  USB DAC  ',
-        diagnosticsEnabled: true
+        diagnosticsEnabled: true,
+        dsp: {
+          enabled: true,
+          headroomDb: '-3.5',
+          eq: [
+            {
+              id: ' vocal ',
+              type: 'peaking',
+              frequencyHz: '1000.5',
+              gainDb: '2.5',
+              q: '1.2',
+              enabled: true
+            }
+          ]
+        }
       })
     ).toEqual({
       mode: 'exclusive',
@@ -39,7 +53,93 @@ describe('audio output protocol', () => {
       voicemeeterHardwareOutBus: 'A2',
       voicemeeterHardwareOutDriver: 'ks',
       voicemeeterHardwareOutDevice: 'USB DAC',
-      diagnosticsEnabled: true
+      diagnosticsEnabled: true,
+      dsp: {
+        enabled: false,
+        headroomDb: 0,
+        eq: []
+      }
+    })
+  })
+
+  it('sanitizes DSP settings and keeps them bit-perfect safe', () => {
+    expect(
+      sanitizeAudioOutputSettings({
+        mode: 'shared',
+        dsp: {
+          enabled: true,
+          headroomDb: '-32',
+          eq: [
+            {
+              id: '  band-1  ',
+              type: 'lowShelf',
+              frequencyHz: '10',
+              gainDb: '40',
+              q: '0.01',
+              enabled: 'yes'
+            },
+            {
+              type: 'invalid',
+              frequencyHz: 48000,
+              gainDb: -40,
+              q: 30
+            }
+          ]
+        }
+      })
+    ).toMatchObject({
+      mode: 'shared',
+      dsp: {
+        enabled: true,
+        headroomDb: -24,
+        eq: [
+          {
+            id: 'band-1',
+            type: 'lowShelf',
+            frequencyHz: 20,
+            gainDb: 12,
+            q: 0.1,
+            enabled: true
+          },
+          {
+            id: 'eq-2',
+            type: 'peaking',
+            frequencyHz: 20000,
+            gainDb: -12,
+            q: 18,
+            enabled: true
+          }
+        ]
+      }
+    })
+
+    expect(
+      sanitizeAudioOutputSettings({
+        mode: 'exclusive',
+        bitPerfectRequired: true,
+        dsp: {
+          enabled: true,
+          headroomDb: -3,
+          eq: [
+            {
+              id: 'band-1',
+              type: 'peaking',
+              frequencyHz: 1000,
+              gainDb: 2,
+              q: 1,
+              enabled: true
+            }
+          ]
+        }
+      })
+    ).toMatchObject({
+      mode: 'exclusive',
+      bitPerfectRequired: true,
+      dsp: {
+        enabled: false,
+        headroomDb: 0,
+        eq: []
+      }
     })
   })
 

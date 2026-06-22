@@ -27,6 +27,7 @@ export interface PlatformRuntimeState {
 export interface PlatformDescriptor {
   id: string
   displayName: string
+  apiVersion?: 1 | 2
   source: PluginManifest['source']
   runtime: PluginManifest['runtime']
   category?: PluginManifest['category']

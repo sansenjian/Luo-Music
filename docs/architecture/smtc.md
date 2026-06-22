@@ -1,6 +1,6 @@
 # SMTC 第一方拓展插件规划
 
-> 相关实施计划见 [native-smtc-implementation-plan.md](plans/native-smtc-implementation-plan.md)
+> 相关实施计划见 [Windows 原生 SMTC 实现计划](/plans/native-smtc-implementation-plan)
 
 ## Summary
 

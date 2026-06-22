@@ -306,6 +306,8 @@ function expectFirstPartyExtensionDescriptors(
     }),
     expect.objectContaining({ key: 'fallbackToShared', type: 'boolean' }),
     expect.objectContaining({ key: 'bitPerfectRequired', type: 'boolean' }),
+    expect.objectContaining({ key: 'dspEnabled', type: 'boolean' }),
+    expect.objectContaining({ key: 'dspHeadroomDb', type: 'text' }),
     expect.objectContaining({
       key: 'voicemeeterBus',
       type: 'select',
@@ -1633,7 +1635,9 @@ describe('createPluginService', () => {
       fallbackToShared: false,
       bitPerfectRequired: true,
       voicemeeterBus: 'A1',
-      diagnosticsEnabled: true
+      diagnosticsEnabled: true,
+      dspEnabled: false,
+      dspHeadroomDb: 0
     })
   })
 
@@ -1694,6 +1698,35 @@ describe('createPluginService', () => {
     expect(result).toMatchObject({
       mode: 'voicemeeter',
       bufferFrames: 512
+    })
+  })
+
+  it('maps first-party native audio output DSP form fields back to protocol settings', async () => {
+    const bridge = createBridge()
+    const { createPluginService } = await import('@/services/pluginService')
+    const service = createPluginService({
+      isElectron: () => true,
+      getPluginBridge: () => bridge
+    })
+
+    const result = await service.updateSettings('builtin.audio-output', {
+      dspEnabled: true,
+      dspHeadroomDb: '-3'
+    })
+
+    expect(audioOutputPluginMock.updateAudioOutputSettings).toHaveBeenCalledWith({
+      dsp: {
+        enabled: true,
+        headroomDb: -3,
+        eq: []
+      }
+    })
+    expect(result).toMatchObject({
+      dsp: {
+        enabled: true,
+        headroomDb: -3,
+        eq: []
+      }
     })
   })
 
