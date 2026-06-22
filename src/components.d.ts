@@ -17,6 +17,7 @@ declare module 'vue' {
     AppExperimentalSettingsSection: typeof import('./components/settings/AppExperimentalSettingsSection.vue')['default']
     AppPlaybackSettingsSection: typeof import('./components/settings/AppPlaybackSettingsSection.vue')['default']
     AppSettingsContent: typeof import('./components/settings/AppSettingsContent.vue')['default']
+    AppSettingsControlRow: typeof import('./components/settings/AppSettingsControlRow.vue')['default']
     AppSettingsSectionShell: typeof import('./components/settings/AppSettingsSectionShell.vue')['default']
     Button: typeof import('./components/ui/button/Button.vue')['default']
     CacheManager: typeof import('./components/CacheManager.vue')['default']

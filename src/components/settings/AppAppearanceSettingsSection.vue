@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useHomeBrandPlacement } from '@/features/home'
 import { uiMessages } from '@/messages/ui'
 
+import AppSettingsControlRow from './AppSettingsControlRow.vue'
 import AppSettingsSectionShell from './AppSettingsSectionShell.vue'
 
 const { brandPlacement, setBrandPlacement } = useHomeBrandPlacement()
@@ -45,12 +46,9 @@ function isDockedPlayerBarLayoutActive(layout: 'full' | 'with-sidebar'): boolean
 <template>
   <AppSettingsSectionShell :title="uiMessages.settings.sections.appearance">
     <div class="setting-stack grid gap-3">
-      <fieldset class="setting-stack-block rounded-md border border-border bg-card p-3 shadow-sm">
-        <legend class="setting-label px-1 text-xs font-semibold uppercase text-muted-foreground">
-          {{ uiMessages.settings.fields.renderStyle }}
-        </legend>
+      <AppSettingsControlRow :label="uiMessages.settings.fields.renderStyle">
         <div
-          class="placement-switch inline-flex flex-wrap gap-2"
+          class="placement-switch inline-flex min-w-0 flex-wrap gap-2"
           role="group"
           :aria-label="uiMessages.settings.fields.renderStyle"
         >
@@ -67,14 +65,11 @@ function isDockedPlayerBarLayoutActive(layout: 'full' | 'with-sidebar'): boolean
             {{ option.label }}
           </Button>
         </div>
-      </fieldset>
+      </AppSettingsControlRow>
 
-      <fieldset class="setting-stack-block rounded-md border border-border bg-card p-3 shadow-sm">
-        <legend class="setting-label px-1 text-xs font-semibold uppercase text-muted-foreground">
-          {{ uiMessages.settings.fields.brandPlacement }}
-        </legend>
+      <AppSettingsControlRow :label="uiMessages.settings.fields.brandPlacement">
         <div
-          class="placement-switch inline-flex flex-wrap gap-2"
+          class="placement-switch inline-flex min-w-0 flex-wrap gap-2"
           role="group"
           :aria-label="uiMessages.settings.fields.brandPlacement"
         >
@@ -91,14 +86,11 @@ function isDockedPlayerBarLayoutActive(layout: 'full' | 'with-sidebar'): boolean
             {{ option.label }}
           </Button>
         </div>
-      </fieldset>
+      </AppSettingsControlRow>
 
-      <fieldset class="setting-stack-block rounded-md border border-border bg-card p-3 shadow-sm">
-        <legend class="setting-label px-1 text-xs font-semibold uppercase text-muted-foreground">
-          {{ uiMessages.settings.fields.dockedPlayerLayout }}
-        </legend>
+      <AppSettingsControlRow :label="uiMessages.settings.fields.dockedPlayerLayout">
         <div
-          class="placement-switch inline-flex flex-wrap gap-2"
+          class="placement-switch inline-flex min-w-0 flex-wrap gap-2"
           role="group"
           :aria-label="uiMessages.settings.fields.dockedPlayerLayout"
         >
@@ -115,7 +107,7 @@ function isDockedPlayerBarLayoutActive(layout: 'full' | 'with-sidebar'): boolean
             {{ option.label }}
           </Button>
         </div>
-      </fieldset>
+      </AppSettingsControlRow>
     </div>
   </AppSettingsSectionShell>
 </template>
