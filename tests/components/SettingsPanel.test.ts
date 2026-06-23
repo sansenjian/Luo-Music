@@ -119,9 +119,19 @@ describe('SettingsPanel.vue', () => {
 
     expect(document.body.querySelector('input[aria-label="Windows SMTC"]')).toBeNull()
     expect(document.body.querySelector('input[aria-label="滑动封面切歌"]')).toBeNull()
-    expect(
-      document.body.querySelector('input[aria-label="进度条波形可视化（实验）"]')
-    ).not.toBeNull()
+    const waveformSwitch = document.body.querySelector(
+      '[role="switch"][aria-label="进度条波形可视化（实验）"]'
+    ) as HTMLButtonElement | null
+    expect(waveformSwitch).not.toBeNull()
+
+    waveformSwitch?.click()
+    await wrapper.vm.$nextTick()
+
+    expect(storageServiceMock.setJSON).toHaveBeenCalledWith('experimentalFeatures', {
+      smtcEnabled: false,
+      waveformEnabled: true,
+      coverSwipeEnabled: false
+    })
   })
 
   it('persists the selected home brand placement', async () => {
