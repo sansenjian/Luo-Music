@@ -169,6 +169,11 @@ function navigateForward(): void {
   flex-shrink: 0;
 }
 
+.titlebar :deep(.search-bar) {
+  flex: 1 1 min(560px, 100%);
+  min-width: 0;
+}
+
 .title-nav {
   display: var(--title-nav-display, none);
   align-items: center;

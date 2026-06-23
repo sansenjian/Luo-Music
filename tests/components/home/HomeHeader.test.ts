@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 
 import HomeHeader from '@/features/home/components/HomeHeader.vue'
 import type { MusicServerOption } from '@/features/home/composables/useHomePage'
@@ -57,13 +58,33 @@ describe('HomeHeader', () => {
   })
 
   it('emits server selection and dropdown toggle events', async () => {
-    const wrapper = createWrapper()
+    const wrapper = mount(HomeHeader, {
+      attachTo: document.body,
+      props: {
+        isElectron: true,
+        isLoading: false,
+        searchKeyword: '',
+        selectedServer: 'netease',
+        selectedServerLabel: 'Netease',
+        servers,
+        showSelect: false
+      },
+      global: {
+        stubs: {
+          UserAvatar: true
+        }
+      }
+    })
 
-    await wrapper.find('.server-select-custom').trigger('click')
+    await wrapper.find('.server-select-custom').trigger('pointerdown')
+    await wrapper.setProps({ showSelect: true })
     await wrapper.findAll('.dropdown-option')[1].trigger('click')
+    await nextTick()
 
     expect(wrapper.emitted('toggle-select')).toHaveLength(1)
     expect(wrapper.emitted('select-server')?.[0]).toEqual(['qq'])
+
+    wrapper.unmount()
   })
 
   it('emits window control events only in electron mode', async () => {

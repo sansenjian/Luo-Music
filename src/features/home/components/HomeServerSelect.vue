@@ -1,6 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { onClickOutside } from '@vueuse/core'
+import {
+  SelectContent,
+  SelectItem,
+  SelectItemText,
+  SelectRoot,
+  SelectTrigger,
+  SelectValue,
+  SelectViewport
+} from 'reka-ui'
 
 import type { MusicServerOption } from '@/features/home/composables/useHomePage'
 
@@ -17,55 +24,70 @@ const emit = defineEmits<{
   'toggle-select': []
 }>()
 
-const rootRef = ref<HTMLElement | null>(null)
-
-onClickOutside(rootRef, () => {
-  if (props.showSelect) {
-    emit('close-select')
-  }
-})
-
 function onSelectServer(value: string): void {
   emit('select-server', value)
 }
 
-function onToggleSelect(): void {
-  emit('toggle-select')
+function onOpenChange(isOpen: boolean): void {
+  if (isOpen === props.showSelect) {
+    return
+  }
+
+  if (isOpen) {
+    emit('toggle-select')
+    return
+  }
+
+  emit('close-select')
 }
 </script>
 
 <template>
-  <div ref="rootRef" class="server-select-wrapper">
-    <div class="server-select-custom" @click="onToggleSelect">
-      <span>{{ props.selectedServerLabel }}</span>
-      <svg
-        class="arrow-icon"
-        :class="{ rotated: props.showSelect }"
-        viewBox="0 0 24 24"
-        width="16"
-        height="16"
-      >
-        <path d="M7 10l5 5 5-5z" fill="currentColor" />
-      </svg>
-    </div>
-
-    <Transition name="select-dropdown">
-      <div v-if="props.showSelect" class="server-dropdown">
-        <div
-          v-for="server in props.servers"
-          :key="server.value"
-          class="dropdown-option"
-          :class="{ active: props.selectedServer === server.value }"
-          @click="onSelectServer(server.value)"
-        >
-          {{ server.label }}
-        </div>
+  <div class="server-select-host">
+    <SelectRoot
+      :model-value="props.selectedServer"
+      :open="props.showSelect"
+      @update:model-value="onSelectServer"
+      @update:open="onOpenChange"
+    >
+      <div class="server-select-wrapper">
+        <SelectTrigger class="server-select-custom">
+          <SelectValue :placeholder="props.selectedServerLabel" />
+          <svg
+            class="arrow-icon"
+            :class="{ rotated: props.showSelect }"
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+          >
+            <path d="M7 10l5 5 5-5z" fill="currentColor" />
+          </svg>
+        </SelectTrigger>
       </div>
-    </Transition>
+
+      <SelectContent class="server-dropdown" position="popper" :side-offset="4">
+        <SelectViewport>
+          <SelectItem
+            v-for="server in props.servers"
+            :key="server.value"
+            class="dropdown-option"
+            :class="{ active: props.selectedServer === server.value }"
+            :value="server.value"
+            @click="onSelectServer(server.value)"
+          >
+            <SelectItemText>{{ server.label }}</SelectItemText>
+          </SelectItem>
+        </SelectViewport>
+      </SelectContent>
+    </SelectRoot>
   </div>
 </template>
 
 <style scoped>
+.server-select-host {
+  min-width: 0;
+}
+
 .server-select-wrapper {
   position: relative;
 }
@@ -106,10 +128,7 @@ function onToggleSelect(): void {
 }
 
 .server-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  width: 100%;
+  min-width: var(--reka-select-trigger-width);
   background: var(--ui-surface);
   border: var(--ui-border);
   border-radius: var(--ui-radius-md);
@@ -125,33 +144,26 @@ function onToggleSelect(): void {
   cursor: pointer;
   transition: all 0.2s;
   border-bottom: 1px solid var(--ui-border-subtle);
+  outline: none;
 }
 
 .dropdown-option:last-child {
   border-bottom: none;
 }
 
-.dropdown-option:hover {
+.dropdown-option:hover,
+.dropdown-option[data-highlighted] {
   background: var(--ui-hover-bg);
 }
 
-.dropdown-option.active {
+.dropdown-option.active,
+.dropdown-option[data-state='checked'] {
   background: var(--ui-primary-bg);
   color: var(--ui-primary-text);
 }
 
-.dropdown-option.active:hover {
+.dropdown-option.active:hover,
+.dropdown-option[data-state='checked'][data-highlighted] {
   background: var(--ui-primary-hover-bg);
-}
-
-.select-dropdown-enter-active,
-.select-dropdown-leave-active {
-  transition: all 0.2s ease;
-}
-
-.select-dropdown-enter-from,
-.select-dropdown-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
 }
 </style>

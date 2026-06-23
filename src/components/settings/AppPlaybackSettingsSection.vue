@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
 import { uiMessages } from '@/messages/ui'
 import { usePlayerStore } from '@/store/playerStore'
 import type { StorePlayMode } from '@/store/player/playerPersistence'
@@ -35,13 +36,15 @@ const playModeOptions = [
 ] as const
 
 const volumePercent = computed(() => Math.round(playerStore.volume * 100))
+const volumeSliderValue = computed({
+  get: () => [playerStore.volume],
+  set: ([value = playerStore.volume]) => {
+    playerStore.setVolume(value)
+  }
+})
 
 function isPlayModeActive(mode: StorePlayMode): boolean {
   return playerStore.playMode === mode
-}
-
-function handleVolumeInput(event: Event): void {
-  playerStore.setVolume(Number((event.target as HTMLInputElement).value))
 }
 </script>
 
@@ -78,16 +81,13 @@ function handleVolumeInput(event: Event): void {
             {{ volumePercent }}%
           </span>
         </template>
-        <input
+        <Slider
           :id="`${fieldIdPrefix}-volume`"
-          :value="playerStore.volume"
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          class="h-2 w-full cursor-pointer accent-[var(--ui-primary-color)]"
+          v-model="volumeSliderValue"
+          :min="0"
+          :max="1"
+          :step="0.01"
           :aria-label="uiMessages.settings.fields.volume"
-          @input="handleVolumeInput"
         />
       </AppSettingsControlRow>
       <select

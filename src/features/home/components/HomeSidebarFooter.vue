@@ -194,12 +194,12 @@ const loginServices = computed(() =>
 }
 
 .settings-button {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
   border: 0;
-  border-radius: 12px;
-  background: var(--surface-muted);
+  border-radius: 10px;
+  background: transparent;
   color: var(--gray);
   cursor: pointer;
   transition:
@@ -209,20 +209,19 @@ const loginServices = computed(() =>
 }
 
 .settings-button:hover {
-  background: var(--sidebar-link-hover-bg);
+  background: transparent;
   color: var(--black);
   transform: translateY(-1px);
 }
 
 .settings-button.is-active {
-  background: var(--sidebar-active-bg);
-  color: var(--sidebar-active-text, var(--white));
-  box-shadow: var(--sidebar-active-shadow);
+  background: transparent;
+  color: var(--ui-primary-bg);
 }
 
 .settings-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -253,8 +252,8 @@ const loginServices = computed(() =>
 }
 
 .sidebar-login-panel.is-collapsed .settings-button {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
 }
 
 .sidebar-login-panel:not(.is-collapsed) {
@@ -269,8 +268,8 @@ const loginServices = computed(() =>
 }
 
 .sidebar-login-panel:not(.is-collapsed) .settings-button {
-  width: 40px !important;
-  height: 40px !important;
+  width: 34px !important;
+  height: 34px !important;
 }
 
 @media (max-width: 960px) {
