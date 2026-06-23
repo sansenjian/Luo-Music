@@ -233,6 +233,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
   --home-sidebar-width: 236px;
   --home-player-width: 350px;
   --home-collapsed-sidebar-width: 82px;
+  --home-docked-footer-height: 80px;
   height: 100%;
   width: 100%;
   display: flex;
@@ -259,6 +260,10 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
   grid-template-areas:
     'sidebar workspace'
     'sidebar footer';
+}
+
+.window.player-docked.footer-with-sidebar .sidebar-panel {
+  --sidebar-footer-height: var(--home-docked-footer-height);
 }
 
 .window.sidebar-collapsed .app-shell {
@@ -369,7 +374,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
 
 @media (max-width: 768px) {
   .window {
-    --home-sidebar-width: clamp(168px, 32vw, 220px);
+    --home-sidebar-width: clamp(188px, 34vw, 220px);
   }
 
   .app-shell {
@@ -393,7 +398,7 @@ const { isMounted: isIdleMounted } = useDeferredMount('idle')
   .window.player-docked.footer-with-sidebar .app-shell {
     grid-template-areas:
       'sidebar workspace'
-      'footer footer';
+      'sidebar footer';
   }
 }
 </style>

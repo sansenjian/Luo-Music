@@ -56,6 +56,7 @@ declare module 'vue' {
     HomeTabBar: typeof import('./features/home/components/HomeTabBar.vue')['default']
     HomeWindowControls: typeof import('./features/home/components/HomeWindowControls.vue')['default']
     HomeWorkspace: typeof import('./features/home/components/HomeWorkspace.vue')['default']
+    Input: typeof import('./components/ui/input/Input.vue')['default']
     LikedSongListItem: typeof import('./features/user-center/components/LikedSongListItem.vue')['default']
     LikedSongsToolbar: typeof import('./features/user-center/components/LikedSongsToolbar.vue')['default']
     LikedSongsView: typeof import('./features/user-center/components/LikedSongsView.vue')['default']
