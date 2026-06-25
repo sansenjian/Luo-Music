@@ -1,0 +1,113 @@
+{
+  "manifestVersion": 1,
+  "id": "ai-assistant",
+  "name": "AI 播放器助手",
+  "version": "1.0.0",
+  "description": "通过自然语言与 AI 对话控制播放器。需要用户自行配置 OpenAI 兼容的 LLM API。",
+  "author": "Luo-Music",
+  "category": "extension",
+  "platformId": "ai-assistant",
+  "source": "external",
+  "runtime": "external-host",
+  "entry": {
+    "main": "index.mjs",
+    "module": "esm"
+  },
+  "engines": {
+    "pluginApi": "^1.0.0",
+    "app": ">=2.3.0"
+  },
+  "capabilities": {
+    "search": false,
+    "songUrl": false,
+    "songDetail": false,
+    "lyric": false,
+    "playlistDetail": false,
+    "needsHydration": false,
+    "supportsLyricFetch": false,
+    "supportsUrlRefreshOnFailure": false
+  },
+  "capabilitiesV2": {
+    "storage": true,
+    "network": {
+      "domains": ["api.deepseek.com", "api.openai.com"]
+    },
+    "secrets": true
+  },
+  "permissions": {
+    "network": {
+      "domains": ["api.deepseek.com", "api.openai.com"]
+    },
+    "storage": true,
+    "secrets": true
+  },
+  "contributions": {
+    "settings": [
+      {
+        "key": "apiKey",
+        "type": "text",
+        "label": "LLM API Key"
+      },
+      {
+        "key": "baseUrl",
+        "type": "text",
+        "label": "API 基础地址",
+        "default": "https://api.deepseek.com/v1"
+      },
+      {
+        "key": "model",
+        "type": "text",
+        "label": "模型名",
+        "default": "deepseek-chat"
+      },
+      {
+        "key": "temperature",
+        "type": "text",
+        "label": "Temperature",
+        "default": "0.3"
+      },
+      {
+        "key": "maxHistory",
+        "type": "text",
+        "label": "最大历史轮数",
+        "default": "10"
+      }
+    ]
+  },
+  "contributionsV2": [
+    {
+      "type": "settings",
+      "settings": [
+        {
+          "key": "apiKey",
+          "type": "text",
+          "label": "LLM API Key"
+        },
+        {
+          "key": "baseUrl",
+          "type": "text",
+          "label": "API 基础地址",
+          "default": "https://api.deepseek.com/v1"
+        },
+        {
+          "key": "model",
+          "type": "text",
+          "label": "模型名",
+          "default": "deepseek-chat"
+        },
+        {
+          "key": "temperature",
+          "type": "text",
+          "label": "Temperature",
+          "default": "0.3"
+        },
+        {
+          "key": "maxHistory",
+          "type": "text",
+          "label": "最大历史轮数",
+          "default": "10"
+        }
+      ]
+    }
+  ]
+}
