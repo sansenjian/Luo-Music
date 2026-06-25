@@ -7,6 +7,11 @@ import { useCommandContext } from './composables/useCommandContext'
 import { useProjectUi } from './composables/useProjectUi'
 import { useWindowChromeState } from './composables/useWindowChromeState'
 import { useAudioOutputPlaybackSync } from '@/extensions/audioOutput/useAudioOutputPlaybackSync'
+import {
+  AiDialogueButton,
+  AiDialoguePanel,
+  useAiDialogueExtension
+} from './extensions/ai-dialogue'
 import { DESKTOP_LYRIC_ROUTE_PATH, useSmtcExtension } from './extensions/smtc/useSmtcExtension'
 import { services } from './services'
 import { usePlayerStore } from './store/playerStore'
@@ -31,6 +36,7 @@ const { isWindowFullScreen, isWindowMaximized, isWindowRounded } =
 useCommandContext()
 useSmtcExtension()
 useAudioOutputPlaybackSync()
+const aiDialogue = useAiDialogueExtension()
 const { ensureAvailableRenderStyle } = useProjectUi()
 ensureAvailableRenderStyle()
 
@@ -93,6 +99,21 @@ onMounted(() => {
   </div>
   <router-view v-else />
   <WindowResizeFrame v-if="showWindowResizeFrame" />
+  <AiDialogueButton
+    v-if="showClientWindowChrome"
+    :is-open="aiDialogue.isOpen"
+    :is-electron="aiDialogue.isElectron"
+    @toggle="aiDialogue.toggle"
+  />
+  <AiDialoguePanel
+    v-if="showClientWindowChrome"
+    :is-open="aiDialogue.isOpen"
+    :messages="aiDialogue.messages"
+    :status="aiDialogue.status"
+    :error="aiDialogue.error"
+    @close="aiDialogue.close"
+    @send="aiDialogue.send"
+  />
 </template>
 
 <style scoped>

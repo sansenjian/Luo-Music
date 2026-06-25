@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useAiDialogue } from './useAiDialogue'
 import AiDialogueButton from './AiDialogueButton.vue'
 import AiDialoguePanel from './AiDialoguePanel.vue'
@@ -22,7 +22,7 @@ export function useAiDialogueExtension() {
     await sendMessage(content)
   }
 
-  return {
+  return reactive({
     isOpen,
     isElectron,
     messages,
@@ -31,7 +31,7 @@ export function useAiDialogueExtension() {
     toggle,
     close,
     send
-  }
+  })
 }
 
 export { AiDialogueButton, AiDialoguePanel }
