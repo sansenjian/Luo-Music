@@ -1796,10 +1796,15 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         }
       },
 
-      toggleMute(): void {
+      setMuted(muted: boolean): void {
         const store = this as unknown as PlayerStoreInstance
-        audioManager.setMuted(!audioManager.getMuted())
+        this.muted = muted
+        audioManager.setMuted(muted)
         notifyPlayerStateSnapshot(store)
+      },
+
+      toggleMute(): void {
+        this.setMuted(!this.muted)
       },
 
       togglePlayMode(): void {
@@ -1897,6 +1902,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       storage: persistStorage,
       pick: [
         'volume',
+        'muted',
         'playMode',
         'lyricType',
         'webLyricAppearance',

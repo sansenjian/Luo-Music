@@ -23,6 +23,8 @@ export interface PlayerState {
   duration: number
   /** 音量 (0-1) */
   volume: number
+  /** 是否静音 */
+  muted: boolean
   /** 播放模式 */
   playMode: PlayMode
   /** 播放列表 */
@@ -73,6 +75,7 @@ export interface PlayerStateChanges {
   progress?: number
   duration?: number
   volume?: number
+  muted?: boolean
   playMode?: PlayMode
   currentIndex?: number
   currentSong?: Song | null
@@ -91,6 +94,7 @@ export function createInitialState(): PlayerState {
     progress: 0,
     duration: 0,
     volume: 0.7,
+    muted: false,
     playMode: PLAY_MODE.SEQUENTIAL,
     songList: [],
     currentIndex: -1,

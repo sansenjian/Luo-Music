@@ -2,6 +2,8 @@ import { COMMANDS, COMMAND_ENABLEMENT } from '@/core/commands/commands'
 import { EventEmitter, type Event } from '@/base/common/event/event'
 import { DisposableStore } from '@/base/common/lifecycle/disposable'
 import { usePlayerStore } from '@/store/playerStore'
+import { useSearchStore } from '@/store/searchStore'
+import { toPlayMode } from '@/store/player/playerPersistence'
 import { getService } from './registry'
 import type { ContextKeyService } from './contextKeyService'
 import type { PlatformService } from './platformService'
@@ -44,6 +46,22 @@ type StepPayload = {
 
 type SeekPayload = {
   seconds?: number
+}
+
+type SetVolumePayload = {
+  volume: number
+}
+
+type SetMutePayload = {
+  muted: boolean
+}
+
+type SetPlayModePayload = {
+  mode: number
+}
+
+type SearchAndPlayPayload = {
+  query: string
 }
 
 const DEFAULT_VOLUME_STEP = 0.1
@@ -196,6 +214,43 @@ export function createCommandService(
       enablement: COMMAND_ENABLEMENT[COMMANDS.PLAYER_SEEK_BACK]
     }
   )
+
+  register<SetVolumePayload>(COMMANDS.PLAYER_SET_VOLUME, payload => {
+    const volume = payload?.volume
+    if (typeof volume !== 'number' || !Number.isFinite(volume)) {
+      throw new Error('[CommandService] PLAYER_SET_VOLUME requires a numeric volume')
+    }
+    getPlayerStore().setVolume(Math.max(0, Math.min(1, volume)))
+  })
+
+  register<SetMutePayload>(COMMANDS.PLAYER_SET_MUTE, payload => {
+    const muted = payload?.muted
+    if (typeof muted !== 'boolean') {
+      throw new Error('[CommandService] PLAYER_SET_MUTE requires a boolean muted')
+    }
+    getPlayerStore().setMuted(muted)
+  })
+
+  register<SetPlayModePayload>(COMMANDS.PLAYER_SET_PLAY_MODE, payload => {
+    const mode = payload?.mode
+    if (typeof mode !== 'number' || !Number.isFinite(mode)) {
+      throw new Error('[CommandService] PLAYER_SET_PLAY_MODE requires a numeric mode')
+    }
+    getPlayerStore().setPlayMode(toPlayMode(mode))
+  })
+
+  register<SearchAndPlayPayload>(COMMANDS.PLAYER_SEARCH_AND_PLAY, async payload => {
+    const query = payload?.query
+    if (!query || typeof query !== 'string') {
+      throw new Error('[CommandService] PLAYER_SEARCH_AND_PLAY requires a query string')
+    }
+    const searchStore = useSearchStore()
+    await searchStore.search(query)
+    if (searchStore.results.length === 0) {
+      throw new Error(`[CommandService] No song found for query: ${query}`)
+    }
+    await searchStore.playResult(0)
+  })
 
   register(COMMANDS.PLAYER_TOGGLE_PLAYER_DOCKED, () => {
     getPlayerStore().togglePlayerDocked()
