@@ -278,15 +278,20 @@
   color: var(--gray-light);
 }
 
-.local-search input {
+.local-search .local-search-input {
   flex: 1;
   min-width: 0;
   min-height: 38px;
   border: none;
   outline: none;
   background: transparent;
+  box-shadow: none;
   font-size: 14px;
   color: var(--black);
+}
+
+.local-search .local-search-input:focus-visible {
+  box-shadow: none;
 }
 
 .search-submit {

@@ -2,6 +2,9 @@
 import { computed } from 'vue'
 import type { PluginSettingDefinition } from '@plugin-sdk'
 
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { uiMessages } from '@/messages/ui'
 
 const AUDIO_OUTPUT_PLUGIN_ID = 'builtin.audio-output'
@@ -81,15 +84,18 @@ function settingTextValue(key: string): string {
   return value == null ? '' : String(value)
 }
 
-function handleBooleanInput(key: string, event: Event): void {
-  const target = event.target
-  emit('update-setting', key, target instanceof HTMLInputElement ? target.checked : false)
+function handleBooleanValue(key: string, value: boolean): void {
+  emit('update-setting', key, value)
 }
 
 function handleTextInput(key: string, event: Event): void {
   const target = event.target as { value?: unknown } | null
   const value = typeof target?.value === 'string' ? target.value : ''
   emit('update-setting', key, value)
+}
+
+function handleTextValue(key: string, value: string | undefined): void {
+  emit('update-setting', key, value ?? '')
 }
 </script>
 
@@ -98,15 +104,14 @@ function handleTextInput(key: string, event: Event): void {
     <div v-for="setting in visibleSettingsSchema" :key="setting.key" class="plugin-setting-row">
       <label :for="settingInputId(setting.key)">{{ setting.label }}</label>
 
-      <label v-if="setting.type === 'boolean'" class="plugin-toggle">
-        <input
+      <div v-if="setting.type === 'boolean'" class="plugin-toggle">
+        <Switch
           :id="settingInputId(setting.key)"
-          type="checkbox"
-          :checked="Boolean(settingValues[setting.key])"
-          @change="handleBooleanInput(setting.key, $event)"
+          :model-value="Boolean(settingValues[setting.key])"
+          :aria-label="setting.label"
+          @update:model-value="handleBooleanValue(setting.key, $event)"
         />
-        <span class="plugin-toggle-track" />
-      </label>
+      </div>
 
       <select
         v-else-if="setting.type === 'select'"
@@ -120,28 +125,28 @@ function handleTextInput(key: string, event: Event): void {
         </option>
       </select>
 
-      <input
+      <Input
         v-else
         :id="settingInputId(setting.key)"
-        type="text"
-        :value="settingTextValue(setting.key)"
+        :model-value="settingTextValue(setting.key)"
         class="plugin-setting-text"
-        @input="handleTextInput(setting.key, $event)"
+        type="text"
+        @update:model-value="handleTextValue(setting.key, $event)"
       />
     </div>
 
     <div class="plugin-settings-footer">
-      <button
+      <Button
         type="button"
-        class="plugin-pill plugin-pill-primary"
+        size="sm"
         :disabled="isSaving"
         @click="emit('save')"
       >
         {{ isSaving ? '保存中...' : uiMessages.settings.actions.saveSettings }}
-      </button>
-      <button type="button" class="plugin-pill plugin-pill-ghost" @click="emit('cancel')">
+      </Button>
+      <Button type="button" variant="outline" size="sm" @click="emit('cancel')">
         取消
-      </button>
+      </Button>
     </div>
   </div>
 </template>
@@ -170,47 +175,9 @@ function handleTextInput(key: string, event: Event): void {
 }
 
 .plugin-toggle {
-  position: relative;
-  display: inline-block;
-  cursor: pointer;
-}
-
-.plugin-toggle input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.plugin-toggle-track {
-  display: block;
-  width: 40px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--ui-border-subtle);
-  position: relative;
-  transition: background 0.2s ease;
-}
-
-.plugin-toggle-track::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--ui-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease;
-}
-
-.plugin-toggle input:checked + .plugin-toggle-track {
-  background: var(--ui-primary-bg);
-}
-
-.plugin-toggle input:checked + .plugin-toggle-track::after {
-  transform: translateX(18px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .plugin-setting-text,
@@ -241,53 +208,6 @@ function handleTextInput(key: string, event: Event): void {
   margin-top: 4px;
   padding-top: 10px;
   border-top: 1px solid var(--ui-border-subtle);
-}
-
-.plugin-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 0 16px;
-  border: none;
-  border-radius: var(--ui-control-radius);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background 0.18s ease,
-    color 0.18s ease,
-    transform 0.18s ease,
-    box-shadow 0.18s ease;
-}
-
-.plugin-pill-primary {
-  background: var(--ui-primary-bg);
-  color: var(--ui-primary-text);
-  box-shadow: var(--ui-primary-shadow);
-}
-
-.plugin-pill-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.plugin-pill-ghost {
-  background: transparent;
-  color: var(--gray);
-  box-shadow: inset 0 0 0 1px var(--ui-border-subtle);
-}
-
-.plugin-pill-ghost:hover:not(:disabled) {
-  background: var(--ui-hover-bg);
-  color: var(--black);
-}
-
-.plugin-pill:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none;
 }
 
 @media (max-width: 640px) {
