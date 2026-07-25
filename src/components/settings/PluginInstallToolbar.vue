@@ -41,7 +41,12 @@ const emit = defineEmits<{
     </label>
 
     <div class="plugin-toolbar-actions">
-      <Button type="button" variant="outline" size="sm" @click="emit('browse-install-path', 'file')">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        @click="emit('browse-install-path', 'file')"
+      >
         {{ uiMessages.settings.actions.browsePluginPackage }}
       </Button>
       <Button
@@ -52,12 +57,7 @@ const emit = defineEmits<{
       >
         {{ uiMessages.settings.actions.browsePluginFolder }}
       </Button>
-      <Button
-        type="button"
-        size="sm"
-        :disabled="!canInstall"
-        @click="emit('request-install')"
-      >
+      <Button type="button" size="sm" :disabled="!canInstall" @click="emit('request-install')">
         {{
           isInstalling
             ? uiMessages.settings.actions.installingPlugin

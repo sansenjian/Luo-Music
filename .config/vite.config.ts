@@ -15,7 +15,8 @@ function createConfig({ command, mode }: ConfigEnv): UserConfig {
   const rootDir = process.cwd()
   const envDir = existsSync(resolve(rootDir, '.config/.env')) ? '.config' : rootDir
   const env = loadEnv(mode, envDir, '')
-  const appRuntime = env.APP_RUNTIME === 'electron' ? 'electron' : 'web'
+  const appRuntime =
+    (process.env.APP_RUNTIME ?? env.APP_RUNTIME) === 'electron' ? 'electron' : 'web'
   const sentryDsn = env.SENTRY_DSN ?? ''
   const sentryRelease = env.SENTRY_RELEASE ?? ''
   const sentryTracingEnabled = env.SENTRY_TRACING_ENABLED ?? '0'
@@ -44,11 +45,32 @@ function createConfig({ command, mode }: ConfigEnv): UserConfig {
       host: '127.0.0.1',
       proxy: createSharedDevProxy({ withQqTimeout: true })
     },
+    optimizeDeps: {
+      entries: ['index.html'],
+      include: [
+        'vue',
+        'vue-router',
+        'pinia',
+        'pinia-plugin-persistedstate',
+        '@tanstack/vue-query',
+        'axios',
+        'animejs',
+        '@vueuse/core',
+        'reka-ui',
+        'zod',
+        'tailwind-merge',
+        'clsx',
+        'class-variance-authority',
+        'lru-cache',
+        'web-vitals'
+      ],
+      exclude: ['electron']
+    },
     build: {
       emptyOutDir: true,
       outDir: outputDir,
       chunkSizeWarningLimit: 500,
-      target: 'es2022',
+      target: 'esnext',
       minify: 'esbuild',
       rollupOptions: {
         output: {

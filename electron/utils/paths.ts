@@ -18,7 +18,11 @@ function getElectronApp(): ElectronAppLike | null {
 const electronApp = getElectronApp()
 const hasResourcesPath =
   typeof process.resourcesPath === 'string' && process.resourcesPath.length > 0
-const isPackaged = electronApp?.isPackaged ?? (!process.env.VITE_DEV_SERVER_URL && hasResourcesPath)
+// 开发模式下（VITE_DEV_SERVER_URL 已设置），始终视为非打包状态。
+// 否则 Electron 自带的 app.asar 可能导致 app.isPackaged 误判为 true。
+const isPackaged = process.env.VITE_DEV_SERVER_URL
+  ? false
+  : (electronApp?.isPackaged ?? (!process.env.VITE_DEV_SERVER_URL && hasResourcesPath))
 const appRoot =
   process.env.APP_ROOT ||
   (isPackaged ? path.join(process.resourcesPath, 'app.asar') : process.cwd())

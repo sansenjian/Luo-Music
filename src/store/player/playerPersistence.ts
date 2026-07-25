@@ -1,5 +1,6 @@
 import { PLAY_MODE } from '@shared/player/playMode'
 import { sanitizeWebLyricAppearance } from '@/utils/player/webLyricAppearance'
+import { MAX_PLAYLIST_SIZE } from '@/store/player/playerState'
 import {
   normalizePersistedPlaylist,
   PLAYER_PERSISTED_STATE_VERSION,
@@ -92,6 +93,19 @@ export function normalizeHydratedPlayerState(
 
   store.lyricType = normalizeLyricTypes(store.lyricType)
   store.webLyricAppearance = sanitizeWebLyricAppearance(store.webLyricAppearance)
+
+  // 限制播放列表长度，防止持久化的大歌单撑爆内存
+  if (Array.isArray(store.songList) && store.songList.length > MAX_PLAYLIST_SIZE) {
+    const songsToKeep = store.songList.slice(-MAX_PLAYLIST_SIZE)
+    store.songList = songsToKeep
+    store.currentIndex =
+      store.currentIndex >= 0
+        ? store.currentIndex - (store.songList.length - MAX_PLAYLIST_SIZE)
+        : -1
+    if (store.currentIndex < 0 || store.currentIndex >= MAX_PLAYLIST_SIZE) {
+      store.currentIndex = -1
+    }
+  }
 }
 
 type PlayerPersistStorage = Pick<

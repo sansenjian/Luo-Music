@@ -37,7 +37,7 @@ export interface SearchResultItem {
 }
 
 const SEARCH_PAGE_SIZE = 50
-const MAX_SEARCH_PAGES = 100
+const MAX_SEARCH_PAGES = 30
 const PARALLEL_PAGE_BATCH = 3
 
 export function searchResultItemToSong(item: SearchResultItem): Song {

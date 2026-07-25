@@ -131,7 +131,7 @@ export function createSharedDevProxy(
   }
 }
 
-export const webManualChunks: ManualChunksFunction = (id: string) => {
+const manualChunks: ManualChunksFunction = (id: string) => {
   if (!id.includes('node_modules')) {
     return undefined
   }
@@ -144,47 +144,42 @@ export const webManualChunks: ManualChunksFunction = (id: string) => {
     return 'vendor-analytics'
   }
 
-  if (id.includes('vue') || id.includes('pinia') || id.includes('router')) {
+  // Vue 核心：vue / @vue / pinia / vue-router / @vueuse
+  if (
+    id.includes('/vue/') ||
+    id.includes('/@vue/') ||
+    id.includes('/pinia/') ||
+    id.includes('/pinia-plugin-persistedstate/') ||
+    id.includes('/vue-router/') ||
+    id.includes('/@vueuse/')
+  ) {
     return 'vendor-core'
   }
 
-  if (id.includes('pinia-plugin-persistedstate')) {
-    return 'vendor-core'
+  // UI 组件与样式工具
+  if (
+    id.includes('/reka-ui/') ||
+    id.includes('/tailwind-merge/') ||
+    id.includes('/clsx/') ||
+    id.includes('/class-variance-authority/')
+  ) {
+    return 'vendor-ui'
   }
 
-  if (id.includes('axios') || id.includes('animejs')) {
+  // 通用工具库
+  if (
+    id.includes('/axios/') ||
+    id.includes('/animejs/') ||
+    id.includes('/zod/') ||
+    id.includes('/lru-cache/') ||
+    id.includes('/web-vitals/') ||
+    id.includes('/date-fns/')
+  ) {
     return 'vendor-utils'
   }
 
   return 'vendor-libs'
 }
 
-export const electronRendererManualChunks: ManualChunksFunction = (id: string) => {
-  if (!id.includes('node_modules')) {
-    return undefined
-  }
-
-  if (id.includes('/@tanstack/')) {
-    return 'vendor-query'
-  }
-
-  if (
-    id.includes('/vue/') ||
-    id.includes('/@vue/') ||
-    id.includes('/pinia/') ||
-    id.includes('/vue-router/')
-  ) {
-    return 'vendor-vue'
-  }
-
-  if (
-    id.includes('/axios/') ||
-    id.includes('/animejs/') ||
-    id.includes('/zod/') ||
-    id.includes('/date-fns/')
-  ) {
-    return 'vendor-utils'
-  }
-
-  return undefined
-}
+export const webManualChunks = manualChunks
+export const electronRendererManualChunks = manualChunks

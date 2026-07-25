@@ -7,11 +7,8 @@ import { useCommandContext } from './composables/useCommandContext'
 import { useProjectUi } from './composables/useProjectUi'
 import { useWindowChromeState } from './composables/useWindowChromeState'
 import { useAudioOutputPlaybackSync } from '@/extensions/audioOutput/useAudioOutputPlaybackSync'
-import {
-  AiDialogueButton,
-  AiDialoguePanel,
-  useAiDialogueExtension
-} from './extensions/ai-dialogue'
+import { getPlatformDescriptors } from '@/platform/music/descriptors'
+import { AiDialogueButton, AiDialoguePanel, useAiDialogueExtension } from './extensions/ai-dialogue'
 import { DESKTOP_LYRIC_ROUTE_PATH, useSmtcExtension } from './extensions/smtc/useSmtcExtension'
 import { services } from './services'
 import { usePlayerStore } from './store/playerStore'
@@ -30,6 +27,14 @@ const isDesktopLyricRoute = computed(() => route.path === DESKTOP_LYRIC_ROUTE_PA
 const showClientWindowChrome = computed(() => !isDesktopLyricRoute.value)
 const shouldTrackWindowChrome = computed(() => isElectron && showClientWindowChrome.value)
 const showWindowResizeFrame = computed(() => isElectron && showClientWindowChrome.value)
+
+/** AI 对话按钮仅在 ai-assistant 插件启用时显示 */
+const aiAssistantEnabled = computed(() => {
+  const descriptors = getPlatformDescriptors()
+  const aiPlugin = descriptors.find(d => d.id === 'ai-assistant')
+  return aiPlugin?.enabled ?? false
+})
+const showAiDialogue = computed(() => showClientWindowChrome.value && aiAssistantEnabled.value)
 const { isWindowFullScreen, isWindowMaximized, isWindowRounded } =
   useWindowChromeState(shouldTrackWindowChrome)
 
@@ -100,13 +105,13 @@ onMounted(() => {
   <router-view v-else />
   <WindowResizeFrame v-if="showWindowResizeFrame" />
   <AiDialogueButton
-    v-if="showClientWindowChrome"
+    v-if="showAiDialogue"
     :is-open="aiDialogue.isOpen"
     :is-electron="aiDialogue.isElectron"
     @toggle="aiDialogue.toggle"
   />
   <AiDialoguePanel
-    v-if="showClientWindowChrome"
+    v-if="showAiDialogue"
     :is-open="aiDialogue.isOpen"
     :messages="aiDialogue.messages"
     :status="aiDialogue.status"

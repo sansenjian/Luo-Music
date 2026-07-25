@@ -12,7 +12,10 @@ export const COMMANDS = {
   PLAYER_SET_VOLUME: 'player.setVolume',
   PLAYER_SET_MUTE: 'player.setMute',
   PLAYER_SET_PLAY_MODE: 'player.setPlayMode',
-  PLAYER_SEARCH_AND_PLAY: 'player.searchAndPlay'
+  PLAYER_SEARCH_AND_PLAY: 'player.searchAndPlay',
+  PLATFORM_SEARCH: 'platform.search',
+  PLATFORM_GET_LYRIC: 'platform.getLyric',
+  PLATFORM_GET_PLAYLIST_DETAIL: 'platform.getPlaylistDetail'
 } as const
 
 export type CommandId = (typeof COMMANDS)[keyof typeof COMMANDS]

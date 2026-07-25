@@ -97,3 +97,94 @@ export const PLAYER_TOOLS: ToolDefinition[] = [
     }
   }
 ]
+
+/**
+ * 平台工具 - AI 可直接调用音乐平台插件的能力
+ */
+export const PLATFORM_TOOLS: ToolDefinition[] = [
+  {
+    type: 'function',
+    function: {
+      name: 'platform_search',
+      description: '在指定音乐平台搜索歌曲，返回搜索结果列表（不自动播放）',
+      parameters: {
+        type: 'object',
+        properties: {
+          platformId: {
+            type: 'string',
+            enum: ['netease', 'qq'],
+            description: '音乐平台 ID'
+          },
+          keyword: { type: 'string', description: '搜索关键词（歌曲名、歌手等）' },
+          limit: { type: 'number', description: '返回数量，默认 10' }
+        },
+        required: ['platformId', 'keyword']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'platform_getLyric',
+      description: '获取指定歌曲的歌词',
+      parameters: {
+        type: 'object',
+        properties: {
+          platformId: {
+            type: 'string',
+            enum: ['netease', 'qq'],
+            description: '音乐平台 ID'
+          },
+          songId: { type: 'string', description: '歌曲 ID（从搜索结果获取）' }
+        },
+        required: ['platformId', 'songId']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'platform_getPlaylistDetail',
+      description: '获取指定歌单的详情和歌曲列表',
+      parameters: {
+        type: 'object',
+        properties: {
+          platformId: {
+            type: 'string',
+            enum: ['netease', 'qq'],
+            description: '音乐平台 ID'
+          },
+          playlistId: { type: 'string', description: '歌单 ID' }
+        },
+        required: ['platformId', 'playlistId']
+      }
+    }
+  }
+]
+
+/**
+ * 黑话工具 - 让 LLM 在对话中主动查询用户黑话词典
+ */
+export const JARGON_TOOLS: ToolDefinition[] = [
+  {
+    type: 'function',
+    function: {
+      name: 'jargon_query',
+      description:
+        '查询用户黑话词典，获取用户自定义词汇/昵称/俚语的含义。当用户使用了你不确定的词时调用此工具。',
+      parameters: {
+        type: 'object',
+        properties: {
+          words: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '要查询的黑话词条列表'
+          }
+        },
+        required: ['words']
+      }
+    }
+  }
+]
+
+export const ALL_TOOLS: ToolDefinition[] = [...PLAYER_TOOLS, ...PLATFORM_TOOLS, ...JARGON_TOOLS]

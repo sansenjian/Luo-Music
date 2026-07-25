@@ -201,6 +201,20 @@ export type PlayerSongControlPayload =
   | { type: 'remove-from-playlist'; index: number }
   | { type: 'clear-playlist' }
 
+// ========== LLM 代理类型 ==========
+
+export type LlmChatPayload = {
+  url: string
+  headers: Record<string, string>
+  body: Record<string, unknown>
+}
+
+export type LlmChatResponse = {
+  ok: boolean
+  data?: unknown
+  error?: string
+}
+
 // ========== 模板类型工具 ==========
 
 /**
@@ -543,7 +557,9 @@ type InvokeChannelsDefinition = MergeChannels<
       [alwaysOnTop: boolean],
       void
     > &
-    DefineInvokeChannel<typeof INVOKE_CHANNELS.LYRIC_LOCK, [locked: boolean], void>
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.LYRIC_LOCK, [locked: boolean], void> &
+    // LLM 代理
+    DefineInvokeChannel<typeof INVOKE_CHANNELS.LLM_CHAT, [payload: LlmChatPayload], LlmChatResponse>
 >
 
 export type InvokeChannelMap = InvokeChannelsDefinition

@@ -11,6 +11,9 @@ import type { Song } from '@shared/types/schemas'
 import { PLAY_MODE, type PlayMode } from '@shared/player/playMode'
 import { DEFAULT_WEB_LYRIC_APPEARANCE } from '@/utils/player/webLyricAppearance'
 
+/** 播放列表最大长度，防止大歌单撑爆内存和 localStorage */
+export const MAX_PLAYLIST_SIZE = 1000
+
 /**
  * 播放器状态接口
  */

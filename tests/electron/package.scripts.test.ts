@@ -13,7 +13,7 @@ const packageJson = JSON.parse(
 
 describe('package scripts for forge workflows', () => {
   it('runs web dev and preview through the local VP CLI', () => {
-    expect(packageJson.scripts?.['dev:server']).toContain(
+    expect(packageJson.scripts?.['dev:web']).toContain(
       'APP_RUNTIME=web -- npm run vp -- dev --config .config/vite.config.ts --mode web'
     )
     expect(packageJson.scripts?.preview).toContain(
@@ -108,7 +108,7 @@ describe('package scripts for forge workflows', () => {
     )
   })
 
-  it.each(['dev:server', 'dev:electron', 'build:web', 'build:electron:all', 'preview'])(
+  it.each(['dev:web', 'dev:electron', 'build:web', 'build:electron:all', 'preview'])(
     'does not require an untracked .config/.env file before running %s',
     scriptName => {
       expect(packageJson.scripts?.[scriptName]).not.toContain('--env-file .config/.env')

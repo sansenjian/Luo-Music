@@ -152,6 +152,17 @@ function getEnabledThemeResourcePackByRenderStyle(
   return resources.find(resource => resource.source === 'external') ?? resources[0]
 }
 
+/** 按渲染风格查找主题资源包（不限启用状态），用于自动启用 */
+function findThemeResourcePackByRenderStyle(
+  style: RenderStyle,
+  musicService: ThemeResourcePackMusicService
+): ThemeResourcePackDescriptor | undefined {
+  const resources = getThemeResourcePacks(musicService).filter(
+    resource => resource.renderStyle === style
+  )
+  return resources.find(resource => resource.source === 'external') ?? resources[0]
+}
+
 function getRenderStyleOptions(
   musicService: ThemeResourcePackMusicService
 ): ProjectRenderStyleOption[] {
@@ -159,11 +170,9 @@ function getRenderStyleOptions(
     [PROJECT_DEFAULT_RENDER_STYLE_OPTION.value, PROJECT_DEFAULT_RENDER_STYLE_OPTION]
   ])
 
+  // 显示所有主题资源包（包括未启用的），这样用户能在设置中看到"品牌风格"选项
+  // 点击时由 setAvailableRenderStyle 自动启用对应的资源包
   for (const resource of getThemeResourcePacks(musicService)) {
-    if (!resource.enabled) {
-      continue
-    }
-
     optionsByStyle.set(resource.renderStyle, {
       value: resource.renderStyle,
       label: resource.label,
@@ -305,6 +314,10 @@ export function useThemeResourcePacks(deps: ThemeResourcePacksDeps = {}) {
     applyThemeResource(getEnabledThemeResourcePackByRenderStyle(style, musicService))
   }
 
+  function findThemeResourcePackByRenderStyleForUi(style: RenderStyle) {
+    return findThemeResourcePackByRenderStyle(style, musicService)
+  }
+
   return {
     themeResourcePacks: readonly(themeResourcePacksState),
     availableThemeResourcePacks: computed(() => getThemeResourcePacks(musicService)),
@@ -315,6 +328,7 @@ export function useThemeResourcePacks(deps: ThemeResourcePacksDeps = {}) {
     isThemeResourcePackEnabled,
     setThemeResourcePackEnabled,
     isRenderStyleAvailable,
-    applyThemeResourceForRenderStyle
+    applyThemeResourceForRenderStyle,
+    findThemeResourcePackByRenderStyle: findThemeResourcePackByRenderStyleForUi
   }
 }

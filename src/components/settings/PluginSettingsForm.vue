@@ -136,17 +136,10 @@ function handleTextValue(key: string, value: string | undefined): void {
     </div>
 
     <div class="plugin-settings-footer">
-      <Button
-        type="button"
-        size="sm"
-        :disabled="isSaving"
-        @click="emit('save')"
-      >
+      <Button type="button" size="sm" :disabled="isSaving" @click="emit('save')">
         {{ isSaving ? '保存中...' : uiMessages.settings.actions.saveSettings }}
       </Button>
-      <Button type="button" variant="outline" size="sm" @click="emit('cancel')">
-        取消
-      </Button>
+      <Button type="button" variant="outline" size="sm" @click="emit('cancel')">取消</Button>
     </div>
   </div>
 </template>

@@ -4,12 +4,15 @@ import { DisposableStore } from '@/base/common/lifecycle/disposable'
 import { usePlayerStore } from '@/store/playerStore'
 import { useSearchStore } from '@/store/searchStore'
 import { toPlayMode } from '@/store/player/playerPersistence'
+import { services } from './index'
 import { getService } from './registry'
 import type { ContextKeyService } from './contextKeyService'
 import type { PlatformService } from './platformService'
 import { IContextKeyService, IPlatformService } from './types'
 
-export type CommandHandler<TPayload = unknown> = (payload?: TPayload) => void | Promise<void>
+export type CommandHandler<TPayload = unknown> = (
+  payload?: TPayload
+) => void | Promise<void> | Promise<unknown> | unknown
 
 export type CommandRegistrationOptions = {
   enablement?: string
@@ -22,7 +25,7 @@ export type CommandDefinition = {
 
 export type CommandService = {
   readonly onDidChangeCommandEnablement: Event<{ id?: string }>
-  execute<TPayload = unknown>(id: string, payload?: TPayload): Promise<void>
+  execute<TPayload = unknown>(id: string, payload?: TPayload): Promise<unknown>
   canExecute<TPayload = unknown>(id: string, payload?: TPayload): boolean
   register<TPayload = unknown>(
     id: string,
@@ -62,6 +65,22 @@ type SetPlayModePayload = {
 
 type SearchAndPlayPayload = {
   query: string
+}
+
+type PlatformSearchPayload = {
+  platformId: string
+  keyword: string
+  limit?: number
+}
+
+type PlatformGetLyricPayload = {
+  platformId: string
+  songId: string
+}
+
+type PlatformGetPlaylistDetailPayload = {
+  platformId: string
+  playlistId: string
 }
 
 const DEFAULT_VOLUME_STEP = 0.1
@@ -125,7 +144,7 @@ export function createCommandService(
     return contextKeyService.contextMatchesRules(command.enablement)
   }
 
-  const execute = async <TPayload = unknown>(id: string, payload?: TPayload): Promise<void> => {
+  const execute = async <TPayload = unknown>(id: string, payload?: TPayload): Promise<unknown> => {
     const command = handlers.get(id)
 
     if (!command) {
@@ -136,7 +155,7 @@ export function createCommandService(
       throw new Error(`[CommandService] Command "${id}" is currently disabled`)
     }
 
-    await command.handler(payload)
+    return command.handler(payload)
   }
 
   register(
@@ -245,12 +264,61 @@ export function createCommandService(
       throw new Error('[CommandService] PLAYER_SEARCH_AND_PLAY requires a query string')
     }
     const searchStore = useSearchStore()
-    await searchStore.search(query)
-    if (searchStore.results.length === 0) {
-      throw new Error(`[CommandService] No song found for query: ${query}`)
+    // 优化3：记住用户当前的搜索平台，搜索播放后恢复
+    const userServer = searchStore.server
+    try {
+      // 优先使用网易云搜索，本地库可能没有用户想播放的歌曲
+      searchStore.setServer('netease')
+      await searchStore.search(query)
+      if (searchStore.results.length === 0) {
+        // 网易云没找到，尝试 QQ 音乐
+        searchStore.setServer('qq')
+        await searchStore.search(query)
+      }
+      if (searchStore.results.length === 0) {
+        throw new Error(`未找到歌曲: ${query}`)
+      }
+      await searchStore.playResult(0)
+    } finally {
+      // 恢复用户原来的搜索平台
+      if (userServer && userServer !== searchStore.server) {
+        searchStore.setServer(userServer)
+      }
     }
-    await searchStore.playResult(0)
   })
+
+  // ===== 平台 Agent 命令 =====
+  // AI 通过这些命令直接调用音乐平台插件的能力
+
+  register<PlatformSearchPayload>(COMMANDS.PLATFORM_SEARCH, async payload => {
+    const { platformId, keyword, limit = 10 } = payload ?? {}
+    if (!platformId || !keyword) {
+      throw new Error('platform.search 需要 platformId 和 keyword')
+    }
+    const result = await services.plugins().call(platformId, 'search', { keyword, limit, page: 1 })
+    return result
+  })
+
+  register<PlatformGetLyricPayload>(COMMANDS.PLATFORM_GET_LYRIC, async payload => {
+    const { platformId, songId } = payload ?? {}
+    if (!platformId || !songId) {
+      throw new Error('platform.getLyric 需要 platformId 和 songId')
+    }
+    const result = await services.plugins().call(platformId, 'getLyric', { songId })
+    return result
+  })
+
+  register<PlatformGetPlaylistDetailPayload>(
+    COMMANDS.PLATFORM_GET_PLAYLIST_DETAIL,
+    async payload => {
+      const { platformId, playlistId } = payload ?? {}
+      if (!platformId || !playlistId) {
+        throw new Error('platform.getPlaylistDetail 需要 platformId 和 playlistId')
+      }
+      const result = await services.plugins().call(platformId, 'getPlaylistDetail', { playlistId })
+      return result
+    }
+  )
 
   register(COMMANDS.PLAYER_TOGGLE_PLAYER_DOCKED, () => {
     getPlayerStore().togglePlayerDocked()

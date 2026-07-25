@@ -508,19 +508,19 @@ describe('searchStore', () => {
 
     await store.search('page-limit')
 
-    expect(searchMock).toHaveBeenCalledTimes(100)
+    expect(searchMock).toHaveBeenCalledTimes(30)
     expect(searchMock).toHaveBeenNthCalledWith(1, 'netease', 'page-limit', 50, 1)
-    expect(searchMock).toHaveBeenLastCalledWith('netease', 'page-limit', 50, 100)
-    expect(store.results).toHaveLength(5000)
-    expect(store.totalResults).toBe(5000)
+    expect(searchMock).toHaveBeenLastCalledWith('netease', 'page-limit', 50, 30)
+    expect(store.results).toHaveLength(1500)
+    expect(store.totalResults).toBe(1500)
     expect(warnMock).toHaveBeenCalledWith(
       'searchStore',
       'Search paging stopped at safety limit',
       expect.objectContaining({
         keyword: 'page-limit',
         server: 'netease',
-        loadedCount: 5000,
-        pageLimit: 100
+        loadedCount: 1500,
+        pageLimit: 30
       })
     )
   })
