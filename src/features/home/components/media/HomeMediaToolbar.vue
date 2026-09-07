@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
+import { Input } from '@/components/ui/input'
+
 const props = withDefaults(
   defineProps<{
     searchQuery: string
@@ -21,10 +25,10 @@ const emit = defineEmits<{
   'inline-action': []
 }>()
 
-function handleInput(event: Event): void {
-  const target = event.target as HTMLInputElement | null
-  emit('update:searchQuery', target?.value ?? '')
-}
+const searchModel = computed({
+  get: () => props.searchQuery,
+  set: (value: string) => emit('update:searchQuery', value)
+})
 </script>
 
 <template>
@@ -53,12 +57,7 @@ function handleInput(event: Event): void {
           <circle cx="11" cy="11" r="7"></circle>
           <path d="m20 20-3.5-3.5"></path>
         </svg>
-        <input
-          :value="props.searchQuery"
-          type="search"
-          :placeholder="props.searchPlaceholder"
-          @input="handleInput"
-        />
+        <Input v-model="searchModel" type="search" :placeholder="props.searchPlaceholder" />
         <button
           v-if="props.searchQuery"
           type="button"

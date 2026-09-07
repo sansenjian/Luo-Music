@@ -228,6 +228,7 @@ function createWorkflows(overrides = {}) {
     async build() {
       await deps.runStep('build:clean', () => deps.clean(['build']))
       await deps.runStep('build:guard:configs', () => deps.npmRun('guard:configs'))
+      await deps.runStep('build:guard:architecture', () => deps.npmRun('check:architecture'))
       await deps.runParallel('build', {
         'rebuild:native': () => deps.npmRunAsync('rebuild:native'),
         'electron-vite:build': () => deps.npmRunAsync('electron-vite:build')
@@ -237,6 +238,7 @@ function createWorkflows(overrides = {}) {
     async web() {
       await deps.runStep('web:clean', () => deps.clean(['dist', 'build/service']))
       await deps.runStep('web:guard:configs', () => deps.npmRun('guard:configs'))
+      await deps.runStep('web:guard:architecture', () => deps.npmRun('check:architecture'))
       await deps.runParallel('web', {
         'build:server': () => deps.npmRunAsync('build:server'),
         'vp build': () =>
@@ -266,6 +268,7 @@ function createWorkflows(overrides = {}) {
 
     async 'electron-bundle-no-clean'() {
       await deps.runStep('electron-bundle:guard:configs', () => deps.npmRun('guard:configs'))
+      await deps.runStep('electron-bundle:guard:architecture', () => deps.npmRun('check:architecture'))
       await deps.runParallel('electron-bundle', {
         'rebuild:native': () => deps.npmRunAsync('rebuild:native'),
         'build:smtc-helper': () =>

@@ -23,6 +23,14 @@ export function useProjectUi(deps: ProjectUiDeps = {}) {
   }
 
   function setAvailableRenderStyle(style: RenderStyle): void {
+    // 如果目标风格需要主题资源包但未启用，自动启用
+    if (style !== DEFAULT_RENDER_STYLE && !isRenderStyleAvailable(style)) {
+      const pack = themeResourcePacks.findThemeResourcePackByRenderStyle(style)
+      if (pack) {
+        themeResourcePacks.setThemeResourcePackEnabled(pack.id, true)
+      }
+    }
+
     const nextStyle = isRenderStyleAvailable(style) ? style : DEFAULT_RENDER_STYLE
     setRenderStyle(nextStyle)
     themeResourcePacks.applyThemeResourceForRenderStyle(nextStyle)

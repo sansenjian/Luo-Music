@@ -1,0 +1,88 @@
+/* LUO Music — Brand Design Tokens (Classic Mode) */
+
+:root {
+  /* Core palette */
+  --lm-bg: #f5f5f5;
+  --lm-bg-dark: #e0e0e0;
+  --lm-black: #1a1a1a;
+  --lm-white: #ffffff;
+  --lm-accent: #ff6b35;
+  --lm-accent-hover: #e85b2c;
+  --lm-accent-light: #ff9a73;
+  --lm-gray: #666666;
+  --lm-gray-light: #999999;
+  --lm-gray-lighter: #e5e7eb;
+
+  /* Surfaces */
+  --lm-surface: #ffffff;
+  --lm-surface-soft: #ffffff;
+  --lm-surface-muted: #ffffff;
+  --lm-control-bg: #ffffff;
+  --lm-control-focus-bg: #f5f5f5;
+
+  /* Borders */
+  --lm-border-color: #1a1a1a;
+  --lm-border-subtle: rgba(26, 26, 26, 0.12);
+  --lm-border: 2px solid #1a1a1a;
+  --lm-border-strong: 3px solid #1a1a1a;
+  --lm-divider: 3px solid #1a1a1a;
+
+  /* Radii */
+  --lm-radius-sm: 0px;
+  --lm-radius-md: 0px;
+  --lm-radius-lg: 0px;
+  --lm-control-radius: 0px;
+  --lm-card-radius: 0px;
+
+  /* Shadows */
+  --lm-shadow: 4px 4px 0 rgba(26, 26, 26, 0.16);
+  --lm-floating-shadow: 8px 8px 0 rgba(0, 0, 0, 0.2);
+
+  /* Primary (button/active) */
+  --lm-primary-bg: #1a1a1a;
+  --lm-primary-text: #ffffff;
+  --lm-primary-hover-bg: #ffffff;
+  --lm-primary-hover-text: #1a1a1a;
+  --lm-primary-shadow: none;
+
+  /* Interaction */
+  --lm-hover-bg: #e0e0e0;
+  --lm-track-bg: #ffffff;
+  --lm-track-fill: #1a1a1a;
+  --lm-focus-border: #1a1a1a;
+  --lm-overlay-bg: rgba(0, 0, 0, 0.5);
+
+  /* Corner decorations */
+  --lm-corner-display: block;
+
+  /* Brand */
+  --lm-brand-gradient-start: #1a1a1a;
+  --lm-brand-gradient-end: #1a1a1a;
+  --lm-brand-shadow: none;
+  --lm-brand-kicker-color: #666666;
+  --lm-brand-mark-radius: 0px;
+
+  /* Sidebar */
+  --lm-sidebar-shell-bg: #ffffff;
+  --lm-sidebar-active-bg: #1a1a1a;
+  --lm-sidebar-active-text: #ffffff;
+  --lm-sidebar-link-hover-bg: #e0e0e0;
+  --lm-sidebar-icon-bg: #e5e7eb;
+}
+
+/* Typography */
+:root {
+  --lm-font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --lm-font-size-xs: 10px;
+  --lm-font-size-sm: 11px;
+  --lm-font-size-base: 14px;
+  --lm-font-size-md: 15px;
+  --lm-font-size-lg: 18px;
+  --lm-font-size-xl: 20px;
+  --lm-font-size-2xl: 26px;
+  --lm-font-weight-normal: 400;
+  --lm-font-weight-medium: 600;
+  --lm-font-weight-bold: 700;
+  --lm-font-weight-extrabold: 800;
+  --lm-line-height: 1.4;
+}

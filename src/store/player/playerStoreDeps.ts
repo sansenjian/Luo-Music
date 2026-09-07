@@ -43,6 +43,7 @@ export type PlayerStoreActions = {
   resetErrorHandler: () => void
   setVolume: (vol: number) => void
   toggleMute: () => void
+  setMuted: (muted: boolean) => void
   togglePlayMode: () => void
   setPlayMode: (mode: PlayerState['playMode']) => void
   setLyric: (lyric: unknown) => void

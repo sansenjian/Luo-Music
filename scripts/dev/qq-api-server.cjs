@@ -65,7 +65,7 @@ async function start() {
 
     console.log('[QQ Music API] Loading module...')
     // 鍔犺浇 QQ 闊充箰 API
-    const qqApiModule = loadModule('@sansenjian/qq-music-api/dist/app.js')
+    const qqApiModule = loadModule('@sansenjian/qq-music-api')
     const qqApiApp = qqApiModule && (qqApiModule.default || qqApiModule)
     if (
       !qqApiApp ||

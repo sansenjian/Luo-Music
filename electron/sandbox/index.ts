@@ -295,13 +295,17 @@ function createServiceAPI(ipc: ValidatedIpcBridge): ServiceAPIShape {
 export type ServiceAPI = ExposedServiceAPI
 
 function exposeAPI(): void {
-  const ipc = createValidatedIpcBridge(ipcRenderer)
-  const services = createServiceAPI(ipc)
-  const electronAPI = createLegacyElectronAPI(services.window, ipc)
+  try {
+    const ipc = createValidatedIpcBridge(ipcRenderer)
+    const services = createServiceAPI(ipc)
+    const electronAPI = createLegacyElectronAPI(services.window, ipc)
 
-  // Expose both legacy electronAPI and the new services API.
-  contextBridge.exposeInMainWorld('electronAPI', electronAPI)
-  contextBridge.exposeInMainWorld('services', services)
+    // Expose both legacy electronAPI and the new services API.
+    contextBridge.exposeInMainWorld('electronAPI', electronAPI)
+    contextBridge.exposeInMainWorld('services', services)
+  } catch (error) {
+    console.error('[Preload] 暴露 API 失败:', error)
+  }
 }
 
 exposeAPI()

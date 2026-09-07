@@ -498,12 +498,71 @@ function normalizeLoginChallenge(value: unknown): StandardLoginChallenge {
   }
 }
 
+/**
+ * 通过 window.services.invoke 创建 fallback PluginBridge。
+ * 当 preload 正确暴露了 window.services 但 .plugins 属性不可用时使用。
+ */
+function createFallbackBridge(
+  invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
+): PluginBridge {
+  return {
+    list: () =>
+      invoke('plugin:list').then(r => (r as { platforms: PlatformDescriptor[] }).platforms),
+    installFromPath: (pluginPath: string) =>
+      invoke('plugin:install-from-path', pluginPath).then(
+        r => (r as { platforms: PlatformDescriptor[] }).platforms
+      ),
+    pickInstallPath: (mode?: 'file' | 'directory') =>
+      invoke('plugin:pick-install-path', mode ?? 'file') as Promise<string | null>,
+    setEnabled: (platformId: string, enabled: boolean) =>
+      invoke('plugin:set-enabled', platformId, enabled).then(
+        r => (r as { platforms: PlatformDescriptor[] }).platforms
+      ),
+    uninstall: (platformId: string) =>
+      invoke('plugin:uninstall', platformId).then(
+        r => (r as { platforms: PlatformDescriptor[] }).platforms
+      ),
+    getSettings: (platformId: string) =>
+      invoke('plugin:get-settings', platformId).then(
+        r => (r as { settings: Record<string, unknown> }).settings
+      ),
+    updateSettings: (platformId: string, settings: Record<string, unknown>) =>
+      invoke('plugin:update-settings', platformId, settings).then(
+        r => (r as { settings: Record<string, unknown> }).settings
+      ),
+    call: (platformId: string, method: string, payload: unknown) =>
+      invoke('plugin:call', platformId, method, payload),
+    onChanged: (_listener: (platforms: PlatformDescriptor[]) => void): (() => void) => {
+      // fallback: 无法通过 invoke 注册事件监听，返回空清理函数
+      return () => {}
+    }
+  }
+}
+
 function resolvePluginBridge(): PluginBridge | undefined {
   if (typeof window === 'undefined') {
     return undefined
   }
 
-  return (window as Window & { services?: { plugins?: PluginBridge } }).services?.plugins
+  const w = window as Window & {
+    services?: {
+      plugins?: PluginBridge
+      invoke?: (channel: string, ...args: unknown[]) => Promise<unknown>
+    }
+  }
+
+  // 优先使用 preload 暴露的 plugins 命名空间
+  if (w.services?.plugins) {
+    return w.services.plugins
+  }
+
+  // Fallback: 如果 window.services.invoke 可用，创建代理 bridge
+  if (w.services?.invoke) {
+    console.log('[PluginService] 使用 fallback bridge (via window.services.invoke)')
+    return createFallbackBridge(w.services.invoke)
+  }
+
+  return undefined
 }
 
 function createFirstPartyPluginDescriptor(input: {
@@ -1474,8 +1533,19 @@ function updateFirstPartyPluginSettings(
 }
 
 export function createPluginService(deps: PluginServiceDeps = {}): PluginService {
+  // isElectron 检测：优先使用注入的 deps，否则综合检查多种信号
+  // 1. import.meta.env.APP_RUNTIME === 'electron' (编译时常量，最可靠)
+  // 2. window.electronAPI (legacy preload API)
+  // 3. window.services?.invoke (现代 preload API)
   const isElectron =
-    deps.isElectron ?? (() => typeof window !== 'undefined' && Boolean(window.electronAPI))
+    deps.isElectron ??
+    (() => {
+      if (import.meta.env.APP_RUNTIME === 'electron') return true
+      if (typeof window !== 'undefined') {
+        return Boolean(window.electronAPI) || Boolean(window.services?.invoke)
+      }
+      return false
+    })
   const getPluginBridge = deps.getPluginBridge ?? resolvePluginBridge
 
   const listBuiltinPlatforms = () =>
@@ -1518,7 +1588,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   async function installFromPath(pluginPath: string): Promise<PlatformDescriptor[]> {
     const bridge = getPluginBridge()
     if (!isElectron() || !bridge) {
-      throw new Error('Plugin installation is only available in Electron')
+      throw new Error('插件安装仅在 Electron 桌面端可用')
     }
 
     return syncPlatformDescriptors(await bridge.installFromPath(pluginPath))
@@ -1527,7 +1597,7 @@ export function createPluginService(deps: PluginServiceDeps = {}): PluginService
   async function pickInstallPath(mode: 'file' | 'directory' = 'file'): Promise<string | null> {
     const bridge = getPluginBridge()
     if (!isElectron() || !bridge) {
-      throw new Error('Plugin installation is only available in Electron')
+      throw new Error('插件安装仅在 Electron 桌面端可用')
     }
 
     return bridge.pickInstallPath(mode)

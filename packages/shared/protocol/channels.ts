@@ -71,6 +71,9 @@ export const INVOKE_CHANNELS = {
   PLUGIN_UPDATE_SETTINGS: 'plugin:update-settings',
   PLUGIN_CALL: 'plugin:call',
 
+  // LLM 代理（渲染进程通过主进程发起 HTTP 请求，绕过 CORS）
+  LLM_CHAT: 'llm:chat',
+
   // 第一方拓展运行时
   SMTC_SET_ENABLED: 'smtc:set-enabled',
   SMTC_GET_STATUS: 'smtc:get-status',

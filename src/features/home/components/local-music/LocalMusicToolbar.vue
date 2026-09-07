@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { LocalLibraryViewMode } from '@shared/types/localLibrary'
+import { computed } from 'vue'
+import { Input } from '@/components/ui/input'
 import type { LocalMusicViewModeOption } from '@/features/home/composables/localMusic.types'
 
-defineProps<{
+const props = defineProps<{
   activeView: LocalLibraryViewMode
   currentSummaryLabel: string
   currentViewTitle: string
@@ -18,9 +20,10 @@ const emit = defineEmits<{
   'update:search-draft': [value: string]
 }>()
 
-function handleSearchDraftInput(event: Event): void {
-  emit('update:search-draft', (event.target as HTMLInputElement).value)
-}
+const searchModel = computed({
+  get: () => props.searchDraft,
+  set: value => emit('update:search-draft', value)
+})
 </script>
 
 <template>
@@ -50,15 +53,15 @@ function handleSearchDraftInput(event: Event): void {
           <circle cx="11" cy="11" r="7"></circle>
           <path d="m20 20-3.5-3.5"></path>
         </svg>
-        <input
-          :value="searchDraft"
+        <Input
+          v-model="searchModel"
+          class="local-search-input"
           type="search"
           :placeholder="
             activeView === 'songs' || activeView === 'inbox'
               ? '搜索歌曲、歌手、专辑或文件名'
               : '搜索名称'
           "
-          @input="handleSearchDraftInput"
         />
         <button type="submit" class="search-submit">搜索</button>
         <button

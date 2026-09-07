@@ -1,0 +1,66 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans:
+    Inter, "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius: var(--ui-card-radius);
+  --radius-sm: var(--ui-radius-sm);
+  --radius-md: var(--ui-radius-md);
+  --radius-lg: var(--ui-radius-lg);
+  --radius-xl: calc(var(--ui-radius-lg) + 4px);
+
+  --color-background: var(--ui-background-color);
+  --color-foreground: var(--ui-foreground-color);
+  --color-card: var(--ui-card-color);
+  --color-card-foreground: var(--ui-card-foreground-color);
+  --color-popover: var(--ui-popover-color);
+  --color-popover-foreground: var(--ui-popover-foreground-color);
+  --color-primary: var(--ui-primary-color);
+  --color-primary-foreground: var(--ui-primary-foreground-color);
+  --color-secondary: var(--ui-secondary-color);
+  --color-secondary-foreground: var(--ui-secondary-foreground-color);
+  --color-muted: var(--ui-muted-color);
+  --color-muted-foreground: var(--ui-muted-foreground-color);
+  --color-accent: var(--ui-accent-color);
+  --color-accent-foreground: var(--ui-accent-foreground-color);
+  --color-destructive: var(--ui-destructive-color);
+  --color-destructive-foreground: var(--ui-destructive-foreground-color);
+  --color-border: var(--ui-border-color);
+  --color-input: var(--ui-input-color);
+  --color-ring: var(--ui-ring-color);
+}
+
+@layer base {
+  :root {
+    --ui-background-color: var(--bg);
+    --ui-foreground-color: var(--black);
+    --ui-card-color: var(--ui-surface);
+    --ui-card-foreground-color: var(--black);
+    --ui-popover-color: var(--ui-surface);
+    --ui-popover-foreground-color: var(--black);
+    --ui-primary-color: var(--black);
+    --ui-primary-foreground-color: var(--white);
+    --ui-secondary-color: var(--ui-surface-muted);
+    --ui-secondary-foreground-color: var(--black);
+    --ui-muted-color: var(--ui-surface-muted);
+    --ui-muted-foreground-color: var(--gray);
+    --ui-accent-color: var(--accent);
+    --ui-accent-foreground-color: var(--white);
+    --ui-destructive-color: #ee0000;
+    --ui-destructive-foreground-color: #ffffff;
+    --ui-input-color: var(--ui-border-color);
+    --ui-ring-color: var(--ui-focus-border);
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+}

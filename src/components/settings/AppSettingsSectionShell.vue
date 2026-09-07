@@ -15,6 +15,7 @@ defineProps<{
 
 <style scoped>
 .settings-section {
+  container: settings-section / inline-size;
   padding: 14px;
   background: var(--bg-secondary, #f5f5f5);
   border: var(--ui-border);

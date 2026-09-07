@@ -12,7 +12,7 @@ import { BrowserWindow, app, net } from 'electron'
 import { desktopLyricManager } from '../DesktopLyricManager'
 import { downloadManager } from '../DownloadManager'
 import { windowManager } from '../WindowManager'
-import logger, { initSentry } from '../logger'
+import logger from '../logger'
 import { serviceManager } from '../ServiceManager'
 import type { ServiceConfig } from '../types/service'
 import { RENDERER_DIST, VITE_PUBLIC } from '../utils/paths'
@@ -37,6 +37,7 @@ import {
   registerLogHandlers,
   registerLocalLibraryHandlers,
   registerPluginHandlers,
+  registerLlmHandlers,
   registerSmtcHandlers,
   registerAudioOutputHandlers
 } from '../ipc/index'
@@ -258,6 +259,7 @@ function initializeIpcService(currentPluginCatalog: PluginCatalog): void {
   registerLogHandlers()
   registerLocalLibraryHandlers(windowManager)
   registerPluginHandlers(currentPluginCatalog)
+  registerLlmHandlers()
   registerSmtcHandlers(smtcNativeService)
   registerAudioOutputHandlers(audioOutputService)
 
@@ -302,7 +304,7 @@ function main(): void {
 
   pluginCatalog = new PluginCatalog()
 
-  void initSentry()
+  // Sentry 已移除 — 不再加载 @sentry/electron，消除 preload 错误并提升启动速度
 
   process.env.DIST = RENDERER_DIST
   process.env.VITE_PUBLIC = VITE_PUBLIC

@@ -186,10 +186,27 @@ export default defineConfig({
       proxy: createSharedDevProxy()
     },
     optimizeDeps: {
-      include: ['vue', 'pinia', '@tanstack/vue-query', 'animejs'],
+      include: [
+        'vue',
+        'vue-router',
+        'pinia',
+        'pinia-plugin-persistedstate',
+        '@tanstack/vue-query',
+        '@vueuse/core',
+        'axios',
+        'animejs',
+        'reka-ui',
+        'zod',
+        'tailwind-merge',
+        'clsx',
+        'class-variance-authority',
+        'lru-cache',
+        'web-vitals'
+      ],
       exclude: ['electron']
     },
     build: {
+      target: 'esnext',
       outDir: 'build',
       emptyOutDir: false,
       minify: true,

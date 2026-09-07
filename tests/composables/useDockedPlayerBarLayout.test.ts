@@ -23,11 +23,11 @@ describe('useDockedPlayerBarLayout', () => {
     storageServiceMock.getItem.mockReturnValue(null)
   })
 
-  it('defaults to the full-width docked player bar layout', async () => {
+  it('defaults to the sidebar-aware docked player bar layout', async () => {
     const { useDockedPlayerBarLayout } = await import('@/composables/useDockedPlayerBarLayout')
     const { dockedPlayerBarLayout } = useDockedPlayerBarLayout()
 
-    expect(dockedPlayerBarLayout.value).toBe('full')
+    expect(dockedPlayerBarLayout.value).toBe('with-sidebar')
   })
 
   it('restores and persists the selected docked player bar layout', async () => {

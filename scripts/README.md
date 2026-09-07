@@ -61,8 +61,8 @@ npm run check:unused
 开发脚本通常通过 npm scripts 自动调用：
 
 ```bash
-# 启动开发服务器（包含 API 服务）
-npm run dev:server
+# 启动 Web 开发服务器（包含 API 服务）
+npm run dev:web
 
 # 启动 Electron 开发环境
 npm run dev:electron

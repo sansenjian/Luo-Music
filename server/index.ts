@@ -73,8 +73,7 @@ async function startNeteaseApi() {
   }
 }
 
-// 注意：QQ 音乐 API (@sansenjian/qq-music-api) 与 Node 24 存在兼容性问题
-// 如需使用 QQ 音乐，请使用 scripts/dev/qq-api-server.cjs 单独启动
+// QQ 音乐 API 在独立子进程中启动，避免与当前服务的生命周期互相影响
 // async function startQQMusicApi() { ... }
 
 // 启动网易云 API

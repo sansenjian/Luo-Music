@@ -19,7 +19,12 @@ import {
   resetPlayerStoreRuntime,
   type PlayerStoreOwner
 } from '@/store/player/runtime'
-import { createInitialState, PLAY_MODE_TEXTS, type PlayerState } from '@/store/player/playerState'
+import {
+  createInitialState,
+  PLAY_MODE_TEXTS,
+  MAX_PLAYLIST_SIZE,
+  type PlayerState
+} from '@/store/player/playerState'
 import { songPrefetcher } from '@/store/player/songPrefetcher'
 import { PLAY_MODE } from '@shared/player/playMode'
 import { LyricEngine, type LyricLine } from '@shared/player/lyric'
@@ -1511,6 +1516,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       },
 
       addSong(song: Song): void {
+        if (this.songList.length >= MAX_PLAYLIST_SIZE) return
         this.songList.push(song)
         notifyPlayerStateSnapshot(this as unknown as PlayerStoreInstance)
       },
@@ -1796,10 +1802,15 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
         }
       },
 
-      toggleMute(): void {
+      setMuted(muted: boolean): void {
         const store = this as unknown as PlayerStoreInstance
-        audioManager.setMuted(!audioManager.getMuted())
+        this.muted = muted
+        audioManager.setMuted(muted)
         notifyPlayerStateSnapshot(store)
+      },
+
+      toggleMute(): void {
+        this.setMuted(!this.muted)
       },
 
       togglePlayMode(): void {
@@ -1897,6 +1908,7 @@ export function createPlayerStore(deps: PlayerStoreDeps = {}, storeId = 'player'
       storage: persistStorage,
       pick: [
         'volume',
+        'muted',
         'playMode',
         'lyricType',
         'webLyricAppearance',

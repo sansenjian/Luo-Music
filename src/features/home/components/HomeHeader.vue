@@ -71,52 +71,54 @@ function navigateForward(): void {
 
 <template>
   <header class="titlebar" data-ui="titlebar">
-    <div class="title-nav" data-ui="title-nav" aria-label="窗口导航">
-      <button
-        type="button"
-        class="title-nav-button"
-        :disabled="!props.canNavigateBack"
-        aria-label="返回"
-        title="返回"
-        @click="navigateBack"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
+    <div class="title-leading">
+      <div class="title-nav" data-ui="title-nav" aria-label="窗口导航">
+        <button
+          type="button"
+          class="title-nav-button"
+          :disabled="!props.canNavigateBack"
+          aria-label="返回"
+          title="返回"
+          @click="navigateBack"
         >
-          <path d="m15 18-6-6 6-6" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        class="title-nav-button"
-        :disabled="!props.canNavigateForward"
-        aria-label="前进"
-        title="前进"
-        @click="navigateForward"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="title-nav-button"
+          :disabled="!props.canNavigateForward"
+          aria-label="前进"
+          title="前进"
+          @click="navigateForward"
         >
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      </button>
-    </div>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
+      </div>
 
-    <div v-if="props.showBrand !== false" class="title-left" data-ui="title-brand">
-      <h1 v-if="renderStyle === 'classic'" class="logo">LUO_MUSIC</h1>
-      <HomeBrandBadge v-else placement="header" />
+      <div v-if="props.showBrand !== false" class="title-left" data-ui="title-brand">
+        <h1 v-if="renderStyle === 'classic'" class="logo">LUO_MUSIC</h1>
+        <HomeBrandBadge v-else placement="header" />
+      </div>
     </div>
 
     <HomeSearchBar
@@ -144,9 +146,14 @@ function navigateForward(): void {
 
 <style scoped>
 .titlebar {
-  display: flex;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, var(--home-header-search-width, clamp(500px, 48vw, 720px)))
+    minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
+  justify-content: stretch;
+  gap: 14px;
   margin: var(--titlebar-margin, 0);
   padding: 12px 20px;
   padding-top: calc(12px + var(--safe-top));
@@ -162,11 +169,26 @@ function navigateForward(): void {
   -webkit-app-region: drag;
 }
 
+.title-leading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: start;
+}
+
 .title-left {
   display: flex;
   align-items: center;
   gap: 16px;
   flex-shrink: 0;
+}
+
+.titlebar :deep(.search-bar) {
+  justify-self: center;
+  min-width: 0;
+  width: 100%;
+  max-width: min(720px, 100%);
 }
 
 .title-nav {
@@ -214,6 +236,10 @@ function navigateForward(): void {
   height: var(--title-nav-icon-size, 18px);
 }
 
+.titlebar :deep(.window-controls) {
+  justify-self: end;
+}
+
 .logo {
   font-size: 16px;
   font-weight: 800;
@@ -223,6 +249,8 @@ function navigateForward(): void {
 
 @media (max-width: 900px) {
   .titlebar {
+    --home-header-search-width: min(520px, calc(100vw - 208px));
+
     gap: 8px;
     padding: 8px 12px;
     padding-top: calc(8px + var(--safe-top));
@@ -237,10 +265,17 @@ function navigateForward(): void {
   .logo {
     font-size: 14px;
   }
+
+  .titlebar :deep(.search-bar) {
+    width: 100%;
+    max-width: 520px;
+  }
 }
 
 @media (max-width: 600px) {
   .titlebar {
+    --home-header-search-width: min(520px, calc(100vw - 180px));
+
     padding: 8px 12px;
     padding-top: calc(8px + var(--safe-top));
     padding-left: calc(12px + var(--safe-left));
@@ -251,10 +286,16 @@ function navigateForward(): void {
   .logo {
     font-size: 12px;
   }
+
+  .titlebar :deep(.search-bar) {
+    max-width: none;
+  }
 }
 
 @media (max-width: 390px) {
   .titlebar {
+    --home-header-search-width: min(520px, calc(100vw - 150px));
+
     padding: 6px 8px;
     gap: 6px;
   }

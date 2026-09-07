@@ -358,7 +358,11 @@ onUnmounted(() => {
 }
 
 .sidebar-footer {
+  container-type: inline-size;
+  flex: 0 0 var(--sidebar-footer-height, auto);
+  min-height: 0;
   border-top: 1px solid var(--ui-border-subtle);
+  overflow: hidden;
 }
 
 .sidebar-shell.is-collapsed .sidebar-brand {

@@ -40,9 +40,12 @@ git switch -c feature/your-feature-name
 ## 提交前检查
 
 ```bash
+npm run check:architecture
 npm run quality
 npm run test:run
 ```
+
+> `npm run quality` 已内含 `lint`（其中包含 `check:architecture`），但建议单独先跑一次架构检查，便于快速定位边界违规。
 
 涉及本地音乐库 SQLite native 路径时，额外运行：
 

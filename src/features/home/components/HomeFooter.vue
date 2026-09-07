@@ -9,7 +9,7 @@ const props = withDefaults(
     dockedPlayerBarLayout?: DockedPlayerBarLayout
   }>(),
   {
-    dockedPlayerBarLayout: 'full'
+    dockedPlayerBarLayout: 'with-sidebar'
   }
 )
 </script>
@@ -58,7 +58,7 @@ const props = withDefaults(
   flex-shrink: 0;
   background: var(--ui-app-bg);
   padding: 0;
-  height: 80px;
+  height: var(--home-docked-footer-height, 80px);
   overflow: hidden;
 }
 

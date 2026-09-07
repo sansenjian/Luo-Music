@@ -136,6 +136,7 @@ export class WindowManager {
         enableWebSQL: false
       }
     })
+
     this.win = win
     const webContents = win.webContents
     this.applyWindowsAppDetails(win, shellIdentity)

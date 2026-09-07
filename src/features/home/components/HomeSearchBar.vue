@@ -100,11 +100,13 @@ function onToggleSelect(): void {
   align-items: center;
   width: var(--home-search-width, auto);
   max-width: var(--home-search-max-width, none);
+  min-width: 0;
   -webkit-app-region: no-drag;
 }
 
 .search-server-select {
   display: var(--home-search-server-display, block);
+  min-width: 0;
 }
 
 .search-input-shell {
@@ -199,6 +201,9 @@ function onToggleSelect(): void {
   border-radius: var(--ui-control-radius);
   display: var(--home-search-action-display, flex);
   align-items: center;
+  justify-content: center;
+  min-width: max-content;
+  white-space: nowrap;
 }
 
 .exec-btn:hover:not(:disabled),
@@ -232,7 +237,8 @@ function onToggleSelect(): void {
 
 @media (max-width: 900px) {
   .search-bar {
-    max-width: 300px;
+    width: 100%;
+    max-width: 520px;
   }
 }
 

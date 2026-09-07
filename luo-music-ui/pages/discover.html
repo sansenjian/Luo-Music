@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUO Music - 发现</title>
+    <style id="theme-vars">
+/* LUO Music — Brand Design Tokens (Classic Mode) */
+
+:root {
+  /* Core palette */
+  --lm-bg: #f5f5f5;
+  --lm-bg-dark: #e0e0e0;
+  --lm-black: #1a1a1a;
+  --lm-white: #ffffff;
+  --lm-accent: #ff6b35;
+  --lm-accent-hover: #e85b2c;
+  --lm-accent-light: #ff9a73;
+  --lm-gray: #666666;
+  --lm-gray-light: #999999;
+  --lm-gray-lighter: #e5e7eb;
+
+  /* Surfaces */
+  --lm-surface: #ffffff;
+  --lm-surface-soft: #ffffff;
+  --lm-surface-muted: #ffffff;
+  --lm-control-bg: #ffffff;
+  --lm-control-focus-bg: #f5f5f5;
+
+  /* Borders */
+  --lm-border-color: #1a1a1a;
+  --lm-border-subtle: rgba(26, 26, 26, 0.12);
+  --lm-border: 2px solid #1a1a1a;
+  --lm-border-strong: 3px solid #1a1a1a;
+  --lm-divider: 3px solid #1a1a1a;
+
+  /* Radii */
+  --lm-radius-sm: 0px;
+  --lm-radius-md: 0px;
+  --lm-radius-lg: 0px;
+  --lm-control-radius: 0px;
+  --lm-card-radius: 0px;
+
+  /* Shadows */
+  --lm-shadow: 4px 4px 0 rgba(26, 26, 26, 0.16);
+  --lm-floating-shadow: 8px 8px 0 rgba(0, 0, 0, 0.2);
+
+  /* Primary (button/active) */
+  --lm-primary-bg: #1a1a1a;
+  --lm-primary-text: #ffffff;
+  --lm-primary-hover-bg: #ffffff;
+  --lm-primary-hover-text: #1a1a1a;
+  --lm-primary-shadow: none;
+
+  /* Interaction */
+  --lm-hover-bg: #e0e0e0;
+  --lm-track-bg: #ffffff;
+  --lm-track-fill: #1a1a1a;
+  --lm-focus-border: #1a1a1a;
+  --lm-overlay-bg: rgba(0, 0, 0, 0.5);
+
+  /* Corner decorations */
+  --lm-corner-display: block;
+
+  /* Brand */
+  --lm-brand-gradient-start: #1a1a1a;
+  --lm-brand-gradient-end: #1a1a1a;
+  --lm-brand-shadow: none;
+  --lm-brand-kicker-color: #666666;
+  --lm-brand-mark-radius: 0px;
+
+  /* Sidebar */
+  --lm-sidebar-shell-bg: #ffffff;
+  --lm-sidebar-active-bg: #1a1a1a;
+  --lm-sidebar-active-text: #ffffff;
+  --lm-sidebar-link-hover-bg: #e0e0e0;
+  --lm-sidebar-icon-bg: #e5e7eb;
+}
+
+/* Typography */
+:root {
+  --lm-font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --lm-font-size-xs: 10px;
+  --lm-font-size-sm: 11px;
+  --lm-font-size-base: 14px;
+  --lm-font-size-md: 15px;
+  --lm-font-size-lg: 18px;
+  --lm-font-size-xl: 20px;
+  --lm-font-size-2xl: 26px;
+  --lm-font-weight-normal: 400;
+  --lm-font-weight-medium: 600;
+  --lm-font-weight-bold: 700;
+  --lm-font-weight-extrabold: 800;
+  --lm-line-height: 1.4;
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-accent: var(--lm-accent);
+    --color-border: var(--lm-border);
+  }
+  @layer base {
+    body { background: var(--lm-surface); color: var(--lm-black); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+    <style>
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  /* ===== DESIGN TOKENS ===== */
+  :root {
+    --lm-bg: #f5f5f5;
+    --lm-black: #1a1a1a;
+    --lm-white: #ffffff;
+    --lm-accent: #ff6b35;
+    --lm-gray: #666666;
+    --lm-gray-light: #999999;
+    --lm-gray-lighter: #e5e7eb;
+    --lm-border-color: #1a1a1a;
+    --lm-border: 2px solid #1a1a1a;
+    --lm-border-strong: 3px solid #1a1a1a;
+    --lm-shadow: 4px 4px 0 rgba(26, 26, 26, 0.16);
+    --lm-radius: 0px;
+    --lm-font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --lm-hover-bg: #e0e0e0;
+    --lm-sidebar-active-bg: #1a1a1a;
+    --lm-sidebar-active-text: #ffffff;
+    --lm-sidebar-link-hover-bg: #e0e0e0;
+    --lm-brand-kicker-color: #666666;
+  }
+
+  /* ===== APP WINDOW ===== */
+  .app-window {
+    width: 1440px;
+    height: 900px;
+    background: var(--lm-bg);
+    font-family: var(--lm-font-family);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    color: var(--lm-black);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ===== TITLEBAR ===== */
+  .titlebar {
+    height: 52px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--lm-white);
+    border-bottom: var(--lm-border-strong);
+    flex-shrink: 0;
+  }
+
+  .titlebar-brand {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--lm-black);
+  }
+
+  .titlebar-search {
+    flex: 0 1 420px;
+    height: 36px;
+    border: var(--lm-border);
+    background: var(--lm-white);
+    padding: 0 14px;
+    font-size: 14px;
+    font-family: var(--lm-font-family);
+    color: var(--lm-gray-light);
+    outline: none;
+    border-radius: var(--lm-radius);
+  }
+
+  .titlebar-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .titlebar-btn {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--lm-black);
+    background: var(--lm-white);
+    border-radius: 50%;
+    cursor: default;
+    position: relative;
+  }
+  .titlebar-btn.close:hover {
+    background: #ff4d4f;
+    border-color: #ff4d4f;
+  }
+  .titlebar-btn.minimize { border-color: #faad14; }
+  .titlebar-btn.maximize { border-color: #52c41a; }
+
+  /* ===== MAIN SHELL ===== */
+  .main-shell {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 236px 350px 1fr;
+    grid-template-rows: 1fr auto;
+    overflow: hidden;
+  }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    width: 236px;
+    background: var(--lm-white);
+    border-right: var(--lm-border-strong);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .sidebar-brand {
+    padding: 20px 16px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 2px solid var(--lm-gray-lighter);
+  }
+
+  .sidebar-brand-mark {
+    width: 44px;
+    height: 44px;
+    background: var(--lm-black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: var(--lm-radius);
+  }
+
+  .sidebar-brand-mark span {
+    color: var(--lm-white);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+
+  .sidebar-brand-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-brand-kicker {
+    font-size: 10px;
+    color: var(--lm-brand-kicker-color);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+  }
+
+  .sidebar-brand-title {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 12px 0;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    padding: 0 12px;
+    margin-bottom: 8px;
+  }
+
+  .sidebar-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--lm-gray-light);
+    padding: 8px 12px 6px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--lm-black);
+    cursor: default;
+    border-radius: var(--lm-radius);
+    transition: background 0.15s, transform 0.15s;
+  }
+
+  .sidebar-item:hover {
+    background: var(--lm-sidebar-link-hover-bg);
+    transform: translateX(2px);
+  }
+
+  .sidebar-item.active {
+    background: var(--lm-sidebar-active-bg);
+    color: var(--lm-sidebar-active-text);
+  }
+  .sidebar-item.active:hover {
+    background: var(--lm-sidebar-active-bg);
+    transform: none;
+  }
+
+  .sidebar-item.muted {
+    color: var(--lm-gray);
+  }
+  .sidebar-item.muted:hover {
+    color: var(--lm-black);
+  }
+
+  .sidebar-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    stroke: currentColor;
+    stroke-width: 0;
+  }
+
+  .sidebar-footer {
+    padding: 14px 16px;
+    border-top: 2px solid var(--lm-gray-lighter);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sidebar-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1f2937, #475569);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .sidebar-avatar span {
+    color: var(--lm-white);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .sidebar-user-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-username {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .sidebar-user-status {
+    font-size: 11px;
+    color: var(--lm-gray-light);
+  }
+
+  .sidebar-settings-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    border-radius: var(--lm-radius);
+  }
+  .sidebar-settings-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--lm-gray);
+    stroke: var(--lm-gray);
+    stroke-width: 0;
+  }
+
+  /* ===== PLAYER PANEL ===== */
+  .player-panel {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    width: 350px;
+    background: var(--lm-white);
+    border-right: var(--lm-border-strong);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 24px 20px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .album-cover-wrapper {
+    width: 85%;
+    max-width: 280px;
+    aspect-ratio: 1;
+    position: relative;
+    border: 3px solid var(--lm-black);
+    border-radius: var(--lm-radius);
+    background: #e0e0e0;
+    flex-shrink: 0;
+  }
+
+  .album-cover-img {
+    position: absolute;
+    inset: 8px;
+    width: calc(100% - 16px);
+    height: calc(100% - 16px);
+    object-fit: cover;
+    border-radius: var(--lm-radius);
+  }
+
+  /* Corner decorations */
+  .corner-deco {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.48), transparent 42%), #1a1a1a;
+    border: 1px solid color-mix(in srgb, #1a1a1a 60%, transparent);
+  }
+
+  .corner-deco.top-left {
+    top: -5px;
+    left: -5px;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.38),
+      inset -1px -1px 0 rgba(0,0,0,0.14),
+      -1px -1px 0 rgba(255,255,255,0.28),
+      3px 3px 0 rgba(0,0,0,0.2),
+      0 3px 7px rgba(0,0,0,0.18);
+  }
+
+  .corner-deco.top-right {
+    top: -5px;
+    right: -5px;
+    box-shadow:
+      inset -1px 1px 0 rgba(255,255,255,0.34),
+      inset 1px -1px 0 rgba(0,0,0,0.14),
+      1px -1px 0 rgba(255,255,255,0.22),
+      -3px 3px 0 rgba(0,0,0,0.18),
+      0 3px 7px rgba(0,0,0,0.16);
+  }
+
+  .corner-deco.bottom-left {
+    bottom: -5px;
+    left: -5px;
+    box-shadow:
+      inset 1px -1px 0 rgba(255,255,255,0.28),
+      inset -1px 1px 0 rgba(0,0,0,0.16),
+      -1px 1px 0 rgba(0,0,0,0.12),
+      3px -3px 0 rgba(255,255,255,0.18),
+      0 -3px 7px rgba(0,0,0,0.12);
+  }
+
+  .corner-deco.bottom-right {
+    bottom: -5px;
+    right: -5px;
+    box-shadow:
+      inset -1px -1px 0 rgba(255,255,255,0.24),
+      inset 1px 1px 0 rgba(0,0,0,0.16),
+      1px 1px 0 rgba(0,0,0,0.16),
+      -3px -3px 0 rgba(255,255,255,0.16),
+      0 -3px 7px rgba(0,0,0,0.12);
+  }
+
+  /* Track info */
+  .track-info {
+    width: 100%;
+    text-align: center;
+    margin-top: 20px;
+    flex-shrink: 0;
+  }
+
+  .track-title {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+
+  .track-artist {
+    font-size: 12px;
+    color: var(--lm-gray);
+    margin-top: 2px;
+  }
+
+  /* Progress bar */
+  .progress-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 18px;
+    flex-shrink: 0;
+  }
+
+  .progress-time {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--lm-gray);
+    min-width: 28px;
+    font-variant-numeric: tabular-nums;
+  }
+  .progress-time.right {
+    text-align: right;
+  }
+
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    border: 2px solid var(--lm-black);
+    background: var(--lm-white);
+    position: relative;
+    border-radius: var(--lm-radius);
+  }
+
+  .progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 35%;
+    background: var(--lm-black);
+    border-radius: var(--lm-radius);
+  }
+
+  .progress-thumb {
+    position: absolute;
+    top: 50%;
+    left: 35%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background: var(--lm-accent);
+    border: 2px solid var(--lm-black);
+    border-radius: 50%;
+  }
+
+  /* Controls */
+  .controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 16px;
+    flex-shrink: 0;
+  }
+
+  .ctrl-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    border-radius: var(--lm-radius);
+  }
+
+  .ctrl-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: var(--lm-black);
+    stroke: var(--lm-black);
+    stroke-width: 0;
+  }
+
+  .ctrl-btn.play-btn {
+    width: 44px;
+    height: 44px;
+    background: var(--lm-black);
+    border: 2px solid var(--lm-black);
+    border-radius: var(--lm-radius);
+  }
+
+  .ctrl-btn.play-btn svg {
+    fill: var(--lm-white);
+    stroke: var(--lm-white);
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Volume */
+  .volume-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    flex-shrink: 0;
+  }
+
+  .vol-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--lm-gray);
+    letter-spacing: 1px;
+  }
+
+  .vol-bar {
+    flex: 1;
+    height: 12px;
+    border: 2px solid var(--lm-black);
+    background: var(--lm-white);
+    position: relative;
+    border-radius: var(--lm-radius);
+  }
+
+  .vol-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 70%;
+    background: var(--lm-black);
+    border-radius: var(--lm-radius);
+  }
+
+  .vol-value {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--lm-gray);
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .vol-queue-btn {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--lm-black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--lm-white);
+    border-radius: var(--lm-radius);
+    flex-shrink: 0;
+  }
+
+  .vol-queue-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: var(--lm-black);
+    stroke: var(--lm-black);
+    stroke-width: 0;
+  }
+
+  /* ===== WORKSPACE ===== */
+  .workspace {
+    grid-column: 3;
+    grid-row: 1;
+    padding: 28px 32px 20px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .workspace-title {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .workspace-desc {
+    font-size: 14px;
+    color: var(--lm-gray);
+    margin-top: 4px;
+  }
+
+  /* Discover section label */
+  .discover-section-label {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 24px;
+    margin-bottom: 14px;
+  }
+
+  /* ===== Recommended Playlists ===== */
+  .playlist-scroll {
+    display: flex;
+    gap: 16px;
+    overflow: hidden;
+    no-scrollbar: true;
+  }
+
+  .playlist-card {
+    width: 180px;
+    flex-shrink: 0;
+  }
+
+  .playlist-cover-wrapper {
+    width: 180px;
+    height: 180px;
+    border-radius: 14px;
+    border: 2px solid #1a1a1a;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.16);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .playlist-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .playlist-cover-placeholder {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .playlist-play-count {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+
+  .playlist-play-count svg {
+    width: 10px;
+    height: 10px;
+    fill: #ffffff;
+    stroke: none;
+  }
+
+  .playlist-name {
+    font-size: 14px;
+    font-weight: 700;
+    margin-top: 8px;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .playlist-count {
+    font-size: 12px;
+    color: var(--lm-gray);
+    margin-top: 2px;
+  }
+
+  /* ===== New Songs Grid ===== */
+  .new-songs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .song-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--lm-white);
+    border: 2px solid var(--lm-black);
+    border-radius: 0px;
+  }
+
+  .song-rank {
+    font-size: 18px;
+    font-weight: 800;
+    min-width: 24px;
+    text-align: center;
+    color: var(--lm-black);
+  }
+
+  .song-rank.top {
+    color: var(--lm-accent);
+  }
+
+  .song-cover {
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--lm-black);
+    flex-shrink: 0;
+    display: block;
+  }
+
+  .song-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .song-title {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .song-artist {
+    font-size: 12px;
+    color: var(--lm-gray);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .song-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .song-duration {
+    font-size: 12px;
+    color: var(--lm-gray);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .song-play-btn {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--lm-black);
+    background: var(--lm-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 0px;
+  }
+
+  .song-play-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: var(--lm-black);
+    stroke: none;
+  }
+
+  /* ===== Hot Artists ===== */
+  .artist-scroll {
+    display: flex;
+    gap: 20px;
+    overflow: hidden;
+  }
+
+  .artist-card {
+    width: 100px;
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  .artist-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 2px solid var(--lm-black);
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.16);
+    display: block;
+    margin: 0 auto;
+  }
+
+  .artist-name {
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 8px;
+    line-height: 1.3;
+  }
+
+  /* ===== STATUS BAR ===== */
+  .status-bar {
+    grid-column: 2 / 4;
+    grid-row: 2;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .status-text {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--lm-gray);
+    letter-spacing: 0.5px;
+  }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+
+<!-- ===== APP WINDOW ===== -->
+<div class="app-window">
+
+  <!-- ===== TITLEBAR ===== -->
+  <div class="titlebar">
+    <div class="titlebar-brand">LUO_MUSIC</div>
+    <input class="titlebar-search" type="text" placeholder="搜索歌曲、歌手或专辑..." readonly />
+    <div class="titlebar-controls">
+      <div class="titlebar-btn minimize"></div>
+      <div class="titlebar-btn maximize"></div>
+      <div class="titlebar-btn close"></div>
+    </div>
+  </div>
+
+  <!-- ===== MAIN SHELL ===== -->
+  <div class="main-shell">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-mark"><span>LM</span></div>
+        <div class="sidebar-brand-text">
+          <span class="sidebar-brand-kicker">Library</span>
+          <span class="sidebar-brand-title">LUO Music</span>
+        </div>
+      </div>
+
+      <div class="sidebar-nav">
+        <!-- Explore section -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">探索</div>
+          <div class="sidebar-item">
+            <div class="sidebar-icon">
+              <svg viewBox="0 0 24 24"><path d="M4 11.8 12 5l8 6.8V20a1 1 0 0 1-1 1h-4.8v-5.2H9.8V21H5a1 1 0 0 1-1-1z"/></svg>
+            </div>
+            <span>主页</span>
+          </div>
+          <div class="sidebar-item active">
+            <div class="sidebar-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5A8.5 8.5 0 0 0 12 3.5Zm2.9 5.6-1.8 5-5 1.8 1.8-5 5-1.8Z"/></svg>
+            </div>
+            <span>发现</span>
+          </div>
+          <div class="sidebar-item">
+            <div class="sidebar-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M3.8 15.8c2.1-2.5 4.7-3.8 7.8-3.8s5.7 1.3 7.8 3.8"/>
+                <path d="M7 10.4a5.2 5.2 0 0 1 10 0"/>
+                <circle cx="12" cy="17.2" r="1.1" fill="currentColor" stroke="none"/>
+              </svg>
+            </div>
+            <span>漫游</span>
+          </div>
+          <div class="sidebar-item">
+            <div class="sidebar-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.5 4.5v2a1 1 0 0 0 1 1h2"/>
+                <path d="M9.5 4.5v2a1 1 0 0 1-1 1h-2"/>
+                <path d="M14.5 19.5v-2a1 1 0 0 1 1-1h2"/>
+                <path d="M9.5 19.5v-2a1 1 0 0 0-1-1h-2"/>
+                <rect x="5.5" y="7.5" width="13" height="9" rx="1.5"/>
+                <circle cx="12" cy="12" r="2"/>
+              </svg>
+            </div>
+            <span>插件</span>
+          </div>
+        </div>
+
+        <!-- Library section -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">资料库</div>
+          <div class="sidebar-item muted">
+            <div class="sidebar-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 20.2 5 13.6a4.4 4.4 0 0 1 6.2-6.2L12 8.2l.8-.8a4.4 4.4 0 0 1 6.2 6.2Z"/></svg>
+            </div>
+            <span>我的喜欢</span>
+          </div>
+          <div class="sidebar-item muted">
+            <div class="sidebar-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 4.2a7.8 7.8 0 1 1-6.7 3.8"/>
+                <path d="M5.3 4.8v4.4h4.4"/>
+                <path d="M12 8.2v4.2l2.8 1.8"/>
+              </svg>
+            </div>
+            <span>最近播放</span>
+          </div>
+          <div class="sidebar-item muted">
+            <div class="sidebar-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8.1 11.2a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Z"/>
+                <path d="M15.9 11.2a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Z"/>
+                <path d="M3.9 18.8a4.2 4.2 0 0 1 8.4 0"/>
+                <path d="M11.7 18.8a4.2 4.2 0 0 1 8.4 0"/>
+              </svg>
+            </div>
+            <span>艺人</span>
+          </div>
+          <div class="sidebar-item muted">
+            <div class="sidebar-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5.2 6.2h13.6a1.2 1.2 0 0 1 1.2 1.2v9.2a1.2 1.2 0 0 1-1.2 1.2H5.2A1.2 1.2 0 0 1 4 16.6V7.4a1.2 1.2 0 0 1 1.2-1.2Z"/>
+                <path d="M8 18.8h8"/>
+                <path d="M8.6 11.6h6.8"/>
+              </svg>
+            </div>
+            <span>本地音乐</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="sidebar-footer">
+        <div class="sidebar-avatar"><span>L</span></div>
+        <div class="sidebar-user-info">
+          <span class="sidebar-username">Listener</span>
+          <span class="sidebar-user-status">在线</span>
+        </div>
+        <div class="sidebar-settings-btn">
+          <svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.1 7.1 0 0 0 .06-.94 7.1 7.1 0 0 0-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54a7 7 0 0 0-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.73 8.87a.48.48 0 0 0 .12.61l2.03 1.58a7.2 7.2 0 0 0 0 1.88l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32a.49.49 0 0 0 .59.22l2.39-.96a7 7 0 0 0 1.62.94l.36 2.54c.05.24.26.41.48.41h3.84c.22 0 .43-.17.48-.41l.36-2.54a7 7 0 0 0 1.62-.94l2.39.96a.49.49 0 0 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61ZM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2Z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAYER PANEL -->
+    <div class="player-panel">
+      <div class="album-cover-wrapper">
+        <img class="album-cover-img" src="../assets/album-cover.jpg" alt="Album Cover" />
+        <div class="corner-deco top-left"></div>
+        <div class="corner-deco top-right"></div>
+        <div class="corner-deco bottom-left"></div>
+        <div class="corner-deco bottom-right"></div>
+      </div>
+
+      <div class="track-info">
+        <div class="track-title">Midnight Echoes</div>
+        <div class="track-artist">Aurora Waves</div>
+      </div>
+
+      <div class="progress-row">
+        <span class="progress-time">1:24</span>
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+          <div class="progress-thumb"></div>
+        </div>
+        <span class="progress-time right">3:56</span>
+      </div>
+
+      <div class="controls-row">
+        <div class="ctrl-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 1l4 4-4 4"/>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <path d="M7 23l-4-4 4-4"/>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+        </div>
+        <div class="ctrl-btn">
+          <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" transform="scale(-1,1) translate(-24,0)"/></svg>
+        </div>
+        <div class="ctrl-btn play-btn">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        <div class="ctrl-btn">
+          <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </div>
+        <div class="ctrl-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M9 9h6"/>
+            <path d="M9 13h4"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="volume-row">
+        <span class="vol-label">VOL</span>
+        <div class="vol-bar">
+          <div class="vol-fill"></div>
+        </div>
+        <span class="vol-value">70</span>
+        <div class="vol-queue-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKSPACE: DISCOVER CONTENT -->
+    <div class="workspace">
+      <div class="workspace-title">发现</div>
+      <div class="workspace-desc">为你推荐的音乐和歌单</div>
+
+      <!-- Recommended Playlists -->
+      <div class="discover-section-label">推荐歌单</div>
+      <div class="playlist-scroll">
+        <!-- Card 1 -->
+        <div class="playlist-card">
+          <div class="playlist-cover-wrapper">
+            <svg class="playlist-cover-placeholder" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff6b35"/><stop offset="100%" stop-color="#1a1a1a"/></linearGradient></defs>
+              <rect width="180" height="180" rx="14" fill="url(#g1)"/>
+            </svg>
+            <div class="playlist-play-count">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+              2.3万
+            </div>
+          </div>
+          <div class="playlist-name">深夜放松精选</div>
+          <div class="playlist-count">32 首</div>
+        </div>
+        <!-- Card 2 -->
+        <div class="playlist-card">
+          <div class="playlist-cover-wrapper">
+            <svg class="playlist-cover-placeholder" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#0f172a"/></linearGradient></defs>
+              <rect width="180" height="180" rx="14" fill="url(#g2)"/>
+            </svg>
+            <div class="playlist-play-count">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+              5.1万
+            </div>
+          </div>
+          <div class="playlist-name">清晨活力唤醒</div>
+          <div class="playlist-count">28 首</div>
+        </div>
+        <!-- Card 3 -->
+        <div class="playlist-card">
+          <div class="playlist-cover-wrapper">
+            <svg class="playlist-cover-placeholder" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#064e3b"/></linearGradient></defs>
+              <rect width="180" height="180" rx="14" fill="url(#g3)"/>
+            </svg>
+            <div class="playlist-play-count">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+              1.8万
+            </div>
+          </div>
+          <div class="playlist-name">独立民谣小调</div>
+          <div class="playlist-count">45 首</div>
+        </div>
+        <!-- Card 4 -->
+        <div class="playlist-card">
+          <div class="playlist-cover-wrapper">
+            <svg class="playlist-cover-placeholder" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="g4" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#78350f"/></linearGradient></defs>
+              <rect width="180" height="180" rx="14" fill="url(#g4)"/>
+            </svg>
+            <div class="playlist-play-count">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+              8.6万
+            </div>
+          </div>
+          <div class="playlist-name">电子节拍派对</div>
+          <div class="playlist-count">56 首</div>
+        </div>
+        <!-- Card 5 -->
+        <div class="playlist-card">
+          <div class="playlist-cover-wrapper">
+            <svg class="playlist-cover-placeholder" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="g5" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#4a044e"/></linearGradient></defs>
+              <rect width="180" height="180" rx="14" fill="url(#g5)"/>
+            </svg>
+            <div class="playlist-play-count">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+              3.4万
+            </div>
+          </div>
+          <div class="playlist-name">雨天慵懒时光</div>
+          <div class="playlist-count">38 首</div>
+        </div>
+        <!-- Card 6 -->
+        <div class="playlist-card">
+          <div class="playlist-cover-wrapper">
+            <svg class="playlist-cover-placeholder" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="g6" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#164e63"/></linearGradient></defs>
+              <rect width="180" height="180" rx="14" fill="url(#g6)"/>
+            </svg>
+            <div class="playlist-play-count">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+              12.7万
+            </div>
+          </div>
+          <div class="playlist-name">经典摇滚回忆录</div>
+          <div class="playlist-count">72 首</div>
+        </div>
+      </div>
+
+      <!-- New Songs Express -->
+      <div class="discover-section-label">新歌速递</div>
+      <div class="new-songs-grid">
+        <!-- Column 1 -->
+        <div class="song-row">
+          <span class="song-rank top">1</span>
+          <svg class="song-cover" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="sc1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f97316"/><stop offset="100%" stop-color="#7c2d12"/></linearGradient></defs>
+            <rect width="48" height="48" fill="url(#sc1)"/>
+          </svg>
+          <div class="song-info">
+            <div class="song-title">City Lights</div>
+            <div class="song-artist">Metro Pulse</div>
+          </div>
+          <div class="song-meta">
+            <span class="song-duration">3:42</span>
+            <div class="song-play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+        </div>
+        <div class="song-row">
+          <span class="song-rank top">2</span>
+          <svg class="song-cover" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="sc2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#3b0764"/></linearGradient></defs>
+            <rect width="48" height="48" fill="url(#sc2)"/>
+          </svg>
+          <div class="song-info">
+            <div class="song-title">Autumn Wind</div>
+            <div class="song-artist">Harvest Moon</div>
+          </div>
+          <div class="song-meta">
+            <span class="song-duration">4:15</span>
+            <div class="song-play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+        </div>
+        <div class="song-row">
+          <span class="song-rank top">3</span>
+          <svg class="song-cover" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="sc3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#14b8a6"/><stop offset="100%" stop-color="#134e4a"/></linearGradient></defs>
+            <rect width="48" height="48" fill="url(#sc3)"/>
+          </svg>
+          <div class="song-info">
+            <div class="song-title">Lost Signal</div>
+            <div class="song-artist">Static Noise</div>
+          </div>
+          <div class="song-meta">
+            <span class="song-duration">3:08</span>
+            <div class="song-play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+        </div>
+        <div class="song-row">
+          <span class="song-rank">4</span>
+          <svg class="song-cover" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="sc4" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#450a0a"/></linearGradient></defs>
+            <rect width="48" height="48" fill="url(#sc4)"/>
+          </svg>
+          <div class="song-info">
+            <div class="song-title">Gravity</div>
+            <div class="song-artist">Falling Stars</div>
+          </div>
+          <div class="song-meta">
+            <span class="song-duration">3:56</span>
+            <div class="song-play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+        </div>
+        <!-- Column 2 -->
+        <div class="song-row">
+          <span class="song-rank">5</span>
+          <svg class="song-cover" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="sc5" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1e3a5f"/></linearGradient></defs>
+            <rect width="48" height="48" fill="url(#sc5)"/>
+          </svg>
+          <div class="song-info">
+            <div class="song-title">Rhythm</div>
+            <div class="song-artist">Beat Machine</div>
+          </div>
+          <div class="song-meta">
+            <span class="song-duration">2:58</span>
+            <div class="song-play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+        </div>
+        <div class="song-row">
+          <span class="song-rank">6</span>
+          <svg class="song-cover" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="sc6" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#eab308"/><stop offset="100%" stop-color="#713f12"/></linearGradient></defs>
+            <rect width="48" height="48" fill="url(#sc6)"/>
+          </svg>
+          <div class="song-info">
+            <div class="song-title">Echoes</div>
+            <div class="song-artist">Sound Wave</div>
+          </div>
+          <div class="song-meta">
+            <span class="song-duration">4:22</span>
+            <div class="song-play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+        </div>
+        <div class="song-row">
+          <span class="song-rank">7</span>
+          <svg class="song-cover" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="sc7" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#14532d"/></linearGradient></defs>
+            <rect width="48" height="48" fill="url(#sc7)"/>
+          </svg>
+          <div class="song-info">
+            <div class="song-title">Horizon</div>
+            <div class="song-artist">Daybreak</div>
+          </div>
+          <div class="song-meta">
+            <span class="song-duration">3:34</span>
+            <div class="song-play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+        </div>
+        <div class="song-row">
+          <span class="song-rank">8</span>
+          <svg class="song-cover" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="sc8" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f472b6"/><stop offset="100%" stop-color="#831843"/></linearGradient></defs>
+            <rect width="48" height="48" fill="url(#sc8)"/>
+          </svg>
+          <div class="song-info">
+            <div class="song-title">Velocity</div>
+            <div class="song-artist">Speed Demon</div>
+          </div>
+          <div class="song-meta">
+            <span class="song-duration">2:46</span>
+            <div class="song-play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hot Artists -->
+      <div class="discover-section-label">热门艺人</div>
+      <div class="artist-scroll">
+        <div class="artist-card">
+          <svg class="artist-avatar" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="a1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff6b35"/><stop offset="100%" stop-color="#1a1a1a"/></linearGradient></defs>
+            <circle cx="40" cy="40" r="40" fill="url(#a1)"/>
+          </svg>
+          <div class="artist-name">Aurora Waves</div>
+        </div>
+        <div class="artist-card">
+          <svg class="artist-avatar" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="a2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient></defs>
+            <circle cx="40" cy="40" r="40" fill="url(#a2)"/>
+          </svg>
+          <div class="artist-name">Metro Pulse</div>
+        </div>
+        <div class="artist-card">
+          <svg class="artist-avatar" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="a3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#064e3b"/></linearGradient></defs>
+            <circle cx="40" cy="40" r="40" fill="url(#a3)"/>
+          </svg>
+          <div class="artist-name">Harvest Moon</div>
+        </div>
+        <div class="artist-card">
+          <svg class="artist-avatar" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="a4" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#78350f"/></linearGradient></defs>
+            <circle cx="40" cy="40" r="40" fill="url(#a4)"/>
+          </svg>
+          <div class="artist-name">Beat Machine</div>
+        </div>
+        <div class="artist-card">
+          <svg class="artist-avatar" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="a5" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#4a044e"/></linearGradient></defs>
+            <circle cx="40" cy="40" r="40" fill="url(#a5)"/>
+          </svg>
+          <div class="artist-name">Static Noise</div>
+        </div>
+        <div class="artist-card">
+          <svg class="artist-avatar" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="a6" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#164e63"/></linearGradient></defs>
+            <circle cx="40" cy="40" r="40" fill="url(#a6)"/>
+          </svg>
+          <div class="artist-name">Daybreak</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+      <span class="status-text">12 Tracks</span>
+      <span class="status-text">播放品质取决于当前音源</span>
+    </div>
+
+  </div>
+</div>
+
+    </main>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

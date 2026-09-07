@@ -8,7 +8,14 @@ export const COMMANDS = {
   PLAYER_SEEK_FORWARD: 'player.seekForward',
   PLAYER_SEEK_BACK: 'player.seekBack',
   PLAYER_TOGGLE_PLAYER_DOCKED: 'player.togglePlayerDocked',
-  DESKTOP_LYRIC_TOGGLE: 'desktopLyric.toggle'
+  DESKTOP_LYRIC_TOGGLE: 'desktopLyric.toggle',
+  PLAYER_SET_VOLUME: 'player.setVolume',
+  PLAYER_SET_MUTE: 'player.setMute',
+  PLAYER_SET_PLAY_MODE: 'player.setPlayMode',
+  PLAYER_SEARCH_AND_PLAY: 'player.searchAndPlay',
+  PLATFORM_SEARCH: 'platform.search',
+  PLATFORM_GET_LYRIC: 'platform.getLyric',
+  PLATFORM_GET_PLAYLIST_DETAIL: 'platform.getPlaylistDetail'
 } as const
 
 export type CommandId = (typeof COMMANDS)[keyof typeof COMMANDS]

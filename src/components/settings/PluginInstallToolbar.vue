@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { uiMessages } from '@/messages/ui'
 
 const installPath = defineModel<string>({ required: true })
@@ -30,7 +32,7 @@ const emit = defineEmits<{
         <polyline points="7 10 12 15 17 10" />
         <line x1="12" y1="15" x2="12" y2="3" />
       </svg>
-      <input
+      <Input
         v-model="installPath"
         class="plugin-install-input"
         type="text"
@@ -39,36 +41,36 @@ const emit = defineEmits<{
     </label>
 
     <div class="plugin-toolbar-actions">
-      <button
-        class="plugin-pill plugin-pill-secondary"
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         @click="emit('browse-install-path', 'file')"
       >
         {{ uiMessages.settings.actions.browsePluginPackage }}
-      </button>
-      <button
-        class="plugin-pill plugin-pill-secondary"
+      </Button>
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         @click="emit('browse-install-path', 'directory')"
       >
         {{ uiMessages.settings.actions.browsePluginFolder }}
-      </button>
-      <button
-        class="plugin-pill plugin-pill-primary"
-        type="button"
-        :disabled="!canInstall"
-        @click="emit('request-install')"
-      >
+      </Button>
+      <Button type="button" size="sm" :disabled="!canInstall" @click="emit('request-install')">
         {{
           isInstalling
             ? uiMessages.settings.actions.installingPlugin
             : uiMessages.settings.actions.installPlugin
         }}
-      </button>
-      <button
-        class="plugin-pill plugin-pill-ghost"
+      </Button>
+      <Button
         type="button"
+        variant="outline"
+        size="icon"
         :disabled="isLoading"
+        :aria-label="uiMessages.settings.actions.refreshPlugins"
+        :title="uiMessages.settings.actions.refreshPlugins"
         @click="emit('refresh')"
       >
         <svg
@@ -81,7 +83,7 @@ const emit = defineEmits<{
           <polyline points="23 4 23 10 17 10" />
           <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
         </svg>
-      </button>
+      </Button>
     </div>
   </div>
 </template>
@@ -121,78 +123,19 @@ const emit = defineEmits<{
   border: none;
   outline: none;
   background: transparent;
+  box-shadow: none;
   font-size: 13px;
   color: var(--black);
+}
+
+.plugin-install-input:focus-visible {
+  box-shadow: none;
 }
 
 .plugin-toolbar-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.plugin-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 0 16px;
-  border: none;
-  border-radius: var(--ui-control-radius);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background 0.18s ease,
-    color 0.18s ease,
-    transform 0.18s ease,
-    box-shadow 0.18s ease;
-}
-
-.plugin-pill svg {
-  width: 15px;
-  height: 15px;
-}
-
-.plugin-pill-primary {
-  background: var(--ui-primary-bg);
-  color: var(--ui-primary-text);
-  box-shadow: var(--ui-primary-shadow);
-}
-
-.plugin-pill-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.plugin-pill-secondary {
-  background: var(--ui-surface-muted);
-  color: var(--gray);
-  box-shadow: inset 0 0 0 1px var(--ui-border-subtle);
-}
-
-.plugin-pill-secondary:hover:not(:disabled) {
-  background: var(--ui-hover-bg);
-  color: var(--black);
-  transform: translateY(-1px);
-}
-
-.plugin-pill-ghost {
-  background: transparent;
-  color: var(--gray);
-  box-shadow: inset 0 0 0 1px var(--ui-border-subtle);
-}
-
-.plugin-pill-ghost:hover:not(:disabled) {
-  background: var(--ui-hover-bg);
-  color: var(--black);
-}
-
-.plugin-pill:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none;
 }
 
 .plugin-refresh-icon {
@@ -214,7 +157,7 @@ const emit = defineEmits<{
     width: 100%;
   }
 
-  .plugin-toolbar-actions .plugin-pill {
+  .plugin-toolbar-actions > * {
     flex: 1;
   }
 }

@@ -100,10 +100,12 @@ const loginServices = computed(() =>
 
 <style scoped>
 .sidebar-login-panel {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 10px;
   height: 100%;
+  min-height: 0;
   width: 100%;
   padding: 12px 14px calc(12px + var(--safe-bottom));
   background: var(--ui-surface);
@@ -147,9 +149,13 @@ const loginServices = computed(() =>
   font-size: 15px;
   font-weight: 800;
   color: var(--black);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-login-services {
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -160,18 +166,24 @@ const loginServices = computed(() =>
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
   padding-left: 14px;
   font-size: 12px;
   font-weight: 700;
   color: var(--gray);
+  white-space: nowrap;
 }
 
 .service-name {
   color: var(--black);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .service-state {
   color: var(--gray);
+  flex-shrink: 0;
 }
 
 .service-badge::before {
@@ -194,12 +206,12 @@ const loginServices = computed(() =>
 }
 
 .settings-button {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
   border: 0;
-  border-radius: 12px;
-  background: var(--surface-muted);
+  border-radius: 10px;
+  background: transparent;
   color: var(--gray);
   cursor: pointer;
   transition:
@@ -209,20 +221,19 @@ const loginServices = computed(() =>
 }
 
 .settings-button:hover {
-  background: var(--sidebar-link-hover-bg);
+  background: transparent;
   color: var(--black);
   transform: translateY(-1px);
 }
 
 .settings-button.is-active {
-  background: var(--sidebar-active-bg);
-  color: var(--sidebar-active-text, var(--white));
-  box-shadow: var(--sidebar-active-shadow);
+  background: transparent;
+  color: var(--ui-primary-bg);
 }
 
 .settings-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -253,8 +264,8 @@ const loginServices = computed(() =>
 }
 
 .sidebar-login-panel.is-collapsed .settings-button {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
 }
 
 .sidebar-login-panel:not(.is-collapsed) {
@@ -269,13 +280,58 @@ const loginServices = computed(() =>
 }
 
 .sidebar-login-panel:not(.is-collapsed) .settings-button {
-  width: 40px !important;
-  height: 40px !important;
+  width: 34px !important;
+  height: 34px !important;
 }
 
 @media (max-width: 960px) {
   .sidebar-login-panel {
     padding-inline: 10px;
+  }
+}
+
+@container (max-width: 300px) {
+  .sidebar-login-panel:not(.is-collapsed) {
+    gap: 8px;
+    padding: 10px 8px calc(10px + var(--safe-bottom));
+  }
+
+  .sidebar-login-panel:not(.is-collapsed) .sidebar-login {
+    gap: 8px;
+  }
+
+  .sidebar-login-panel:not(.is-collapsed) .sidebar-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+
+  .sidebar-login-panel:not(.is-collapsed) .sidebar-user-copy {
+    gap: 3px;
+  }
+
+  .sidebar-login-panel:not(.is-collapsed) .sidebar-user-copy strong {
+    font-size: 13px;
+  }
+
+  .sidebar-login-panel:not(.is-collapsed) .sidebar-login-services {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .sidebar-login-panel:not(.is-collapsed) .service-badge {
+    padding-left: 12px;
+    font-size: 11px;
+  }
+
+  .sidebar-login-panel:not(.is-collapsed) .service-badge::before {
+    width: 7px;
+    height: 7px;
+  }
+
+  .sidebar-login-panel:not(.is-collapsed) .service-state {
+    display: none;
   }
 }
 </style>

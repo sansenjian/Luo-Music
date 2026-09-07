@@ -18,7 +18,7 @@ describe('HomeFooter', () => {
     expect(wrapper.text()).toContain('Loading...')
   })
 
-  it('renders the docked player bar full width by default', () => {
+  it('renders the docked player bar with sidebar space by default', () => {
     const wrapper = mount(HomeFooter, {
       props: {
         isPlayerDocked: true,
@@ -30,7 +30,7 @@ describe('HomeFooter', () => {
       }
     })
 
-    expect(wrapper.find('.docked-player-bar').classes()).toContain('layout-full')
+    expect(wrapper.find('.docked-player-bar').classes()).toContain('layout-with-sidebar')
     expect(wrapper.find('.docked-player-bar-body').text()).toContain('docked player')
   })
 
